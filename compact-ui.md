@@ -6,6 +6,7 @@
 - [x] Desktop sessions empty state (`apps/desktop/src/renderer/src/pages/sessions.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture.
 - [x] Desktop settings: general → `Modular config (.agents)` (`apps/desktop/src/renderer/src/pages/settings-general.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile has no equivalent `.agents` settings surface, so this coverage is desktop-specific.
 - [x] Desktop onboarding welcome step (`apps/desktop/src/renderer/src/pages/onboarding.tsx`) — source-level first-run review only this iteration because no Electron renderer target was available for screenshot capture; mobile currently routes first-run users straight into `Settings`, so this welcome-surface coverage is desktop-specific rather than shared.
+- [x] Desktop settings: capabilities → `MCP Servers` tab shell (`apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile has inline skills/server sections inside `SettingsScreen` rather than a dedicated capabilities tab, so this wrapper-chrome issue is desktop-specific.
 
 ### Mobile checked screens / flows / states
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
@@ -19,7 +20,7 @@
 - [ ] Desktop sessions active tiles / dense action rows / hover states
 - [ ] Desktop settings: general remaining rows + live runtime validation of the `.agents` group
 - [ ] Desktop settings: providers + models
-- [ ] Desktop settings: capabilities
+- [ ] Desktop settings: capabilities → Skills tab, deeper MCP Tools & Servers content states, and live runtime validation of the MCP Servers tab shell
 - [ ] Desktop settings: agents
 - [ ] Desktop settings: repeat tasks
 - [ ] Desktop settings: memories
@@ -44,6 +45,7 @@
 - [x] Desktop sessions empty state used oversized decorative chrome — a large muted icon bubble, full-size selector/prompts chrome, and generous vertical gaps that pushed the primary start controls lower than necessary on a high-frequency surface; the mobile `SessionListScreen` empty state is already text-only, so this issue is desktop-specific rather than shared.
 - [x] Desktop settings general `Modular config (.agents)` used both a top-level `endDescription` and an in-card explanatory paragraph, then split related folder/file actions across separate `Open` and `Reveal files in Finder/Explorer` rows, adding avoidable vertical chrome on an already dense settings page; mobile has no equivalent `.agents` surface, so this issue is desktop-specific rather than shared.
 - [x] Desktop onboarding welcome used oversized hero chrome for a one-action first-run surface: a `text-6xl` mic icon, `text-3xl`/`font-extrabold` headline, large paragraph spacing, and a fixed-width `w-64` primary CTA left extra empty space before the user could move into onboarding; mobile has no equivalent welcome screen today, so this issue is desktop-specific rather than shared.
+- [x] Desktop settings `Capabilities → MCP Servers` added a redundant intro paragraph and separate `border-t pt-6` wrapper above `MCPConfigManager`, even though the tab bar already labeled the surface and the manager itself already opens with its own `MCP Tools & Servers` heading; mobile keeps capabilities inline inside `SettingsScreen`, so this top-chrome issue is desktop-specific rather than shared.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
@@ -58,6 +60,7 @@
 - [x] Tightened the desktop sessions empty state by shrinking the decorative icon treatment, switching the agent selector to its existing compact mode, reducing secondary-control spacing, using the smaller predefined-prompts trigger, and pulling recent sessions closer to the primary actions without shrinking the main text/voice buttons.
 - [x] Tightened the desktop `.agents` settings block by merging its explanatory copy into one helper paragraph and consolidating folder/file buttons into a single wrap-safe `Open folders & files` row with shorter button labels.
 - [x] Tightened the desktop onboarding welcome hero by bounding it to a narrower content width, reducing the mic icon / headline / paragraph spacing, replacing the fixed-width primary CTA with a full-width capped button, and shrinking the skip action so the next step appears sooner without removing orientation.
+- [x] Tightened the desktop `Capabilities → MCP Servers` tab shell by removing the redundant intro paragraph and top divider wrapper above `MCPConfigManager`, so the manager heading and primary tools/server controls appear sooner under the tab bar.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
@@ -81,6 +84,8 @@
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/settings-general-modular-config-density.test.mjs`.
 - [x] Dependency-free desktop onboarding welcome density regression coverage added in `apps/desktop/tests/onboarding-welcome-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/onboarding-welcome-density.test.mjs`.
+- [x] Dependency-free desktop capabilities MCP-tab density regression coverage added in `apps/desktop/tests/settings-capabilities-mcp-density.test.mjs`.
+- [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/settings-capabilities-mcp-density.test.mjs`.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
@@ -100,6 +105,7 @@
 - [ ] Desktop settings helper-tooltip hover occlusion remains un-reproduced in a live renderer; the current coverage is shared-component/source-level only until the desktop runtime can launch for screenshot-backed review.
 - [ ] Desktop settings surfaces remain unchecked at runtime; the shared settings-row audit is not a substitute for live renderer coverage.
 - [ ] Desktop settings general `.agents` cleanup is denser in source, but the real renderer still needs screenshot-backed validation for button-wrap behavior, path/action alignment, and narrow-width scanability once Electron can launch.
+- [ ] Desktop `Capabilities → MCP Servers` shell is denser in source, but the real renderer still needs screenshot-backed validation for the tab-to-heading rhythm, initial above-the-fold card visibility, and awkward-height behavior once Electron can launch.
 - [ ] The repaired `control.test.tsx` assertion now renders `ControlLabel` correctly in source, but the component-level Vitest test still has not been executed in this environment because the desktop/shared toolchain is unavailable.
 - [ ] Mobile Chats list row density is improved in source, but the stub-session title/date balance still needs live Expo web or device screenshot review at small-phone and larger mobile-web widths.
 - [ ] Mobile chat composer, header action row, and voice-related controls still need live narrow-width review for density and possible control crowding.
@@ -225,3 +231,12 @@ Evidence
 - After evidence: Source now renders the reviewed mobile remote-settings subsections with plain-text labels and compact text-first actions, which should reduce visual noise and make the model-mode controls easier to scan and understand on narrow widths without adding extra chrome.
 - Verification commands/run results: `pnpm dev:mobile -- --web` → failed before Expo launch (`expo: command not found`, `node_modules missing`, `spawn ENOENT`, `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`, exit 1). `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/settings-remote-provider-density.test.js` → passed (4 tests, 0 failures, exit 0).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch in this worktree without installed dependencies; live validation of provider-chip wrapping, action-row balance, and real tap targets remains pending once runtime access is restored.
+
+#### Iteration 14
+Evidence
+- Scope: Desktop settings `Capabilities → MCP Servers` tab shell density, with a cross-check for whether mobile has an equivalent dedicated capabilities surface.
+- Before evidence: Live inspection remained blocked — `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` failed before Electron launch with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing`, and `pnpm dev:mobile -- --web` failed before Expo launch with `expo: command not found`, `node_modules missing`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`, so no screenshot capture was possible. Source-backed observation: `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx` rendered a top helper paragraph (`Configure MCP servers and tools available to the agent.`) plus a separate `border-t pt-6` wrapper before `MCPConfigManager`, while the `Capabilities` tab bar already labeled the surface and `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` already opened with its own `MCP Tools & Servers` heading. Cross-check: mobile keeps skills/server controls inline in `apps/mobile/src/screens/SettingsScreen.tsx` instead of a dedicated capabilities tab, so this wrapper-chrome issue is desktop-specific rather than shared.
+- Change: Removed the redundant intro paragraph and top divider wrapper from `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`, tightened the page shell to `px-4 py-4 sm:px-6`, and added `apps/desktop/tests/settings-capabilities-mcp-density.test.mjs` to keep the tab shell directly anchored to `MCPConfigManager` while preserving the manager heading.
+- After evidence: Source now places `MCPConfigManager` directly under the tab shell, so the `MCP Tools & Servers` heading and the primary tool/server controls appear sooner without the extra paragraph-and-divider chrome above them.
+- Verification commands/run results: `node --test apps/desktop/tests/settings-capabilities-mcp-density.test.mjs` → passed (2 tests, 0 failures, exit 0). Runtime validation remains blocked because `electron_execute_electron-native` still could not attach and `pnpm dev -- -dui` / `pnpm dev:mobile -- --web` still fail before launch due to missing local dependencies.
+- Blockers/remaining uncertainty: No before/after screenshots were possible because neither desktop nor mobile runtime could launch in this worktree without installed dependencies; the real tab spacing, card visibility, and awkward-height behavior still need screenshot-backed validation once runtime access is restored.

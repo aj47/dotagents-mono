@@ -43,24 +43,16 @@ export function Component() {
   }
 
   return (
-    <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-6 py-4">
-      <div className="min-w-0 space-y-8">
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">
-            Configure MCP servers and tools available to the agent.
-          </p>
-        </div>
-
-        <div className="min-w-0 border-t pt-6">
-          <MCPConfigManager
-            config={config.mcpConfig || { mcpServers: {} }}
-            onConfigChange={updateMcpConfig}
-            collapsedToolServers={normalizeCollapsedServers(config.mcpToolsCollapsedServers)}
-            collapsedServers={normalizeCollapsedServers(config.mcpServersCollapsedServers)}
-            onCollapsedToolServersChange={handleCollapsedToolServersChange}
-            onCollapsedServersChange={handleCollapsedServersChange}
-          />
-        </div>
+    <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
+      <div className="min-w-0">
+        <MCPConfigManager
+          config={config.mcpConfig || { mcpServers: {} }}
+          onConfigChange={updateMcpConfig}
+          collapsedToolServers={normalizeCollapsedServers(config.mcpToolsCollapsedServers)}
+          collapsedServers={normalizeCollapsedServers(config.mcpServersCollapsedServers)}
+          onCollapsedToolServersChange={handleCollapsedToolServersChange}
+          onCollapsedServersChange={handleCollapsedServersChange}
+        />
       </div>
     </div>
   )
