@@ -15,12 +15,13 @@
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
+- [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
 
 ### Not yet checked
 
 - [ ] Agent create/edit screen (`AgentEdit`)
 - [ ] Memory create/edit screen (`MemoryEdit`)
-- [ ] Loop create/edit screen (`LoopEdit`)
+- [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
 - [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
@@ -32,6 +33,7 @@
 - [x] Undersized chat composer send/accessory controls and missing web state semantics
 - [x] Weak Connection inline action affordances
 - [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
+- [x] LoopEdit profile selection chips crowd narrow screens and hide selected state behind color alone
 
 ### Improved
 
@@ -40,10 +42,11 @@
 - [x] Chat composer actions, toggles, and voice-state accessibility
 - [x] Session empty-state CTA and narrow-layout guardrails
 - [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
+- [x] LoopEdit profile selection clarity, default-agent fallback copy, and touch targets
 
 ### Verified
 
-- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, and agent loop row actions
+- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, and LoopEdit profile selection
 
 ### Blocked
 
@@ -52,9 +55,49 @@
 ### Still uncertain
 
 - [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
-- [ ] Narrow-screen usability of `AgentEdit`, `MemoryEdit`, and `LoopEdit`
+- [ ] Narrow-screen usability of `AgentEdit`, `MemoryEdit`, and the remaining `LoopEdit` fields outside the profile selector section
 
 ## Recent Iterations
+
+### 2026-03-09 — Iteration 8: make LoopEdit profile selection readable and tappable on narrow screens
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `LoopEdit` agent-profile selection in `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - create/edit flow reached from `Settings -> Agent Loops -> + Create New Loop` or tapping an existing loop
+- Why this area:
+  - the previous iteration improved loop list-row actions, so the next high-value coverage expansion was the adjacent and still-unchecked loop create/edit flow
+  - source review showed the optional agent-profile selector still used small wrap chips with color-only selection, which is especially fragile on narrow mobile widths and weak for accessibility
+- What was investigated:
+  - attempted Expo Web startup via the existing repo workflow
+  - current `LoopEditScreen.tsx` markup and styles for the profile-selection section
+  - existing mobile accessibility/touch-target helpers used elsewhere in the app
+- Findings:
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - `styles.profileOptions` used a wrapping chip row and each `profileOption` only used inline padding, with no minimum 44px touch target guardrail
+  - profile choices lacked explicit button semantics and selected-state metadata, so the currently chosen agent was communicated mostly through color alone
+  - the default fallback behavior was not explained, which makes `No profile` ambiguous when creating a loop quickly on mobile
+- Change made:
+  - converted the LoopEdit profile selector from wrapping chips into full-width stacked rows better suited to narrow screens
+  - added explicit button labels, hints, and selected-state metadata for the default-agent option and each saved agent profile
+  - added clearer copy explaining what the default-agent option means and what happens when no saved agent profiles exist yet
+  - added `apps/mobile/tests/loop-edit-profile-selection.test.js` to lock the layout, touch-target, and accessibility guardrails
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8096`
+- Follow-up checks:
+  - once dependencies are installed, verify the LoopEdit profile selector in Expo Web on a narrow viewport and confirm long profile names wrap cleanly without crowding the save action
+  - inspect `MemoryEdit` next so coverage continues widening across edit flows instead of staying in Settings/Loop surfaces
+  - inspect the rest of `LoopEdit` for large-text behavior, especially the prompt and interval fields, once live runtime validation is available
+
+Evidence
+- Scope: `LoopEdit` agent-profile selection in `apps/mobile/src/screens/LoopEditScreen.tsx`
+- Before evidence: Source review showed `styles.profileOptions` as a wrapping chip row (`flexDirection: 'row'`, `flexWrap: 'wrap'`) and `styles.profileOption` using only `paddingVertical: spacing.sm` / `paddingHorizontal: spacing.md`, with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The default fallback choice was labeled only as `No profile`, with no copy explaining that the loop would use the default active agent. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8096` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Reworked the LoopEdit profile selector into full-width rows, added 44px minimum touch-target styling plus explicit button labels/hints/selected-state metadata, clarified the default-agent fallback copy, and added a focused regression test file.
+- After evidence: Source now shows `styles.profileOptions` with `width: '100%'`, `styles.profileOption` using `createMinimumTouchTargetStyle({ minSize: 44, ... })`, and each option exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: ... }}`. The UI copy now explains `Choose a dedicated agent for this loop, or leave it on the default agent.` and `No saved agent profiles yet. This loop will use the default agent until you create one.` `apps/mobile/tests/loop-edit-profile-selection.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (16/16 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8096` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, text wrapping, and visual weight of the new full-width profile rows until dependencies are available.
 
 ### 2026-03-09 — Iteration 7: make agent loop row actions readable and tappable
 
