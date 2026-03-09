@@ -7,6 +7,7 @@
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
 - [x] Mobile Chats list / session rows / stub-from-desktop state (`SessionListScreen`) — source-level narrow-width review only this iteration because Expo web runtime is still blocked before launch.
 - [x] Mobile chat screen default header + composer state (`ChatScreen`) — source-level review only this iteration because Expo web runtime was blocked before launch, but the header agent selector and default composer chrome were audited for density.
+- [x] Mobile Connection settings default disconnected/error + QR scanner close-action states (`ConnectionSettingsScreen`) — source-level review only this iteration because Expo web runtime is still blocked before launch.
 
 ### Not yet checked
 - [ ] Desktop onboarding / setup / welcome / first run
@@ -24,7 +25,7 @@
 - [ ] Desktop loading / error / disabled / long-content states
 - [ ] Mobile onboarding / setup / welcome / first run
 - [ ] Mobile chat follow-up flows, voice overlay states, queued-message panel, retry banner, and long-message states at small-phone and larger mobile web widths
-- [ ] Mobile settings subsections beyond the root settings screen (connection, appearance, notifications, remote desktop settings groups)
+- [ ] Mobile settings subsections beyond the root settings screen (appearance, notifications, remote desktop settings groups, plus live runtime validation of `ConnectionSettings`)
 - [ ] Mobile sheets / menus / tooltips / helper UI
 - [ ] Mobile empty / loading / error / success / disabled / long-content states
 - [ ] Mobile small phone width / larger mobile web width
@@ -33,6 +34,7 @@
 - [x] Mobile Settings root screen had redundant chrome: navigation header already labels the route as `DotAgents`, while `SettingsScreen` also rendered a large in-content `Settings` title above the connection card.
 - [x] Mobile Chats list stub session rows used both a leading `💻` emoji and the text suffix `· from desktop`, spending narrow-row space on duplicate provenance chrome instead of the session title.
 - [x] Mobile chat screen duplicated the current-agent affordance: the navigation header already exposed a clickable current-agent badge, while `ChatScreen` also rendered a second `🤖 Agent` chip row above the composer.
+- [x] Mobile Connection settings used decorative emoji in already-labeled UI (`⚠️` error banner copy, `📷 Scan QR Code`, `✕ Close`), adding narrow-width chrome without improving orientation.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
@@ -41,6 +43,7 @@
 - [x] Strengthened desktop tooltip regression coverage to assert the shared settings-row composition in `Control` + `ControlLabel` and a dependency-free audit of a concrete `settings-general` row.
 - [x] Fixed `apps/desktop/src/renderer/src/components/ui/control.test.tsx` so the tooltip regression test now renders the nested `ControlLabel` component before traversing tooltip props, closing the QA-noted false-positive gap in the component-level assertion.
 - [x] Removed the duplicate mobile chat composer agent chip so the primary composer area goes straight from attachments into the action row, relying on the existing header badge as the single agent-selection affordance.
+- [x] Removed decorative emoji chrome from the mobile Connection settings error banner and QR scanner actions, while adding an explicit accessibility label for the scanner close control.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
@@ -49,6 +52,8 @@
 - [x] Targeted verification passed: `node --test apps/mobile/tests/session-list-density.test.js`.
 - [x] Source-level regression coverage added in `apps/mobile/tests/chat-screen-density.test.js`.
 - [x] Targeted verification passed: `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js`.
+- [x] Source-level regression coverage added in `apps/mobile/tests/connection-settings-density.test.js`.
+- [x] Targeted mobile verification passed: `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js`.
 - [x] Dependency-free desktop regression coverage added in `apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Re-ran `node --test apps/desktop/tests/control-tooltip-density.test.mjs` after the QA remediation; all 3 desktop tooltip density assertions still passed.
@@ -69,6 +74,7 @@
 - [ ] Mobile Chats list row density is improved in source, but the stub-session title/date balance still needs live Expo web or device screenshot review at small-phone and larger mobile-web widths.
 - [ ] Mobile chat composer, header action row, and voice-related controls still need live narrow-width review for density and possible control crowding.
 - [ ] Mobile chat header badge and composer now avoid duplicate agent-selection chrome in source, but the real small-phone header truncation, keyboard-open layout, and agent-selector sheet entry flow still need live screenshot-backed validation.
+- [ ] Mobile Connection settings now use plain-text error/scan/close labels in source, but the real Expo-web or device layout still needs screenshot-backed review for scanner modal overlay placement, close-button hit safety, and disconnected-state density.
 
 ### Iterations
 
@@ -134,3 +140,12 @@ Evidence
 - After evidence: Source now moves directly from pending image thumbnails into the main composer action row, reducing vertical clutter on the mobile chat surface while preserving the existing header badge as the agent-selector entry point.
 - Verification commands/run results: `pnpm dev:mobile -- --web` → failed (`expo: command not found`, `node_modules missing`, exit 1). `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js` → passed (6 tests, 0 failures, exit 0).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch in this worktree without installed dependencies, so real-device or Expo-web validation of header truncation, keyboard-open spacing, and agent-selector discoverability remains pending once runtime access is restored.
+
+#### Iteration 8
+Evidence
+- Scope: Mobile Connection settings screen density for disconnected/error and QR scanner close-action states.
+- Before evidence: Source-backed observation only because runtime was blocked — `pnpm dev:mobile -- --web` failed with `expo: command not found`, `node_modules missing`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` before any screenshot capture. In `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, the already-styled error banner rendered `⚠️ {connectionError}`, the primary scan action rendered `📷 Scan QR Code`, and the scanner overlay close button rendered `✕ Close`, all adding decorative glyph chrome on a narrow first-run/settings surface.
+- Change: Removed the decorative emoji prefixes from the mobile Connection settings error banner and QR scanner actions, added an explicit `accessibilityLabel="Close QR scanner"` to the scanner close control, and added `apps/mobile/tests/connection-settings-density.test.js` to keep the screen emoji-free while preserving clear labels.
+- After evidence: Source now uses plain-text `Scan QR Code`, plain-text error copy, and a plain `Close` scanner action with an explicit accessibility label, reducing decorative chrome while keeping the first-run connection flow understandable.
+- Verification commands/run results: `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js` → passed (6 tests, 0 failures, exit 0). Runtime validation remains blocked because `pnpm dev:mobile -- --web` fails before Expo launch with `expo: command not found`, `node_modules missing`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
+- Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch in this worktree without installed dependencies, so live validation of scanner modal layering, close-button overlap safety, and real small-phone spacing remains pending once runtime access is restored.
