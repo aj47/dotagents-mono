@@ -5,6 +5,7 @@
 
 ### Mobile checked screens / flows / states
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
+- [x] Mobile Chats list / session rows / stub-from-desktop state (`SessionListScreen`) — source-level narrow-width review only this iteration because Expo web runtime is still blocked before launch.
 
 ### Not yet checked
 - [ ] Desktop onboarding / setup / welcome / first run
@@ -29,9 +30,11 @@
 
 ### Reproduced issues
 - [x] Mobile Settings root screen had redundant chrome: navigation header already labels the route as `DotAgents`, while `SettingsScreen` also rendered a large in-content `Settings` title above the connection card.
+- [x] Mobile Chats list stub session rows used both a leading `💻` emoji and the text suffix `· from desktop`, spending narrow-row space on duplicate provenance chrome instead of the session title.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
+- [x] Removed the redundant `💻` prefix from mobile Chats list stub session rows and added an explicit shrinkable title row so narrow widths keep more room for the actual session title while preserving the textual `· from desktop` provenance label.
 - [x] Repositioned shared desktop settings helper tooltips to prefer a vertical opening direction (`top`) with a slightly tighter offset so explanatory overlays are less likely to spill over neighboring switches/selects in dense settings rows.
 - [x] Strengthened desktop tooltip regression coverage to assert the shared settings-row composition in `Control` + `ControlLabel` and a dependency-free audit of a concrete `settings-general` row.
 - [x] Fixed `apps/desktop/src/renderer/src/components/ui/control.test.tsx` so the tooltip regression test now renders the nested `ControlLabel` component before traversing tooltip props, closing the QA-noted false-positive gap in the component-level assertion.
@@ -39,6 +42,8 @@
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
 - [x] Targeted verification passed: `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/navigation-header.test.js`.
+- [x] Source-level regression coverage added in `apps/mobile/tests/session-list-density.test.js`.
+- [x] Targeted verification passed: `node --test apps/mobile/tests/session-list-density.test.js`.
 - [x] Dependency-free desktop regression coverage added in `apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Re-ran `node --test apps/desktop/tests/control-tooltip-density.test.mjs` after the QA remediation; all 3 desktop tooltip density assertions still passed.
@@ -55,6 +60,7 @@
 - [ ] Desktop settings helper-tooltip hover occlusion remains un-reproduced in a live renderer; the current coverage is shared-component/source-level only until the desktop runtime can launch for screenshot-backed review.
 - [ ] Desktop settings surfaces remain unchecked at runtime; the shared settings-row audit is not a substitute for live renderer coverage.
 - [ ] The repaired `control.test.tsx` assertion now renders `ControlLabel` correctly in source, but the component-level Vitest test still has not been executed in this environment because the desktop/shared toolchain is unavailable.
+- [ ] Mobile Chats list row density is improved in source, but the stub-session title/date balance still needs live Expo web or device screenshot review at small-phone and larger mobile-web widths.
 - [ ] Mobile chat composer, header action row, and agent selector chip still need live narrow-width review for density and possible control crowding.
 
 ### Iterations
@@ -103,3 +109,12 @@ Evidence
 - After evidence: The tooltip regression test now inspects the rendered `ControlLabel` output rather than the unresolved JSX element, so the assertion path reaches the shared tooltip props it claims to verify.
 - Verification commands/run results: `node --test apps/desktop/tests/control-tooltip-density.test.mjs` → passed (3 tests, 0 failures, exit 0). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` → still blocked before Vitest startup because `pnpm -w run build:shared` failed with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing` warnings (exit 1).
 - Blockers/remaining uncertainty: The component-level test logic is repaired, but this environment still cannot execute the Vitest file end-to-end until desktop/shared dependencies are installed, and live renderer screenshot validation remains blocked for the same reason.
+
+#### Iteration 6
+Evidence
+- Scope: Mobile Chats list stub-session row density on narrow widths.
+- Before evidence: Source-backed observation only because runtime was blocked — `pnpm --filter @dotagents/mobile web` failed with `expo: command not found`, `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`, and `node_modules missing` warnings before any screenshot capture. In `apps/mobile/src/screens/SessionListScreen.tsx`, stub rows rendered both a leading `💻` emoji before the title and the textual suffix `· from desktop` in the metadata line, duplicating provenance chrome in an already tight row.
+- Change: Removed the leading desktop emoji from `SessionListScreen`, introduced a dedicated `sessionTitleRow` with `minWidth: 0`, and added `apps/mobile/tests/session-list-density.test.js` to keep the row shrinkable while preserving the textual stub-session indicator.
+- After evidence: Source now gives the session title the full leading row width and still labels stub sessions via `· from desktop`, which should improve scanability and title truncation on narrow mobile widths without losing provenance context.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web` → failed (`expo: command not found`, `node_modules missing`, exit 1). `node --test apps/mobile/tests/session-list-density.test.js` → passed (2 tests, 0 failures, exit 0).
+- Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch without installed dependencies, so the real title/date/truncation balance still needs live runtime review once mobile dependencies are available.
