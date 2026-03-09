@@ -9,7 +9,7 @@ const settingsGeneralSource = fs.readFileSync(
 )
 
 const shortcutsGroup = settingsGeneralSource.match(
-  /<ControlGroup[\s\S]*?title="Shortcuts"[\s\S]*?<Control label="Recording" className="px-3">/,
+  /<ControlGroup[\s\S]*?title="Shortcuts"[\s\S]*?<\/ControlGroup>/,
 )?.[0] ?? ''
 
 test('desktop shortcuts helper keeps cancel guidance visible without a hover-only tooltip', () => {
@@ -20,15 +20,16 @@ test('desktop shortcuts helper keeps cancel guidance visible without a hover-onl
   )
   assert.match(
     settingsGeneralSource,
-    /shortcut === "hold-ctrl"[\s\S]*?"Hold Ctrl to record, release it to finish, and press any other key to cancel\."/,
+    /shortcut === "hold-ctrl"[\s\S]*?"Hold Ctrl to record\. Release it to finish; press any other key to cancel\."/,
   )
   assert.match(
     settingsGeneralSource,
-    /shortcut === "custom"[\s\S]*?recordingShortcutMode === "toggle"[\s\S]*?`Press \$\{customRecordingShortcutDisplay\} to start and finish recording\. Press Esc to cancel\.`[\s\S]*?: `Hold \$\{customRecordingShortcutDisplay\} to record, release it to finish, and press any other key to cancel\.`[\s\S]*?: "Press Ctrl\+\/ to start and finish recording\. Press Esc to cancel\."/,
+    /shortcut === "custom"[\s\S]*?recordingShortcutMode === "toggle"[\s\S]*?`Press \$\{customRecordingShortcutDisplay\} to start or stop recording\. Press Esc to cancel\.`[\s\S]*?: `Hold \$\{customRecordingShortcutDisplay\} to record\. Release it to finish; press any other key to cancel\.`[\s\S]*?: "Press Ctrl\+\/ to start or stop recording\. Press Esc to cancel\."/,
   )
+  assert.doesNotMatch(shortcutsGroup, /endDescription=\{/)
   assert.match(
     shortcutsGroup,
-    /endDescription=\{[\s\S]*?\{recordingShortcutHelperText\}[\s\S]*?<\/div>/,
+    /<Control label="Recording" className="px-3">[\s\S]*?<p className="text-\[11px\] leading-relaxed text-muted-foreground">[\s\S]*?\{recordingShortcutHelperText\}[\s\S]*?<\/p>/,
   )
   assert.doesNotMatch(shortcutsGroup, /<TooltipProvider/)
   assert.doesNotMatch(shortcutsGroup, /i-mingcute-information-fill/)

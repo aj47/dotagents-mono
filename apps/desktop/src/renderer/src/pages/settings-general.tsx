@@ -401,12 +401,12 @@ export function Component() {
     ? formatKeyComboForDisplay(effectiveRecordingShortcut)
     : "your custom shortcut"
   const recordingShortcutHelperText = shortcut === "hold-ctrl"
-    ? "Hold Ctrl to record, release it to finish, and press any other key to cancel."
+    ? "Hold Ctrl to record. Release it to finish; press any other key to cancel."
     : shortcut === "custom"
       ? recordingShortcutMode === "toggle"
-        ? `Press ${customRecordingShortcutDisplay} to start and finish recording. Press Esc to cancel.`
-        : `Hold ${customRecordingShortcutDisplay} to record, release it to finish, and press any other key to cancel.`
-      : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."
+        ? `Press ${customRecordingShortcutDisplay} to start or stop recording. Press Esc to cancel.`
+        : `Hold ${customRecordingShortcutDisplay} to record. Release it to finish; press any other key to cancel.`
+      : "Press Ctrl+/ to start or stop recording. Press Esc to cancel."
 
 
   if (!configQuery.data) return null
@@ -710,11 +710,6 @@ export function Component() {
           collapsible
           defaultCollapsed
           title="Shortcuts"
-          endDescription={
-            <div className="leading-relaxed">
-              {recordingShortcutHelperText}
-            </div>
-          }
         >
           <Control label="Recording" className="px-3">
             <div className="space-y-2">
@@ -768,6 +763,10 @@ export function Component() {
                   />
                 </>
               )}
+
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {recordingShortcutHelperText}
+              </p>
             </div>
           </Control>
 
