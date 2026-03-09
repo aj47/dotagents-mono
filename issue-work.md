@@ -80,3 +80,33 @@ This file tracks issue investigations and shipped slices for the issue-work loop
     - `mkdir -p .aloops-artifacts/issue-work-loop && screencapture -x '.aloops-artifacts/issue-work-loop/issue-72-runtime-launch.png'` -> passed and refreshed a screenshot artifact.
   - Blockers/remaining uncertainty: This remediation proves runtime launchability and strengthens the actual `AgentProgress` regression path, but it does not drive a fully live end-to-end follow-up agent session inside Electron. There is still no deterministic local harness for synthesizing a real `respond_to_user` follow-up turn in the running app without external session orchestration, so the issue-specific behavior claim remains grounded primarily in the new rendered component test plus the helper/store regressions.
 
+#### 2026-03-09 — Issue #81: Hands-free toggle off still keeps wake-word gating in chat
+- Issue: `#81` — Hands-free toggle off still keeps wake-word gating in chat
+- Status: shipped
+- Branch/PR: `aloops/issue-work-loop`; PR not created in this iteration
+- Notes:
+  - Diagnosis: `apps/mobile/src/lib/voice/useSpeechRecognizer.ts` created the web `SpeechRecognition` instance once and installed `onresult` / `onend` handlers that closed over the original `handsFree` value. After hands-free was turned off, subsequent recordings could still finalize in `handsfree` mode, which matches the reported wake-word-gated behavior.
+  - Reproduced or confirmed: Confirmed directly from source and with a focused regression test. The existing web recognizer reused stale closures after a hands-free-to-push-to-talk transition.
+  - Assumptions:
+    - The open issue's desktop symptom is routed through this shared chat speech-recognizer path. This is acceptable because repo inspection did not surface a separate desktop-specific hands-free recognizer implementation, and the stale web recognizer closure exactly matches the reported post-toggle behavior.
+    - Updating long-lived recognizer callbacks to read current refs is preferable to recreating the web recognizer on every toggle because it is smaller, less disruptive, and preserves the existing lifecycle.
+  - Changes:
+    - Updated `useSpeechRecognizer` so long-lived web/native recognizer callbacks read current `handsFree`, `willCancel`, logging, and callback values from refs instead of stale render-time closures.
+    - Preserved existing recognizer lifecycle while making finalization mode and error/permission handling reflect the latest chat mode.
+    - Added a regression test that reuses the same web recognizer across a hands-free-on → hands-free-off transition and verifies the final payload switches back to normal `send` mode.
+  - Verification:
+    - Targeted speech recognizer regression tests passed.
+    - The package vitest suite passed.
+    - A package-level TypeScript check still fails, but only on pre-existing unrelated `LoopEditScreen.tsx` `guidelines` errors.
+  - Next: If issue #81 needs stronger runtime proof later, add a deterministic chat-level harness or live UI script that toggles hands-free in the running client and records the actual post-toggle mic behavior.
+- Evidence:
+  - Scope: Fix one narrow slice of issue #81 by ensuring the shared chat speech recognizer stops treating later mic interactions as hands-free after the user toggles hands-free off.
+  - Before evidence: Issue #81 reported that turning hands-free off left chat input wake-word gated. Source review showed `useSpeechRecognizer` installed web `SpeechRecognition` handlers only once, so those handlers captured the original `handsFree` value and could keep finalizing later recordings as `handsfree` even after a toggle-off rerender.
+  - Change: Updated `apps/mobile/src/lib/voice/useSpeechRecognizer.ts` to route long-lived recognizer decisions through current refs, and extended `apps/mobile/src/lib/voice/useSpeechRecognizer.test.ts` with a regression that reuses the same web recognizer across a mode switch.
+  - After evidence: The new regression proves a recognizer created while `handsFree=true`, then reused after rerendering with `handsFree=false`, now emits `{ mode: 'send', source: 'web' }` for the next push-to-talk transcript instead of staying in hands-free mode.
+  - Verification commands/run results:
+    - `pnpm --filter @dotagents/mobile exec vitest run src/lib/voice/useSpeechRecognizer.test.ts` -> passed (`1` file, `4` tests); emitted an engine warning because local Node is `v25.2.1` while the package wants `>=20.19.4 <25`.
+    - `pnpm --filter @dotagents/mobile run test:vitest` -> passed (`6` files, `51` tests); same engine warning only.
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` -> failed on pre-existing unrelated errors in `src/screens/LoopEditScreen.tsx` (`Property 'guidelines' does not exist on type 'ApiAgentProfile'`).
+  - Blockers/remaining uncertainty: This iteration did not run a live desktop UI repro. The fix is justified by a direct source match plus regression coverage on the shared chat recognizer path, but there is still no runtime artifact showing the exact top-right mic toggle flow in a running desktop client.
+
