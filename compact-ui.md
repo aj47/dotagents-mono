@@ -1,7 +1,7 @@
 ## Compact UI Coverage Ledger
 
 ### Desktop checked screens / flows / states
-- [ ] None yet this iteration.
+- [x] Desktop settings helper-tooltip rows across shared settings pages (`apps/desktop/src/renderer/src/components/ui/control.tsx`, including General and other settings groups that use `ControlLabel`) — source-level audit only this iteration because the desktop runtime could not launch.
 
 ### Mobile checked screens / flows / states
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
@@ -29,20 +29,27 @@
 
 ### Reproduced issues
 - [x] Mobile Settings root screen had redundant chrome: navigation header already labels the route as `DotAgents`, while `SettingsScreen` also rendered a large in-content `Settings` title above the connection card.
+- [x] Desktop settings helper tooltips opened to the right of the inline info icon inside `ControlLabel`, which points the overlay into the right-hand control column used by switches/selects in dense settings rows and risks covering adjacent controls on hover.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
+- [x] Repositioned shared desktop settings helper tooltips to prefer a vertical opening direction (`top`) with a slightly tighter offset so explanatory overlays are less likely to spill over neighboring switches/selects in dense settings rows.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
 - [x] Targeted verification passed: `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/navigation-header.test.js`.
+- [x] Desktop regression coverage updated in `apps/desktop/src/renderer/src/components/ui/control.test.tsx` to assert helper tooltips open above the label instead of into the control column.
+- [x] Dependency-free static verification passed: `node --input-type=module -e "..."` confirmed the desktop tooltip placement change and regression test text are present.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
 - [x] Live desktop runtime inspection not attempted after the same dependency blocker pattern because local app dependencies appear unavailable.
+- [x] Live desktop renderer inspection remained blocked this iteration: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` failed during `@dotagents/shared build` with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing` warnings.
+- [x] Targeted desktop Vitest execution remained blocked for the same reason: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` failed before Vitest ran because `pnpm -w run build:shared` could not find `tsup`.
 
 ### Still uncertain
 - [ ] Desktop renderer / Electron surfaces still need first live attachment and screenshot evidence once dependencies are installed.
+- [ ] Desktop hover validation is still pending for `ControlLabel` tooltips under real renderer widths, especially near dense switch/select rows where the overlay previously risked covering neighboring controls.
 - [ ] Mobile chat composer, header action row, and agent selector chip still need live narrow-width review for density and possible control crowding.
 
 ### Iterations
@@ -64,3 +71,12 @@ Evidence
 - After evidence: Source now starts the Settings scroll content directly with the connection card, reducing top-of-screen chrome on the mobile root settings surface.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile web` → failed (`expo: command not found`, `node_modules missing`, exit 1). `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/navigation-header.test.js` → passed (3 tests, 0 failures).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web could not launch without installed dependencies; visual validation of real spacing and any neighboring layout effects remains pending once runtime access is restored.
+
+#### Iteration 3
+Evidence
+- Scope: Desktop shared settings helper-tooltip overlay safety for dense settings rows.
+- Before evidence: Source-backed observation only because runtime was blocked — `ControlLabel` in `apps/desktop/src/renderer/src/components/ui/control.tsx` rendered helper tooltips with `side="right"` and `align="start"`, while desktop settings rows place the interactive control in the right column (`sm:max-w-[48%]`), making the tooltip most likely to open into neighboring switches/selects. Attempted desktop launch via the documented debug flow failed before any screenshot capture.
+- Change: Updated `ControlLabel` to prefer `side="top"` with `sideOffset={6}` so helper overlays open vertically instead of into the settings control column, and added a regression assertion in `apps/desktop/src/renderer/src/components/ui/control.test.tsx` for the new placement.
+- After evidence: Source now positions the shared desktop helper tooltip above the label, reducing the chance that hover help occludes or steals clicks from adjacent controls in dense settings forms.
+- Verification commands/run results: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` → failed during predev (`tsup: command not found`, `node_modules missing`, exit 1). `node --input-type=module -e "..."` → passed (`static desktop tooltip assertions passed`). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` → failed before Vitest startup because `pnpm -w run build:shared` could not find `tsup`.
+- Blockers/remaining uncertainty: No before/after screenshots were possible because the desktop renderer could not start without installed dependencies; live hover validation is still needed to confirm the tooltip no longer covers nearby controls at real window sizes.

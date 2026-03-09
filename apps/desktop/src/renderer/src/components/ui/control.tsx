@@ -49,11 +49,11 @@ export const ControlLabel = ({
             <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-help transition-colors hover:text-foreground" />
           </TooltipTrigger>
           <TooltipContent
-            side="right"
+            side="top"
             align="start"
             collisionPadding={20}
             avoidCollisions={true}
-            sideOffset={8}
+            sideOffset={6}
             className="z-[99999] max-w-xs"
           >
             <p>{tooltip}</p>

@@ -16,6 +16,7 @@ describe("Control", () => {
   })
 })
 
+
 describe("ControlLabel", () => {
   it("allows long labels with tooltips to wrap instead of clipping", () => {
     const tree = ControlLabel({ label: "Extremely long label", tooltip: "Helpful context" }) as React.ReactElement
@@ -23,5 +24,17 @@ describe("ControlLabel", () => {
     expect(tree.props.className).toContain("flex-wrap")
     const textLabel = React.Children.toArray(tree.props.children)[0] as React.ReactElement
     expect(textLabel.props.className).toContain("break-words")
+  })
+
+  it("opens helper tooltips above the label so they do not spill into the control column", () => {
+    const tree = ControlLabel({ label: "Main Agent Mode", tooltip: "Helpful context" }) as React.ReactElement
+
+    const provider = React.Children.toArray(tree.props.children)[1] as React.ReactElement
+    const tooltip = provider.props.children as React.ReactElement
+    const tooltipContent = React.Children.toArray(tooltip.props.children)[1] as React.ReactElement
+
+    expect(tooltipContent.props.side).toBe("top")
+    expect(tooltipContent.props.align).toBe("start")
+    expect(tooltipContent.props.sideOffset).toBe(6)
   })
 })
