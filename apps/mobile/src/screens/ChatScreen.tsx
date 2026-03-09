@@ -6,13 +6,14 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  GestureResponderEvent,
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
   Pressable,
   Image,
+  AppState,
+  AppStateStatus,
   NativeScrollEvent,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
@@ -22,7 +23,6 @@ import {
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EventEmitter } from 'expo-modules-core';
 import { useConfigContext, saveConfig } from '../store/config';
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
@@ -47,10 +47,12 @@ import {
   isToolOnlyMessage,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
 import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
@@ -62,6 +64,9 @@ import {
   createTextInputAccessibilityLabel,
   createVoiceInputLiveRegionAnnouncement,
 } from '../lib/accessibility';
+import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
+import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
+import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
 interface PendingImageAttachment {
   id: string;
@@ -218,6 +223,29 @@ const getMessageLogMeta = (content: string) => ({
   inlineImageCount: (content.match(/!\[[^\]]*\]\((?:data:image\/[^)]+)\)/gi) || []).length,
 });
 
+const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
+
+const mergeVoiceText = (base?: string, live?: string) => {
+	const a = normalizeVoiceText(base);
+	const b = normalizeVoiceText(live);
+	if (!a) return b;
+	if (!b) return a;
+	if (a === b) return a;
+	if (b.startsWith(a)) return b;
+	if (a.startsWith(b)) return a;
+	const aWords = a.split(' ');
+	const bWords = b.split(' ');
+	const maxOverlap = Math.min(aWords.length, bWords.length);
+	for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+		const aSuffix = aWords.slice(-overlap).join(' ');
+		const bPrefix = bWords.slice(0, overlap).join(' ');
+		if (aSuffix === bPrefix) {
+			return normalizeVoiceText(`${a} ${bWords.slice(overlap).join(' ')}`);
+		}
+	}
+	return normalizeVoiceText(`${a} ${b}`);
+};
+
 const getCollapsedMessagePreview = (content: string) =>
   content
     .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
@@ -259,6 +287,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
+  const isFocused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
   const { config, setConfig } = useConfigContext();
@@ -269,15 +298,29 @@ export default function ChatScreen({ route, navigation }: any) {
   const { currentProfile } = useProfile();
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const handsFree = !!config.handsFree;
+  const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
+  const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
+  const handsFreeDebugEnabled = config.handsFreeDebug === true;
+  const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const isAppActive = appState === 'active';
+  const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
 
   const toggleHandsFree = async () => {
     const next = !handsFreeRef.current;
     const nextCfg = { ...config, handsFree: next } as any;
     setConfig(nextCfg);
     try { await saveConfig(nextCfg); } catch {}
+    if (!next) {
+      void stopRecognitionOnly?.();
+      Speech.stop();
+      setDebugInfo('Handsfree mode turned off.');
+    } else {
+      setDebugInfo('Handsfree mode turned on. Say the wake phrase to begin.');
+    }
   };
 
   // TTS toggle
@@ -570,28 +613,9 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
-	// Voice debug logging (dev-only) to help diagnose recording/send lifecycle.
-	const voiceLogSeqRef = useRef(0);
-	const voiceLog = useCallback((msg: string, extra?: any) => {
-		if (!__DEV__) return;
-		voiceLogSeqRef.current += 1;
-		const seq = voiceLogSeqRef.current;
-		if (typeof extra !== 'undefined') console.log(`[Voice ${seq}] ${msg}`, extra);
-		else console.log(`[Voice ${seq}] ${msg}`);
-	}, []);
 	  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
-  const [listening, setListening] = useState(false);
-	const listeningRef = useRef<boolean>(listening);
-	useEffect(() => { listeningRef.current = listening; }, [listening]);
-	const setListeningValue = useCallback((v: boolean) => {
-		listeningRef.current = v;
-		setListening(v);
-	}, []);
-  const [liveTranscript, setLiveTranscript] = useState('');
-  const [sttPreview, setSttPreview] = useState('');
-  const sttPreviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
   // Track which individual tool calls are fully expanded to show all input/output details
@@ -599,6 +623,147 @@ export default function ChatScreen({ route, navigation }: any) {
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+	  const [willCancel, setWillCancel] = useState(false);
+
+	  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
+	  useEffect(() => {
+		if (!handsFreeDebugEnabled) {
+			clearVoiceDebug();
+		}
+	  }, [clearVoiceDebug, handsFreeDebugEnabled]);
+
+	  const handsFreeController = useHandsFreeController({
+		enabled: handsFree,
+		runtimeActive: handsFreeRuntimeActive,
+		wakePhrase: handsFreeWakePhrase,
+		sleepPhrase: handsFreeSleepPhrase,
+		log: voiceLog,
+	  });
+
+	  const {
+		listening,
+		liveTranscript,
+		sttPreview,
+		micButtonRef,
+		startRecording,
+		stopRecognitionOnly,
+		handlePushToTalkPressIn,
+		handlePushToTalkPressOut,
+	  } = useSpeechRecognizer({
+		handsFree,
+		willCancel,
+		onVoiceFinalized: ({ text, mode }) => {
+			const finalText = text.trim();
+			if (!finalText) return;
+
+			if (mode === 'edit') {
+				setInput((current) => mergeVoiceText(current, finalText));
+				setDebugInfo('Voice transcript added to the composer.');
+				setTimeout(() => inputRef.current?.focus(), 0);
+				return;
+			}
+
+			if (mode === 'handsfree') {
+				const action = handsFreeController.handleFinalTranscript(finalText);
+				if (action.type === 'send') {
+					void sendRef.current(action.text);
+				}
+				return;
+			}
+
+			void sendRef.current(finalText);
+		},
+		onRecognizerError: (message) => {
+			handsFreeController.onRecognizerError(message);
+			setDebugInfo(`Voice error: ${message}`);
+		},
+		onPermissionDenied: () => {
+			setDebugInfo('Speech recognition permission denied.');
+		},
+		log: voiceLog,
+	  });
+
+	  useEffect(() => {
+		const subscription = AppState.addEventListener('change', (nextState) => {
+			setAppState(nextState);
+		});
+		return () => subscription.remove();
+	  }, []);
+
+	  useEffect(() => {
+		if (!handsFree) {
+			return;
+		}
+		if (!handsFreeRuntimeActive && listening) {
+			void stopRecognitionOnly();
+		}
+	  }, [handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
+
+	  useEffect(() => {
+		if (!handsFree) {
+			return;
+		}
+
+		if (handsFreeController.state.phase === 'error') {
+			const timer = setTimeout(() => {
+				handsFreeController.resetError();
+			}, 2500);
+			return () => clearTimeout(timer);
+		}
+
+		if (handsFreeController.shouldKeepRecognizerActive && !listening) {
+			void startRecording();
+			return;
+		}
+
+		if (!handsFreeController.shouldKeepRecognizerActive && listening) {
+			void stopRecognitionOnly();
+		}
+	  }, [
+		handsFree,
+		handsFreeController.resetError,
+		handsFreeController.shouldKeepRecognizerActive,
+		handsFreeController.state.phase,
+		listening,
+		startRecording,
+		stopRecognitionOnly,
+	  ]);
+
+	  const speakAssistantResponse = useCallback((content: string, reason: string) => {
+		const processedText = preprocessTextForTTS(content);
+		if (!processedText) {
+			return false;
+		}
+
+		let settled = false;
+		const settle = () => {
+			if (settled) return;
+			settled = true;
+			if (handsFree) {
+				handsFreeController.onSpeechFinished();
+				voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
+			}
+		};
+
+		if (handsFree) {
+			handsFreeController.onSpeechStarted();
+			voiceLog('tts-started', `Assistant speech started (${reason}).`);
+		}
+
+		const speechOptions: Speech.SpeechOptions = {
+			language: 'en-US',
+			rate: config.ttsRate ?? 1.0,
+			pitch: config.ttsPitch ?? 1.0,
+			onDone: settle,
+			onError: settle,
+			onStopped: settle,
+		};
+		if (config.ttsVoiceId) {
+			speechOptions.voice = config.ttsVoiceId;
+		}
+		Speech.speak(processedText, speechOptions);
+		return true;
+	  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, voiceLog]);
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -611,6 +776,10 @@ export default function ChatScreen({ route, navigation }: any) {
       // Toggle off - stop speaking
       intendedSpeakingIndexRef.current = null;
       Speech.stop();
+	      if (handsFree) {
+	        handsFreeController.onSpeechFinished();
+	        voiceLog('tts-stopped', 'Assistant speech stopped from message playback.');
+	      }
       setSpeakingMessageIndex(null);
       return;
     }
@@ -622,6 +791,10 @@ export default function ChatScreen({ route, navigation }: any) {
       intendedSpeakingIndexRef.current = null;
       return;
     }
+	    if (handsFree) {
+	      handsFreeController.onSpeechStarted();
+	      voiceLog('tts-started', 'Assistant speech started from message playback.');
+	    }
     setSpeakingMessageIndex(index);
     const speechOptions: Speech.SpeechOptions = {
       language: 'en-US',
@@ -629,16 +802,28 @@ export default function ChatScreen({ route, navigation }: any) {
       pitch: config.ttsPitch ?? 1.0,
       onDone: () => {
         intendedSpeakingIndexRef.current = null;
+	        if (handsFree) {
+	          handsFreeController.onSpeechFinished();
+	          voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
+	        }
         setSpeakingMessageIndex(null);
       },
       onError: () => {
         intendedSpeakingIndexRef.current = null;
+	        if (handsFree) {
+	          handsFreeController.onSpeechFinished();
+	          voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
+	        }
         setSpeakingMessageIndex(null);
       },
       onStopped: () => {
         // Only clear if this callback is for the current intended message,
         // not a stale callback from a previously stopped utterance
         if (intendedSpeakingIndexRef.current === null) {
+	          if (handsFree) {
+	            handsFreeController.onSpeechFinished();
+	            voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
+	          }
           setSpeakingMessageIndex(null);
         }
       },
@@ -647,7 +832,15 @@ export default function ChatScreen({ route, navigation }: any) {
       speechOptions.voice = config.ttsVoiceId;
     }
     Speech.speak(processedText, speechOptions);
-  }, [speakingMessageIndex, config.ttsRate, config.ttsPitch, config.ttsVoiceId]);
+	  }, [
+		speakingMessageIndex,
+		config.ttsRate,
+		config.ttsPitch,
+		config.ttsVoiceId,
+		handsFree,
+		handsFreeController,
+		voiceLog,
+	  ]);
 
   // Auto-scroll state and ref for mobile chat
   const scrollViewRef = useRef<ScrollView>(null);
@@ -660,27 +853,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const isUserDraggingRef = useRef(false);
   // Track drag end timeout to prevent flaky behavior with rapid re-drags
   const dragEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const setSttPreviewWithExpiry = useCallback((text: string, clearAfterMs = 6000) => {
-    const next = text.trim();
-    if (!next) return;
-    setSttPreview(next);
-    if (sttPreviewTimeoutRef.current) {
-      clearTimeout(sttPreviewTimeoutRef.current);
-    }
-    sttPreviewTimeoutRef.current = setTimeout(() => {
-      setSttPreview('');
-      sttPreviewTimeoutRef.current = null;
-    }, clearAfterMs);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (sttPreviewTimeoutRef.current) {
-        clearTimeout(sttPreviewTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Cleanup: stop speech on unmount (#1078)
   useEffect(() => {
@@ -920,7 +1092,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		if (!nextInitial || typeof nextInitial !== 'string') return;
 		initialMessageRef.current = nextInitial;
 		initialMessageSentRef.current = false;
-		voiceLog('route initialMessage received', { initialMessage: nextInitial });
+		voiceLog('state-transition', 'Route initial message received.', { initialMessage: nextInitial });
 	}, [route?.params?.initialMessage, voiceLog]);
   useEffect(() => {
     if (!initialMessageRef.current || initialMessageSentRef.current) return;
@@ -1025,193 +1197,6 @@ export default function ChatScreen({ route, navigation }: any) {
       });
     }
   }, [messages, responding]);
-
-  const [willCancel, setWillCancel] = useState(false);
-  const startYRef = useRef<number | null>(null);
-
-  const mountedRef = useRef(true);
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
-
-  const nativeSRUnavailableShownRef = useRef(false);
-
-  const webRecognitionRef = useRef<any>(null);
-  const webFinalRef = useRef<string>('');
-  const liveTranscriptRef = useRef<string>('');
-  const willCancelRef = useRef<boolean>(false);
-  useEffect(() => { liveTranscriptRef.current = liveTranscript; }, [liveTranscript]);
-  // willCancelRef is kept in sync via setWillCancelValue below (no useEffect needed).
-	const setWillCancelValue = useCallback((v: boolean) => {
-		willCancelRef.current = v;
-		setWillCancel(v);
-	}, []);
-	const setLiveTranscriptValue = useCallback((t: string) => {
-		liveTranscriptRef.current = t;
-		setLiveTranscript(t);
-	}, []);
-
-	// Merge accumulated final transcript with the latest live transcript.
-	// This avoids "cut off" endings when the recognizer ends before producing a final segment,
-	// and also helps dedupe overlaps when multiple callbacks fire.
-	const normalizeVoiceText = (t?: string) => (t || '').replace(/\s+/g, ' ').trim();
-	const mergeVoiceText = (base?: string, live?: string) => {
-		const a = normalizeVoiceText(base);
-		const b = normalizeVoiceText(live);
-		if (!a) return b;
-		if (!b) return a;
-		if (a === b) return a;
-		if (b.startsWith(a)) return b;
-		if (a.startsWith(b)) return a;
-		const bWordBoundary = new RegExp(`(?:^|\\s)${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-		if (bWordBoundary.test(a)) return a;
-		const aWordBoundary = new RegExp(`(?:^|\\s)${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-		if (aWordBoundary.test(b)) return b;
-		const aWords = a.split(' ');
-		const bWords = b.split(' ');
-		const maxOverlap = Math.min(aWords.length, bWords.length);
-		for (let k = maxOverlap; k > 0; k--) {
-			const aSuffix = aWords.slice(-k).join(' ');
-			const bPrefix = bWords.slice(0, k).join(' ');
-			if (aSuffix === bPrefix) {
-				const prefix = aWords.slice(0, aWords.length - k).join(' ');
-				return normalizeVoiceText(`${prefix} ${b}`);
-			}
-		}
-		return normalizeVoiceText(`${a} ${b}`);
-	};
-
-	// Used to dedupe push-to-talk finalization when speech engines (or subscriptions)
-	// emit multiple 'end' events for the same gesture.
-	const voiceGestureIdRef = useRef(0);
-	const voiceGestureFinalizedIdRef = useRef(0);
-
-  const startingRef = useRef(false);
-  const stoppingRef = useRef(false);
-  const lastGrantTimeRef = useRef(0);
-  const minHoldMs = 200;
-  // Ref for mic button container so web can attach native DOM listeners.
-  const micButtonRef = useRef<View>(null);
-  const userReleasedButtonRef = useRef(false);
-  // Track whether press-in was observed by Pressable so we can debug/fallback if press-out is swallowed.
-  const webPressInSeenRef = useRef(false);
-  const stopRecordingAndHandleRef = useRef<(() => Promise<void>) | null>(null);
-
-  // On web, prevent browser long-press behavior from stealing hold-to-talk.
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !micButtonRef.current) return;
-
-    // @ts-ignore - React Native Web ref resolves to a DOM element at runtime
-    const domNode = micButtonRef.current as any;
-    if (!domNode || typeof domNode.addEventListener !== 'function') return;
-
-		const summarizeDomEvent = (e: any) => ({
-			type: e?.type,
-			cancelable: !!e?.cancelable,
-			defaultPrevented: !!e?.defaultPrevented,
-			touches: typeof e?.touches?.length === 'number' ? e.touches.length : undefined,
-			changedTouches: typeof e?.changedTouches?.length === 'number' ? e.changedTouches.length : undefined,
-			pointerType: e?.pointerType,
-			targetTag: e?.target?.tagName,
-		});
-
-		const stopFromDomFallback = (source: string, e: any) => {
-			const details = summarizeDomEvent(e);
-			if (handsFreeRef.current || !webPressInSeenRef.current || !listeningRef.current || userReleasedButtonRef.current) {
-				voiceLog(`web:dom:${source} (no-op)`, {
-					...details,
-					handsFree: handsFreeRef.current,
-					pressInSeen: webPressInSeenRef.current,
-					listening: listeningRef.current,
-					userReleased: userReleasedButtonRef.current,
-				});
-				return;
-			}
-
-			const dt = Date.now() - lastGrantTimeRef.current;
-			const delay = Math.max(0, minHoldMs - dt);
-			voiceLog(`web:dom:${source} -> fallback stop`, { ...details, dt, delay });
-			const maybeStop = () => {
-				if (!listeningRef.current || userReleasedButtonRef.current) return;
-				webPressInSeenRef.current = false;
-				void stopRecordingAndHandleRef.current?.();
-			};
-			if (delay > 0) setTimeout(maybeStop, delay);
-			else maybeStop();
-		};
-
-		voiceLog('web:dom listeners attached', { nodeTag: domNode?.tagName });
-
-    const handleTouchStart = (e: any) => {
-			voiceLog('web:dom:touchstart', summarizeDomEvent(e));
-      if (e.cancelable) e.preventDefault();
-    };
-
-		const handleTouchEnd = (e: any) => {
-			stopFromDomFallback('touchend', e);
-		};
-
-		const handleTouchCancel = (e: any) => {
-			stopFromDomFallback('touchcancel', e);
-		};
-
-		const handlePointerUp = (e: any) => {
-			stopFromDomFallback('pointerup', e);
-		};
-
-		const handlePointerCancel = (e: any) => {
-			stopFromDomFallback('pointercancel', e);
-		};
-
-    const handleContextMenu = (e: any) => {
-			voiceLog('web:dom:contextmenu', summarizeDomEvent(e));
-      e.preventDefault();
-    };
-
-    domNode.addEventListener('touchstart', handleTouchStart, { passive: false });
-    domNode.addEventListener('touchend', handleTouchEnd, { passive: false });
-    domNode.addEventListener('touchcancel', handleTouchCancel, { passive: false });
-    domNode.addEventListener('pointerup', handlePointerUp, { passive: true });
-    domNode.addEventListener('pointercancel', handlePointerCancel, { passive: true });
-    domNode.addEventListener('contextmenu', handleContextMenu, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    document.addEventListener('touchcancel', handleTouchCancel, { passive: false });
-    document.addEventListener('pointerup', handlePointerUp, { passive: true });
-    document.addEventListener('pointercancel', handlePointerCancel, { passive: true });
-
-    return () => {
-			voiceLog('web:dom listeners removed');
-      domNode.removeEventListener('touchstart', handleTouchStart);
-      domNode.removeEventListener('touchend', handleTouchEnd);
-      domNode.removeEventListener('touchcancel', handleTouchCancel);
-      domNode.removeEventListener('pointerup', handlePointerUp);
-      domNode.removeEventListener('pointercancel', handlePointerCancel);
-      domNode.removeEventListener('contextmenu', handleContextMenu);
-			document.removeEventListener('touchend', handleTouchEnd);
-			document.removeEventListener('touchcancel', handleTouchCancel);
-			document.removeEventListener('pointerup', handlePointerUp);
-			document.removeEventListener('pointercancel', handlePointerCancel);
-    };
-  }, [voiceLog]);
-
-  const handsFreeDebounceMs = 1500;
-  const handsFreeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingHandsFreeFinalRef = useRef<string>('');
-
-  const srEmitterRef = useRef<any>(null);
-  const srSubsRef = useRef<any[]>([]);
-  const nativeFinalRef = useRef<string>('');
-  const cleanupNativeSubs = () => {
-    srSubsRef.current.forEach((sub) => sub?.remove?.());
-    srSubsRef.current = [];
-  };
-  useEffect(() => {
-    return () => {
-      cleanupNativeSubs();
-      if (handsFreeDebounceRef.current) {
-        clearTimeout(handsFreeDebounceRef.current);
-      }
-    };
-  }, []);
-
 
   const convoRef = useRef<string | undefined>(undefined);
 
@@ -1477,6 +1462,9 @@ export default function ChatScreen({ route, navigation }: any) {
     progressMessagesRef.current = [];
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
+	    if (handsFree) {
+	      handsFreeController.onRequestStarted();
+	    }
 
     // Generate a unique request ID for this request
     // This prevents cross-request race conditions on view-level state
@@ -1551,18 +1539,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // Mid-turn TTS: play immediately when userResponse is first set
         if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
           midTurnTTSPlayed = true;
-          const processedText = preprocessTextForTTS(lastUserResponse);
-          if (processedText) {
-            const speechOptions: Speech.SpeechOptions = {
-              language: 'en-US',
-              rate: config.ttsRate ?? 1.0,
-              pitch: config.ttsPitch ?? 1.0,
-            };
-            if (config.ttsVoiceId) {
-              speechOptions.voice = config.ttsVoiceId;
-            }
-            Speech.speak(processedText, speechOptions);
-          }
+	          speakAssistantResponse(lastUserResponse, 'mid-turn progress');
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
@@ -1794,16 +1771,12 @@ export default function ChatScreen({ route, navigation }: any) {
       const ttsText = lastUserResponse || finalText;
       const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
       if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
-        const processedText = preprocessTextForTTS(ttsText);
-        const speechOptions: Speech.SpeechOptions = {
-          language: 'en-US',
-          rate: config.ttsRate ?? 1.0,
-          pitch: config.ttsPitch ?? 1.0,
-        };
-        if (config.ttsVoiceId) {
-          speechOptions.voice = config.ttsVoiceId;
-        }
-        Speech.speak(processedText, speechOptions);
+	        if (handsFree) {
+	          handsFreeController.onRequestCompleted();
+	        }
+	        speakAssistantResponse(ttsText, 'final response');
+	      } else if (handsFree) {
+	        handsFreeController.onRequestCompleted();
       }
     } catch (e: any) {
       console.error('[ChatScreen] Chat error:', e);
@@ -1864,6 +1837,9 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         return copy;
       });
+	      if (handsFree) {
+	        handsFreeController.onRequestCompleted();
+	      }
     } finally {
       console.log('[ChatScreen] Chat request finished, requestId:', thisRequestId);
 
@@ -1949,6 +1925,9 @@ export default function ChatScreen({ route, navigation }: any) {
     const messageCountBeforeTurn = currentMessages.length;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
+	    if (handsFree) {
+	      handsFreeController.onRequestStarted();
+	    }
 
     const thisRequestId = Date.now();
     activeRequestIdRef.current = thisRequestId;
@@ -1984,18 +1963,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // Mid-turn TTS: play immediately when userResponse is first set
         if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
           midTurnTTSPlayed = true;
-          const processedText = preprocessTextForTTS(lastUserResponse);
-          if (processedText) {
-            const speechOptions: Speech.SpeechOptions = {
-              language: 'en-US',
-              rate: config.ttsRate ?? 1.0,
-              pitch: config.ttsPitch ?? 1.0,
-            };
-            if (config.ttsVoiceId) {
-              speechOptions.voice = config.ttsVoiceId;
-            }
-            Speech.speak(processedText, speechOptions);
-          }
+	          speakAssistantResponse(lastUserResponse, 'queued mid-turn progress');
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
@@ -2094,16 +2062,12 @@ export default function ChatScreen({ route, navigation }: any) {
       const ttsText = lastUserResponse || finalText;
       const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
       if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
-        const processedText = preprocessTextForTTS(ttsText);
-        const speechOptions: Speech.SpeechOptions = {
-          language: 'en-US',
-          rate: config.ttsRate ?? 1.0,
-          pitch: config.ttsPitch ?? 1.0,
-        };
-        if (config.ttsVoiceId) {
-          speechOptions.voice = config.ttsVoiceId;
-        }
-        Speech.speak(processedText, speechOptions);
+	        if (handsFree) {
+	          handsFreeController.onRequestCompleted();
+	        }
+	        speakAssistantResponse(ttsText, 'queued final response');
+	      } else if (handsFree) {
+	        handsFreeController.onRequestCompleted();
       }
 
       // Mark as processed on success
@@ -2112,6 +2076,9 @@ export default function ChatScreen({ route, navigation }: any) {
       console.error('[ChatScreen] Queued message error:', e);
       messageQueue.markFailed(currentConversationId, queuedMsg.id, e.message || 'Unknown error');
       setMessages((m) => [...m, { role: 'assistant', content: `Error: ${e.message}` }]);
+	      if (handsFree) {
+	        handsFreeController.onRequestCompleted();
+	      }
     } finally {
       if (activeRequestIdRef.current === thisRequestId) {
         setResponding(false);
@@ -2271,481 +2238,48 @@ export default function ChatScreen({ route, navigation }: any) {
     setInput(text);
   }, []);
 
-  const ensureWebRecognizer = () => {
-    if (Platform.OS !== 'web') return false;
-    // @ts-ignore
-    const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SRClass) {
-			voiceLog('ensureWebRecognizer: Web Speech API not available');
-      console.warn('[Voice] Web Speech API not available (use Chrome/Edge over HTTPS).');
-      return false;
-    }
-    if (!webRecognitionRef.current) {
-			voiceLog('ensureWebRecognizer: creating web recognizer');
-      const rec = new SRClass();
-      rec.lang = 'en-US';
-      rec.interimResults = true;
-      rec.continuous = true;
-			rec.onstart = () => {
-				voiceLog('web:onstart', {
-					gestureId: voiceGestureIdRef.current,
-					handsFree: handsFreeRef.current,
-					userReleased: userReleasedButtonRef.current,
-				});
-			};
-      rec.onerror = (ev: any) => {
-				voiceLog('web:onerror', { error: ev?.error || ev });
-        console.error('[Voice] Web recognition error:', ev?.error || ev);
-      };
-      rec.onresult = (ev: any) => {
-        let interim = '';
-        let finalText = '';
-        for (let i = ev.resultIndex; i < ev.results.length; i++) {
-          const res = ev.results[i];
-          const txt = res[0]?.transcript || '';
-          if (res.isFinal) finalText += txt;
-          else interim += txt;
-        }
-				voiceLog('web:onresult', {
-					gestureId: voiceGestureIdRef.current,
-					resultIndex: ev?.resultIndex,
-					resultsLength: ev?.results?.length,
-					interim: interim?.trim(),
-					final: finalText?.trim(),
-					handsFree: handsFreeRef.current,
-				});
-	        // Update our running final transcript, then compute a preview that
-	        // includes both final + interim so the overlay shows *all* words.
-	        if (finalText) {
-	          if (handsFreeRef.current) {
-            if (handsFreeDebounceRef.current) {
-              clearTimeout(handsFreeDebounceRef.current);
-            }
-            const final = finalText.trim();
-            if (final) {
-              pendingHandsFreeFinalRef.current = pendingHandsFreeFinalRef.current
-                ? `${pendingHandsFreeFinalRef.current} ${final}`
-                : final;
-              handsFreeDebounceRef.current = setTimeout(() => {
-                const toSend = pendingHandsFreeFinalRef.current.trim();
-                pendingHandsFreeFinalRef.current = '';
-                webFinalRef.current = '';
-	                setLiveTranscriptValue('');
-	                if (toSend) {
-	                  setSttPreviewWithExpiry(toSend);
-	                  void sendRef.current(toSend);
-	                }
-              }, handsFreeDebounceMs);
-            }
-          } else {
-	            webFinalRef.current = mergeVoiceText(webFinalRef.current, finalText);
-          }
-        }
+	const handsFreeStatusSubtitle = useMemo(() => {
+		if (!handsFree) return undefined;
+		switch (handsFreeController.state.phase) {
+			case 'sleeping':
+				return `Say “${handsFreeWakePhrase}” to wake the assistant.`;
+			case 'waking':
+				return 'Listening for your next request.';
+			case 'listening':
+				return `Say “${handsFreeSleepPhrase}” to return to sleep.`;
+			case 'processing':
+				return 'Working on your request.';
+			case 'speaking':
+				return 'Speech recognition pauses while the assistant speaks.';
+			case 'paused':
+				return 'Tap the mic to resume handsfree listening.';
+			case 'error':
+				return handsFreeController.state.lastError || 'Voice recognition is recovering.';
+			default:
+				return handsFreeForegroundOnly
+					? 'Handsfree works while Chat stays open in the foreground.'
+					: undefined;
+		}
+	}, [
+		handsFree,
+		handsFreeController.state.lastError,
+		handsFreeController.state.phase,
+		handsFreeForegroundOnly,
+		handsFreeSleepPhrase,
+		handsFreeWakePhrase,
+	]);
 
-	        const baseFinal = handsFreeRef.current
-	          ? pendingHandsFreeFinalRef.current
-	          : webFinalRef.current;
-	        const previewText = mergeVoiceText(baseFinal, interim);
-	        if (previewText) {
-	          setLiveTranscriptValue(previewText);
-	          setSttPreviewWithExpiry(previewText);
-	        }
-      };
-      rec.onend = () => {
-				voiceLog('web:onend', {
-					gestureId: voiceGestureIdRef.current,
-					finalizedGestureId: voiceGestureFinalizedIdRef.current,
-					handsFree: handsFreeRef.current,
-					userReleased: userReleasedButtonRef.current,
-					pendingHandsFreeFinal: pendingHandsFreeFinalRef.current,
-					webFinal: webFinalRef.current,
-					live: liveTranscriptRef.current,
-				});
-        if (handsFreeDebounceRef.current) {
-          clearTimeout(handsFreeDebounceRef.current);
-          handsFreeDebounceRef.current = null;
-        }
+	const composerPlaceholder = handsFree
+		? (handsFreeController.state.phase === 'paused'
+			? 'Handsfree paused — tap mic to resume or type a message'
+			: `Say “${handsFreeWakePhrase}” or type a message`)
+		: (listening ? 'Listening…' : 'Type or hold mic');
 
-        if (!handsFreeRef.current && !userReleasedButtonRef.current && webRecognitionRef.current) {
-					voiceLog('web:onend -> attempting restart (user still holding)');
-          try {
-            webRecognitionRef.current.start();
-						voiceLog('web:onend -> restart succeeded');
-            return;
-          } catch (restartErr) {
-						voiceLog('web:onend -> restart failed', restartErr);
-            console.warn('[Voice] Failed to restart web recognition after voice break:', restartErr);
-	            setListeningValue(false);
-	            // Capture liveTranscriptRef.current BEFORE clearing it, since setLiveTranscriptValue
-	            // updates the ref synchronously and would cause mergeVoiceText to use stale value
-	            const accumulatedText = mergeVoiceText(webFinalRef.current, liveTranscriptRef.current);
-	            setLiveTranscriptValue('');
-	            if (accumulatedText) {
-	              setSttPreviewWithExpiry(accumulatedText);
-	              setInput((t) => (t ? `${t} ${accumulatedText}` : accumulatedText));
-	            }
-	            // Treat as finalized for this push-to-talk gesture to prevent duplicate sends.
-	            voiceGestureFinalizedIdRef.current = voiceGestureIdRef.current;
-            webFinalRef.current = '';
-            pendingHandsFreeFinalRef.current = '';
-            return;
-          }
-        }
-			const gestureId = voiceGestureIdRef.current;
-			const alreadyFinalizedPushToTalk = !handsFreeRef.current && voiceGestureFinalizedIdRef.current === gestureId;
+	const micButtonLabel = handsFree
+		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
+		: (listening ? '...' : 'Hold');
 
-	        const finalText = mergeVoiceText(
-	          pendingHandsFreeFinalRef.current || webFinalRef.current,
-	          liveTranscriptRef.current
-	        );
-				voiceLog('web:onend -> finalize', {
-					gestureId,
-					alreadyFinalizedPushToTalk,
-					willEdit: willCancelRef.current,
-					finalText,
-				});
-        pendingHandsFreeFinalRef.current = '';
-	        setListeningValue(false);
-	        setLiveTranscriptValue('');
-        const willEdit = willCancelRef.current;
-	        if (!handsFreeRef.current && finalText && !alreadyFinalizedPushToTalk) {
-	          voiceGestureFinalizedIdRef.current = gestureId;
-						if (willEdit) {
-							voiceLog('web:onend -> willEdit=true (append to input)', { gestureId, finalText });
-							setSttPreviewWithExpiry(finalText);
-							setInput((t) => (t ? `${t} ${finalText}` : finalText));
-								setTimeout(() => { if (mountedRef.current) inputRef.current?.focus(); }, 0);
-						} else {
-							voiceLog('web:onend -> sending', { gestureId, finalText });
-							setSttPreviewWithExpiry(finalText);
-							void sendRef.current(finalText);
-						}
-	        } else if (handsFreeRef.current && finalText) {
-						voiceLog('web:onend -> handsFree send', { gestureId, finalText });
-		          setSttPreviewWithExpiry(finalText);
-		          void sendRef.current(finalText);
-	        }
-        webFinalRef.current = '';
-      };
-      webRecognitionRef.current = rec;
-    }
-    return true;
-  };
 
-  const startRecording = async (e?: GestureResponderEvent) => {
-			voiceLog('startRecording called', {
-				starting: startingRef.current,
-				listening: listeningRef.current,
-				handsFree: handsFreeRef.current,
-				platform: Platform.OS,
-			});
-			if (startingRef.current || listeningRef.current) {
-				voiceLog('startRecording early return (already starting/listening)');
-      return;
-    }
-    startingRef.current = true;
-    try {
-	      // New push-to-talk gesture/session.
-	      voiceGestureIdRef.current += 1;
-			voiceLog('startRecording init', {
-				gestureId: voiceGestureIdRef.current,
-				handsFree: handsFreeRef.current,
-			});
-	      setLiveTranscriptValue('');
-	      setListeningValue(true);
-      nativeFinalRef.current = '';
-	      webFinalRef.current = '';
-      pendingHandsFreeFinalRef.current = '';
-      userReleasedButtonRef.current = false;
-      if (handsFreeDebounceRef.current) {
-        clearTimeout(handsFreeDebounceRef.current);
-        handsFreeDebounceRef.current = null;
-      }
-      if (e) startYRef.current = e.nativeEvent.pageY;
-
-      if (Platform.OS !== 'web') {
-        try {
-          const SR: any = await import('expo-speech-recognition');
-          if (SR?.ExpoSpeechRecognitionModule?.start) {
-						voiceLog('native: module available, wiring listeners');
-            if (!srEmitterRef.current) {
-              srEmitterRef.current = new EventEmitter(SR.ExpoSpeechRecognitionModule);
-            }
-            cleanupNativeSubs();
-						voiceLog('native: listeners cleaned', { count: srSubsRef.current.length });
-            const subResult = srEmitterRef.current.addListener('result', (event: any) => {
-              const t = event?.results?.[0]?.transcript ?? event?.text ?? event?.transcript ?? '';
-							voiceLog('native:result', {
-								gestureId: voiceGestureIdRef.current,
-								isFinal: event?.isFinal,
-								transcript: t,
-							});
-	              if (event?.isFinal && t) {
-                if (handsFreeRef.current) {
-                  if (handsFreeDebounceRef.current) {
-                    clearTimeout(handsFreeDebounceRef.current);
-                  }
-                  const final = t.trim();
-                  if (final) {
-                    pendingHandsFreeFinalRef.current = pendingHandsFreeFinalRef.current
-                      ? `${pendingHandsFreeFinalRef.current} ${final}`
-                      : final;
-                    handsFreeDebounceRef.current = setTimeout(() => {
-                      const toSend = pendingHandsFreeFinalRef.current.trim();
-                      pendingHandsFreeFinalRef.current = '';
-                      nativeFinalRef.current = '';
-	                          setLiveTranscriptValue('');
-	                          if (toSend) {
-	                            setSttPreviewWithExpiry(toSend);
-	                            void sendRef.current(toSend);
-	                          }
-                    }, handsFreeDebounceMs);
-                  }
-                } else {
-	                  nativeFinalRef.current = mergeVoiceText(nativeFinalRef.current, t);
-                }
-              }
-
-	              // Live preview should show the whole phrase so far (final + current interim).
-	              if (t) {
-	                const baseFinal = handsFreeRef.current
-	                  ? pendingHandsFreeFinalRef.current
-	                  : nativeFinalRef.current;
-	                const livePart = event?.isFinal ? '' : t;
-	                const previewText = mergeVoiceText(baseFinal, livePart);
-	                if (previewText) {
-	                  setLiveTranscriptValue(previewText);
-	                  setSttPreviewWithExpiry(previewText);
-	                }
-	              }
-            });
-            const subError = srEmitterRef.current.addListener('error', (event: any) => {
-							voiceLog('native:error', event);
-              console.error('[Voice] Native recognition error:', JSON.stringify(event));
-            });
-            const subEnd = srEmitterRef.current.addListener('end', async () => {
-							voiceLog('native:end', {
-								gestureId: voiceGestureIdRef.current,
-								finalizedGestureId: voiceGestureFinalizedIdRef.current,
-								handsFree: handsFreeRef.current,
-								userReleased: userReleasedButtonRef.current,
-								pendingHandsFreeFinal: pendingHandsFreeFinalRef.current,
-								nativeFinal: nativeFinalRef.current,
-								live: liveTranscriptRef.current,
-							});
-              if (handsFreeDebounceRef.current) {
-                clearTimeout(handsFreeDebounceRef.current);
-                handsFreeDebounceRef.current = null;
-              }
-
-              if (!handsFreeRef.current && !userReleasedButtonRef.current) {
-								voiceLog('native:end -> attempting restart (user still holding)');
-                try {
-                  const SR: any = await import('expo-speech-recognition');
-                  if (SR?.ExpoSpeechRecognitionModule?.start) {
-                    SR.ExpoSpeechRecognitionModule.start({
-                      lang: 'en-US',
-                      interimResults: true,
-                      continuous: true,
-                      volumeChangeEventOptions: { enabled: false, intervalMillis: 250 }
-                    });
-										voiceLog('native:end -> restart succeeded');
-                    return;
-                  }
-                } catch (restartErr) {
-									voiceLog('native:end -> restart failed', restartErr);
-                  console.warn('[Voice] Failed to restart recognition after voice break:', restartErr);
-	                  setListeningValue(false);
-	                  // Capture liveTranscriptRef.current BEFORE clearing it, since setLiveTranscriptValue
-	                  // updates the ref synchronously and would cause mergeVoiceText to use stale value
-	                  const accumulatedText = mergeVoiceText(nativeFinalRef.current, liveTranscriptRef.current);
-	                  setLiveTranscriptValue('');
-	                  if (accumulatedText) {
-	                    setSttPreviewWithExpiry(accumulatedText);
-	                    setInput((t) => (t ? `${t} ${accumulatedText}` : accumulatedText));
-	                  }
-	                  // Treat as finalized for this push-to-talk gesture to prevent duplicate sends.
-	                  voiceGestureFinalizedIdRef.current = voiceGestureIdRef.current;
-                  nativeFinalRef.current = '';
-                  pendingHandsFreeFinalRef.current = '';
-                  return;
-                }
-              }
-					const gestureId = voiceGestureIdRef.current;
-					const alreadyFinalizedPushToTalk = !handsFreeRef.current && voiceGestureFinalizedIdRef.current === gestureId;
-
-	              setListeningValue(false);
-	              const finalText = mergeVoiceText(
-	                pendingHandsFreeFinalRef.current || nativeFinalRef.current,
-	                liveTranscriptRef.current
-	              );
-							voiceLog('native:end -> finalize', {
-								gestureId,
-								alreadyFinalizedPushToTalk,
-								willEdit: willCancelRef.current,
-								finalText,
-							});
-              pendingHandsFreeFinalRef.current = '';
-	              setLiveTranscriptValue('');
-              const willEdit = willCancelRef.current;
-	              if (!handsFreeRef.current && finalText && !alreadyFinalizedPushToTalk) {
-	                voiceGestureFinalizedIdRef.current = gestureId;
-									if (willEdit) {
-										voiceLog('native:end -> willEdit=true (append to input)', { gestureId, finalText });
-										setSttPreviewWithExpiry(finalText);
-										setInput((t) => (t ? `${t} ${finalText}` : finalText));
-										setTimeout(() => { if (mountedRef.current) inputRef.current?.focus(); }, 0);
-									} else {
-										voiceLog('native:end -> sending', { gestureId, finalText });
-										setSttPreviewWithExpiry(finalText);
-										void sendRef.current(finalText);
-									}
-	              } else if (handsFreeRef.current && finalText) {
-									voiceLog('native:end -> handsFree send', { gestureId, finalText });
-		                setSttPreviewWithExpiry(finalText);
-		                void sendRef.current(finalText);
-	              }
-              nativeFinalRef.current = '';
-            });
-            srSubsRef.current.push(subResult, subError, subEnd);
-
-            try {
-              const perm = await SR.ExpoSpeechRecognitionModule.getPermissionsAsync();
-							voiceLog('native: getPermissionsAsync', perm);
-              if (!perm?.granted) {
-                const req = await SR.ExpoSpeechRecognitionModule.requestPermissionsAsync();
-								voiceLog('native: requestPermissionsAsync', req);
-                if (!req?.granted) {
-                  console.warn('[Voice] microphone/speech permission not granted; aborting');
-	                  setListeningValue(false);
-                  startingRef.current = false;
-                  return;
-                }
-              }
-            } catch (perr) {
-              console.error('[Voice] Permission check/request failed:', perr);
-            }
-
-            try {
-							voiceLog('native: start()', {
-								gestureId: voiceGestureIdRef.current,
-								handsFree: handsFreeRef.current,
-							});
-              SR.ExpoSpeechRecognitionModule.start({
-                lang: 'en-US',
-                interimResults: true,
-                continuous: true,
-                volumeChangeEventOptions: { enabled: handsFreeRef.current, intervalMillis: 250 }
-              });
-            } catch (serr) {
-              console.error('[Voice] Native start error:', serr);
-	              setListeningValue(false);
-            }
-            startingRef.current = false;
-            return;
-          }
-        } catch (err) {
-          const errorMsg = (err as any)?.message || String(err);
-					voiceLog('native: import/start failed', { errorMsg });
-          console.warn('[Voice] Native SR unavailable (likely Expo Go):', errorMsg);
-
-          if (!nativeSRUnavailableShownRef.current && errorMsg.includes('ExpoSpeechRecognition')) {
-            nativeSRUnavailableShownRef.current = true;
-	            setListeningValue(false);
-            startingRef.current = false;
-            Alert.alert(
-              'Development Build Required',
-              'Speech recognition requires a development build. Expo Go does not support native modules like expo-speech-recognition.\n\nRun "npx expo run:android" or "npx expo run:ios" to build and install the development app.',
-              [{ text: 'OK' }]
-            );
-            return;
-          }
-        }
-      }
-
-      if (ensureWebRecognizer()) {
-        try {
-				voiceLog('web: start()', { gestureId: voiceGestureIdRef.current, handsFree: handsFreeRef.current });
-          webFinalRef.current = '';
-          pendingHandsFreeFinalRef.current = '';
-          if (webRecognitionRef.current) {
-            try { webRecognitionRef.current.continuous = true; } catch {}
-          }
-          webRecognitionRef.current?.start();
-          startingRef.current = false;
-        } catch (err) {
-				voiceLog('web: start() failed', err);
-          console.error('[Voice] Web start error:', err);
-	          setListeningValue(false);
-          startingRef.current = false;
-        }
-      } else {
-	        setListeningValue(false);
-        startingRef.current = false;
-      }
-    } catch (err) {
-      console.error('[Voice] startRecording error:', err);
-	      setListeningValue(false);
-      startingRef.current = false;
-    }
-  };
-
-  const stopRecordingAndHandle = async () => {
-    if (stoppingRef.current) {
-			voiceLog('stopRecordingAndHandle early return (already stopping)');
-      return;
-    }
-    stoppingRef.current = true;
-    userReleasedButtonRef.current = true;
-		voiceLog('stopRecordingAndHandle called', {
-			gestureId: voiceGestureIdRef.current,
-			listening: listeningRef.current,
-			handsFree: handsFreeRef.current,
-			platform: Platform.OS,
-		});
-    try {
-      const hasWeb = Platform.OS === 'web' && webRecognitionRef.current;
-	      if (!listeningRef.current && !hasWeb) {
-				voiceLog('stopRecordingAndHandle: nothing to stop (not listening and no web recognizer)');
-        return;
-      }
-
-      if (Platform.OS !== 'web') {
-        try {
-          const SR: any = await import('expo-speech-recognition');
-          if (SR?.ExpoSpeechRecognitionModule?.stop) {
-						voiceLog('native: stop()');
-            SR.ExpoSpeechRecognitionModule.stop();
-          }
-        } catch (err) {
-          console.warn('[Voice] Native stop unavailable (likely Expo Go):', (err as any)?.message || err);
-        }
-      }
-
-      if (Platform.OS === 'web' && webRecognitionRef.current) {
-        try {
-					voiceLog('web: stop()');
-          webRecognitionRef.current.stop();
-        } catch (err) {
-          console.error('[Voice] Web stop error:', err);
-	          setListeningValue(false);
-        }
-      }
-    } catch (err) {
-      console.error('[Voice] stopRecording error:', err);
-	      setListeningValue(false);
-    } finally {
-      startYRef.current = null;
-			webPressInSeenRef.current = false;
-      stoppingRef.current = false;
-			voiceLog('stopRecordingAndHandle finished', {
-				gestureId: voiceGestureIdRef.current,
-				listening: listeningRef.current,
-			});
-    }
-  };
-
-		stopRecordingAndHandleRef.current = stopRecordingAndHandle;
 
 
   return (
@@ -3060,6 +2594,16 @@ export default function ChatScreen({ route, navigation }: any) {
               <Text style={styles.debugText}>{debugInfo}</Text>
             </View>
           )}
+	          {handsFreeDebugEnabled && voiceEvents.length > 0 && (
+	            <View style={styles.debugInfo}>
+	              <Text style={styles.debugText}>Voice debug</Text>
+	              {voiceEvents.slice(0, 6).map((entry) => (
+	                <Text key={entry.id} style={styles.debugText}>
+	                  {formatVoiceDebugEntry(entry)}
+	                </Text>
+	              ))}
+	            </View>
+	          )}
         </ScrollView>
         {/* Scroll to bottom button - appears when user scrolls up */}
         {!shouldAutoScroll && (
@@ -3326,7 +2870,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	            {!handsFree && (
 	              <TouchableOpacity
 	                style={[styles.ttsToggle, willCancel && styles.ttsToggleOn]}
-	                onPress={() => setWillCancelValue(!willCancel)}
+		                onPress={() => setWillCancel((current) => !current)}
 	                activeOpacity={0.7}
 	                accessibilityRole="switch"
 		                aria-checked={willCancel}
@@ -3337,6 +2881,13 @@ export default function ChatScreen({ route, navigation }: any) {
 	                <Text style={styles.ttsToggleText}>✏️</Text>
 	              </TouchableOpacity>
 	            )}
+		            {handsFree && (
+		              <HandsFreeStatusChip
+		                phase={handsFreeController.state.phase}
+		                label={handsFreeController.statusLabel}
+		                subtitle={handsFreeStatusSubtitle}
+		              />
+		            )}
             <TextInput
 	              ref={inputRef}
               style={styles.input}
@@ -3346,7 +2897,7 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityLabel={createTextInputAccessibilityLabel('Message composer')}
               accessibilityHint={composerAccessibilityHint}
               aria-describedby={isWebPlatform ? CHAT_COMPOSER_HINT_NATIVE_ID : undefined}
-              placeholder={handsFree ? (listening ? 'Listening…' : 'Type or tap mic') : (listening ? 'Listening…' : 'Type or hold mic')}
+	              placeholder={composerPlaceholder}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
             />
@@ -3395,54 +2946,25 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityHint={micControlAccessibilityHint}
               accessibilityState={{ busy: listening }}
               aria-busy={listening}
-              onPressIn={!handsFree ? (e: GestureResponderEvent) => {
-					lastGrantTimeRef.current = Date.now();
-						webPressInSeenRef.current = true;
-					voiceLog('mic:onPressIn', {
-						gestureId: voiceGestureIdRef.current,
-						listening: listeningRef.current,
-						starting: startingRef.current,
-							pageX: e.nativeEvent.pageX,
-							pageY: e.nativeEvent.pageY,
-					});
-					if (!listeningRef.current) startRecording(e);
-              } : undefined}
-              onPressOut={!handsFree ? () => {
-						webPressInSeenRef.current = false;
-                const now = Date.now();
-                const dt = now - lastGrantTimeRef.current;
-                const delay = Math.max(0, minHoldMs - dt);
-					voiceLog('mic:onPressOut', {
-						gestureId: voiceGestureIdRef.current,
-						listening: listeningRef.current,
-						dt,
-						delay,
-					});
-                if (delay > 0) {
-						setTimeout(() => {
-							voiceLog('mic:onPressOut -> delayed stop fired', {
-								gestureId: voiceGestureIdRef.current,
-								listening: listeningRef.current,
-							});
-							if (listeningRef.current) stopRecordingAndHandle();
-						}, delay);
-                } else {
-	                  if (listeningRef.current) stopRecordingAndHandle();
-                }
-              } : undefined}
+	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
+	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
               onPress={handsFree ? () => {
-					voiceLog('mic:onPress (handsFree)', {
-						gestureId: voiceGestureIdRef.current,
-						listening: listeningRef.current,
-					});
-					if (!listeningRef.current) startRecording(); else stopRecordingAndHandle();
+					if (handsFreeController.state.phase === 'paused') {
+						handsFreeController.resumeByUser();
+						setDebugInfo('Handsfree resumed.');
+					} else {
+						handsFreeController.pauseByUser();
+						Speech.stop();
+						void stopRecognitionOnly();
+						setDebugInfo('Handsfree paused.');
+					}
               } : undefined}
             >
               <Text style={styles.micText} selectable={false}>
                 {listening ? '🎙️' : '🎤'}
               </Text>
               <Text style={[styles.micLabel, listening && styles.micLabelOn]} selectable={false}>
-                {handsFree ? (listening ? 'Stop' : 'Talk') : (listening ? '...' : 'Hold')}
+	                {micButtonLabel}
               </Text>
             </Pressable>
           </View>

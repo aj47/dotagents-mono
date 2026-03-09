@@ -927,6 +927,13 @@ export default function SettingsScreen({ navigation }: any) {
     setDraft(config);
   }, [ready, config]);
 
+  const updateLocalConfig = useCallback((patch: Partial<AppConfig>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    setConfig(next);
+    void saveConfig(next);
+  }, [draft, setConfig]);
+
 
   // CollapsibleSection component
   const CollapsibleSection = ({
@@ -1042,10 +1049,65 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={styles.label}>Hands-free Voice Mode</Text>
           <Switch
             value={!!draft.handsFree}
-            onValueChange={(v) => setDraft({ ...draft, handsFree: v })}
+            onValueChange={(v) => updateLocalConfig({ handsFree: v })}
             accessibilityLabel={createSwitchAccessibilityLabel('Hands-free Voice Mode')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.handsFree ? theme.colors.primaryForeground : theme.colors.background}
+          />
+        </View>
+        <Text style={styles.helperText}>
+          Mobile v1 only works while the app stays open on the Chat screen in the foreground.
+        </Text>
+
+        <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
+        <TextInput
+          style={styles.input}
+          value={draft.handsFreeWakePhrase || 'hey dot agents'}
+          onChangeText={(value) => setDraft({ ...draft, handsFreeWakePhrase: value })}
+          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draft.handsFreeWakePhrase || 'hey dot agents' })}
+          placeholder='hey dot agents'
+          placeholderTextColor={theme.colors.mutedForeground}
+          autoCapitalize='none'
+          autoCorrect={false}
+        />
+
+        <Text style={[styles.label, { marginTop: spacing.md }]}>Sleep phrase</Text>
+        <TextInput
+          style={styles.input}
+          value={draft.handsFreeSleepPhrase || 'go to sleep'}
+          onChangeText={(value) => setDraft({ ...draft, handsFreeSleepPhrase: value })}
+          onEndEditing={() => updateLocalConfig({ handsFreeSleepPhrase: draft.handsFreeSleepPhrase || 'go to sleep' })}
+          placeholder='go to sleep'
+          placeholderTextColor={theme.colors.mutedForeground}
+          autoCapitalize='none'
+          autoCorrect={false}
+        />
+
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Debug Voice State</Text>
+            <Text style={[styles.helperText, { marginTop: 2 }]}>Show recent recognizer and handsfree events in Chat.</Text>
+          </View>
+          <Switch
+            value={draft.handsFreeDebug === true}
+            onValueChange={(v) => updateLocalConfig({ handsFreeDebug: v })}
+            accessibilityLabel={createSwitchAccessibilityLabel('Debug Voice State')}
+            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+            thumbColor={draft.handsFreeDebug ? theme.colors.primaryForeground : theme.colors.background}
+          />
+        </View>
+
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Foreground Only</Text>
+            <Text style={[styles.helperText, { marginTop: 2 }]}>Keep this on for the mobile MVP safety boundary.</Text>
+          </View>
+          <Switch
+            value={draft.handsFreeForegroundOnly !== false}
+            onValueChange={(v) => updateLocalConfig({ handsFreeForegroundOnly: v })}
+            accessibilityLabel={createSwitchAccessibilityLabel('Foreground Only')}
+            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+            thumbColor={draft.handsFreeForegroundOnly !== false ? theme.colors.primaryForeground : theme.colors.background}
           />
         </View>
 
@@ -1053,7 +1115,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={styles.label}>Text-to-Speech</Text>
           <Switch
             value={draft.ttsEnabled !== false}
-            onValueChange={(v) => setDraft({ ...draft, ttsEnabled: v })}
+            onValueChange={(v) => updateLocalConfig({ ttsEnabled: v })}
             accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.ttsEnabled !== false ? theme.colors.primaryForeground : theme.colors.background}
@@ -1066,9 +1128,9 @@ export default function SettingsScreen({ navigation }: any) {
             voiceId={draft.ttsVoiceId}
             rate={draft.ttsRate ?? 1.0}
             pitch={draft.ttsPitch ?? 1.0}
-            onVoiceChange={(v) => setDraft({ ...draft, ttsVoiceId: v })}
-            onRateChange={(r) => setDraft({ ...draft, ttsRate: r })}
-            onPitchChange={(p) => setDraft({ ...draft, ttsPitch: p })}
+            onVoiceChange={(v) => updateLocalConfig({ ttsVoiceId: v })}
+            onRateChange={(r) => updateLocalConfig({ ttsRate: r })}
+            onPitchChange={(p) => updateLocalConfig({ ttsPitch: p })}
           />
         )}
 
@@ -1076,7 +1138,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={styles.label}>Message Queuing</Text>
           <Switch
             value={draft.messageQueueEnabled !== false}
-            onValueChange={(v) => setDraft({ ...draft, messageQueueEnabled: v })}
+            onValueChange={(v) => updateLocalConfig({ messageQueueEnabled: v })}
             accessibilityLabel={createSwitchAccessibilityLabel('Message Queuing')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.messageQueueEnabled !== false ? theme.colors.primaryForeground : theme.colors.background}

@@ -77,3 +77,34 @@ export interface MessageQueue {
   messages: QueuedMessage[];
 }
 
+/**
+ * Runtime states for the foreground handsfree voice loop.
+ * Shared so mobile and desktop can converge on the same vocabulary.
+ */
+export type HandsFreePhase =
+  | 'sleeping'
+  | 'waking'
+  | 'listening'
+  | 'processing'
+  | 'speaking'
+  | 'paused'
+  | 'error';
+
+export type HandsFreeResumePhase = 'sleeping' | 'listening' | 'processing';
+
+export type HandsFreeDebugEventType =
+  | 'permission-denied'
+  | 'recognizer-start'
+  | 'recognizer-stop'
+  | 'wake-phrase-matched'
+  | 'sleep-phrase-matched'
+  | 'auto-send'
+  | 'tts-started'
+  | 'tts-stopped'
+  | 'background-pause'
+  | 'foreground-resume'
+  | 'recognizer-error'
+  | 'state-transition'
+  | 'session-timeout'
+  | 'no-speech-timeout';
+
