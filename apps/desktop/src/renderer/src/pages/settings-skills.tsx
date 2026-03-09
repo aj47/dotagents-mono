@@ -23,7 +23,7 @@ import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package } from "lucide-react"
+import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal } from "lucide-react"
 
 
 export function Component() {
@@ -659,38 +659,40 @@ Write your skill instructions here.
                   <span className="font-medium truncate">{skill.name}</span>
                 </div>
                 {!isSelectMode && (
-                  <div className="flex gap-1 ml-2 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditSkill(skill)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openSkillFileMutation.mutate(skill.id)}
-                      title="Reveal skill file in Finder/Explorer"
-                      aria-label="Reveal skill file"
-                    >
-                      <FileText className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => exportSkillMutation.mutate(skill.id)}
-                    >
-                      <Download className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteSkill(skill)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2 h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        aria-label={`Actions for ${skill.name}`}
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                        <span>Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditSkill(skill)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openSkillFileMutation.mutate(skill.id)}>
+                        <FileText className="h-3.5 w-3.5" />
+                        Reveal File
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => exportSkillMutation.mutate(skill.id)}>
+                        <Download className="h-3.5 w-3.5" />
+                        Export
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteSkill(skill)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             ))

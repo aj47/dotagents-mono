@@ -36,3 +36,16 @@ test('desktop skills loading, error, and empty states stay compact and text-firs
   assert.match(skillsPageSource, /No skills yet\./)
   assert.match(skillsPageSource, /Create your first skill or import one\./)
 })
+
+test('desktop skills populated rows keep actions in one compact menu instead of a four-button rail', () => {
+  assert.doesNotMatch(
+    skillsPageSource,
+    /<div className="flex gap-1 ml-2 shrink-0">[\s\S]*?<Pencil className="h-3 w-3" \/>[\s\S]*?<FileText className="h-3 w-3" \/>[\s\S]*?<Download className="h-3 w-3" \/>[\s\S]*?<Trash2 className="h-3 w-3" \/>/,
+  )
+  assert.match(skillsPageSource, /aria-label=\{`Actions for \$\{skill\.name\}`\}/)
+  assert.match(skillsPageSource, /<MoreHorizontal className="h-3\.5 w-3\.5" \/>[\s\S]*?<span>Actions<\/span>/)
+  assert.match(skillsPageSource, /<DropdownMenuItem onClick=\{\(\) => handleEditSkill\(skill\)\}>[\s\S]*?Edit/)
+  assert.match(skillsPageSource, /<DropdownMenuItem onClick=\{\(\) => openSkillFileMutation\.mutate\(skill\.id\)\}>[\s\S]*?Reveal File/)
+  assert.match(skillsPageSource, /<DropdownMenuItem onClick=\{\(\) => exportSkillMutation\.mutate\(skill\.id\)\}>[\s\S]*?Export/)
+  assert.match(skillsPageSource, /<DropdownMenuItem[\s\S]*?onClick=\{\(\) => handleDeleteSkill\(skill\)\}[\s\S]*?Delete/)
+})
