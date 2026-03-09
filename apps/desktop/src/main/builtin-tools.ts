@@ -749,7 +749,10 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const command = args.command as string
-    const skillId = args.skillId as string | undefined
+    const rawSkillId = typeof args.skillId === "string" ? args.skillId.trim() : undefined
+    const skillId = rawSkillId && rawSkillId.toLowerCase() !== "default"
+      ? rawSkillId
+      : undefined
     // Validate timeout: must be a finite non-negative number, otherwise use default
     // This prevents NaN or negative values from disabling the timeout entirely
     const rawTimeout = args.timeout

@@ -201,7 +201,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
         },
         skillId: {
           type: "string",
-          description: "Optional skill ID to run the command in that skill's directory. Get skill IDs from the enabled skills in the system prompt.",
+          description: "Optional skill ID to run the command in that skill's directory. Omit this to run in the current working directory; compatibility values like 'default' are treated the same as omitting it. Get skill IDs from the enabled skills in the system prompt.",
         },
         timeout: {
           type: "number",
