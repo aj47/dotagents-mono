@@ -6,6 +6,7 @@
 ### Mobile checked screens / flows / states
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
 - [x] Mobile Chats list / session rows / stub-from-desktop state (`SessionListScreen`) — source-level narrow-width review only this iteration because Expo web runtime is still blocked before launch.
+- [x] Mobile chat screen default header + composer state (`ChatScreen`) — source-level review only this iteration because Expo web runtime was blocked before launch, but the header agent selector and default composer chrome were audited for density.
 
 ### Not yet checked
 - [ ] Desktop onboarding / setup / welcome / first run
@@ -22,7 +23,7 @@
 - [ ] Desktop narrow window / awkward aspect ratios / zoom
 - [ ] Desktop loading / error / disabled / long-content states
 - [ ] Mobile onboarding / setup / welcome / first run
-- [ ] Mobile chat / composer / follow-up flows
+- [ ] Mobile chat follow-up flows, voice overlay states, queued-message panel, retry banner, and long-message states at small-phone and larger mobile web widths
 - [ ] Mobile settings subsections beyond the root settings screen (connection, appearance, notifications, remote desktop settings groups)
 - [ ] Mobile sheets / menus / tooltips / helper UI
 - [ ] Mobile empty / loading / error / success / disabled / long-content states
@@ -31,6 +32,7 @@
 ### Reproduced issues
 - [x] Mobile Settings root screen had redundant chrome: navigation header already labels the route as `DotAgents`, while `SettingsScreen` also rendered a large in-content `Settings` title above the connection card.
 - [x] Mobile Chats list stub session rows used both a leading `💻` emoji and the text suffix `· from desktop`, spending narrow-row space on duplicate provenance chrome instead of the session title.
+- [x] Mobile chat screen duplicated the current-agent affordance: the navigation header already exposed a clickable current-agent badge, while `ChatScreen` also rendered a second `🤖 Agent` chip row above the composer.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
@@ -38,18 +40,22 @@
 - [x] Repositioned shared desktop settings helper tooltips to prefer a vertical opening direction (`top`) with a slightly tighter offset so explanatory overlays are less likely to spill over neighboring switches/selects in dense settings rows.
 - [x] Strengthened desktop tooltip regression coverage to assert the shared settings-row composition in `Control` + `ControlLabel` and a dependency-free audit of a concrete `settings-general` row.
 - [x] Fixed `apps/desktop/src/renderer/src/components/ui/control.test.tsx` so the tooltip regression test now renders the nested `ControlLabel` component before traversing tooltip props, closing the QA-noted false-positive gap in the component-level assertion.
+- [x] Removed the duplicate mobile chat composer agent chip so the primary composer area goes straight from attachments into the action row, relying on the existing header badge as the single agent-selection affordance.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
 - [x] Targeted verification passed: `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/navigation-header.test.js`.
 - [x] Source-level regression coverage added in `apps/mobile/tests/session-list-density.test.js`.
 - [x] Targeted verification passed: `node --test apps/mobile/tests/session-list-density.test.js`.
+- [x] Source-level regression coverage added in `apps/mobile/tests/chat-screen-density.test.js`.
+- [x] Targeted verification passed: `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js`.
 - [x] Dependency-free desktop regression coverage added in `apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Re-ran `node --test apps/desktop/tests/control-tooltip-density.test.mjs` after the QA remediation; all 3 desktop tooltip density assertions still passed.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
+- [x] Live mobile runtime inspection is still blocked in this worktree: `pnpm dev:mobile -- --web` failed with `expo: command not found`, `node_modules missing`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` before any screenshot capture.
 - [x] Live desktop runtime inspection not attempted after the same dependency blocker pattern because local app dependencies appear unavailable.
 - [x] Live desktop renderer inspection remained blocked this iteration: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` failed during `@dotagents/shared build` with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing` warnings.
 - [x] Targeted desktop Vitest execution remained blocked for the same reason: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` failed before Vitest ran because `pnpm -w run build:shared` could not find `tsup`.
@@ -61,7 +67,8 @@
 - [ ] Desktop settings surfaces remain unchecked at runtime; the shared settings-row audit is not a substitute for live renderer coverage.
 - [ ] The repaired `control.test.tsx` assertion now renders `ControlLabel` correctly in source, but the component-level Vitest test still has not been executed in this environment because the desktop/shared toolchain is unavailable.
 - [ ] Mobile Chats list row density is improved in source, but the stub-session title/date balance still needs live Expo web or device screenshot review at small-phone and larger mobile-web widths.
-- [ ] Mobile chat composer, header action row, and agent selector chip still need live narrow-width review for density and possible control crowding.
+- [ ] Mobile chat composer, header action row, and voice-related controls still need live narrow-width review for density and possible control crowding.
+- [ ] Mobile chat header badge and composer now avoid duplicate agent-selection chrome in source, but the real small-phone header truncation, keyboard-open layout, and agent-selector sheet entry flow still need live screenshot-backed validation.
 
 ### Iterations
 
@@ -118,3 +125,12 @@ Evidence
 - After evidence: Source now gives the session title the full leading row width and still labels stub sessions via `· from desktop`, which should improve scanability and title truncation on narrow mobile widths without losing provenance context.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile web` → failed (`expo: command not found`, `node_modules missing`, exit 1). `node --test apps/mobile/tests/session-list-density.test.js` → passed (2 tests, 0 failures, exit 0).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch without installed dependencies, so the real title/date/truncation balance still needs live runtime review once mobile dependencies are available.
+
+#### Iteration 7
+Evidence
+- Scope: Mobile chat default header + composer density, specifically duplicate agent-selection chrome above the composer.
+- Before evidence: Source-backed observation only because runtime was blocked — `pnpm dev:mobile -- --web` failed with `expo: command not found`, `node_modules missing`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` before any screenshot capture. In `apps/mobile/src/screens/ChatScreen.tsx`, the navigation header already rendered a clickable current-agent badge (`Current agent: ${currentAgentLabel}. Tap to change.` / `{currentAgentLabel} ▼`), while the composer also rendered a second `🤖 Agent` chip row above the input controls.
+- Change: Removed the duplicate composer-level agent chip row from `ChatScreen` and added `apps/mobile/tests/chat-screen-density.test.js` to keep agent selection anchored in the navigation header without reintroducing the extra composer chrome.
+- After evidence: Source now moves directly from pending image thumbnails into the main composer action row, reducing vertical clutter on the mobile chat surface while preserving the existing header badge as the agent-selector entry point.
+- Verification commands/run results: `pnpm dev:mobile -- --web` → failed (`expo: command not found`, `node_modules missing`, exit 1). `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js` → passed (6 tests, 0 failures, exit 0).
+- Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch in this worktree without installed dependencies, so real-device or Expo-web validation of header truncation, keyboard-open spacing, and agent-selector discoverability remains pending once runtime access is restored.
