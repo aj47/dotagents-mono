@@ -1135,10 +1135,6 @@ export default function SettingsScreen({ navigation }: any) {
             {/* Provider Selection */}
             {remoteSettings && (
               <CollapsibleSection id="providerSelection" title="Provider Selection">
-                <Text style={styles.helperText}>
-                  Select which AI provider to use for each feature.
-                </Text>
-
                 {/* Voice Transcription (STT) Provider */}
                 <Text style={styles.label}>Voice Transcription (STT)</Text>
                 <View style={styles.providerSelector}>

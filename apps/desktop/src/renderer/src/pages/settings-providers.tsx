@@ -1050,12 +1050,6 @@ export function Component() {
       <div className="grid gap-4">
         {/* Provider Selection with clear visual hierarchy */}
         <ControlGroup title="Provider Selection">
-          <div className="px-3 py-2 bg-muted/30 border-b">
-            <p className="text-xs text-muted-foreground">
-              Select which AI provider to use for each feature. Configure API keys and models in the provider sections below.
-            </p>
-          </div>
-
           {isMainAgentAcpMode && (
             <div className="mx-3 my-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-primary">

@@ -25,6 +25,7 @@ test('avoids decorative emoji chrome in the mobile remote provider selection sub
   );
 
   assert.doesNotMatch(providerSection, /🎤|📝|🤖|🔊/);
+  assert.doesNotMatch(providerSection, /Select which AI provider to use for each feature\./);
   assert.match(providerSection, />Voice Transcription \(STT\)</);
   assert.match(providerSection, />Transcript Post-Processing</);
   assert.match(providerSection, />Agent\/MCP Tools</);

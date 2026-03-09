@@ -7,19 +7,20 @@
 - [x] Desktop settings: general → `Modular config (.agents)` (`apps/desktop/src/renderer/src/pages/settings-general.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile has no equivalent `.agents` settings surface, so this coverage is desktop-specific.
 - [x] Desktop onboarding welcome step (`apps/desktop/src/renderer/src/pages/onboarding.tsx`) — source-level first-run review only this iteration because no Electron renderer target was available for screenshot capture; mobile currently routes first-run users straight into `Settings`, so this welcome-surface coverage is desktop-specific rather than shared.
 - [x] Desktop settings: capabilities → `MCP Servers` tab shell (`apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile has inline skills/server sections inside `SettingsScreen` rather than a dedicated capabilities tab, so this wrapper-chrome issue is desktop-specific.
+- [x] Desktop settings: providers + models → `Provider Selection` group (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile `SettingsScreen` `Provider Selection` was cross-checked and this redundant helper-copy issue is shared across both platforms.
 
 ### Mobile checked screens / flows / states
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
 - [x] Mobile Chats list / session rows / stub-from-desktop state (`SessionListScreen`) — source-level narrow-width review only this iteration because Expo web runtime is still blocked before launch.
 - [x] Mobile chat screen default header + composer state (`ChatScreen`) — source-level review only this iteration because Expo web runtime was blocked before launch, but the header agent selector and default composer chrome were audited for density.
 - [x] Mobile Connection settings default disconnected/error + QR scanner close-action states (`ConnectionSettingsScreen`) — source-level review only this iteration because Expo web runtime is still blocked before launch.
-- [x] Mobile Desktop Settings → `Provider Selection` + `Profile & Model` subsections (`SettingsScreen`) — source-level review only this iteration because Expo web runtime is still blocked before launch; desktop `settings-providers.tsx` was cross-checked and this decorative-emoji / action-label issue is mobile-specific rather than shared.
+- [x] Mobile Desktop Settings → `Provider Selection` + `Profile & Model` subsections (`SettingsScreen`) — source-level review only this iteration because Expo web runtime is still blocked before launch; desktop `settings-providers.tsx` was cross-checked, with the earlier decorative-emoji / action-label issue remaining mobile-specific while the redundant `Provider Selection` helper-copy issue is shared across both platforms.
 
 ### Not yet checked
 - [ ] Desktop onboarding API key / dictation / agent steps, plus live runtime validation of the welcome and setup-permissions surfaces
 - [ ] Desktop sessions active tiles / dense action rows / hover states
 - [ ] Desktop settings: general remaining rows + live runtime validation of the `.agents` group
-- [ ] Desktop settings: providers + models
+- [ ] Desktop settings: providers + models remaining provider cards, preset/model pickers, download/progress states, and live runtime validation of the `Provider Selection` group
 - [ ] Desktop settings: capabilities → Skills tab, deeper MCP Tools & Servers content states, and live runtime validation of the MCP Servers tab shell
 - [ ] Desktop settings: agents
 - [ ] Desktop settings: repeat tasks
@@ -46,6 +47,7 @@
 - [x] Desktop settings general `Modular config (.agents)` used both a top-level `endDescription` and an in-card explanatory paragraph, then split related folder/file actions across separate `Open` and `Reveal files in Finder/Explorer` rows, adding avoidable vertical chrome on an already dense settings page; mobile has no equivalent `.agents` surface, so this issue is desktop-specific rather than shared.
 - [x] Desktop onboarding welcome used oversized hero chrome for a one-action first-run surface: a `text-6xl` mic icon, `text-3xl`/`font-extrabold` headline, large paragraph spacing, and a fixed-width `w-64` primary CTA left extra empty space before the user could move into onboarding; mobile has no equivalent welcome screen today, so this issue is desktop-specific rather than shared.
 - [x] Desktop settings `Capabilities → MCP Servers` added a redundant intro paragraph and separate `border-t pt-6` wrapper above `MCPConfigManager`, even though the tab bar already labeled the surface and the manager itself already opens with its own `MCP Tools & Servers` heading; mobile keeps capabilities inline inside `SettingsScreen`, so this top-chrome issue is desktop-specific rather than shared.
+- [x] Desktop settings `Provider Selection` and mobile `SettingsScreen` `Provider Selection` both inserted helper copy that restated the section title and immediately repeated the nearby provider labels, pushing the first actionable provider control lower without adding new orientation.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
@@ -61,6 +63,7 @@
 - [x] Tightened the desktop `.agents` settings block by merging its explanatory copy into one helper paragraph and consolidating folder/file buttons into a single wrap-safe `Open folders & files` row with shorter button labels.
 - [x] Tightened the desktop onboarding welcome hero by bounding it to a narrower content width, reducing the mic icon / headline / paragraph spacing, replacing the fixed-width primary CTA with a full-width capped button, and shrinking the skip action so the next step appears sooner without removing orientation.
 - [x] Tightened the desktop `Capabilities → MCP Servers` tab shell by removing the redundant intro paragraph and top divider wrapper above `MCPConfigManager`, so the manager heading and primary tools/server controls appear sooner under the tab bar.
+- [x] Removed the redundant `Provider Selection` helper sentence from both desktop `settings-providers.tsx` and mobile `SettingsScreen.tsx`, so the first provider control appears immediately under the section title while keeping the desktop ACP note and all provider labels/actions intact.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
@@ -86,6 +89,9 @@
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/onboarding-welcome-density.test.mjs`.
 - [x] Dependency-free desktop capabilities MCP-tab density regression coverage added in `apps/desktop/tests/settings-capabilities-mcp-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/settings-capabilities-mcp-density.test.mjs`.
+- [x] Dependency-free desktop provider-selection density regression coverage added in `apps/desktop/tests/settings-providers-selection-density.test.mjs`.
+- [x] Updated `apps/mobile/tests/settings-remote-provider-density.test.js` to keep the mobile `Provider Selection` subsection free of redundant helper copy.
+- [x] Targeted cross-platform source verification passed: `node --test apps/desktop/tests/settings-providers-selection-density.test.mjs apps/mobile/tests/settings-remote-provider-density.test.js`.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
@@ -96,6 +102,7 @@
 - [x] Targeted desktop Vitest execution remained blocked for the same reason: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` failed before Vitest ran because `pnpm -w run build:shared` could not find `tsup`.
 - [x] The same targeted Vitest command is still blocked after this QA remediation pass because `pnpm -w run build:shared` fails before Vitest startup with `tsup: command not found` and `node_modules missing` warnings.
 - [x] Live desktop onboarding inspection is still blocked in this worktree: `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, and earlier `pnpm dev` attempts in this worktree still fail before launch because the shared/desktop toolchain dependencies are unavailable.
+- [x] Live provider-settings inspection remained blocked this iteration: `list-processes` found no running app surfaces, `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, and `test -d node_modules` reported `NODE_MODULES_MISSING`, so no screenshot-backed desktop/mobile provider-selection review was possible.
 
 ### Still uncertain
 - [ ] Desktop renderer / Electron surfaces still need first live attachment and screenshot evidence once dependencies are installed.
@@ -104,6 +111,7 @@
 - [ ] Desktop sessions empty state is denser in source and keeps primary actions higher, but the real renderer still needs screenshot-backed validation for above-the-fold balance, empty-state readability, and recent-sessions proximity once Electron can launch.
 - [ ] Desktop settings helper-tooltip hover occlusion remains un-reproduced in a live renderer; the current coverage is shared-component/source-level only until the desktop runtime can launch for screenshot-backed review.
 - [ ] Desktop settings surfaces remain unchecked at runtime; the shared settings-row audit is not a substitute for live renderer coverage.
+- [ ] Desktop settings `Provider Selection` is denser in source, but the real renderer still needs screenshot-backed validation for ACP-note rhythm, first-control above-the-fold positioning, and row spacing once Electron can launch.
 - [ ] Desktop settings general `.agents` cleanup is denser in source, but the real renderer still needs screenshot-backed validation for button-wrap behavior, path/action alignment, and narrow-width scanability once Electron can launch.
 - [ ] Desktop `Capabilities → MCP Servers` shell is denser in source, but the real renderer still needs screenshot-backed validation for the tab-to-heading rhythm, initial above-the-fold card visibility, and awkward-height behavior once Electron can launch.
 - [ ] The repaired `control.test.tsx` assertion now renders `ControlLabel` correctly in source, but the component-level Vitest test still has not been executed in this environment because the desktop/shared toolchain is unavailable.
@@ -111,7 +119,7 @@
 - [ ] Mobile chat composer, header action row, and voice-related controls still need live narrow-width review for density and possible control crowding.
 - [ ] Mobile chat header badge and composer now avoid duplicate agent-selection chrome in source, but the real small-phone header truncation, keyboard-open layout, and agent-selector sheet entry flow still need live screenshot-backed validation.
 - [ ] Mobile Connection settings now use plain-text error/scan/close labels in source, but the real Expo-web or device layout still needs screenshot-backed review for scanner modal overlay placement, close-button hit safety, and disconnected-state density.
-- [ ] Mobile Desktop Settings `Provider Selection` + `Profile & Model` are cleaner in source, but Expo web or device screenshots are still needed to validate provider-chip wrapping, profile-action balance, and the compact model-action row at small-phone and larger mobile-web widths.
+- [ ] Mobile Desktop Settings `Provider Selection` + `Profile & Model` are cleaner in source, but Expo web or device screenshots are still needed to validate provider-chip wrapping, the reduced top-of-section rhythm after the helper-copy removal, profile-action balance, and the compact model-action row at small-phone and larger mobile-web widths.
 
 ### Iterations
 
@@ -240,3 +248,12 @@ Evidence
 - After evidence: Source now places `MCPConfigManager` directly under the tab shell, so the `MCP Tools & Servers` heading and the primary tool/server controls appear sooner without the extra paragraph-and-divider chrome above them.
 - Verification commands/run results: `node --test apps/desktop/tests/settings-capabilities-mcp-density.test.mjs` → passed (2 tests, 0 failures, exit 0). Runtime validation remains blocked because `electron_execute_electron-native` still could not attach and `pnpm dev -- -dui` / `pnpm dev:mobile -- --web` still fail before launch due to missing local dependencies.
 - Blockers/remaining uncertainty: No before/after screenshots were possible because neither desktop nor mobile runtime could launch in this worktree without installed dependencies; the real tab spacing, card visibility, and awkward-height behavior still need screenshot-backed validation once runtime access is restored.
+
+#### Iteration 15
+Evidence
+- Scope: Desktop settings `Provider Selection` group and matching mobile `Provider Selection` subsection density.
+- Before evidence: Live inspection re-check remained blocked — `list-processes` returned `No processes found`, `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, and `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` reported `NODE_MODULES_MISSING`, so no screenshot capture was possible. Source-backed observation: desktop `apps/desktop/src/renderer/src/pages/settings-providers.tsx` rendered a `px-3 py-2 bg-muted/30 border-b` helper paragraph under `Provider Selection`, and mobile `apps/mobile/src/screens/SettingsScreen.tsx` rendered `<Text style={styles.helperText}>Select which AI provider to use for each feature.</Text>` in the matching subsection even though the title and four labeled provider rows already explain the surface.
+- Change: Removed the redundant provider-selection helper copy from desktop `settings-providers.tsx` and mobile `SettingsScreen.tsx`, added dependency-free desktop regression coverage in `apps/desktop/tests/settings-providers-selection-density.test.mjs`, and extended `apps/mobile/tests/settings-remote-provider-density.test.js` so the mobile helper copy cannot silently return.
+- After evidence: Source now places the first provider control immediately under `Provider Selection` on both platforms, while desktop still retains ACP-specific orientation copy and mobile keeps the same provider labels and action chips.
+- Verification commands/run results: `list-processes` → no processes found. `electron_execute_electron-native` → failed (`Failed to list CDP targets. Make sure Electron is running with --inspect flag.`). `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` → `NODE_MODULES_MISSING` (exit 0). `node --test apps/desktop/tests/settings-providers-selection-density.test.mjs apps/mobile/tests/settings-remote-provider-density.test.js` → passed (4 tests, 0 failures, exit 0).
+- Blockers/remaining uncertainty: No before/after screenshots were possible because there are no running app surfaces and the worktree has no local dependencies to launch them; desktop and mobile provider-selection spacing, scanability, and hit-target rhythm still need live screenshot-backed validation once runtime access is restored.
