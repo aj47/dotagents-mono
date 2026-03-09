@@ -173,9 +173,14 @@ export function Component() {
     navigate("/")
   }, [saveConfigAsync, navigate])
 
+  const shellClassName =
+    step === "welcome"
+      ? "w-full max-w-2xl mx-auto my-auto px-6 py-10"
+      : "w-full max-w-2xl self-start mx-auto px-6 py-6 sm:py-8"
+
   return (
     <div className="app-drag-region flex h-dvh overflow-y-auto">
-      <div className="w-full max-w-2xl mx-auto my-auto px-6 py-10">
+      <div className={shellClassName}>
         {step === "welcome" && (
           <WelcomeStep onNext={() => setStep("api-key")} onSkip={handleSkipOnboarding} />
         )}
@@ -772,7 +777,7 @@ function AgentStep({
 // Step Indicator
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex justify-center gap-2 mb-8">
+    <div className="mb-6 flex justify-center gap-2">
       {Array.from({ length: total }, (_, i) => (
         <div
           key={i}
