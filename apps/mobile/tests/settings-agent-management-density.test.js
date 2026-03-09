@@ -36,8 +36,8 @@ test('keeps mobile Agent Loop actions text-first and explicitly labeled', () => 
   );
 
   assert.doesNotMatch(loopsSection, /▶ Run|🗑 Delete/);
-  assert.match(loopsSection, /<Text style=\{styles\.loopRunActionText\}>Run<\/Text>/);
-  assert.match(loopsSection, /<Text style=\{styles\.loopDeleteActionText\}>Delete<\/Text>/);
-  assert.match(loopsSection, /accessibilityLabel=\{`Run loop \$\{loop\.name\}`\}/);
-  assert.match(loopsSection, /accessibilityLabel=\{`Delete loop \$\{loop\.name\}`\}/);
+  assert.match(loopsSection, /<Text style=\{styles\.loopActionButtonText\}>Run now<\/Text>/);
+  assert.match(loopsSection, /<Text style=\{\[styles\.loopActionButtonText, styles\.loopActionButtonTextDanger\]\}>Delete<\/Text>/);
+  assert.match(loopsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Run \$\{loop\.name\} loop now`\)\}/);
+  assert.match(loopsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Delete \$\{loop\.name\} loop`\)\}/);
 });

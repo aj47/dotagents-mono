@@ -6,7 +6,12 @@ import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
-import { createMcpServerSwitchAccessibilityLabel, createSwitchAccessibilityLabel } from '../lib/accessibility';
+import {
+  createButtonAccessibilityLabel,
+  createMcpServerSwitchAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+  createSwitchAccessibilityLabel,
+} from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -1123,14 +1128,21 @@ export default function SettingsScreen({ navigation }: any) {
 
             {remoteError && (
               <View style={styles.warningContainer}>
-                <Text style={styles.warningText}>{remoteError}</Text>
+                <View style={styles.warningContent}>
+                  <Text style={styles.warningTitle}>Desktop settings need attention</Text>
+                  <Text style={styles.warningText}>{remoteError}</Text>
+                  <Text style={styles.warningDetailText}>
+                    Some desktop sections may be out of date until the retry finishes.
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  style={styles.warningAction}
+                  style={styles.warningRetryButton}
                   onPress={fetchRemoteSettings}
                   accessibilityRole="button"
-                  accessibilityLabel="Retry loading desktop settings"
+                  accessibilityLabel={createButtonAccessibilityLabel('Retry loading desktop settings')}
+                  accessibilityHint="Reloads the desktop settings section and refreshes stale values."
                 >
-                  <Text style={styles.retryText}>Retry</Text>
+                  <Text style={styles.warningRetryButtonText}>Retry loading</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -2233,16 +2245,20 @@ export default function SettingsScreen({ navigation }: any) {
                         <TouchableOpacity
                           style={styles.loopActionButton}
                           onPress={() => handleLoopRun(loop.id)}
-                          accessibilityLabel={`Run loop ${loop.name}`}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
+                          accessibilityHint="Runs this loop immediately without waiting for the next scheduled interval."
                         >
-                          <Text style={styles.loopRunActionText}>Run</Text>
+                          <Text style={styles.loopActionButtonText}>Run now</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={styles.loopActionButton}
+                          style={[styles.loopActionButton, styles.loopActionButtonDanger]}
                           onPress={() => handleLoopDelete(loop)}
-                          accessibilityLabel={`Delete loop ${loop.name}`}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
+                          accessibilityHint="Opens a confirmation prompt before permanently deleting this loop."
                         >
-                          <Text style={styles.loopDeleteActionText}>Delete</Text>
+                          <Text style={[styles.loopActionButtonText, styles.loopActionButtonTextDanger]}>Delete</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -2815,8 +2831,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: '#f59e0b', // amber-500
       borderRadius: radius.md,
       padding: spacing.md,
-      gap: spacing.sm,
-      alignItems: 'flex-start',
+      width: '100%' as const,
+      gap: spacing.md,
+      alignItems: 'stretch',
+    },
+    warningContent: {
+      gap: spacing.xs,
+    },
+    warningTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#92400e', // amber-800
     },
     warningText: {
       color: '#d97706', // amber-600
@@ -2824,13 +2849,29 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       lineHeight: 20,
       alignSelf: 'stretch',
     },
-    warningAction: {
-      alignSelf: 'flex-start',
-    },
-    retryText: {
-      color: theme.colors.primary,
+    warningDetailText: {
+      color: '#92400e', // amber-800
       fontSize: 14,
+      lineHeight: 20,
+    },
+    warningRetryButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      width: '100%' as const,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      backgroundColor: theme.colors.background,
+    },
+    warningRetryButtonText: {
+      color: theme.colors.primary,
+      textAlign: 'center',
       fontWeight: '600',
+      fontSize: 14,
     },
     profileList: {
       gap: spacing.xs,
@@ -3054,23 +3095,38 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontWeight: '500',
     },
     loopActions: {
+      width: '100%' as const,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
-      flexShrink: 0,
+      gap: spacing.sm,
+      paddingTop: spacing.xs,
     },
     loopActionButton: {
-      marginTop: spacing.xs,
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 4,
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      minWidth: 92,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
     },
-    loopRunActionText: {
+    loopActionButtonDanger: {
+      borderColor: theme.colors.destructive,
+      backgroundColor: theme.colors.destructive + '10',
+    },
+    loopActionButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
       color: theme.colors.primary,
-      fontSize: 12,
-      fontWeight: '500',
+      textAlign: 'center',
     },
-    loopDeleteActionText: {
+    loopActionButtonTextDanger: {
       color: theme.colors.destructive,
-      fontSize: 12,
-      fontWeight: '500',
     },
     createAgentButton: {
       marginTop: spacing.md,

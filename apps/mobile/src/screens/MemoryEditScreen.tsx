@@ -10,13 +10,14 @@ import {
   MemoryImportance,
   MemoryUpdateRequest,
 } from '../lib/settingsApi';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 
-const IMPORTANCE_OPTIONS: { label: string; value: MemoryImportance }[] = [
-  { label: 'Low', value: 'low' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'High', value: 'high' },
-  { label: 'Critical', value: 'critical' },
+const IMPORTANCE_OPTIONS: { label: string; value: MemoryImportance; description: string }[] = [
+  { label: 'Low', value: 'low', description: 'Background context the agent can use when space allows.' },
+  { label: 'Medium', value: 'medium', description: 'Default priority for useful context that matters regularly.' },
+  { label: 'High', value: 'high', description: 'Important guidance or preferences the agent should surface early.' },
+  { label: 'Critical', value: 'critical', description: 'Must-not-miss context that should stay at the front of retrieval.' },
 ];
 
 type MemoryFormData = {
@@ -205,16 +206,29 @@ export default function MemoryEditScreen({ navigation, route }: any) {
       />
 
       <Text style={styles.label}>Importance</Text>
-      <View style={styles.optionRow}>
-        {IMPORTANCE_OPTIONS.map(option => (
-          <TouchableOpacity
-            key={option.value}
-            style={[styles.option, formData.importance === option.value && styles.optionActive]}
-            onPress={() => updateField('importance', option.value)}
-          >
-            <Text style={[styles.optionText, formData.importance === option.value && styles.optionTextActive]}>{option.label}</Text>
-          </TouchableOpacity>
-        ))}
+      <Text style={styles.sectionHelperText}>Higher-priority memories are surfaced first when the agent loads context.</Text>
+      <View style={styles.importanceOptions}>
+        {IMPORTANCE_OPTIONS.map(option => {
+          const isSelected = formData.importance === option.value;
+          return (
+            <TouchableOpacity
+              key={option.value}
+              style={[styles.importanceOption, isSelected && styles.importanceOptionActive]}
+              onPress={() => updateField('importance', option.value)}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel(`Set memory importance to ${option.label}`)}
+              accessibilityHint={isSelected ? `Currently selected. ${option.description}` : option.description}
+              accessibilityState={{ selected: isSelected, disabled: isSaving }}
+              disabled={isSaving}
+            >
+              <View style={styles.importanceOptionInfo}>
+                <Text style={[styles.importanceOptionText, isSelected && styles.importanceOptionTextActive]}>{option.label}</Text>
+                <Text style={[styles.importanceOptionHelperText, isSelected && styles.importanceOptionHelperTextActive]}>{option.description}</Text>
+              </View>
+              {isSelected && <Text style={styles.importanceOptionCheckmark}>✓</Text>}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <Text style={styles.label}>Tags</Text>
@@ -242,13 +256,32 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
+    sectionHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 120 },
-    optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    option: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-    optionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    optionText: { color: theme.colors.foreground, fontSize: 13 },
-    optionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
+    importanceOptions: { width: '100%' as const, gap: spacing.xs },
+    importanceOption: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      width: '100%' as const,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.background,
+    },
+    importanceOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    importanceOptionInfo: { flex: 1, minWidth: 0 },
+    importanceOptionText: { color: theme.colors.foreground, fontSize: 14, fontWeight: '500' },
+    importanceOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
+    importanceOptionHelperText: { color: theme.colors.mutedForeground, fontSize: 12, marginTop: 2 },
+    importanceOptionHelperTextActive: { color: theme.colors.primaryForeground },
+    importanceOptionCheckmark: { color: theme.colors.primaryForeground, fontSize: 16, fontWeight: '700', marginLeft: spacing.sm },
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
     saveButtonDisabled: { opacity: 0.7 },
     saveButtonText: { color: theme.colors.primaryForeground, fontSize: 16, fontWeight: '600' },

@@ -798,10 +798,21 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const EmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyTitle}>No Sessions Yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Start a new chat to begin a conversation
-      </Text>
+      <View style={styles.emptyStateTextGroup}>
+        <Text style={styles.emptyTitle}>No chats yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Start your first chat so recent conversations show up here.
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+        onPress={handleCreateSession}
+        accessibilityRole="button"
+        accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
+        accessibilityHint="Creates and opens your first chat."
+      >
+        <Text style={styles.emptyStateButtonText}>Start first chat</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -1033,15 +1044,31 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     emptyState: {
       alignItems: 'center',
+      width: '100%' as const,
+      maxWidth: 360,
       padding: spacing.xl,
+    },
+    emptyStateTextGroup: {
+      alignItems: 'center',
+      marginBottom: spacing.lg,
     },
     emptyTitle: {
       ...theme.typography.h2,
       marginBottom: spacing.sm,
+      textAlign: 'center',
     },
     emptySubtitle: {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
+      textAlign: 'center',
+    },
+    emptyStateButton: {
+      width: '100%' as const,
+      maxWidth: 280,
+    },
+    emptyStateButtonText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
       textAlign: 'center',
     },
     rfContainer: {

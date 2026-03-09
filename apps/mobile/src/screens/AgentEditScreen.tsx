@@ -4,27 +4,38 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
+import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
 
 const CONNECTION_TYPES = [
-  { label: 'Internal', value: 'internal' },
-  { label: 'ACP', value: 'acp' },
-  { label: 'Stdio', value: 'stdio' },
-  { label: 'Remote', value: 'remote' },
+  {
+    label: 'Internal',
+    value: 'internal',
+    description: 'Uses the built-in DotAgents runtime with this profile’s prompts and settings.',
+  },
+  {
+    label: 'ACP',
+    value: 'acp',
+    description: 'Launches an ACP-compatible local agent command for delegation and tool work.',
+  },
+  {
+    label: 'Stdio',
+    value: 'stdio',
+    description: 'Runs a local command directly over standard input and output.',
+  },
+  {
+    label: 'Remote',
+    value: 'remote',
+    description: 'Connects to an external HTTP agent endpoint by URL.',
+  },
 ] as const;
 
-type ConnectionType = 'internal' | 'acp' | 'stdio' | 'remote';
-
-interface AgentFormData {
+interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
   description: string;
   systemPrompt: string;
   guidelines: string;
-  connectionType: ConnectionType;
-  connectionCommand: string;
-  connectionArgs: string;
-  connectionBaseUrl: string;
-  connectionCwd: string;
   enabled: boolean;
   autoSpawn: boolean;
 }
@@ -114,6 +125,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
     setError(null);
 
     try {
+      const connectionFields = buildAgentConnectionRequestFields(formData);
+
       if (isEditing && agentId) {
         const updateData: AgentProfileUpdateRequest = originalProfile?.isBuiltIn
           ? {
@@ -126,11 +139,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             description: formData.description.trim() || undefined,
             systemPrompt: formData.systemPrompt.trim() || undefined,
             guidelines: formData.guidelines.trim() || undefined,
-            connectionType: formData.connectionType,
-            connectionCommand: formData.connectionCommand.trim() || undefined,
-            connectionArgs: formData.connectionArgs.trim() || undefined,
-            connectionBaseUrl: formData.connectionBaseUrl.trim() || undefined,
-            connectionCwd: formData.connectionCwd.trim() || undefined,
+            ...connectionFields,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
           };
@@ -141,11 +150,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           description: formData.description.trim() || undefined,
           systemPrompt: formData.systemPrompt.trim() || undefined,
           guidelines: formData.guidelines.trim() || undefined,
-          connectionType: formData.connectionType,
-          connectionCommand: formData.connectionCommand.trim() || undefined,
-          connectionArgs: formData.connectionArgs.trim() || undefined,
-          connectionBaseUrl: formData.connectionBaseUrl.trim() || undefined,
-          connectionCwd: formData.connectionCwd.trim() || undefined,
+          ...connectionFields,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
         };
@@ -164,10 +169,15 @@ export default function AgentEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
+    setFormData(prev => applyConnectionTypeChange(prev, connectionType));
+  }, []);
+
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
 
   // Check if connection fields should be shown
-  const showConnectionFields = formData.connectionType !== 'internal';
+  const showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio';
+  const showRemoteBaseUrlField = formData.connectionType === 'remote';
 
   if (isLoading) {
     return (
@@ -218,7 +228,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
       />
 
       <Text style={styles.label}>Connection Type</Text>
-      <View style={styles.connectionTypeRow}>
+      <Text style={styles.sectionHelperText}>Choose how DotAgents should reach this agent. The setup fields below change based on this choice.</Text>
+      <View style={styles.connectionTypeOptions}>
         {CONNECTION_TYPES.map(ct => (
           <TouchableOpacity
             key={ct.value}
@@ -226,70 +237,80 @@ export default function AgentEditScreen({ navigation, route }: any) {
               styles.connectionTypeOption,
               formData.connectionType === ct.value && styles.connectionTypeOptionActive,
             ]}
-            onPress={() => updateField('connectionType', ct.value)}
+            onPress={() => handleConnectionTypeSelect(ct.value)}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel(`Use ${ct.label} connection for this agent`)}
+            accessibilityHint={formData.connectionType === ct.value ? `Currently selected. ${ct.description}` : ct.description}
+            accessibilityState={{ selected: formData.connectionType === ct.value, disabled: isBuiltInAgent }}
             disabled={isBuiltInAgent}
           >
-            <Text style={[
-              styles.connectionTypeText,
-              formData.connectionType === ct.value && styles.connectionTypeTextActive,
-            ]}>
-              {ct.label}
-            </Text>
+            <View style={styles.connectionTypeOptionInfo}>
+              <Text style={[
+                styles.connectionTypeText,
+                formData.connectionType === ct.value && styles.connectionTypeTextActive,
+              ]}>
+                {ct.label}
+              </Text>
+              <Text style={[
+                styles.connectionTypeHelperText,
+                formData.connectionType === ct.value && styles.connectionTypeHelperTextActive,
+              ]}>
+                {ct.description}
+              </Text>
+            </View>
+            {formData.connectionType === ct.value && <Text style={styles.connectionTypeCheckmark}>✓</Text>}
           </TouchableOpacity>
         ))}
       </View>
 
-      {showConnectionFields && (
+      {showCommandFields && (
         <>
-          {(formData.connectionType === 'stdio') && (
-            <>
-              <Text style={styles.label}>Command</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.connectionCommand}
-                onChangeText={v => updateField('connectionCommand', v)}
-                placeholder="node"
-                placeholderTextColor={theme.colors.mutedForeground}
-                autoCapitalize="none"
-                editable={!isBuiltInAgent}
-              />
-              <Text style={styles.label}>Arguments</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.connectionArgs}
-                onChangeText={v => updateField('connectionArgs', v)}
-                placeholder="agent.js --port 3000"
-                placeholderTextColor={theme.colors.mutedForeground}
-                autoCapitalize="none"
-                editable={!isBuiltInAgent}
-              />
-              <Text style={styles.label}>Working Directory</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.connectionCwd}
-                onChangeText={v => updateField('connectionCwd', v)}
-                placeholder="/path/to/agent"
-                placeholderTextColor={theme.colors.mutedForeground}
-                autoCapitalize="none"
-                editable={!isBuiltInAgent}
-              />
-            </>
-          )}
-          {(formData.connectionType === 'remote' || formData.connectionType === 'acp') && (
-            <>
-              <Text style={styles.label}>Base URL</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.connectionBaseUrl}
-                onChangeText={v => updateField('connectionBaseUrl', v)}
-                placeholder="http://localhost:3000"
-                placeholderTextColor={theme.colors.mutedForeground}
-                autoCapitalize="none"
-                keyboardType="url"
-                editable={!isBuiltInAgent}
-              />
-            </>
-          )}
+          <Text style={styles.label}>Command</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.connectionCommand}
+            onChangeText={v => updateField('connectionCommand', v)}
+            placeholder="node"
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            editable={!isBuiltInAgent}
+          />
+          <Text style={styles.label}>Arguments</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.connectionArgs}
+            onChangeText={v => updateField('connectionArgs', v)}
+            placeholder="agent.js --port 3000"
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            editable={!isBuiltInAgent}
+          />
+          <Text style={styles.label}>Working Directory</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.connectionCwd}
+            onChangeText={v => updateField('connectionCwd', v)}
+            placeholder="/path/to/agent"
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            editable={!isBuiltInAgent}
+          />
+        </>
+      )}
+
+      {showRemoteBaseUrlField && (
+        <>
+          <Text style={styles.label}>Base URL</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.connectionBaseUrl}
+            onChangeText={v => updateField('connectionBaseUrl', v)}
+            placeholder="http://localhost:3000"
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            keyboardType="url"
+            editable={!isBuiltInAgent}
+          />
         </>
       )}
 
@@ -399,6 +420,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginBottom: spacing.xs,
       marginTop: spacing.md,
     },
+    sectionHelperText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginBottom: spacing.sm,
+    },
     input: {
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -411,14 +437,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     textArea: {
       minHeight: 100,
     },
-    connectionTypeRow: {
-      flexDirection: 'row',
+    connectionTypeOptions: {
+      width: '100%' as const,
       gap: spacing.xs,
-      flexWrap: 'wrap',
     },
     connectionTypeOption: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      width: '100%' as const,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -428,13 +460,32 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.primary,
       borderColor: theme.colors.primary,
     },
+    connectionTypeOptionInfo: {
+      flex: 1,
+      minWidth: 0,
+    },
     connectionTypeText: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.colors.foreground,
+      fontWeight: '500',
     },
     connectionTypeTextActive: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    connectionTypeHelperText: {
+      marginTop: 2,
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+    },
+    connectionTypeHelperTextActive: {
+      color: theme.colors.primaryForeground,
+    },
+    connectionTypeCheckmark: {
+      color: theme.colors.primaryForeground,
+      fontSize: 16,
+      fontWeight: '700',
+      marginLeft: spacing.sm,
     },
     switchRow: {
       flexDirection: 'row',

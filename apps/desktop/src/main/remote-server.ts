@@ -24,6 +24,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
 import { skillsService } from "./skills-service"
 import { memoryService } from "./memory-service"
+import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
 import { isBuiltinTool } from "./builtin-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
@@ -2468,20 +2469,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       // Validate connectionType
-      const validConnectionTypes = ["internal", "acp", "stdio", "remote"]
-      const connectionType = body.connectionType || "internal"
-      if (!validConnectionTypes.includes(connectionType)) {
-        return reply.code(400).send({ error: `connectionType must be one of: ${validConnectionTypes.join(", ")}` })
+      const connectionType = body.connectionType ?? "internal"
+      if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
+        return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
       }
 
-      // Build connection object
-      const connection: import("@shared/types").AgentProfileConnection = {
-        type: connectionType as import("@shared/types").AgentProfileConnectionType,
-      }
-      if (body.connectionCommand) connection.command = body.connectionCommand
-      if (body.connectionArgs) connection.args = body.connectionArgs.split(/\s+/).filter(Boolean)
-      if (body.connectionBaseUrl) connection.baseUrl = body.connectionBaseUrl
-      if (body.connectionCwd) connection.cwd = body.connectionCwd
+      const connection: import("@shared/types").AgentProfileConnection = sanitizeAgentProfileConnection({
+        connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
+        connectionCommand: body.connectionCommand,
+        connectionArgs: body.connectionArgs,
+        connectionBaseUrl: body.connectionBaseUrl,
+        connectionCwd: body.connectionCwd,
+      })
 
       // Create the profile
       const newProfile = agentProfileService.create({
@@ -2593,19 +2592,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         if (body.connectionType !== undefined || body.connectionCommand !== undefined ||
             body.connectionArgs !== undefined || body.connectionBaseUrl !== undefined ||
             body.connectionCwd !== undefined) {
-          const validConnectionTypes = ["internal", "acp", "stdio", "remote"]
-          const connectionType = body.connectionType || profile.connection.type
-          if (!validConnectionTypes.includes(connectionType)) {
-            return reply.code(400).send({ error: `connectionType must be one of: ${validConnectionTypes.join(", ")}` })
+          const connectionType = body.connectionType ?? profile.connection.type
+          if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
+            return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
           }
 
-          updates.connection = {
-            type: connectionType as import("@shared/types").AgentProfileConnectionType,
-            command: body.connectionCommand !== undefined ? body.connectionCommand : profile.connection.command,
-            args: body.connectionArgs !== undefined ? body.connectionArgs.split(/\s+/).filter(Boolean) : profile.connection.args,
-            baseUrl: body.connectionBaseUrl !== undefined ? body.connectionBaseUrl : profile.connection.baseUrl,
-            cwd: body.connectionCwd !== undefined ? body.connectionCwd : profile.connection.cwd,
-          }
+          updates.connection = sanitizeAgentProfileConnection(
+            {
+              connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
+              connectionCommand: body.connectionCommand,
+              connectionArgs: body.connectionArgs,
+              connectionBaseUrl: body.connectionBaseUrl,
+              connectionCwd: body.connectionCwd,
+            },
+            profile.connection,
+          )
         }
       }
 

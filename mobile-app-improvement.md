@@ -6,7 +6,326 @@
 - Prefer one small, shippable improvement per iteration.
 - Use Expo Web when practical for repeatable inspection.
 
+## Coverage Map
+
+### Checked screens/flows
+
+- [x] Settings root screen and nested back navigation
+- [x] Connection setup flow, save validation, and inline connection actions
+- [x] Sessions list entry points, top actions, and empty state
+- [x] Chat thread composer controls, voice/listening announcements, and disclosure states
+- [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
+- [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
+- [x] Agent create/edit screen (`AgentEdit`) connection-type selection and mode-specific fields (source-backed in this worktree)
+- [x] Memory create/edit screen (`MemoryEdit`) importance selection section (source-backed in this worktree)
+- [x] Settings desktop partial-load warning / retry state (source-backed in this worktree)
+
+### Not yet checked
+
+- [ ] Memory create/edit loading, error, and runtime layout states beyond the importance selector
+- [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
+- [ ] Loop create/edit live save flow, runtime layout, and remaining fields
+- [ ] Session loading, error, reconnect, and sync states
+- [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
+- [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
+
+### Reproduced
+
+- [x] Missing in-place CTA on the session empty state
+- [x] Undersized chat composer send/accessory controls and missing web state semantics
+- [x] Weak Connection inline action affordances
+- [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
+- [x] LoopEdit profile selection chips crowd narrow screens and hide selected state behind color alone
+- [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
+- [x] MemoryEdit importance chips crowd narrow screens and communicate priority mostly through color-only state
+- [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
+
+### Improved
+
+- [x] Nested-screen back navigation
+- [x] Connection first-run validation and inline action affordances
+- [x] Chat composer actions, toggles, and voice-state accessibility
+- [x] Session empty-state CTA and narrow-layout guardrails
+- [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
+- [x] LoopEdit profile selection clarity, default-agent fallback copy, and touch targets
+- [x] AgentEdit connection-type clarity, touch targets, and ACP/remote field mapping
+- [x] MemoryEdit importance selection clarity, touch targets, and priority guidance
+- [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
+
+### Verified
+
+- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+
+### Blocked
+
+- [-] Live Expo Web inspection in this worktree while `node_modules` is absent (`expo: command not found`)
+
+### Still uncertain
+
+- [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
+- [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
+
 ## Recent Iterations
+
+### 2026-03-09 — Iteration 11: make the Settings desktop warning readable and actionable on narrow screens
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `Settings` desktop partial-load warning in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - warning state reached when some desktop settings endpoints fail but the app still has enough data to show the `Desktop Settings` section, e.g. `Failed to load: settings`
+- Why this area:
+  - the ledger still had the Settings reconnect/partial-load warning unchecked, and recent iterations had focused more on edit forms than on cross-cutting screen states
+  - source review showed a concrete narrow-screen/actionability problem: the warning crammed a long error message and a tiny text-only `Retry` action into one horizontal row with no explanation that some visible values might now be stale
+- What was investigated:
+  - current warning markup/styles and retry affordance in `SettingsScreen.tsx`
+  - nearby mobile button/touch-target patterns already used elsewhere in the app
+  - attempted Expo Web startup via the existing repo workflow
+- Findings:
+  - live runtime inspection is still blocked in this worktree because both root and `apps/mobile` `node_modules` are absent, so `pnpm --filter @dotagents/mobile web --port 8102` fails with `expo: command not found`
+  - the warning used a single horizontal row, which is fragile for longer partial-failure messages like `Failed to load: profiles, MCP servers, settings`
+  - the `Retry` affordance was rendered as small inline text instead of a clear full-width action, and the UI did not explain that desktop values might be temporarily out of date
+- Change made:
+  - reworked the Settings warning into a stacked alert card with a clear title, the raw failure detail, and a short stale-data explanation
+  - converted `Retry` into a full-width 44px minimum touch-target button with explicit accessibility label and hint
+  - added `apps/mobile/tests/settings-remote-warning-state.test.js` to lock the warning copy, retry semantics, and narrow-layout guardrails
+- Verification:
+  - `node --test apps/mobile/tests/settings-remote-warning-state.test.js apps/mobile/tests/agent-loops-actions.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8102`
+- Follow-up checks:
+  - once dependencies are available, verify in Expo Web that longer partial-load warnings wrap cleanly above the retry button without pushing the rest of `Desktop Settings` too far down on a narrow viewport
+  - continue widening coverage to session loading/error/sync states or modal/sheet surfaces rather than returning to already-improved settings subsections without a new finding
+
+Evidence
+- Scope: Settings desktop partial-load warning / retry state in `apps/mobile/src/screens/SettingsScreen.tsx`
+- Before evidence: Source review showed the warning rendering as `styles.warningContainer` with `flexDirection: 'row'`, `justifyContent: 'space-between'`, and `alignItems: 'center'`, containing only `⚠️ {remoteError}` plus a text-only `Retry` action. The retry affordance had no mobile-sized button styling, no `createMinimumTouchTargetStyle(...)`, and no explanation that partially loaded desktop settings may now be stale. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8102`, but the command failed because both root and mobile `node_modules` are missing and `expo` was not found.
+- Change: Reworked the Settings warning into a stacked alert card with a title, raw error detail, stale-data guidance, and a full-width retry button using the shared 44px touch-target helper plus explicit accessibility metadata. Added a focused regression test file.
+- After evidence: Source now shows `styles.warningContainer` with `width: '100%'`, `gap: spacing.md`, and `alignItems: 'stretch'`; `styles.warningContent` groups the message copy; and the UI now includes `Desktop settings need attention` plus `Some desktop sections may be out of date until the retry finishes.`. The retry action now uses `styles.warningRetryButton` with `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, `width: '100%'`, centered label text, and `createButtonAccessibilityLabel('Retry loading desktop settings')`. `apps/mobile/tests/settings-remote-warning-state.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/settings-remote-warning-state.test.js apps/mobile/tests/agent-loops-actions.test.js` ✅ (4/4 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8102` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web still cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime wrapping, vertical spacing, and visual prominence of the stacked warning card until dependencies are available.
+
+### 2026-03-09 — Iteration 10: make MemoryEdit importance choices readable and tappable on narrow screens
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `MemoryEdit` importance selection in `apps/mobile/src/screens/MemoryEditScreen.tsx`
+  - create/edit flow reached from `Settings -> Memories -> + Create New Memory` or tapping an existing memory
+- Why this area:
+  - the ledger still had `MemoryEdit` uncovered, and recent iterations were concentrated on sessions, chat, loops, and agent setup rather than the memory-edit flow
+  - source review found a concrete narrow-screen/accessibility issue in a high-value decision control: importance was rendered as four small wrap chips with no explanatory copy, no explicit button semantics, and no selected-state metadata
+- What was investigated:
+  - current `MemoryEditScreen.tsx` markup/styles for the importance picker and save flow
+  - existing mobile narrow-screen selector patterns in `LoopEdit` and `AgentEdit`
+  - attempted Expo Web startup via the existing repo workflow
+- Findings:
+  - live runtime inspection is still blocked in this worktree because both root and `apps/mobile` `node_modules` are absent, so `pnpm --filter @dotagents/mobile web --port 8101` fails with `expo: command not found`
+  - the importance selector used a wrapping chip row with inline padding only, which is fragile on narrow mobile widths
+  - the chosen importance level was communicated mostly through color alone, and the UI did not explain how importance affects memory retrieval priority
+- Change made:
+  - converted the MemoryEdit importance selector into full-width stacked options with descriptive copy, explicit selected-state button semantics, and a visible checkmark for the chosen level
+  - enforced 44px minimum touch targets for each importance choice using the shared mobile accessibility helper
+  - added `apps/mobile/tests/memory-edit-importance-options.test.js` to lock the priority guidance copy, accessibility semantics, and narrow-layout guardrails
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8101`
+- Follow-up checks:
+  - once dependencies are available, verify `MemoryEdit` in Expo Web on a narrow viewport and confirm the stacked importance rows, helper descriptions, and save-button spacing remain readable without excessive scrolling
+  - inspect the rest of `MemoryEdit` next, especially loading/error states and large-text behavior for the title/content/tags fields, so memory coverage broadens beyond this selector subsection
+  - continue widening coverage to remaining modal/sheet and session-state surfaces instead of revisiting already-checked edit selectors without a new finding
+
+Evidence
+- Scope: `MemoryEdit` importance selection in `apps/mobile/src/screens/MemoryEditScreen.tsx`
+- Before evidence: Source review showed the importance control rendering as `styles.optionRow` (`flexDirection: 'row'`, `flexWrap: 'wrap'`) with each `styles.option` using only inline padding, no `createMinimumTouchTargetStyle(...)`, no explicit `accessibilityRole`, and no selected-state metadata. The UI exposed only `Low` / `Medium` / `High` / `Critical` labels with no guidance about how priority changes memory retrieval. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8101`, but the command failed because both root and mobile `node_modules` are missing and `expo` was not found.
+- Change: Reworked the MemoryEdit importance selector into full-width descriptive rows, added 44px minimum touch-target styling plus explicit button labels/hints/selected-state metadata, added a visible checkmark for the selected option, and added a focused regression test file.
+- After evidence: Source now shows `styles.importanceOptions` with `width: '100%'`, `styles.importanceOption` using `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, and each option exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: isSelected, disabled: isSaving }}`. The screen now explains `Higher-priority memories are surfaced first when the agent loads context.` and each importance row includes a description, while the selected option also shows a `✓` checkmark so selection is not color-only. `apps/mobile/tests/memory-edit-importance-options.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (22/22 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8101` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web still cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, copy wrapping, and scroll depth of the new MemoryEdit importance rows until dependencies are available.
+
+### 2026-03-09 — Iteration 9: make AgentEdit connection modes mobile-readable and stop misrouting ACP setup
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `AgentEdit` connection-type selection and mode-specific fields in `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - create/edit flow reached from `Settings -> Agent Profiles -> + Create New Agent` or tapping an existing agent
+- Why this area:
+  - the ledger still had `AgentEdit` unchecked, and recent passes were concentrated on Settings rows, sessions, chat, and one `LoopEdit` subsection
+  - source review found a concrete reliability/usability problem in a high-leverage form control: the four connection modes were rendered as small wrap chips with color-only selection, and the `ACP` mode incorrectly exposed a `Base URL` field even though the shared/server types expect ACP profiles to use local command fields like `stdio`
+- What was investigated:
+  - current `AgentEditScreen.tsx` connection-type selector, conditional field rendering, and save payload mapping
+  - shared/mobile/server agent profile types and handlers in `packages/shared/src/api-types.ts`, `apps/desktop/src/shared/types.ts`, and `apps/desktop/src/main/remote-server.ts`
+  - attempted Expo Web startup via the existing repo workflow
+- Findings:
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - the connection-type control used small wrapping pills with no explicit button semantics or selected-state metadata, which is fragile on narrow mobile widths
+  - `ACP` profiles loaded and saved `connectionCommand` / `connectionArgs` / `connectionCwd`, but the form only showed `Base URL` for `acp`, making that mode misleading and preventing users from editing the fields the backend actually uses
+- Change made:
+  - converted the `AgentEdit` connection-type selector into full-width stacked options with descriptive copy, 44px minimum touch targets, and explicit selected-state button semantics
+  - changed the mode-specific field rendering so `acp` and `stdio` both expose `Command`, `Arguments`, and `Working Directory`, while `remote` alone shows `Base URL`
+  - added `apps/mobile/tests/agent-edit-connection-types.test.js` to lock the selector accessibility/mobile layout guardrails and the ACP-vs-remote field mapping
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8097`
+- Follow-up checks:
+  - once dependencies are installed, verify `AgentEdit` in Expo Web on a narrow viewport and confirm the stacked connection rows, long descriptions, and mode-specific fields remain readable without pushing the save action too far down
+  - inspect `MemoryEdit` next so coverage continues widening across the edit flows instead of staying inside agent/loop configuration
+  - validate the remaining `AgentEdit` states later, especially built-in-agent limited editing and large-text behavior across long prompt/guidelines inputs
+
+Evidence
+- Scope: `AgentEdit` connection-type selection and mode-specific setup fields in `apps/mobile/src/screens/AgentEditScreen.tsx`
+- Before evidence: Source review showed `CONNECTION_TYPES` as four label-only chips, `styles.connectionTypeRow` as a wrapping row, and `styles.connectionTypeOption` using only inline padding with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The form rendered `Base URL` for `(formData.connectionType === 'remote' || formData.connectionType === 'acp')`, while shared/server types describe `acp` as a local command-based profile (`command`, `args`, `cwd`) and only `remote` as URL-based. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8097` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Reworked the `AgentEdit` connection-type selector into full-width descriptive rows with 44px minimum touch targets and selected-state button semantics, then split the mode-specific fields so `acp` and `stdio` share local command inputs while `remote` alone shows `Base URL`. Added a focused regression test file.
+- After evidence: Source now shows `styles.connectionTypeOptions` with `width: '100%'`, `styles.connectionTypeOption` using `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, and each connection choice exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: ... }}`. `AgentEditScreen.tsx` now uses `showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio'` and `showRemoteBaseUrlField = formData.connectionType === 'remote'`, so ACP no longer reuses the remote-only URL field. `apps/mobile/tests/agent-edit-connection-types.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (19/19 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8097` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, description wrapping, and scroll depth of the new `AgentEdit` connection rows until dependencies are available.
+
+### 2026-03-09 — QA remediation 1: stop hidden AgentEdit base-URL persistence and add real switch/save coverage
+
+- Status: completed with targeted source + behavior verification; live Expo Web remained blocked by missing dependencies in this worktree
+- Area:
+  - `AgentEdit` connection-type switching and save payload construction in `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - agent-profile connection persistence sanitization in `apps/desktop/src/main/remote-server.ts`
+- Why this area:
+  - QA found that the earlier ACP/remote fix improved the visible form fields, but hidden `Base URL` state could still survive a remote-to-ACP change or an edit of an already-stale ACP profile because the mobile save path still submitted `connectionBaseUrl` too broadly and the server preserved `baseUrl` regardless of connection type
+  - QA also found the earlier regression test only matched source text/layout and did not exercise the switch/save persistence path
+- Findings:
+  - `AgentEdit` only changed `connectionType` on tap, so hidden remote URL state could linger in form state after switching away from `remote`
+  - the save payload still populated all connection fields, so hidden values could continue crossing connection modes
+  - the desktop remote server rebuilt `connection` objects by mixing request fields with existing saved fields without dropping type-incompatible properties, which let stale `baseUrl` survive ACP saves
+- Change made:
+  - added a small mobile connection helper that clears hidden remote URL state when leaving `remote` and only sends type-appropriate connection fields during save
+  - added a small desktop sanitization helper so create/update persistence keeps only fields valid for the chosen connection type and treats blank visible inputs as explicit clears instead of silently preserving stale saved values
+  - added behavior-focused tests for the mobile switch/save path and the desktop connection sanitization path, while keeping the earlier narrow-layout/source guardrails test
+- Verification:
+  - `node --experimental-strip-types --test apps/mobile/tests/agent-edit-connection-types.test.js apps/mobile/tests/agent-edit-connection-persistence.test.mjs apps/desktop/src/main/agent-profile-connection-sanitize.test.mjs`
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, verify in Expo Web that switching `Remote -> ACP` clears the remote-only field value and that saving an existing ACP profile with previously stale hidden URL data does not rehydrate that URL in the form
+  - keep future mobile coverage widening outside `AgentEdit` after this QA pass, especially `MemoryEdit` and broader loading/error states, instead of returning to the same subsection without a new finding
+
+Evidence
+- Scope: QA remediation for `AgentEdit` connection-type switch/save persistence and desktop agent-profile connection sanitization
+- Before evidence: QA findings documented that `AgentEditScreen.tsx` still saved `connectionBaseUrl` for every connection type and only changed `connectionType` on selection, while `apps/desktop/src/main/remote-server.ts` preserved `baseUrl` during updates even for ACP profiles. The existing `apps/mobile/tests/agent-edit-connection-types.test.js` only regex-matched source text/layout and would not fail on hidden-field persistence.
+- Change: Added `apps/mobile/src/screens/agent-edit-connection-utils.ts` to clear stale remote URL state on type switches and build type-specific save payloads, wired `AgentEditScreen.tsx` through that helper, added `apps/desktop/src/main/agent-profile-connection-sanitize.ts` so the server drops type-incompatible connection fields during create/update, and added focused behavior tests for both paths.
+- After evidence: The mobile helper now clears `connectionBaseUrl` whenever the form leaves `remote` and only includes `connectionBaseUrl` in save payloads for `remote`. The desktop sanitization helper now returns `{ type: 'acp' | 'stdio' }` connections without `baseUrl`, returns `{ type: 'remote' }` connections without local command fields, and removes blank visible values instead of preserving stale saved ones. The new behavior tests directly cover remote-to-ACP switching, ACP save payload shaping, remote save payload shaping, stale `baseUrl` removal for ACP persistence, remote-only persistence, and explicit remote URL clearing.
+- Verification commands/run results: `node --experimental-strip-types --test apps/mobile/tests/agent-edit-connection-types.test.js apps/mobile/tests/agent-edit-connection-persistence.test.mjs apps/desktop/src/main/agent-profile-connection-sanitize.test.mjs` ✅ (9/9 passing; Node emitted a non-blocking `MODULE_TYPELESS_PACKAGE_JSON` warning while importing the new mobile `.ts` helper directly for the test run); `git diff --check` ✅.
+- Blockers/remaining uncertainty: Expo Web is still unavailable in this worktree because dependencies are missing, so this remediation pass has no new live visual evidence. Remaining uncertainty is limited to runtime web/mobile form behavior until the existing dependency blocker is cleared.
+
+### 2026-03-09 — Iteration 8: make LoopEdit profile selection readable and tappable on narrow screens
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `LoopEdit` agent-profile selection in `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - create/edit flow reached from `Settings -> Agent Loops -> + Create New Loop` or tapping an existing loop
+- Why this area:
+  - the previous iteration improved loop list-row actions, so the next high-value coverage expansion was the adjacent and still-unchecked loop create/edit flow
+  - source review showed the optional agent-profile selector still used small wrap chips with color-only selection, which is especially fragile on narrow mobile widths and weak for accessibility
+- What was investigated:
+  - attempted Expo Web startup via the existing repo workflow
+  - current `LoopEditScreen.tsx` markup and styles for the profile-selection section
+  - existing mobile accessibility/touch-target helpers used elsewhere in the app
+- Findings:
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - `styles.profileOptions` used a wrapping chip row and each `profileOption` only used inline padding, with no minimum 44px touch target guardrail
+  - profile choices lacked explicit button semantics and selected-state metadata, so the currently chosen agent was communicated mostly through color alone
+  - the default fallback behavior was not explained, which makes `No profile` ambiguous when creating a loop quickly on mobile
+- Change made:
+  - converted the LoopEdit profile selector from wrapping chips into full-width stacked rows better suited to narrow screens
+  - added explicit button labels, hints, and selected-state metadata for the default-agent option and each saved agent profile
+  - added clearer copy explaining what the default-agent option means and what happens when no saved agent profiles exist yet
+  - added `apps/mobile/tests/loop-edit-profile-selection.test.js` to lock the layout, touch-target, and accessibility guardrails
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8096`
+- Follow-up checks:
+  - once dependencies are installed, verify the LoopEdit profile selector in Expo Web on a narrow viewport and confirm long profile names wrap cleanly without crowding the save action
+  - inspect `MemoryEdit` next so coverage continues widening across edit flows instead of staying in Settings/Loop surfaces
+  - inspect the rest of `LoopEdit` for large-text behavior, especially the prompt and interval fields, once live runtime validation is available
+
+Evidence
+- Scope: `LoopEdit` agent-profile selection in `apps/mobile/src/screens/LoopEditScreen.tsx`
+- Before evidence: Source review showed `styles.profileOptions` as a wrapping chip row (`flexDirection: 'row'`, `flexWrap: 'wrap'`) and `styles.profileOption` using only `paddingVertical: spacing.sm` / `paddingHorizontal: spacing.md`, with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The default fallback choice was labeled only as `No profile`, with no copy explaining that the loop would use the default active agent. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8096` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Reworked the LoopEdit profile selector into full-width rows, added 44px minimum touch-target styling plus explicit button labels/hints/selected-state metadata, clarified the default-agent fallback copy, and added a focused regression test file.
+- After evidence: Source now shows `styles.profileOptions` with `width: '100%'`, `styles.profileOption` using `createMinimumTouchTargetStyle({ minSize: 44, ... })`, and each option exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: ... }}`. The UI copy now explains `Choose a dedicated agent for this loop, or leave it on the default agent.` and `No saved agent profiles yet. This loop will use the default agent until you create one.` `apps/mobile/tests/loop-edit-profile-selection.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (16/16 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8096` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, text wrapping, and visual weight of the new full-width profile rows until dependencies are available.
+
+### 2026-03-09 — Iteration 7: make agent loop row actions readable and tappable
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - Settings -> Agent Loops list in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - row actions for existing loops: enable toggle, `Run`, and `Delete`
+- Why this area:
+  - the recent ledger heavily covered Connection, Sessions, and Chat composer surfaces, so this pass widened coverage to an under-checked Settings management surface
+  - loop rows currently packed the actionable controls into a tiny side column, which is especially risky on narrow mobile widths because `Run` and `Delete` were rendered as tiny text actions instead of clear buttons
+- What was investigated:
+  - attempted Expo Web startup via the existing repo workflow
+  - current loop row markup, action labels, and styles in `SettingsScreen.tsx`
+- Findings:
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - the per-loop `Run` and `Delete` actions used only `padding: 4` with `fontSize: 12`, well below the app's recent 44px touch-target guardrails
+  - those actions also lacked explicit button labels/hints, making them less discoverable and less trustworthy as primary row actions
+- Change made:
+  - converted the loop action area into a full-width wrapping action row better suited to narrow screens
+  - restyled `Run now` and `Delete` as bordered button-like controls with 44px minimum touch targets and centered labels
+  - added explicit button roles, labels, and hints for running a loop immediately and opening delete confirmation
+  - added `apps/mobile/tests/agent-loops-actions.test.js` to lock the touch-target and accessibility guardrails
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8095`
+- Follow-up checks:
+  - once dependencies are installed, verify the Agent Loops action row in Expo Web on a narrow viewport and confirm the switch + buttons wrap cleanly without crowding loop content
+  - inspect the adjacent `LoopEdit` screen next so coverage moves from list-row actions into the loop create/edit flow itself
+  - continue broadening edit-flow coverage to `MemoryEdit` and `AgentEdit`
+
+Evidence
+- Scope: Settings -> Agent Loops list row actions in `apps/mobile/src/screens/SettingsScreen.tsx`
+- Before evidence: Source review showed each loop row rendering `Run` and `Delete` as tiny text controls with inline styles `padding: 4` and `fontSize: 12`, plus no explicit button labels/hints. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8095` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Reworked the loop action area into a wrapping full-width row, restyled `Run now` and `Delete` as 44px minimum touch-target buttons, and added descriptive accessibility labels/hints plus a focused regression test file.
+- After evidence: Source now shows `styles.loopActions` with `width: '100%'` and `flexWrap: 'wrap'`, and both loop actions use `styles.loopActionButton` with `createMinimumTouchTargetStyle({ minSize: 44, ... })`, explicit button semantics, and descriptive labels/hints. `apps/mobile/tests/agent-loops-actions.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (13/13 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8095` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime wrap/spacing of the new loop action row until dependencies are available.
+
+### 2026-03-09 — Iteration 6: make the session empty state actionable in-place
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - session list empty state in `apps/mobile/src/screens/SessionListScreen.tsx`
+  - intended flow: `Settings -> Go to Chats` with zero existing sessions
+- Why this area:
+  - recent iterations heavily covered `Connection` and `Chat composer`, so this pass widened screen coverage to a different major surface and state
+  - the session empty state had explanatory copy, but no in-place primary action near the empty-state content, forcing first-time users to jump back to the header button to proceed
+- What was investigated:
+  - current session empty-state rendering and styles in `SessionListScreen.tsx`
+  - current mobile/web runner setup in `apps/mobile/package.json`
+  - attempted Expo Web startup via the existing repo workflow
+- Findings:
+  - the empty state only showed `No Sessions Yet` plus helper text, with no CTA embedded in the focal empty-state area
+  - on narrow mobile layouts, that weakens actionability and hierarchy because the only visible next step lives separately in the top header
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+- Change made:
+  - updated the empty-state copy to clearer chat-focused language (`No chats yet`)
+  - added an in-place primary `Start first chat` CTA wired to the existing `handleCreateSession` flow
+  - constrained the empty-state content width and button width so the new CTA stays centered and readable on narrow mobile layouts
+  - added `apps/mobile/tests/session-list-empty-state.test.js` to lock the CTA wiring and layout guardrails
+- Verification:
+  - `node --test apps/mobile/tests/session-list-empty-state.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/navigation-header.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are installed, verify the session empty state in Expo Web on narrow viewports and confirm the CTA remains above the Rapid Fire footer without crowding
+  - continue widening coverage to under-checked screens like `AgentEdit`, `MemoryEdit`, `LoopEdit`, and session loading/error/sync states
+
+Evidence
+- Scope: Session list empty state (`Settings -> Go to Chats` with no sessions) in `apps/mobile/src/screens/SessionListScreen.tsx`
+- Before evidence: Source review showed the empty state only rendered `No Sessions Yet` plus `Start a new chat to begin a conversation`, with no in-place CTA. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8094` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Added a centered `Start first chat` button inside the empty state, wired it to `handleCreateSession`, tightened empty-state width constraints for narrow layouts, and added a focused regression test file.
+- After evidence: Source now shows the empty state rendering `Start first chat` with button semantics and the existing create-session handler; `apps/mobile/tests/session-list-empty-state.test.js` passes and locks the CTA text, wiring, and width constraints.
+- Verification commands/run results: `node --test apps/mobile/tests/session-list-empty-state.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/navigation-header.test.js` ✅ (11/11 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8094` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live Expo Web before/after visual evidence this iteration because dependencies are not installed in the worktree. Remaining uncertainty is limited to runtime spacing/visual fit of the new empty-state CTA until Expo Web can be launched.
 
 ### 2026-03-07 — Iteration 5: enlarge chat composer accessory controls and expose edit-toggle state on web
 

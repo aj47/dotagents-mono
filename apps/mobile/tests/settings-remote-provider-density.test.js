@@ -50,7 +50,7 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
 test('keeps the mobile remote-settings error banner text-first and wrap-safe', () => {
   assert.doesNotMatch(settingsSource, /⚠️ \{remoteError\}/);
   assert.match(settingsSource, /<Text style=\{styles\.warningText\}>\{remoteError\}<\/Text>/);
-  assert.match(settingsSource, /accessibilityLabel="Retry loading desktop settings"/);
+  assert.match(settingsSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Retry loading desktop settings'\)\}/);
 
   const warningStyles = extractBetween(
     'warningContainer: {',
@@ -58,7 +58,8 @@ test('keeps the mobile remote-settings error banner text-first and wrap-safe', (
   );
   assert.doesNotMatch(warningStyles, /flexDirection:\s*'row'/);
   assert.doesNotMatch(warningStyles, /justifyContent:\s*'space-between'/);
-  assert.match(warningStyles, /alignItems:\s*'flex-start'/);
-  assert.match(warningStyles, /gap:\s*spacing\.sm/);
+  assert.match(warningStyles, /alignItems:\s*'stretch'/);
+  assert.match(warningStyles, /gap:\s*spacing\.md/);
+  assert.match(warningStyles, /width:\s*'100%' as const/);
   assert.match(settingsSource, /alignSelf:\s*'stretch'/);
 });
