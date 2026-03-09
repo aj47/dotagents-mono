@@ -370,6 +370,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   appendUserMessageToSession: (sessionId: string, message: string) => {
+    clearSessionTTSTracking(sessionId)
+
     set((state) => {
       const existingProgress = state.agentProgressById.get(sessionId)
       if (!existingProgress) return state
@@ -378,6 +380,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       const existingHistory = existingProgress.conversationHistory || []
       newMap.set(sessionId, {
         ...existingProgress,
+        userResponse: undefined,
+        userResponseHistory: undefined,
         conversationHistory: [
           ...existingHistory,
           { role: "user" as const, content: message, timestamp: Date.now() },
