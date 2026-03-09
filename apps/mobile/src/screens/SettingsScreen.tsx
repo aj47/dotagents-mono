@@ -1140,7 +1140,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </Text>
 
                 {/* Voice Transcription (STT) Provider */}
-                <Text style={styles.label}>🎤 Voice Transcription (STT)</Text>
+                <Text style={styles.label}>Voice Transcription (STT)</Text>
                 <View style={styles.providerSelector}>
                   {STT_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1162,7 +1162,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
 
                 {/* Transcript Post-Processing Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>📝 Transcript Post-Processing</Text>
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Transcript Post-Processing</Text>
                 <View style={styles.providerSelector}>
                   {CHAT_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1184,7 +1184,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
 
                 {/* Agent/MCP Tools Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>🤖 Agent/MCP Tools</Text>
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Agent/MCP Tools</Text>
                 <View style={styles.providerSelector}>
                   {CHAT_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1206,7 +1206,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
 
                 {/* Text-to-Speech (TTS) Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>🔊 Text-to-Speech (TTS)</Text>
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Text-to-Speech (TTS)</Text>
                 <View style={styles.providerSelector}>
                   {TTS_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1266,7 +1266,7 @@ export default function SettingsScreen({ navigation }: any) {
                         disabled={isImportingProfile}
                       >
                         <Text style={styles.profileActionButtonText}>
-                          {isImportingProfile ? 'Importing...' : '📥 Import'}
+                          {isImportingProfile ? 'Importing...' : 'Import'}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -1275,7 +1275,7 @@ export default function SettingsScreen({ navigation }: any) {
                         disabled={!currentProfileId || isExportingProfile}
                       >
                         <Text style={styles.profileActionButtonText}>
-                          {isExportingProfile ? 'Exporting...' : '📤 Export'}
+                          {isExportingProfile ? 'Exporting...' : 'Export'}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1327,19 +1327,23 @@ export default function SettingsScreen({ navigation }: any) {
                     <TouchableOpacity
                       style={styles.modelActionButton}
                       onPress={() => setUseCustomModel(!useCustomModel)}
+                      accessibilityRole="button"
+                      accessibilityLabel={useCustomModel ? 'Show model list' : 'Enter custom model name'}
                     >
                       <Text style={styles.modelActionText}>
-                        {useCustomModel ? '📋 List' : '✏️ Custom'}
+                        {useCustomModel ? 'List' : 'Custom'}
                       </Text>
                     </TouchableOpacity>
                     {!useCustomModel && (
                       <TouchableOpacity
-                        style={styles.modelActionButton}
+                        style={[styles.modelActionButton, isLoadingModels && styles.modelActionButtonDisabled]}
                         onPress={() => remoteSettings?.mcpToolsProviderId && fetchModels(remoteSettings.mcpToolsProviderId)}
                         disabled={isLoadingModels}
+                        accessibilityRole="button"
+                        accessibilityLabel="Refresh available models"
                       >
                         <Text style={styles.modelActionText}>
-                          {isLoadingModels ? '⏳' : '🔄'}
+                          {isLoadingModels ? 'Refreshing…' : 'Refresh'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -3038,6 +3042,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelActionButton: {
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
+    },
+    modelActionButtonDisabled: {
+      opacity: 0.5,
     },
     modelActionText: {
       fontSize: 12,

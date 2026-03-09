@@ -12,6 +12,7 @@
 - [x] Mobile Chats list / session rows / stub-from-desktop state (`SessionListScreen`) — source-level narrow-width review only this iteration because Expo web runtime is still blocked before launch.
 - [x] Mobile chat screen default header + composer state (`ChatScreen`) — source-level review only this iteration because Expo web runtime was blocked before launch, but the header agent selector and default composer chrome were audited for density.
 - [x] Mobile Connection settings default disconnected/error + QR scanner close-action states (`ConnectionSettingsScreen`) — source-level review only this iteration because Expo web runtime is still blocked before launch.
+- [x] Mobile Desktop Settings → `Provider Selection` + `Profile & Model` subsections (`SettingsScreen`) — source-level review only this iteration because Expo web runtime is still blocked before launch; desktop `settings-providers.tsx` was cross-checked and this decorative-emoji / action-label issue is mobile-specific rather than shared.
 
 ### Not yet checked
 - [ ] Desktop onboarding API key / dictation / agent steps, plus live runtime validation of the welcome and setup-permissions surfaces
@@ -28,7 +29,7 @@
 - [ ] Desktop loading / error / disabled / long-content states
 - [ ] Mobile onboarding / setup / welcome / first run
 - [ ] Mobile chat follow-up flows, voice overlay states, queued-message panel, retry banner, and long-message states at small-phone and larger mobile web widths
-- [ ] Mobile settings subsections beyond the root settings screen (appearance, notifications, remote desktop settings groups, plus live runtime validation of `ConnectionSettings`)
+- [ ] Mobile settings subsections beyond the root settings screen — appearance, notifications, and remote desktop settings groups beyond `Provider Selection` / `Profile & Model`; the reviewed remote groups still need live runtime validation once Expo web is available
 - [ ] Mobile sheets / menus / tooltips / helper UI
 - [ ] Mobile empty / loading / error / success / disabled / long-content states
 - [ ] Mobile small phone width / larger mobile web width
@@ -38,6 +39,7 @@
 - [x] Mobile Chats list stub session rows used both a leading `💻` emoji and the text suffix `· from desktop`, spending narrow-row space on duplicate provenance chrome instead of the session title.
 - [x] Mobile chat screen duplicated the current-agent affordance: the navigation header already exposed a clickable current-agent badge, while `ChatScreen` also rendered a second `🤖 Agent` chip row above the composer.
 - [x] Mobile Connection settings used decorative emoji in already-labeled UI (`⚠️` error banner copy, `📷 Scan QR Code`, `✕ Close`), adding narrow-width chrome without improving orientation.
+- [x] Mobile Desktop Settings `Provider Selection` + `Profile & Model` used decorative emoji in already-labeled row headings/actions (`🎤`, `📝`, `🤖`, `🔊`, `📥 Import`, `📤 Export`, `📋 List`, `✏️ Custom`, `🔄`, `⏳`), spending narrow-width space on ornament and making the compact model-action row more cryptic than desktop's text-first equivalent; desktop `settings-providers.tsx` already uses explicit text labels plus standard icons, so this issue is mobile-specific rather than shared.
 - [x] Desktop setup / first-run permissions used a negative top offset (`-mt-20`) and hard-coded `grid-cols-2` permission rows, creating avoidable empty space and fragile action sizing on narrow or short setup windows.
 - [x] Desktop sessions empty state used oversized decorative chrome — a large muted icon bubble, full-size selector/prompts chrome, and generous vertical gaps that pushed the primary start controls lower than necessary on a high-frequency surface; the mobile `SessionListScreen` empty state is already text-only, so this issue is desktop-specific rather than shared.
 - [x] Desktop settings general `Modular config (.agents)` used both a top-level `endDescription` and an in-card explanatory paragraph, then split related folder/file actions across separate `Open` and `Reveal files in Finder/Explorer` rows, adding avoidable vertical chrome on an already dense settings page; mobile has no equivalent `.agents` surface, so this issue is desktop-specific rather than shared.
@@ -51,6 +53,7 @@
 - [x] Fixed `apps/desktop/src/renderer/src/components/ui/control.test.tsx` so the tooltip regression test now renders the nested `ControlLabel` component before traversing tooltip props, closing the QA-noted false-positive gap in the component-level assertion.
 - [x] Removed the duplicate mobile chat composer agent chip so the primary composer area goes straight from attachments into the action row, relying on the existing header badge as the single agent-selection affordance.
 - [x] Removed decorative emoji chrome from the mobile Connection settings error banner and QR scanner actions, while adding an explicit accessibility label for the scanner close control.
+- [x] Removed decorative emoji chrome from the mobile Desktop Settings `Provider Selection` + `Profile & Model` subsections, switched the compact model-action row to explicit text labels (`Custom`, `List`, `Refresh`, `Refreshing…`), and added explicit accessibility labels plus disabled-state opacity so the narrow action row stays readable without icon-only glyphs.
 - [x] Tightened the desktop setup shell, made the first-run permissions surface scroll-safe for short windows, and changed permission rows to stack by default with full-width action buttons on constrained widths before splitting into label/action columns on wider screens.
 - [x] Tightened the desktop sessions empty state by shrinking the decorative icon treatment, switching the agent selector to its existing compact mode, reducing secondary-control spacing, using the smaller predefined-prompts trigger, and pulling recent sessions closer to the primary actions without shrinking the main text/voice buttons.
 - [x] Tightened the desktop `.agents` settings block by merging its explanatory copy into one helper paragraph and consolidating folder/file buttons into a single wrap-safe `Open folders & files` row with shorter button labels.
@@ -65,6 +68,8 @@
 - [x] Targeted verification passed: `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js`.
 - [x] Source-level regression coverage added in `apps/mobile/tests/connection-settings-density.test.js`.
 - [x] Targeted mobile verification passed: `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js`.
+- [x] Source-level regression coverage added in `apps/mobile/tests/settings-remote-provider-density.test.js`.
+- [x] Targeted mobile verification passed: `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/settings-remote-provider-density.test.js`.
 - [x] Dependency-free desktop regression coverage added in `apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Re-ran `node --test apps/desktop/tests/control-tooltip-density.test.mjs` after the QA remediation; all 3 desktop tooltip density assertions still passed.
@@ -80,6 +85,7 @@
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
 - [x] Live mobile runtime inspection is still blocked in this worktree: `pnpm dev:mobile -- --web` failed with `expo: command not found`, `node_modules missing`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` before any screenshot capture.
+- [x] Live mobile runtime inspection is still blocked for remote-settings subsection review in this worktree: `pnpm dev:mobile -- --web` failed with `expo: command not found`, `node_modules missing`, `spawn ENOENT`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` before Expo web launched or any screenshots could be captured.
 - [x] Live desktop runtime inspection not attempted after the same dependency blocker pattern because local app dependencies appear unavailable.
 - [x] Live desktop renderer inspection remained blocked this iteration: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` failed during `@dotagents/shared build` with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing` warnings.
 - [x] Targeted desktop Vitest execution remained blocked for the same reason: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` failed before Vitest ran because `pnpm -w run build:shared` could not find `tsup`.
@@ -99,6 +105,7 @@
 - [ ] Mobile chat composer, header action row, and voice-related controls still need live narrow-width review for density and possible control crowding.
 - [ ] Mobile chat header badge and composer now avoid duplicate agent-selection chrome in source, but the real small-phone header truncation, keyboard-open layout, and agent-selector sheet entry flow still need live screenshot-backed validation.
 - [ ] Mobile Connection settings now use plain-text error/scan/close labels in source, but the real Expo-web or device layout still needs screenshot-backed review for scanner modal overlay placement, close-button hit safety, and disconnected-state density.
+- [ ] Mobile Desktop Settings `Provider Selection` + `Profile & Model` are cleaner in source, but Expo web or device screenshots are still needed to validate provider-chip wrapping, profile-action balance, and the compact model-action row at small-phone and larger mobile-web widths.
 
 ### Iterations
 
@@ -209,3 +216,12 @@ Evidence
 - After evidence: Source now renders the welcome step as a narrower, denser hero (`mx-auto max-w-xl`, `text-5xl sm:text-6xl`, `text-2xl font-bold`, `mb-6` copy, `w-full max-w-56` CTA, `size="sm"` skip button), which should keep the first actionable step higher in constrained onboarding windows without removing orientation.
 - Verification commands/run results: `electron_execute_electron-native` → failed (`Failed to list CDP targets. Make sure Electron is running with --inspect flag.`). `node --test apps/desktop/tests/onboarding-welcome-density.test.mjs` → passed (2 tests, 0 failures, exit 0).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because no live Electron renderer target was available in this worktree and desktop launch remains dependency-blocked; visual validation of the real onboarding window's balance, CTA prominence, and any downstream step spacing remains pending once runtime access is restored.
+
+#### Iteration 13
+Evidence
+- Scope: Mobile Desktop Settings `Provider Selection` + `Profile & Model` subsection density, with a cross-check against desktop `settings-providers.tsx` for shared-vs-platform-specific behavior.
+- Before evidence: Source-backed observation only because runtime was blocked — `pnpm dev:mobile -- --web` failed before Expo launch with `expo: command not found`, `node_modules missing`, `spawn ENOENT`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`, so no screenshot capture was possible. In `apps/mobile/src/screens/SettingsScreen.tsx`, the reviewed remote-settings subsections used decorative emoji in already-labeled headings/actions (`🎤`, `📝`, `🤖`, `🔊`, `📥 Import`, `📤 Export`, `📋 List`, `✏️ Custom`, `🔄`, `⏳`), which spent narrow-width space on ornament and made the compact model-action row cryptic. Cross-check: desktop `apps/desktop/src/renderer/src/pages/settings-providers.tsx` already uses explicit text labels plus standard icons, so this issue is mobile-specific rather than shared.
+- Change: Removed the decorative emoji from the mobile provider labels and profile/model action text, converted the model action row to explicit text labels (`Custom`, `List`, `Refresh`, `Refreshing…`), added explicit accessibility labels for the compact model actions, added disabled-state opacity for the refresh action, and added `apps/mobile/tests/settings-remote-provider-density.test.js` to keep the subsection text-first.
+- After evidence: Source now renders the reviewed mobile remote-settings subsections with plain-text labels and compact text-first actions, which should reduce visual noise and make the model-mode controls easier to scan and understand on narrow widths without adding extra chrome.
+- Verification commands/run results: `pnpm dev:mobile -- --web` → failed before Expo launch (`expo: command not found`, `node_modules missing`, `spawn ENOENT`, `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`, exit 1). `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/settings-remote-provider-density.test.js` → passed (4 tests, 0 failures, exit 0).
+- Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch in this worktree without installed dependencies; live validation of provider-chip wrapping, action-row balance, and real tap targets remains pending once runtime access is restored.
