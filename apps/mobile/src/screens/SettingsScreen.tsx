@@ -152,6 +152,22 @@ const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: '⚙️ System', value: 'system' },
 ];
 
+const formatMemoryMetadata = (memory: Memory) => {
+  const tagPreview = memory.tags.slice(0, 3);
+  const hiddenTagCount = Math.max(memory.tags.length - tagPreview.length, 0);
+  const metadataParts: string[] = [];
+
+  if (tagPreview.length > 0) {
+    metadataParts.push(tagPreview.join(' · '));
+    if (hiddenTagCount > 0) {
+      metadataParts.push(`+${hiddenTagCount} more`);
+    }
+  }
+
+  metadataParts.push(`${memory.importance.charAt(0).toUpperCase()}${memory.importance.slice(1)} importance`);
+  return metadataParts.join(' • ');
+};
+
 export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme, themeMode, setThemeMode } = useTheme();
@@ -2084,21 +2100,7 @@ export default function SettingsScreen({ navigation }: any) {
                         <View style={[styles.serverInfo, { flex: 1 }]}> 
                           <Text style={styles.serverName}>{memory.title}</Text>
                           <Text style={styles.serverMeta} numberOfLines={2}>{memory.content}</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
-                            {memory.tags.map((tag, idx) => (
-                              <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
-                              </View>
-                            ))}
-                            <View style={[
-                              styles.providerOption,
-                              { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 },
-                              memory.importance === 'critical' && { backgroundColor: theme.colors.destructive },
-                              memory.importance === 'high' && { backgroundColor: theme.colors.primary },
-                            ]}>
-                              <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{memory.importance}</Text>
-                            </View>
-                          </View>
+                          <Text style={styles.memoryMetaText} numberOfLines={1}>{formatMemoryMetadata(memory)}</Text>
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -2116,10 +2118,10 @@ export default function SettingsScreen({ navigation }: any) {
                   style={styles.createAgentButton}
                   onPress={() => handleMemoryEdit()}
                 >
-                  <Text style={styles.createAgentButtonText}>+ Create Memory</Text>
+                  <Text style={styles.createAgentButtonText}>Create memory</Text>
                 </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Tap a memory to edit or create a new one
+                  Tap a memory to edit.
                 </Text>
               </CollapsibleSection>
             )}
@@ -3052,6 +3054,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.destructive,
       fontSize: 12,
       fontWeight: '500',
+    },
+    memoryMetaText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
+      lineHeight: 16,
     },
     loopActions: {
       alignItems: 'center',
