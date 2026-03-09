@@ -15,5 +15,10 @@ test('desktop repeat-task settings remove the dedicated page-title chrome from t
 })
 
 test('desktop repeat-task settings keep the primary action in a compact top-right row', () => {
-  assert.match(settingsLoopsSource, /\{!editing && \([\s\S]*?<div className="mb-3 flex flex-wrap items-center justify-end gap-2">[\s\S]*?<Button size="sm" className="gap-1\.5" onClick=\{handleCreate\}>[\s\S]*?Add Task/)
+  assert.match(settingsLoopsSource, /<div className="mb-3 flex flex-wrap items-center justify-end gap-2">[\s\S]*?<Button size="sm" className="gap-1\.5" onClick=\{handleCreate\}>[\s\S]*?Add Task/)
+})
+
+test('desktop repeat-task settings keep add-task available while the edit form provides local orientation', () => {
+  assert.doesNotMatch(settingsLoopsSource, /\{!editing && \(/)
+  assert.match(settingsLoopsSource, /<CardTitle className="text-lg">\{isCreating \? "Add Repeat Task" : "Edit Repeat Task"\}<\/CardTitle>/)
 })

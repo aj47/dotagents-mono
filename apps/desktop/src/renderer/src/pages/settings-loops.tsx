@@ -417,13 +417,11 @@ export function SettingsLoops() {
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
-      {!editing && (
-        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-          <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-            <Plus className="h-3.5 w-3.5" />Add Task
-          </Button>
-        </div>
-      )}
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+        <Button size="sm" className="gap-1.5" onClick={handleCreate}>
+          <Plus className="h-3.5 w-3.5" />Add Task
+        </Button>
+      </div>
       {editing ? renderEditForm() : renderLoopList()}
     </div>
   )

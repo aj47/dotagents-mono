@@ -75,7 +75,7 @@
 - [x] Tightened the desktop `Capabilities → MCP Servers` tab shell by removing the redundant intro paragraph and top divider wrapper above `MCPConfigManager`, so the manager heading and primary tools/server controls appear sooner under the tab bar.
 - [x] Removed the redundant `Provider Selection` helper sentence from both desktop `settings-providers.tsx` and mobile `SettingsScreen.tsx`, so the first provider control appears immediately under the section title while keeping the desktop ACP note and all provider labels/actions intact.
 - [x] Tightened the desktop memories empty/search-miss state by replacing the centered hero treatment with a compact dashed panel and smaller title/copy block, so the empty result sits more quietly under the existing page title, file-template helper, and search/filter controls.
-- [x] Tightened the desktop `Repeat Tasks` page shell by removing the dedicated title/description header band and moving `Add Task` into a compact top-right action row inside the existing scroll container, so more list or form content appears above the fold without changing task actions.
+- [x] Tightened the desktop `Repeat Tasks` page shell by removing the dedicated title/description header band and keeping `Add Task` in a compact top-right action row inside the existing scroll container across both list and edit states, so more list or form content appears above the fold without changing task actions.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
@@ -110,6 +110,7 @@
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/memories-empty-state-density.test.mjs`.
 - [x] Dependency-free desktop repeat-task shell density regression coverage added in `apps/desktop/tests/settings-loops-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/settings-loops-density.test.mjs`.
+- [x] Expanded `apps/desktop/tests/settings-loops-density.test.mjs` during QA remediation so it now covers the edit-shell action contract (`Add Task` remains available while editing) in addition to the list-shell header cleanup.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
@@ -303,9 +304,18 @@ Evidence
 
 #### Iteration 18
 Evidence
-- Scope: Desktop settings `Repeat Tasks` list + edit shell density, with a cross-check against nearby desktop settings pages and the inline mobile `Agent Loops` subsection.
+- Scope: Desktop settings `Repeat Tasks` list shell density, with a cross-check against nearby desktop settings pages and the inline mobile `Agent Loops` subsection.
 - Before evidence: Source-backed observation only because runtime was blocked — `list-processes` returned `No processes found`, `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` reported `NODE_MODULES_MISSING`, and `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, so no screenshot capture was possible. In `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, the list view rendered a dedicated `Repeat Tasks` title, explanatory sentence, and `border-b` header band above the actual content. Cross-check: neighboring desktop settings pages such as `settings-agents.tsx` and `settings-mcp-tools.tsx` already rely on navigation context plus local action rows or form titles, and mobile keeps `Agent Loops` inline inside `SettingsScreen`, so this extra wrapper chrome was desktop-specific rather than shared.
 - Change: Removed the dedicated desktop repeat-task header band from `settings-loops.tsx`, moved `Add Task` into a compact top-right action row within the existing scroll container, and added dependency-free regression coverage in `apps/desktop/tests/settings-loops-density.test.mjs` to keep the list view free of the extra title/description chrome.
-- After evidence: Source now opens the desktop repeat-task surface directly into the action row and the list or edit form, which should keep more task content above the fold while preserving the existing form card title for edit-mode orientation.
+- After evidence: Source now opens the desktop repeat-task surface directly into the action row and the list view, which should keep more task content above the fold; edit-mode action availability was not separately audited in that iteration.
 - Verification commands/run results: `node --test apps/desktop/tests/settings-loops-density.test.mjs` → passed (2 tests, 0 failures, exit 0). Runtime validation remained blocked because `list-processes` found no running app surfaces, `electron_execute_electron-native` could not attach, and `NODE_MODULES_MISSING` prevented launching Electron or Expo web in this worktree.
 - Blockers/remaining uncertainty: No before/after screenshots were possible because the desktop renderer still cannot launch in this worktree without local dependencies, so the real repeat-task list density, edit-form spacing, and awkward-height behavior still need screenshot-backed validation once runtime access is restored.
+
+#### Iteration 19
+Evidence
+- Scope: QA remediation for desktop `Repeat Tasks` edit-shell action availability and verification accuracy.
+- Before evidence: QA found that `apps/desktop/src/renderer/src/pages/settings-loops.tsx` gated the top-level `Add Task` row behind `!editing`, so the compact-shell cleanup changed edit-mode behavior even though Iteration 18 described it as preserving task actions. Runtime remained unavailable in this worktree because `test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING` reported `NODE_MODULES_MISSING`.
+- Change: Removed the `!editing` gate so the compact top-right `Add Task` action remains available in both list and edit states, expanded `apps/desktop/tests/settings-loops-density.test.mjs` to cover that edit-shell action contract plus the existing edit-form title, and corrected Iteration 18's ledger wording so it no longer overstates edit-shell verification.
+- After evidence: Source now keeps the denser repeat-task shell while restoring the pre-existing edit-mode action availability, and the ledger/test coverage explicitly distinguishes the original list-shell cleanup from the QA-remediated edit-shell contract.
+- Verification commands/run results: `test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING` → `NODE_MODULES_MISSING` (exit 0). `node --test apps/desktop/tests/settings-loops-density.test.mjs` → passed (3 tests, 0 failures, exit 0).
+- Blockers/remaining uncertainty: No before/after screenshots were possible because local desktop/mobile dependencies are still unavailable in this worktree, so live repeat-task list/edit-shell screenshot validation remains pending until Electron can launch.
