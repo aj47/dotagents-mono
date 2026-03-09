@@ -1125,8 +1125,13 @@ export default function SettingsScreen({ navigation }: any) {
 
             {remoteError && (
               <View style={styles.warningContainer}>
-                <Text style={styles.warningText}>⚠️ {remoteError}</Text>
-                <TouchableOpacity onPress={fetchRemoteSettings} accessibilityRole="button" accessibilityLabel="Retry">
+                <Text style={styles.warningText}>{remoteError}</Text>
+                <TouchableOpacity
+                  style={styles.warningAction}
+                  onPress={fetchRemoteSettings}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading desktop settings"
+                >
                   <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
               </View>
@@ -2791,20 +2796,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: '#f59e0b', // amber-500
       borderRadius: radius.md,
       padding: spacing.md,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      gap: spacing.sm,
+      alignItems: 'flex-start',
     },
     warningText: {
       color: '#d97706', // amber-600
       fontSize: 14,
-      flex: 1,
+      lineHeight: 20,
+      alignSelf: 'stretch',
+    },
+    warningAction: {
+      alignSelf: 'flex-start',
     },
     retryText: {
       color: theme.colors.primary,
       fontSize: 14,
       fontWeight: '600',
-      marginLeft: spacing.sm,
     },
     profileList: {
       gap: spacing.xs,

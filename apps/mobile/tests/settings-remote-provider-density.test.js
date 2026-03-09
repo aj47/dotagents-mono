@@ -46,3 +46,19 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, /accessibilityLabel=\{useCustomModel \? 'Show model list' : 'Enter custom model name'\}/);
   assert.match(profileModelSection, /accessibilityLabel="Refresh available models"/);
 });
+
+test('keeps the mobile remote-settings error banner text-first and wrap-safe', () => {
+  assert.doesNotMatch(settingsSource, /⚠️ \{remoteError\}/);
+  assert.match(settingsSource, /<Text style=\{styles\.warningText\}>\{remoteError\}<\/Text>/);
+  assert.match(settingsSource, /accessibilityLabel="Retry loading desktop settings"/);
+
+  const warningStyles = extractBetween(
+    'warningContainer: {',
+    'warningText: {'
+  );
+  assert.doesNotMatch(warningStyles, /flexDirection:\s*'row'/);
+  assert.doesNotMatch(warningStyles, /justifyContent:\s*'space-between'/);
+  assert.match(warningStyles, /alignItems:\s*'flex-start'/);
+  assert.match(warningStyles, /gap:\s*spacing\.sm/);
+  assert.match(settingsSource, /alignSelf:\s*'stretch'/);
+});
