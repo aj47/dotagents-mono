@@ -355,12 +355,21 @@ class AgentSessionTracker {
    * Clear all completed/recent sessions (move to history)
    * Active sessions are preserved
    */
-  clearCompletedSessions(): void {
-    logApp(`[AgentSessionTracker] Clearing ${this.completedSessions.length} completed sessions`)
+  clearCompletedSessions(
+    shouldClear: (session: AgentSession) => boolean = () => true,
+  ): void {
+    const retainedSessions: AgentSession[] = []
+
     for (const session of this.completedSessions) {
-      clearSessionUserResponse(session.id)
+      if (shouldClear(session)) {
+        clearSessionUserResponse(session.id)
+      } else {
+        retainedSessions.push(session)
+      }
     }
-    this.completedSessions = []
+
+    logApp(`[AgentSessionTracker] Cleared ${this.completedSessions.length - retainedSessions.length} completed sessions`)
+    this.completedSessions = retainedSessions
     emitSessionUpdate()
   }
 }

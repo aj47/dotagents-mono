@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import type { AgentProfile, AgentProfileRole } from "../shared/types"
 
 const mockAgentProfileService = {
-  getByRole: vi.fn(() => []),
-  getCurrentProfile: vi.fn(() => undefined),
+  getByRole: vi.fn((_role: AgentProfileRole) => [] as AgentProfile[]),
+  getCurrentProfile: vi.fn(() => undefined as AgentProfile | undefined),
 }
 
 // Avoid pulling in real ACP/services (can have side effects / require Electron runtime)
@@ -50,9 +51,13 @@ describe("constructSystemPrompt", () => {
     mockAgentProfileService.getByRole.mockReturnValue([
       {
         id: "augustus",
+        name: "augustus",
         enabled: true,
         displayName: "augustus",
         description: "Augment Code's AI coding assistant with native ACP support",
+        connection: { type: "internal" },
+        createdAt: 0,
+        updatedAt: 0,
       },
     ])
 

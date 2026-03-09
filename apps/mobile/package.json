@@ -7,7 +7,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "vitest run"
+    "test": "pnpm run test:node && pnpm run test:vitest",
+    "test:node": "node --experimental-strip-types --test \"tests/*.js\" \"tests/*.mjs\"",
+    "test:vitest": "vitest run src/lib/accessibility.test.ts"
   },
   "dependencies": {
     "@dotagents/shared": "workspace:^",

@@ -83,7 +83,7 @@ function emptyAgent(): EditingAgent {
 }
 
 function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number): string[] {
-  const items = [agent.connection.type]
+  const items: string[] = [agent.connection.type]
 
   if (agent.modelConfig?.mcpToolsProviderId) {
     items.push(agent.modelConfig.mcpToolsProviderId)

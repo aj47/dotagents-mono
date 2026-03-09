@@ -881,7 +881,7 @@ export function Component() {
 
   useEffect(() => {
     return () => {
-      for (const timeout of Object.values(providerSaveTimeoutsRef.current)) {
+      for (const timeout of Object.values(providerSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
       }
     }

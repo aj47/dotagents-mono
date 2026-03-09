@@ -5,6 +5,7 @@ import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
   Conversation,
+  ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
 } from "../shared/types"
@@ -491,7 +492,7 @@ export class ConversationService {
       return changed
     }
 
-    const nextCompaction = {
+    const nextCompaction: ConversationCompactionMetadata = {
       ...conversation.compaction,
       rawHistoryPreserved: !isLegacyPartial,
       storedRawMessageCount: hasRawMessages ? conversation.rawMessages?.length : undefined,

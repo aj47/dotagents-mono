@@ -13,6 +13,10 @@
     "lint": "pnpm -r lint",
     "format": "pnpm -r format"
   },
+  "engines": {
+    "node": ">=20.19.4 <25",
+    "pnpm": "9.x"
+  },
   "packageManager": "pnpm@9.12.1",
   "pnpm": {
     "overrides": {

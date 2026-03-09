@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-- **Node.js 18+** and **pnpm** (required package manager)
+- **Node.js 24.x** recommended via `.nvmrc` (**minimum supported:** `20.19.4`)
+- **pnpm 9** (required package manager)
 - **Rust toolchain** for the native keyboard/input binary
 - **Xcode** (macOS only) for code signing
 
@@ -16,6 +17,7 @@
 ```bash
 git clone https://github.com/aj47/dotagents-mono.git
 cd dotagents-mono
+nvm use
 pnpm install
 pnpm build-rs  # Build Rust binary
 pnpm dev       # Start development server
@@ -131,11 +133,11 @@ pnpm.cmd -C apps/desktop exec electron-builder install-app-deps
 
 ### Node version mismatch
 
-This project requires Node.js 18-20:
+This project is tested with Node.js 24.x and requires at least Node.js 20.19.4:
 
 ```bash
-node --version  # Should be v18.x, v19.x, or v20.x
-nvm use 20      # If using nvm
+node --version  # Recommended: v24.x
+nvm use         # Uses the repo's .nvmrc (24.1.0)
 ```
 
 ## Architecture

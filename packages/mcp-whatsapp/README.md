@@ -12,7 +12,7 @@ This MCP (Model Context Protocol) server enables WhatsApp messaging capabilities
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24.x recommended via the repo `.nvmrc` (minimum: 20.19.4)
 - A WhatsApp account with the mobile app installed
 - SpeakMCP desktop app running (for auto-reply feature)
 
