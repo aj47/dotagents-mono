@@ -25,3 +25,10 @@ test('keeps push notifications as a single labeled row instead of a duplicate se
 test('preserves breathing room before the push notifications row after removing the extra heading', () => {
   assert.match(settingsSource, /sectionLeadRow:\s*\{[\s\S]*?marginTop: spacing\.lg,/);
 });
+
+test('keeps a global save button visible on mobile settings so typed changes are easy to persist', () => {
+  assert.match(settingsSource, /Save changes/);
+  assert.match(settingsSource, /Save settings now/);
+  assert.match(settingsSource, /flushAllSettingsSaves/);
+  assert.match(settingsSource, /saveBar:/);
+});

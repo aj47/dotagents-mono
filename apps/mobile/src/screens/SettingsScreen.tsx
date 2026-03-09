@@ -162,6 +162,10 @@ export default function SettingsScreen({ navigation }: any) {
   const { theme, themeMode, setThemeMode } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
   const [draft, setDraft] = useState<AppConfig>(config);
+  const [hasPendingLocalSave, setHasPendingLocalSave] = useState(false);
+  const [pendingRemoteSaveKeys, setPendingRemoteSaveKeys] = useState<string[]>([]);
+  const [isSavingAllSettings, setIsSavingAllSettings] = useState(false);
+  const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null);
   const { setCurrentProfile: setProfileContext } = useProfile();
 
   // Push notification state
@@ -247,6 +251,45 @@ export default function SettingsScreen({ navigation }: any) {
   const inputTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  useEffect(() => {
+    setDraft(config);
+    setHasPendingLocalSave(false);
+  }, [ready, config]);
+
+  const markRemotePending = useCallback((key: string) => {
+    setPendingRemoteSaveKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }, []);
+
+  const clearRemotePending = useCallback((key: string) => {
+    setPendingRemoteSaveKeys((prev) => prev.filter((entry) => entry !== key));
+  }, []);
+
+  const clearAllRemoteTimeouts = useCallback(() => {
+    Object.entries(inputTimeoutRefs.current).forEach(([key, timeout]) => {
+      clearTimeout(timeout);
+      delete inputTimeoutRefs.current[key];
+    });
+    if (modelUpdateTimeoutRef.current) {
+      clearTimeout(modelUpdateTimeoutRef.current);
+      modelUpdateTimeoutRef.current = null;
+    }
+  }, []);
+
+  const updateDraftField = useCallback((patch: Partial<AppConfig>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
+    setHasPendingLocalSave(true);
+    setSaveStatusMessage(null);
+  }, []);
+
+  const updateLocalConfig = useCallback((patch: Partial<AppConfig>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    setConfig(next);
+    void saveConfig(next);
+    setHasPendingLocalSave(false);
+    setSaveStatusMessage('Saved');
+  }, [draft, setConfig]);
 
   // Create settings API client when we have valid credentials
   const settingsClient = useMemo(() => {
@@ -540,6 +583,8 @@ export default function SettingsScreen({ navigation }: any) {
     // Update local draft immediately for responsive UI
     setInputDrafts(prev => ({ ...prev, [key]: String(value) }));
     setRemoteSettings(prev => prev ? { ...prev, [key]: value } : null);
+    markRemotePending(String(key));
+    setSaveStatusMessage(null);
 
     // Cancel any pending update for this key
     if (inputTimeoutRefs.current[key]) {
@@ -552,6 +597,8 @@ export default function SettingsScreen({ navigation }: any) {
 
       try {
         await settingsClient.updateSettings({ [key]: value });
+        clearRemotePending(String(key));
+        delete inputTimeoutRefs.current[key];
       } catch (error: any) {
         console.error(`[Settings] Failed to update ${key}:`, error);
         setRemoteError(error.message || `Failed to update ${key}`);
@@ -559,7 +606,7 @@ export default function SettingsScreen({ navigation }: any) {
         fetchRemoteSettings();
       }
     }, 1000);
-  }, [settingsClient, fetchRemoteSettings]);
+  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
 
   // Cleanup input timeouts on unmount
   useEffect(() => {
@@ -836,6 +883,13 @@ export default function SettingsScreen({ navigation }: any) {
   const handleModelNameChange = useCallback((modelName: string) => {
     // Update draft state immediately for responsive UI
     setCustomModelDraft(modelName);
+    if (remoteSettings) {
+      const pendingModelKey = remoteSettings.mcpToolsProviderId === 'openai' ? 'mcpToolsOpenaiModel'
+        : remoteSettings.mcpToolsProviderId === 'groq' ? 'mcpToolsGroqModel'
+        : 'mcpToolsGeminiModel';
+      markRemotePending(pendingModelKey);
+    }
+    setSaveStatusMessage(null);
 
     // Cancel any pending update
     if (modelUpdateTimeoutRef.current) {
@@ -856,6 +910,8 @@ export default function SettingsScreen({ navigation }: any) {
 
       try {
         await settingsClient.updateSettings({ [modelKey]: modelName });
+        clearRemotePending(modelKey);
+        modelUpdateTimeoutRef.current = null;
       } catch (error: any) {
         console.error('[Settings] Failed to update model:', error);
         setRemoteError(error.message || 'Failed to update model');
@@ -863,7 +919,7 @@ export default function SettingsScreen({ navigation }: any) {
         fetchRemoteSettings();
       }
     }, 500);
-  }, [settingsClient, remoteSettings, fetchRemoteSettings]);
+  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, remoteSettings, settingsClient]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -923,16 +979,115 @@ export default function SettingsScreen({ navigation }: any) {
     );
   }, [availableModels, modelSearchQuery]);
 
-  useEffect(() => {
-    setDraft(config);
-  }, [ready, config]);
+  const flushAllSettingsSaves = useCallback(async () => {
+    if (isSavingAllSettings) return;
 
-  const updateLocalConfig = useCallback((patch: Partial<AppConfig>) => {
-    const next = { ...draft, ...patch };
-    setDraft(next);
-    setConfig(next);
-    void saveConfig(next);
-  }, [draft, setConfig]);
+    setIsSavingAllSettings(true);
+    setSaveStatusMessage('Saving…');
+
+    try {
+      setConfig(draft);
+      await saveConfig(draft);
+      setHasPendingLocalSave(false);
+
+      if (settingsClient && remoteSettings) {
+        clearAllRemoteTimeouts();
+
+        const updates: SettingsUpdate = {};
+        const pendingKeys = new Set(pendingRemoteSaveKeys);
+
+        if (pendingKeys.has('sttLanguage')) {
+          updates.sttLanguage = inputDrafts.sttLanguage ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingPrompt')) {
+          updates.transcriptPostProcessingPrompt = inputDrafts.transcriptPostProcessingPrompt ?? '';
+        }
+        if (pendingKeys.has('langfusePublicKey')) {
+          updates.langfusePublicKey = inputDrafts.langfusePublicKey ?? '';
+        }
+        if (pendingKeys.has('langfuseBaseUrl')) {
+          updates.langfuseBaseUrl = inputDrafts.langfuseBaseUrl ?? '';
+        }
+        if (pendingKeys.has('mcpMaxIterations')) {
+          const parsedIterations = parseInt(inputDrafts.mcpMaxIterations ?? '', 10);
+          if (Number.isNaN(parsedIterations) || parsedIterations < 1 || parsedIterations > 100) {
+            throw new Error('Max Iterations must be between 1 and 100 before saving.');
+          }
+          updates.mcpMaxIterations = parsedIterations;
+        }
+        if (pendingKeys.has('whatsappAllowFrom')) {
+          updates.whatsappAllowFrom = (inputDrafts.whatsappAllowFrom ?? '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+        }
+
+        const modelKey = remoteSettings.mcpToolsProviderId === 'openai'
+          ? 'mcpToolsOpenaiModel'
+          : remoteSettings.mcpToolsProviderId === 'groq'
+            ? 'mcpToolsGroqModel'
+            : 'mcpToolsGeminiModel';
+        if (pendingKeys.has(modelKey)) {
+          if (modelKey === 'mcpToolsOpenaiModel') {
+            updates.mcpToolsOpenaiModel = customModelDraft;
+          } else if (modelKey === 'mcpToolsGroqModel') {
+            updates.mcpToolsGroqModel = customModelDraft;
+          } else {
+            updates.mcpToolsGeminiModel = customModelDraft;
+          }
+        }
+
+        const langfuseSecretDraft = inputDrafts.langfuseSecretKey?.trim();
+        if (pendingKeys.has('langfuseSecretKey') && langfuseSecretDraft) {
+          updates.langfuseSecretKey = langfuseSecretDraft;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await settingsClient.updateSettings(updates);
+          setRemoteSettings((prev) => prev ? {
+            ...prev,
+            ...updates,
+            ...(updates.langfuseSecretKey ? { langfuseSecretKey: '••••••••' } : {}),
+          } : null);
+
+          if (updates.langfuseSecretKey) {
+            setInputDrafts((prev) => ({ ...prev, langfuseSecretKey: '' }));
+          }
+        }
+
+        setPendingRemoteSaveKeys([]);
+      }
+
+      setSaveStatusMessage('Saved');
+    } catch (error: any) {
+      const message = error?.message || 'Failed to save settings';
+      setRemoteError(message);
+      setSaveStatusMessage(message);
+    } finally {
+      setIsSavingAllSettings(false);
+    }
+  }, [
+    clearAllRemoteTimeouts,
+    customModelDraft,
+    draft,
+    inputDrafts,
+    isSavingAllSettings,
+    pendingRemoteSaveKeys,
+    remoteSettings,
+    saveConfig,
+    setConfig,
+    settingsClient,
+  ]);
+
+  const hasPendingSaves = hasPendingLocalSave || pendingRemoteSaveKeys.length > 0;
+  const saveButtonLabel = isSavingAllSettings
+    ? 'Saving…'
+    : hasPendingSaves
+      ? 'Save changes'
+      : 'Save settings now';
+  const saveButtonHint = hasPendingSaves
+    ? 'Save all current settings immediately, including typed edits that have not blurred yet.'
+    : 'Save the current settings again if you want a clear confirmation.';
 
 
   // CollapsibleSection component
@@ -972,7 +1127,8 @@ export default function SettingsScreen({ navigation }: any) {
     <>
       <ScrollView
         style={{ backgroundColor: theme.colors.background }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}
+        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing['3xl'] + 120 }]}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1063,7 +1219,7 @@ export default function SettingsScreen({ navigation }: any) {
         <TextInput
           style={styles.input}
           value={draft.handsFreeWakePhrase || 'hey dot agents'}
-          onChangeText={(value) => setDraft({ ...draft, handsFreeWakePhrase: value })}
+          onChangeText={(value) => updateDraftField({ handsFreeWakePhrase: value })}
           onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draft.handsFreeWakePhrase || 'hey dot agents' })}
           placeholder='hey dot agents'
           placeholderTextColor={theme.colors.mutedForeground}
@@ -1075,7 +1231,7 @@ export default function SettingsScreen({ navigation }: any) {
         <TextInput
           style={styles.input}
           value={draft.handsFreeSleepPhrase || 'go to sleep'}
-          onChangeText={(value) => setDraft({ ...draft, handsFreeSleepPhrase: value })}
+          onChangeText={(value) => updateDraftField({ handsFreeSleepPhrase: value })}
           onEndEditing={() => updateLocalConfig({ handsFreeSleepPhrase: draft.handsFreeSleepPhrase || 'go to sleep' })}
           placeholder='go to sleep'
           placeholderTextColor={theme.colors.mutedForeground}
@@ -1853,6 +2009,8 @@ export default function SettingsScreen({ navigation }: any) {
                   style={styles.input}
                   value={inputDrafts.mcpMaxIterations ?? '10'}
                   onChangeText={(v) => {
+                    markRemotePending('mcpMaxIterations');
+                    setSaveStatusMessage(null);
                     const num = parseInt(v, 10);
                     if (!isNaN(num) && num >= 1 && num <= 100) {
                       handleRemoteSettingUpdate('mcpMaxIterations', num);
@@ -1987,6 +2145,8 @@ export default function SettingsScreen({ navigation }: any) {
                       style={styles.input}
                       value={inputDrafts.whatsappAllowFrom ?? ''}
                       onChangeText={(v) => {
+                        markRemotePending('whatsappAllowFrom');
+                        setSaveStatusMessage(null);
                         // Update the text draft immediately for responsive UI
                         setInputDrafts(prev => ({ ...prev, whatsappAllowFrom: v }));
                         // Parse comma-separated numbers and debounce the API update
@@ -2000,6 +2160,8 @@ export default function SettingsScreen({ navigation }: any) {
                           if (!settingsClient) return;
                           try {
                             await settingsClient.updateSettings({ whatsappAllowFrom: numbers });
+                            clearRemotePending('whatsappAllowFrom');
+                            delete inputTimeoutRefs.current.whatsappAllowFrom;
                           } catch (error: any) {
                             console.error('[Settings] Failed to update whatsappAllowFrom:', error);
                             setRemoteError(error.message || 'Failed to update whatsappAllowFrom');
@@ -2072,12 +2234,18 @@ export default function SettingsScreen({ navigation }: any) {
                     <TextInput
                       style={styles.input}
                       value={inputDrafts.langfuseSecretKey ?? ''}
-                      onChangeText={(v) => setInputDrafts(prev => ({ ...prev, langfuseSecretKey: v }))}
+                      onChangeText={(v) => {
+                        markRemotePending('langfuseSecretKey');
+                        setSaveStatusMessage(null);
+                        setInputDrafts(prev => ({ ...prev, langfuseSecretKey: v }));
+                      }}
                       onBlur={() => {
                         const value = inputDrafts.langfuseSecretKey;
                         if (value !== undefined && value !== '' && settingsClient) {
                           settingsClient.updateSettings({ langfuseSecretKey: value }).then(() => {
                             setRemoteSettings(prev => prev ? { ...prev, langfuseSecretKey: '••••••••' } : null);
+                            clearRemotePending('langfuseSecretKey');
+                            setInputDrafts(prev => ({ ...prev, langfuseSecretKey: '' }));
                           }).catch((error: any) => {
                             console.error('[Settings] Failed to update langfuseSecretKey:', error);
                             setRemoteError(error.message || 'Failed to update langfuseSecretKey');
@@ -2341,6 +2509,23 @@ export default function SettingsScreen({ navigation }: any) {
         )}
 
       </ScrollView>
+
+	      <View style={[styles.saveBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+	        <TouchableOpacity
+	          style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
+	          onPress={() => { void flushAllSettingsSaves(); }}
+	          disabled={isSavingAllSettings}
+	          activeOpacity={0.85}
+	          accessibilityRole="button"
+	          accessibilityLabel={saveButtonLabel}
+	          accessibilityHint={saveButtonHint}
+	        >
+	          <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
+	        </TouchableOpacity>
+	        <Text style={styles.saveBarHint}>
+	          {saveStatusMessage || saveButtonHint}
+	        </Text>
+	      </View>
 
       {/* Model Picker Modal */}
       <Modal
@@ -2867,6 +3052,27 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primaryForeground,
       fontSize: 16,
       fontWeight: '600',
+    },
+    saveBar: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.sm,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: -2 },
+      elevation: 8,
+    },
+    saveBarButton: {
+      marginTop: 0,
+    },
+    saveBarHint: {
+      marginTop: spacing.xs,
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      textAlign: 'center',
     },
     // Remote settings styles
     subsectionTitle: {
