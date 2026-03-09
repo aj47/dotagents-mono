@@ -16,11 +16,12 @@
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
 - [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
+- [x] Agent create/edit screen (`AgentEdit`) connection-type selection and mode-specific fields (source-backed in this worktree)
 
 ### Not yet checked
 
-- [ ] Agent create/edit screen (`AgentEdit`)
 - [ ] Memory create/edit screen (`MemoryEdit`)
+- [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
 - [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
@@ -34,6 +35,7 @@
 - [x] Weak Connection inline action affordances
 - [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
 - [x] LoopEdit profile selection chips crowd narrow screens and hide selected state behind color alone
+- [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
 
 ### Improved
 
@@ -43,10 +45,11 @@
 - [x] Session empty-state CTA and narrow-layout guardrails
 - [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
 - [x] LoopEdit profile selection clarity, default-agent fallback copy, and touch targets
+- [x] AgentEdit connection-type clarity, touch targets, and ACP/remote field mapping
 
 ### Verified
 
-- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, and LoopEdit profile selection
+- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, and AgentEdit connection types
 
 ### Blocked
 
@@ -55,9 +58,47 @@
 ### Still uncertain
 
 - [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
-- [ ] Narrow-screen usability of `AgentEdit`, `MemoryEdit`, and the remaining `LoopEdit` fields outside the profile selector section
+- [ ] Narrow-screen usability of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 
 ## Recent Iterations
+
+### 2026-03-09 — Iteration 9: make AgentEdit connection modes mobile-readable and stop misrouting ACP setup
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `AgentEdit` connection-type selection and mode-specific fields in `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - create/edit flow reached from `Settings -> Agent Profiles -> + Create New Agent` or tapping an existing agent
+- Why this area:
+  - the ledger still had `AgentEdit` unchecked, and recent passes were concentrated on Settings rows, sessions, chat, and one `LoopEdit` subsection
+  - source review found a concrete reliability/usability problem in a high-leverage form control: the four connection modes were rendered as small wrap chips with color-only selection, and the `ACP` mode incorrectly exposed a `Base URL` field even though the shared/server types expect ACP profiles to use local command fields like `stdio`
+- What was investigated:
+  - current `AgentEditScreen.tsx` connection-type selector, conditional field rendering, and save payload mapping
+  - shared/mobile/server agent profile types and handlers in `packages/shared/src/api-types.ts`, `apps/desktop/src/shared/types.ts`, and `apps/desktop/src/main/remote-server.ts`
+  - attempted Expo Web startup via the existing repo workflow
+- Findings:
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - the connection-type control used small wrapping pills with no explicit button semantics or selected-state metadata, which is fragile on narrow mobile widths
+  - `ACP` profiles loaded and saved `connectionCommand` / `connectionArgs` / `connectionCwd`, but the form only showed `Base URL` for `acp`, making that mode misleading and preventing users from editing the fields the backend actually uses
+- Change made:
+  - converted the `AgentEdit` connection-type selector into full-width stacked options with descriptive copy, 44px minimum touch targets, and explicit selected-state button semantics
+  - changed the mode-specific field rendering so `acp` and `stdio` both expose `Command`, `Arguments`, and `Working Directory`, while `remote` alone shows `Base URL`
+  - added `apps/mobile/tests/agent-edit-connection-types.test.js` to lock the selector accessibility/mobile layout guardrails and the ACP-vs-remote field mapping
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8097`
+- Follow-up checks:
+  - once dependencies are installed, verify `AgentEdit` in Expo Web on a narrow viewport and confirm the stacked connection rows, long descriptions, and mode-specific fields remain readable without pushing the save action too far down
+  - inspect `MemoryEdit` next so coverage continues widening across the edit flows instead of staying inside agent/loop configuration
+  - validate the remaining `AgentEdit` states later, especially built-in-agent limited editing and large-text behavior across long prompt/guidelines inputs
+
+Evidence
+- Scope: `AgentEdit` connection-type selection and mode-specific setup fields in `apps/mobile/src/screens/AgentEditScreen.tsx`
+- Before evidence: Source review showed `CONNECTION_TYPES` as four label-only chips, `styles.connectionTypeRow` as a wrapping row, and `styles.connectionTypeOption` using only inline padding with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The form rendered `Base URL` for `(formData.connectionType === 'remote' || formData.connectionType === 'acp')`, while shared/server types describe `acp` as a local command-based profile (`command`, `args`, `cwd`) and only `remote` as URL-based. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8097` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Reworked the `AgentEdit` connection-type selector into full-width descriptive rows with 44px minimum touch targets and selected-state button semantics, then split the mode-specific fields so `acp` and `stdio` share local command inputs while `remote` alone shows `Base URL`. Added a focused regression test file.
+- After evidence: Source now shows `styles.connectionTypeOptions` with `width: '100%'`, `styles.connectionTypeOption` using `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, and each connection choice exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: ... }}`. `AgentEditScreen.tsx` now uses `showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio'` and `showRemoteBaseUrlField = formData.connectionType === 'remote'`, so ACP no longer reuses the remote-only URL field. `apps/mobile/tests/agent-edit-connection-types.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (19/19 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8097` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, description wrapping, and scroll depth of the new `AgentEdit` connection rows until dependencies are available.
 
 ### 2026-03-09 — Iteration 8: make LoopEdit profile selection readable and tappable on narrow screens
 
