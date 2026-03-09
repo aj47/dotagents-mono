@@ -2102,10 +2102,12 @@ export default function SettingsScreen({ navigation }: any) {
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={{ padding: 8 }}
+                        style={styles.memoryDeleteButton}
                         onPress={() => handleMemoryDelete(memory.id)}
+                        accessibilityLabel={`Delete memory ${memory.title}`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
-                        <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                        <Text style={styles.memoryDeleteButtonText}>Delete</Text>
                       </TouchableOpacity>
                     </View>
                   ))
@@ -3013,6 +3015,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       padding: spacing.xs,
     },
     agentDeleteButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    memoryDeleteButton: {
+      padding: spacing.xs,
+      alignSelf: 'flex-start',
+    },
+    memoryDeleteButtonText: {
       color: theme.colors.destructive,
       fontSize: 12,
       fontWeight: '500',
