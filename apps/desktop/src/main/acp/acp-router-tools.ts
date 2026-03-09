@@ -86,6 +86,7 @@ interface CreateSubAgentStateArgs {
   workingDirectory?: string;
   isInternal?: boolean;
   connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  isAsync?: boolean;
 }
 
 /**
@@ -111,6 +112,7 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
     status: 'pending',
     startTime: now,
     isInternal: args.isInternal,
+    isAsync: args.isAsync,
     conversation: [userMessage],
     lastEmitTime: 0,
   };
@@ -475,6 +477,7 @@ acpService.on('sessionUpdate', (event: {
     progressMessage: stopReason ? `Stop reason: ${stopReason}` : undefined,
     acpSessionId: subAgentState.acpSessionId,
     subSessionId: subAgentState.subSessionId,
+    conversationId: subAgentState.conversationId,
     acpRunId: subAgentState.acpRunId,
     conversation: prepareConversationForUI(subAgentState.conversation),
   };
@@ -508,6 +511,7 @@ acpService.on('sessionUpdate', (event: {
   // Once the agent reports completion for this session, the mappings are no longer needed.
   // Clean them up to prevent leaks / stale fallbacks affecting future runs.
   if (isComplete) {
+    void acpBackgroundNotifier.resumeParentSessionIfNeeded(subAgentState);
     cleanupDelegationMappings(runId, subAgentState.agentName);
   }
 });
@@ -688,7 +692,7 @@ export async function handleDelegateToAgent(
     prepareOnly,
   };
 
-  const waitForResult = args.waitForResult !== false; // Default to true
+  const waitForResult = args.waitForResult === true; // Default to async/background
 
   // Try unified agent profile lookup first
   const profile = agentProfileService.getByName(normalizedArgs.agentName);
@@ -823,6 +827,7 @@ async function executeInternalAgent(
     workingDirectory: args.workingDirectory,
     isInternal: true,
     connectionType: 'internal',
+    isAsync: !waitForResult,
   });
   subAgentState.status = 'running';
 
@@ -831,8 +836,67 @@ async function executeInternalAgent(
   const preGeneratedSubSessionId = generateSubSessionId();
   subAgentState.subSessionId = preGeneratedSubSessionId;
 
-  // Internal agent always executes synchronously
-  // waitForResult is ignored for internal agent (always waits)
+  if (!waitForResult) {
+    void Promise.resolve()
+      .then(() => runInternalSubSession({
+        task: args.task,
+        context: args.context,
+        parentSessionId,
+        subSessionId: preGeneratedSubSessionId,
+        personaName: args.personaName,
+      }))
+      .then((result) => {
+        subAgentState.conversationId = result.conversationId;
+        subAgentState.conversation = result.conversationHistory.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+        }));
+
+        if (result.success) {
+          subAgentState.status = 'completed';
+          subAgentState.result = {
+            runId: subAgentState.runId,
+            agentName,
+            status: 'completed',
+            startTime: subAgentState.startTime,
+            endTime: Date.now(),
+            metadata: { duration: result.duration },
+            output: [{ role: 'assistant', parts: [{ content: result.result || '' }] }],
+          };
+        } else {
+          subAgentState.status = result.error === 'Sub-session was cancelled' ? 'cancelled' : 'failed';
+          subAgentState.result = {
+            runId: subAgentState.runId,
+            agentName,
+            status: subAgentState.status,
+            startTime: subAgentState.startTime,
+            endTime: Date.now(),
+            metadata: { duration: result.duration },
+            error: result.error || 'Unknown error',
+          };
+        }
+
+        void acpBackgroundNotifier.resumeParentSessionIfNeeded(subAgentState);
+      })
+      .catch((error) => {
+        const endTime = Date.now();
+        subAgentState.status = 'failed';
+        subAgentState.result = {
+          runId: subAgentState.runId,
+          agentName,
+          status: 'failed',
+          startTime: subAgentState.startTime,
+          endTime,
+          metadata: { duration: endTime - subAgentState.startTime },
+          error: error instanceof Error ? error.message : String(error),
+        };
+        void acpBackgroundNotifier.resumeParentSessionIfNeeded(subAgentState);
+      });
+
+    return createRunningResult(subAgentState);
+  }
+
   try {
     const result = await runInternalSubSession({
       task: args.task,
@@ -841,6 +905,8 @@ async function executeInternalAgent(
       subSessionId: preGeneratedSubSessionId,
       personaName: args.personaName,
     });
+
+    subAgentState.conversationId = result.conversationId;
 
     // Update conversation history in consolidated state
     subAgentState.conversation = result.conversationHistory.map(msg => ({
@@ -991,6 +1057,7 @@ async function executeACPAgent(
       parentSessionId: parentSessionId || `orphaned-${Date.now()}`,
       workingDirectory: args.workingDirectory,
       connectionType: resolvedAgent.connectionType,
+      isAsync: !waitForResult,
     });
     subAgentState.status = 'running';
     registerAgentRunMapping(args.agentName, subAgentState.runId);
@@ -1163,6 +1230,7 @@ function executeStdioAgentAsync(
           error: result.error || 'Unknown error',
         };
       }
+      void acpBackgroundNotifier.resumeParentSessionIfNeeded(subAgentState);
       // Note: Don't cleanup delegation mappings here - the sessionUpdate handler
       // will clean up when isComplete arrives. Early cleanup can cause late
       // session/update notifications to be dropped/misrouted.
@@ -1192,6 +1260,7 @@ function finalizeAsyncRunWithError(
     metadata: { duration: endTime - subAgentState.startTime },
     error: error instanceof Error ? error.message : String(error),
   };
+  void acpBackgroundNotifier.resumeParentSessionIfNeeded(subAgentState);
   // Note: Don't cleanup delegation mappings here - the sessionUpdate handler
   // will clean up when isComplete arrives. Early cleanup can cause late
   // session/update notifications to be dropped/misrouted.
@@ -1512,6 +1581,7 @@ export function getDelegatedRunDetails(runId: string): ACPDelegationProgress | n
     error: state.result?.error,
     acpSessionId: state.acpSessionId,
     subSessionId: state.subSessionId,
+    conversationId: state.conversationId,
     acpRunId: state.acpRunId,
     conversation: [...state.conversation],
   };

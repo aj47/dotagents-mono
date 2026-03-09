@@ -164,12 +164,18 @@ export interface ACPSubAgentState {
   acpRunId?: string;
   /** Local ACP session ID for stdio/acp-backed delegated sessions */
   acpSessionId?: string;
+  /** DotAgents conversation ID for internal/stateful delegated sessions */
+  conversationId?: string;
   /** Base URL for the agent (needed for status checks) */
   baseUrl?: string;
   /** Whether this is an internal sub-agent (not external ACP) */
   isInternal?: boolean;
   /** The internal sub-session ID (for internal agents, used for cancellation) */
   subSessionId?: string;
+  /** Whether this delegation was launched asynchronously */
+  isAsync?: boolean;
+  /** Guards against resuming the parent session more than once */
+  parentResumeQueued?: boolean;
 }
 
 // NOTE: ACPAgentConfig is defined in shared/types.ts and should be imported from there.

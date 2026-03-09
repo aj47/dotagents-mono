@@ -59,8 +59,8 @@ export const acpRouterToolDefinitions = [
         },
         waitForResult: {
           type: 'boolean',
-          description: 'Whether to wait for the agent to complete (default: true)',
-          default: true,
+          description: 'Whether to wait for the agent to complete before continuing (default: false/background)',
+          default: false,
         },
       },
       required: ['agentName'],
@@ -174,8 +174,8 @@ export const acpRouterToolDefinitions = [
         },
         waitForResult: {
           type: 'boolean',
-          description: 'Whether to wait for the agent to complete (default: true)',
-          default: true,
+          description: 'Whether to wait for the agent to complete before continuing (default: false/background)',
+          default: false,
         },
       },
       required: ['agentName'],

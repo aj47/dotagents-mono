@@ -7,6 +7,7 @@ const mockOn = vi.fn()
 const mockOff = vi.fn()
 const mockEmitAgentProgress = vi.fn(() => Promise.resolve())
 const mockLoadConversation = vi.fn()
+const mockAddMessageToConversation = vi.fn(() => Promise.resolve())
 let sessionUpdateHandler: ((event: any) => void) | undefined
 
 vi.mock("./acp-service", () => ({
@@ -34,6 +35,7 @@ vi.mock("./emit-agent-progress", () => ({
 vi.mock("./conversation-service", () => ({
   conversationService: {
     loadConversation: mockLoadConversation,
+    addMessageToConversation: mockAddMessageToConversation,
   },
 }))
 
@@ -48,6 +50,7 @@ describe("acp-main-agent", () => {
     sessionUpdateHandler = undefined
 
     mockLoadConversation.mockResolvedValue(undefined)
+    mockAddMessageToConversation.mockResolvedValue(undefined)
     mockGetOrCreateSession.mockResolvedValue("acp-session-1")
     mockSendPrompt.mockResolvedValue({ success: true, response: "done" })
     mockOn.mockImplementation((eventName: string, handler: (event: any) => void) => {
@@ -444,6 +447,52 @@ describe("acp-main-agent", () => {
           toolCalls: [expect.objectContaining({ name: "respond_to_user" })],
         }),
       ]),
+    )
+  })
+
+  it("persists ACP tool-call and tool-result history back to the conversation", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [{ role: "user", content: "hello", timestamp: 1 }],
+    })
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-1",
+          title: "Tool: web_search",
+          status: "completed",
+          rawInput: { query: "persist this" },
+          rawOutput: { content: "Found persisted result" },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "done" }
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+    })
+
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      "",
+      "assistant",
+      [expect.objectContaining({ name: "web_search" })],
+      undefined,
+    )
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      '{\n  "content": "Found persisted result"\n}',
+      "tool",
+      undefined,
+      [expect.objectContaining({ success: true, content: '{\n  "content": "Found persisted result"\n}' })],
     )
   })
 })

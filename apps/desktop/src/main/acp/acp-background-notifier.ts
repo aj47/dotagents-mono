@@ -2,9 +2,11 @@ import { Notification } from 'electron'
 import { acpClientService } from './acp-client-service'
 import { emitAgentProgress } from '../emit-agent-progress'
 import { agentSessionStateManager } from '../state'
+import { agentSessionTracker } from '../agent-session-tracker'
 import type { ACPDelegationProgress } from '../../shared/types'
 import { logApp } from '../debug'
 import type { ACPSubAgentState } from './types'
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from '../../shared/builtin-tool-names'
 
 /**
  * Background polling and notification system for ACP delegations.
@@ -157,6 +159,7 @@ export class ACPBackgroundNotifier {
       error: state.status === 'failed' ? state.result?.error : undefined,
       acpSessionId: state.acpSessionId,
       subSessionId: state.subSessionId,
+      conversationId: state.conversationId,
       acpRunId: state.acpRunId,
     }
 
@@ -189,6 +192,55 @@ export class ACPBackgroundNotifier {
 
     // Show native OS notification
     this.showSystemNotification(state, resultSummary)
+
+    await this.resumeParentSessionIfNeeded(state)
+  }
+
+  async resumeParentSessionIfNeeded(state: ACPSubAgentState): Promise<void> {
+    if (!state.isAsync || !state.parentSessionId || state.parentResumeQueued) {
+      return
+    }
+
+    const activeParentSession = agentSessionTracker.getSession(state.parentSessionId)
+    if (activeParentSession?.status === 'active') {
+      logApp(
+        `[ACPBackgroundNotifier] Skipping parent resume for ${state.runId}; parent session ${state.parentSessionId} is already active`
+      )
+      return
+    }
+
+    const conversationId = agentSessionTracker.getConversationIdForSession(state.parentSessionId)
+    if (!conversationId) {
+      logApp(
+        `[ACPBackgroundNotifier] Cannot resume parent for ${state.runId}; conversation not found for session ${state.parentSessionId}`
+      )
+      return
+    }
+
+    const revived = agentSessionTracker.reviveSession(state.parentSessionId, true)
+    if (!revived) {
+      logApp(
+        `[ACPBackgroundNotifier] Cannot resume parent for ${state.runId}; failed to revive session ${state.parentSessionId}`
+      )
+      return
+    }
+
+    state.parentResumeQueued = true
+
+    try {
+      const { runAgentLoopSession } = await import('../tipc')
+      await runAgentLoopSession(
+        INTERNAL_COMPLETION_NUDGE_TEXT,
+        conversationId,
+        state.parentSessionId,
+      )
+      logApp(
+        `[ACPBackgroundNotifier] Resumed parent session ${state.parentSessionId} after delegated run ${state.runId}`
+      )
+    } catch (error) {
+      state.parentResumeQueued = false
+      logApp('[ACPBackgroundNotifier] Failed to resume parent session:', error)
+    }
   }
 
   /**

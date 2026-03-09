@@ -357,6 +357,27 @@ export async function processTranscriptWithACPAgent(
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)
   }
 
+  let persistedConversationLength = conversationHistory.length
+
+  const persistConversationTail = async () => {
+    if (persistedConversationLength >= conversationHistory.length) {
+      return
+    }
+
+    const tail = conversationHistory.slice(persistedConversationLength)
+    for (const message of tail) {
+      await conversationService.addMessageToConversation(
+        conversationId,
+        message.content,
+        message.role,
+        message.toolCalls,
+        message.toolResults,
+      )
+    }
+
+    persistedConversationLength = conversationHistory.length
+  }
+
   const appendAssistantText = (text: string, timestamp: number) => {
     if (!text) return
     sawAssistantTextBlock = true
@@ -753,6 +774,12 @@ export async function processTranscriptWithACPAgent(
         isStreaming: false,
       })
 
+      try {
+        await persistConversationTail()
+      } catch (persistError) {
+        logApp(`[ACP Main] Failed to persist conversation tail: ${persistError}`)
+      }
+
       logApp(`[ACP Main] Completed - success: ${result.success}, response length: ${finalResponse?.length || 0}`)
 
       return {
@@ -782,6 +809,12 @@ export async function processTranscriptWithACPAgent(
       text: accumulatedText,
       isStreaming: false,
     })
+
+    try {
+      await persistConversationTail()
+    } catch (persistError) {
+      logApp(`[ACP Main] Failed to persist conversation tail after error: ${persistError}`)
+    }
 
     return {
       success: false,

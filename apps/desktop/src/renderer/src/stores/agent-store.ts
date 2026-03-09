@@ -146,7 +146,19 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             // Merge delegation steps: new ones override existing ones with same runId
             const mergedDelegationSteps = new Map(existingDelegationSteps)
             for (const [runId, step] of newDelegationSteps) {
-              mergedDelegationSteps.set(runId, step)
+              const existingStep = mergedDelegationSteps.get(runId)
+              if (existingStep?.delegation || step.delegation) {
+                mergedDelegationSteps.set(runId, {
+                  ...existingStep,
+                  ...step,
+                  delegation: {
+                    ...existingStep?.delegation,
+                    ...step.delegation,
+                  },
+                })
+              } else {
+                mergedDelegationSteps.set(runId, step)
+              }
             }
 
             // Use new non-delegation steps if available, otherwise keep existing

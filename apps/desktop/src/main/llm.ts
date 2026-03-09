@@ -943,7 +943,8 @@ export async function processTranscriptWithAgentMode(
   const userMessageAlreadyExists = previousConversationHistory?.some(
     msg => msg.role === "user" && msg.content === transcript
   ) ?? false
-  if (!userMessageAlreadyExists) {
+  const shouldPersistInitialUserMessage = transcript !== INTERNAL_COMPLETION_NUDGE_TEXT
+  if (!userMessageAlreadyExists && shouldPersistInitialUserMessage) {
     saveMessageIncremental("user", transcript).catch(err => {
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
     })

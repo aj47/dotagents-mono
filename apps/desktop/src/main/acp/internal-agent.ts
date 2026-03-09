@@ -70,6 +70,8 @@ export interface InternalSubSession {
   error?: string;
   /** Display name for the agent executing this sub-session */
   agentDisplayName?: string;
+  /** DotAgents conversation ID used for stateful agent context */
+  conversationId?: string;
   /** Conversation history for this sub-session */
   conversationHistory: Array<{
     role: 'user' | 'assistant' | 'tool';
@@ -224,6 +226,7 @@ function emitSubSessionDelegationProgress(
     resultSummary: subSession.result?.substring(0, 200),
     error: subSession.error,
     subSessionId: subSession.id,
+    conversationId: subSession.conversationId,
     conversation,
   };
 
@@ -294,6 +297,7 @@ export interface RunSubSessionOptions {
 export interface SubSessionResult {
   success: boolean;
   subSessionId: string;
+  conversationId?: string;
   result?: string;
   error?: string;
   conversationHistory: InternalSubSession['conversationHistory'];
@@ -604,6 +608,8 @@ export async function runInternalSubSession(
     const effectiveSubSessionMaxIterations = maxIterations
       ?? (cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? DEFAULT_SUB_SESSION_MAX_ITERATIONS));
 
+    subSession.conversationId = conversationId;
+
     const result = await processTranscriptWithAgentMode(
       fullPrompt,
       availableTools,
@@ -666,6 +672,7 @@ export async function runInternalSubSession(
       return {
         success: false,
         subSessionId,
+        conversationId: subSession.conversationId,
         error: 'Sub-session was cancelled',
         conversationHistory: subSession.conversationHistory,
         duration: Date.now() - subSession.startTime,
@@ -677,6 +684,7 @@ export async function runInternalSubSession(
     return {
       success: true,
       subSessionId,
+      conversationId: subSession.conversationId,
       result: getPreferredDelegationOutput(result.content, subSession.conversationHistory),
       conversationHistory: subSession.conversationHistory,
       duration: Date.now() - subSession.startTime,
@@ -695,6 +703,7 @@ export async function runInternalSubSession(
     return {
       success: false,
       subSessionId,
+      conversationId: subSession.conversationId,
       error: subSession.error,
       conversationHistory: subSession.conversationHistory,
       duration: Date.now() - subSession.startTime,

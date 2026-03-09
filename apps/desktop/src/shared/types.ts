@@ -158,6 +158,8 @@ export interface ACPDelegationProgress {
   acpSessionId?: string
   /** Internal DotAgents sub-session ID for internal delegations */
   subSessionId?: string
+  /** DotAgents conversation ID for internal/stateful delegated sessions */
+  conversationId?: string
   /** Remote ACP run ID for externally-managed async delegations */
   acpRunId?: string
   /** Full conversation history from the sub-agent */
