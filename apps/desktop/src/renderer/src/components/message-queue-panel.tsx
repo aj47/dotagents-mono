@@ -327,30 +327,30 @@ export function MessageQueuePanel({
             <Button
               variant="ghost"
               size="icon"
-              className="h-4 w-4 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
+              className="h-6 w-6 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
               title="Resume queue execution"
             >
-              <Play className="h-3 w-3" />
+              <Play className="h-3.5 w-3.5" />
             </Button>
           ) : (
             <Button
               variant="ghost"
               size="icon"
-              className="h-4 w-4 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              className="h-6 w-6 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               onClick={() => pauseMutation.mutate()}
               disabled={pauseMutation.isPending || hasProcessingMessage}
               title="Pause queue"
             >
-              <Pause className="h-3 w-3" />
+              <Pause className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "h-4 w-4",
+              "h-6 w-6",
               isPaused
                 ? "text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
                 : "text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
@@ -359,7 +359,7 @@ export function MessageQueuePanel({
             disabled={clearMutation.isPending || hasProcessingMessage}
             title={hasProcessingMessage ? "Cannot clear while processing" : "Clear queue"}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
