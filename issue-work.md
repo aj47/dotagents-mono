@@ -48,3 +48,35 @@ This file tracks issue investigations and shipped slices for the issue-work loop
     - `export PATH="$HOME/.nvm/versions/node/v24.1.0/bin:$PATH" && pnpm --filter @dotagents/desktop run typecheck:web` -> passed.
   - Blockers/remaining uncertainty: Full Electron runtime / audio playback validation was not completed because this worktree cannot currently finish a normal scripted install; the native dependency `@egoist/electron-panel-window` fails to compile under the locally available Node `v25.2.1` and `v24.1.0`, so this iteration relies on targeted unit tests and typecheck rather than live TTS playback evidence.
 
+#### 2026-03-09 — QA remediation for Issue #72 follow-up verification
+- Issue: `#72` — Bug: TTS replays latest agent message on follow-up user message
+- Status: shipped
+- Labels: `bug`, `tts`, `ux`
+- Branch/PR: `aloops/issue-work-loop`; PR not created in this iteration
+- Notes:
+  - Diagnosis: QA correctly flagged that the previous ledger overstated the runtime blocker. This worktree can launch the desktop app and expose a CDP target, so the misleading part was the claim that runtime validation was unavailable rather than specifically limited for this issue repro.
+  - Reproduced or confirmed: Confirmed the verification gap from source and QA findings. The prior regression coverage only exercised `respond-to-user-history` and `agent-store`, not the rendered `AgentProgress` overlay path that actually triggers TTS autoplay.
+  - Assumptions:
+    - A focused renderer-level regression test for `AgentProgress` is an acceptable remediation because it exercises the live follow-up autoplay logic in the component that surfaced the user-visible bug.
+    - A runtime launch artifact plus CDP inspection is acceptable as launchability evidence even though this pass does not synthesize a full live agent session with real `respond_to_user` tool traffic.
+  - Changes:
+    - Added `apps/desktop/src/renderer/src/components/agent-progress.tts-follow-up.test.tsx` with a hook-runtime render of `AgentProgress` overlay behavior.
+    - Covered both the negative case (no stale previous-turn `respond_to_user` playback after a follow-up user message) and the positive case (current-turn `respond_to_user` still renders and autoplays).
+    - Refreshed desktop runtime evidence with a live Electron launch artifact and CDP-backed renderer observation.
+  - Verification:
+    - Targeted Vitest coverage now passes across the helper, store, and rendered `AgentProgress` overlay path.
+    - Live Electron dev runtime launches successfully in this worktree; CDP inspection reached the renderer and a fresh screenshot artifact was captured.
+  - Next: If a future pass needs stronger live evidence for this exact UX bug, add a deterministic local session harness or scripted store injection path so the running app can be driven directly into a follow-up `respond_to_user` state without depending on an external model session.
+- Evidence:
+  - Scope: Remediate QA findings for issue #72 by correcting the ledger's runtime-validation claim and adding direct `AgentProgress` follow-up TTS regression coverage without expanding the fix scope.
+  - Before evidence: QA findings documented two gaps: (1) the ledger said runtime validation was unavailable even though `pnpm --filter @dotagents/desktop exec electron --version` and `pnpm --filter @dotagents/desktop run dev:no-sherpa -- --inspect=9222` were already shown to work in this workspace, and (2) the shipped proof stopped at helper/store tests with no rendered `AgentProgress` verification.
+  - Change: Added `apps/desktop/src/renderer/src/components/agent-progress.tts-follow-up.test.tsx`, reran the related TTS regression tests together, launched the desktop Electron app again, captured `.aloops-artifacts/issue-work-loop/issue-72-runtime-launch.png`, and confirmed renderer access over CDP.
+  - After evidence: The new `AgentProgress` test proves an overlay follow-up turn with only previous-turn `respond_to_user` history renders no stale TTS player and makes zero `generateSpeech` calls, while a current-turn `respond_to_user` still renders/autoplays once. A fresh runtime launch also produced a live renderer observation (`title: DotAgents`, settings UI text present via CDP) and screenshot artifact `.aloops-artifacts/issue-work-loop/issue-72-runtime-launch.png`.
+  - Verification commands/run results:
+    - `export PATH="$HOME/.nvm/versions/node/v24.1.0/bin:$PATH" && pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.tts-follow-up.test.tsx` -> passed (`1` file, `2` tests).
+    - `export PATH="$HOME/.nvm/versions/node/v24.1.0/bin:$PATH" && pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.tts-follow-up.test.tsx src/renderer/src/lib/respond-to-user-history.test.ts src/renderer/src/stores/agent-store.test.ts` -> passed (`3` files, `6` tests).
+    - `export PATH="$HOME/.nvm/versions/node/v24.1.0/bin:$PATH" && pnpm --filter @dotagents/desktop run dev:no-sherpa -- --inspect=9222` -> launched Electron + renderer dev server successfully (background process for CDP validation).
+    - `electron_execute` renderer inspection -> returned `title: DotAgents`, `href: http://localhost:8081/`, and visible settings-page text, confirming a live renderer target was reachable.
+    - `mkdir -p .aloops-artifacts/issue-work-loop && screencapture -x '.aloops-artifacts/issue-work-loop/issue-72-runtime-launch.png'` -> passed and refreshed a screenshot artifact.
+  - Blockers/remaining uncertainty: This remediation proves runtime launchability and strengthens the actual `AgentProgress` regression path, but it does not drive a fully live end-to-end follow-up agent session inside Electron. There is still no deterministic local harness for synthesizing a real `respond_to_user` follow-up turn in the running app without external session orchestration, so the issue-specific behavior claim remains grounded primarily in the new rendered component test plus the helper/store regressions.
+
