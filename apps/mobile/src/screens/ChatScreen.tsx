@@ -316,10 +316,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const toggleHandsFree = async () => {
     const next = !handsFreeRef.current;
+	    handsFreeRef.current = next;
     const nextCfg = { ...config, handsFree: next } as any;
     setConfig(nextCfg);
     try { await saveConfig(nextCfg); } catch {}
     if (!next) {
+	      handsFreeController.reset();
       void stopRecognitionOnly?.();
       Speech.stop();
       setDebugInfo('Handsfree mode turned off.');
@@ -669,13 +671,15 @@ export default function ChatScreen({ route, navigation }: any) {
 				return;
 			}
 
-			if (mode === 'handsfree') {
-				const action = handsFreeController.handleFinalTranscript(finalText);
-				if (action.type === 'send') {
-					void sendRef.current(action.text);
+				if (mode === 'handsfree') {
+					if (handsFreeRef.current) {
+						const action = handsFreeController.handleFinalTranscript(finalText);
+						if (action.type === 'send') {
+							void sendRef.current(action.text);
+						}
+						return;
+					}
 				}
-				return;
-			}
 
 			void sendRef.current(finalText);
 		},

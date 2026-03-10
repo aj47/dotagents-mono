@@ -423,6 +423,10 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     log?.('recognizer-error', 'Speech recognizer error.', { message });
   }, [log, repeatedErrorThreshold, updateState]);
 
+  const reset = useCallback(() => {
+    updateState(() => createInitialHandsFreeState());
+  }, [updateState]);
+
   const resetError = useCallback(() => {
     updateState((prev) => ({
       ...prev,
@@ -454,6 +458,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     onRecognizerError,
     pauseByUser,
     resumeByUser,
+    reset,
     resetError,
   } as const;
 }
