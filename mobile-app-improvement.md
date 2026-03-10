@@ -11,7 +11,7 @@
 ### Checked screens/flows
 
 - [x] Settings root screen and nested back navigation
-- [x] Connection setup flow, save validation, and inline connection actions
+- [x] Connection setup flow, QR-permission error state, desktop deep-link fallback, save validation, and inline connection actions
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
@@ -26,7 +26,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
+- [ ] Additional modal/sheet surfaces on narrow web viewports beyond the Connection paste-link modal (model picker, agent selector, voice pickers)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -34,6 +34,7 @@
 - [x] Missing in-place CTA on the session empty state
 - [x] Undersized chat composer send/accessory controls and missing web state semantics
 - [x] Weak Connection inline action affordances
+- [x] Mobile-web connection setup stranded users on QR permission failure with no non-camera fallback
 - [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
 - [x] LoopEdit profile selection chips crowd narrow screens and hide selected state behind color alone
 - [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
@@ -44,6 +45,7 @@
 
 - [x] Nested-screen back navigation
 - [x] Connection first-run validation and inline action affordances
+- [x] Connection setup desktop deep-link fallback for mobile web QR-permission failures
 - [x] Chat composer actions, toggles, and voice-state accessibility
 - [x] Session empty-state CTA and narrow-layout guardrails
 - [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
@@ -55,17 +57,63 @@
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Live Expo Web verification for the Connection QR-permission error state plus desktop deep-link paste fallback
 
 ### Blocked
 
-- [-] Live Expo Web inspection in this worktree while `node_modules` is absent (`expo: command not found`)
+- [ ] Full mobile TypeScript typecheck still has unrelated pre-existing `LoopEditScreen.tsx` errors (`ApiAgentProfile.guidelines` at lines 290 and 295), so this iteration relied on targeted tests plus live Expo Web verification instead of a clean app-wide typecheck
 
 ### Still uncertain
 
-- [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
+- [ ] Runtime visual fit of earlier source-backed fixes outside the Connection screen now that Expo Web is available again in this worktree
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 12: add a desktop deep-link fallback when mobile web QR setup cannot open the scanner
+
+- Status: completed with live Expo Web verification and targeted regression tests; full mobile typecheck still has unrelated pre-existing failures in `LoopEditScreen.tsx`
+- Area:
+  - `Connection` setup in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - mobile web QR-permission failure state reached from `Settings -> Connection -> Scan QR Code`
+  - desktop parity path in `Remote Server -> Mobile App QR Code -> Copy Deep Link`
+- Why this area:
+  - the ledger already covered general connection validation, but live Expo Web runtime now works in this worktree and exposed a still-unchecked failure state in the setup/config flow
+  - on mobile web, tapping `Scan QR Code` showed only an inline camera-permission error with no scanner surface and no non-camera continuation path, which stranded setup on a narrow viewport even though desktop already exposes a compatible `Copy Deep Link` action
+- What was investigated:
+  - live Expo Web behavior at `390x844` on the real Connection screen, including the QR-permission failure state after tapping `Scan QR Code`
+  - current mobile QR parsing and save validation logic in `ConnectionSettingsScreen.tsx` / `connection-settings-qr.ts`
+  - desktop remote-server settings UI to confirm that `Copy Deep Link` already emits the same `dotagents://config?...` payload that mobile can consume
+- Findings:
+  - Expo Web now runs in this worktree after rebuilding `@dotagents/shared` with `pnpm build:shared`
+  - on mobile web, the QR path does not surface a visible scanner when camera access is unavailable; instead the form stays in place and shows only `Camera access is required to scan a QR code. Allow camera access in your browser and try scanning again.`
+  - desktop settings already provide `Copy Deep Link`, so the smallest useful parity fix is to let mobile paste that same payload instead of forcing camera availability
+- Change made:
+  - added a persistent `Paste DotAgents link` fallback action directly on the mobile Connection screen, with helper copy that points users to the desktop `Copy Deep Link` location
+  - added a narrow-screen modal that accepts a pasted `dotagents://config?...` link, validates it, and applies `baseUrl`, `apiKey`, and optional `model` back into the form
+  - extracted a small `parseDotAgentsConnectionConfig(...)` helper so QR scans and pasted deep links use the same payload parsing path
+  - updated first-run validation copy to mention the new paste-link path and added focused regression tests for the parsing helper plus the UI/source guardrails
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile exec vitest run src/screens/connection-settings-qr.test.ts`
+  - `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/connection-settings-density.test.js`
+  - live Expo Web verification at `http://localhost:8104` in a `390x844` viewport, including pasting `dotagents://config?baseUrl=https%3A%2F%2Fexample.com%2Fv1&apiKey=test-key-123&model=gpt-4o-mini` and confirming the form populated `Base URL = https://example.com/v1` and `API Key = test-key-123`
+  - attempted `pnpm --filter @dotagents/mobile exec tsc --noEmit` to widen validation, but it still fails on unrelated pre-existing `LoopEditScreen.tsx` type errors
+- Follow-up checks:
+  - inspect the next unchecked modal/sheet surface in Expo Web, preferably model/provider or voice pickers, so coverage continues widening instead of staying in Connection
+  - revisit the rest of the connection setup flow later for keyboard-open behavior and large-text wrapping now that runtime inspection is available
+
+Evidence
+- Evidence ID: connection-paste-link-fallback
+- Scope: Mobile Connection setup QR-permission failure state and desktop deep-link parity in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+- Commit range: db9b2966..233ec6a3
+- Rationale: Mobile web users could hit a setup dead-end when `Scan QR Code` failed to open a usable scanner surface because camera access was unavailable, even though desktop already exposed a compatible `Copy Deep Link` pairing payload. Adding an explicit non-camera path removes a real first-run configuration blocker and closes an important desktop-settings parity gap for remote server pairing.
+- QA feedback: Deferred unresolved prior QA findings about earlier settings evidence claims; this iteration focused on a new live-verified Connection setup issue instead.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-paste-link-fallback--before--scan-error-state--20260310.png` — Expo Web at `390x844` on `Settings -> Connection` after tapping `Scan QR Code`. The screen shows only the inline camera-permission error and no alternate setup action, which makes the QR failure state feel like a dead end on mobile web.
+- Change: Added a persistent `Paste DotAgents link` fallback and a validating paste modal that accepts the desktop `Copy Deep Link` payload, applies its connection fields into the mobile form, and updates the first-run guidance to mention the new path. Also added focused parser and source-regression tests.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-paste-link-fallback--after--scan-error-state--20260310.png` — the same Expo Web QR-failure state now keeps a visible `Paste DotAgents link` escape hatch on-screen, so users are no longer stranded when camera access is unavailable. `docs/aloops-evidence/mobile-app-improvement-loop/connection-paste-link-fallback--after--prefilled-form--20260310.png` — after pasting a desktop-style `dotagents://config?...` link and tapping `Use link`, the form shows the imported `Base URL` and API key, demonstrating that the fallback is actionable rather than just instructional.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8104` ✅ after rebuilding shared; `pnpm --filter @dotagents/mobile exec vitest run src/screens/connection-settings-qr.test.ts` ✅ (5/5 passing); `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/connection-settings-density.test.js` ✅ (8/8 passing); live Expo Web/browser verification ✅ (`390x844`, pasted sample deep link populated `Base URL = https://example.com/v1` and `API Key = test-key-123`); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ❌ unrelated pre-existing `LoopEditScreen.tsx` errors (`Property 'guidelines' does not exist on type 'ApiAgentProfile'` at lines 290 and 295).
+- Blockers/remaining uncertainty: This Connection setup change is live-verified, but a clean app-wide mobile typecheck is still blocked by the unrelated existing `LoopEditScreen.tsx` errors above. Other previously source-backed fixes still need their own runtime passes now that Expo Web is available again.
 
 ### 2026-03-09 — Iteration 11: make the Settings desktop warning readable and actionable on narrow screens
 

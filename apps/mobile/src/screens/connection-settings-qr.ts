@@ -3,11 +3,41 @@ export type QrCameraPermissionResult = {
   canAskAgain?: boolean;
 };
 
+export type DotAgentsConnectionConfig = {
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+};
+
 type ResolveQrScannerActivationOptions = {
   hasPermission: boolean;
   isWeb: boolean;
   requestPermission: () => Promise<QrCameraPermissionResult>;
 };
+
+export function parseDotAgentsConnectionConfig(rawValue: string): DotAgentsConnectionConfig | null {
+  const value = rawValue.trim();
+  if (!value) return null;
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'dotagents:') return null;
+    if (parsed.hostname !== 'config') return null;
+
+    const baseUrl = parsed.searchParams.get('baseUrl') ?? undefined;
+    const apiKey = parsed.searchParams.get('apiKey') ?? undefined;
+    const model = parsed.searchParams.get('model') ?? undefined;
+    if (!baseUrl && !apiKey && !model) return null;
+
+    return {
+      baseUrl,
+      apiKey,
+      model,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function createCameraPermissionDeniedMessage({
   isWeb,

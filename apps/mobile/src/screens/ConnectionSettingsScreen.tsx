@@ -5,7 +5,6 @@ import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Linking from 'expo-linking';
 import { checkServerConnection } from '../lib/connectionRecovery';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import {
@@ -13,29 +12,9 @@ import {
   createMinimumTouchTargetStyle,
   createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
-import { resolveQrScannerActivation } from './connection-settings-qr';
+import { parseDotAgentsConnectionConfig, resolveQrScannerActivation } from './connection-settings-qr';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-
-function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
-  try {
-    const parsed = Linking.parse(data);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
-    if (parsed.scheme === 'dotagents' && (parsed.path === 'config' || parsed.hostname === 'config')) {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
-        return {
-          baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
-          apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to parse QR code:', e);
-  }
-  return null;
-}
 
 export default function ConnectionSettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -48,6 +27,9 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showPasteLinkModal, setShowPasteLinkModal] = useState(false);
+  const [pastedConnectionLink, setPastedConnectionLink] = useState('');
+  const [pasteLinkError, setPasteLinkError] = useState<string | null>(null);
   const { connect: tunnelConnect, disconnect: tunnelDisconnect } = useTunnelConnection();
 
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -83,7 +65,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
     // On first-time setup, do not silently save a disconnected default config.
     if (!isConnected && !hasApiKey) {
-      setConnectionError('Enter an API key or scan a DotAgents QR code before saving');
+      setConnectionError('Enter an API key, scan a DotAgents QR code, or paste a DotAgents link before saving');
       return;
     }
 
@@ -170,18 +152,48 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
     setShowScanner(true);
   };
 
+  const applyConnectionConfig = useCallback((params: { baseUrl?: string; apiKey?: string; model?: string }) => {
+    setDraft(prev => ({
+      ...prev,
+      ...(params.baseUrl && { baseUrl: params.baseUrl }),
+      ...(params.apiKey && { apiKey: params.apiKey }),
+      ...(params.model && { model: params.model }),
+    }));
+    setConnectionError(null);
+    setPasteLinkError(null);
+  }, []);
+
+  const closePasteLinkModal = useCallback(() => {
+    setShowPasteLinkModal(false);
+    setPastedConnectionLink('');
+    setPasteLinkError(null);
+  }, []);
+
+  const handleOpenPasteLinkModal = () => {
+    setConnectionError(null);
+    setPasteLinkError(null);
+    setPastedConnectionLink('');
+    setShowPasteLinkModal(true);
+  };
+
+  const handleApplyPastedConnectionLink = () => {
+    const params = parseDotAgentsConnectionConfig(pastedConnectionLink);
+    if (!params) {
+      setPasteLinkError('Paste a valid DotAgents link from the desktop app QR section.');
+      return;
+    }
+
+    applyConnectionConfig(params);
+    closePasteLinkModal();
+  };
+
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
 
-    const params = parseQRCode(data);
+    const params = parseDotAgentsConnectionConfig(data);
     if (params) {
-      setDraft(prev => ({
-        ...prev,
-        ...(params.baseUrl && { baseUrl: params.baseUrl }),
-        ...(params.apiKey && { apiKey: params.apiKey }),
-        ...(params.model && { model: params.model }),
-      }));
+      applyConnectionConfig(params);
       setShowScanner(false);
     } else {
       // Invalid QR code, allow scanning again
@@ -229,7 +241,19 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           <Text style={styles.scanButtonText}>Scan QR Code</Text>
         </TouchableOpacity>
         <Text style={styles.helperText}>
-          Scan the QR code from your DotAgents desktop app to connect
+          Scan the QR code from your DotAgents desktop app to connect, or paste the desktop Copy Deep Link when camera access is unavailable.
+        </Text>
+        <TouchableOpacity
+          style={styles.pasteLinkButton}
+          onPress={handleOpenPasteLinkModal}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Paste DotAgents link')}
+          accessibilityHint="Paste the Copy Deep Link from DotAgents desktop to fill Base URL and API key without scanning."
+        >
+          <Text style={styles.pasteLinkButtonText}>Paste DotAgents link</Text>
+        </TouchableOpacity>
+        <Text style={styles.helperText}>
+          In DotAgents desktop, open Remote Server → Mobile App QR Code → Copy Deep Link.
         </Text>
 
         <View style={styles.labelRow}>
@@ -321,6 +345,75 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <Modal
+        visible={showPasteLinkModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closePasteLinkModal}
+      >
+        <View style={styles.pasteModalOverlay}>
+          <View style={styles.pasteModalContainer}>
+            <View style={styles.pasteModalHeader}>
+              <Text style={styles.pasteModalTitle}>Paste DotAgents link</Text>
+              <TouchableOpacity
+                style={styles.pasteModalCloseButton}
+                onPress={closePasteLinkModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close paste DotAgents link dialog"
+              >
+                <Text style={styles.pasteModalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.pasteModalDescription}>
+              Use Copy Deep Link in DotAgents desktop to fill Base URL and API key without scanning.
+            </Text>
+
+            <TextInput
+              style={styles.pasteLinkInput}
+              value={pastedConnectionLink}
+              onChangeText={(value) => {
+                setPastedConnectionLink(value);
+                if (pasteLinkError) setPasteLinkError(null);
+              }}
+              placeholder="dotagents://config?baseUrl=..."
+              placeholderTextColor={theme.colors.mutedForeground}
+              accessibilityLabel={createTextInputAccessibilityLabel('DotAgents link')}
+              accessibilityHint="Paste the Copy Deep Link from the desktop app QR section"
+              autoCapitalize='none'
+              autoCorrect={false}
+              multiline
+              textAlignVertical="top"
+            />
+
+            {pasteLinkError && <Text style={styles.pasteLinkErrorText}>{pasteLinkError}</Text>}
+
+            <View style={styles.pasteModalActions}>
+              <TouchableOpacity
+                style={styles.pasteModalSecondaryButton}
+                onPress={closePasteLinkModal}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Cancel pasted DotAgents link')}
+              >
+                <Text style={styles.pasteModalSecondaryButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.pasteModalPrimaryButton,
+                  !pastedConnectionLink.trim() && styles.pasteModalPrimaryButtonDisabled,
+                ]}
+                onPress={handleApplyPastedConnectionLink}
+                disabled={!pastedConnectionLink.trim()}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Use pasted DotAgents link')}
+              >
+                <Text style={styles.pasteModalPrimaryButtonText}>Use link</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -402,10 +495,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       ...theme.input,
     },
     scanButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+      }),
       backgroundColor: theme.colors.secondary,
-      padding: spacing.md,
       borderRadius: radius.lg,
       alignItems: 'center',
+      justifyContent: 'center',
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -413,6 +510,23 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       fontSize: 16,
       fontWeight: '500',
+    },
+    pasteLinkButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+      }),
+      backgroundColor: theme.colors.card,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    pasteLinkButtonText: {
+      color: theme.colors.primary,
+      fontSize: 15,
+      fontWeight: '600',
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,
@@ -484,6 +598,108 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: '#fff',
       fontSize: 16,
       fontWeight: '600',
+    },
+    pasteModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.lg,
+    },
+    pasteModalContainer: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    pasteModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    pasteModalTitle: {
+      flex: 1,
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    pasteModalCloseButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    pasteModalCloseText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    pasteModalDescription: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: theme.colors.mutedForeground,
+    },
+    pasteLinkInput: {
+      ...theme.input,
+      minHeight: 120,
+      textAlignVertical: 'top',
+      paddingTop: spacing.md,
+    },
+    pasteLinkErrorText: {
+      color: theme.colors.destructive,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    pasteModalActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    pasteModalSecondaryButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+      }),
+      flex: 1,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pasteModalSecondaryButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    pasteModalPrimaryButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+      }),
+      flex: 1,
+      borderRadius: radius.lg,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pasteModalPrimaryButtonDisabled: {
+      opacity: 0.5,
+    },
+    pasteModalPrimaryButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.colors.primaryForeground,
     },
   });
 }

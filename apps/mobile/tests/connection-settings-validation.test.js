@@ -10,7 +10,7 @@ const screenSource = fs.readFileSync(
 
 test('blocks first-time save when no API key is provided', () => {
   assert.match(screenSource, /if \(!isConnected && !hasApiKey\) \{/);
-  assert.match(screenSource, /Enter an API key or scan a DotAgents QR code before saving/);
+  assert.match(screenSource, /Enter an API key, scan a DotAgents QR code, or paste a DotAgents link before saving/);
 });
 
 test('keeps the custom URL validation after the no-key guard', () => {
@@ -34,4 +34,12 @@ test('surfaces a clear error when QR scanning cannot get camera permission', () 
   assert.match(screenSource, /\{connectionError && \(/);
   assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{connectionError\}<\/Text>/);
   assert.match(screenSource, /accessibilityLabel="Scan QR Code"/);
+});
+
+test('offers a paste-link fallback for desktop deep links when QR scanning is unavailable', () => {
+  assert.match(screenSource, /Paste DotAgents link/);
+  assert.match(screenSource, /Copy Deep Link/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Paste DotAgents link'\)\}/);
+  assert.match(screenSource, /Paste a valid DotAgents link from the desktop app QR section\./);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Use pasted DotAgents link'\)\}/);
 });

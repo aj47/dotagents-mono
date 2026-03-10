@@ -1,6 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveQrScannerActivation } from './connection-settings-qr';
+import { parseDotAgentsConnectionConfig, resolveQrScannerActivation } from './connection-settings-qr';
+
+describe('parseDotAgentsConnectionConfig', () => {
+  it('parses a copied desktop deep link into connection fields', () => {
+    expect(parseDotAgentsConnectionConfig(
+      ' dotagents://config?baseUrl=https%3A%2F%2Fexample.com%2Fv1&apiKey=test-key&model=gpt-4o-mini '
+    )).toEqual({
+      baseUrl: 'https://example.com/v1',
+      apiKey: 'test-key',
+      model: 'gpt-4o-mini',
+    });
+  });
+
+  it('returns null for non-dotagents links', () => {
+    expect(parseDotAgentsConnectionConfig('https://example.com/not-a-dotagents-link')).toBeNull();
+  });
+});
 
 describe('resolveQrScannerActivation', () => {
   it('returns a visible browser guidance error when camera permission is denied', async () => {
