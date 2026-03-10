@@ -13,7 +13,7 @@ const skillsPageSource = fs.readFileSync(
   'utf8',
 )
 
-const toolbarStart = skillsPageSource.indexOf('<div className="flex flex-wrap items-start justify-end gap-1.5">')
+const toolbarStart = skillsPageSource.indexOf('<div className={isSelectMode ? selectModeToolbarClassName : defaultToolbarClassName}>')
 const selectModeStart = skillsPageSource.indexOf('{isSelectMode ? (', toolbarStart)
 const branchDivider = skillsPageSource.indexOf('\n          ) : (\n            <>', selectModeStart)
 const toolbarEnd = skillsPageSource.indexOf('\n        </div>', branchDivider)
@@ -28,14 +28,17 @@ test('desktop capabilities tab keeps the Skills label in the shared tab bar', ()
 test('desktop skills page avoids a redundant Agent Skills hero header above the actions', () => {
   assert.doesNotMatch(skillsPageSource, /<h2 className="text-lg font-semibold">Agent Skills<\/h2>/)
   assert.match(skillsPageSource, /const toolbarButtonClassName = "h-7 gap-1 px-2 text-\[11px\]"/)
-  assert.match(skillsPageSource, /<div className="flex flex-wrap items-start justify-end gap-1\.5">[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
+  assert.match(skillsPageSource, /const selectModeToolbarClassName = "flex flex-wrap justify-end gap-2"/)
+  assert.match(skillsPageSource, /const defaultToolbarClassName = "flex flex-wrap items-start justify-end gap-1\.5"/)
+  assert.match(skillsPageSource, /<div className=\{isSelectMode \? selectModeToolbarClassName : defaultToolbarClassName\}>[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
   assert.doesNotMatch(skillsPageSource, /Skills are specialized instructions that improve AI performance on specific tasks\./)
   assert.match(skillsPageSource, /<p className="text-xs text-muted-foreground">\s*Enabled skills add their instructions to the system prompt\./)
 })
 
-test('desktop skills keeps the compact button class scoped to the default populated toolbar row', () => {
+test('desktop skills keeps the compact button class and tightened toolbar container scoped to the default populated toolbar row', () => {
   assert.ok(selectModeToolbarBlock, 'expected to isolate the select-mode toolbar block')
   assert.ok(defaultToolbarBlock, 'expected to isolate the default toolbar block')
+  assert.match(skillsPageSource, /className=\{isSelectMode \? selectModeToolbarClassName : defaultToolbarClassName\}/)
   assert.match(defaultToolbarBlock, /className=\{toolbarButtonClassName\}[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
   assert.doesNotMatch(selectModeToolbarBlock, /className=\{toolbarButtonClassName\}/)
   assert.match(selectModeToolbarBlock, /className="gap-1\.5"[\s\S]*?Select All[\s\S]*?Export Bundle[\s\S]*?Delete[\s\S]*?Cancel/)

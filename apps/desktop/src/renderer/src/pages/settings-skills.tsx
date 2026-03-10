@@ -29,6 +29,8 @@ import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2,
 export function Component() {
   const queryClient = useQueryClient()
   const toolbarButtonClassName = "h-7 gap-1 px-2 text-[11px]"
+  const selectModeToolbarClassName = "flex flex-wrap justify-end gap-2"
+  const defaultToolbarClassName = "flex flex-wrap items-start justify-end gap-1.5"
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
@@ -441,7 +443,7 @@ Write your skill instructions here.
   return (
     <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="min-w-0 space-y-6">
-        <div className="flex flex-wrap items-start justify-end gap-1.5">
+        <div className={isSelectMode ? selectModeToolbarClassName : defaultToolbarClassName}>
           {isSelectMode ? (
             <>
               <Button
