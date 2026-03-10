@@ -20,6 +20,7 @@
 
 - [x] Settings root screen and nested back navigation
 - [x] Connection setup flow, save validation, and inline connection actions
+- [x] Connection `Scan QR Code` flow on Expo Web, including the web-safe deep-link fallback modal
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
@@ -39,6 +40,7 @@
 - [ ] Session loading, error, reconnect, and sync states
 - [ ] Modal/sheet surfaces beyond the checked chat/local-TTS/model selectors on narrow web viewports (remote TTS voice picker, TTS model picker, endpoint picker, confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
+- [ ] Native QR camera permission, denied-permission recovery, and invalid-code retry states beyond the new Expo Web fallback
 
 ### Reproduced
 
@@ -53,6 +55,7 @@
 - [x] Chat header agent selector sheet said `No agents available` even though `Settings -> Agents` listed multiple enabled agents on the same connected server
 - [x] Settings local TTS voice picker lost its viewport-anchored web sheet guardrails and left the `Close` action below the 44px minimum touch-target height
 - [x] Settings desktop model picker modal exposed a `Close` action below the 44px minimum touch-target height on Expo Web
+- [x] Connection `Scan QR Code` opened a blank Expo Web camera modal with no recovery copy or manual deep-link fallback
 
 ### Improved
 
@@ -68,6 +71,7 @@
 - [x] Chat header agent selector parity with desktop agent profiles in API mode
 - [x] Settings local TTS voice picker close affordance and viewport anchoring on Expo Web
 - [x] Settings shared overlay close affordances for model/configuration modals on Expo Web
+- [x] Connection setup web QR/deep-link fallback clarity and recoverability on Expo Web
 
 ### Verified
 
@@ -75,6 +79,7 @@
 - [x] Live Expo Web verification that the chat header agent selector now lists enabled agents and updates the header label after selection
 - [x] Live Expo Web verification that the local TTS voice picker now spans the viewport width and exposes a 44px-tall close action on a narrow screen
 - [x] Live Expo Web verification that the `Profile & Model` model picker now exposes a 44px-tall `Close` action on a narrow screen
+- [x] Live Expo Web verification that `Connection -> Scan QR Code` now opens a desktop deep-link fallback on web and fills Base URL/API key from a pasted sample link
 
 ### Blocked
 
@@ -85,8 +90,53 @@
 - [ ] Runtime visual fit of earlier source-backed fixes that still have not had a dedicated live Expo Web pass in this worktree
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 - [ ] Other modal/sheet surfaces still need live parity checks, especially the remote TTS voice picker, TTS model picker, endpoint picker, and destructive confirmations
+- [ ] Real desktop remote-server pairing still needs an end-to-end pass with an actual copied deep link or scanned QR code, and the native camera-permission path remains unverified in this worktree
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 15: make mobile web QR setup recoverable with a desktop deep-link fallback
+
+- Status: completed with live Expo Web verification
+- Area:
+  - `ConnectionSettingsScreen` onboarding/setup flow in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - `Connection -> Scan QR Code` on Expo Web in an unpaired mobile session
+- Why this area:
+  - the ledger still needed broader onboarding/setup coverage, and this worktree's current Expo Web session started unpaired, so remote TTS picker parity was blocked earlier in the funnel
+  - live investigation found a concrete user-visible dead end on a primary setup action: `Scan QR Code` opened a mostly black web camera modal with no recovery copy, no manual link path, and no meaningful next step beyond `Close`
+- What was investigated:
+  - live Expo Web behavior at `http://localhost:8106` on a `390x664` iPhone-12-sized viewport in `Settings -> Connection -> Scan QR Code`
+  - current QR scan implementation, deep-link parsing, and connection form wiring in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` and `apps/mobile/App.tsx`
+  - existing connection-screen regression coverage in `apps/mobile/tests/connection-settings-density.test.js` and `apps/mobile/tests/connection-settings-validation.test.js`
+- Findings:
+  - the current unpaired Expo Web session could not reach `Desktop Settings` at all, so the higher-level remote TTS modal check was blocked by setup instead of by those picker screens themselves
+  - `ConnectionSettingsScreen` always mounted `CameraView` for `Scan QR Code`, but on Expo Web that produced a blank/broken camera surface in this browser context while showing only `Scan a DotAgents QR code` plus `Close`
+  - the screen already had the QR/deep-link parsing logic needed to consume a `dotagents://config?...` payload, but web users had no visible way to paste that payload even though desktop remote-server settings already expose `Copy Deep Link`
+- Change made:
+  - added a web-specific `Scan QR Code or Paste Link` path so Expo Web opens a clear fallback modal instead of mounting the broken camera surface
+  - added explanatory copy telling web users to use desktop `Remote Server -> Copy Deep Link`, plus a multiline deep-link input and `Apply Link` action that reuse the existing `parseQRCode(...)` config parsing path
+  - kept the native camera scanner path intact while also surfacing invalid-code feedback and preserving explicit close actions
+  - extended `apps/mobile/tests/connection-settings-density.test.js` so the new web fallback copy, input, and apply action are locked in by regression coverage
+- Verification:
+  - `pnpm --filter @dotagents/mobile web --port 8106`
+  - `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `git diff --check`
+  - live Expo Web verification at `http://localhost:8106`
+- Follow-up checks:
+  - run a real end-to-end desktop pairing pass next by using the actual desktop `Copy Deep Link` payload or a native QR scan so the remaining `Remote Server` parity gap is narrowed with real credentials rather than only a sample link
+  - once the app is paired again in this worktree, return to the still-unchecked remote TTS model/voice pickers and endpoint/destructive confirmation modals instead of polishing the connection screen further without a new regression signal
+
+Evidence
+- Evidence ID: web-qr-link-fallback
+- Scope: mobile onboarding/setup recovery in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, specifically `Connection -> Scan QR Code` on Expo Web
+- Commit range: a86c85b4cc2b1f8ea231bc84a2fa3f17adc90730..905bd9af23850faf7303ab4e578d2e2fa19d1e0a
+- Rationale: In the current unpaired Expo Web session, the `Scan QR Code` path was the most obvious way to connect the app to desktop settings, but it opened into a mostly black camera surface with no usable fallback. That left setup stranded before users could reach higher-value configuration surfaces like remote TTS pickers. Adding a web-safe deep-link path resolves the immediate setup dead end and makes the desktop remote-server `Copy Deep Link` affordance actionable from mobile web.
+- QA feedback: None (new iteration)
+- Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/web-qr-link-fallback--before--connection-qr-modal--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed `Connection -> Scan QR Code` opening a nearly all-black full-screen scanner view with only `Scan a DotAgents QR code` and `Close` visible. That before state was insufficient because a primary onboarding/setup action on web provided no recovery copy, no manual deep-link path, and no useful next step after the camera surface failed.
+- Change: Replaced the Expo Web scanner mount with a web-safe fallback modal that explains the browser camera limitation, points users to desktop `Remote Server -> Copy Deep Link`, adds a multiline deep-link paste field plus `Apply Link` action wired through the existing QR config parser, keeps the native camera scanner path intact, and extends connection-screen regression coverage for the new fallback UI.
+- After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/web-qr-link-fallback--after--connection-qr-modal--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/web-qr-link-fallback--after--connection-form-filled--20260310.png`. On the same `390x664` viewport, live Expo Web verification now shows a readable fallback modal with `Paste the desktop deep link`, explanatory copy, a multiline input, and explicit `Apply Link` / `Close` actions instead of a black camera surface. Pasting a sample `dotagents://config?...` link then closes the modal and fills the visible `Base URL` and `API Key` fields, which is preferable because mobile web users now have an actionable pairing path even when browser camera scanning is unavailable.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8106` ✅ (Expo Web started successfully at `http://localhost:8106` and hot-reloaded the updated connection screen); `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js` ✅ (7/7 passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅ (completed with a non-blocking Node engine warning under Node `v25.2.1`); `git diff --check` ✅; live Expo Web verification at `http://localhost:8106` ✅ (the web fallback modal rendered with explanatory copy and applying a sample deep link filled `Base URL=https://example.com/v1` plus `API Key=test-key-123`).
+- Blockers/remaining uncertainty: This iteration live-verified the Expo Web fallback with a sample deep link, not a real desktop secret, so end-to-end pairing against the actual desktop `Remote Server` flow still needs a dedicated pass. The native camera-scanner permission and retry states also remain unchecked in this worktree.
 
 ### 2026-03-10 — Iteration 14: make settings modal close affordances reliably tappable on mobile web
 
