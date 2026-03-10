@@ -28,3 +28,10 @@ test('uses a web-safe deep-link fallback instead of mounting the camera scanner 
   assert.match(screenSource, /dotagents:\/\/config\?baseUrl=\.\.\.&apiKey=\.\.\./);
   assert.match(screenSource, /Copy Deep Link, then paste it here to fill your Base URL and API key/);
 });
+
+test('disables the web deep-link apply action until the user pastes a link', () => {
+  assert.match(screenSource, /const hasManualConfigLink = manualConfigLink\.trim\(\)\.length > 0;/);
+  assert.match(screenSource, /style=\{\[styles\.primaryButton, !hasManualConfigLink && styles\.primaryButtonDisabled\]\}/);
+  assert.match(screenSource, /disabled=\{!hasManualConfigLink\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ disabled: !hasManualConfigLink \}\}/);
+});

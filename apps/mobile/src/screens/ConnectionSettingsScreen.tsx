@@ -5,8 +5,8 @@ import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Linking from 'expo-linking';
 import { checkServerConnection } from '../lib/connectionRecovery';
+import { applyMobilePairingConfig, parseMobilePairingDeepLink, resolveManualMobilePairingDeepLink } from '../lib/mobilePairing';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import {
   createButtonAccessibilityLabel,
@@ -15,28 +15,6 @@ import {
 } from '../lib/accessibility';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-
-type ParsedQrConfig = { baseUrl?: string; apiKey?: string; model?: string };
-
-function parseQRCode(data: string): ParsedQrConfig | null {
-  try {
-    const parsed = Linking.parse(data);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
-    if (parsed.scheme === 'dotagents' && (parsed.path === 'config' || parsed.hostname === 'config')) {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
-        return {
-          baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
-          apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to parse QR code:', e);
-  }
-  return null;
-}
 
 export default function ConnectionSettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -62,13 +40,13 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
     setScannerError(null);
   }, []);
 
-  const applyParsedQrConfig = useCallback((params: ParsedQrConfig) => {
-    setDraft(prev => ({
-      ...prev,
-      ...(params.baseUrl && { baseUrl: params.baseUrl }),
-      ...(params.apiKey && { apiKey: params.apiKey }),
-      ...(params.model && { model: params.model }),
-    }));
+  const hasManualConfigLink = manualConfigLink.trim().length > 0;
+
+  const applyParsedQrConfig = useCallback((params: ReturnType<typeof parseMobilePairingDeepLink>) => {
+    if (!params) {
+      return;
+    }
+    setDraft(prev => applyMobilePairingConfig(prev, params));
     closeScanner();
   }, [closeScanner]);
 
@@ -195,7 +173,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
     if (scanned) return;
     setScanned(true);
 
-    const params = parseQRCode(data);
+    const params = parseMobilePairingDeepLink(data);
     if (params) {
       applyParsedQrConfig(params);
     } else {
@@ -206,12 +184,12 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   };
 
   const handleApplyManualConfigLink = useCallback(() => {
-    const params = parseQRCode(manualConfigLink.trim());
-    if (params) {
-      applyParsedQrConfig(params);
+    const result = resolveManualMobilePairingDeepLink(manualConfigLink);
+    if (result.ok) {
+      applyParsedQrConfig(result.config);
       return;
     }
-    setScannerError('Paste the full dotagents://config deep link copied from DotAgents desktop.');
+    setScannerError(result.errorMessage);
   }, [applyParsedQrConfig, manualConfigLink]);
 
   const resetBaseUrl = () => {
@@ -360,10 +338,12 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
                 </View>
               )}
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, !hasManualConfigLink && styles.primaryButtonDisabled]}
                 onPress={handleApplyManualConfigLink}
+                disabled={!hasManualConfigLink}
                 accessibilityRole="button"
                 accessibilityLabel="Apply desktop deep link"
+                accessibilityState={{ disabled: !hasManualConfigLink }}
               >
                 <Text style={styles.primaryButtonText}>Apply Link</Text>
               </TouchableOpacity>

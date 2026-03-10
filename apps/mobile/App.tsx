@@ -16,6 +16,7 @@ import { TunnelConnectionContext, useTunnelConnectionProvider } from './src/stor
 import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
+import { applyMobilePairingConfig, parseMobilePairingDeepLink } from './src/lib/mobilePairing';
 import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
 import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,28 +33,6 @@ const lightSpinner = require('./assets/light-spinner.gif');
 const SESSION_SYNC_POLL_INTERVAL_MS = 15000;
 
 const Stack = createNativeStackNavigator();
-
-function parseDeepLink(url: string | null) {
-  if (!url) return null;
-  try {
-    const parsed = Linking.parse(url);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
-    if (parsed.path === 'config' || parsed.hostname === 'config') {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
-        return {
-          baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
-          apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to parse deep link:', e);
-  }
-  return null;
-}
-
 function Navigation() {
   const { theme, isDark } = useTheme();
   const cfg = useConfig();
@@ -105,14 +84,9 @@ function Navigation() {
     if (!cfg.ready) return;
 
     const handleUrl = async (url: string | null) => {
-      const params = parseDeepLink(url);
+      const params = parseMobilePairingDeepLink(url);
       if (params) {
-        const newConfig = {
-          ...cfg.config,
-          ...(params.baseUrl && { baseUrl: params.baseUrl }),
-          ...(params.apiKey && { apiKey: params.apiKey }),
-          ...(params.model && { model: params.model }),
-        };
+        const newConfig = applyMobilePairingConfig(cfg.config, params);
         cfg.setConfig(newConfig);
         await saveConfig(newConfig);
       }
