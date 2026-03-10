@@ -54,6 +54,7 @@ interface AgentState {
   setViewMode: (mode: SessionViewMode) => void
   setFilter: (filter: SessionFilter) => void
   setSortBy: (sortBy: SessionSortBy) => void
+  setPinnedSessionIds: (sessionIds: Iterable<string>) => void
   togglePinSession: (sessionId: string) => void
   isPinned: (sessionId: string) => boolean
 }
@@ -431,6 +432,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   setSortBy: (sortBy: SessionSortBy) => {
     set({ sortBy })
+  },
+
+  setPinnedSessionIds: (sessionIds: Iterable<string>) => {
+    set({ pinnedSessionIds: new Set(sessionIds) })
   },
 
   togglePinSession: (sessionId: string) => {

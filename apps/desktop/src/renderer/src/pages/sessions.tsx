@@ -6,13 +6,14 @@ import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { SessionGrid, SessionTileWrapper, type TileLayoutMode } from "@renderer/components/session-grid"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2 } from "lucide-react"
+import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
 
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { logUI } from "@renderer/lib/debug"
+import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector, useSelectedAgentId } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
@@ -154,11 +155,26 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
   onSelectAgent: (id: string | null) => void
 }) {
   const conversationHistoryQuery = useConversationHistoryQuery()
+  const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
+  const togglePinSession = useAgentStore((state) => state.togglePinSession)
+  const sortedRecentSessions = useMemo(
+    () => orderConversationHistoryByPinnedFirst(conversationHistoryQuery.data ?? [], pinnedSessionIds),
+    [conversationHistoryQuery.data, pinnedSessionIds],
+  )
   const recentSessions = useMemo(
-    () => (conversationHistoryQuery.data ?? []).slice(0, RECENT_SESSIONS_LIMIT),
-    [conversationHistoryQuery.data],
+    () => sortedRecentSessions.slice(0, RECENT_SESSIONS_LIMIT),
+    [sortedRecentSessions],
   )
   const totalCount = conversationHistoryQuery.data?.length ?? 0
+
+  const handleTogglePinnedSession = useCallback((conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    togglePinSession(conversationId)
+  }, [togglePinSession])
+
+  const stopSessionRowKeyPropagation = useCallback((e: React.KeyboardEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+  }, [])
 
   return (
     <div className="flex w-full flex-col items-center px-5 py-6 text-center sm:px-6">
@@ -228,19 +244,44 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
             )}
           </div>
           <div className="space-y-0.5">
-            {recentSessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => onPastSessionClick(session.id)}
-                className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate flex-1">{session.title}</span>
-                <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-                  {formatTimestamp(session.updatedAt)}
-                </span>
-              </button>
-            ))}
+            {recentSessions.map((session) => {
+              const isPinned = pinnedSessionIds.has(session.id)
+
+              return (
+                <div
+                  key={session.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onPastSessionClick(session.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      onPastSessionClick(session.id)
+                    }
+                  }}
+                  className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate flex-1">{session.title}</span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => handleTogglePinnedSession(session.id, e)}
+                      onKeyDown={stopSessionRowKeyPropagation}
+                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                      title={isPinned ? "Unpin session" : "Pin session"}
+                      aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
+                      aria-pressed={isPinned}
+                    >
+                      <Pin className={isPinned ? "h-3.5 w-3.5 fill-current text-foreground" : "h-3.5 w-3.5"} />
+                    </button>
+                    <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+                      {formatTimestamp(session.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

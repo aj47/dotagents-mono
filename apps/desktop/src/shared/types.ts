@@ -1378,6 +1378,9 @@ export type Config = {
   maxConversationsToKeep?: number
   autoSaveConversations?: boolean
 
+  // Session History Configuration
+  pinnedSessionIds?: string[]
+
   // Provider Section Collapse Configuration
   providerSectionCollapsedOpenai?: boolean
   providerSectionCollapsedGroq?: boolean

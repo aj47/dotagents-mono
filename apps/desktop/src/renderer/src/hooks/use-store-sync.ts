@@ -1,10 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { reportConfigSaveError } from '@renderer/lib/config-save-error'
 import { rendererHandlers, tipcClient } from '@renderer/lib/tipc-client'
 import { useAgentStore, useConversationStore } from '@renderer/stores'
 import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
 import { queryClient } from '@renderer/lib/queries'
 import { ttsManager } from '@renderer/lib/tts-manager'
 import { logUI } from '@renderer/lib/debug'
+
+const areStringArraysEqual = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) return false
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) return false
+  }
+  return true
+}
 
 export function useStoreSync() {
   const updateSessionProgress = useAgentStore((s) => s.updateSessionProgress)
@@ -14,7 +23,13 @@ export function useStoreSync() {
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const updateMessageQueue = useAgentStore((s) => s.updateMessageQueue)
+  const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
+  const setPinnedSessionIds = useAgentStore((s) => s.setPinnedSessionIds)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
+  const initialPinnedSessionIdsRef = useRef(Array.from(pinnedSessionIds))
+  const pinnedSessionIdsHydratedRef = useRef(false)
+  const pinnedSessionIdsChangedBeforeHydrationRef = useRef(false)
+  const lastPersistedPinnedSessionIdsRef = useRef<string[]>([])
 
   useEffect(() => {
     const unlisten = rendererHandlers.agentProgressUpdate.listen(
@@ -104,6 +119,84 @@ export function useStoreSync() {
       // Silently ignore hydration failures
     })
   }, [])
+
+  useEffect(() => {
+    if (pinnedSessionIdsHydratedRef.current) return
+
+    const currentPinnedSessionIds = Array.from(pinnedSessionIds)
+    if (!areStringArraysEqual(currentPinnedSessionIds, initialPinnedSessionIdsRef.current)) {
+      pinnedSessionIdsChangedBeforeHydrationRef.current = true
+    }
+  }, [pinnedSessionIds])
+
+  useEffect(() => {
+    let cancelled = false
+
+    queryClient.fetchQuery<{ pinnedSessionIds?: string[] }>({
+      queryKey: ['config'],
+      queryFn: async () => tipcClient.getConfig(),
+    }).then((config) => {
+      if (cancelled) return
+
+      const nextPinnedSessionIds = Array.isArray(config?.pinnedSessionIds)
+        ? config.pinnedSessionIds.filter((sessionId): sessionId is string => typeof sessionId === 'string')
+        : []
+
+      lastPersistedPinnedSessionIdsRef.current = nextPinnedSessionIds
+      pinnedSessionIdsHydratedRef.current = true
+
+      if (pinnedSessionIdsChangedBeforeHydrationRef.current) {
+        setPinnedSessionIds(Array.from(useAgentStore.getState().pinnedSessionIds))
+        return
+      }
+
+      setPinnedSessionIds(nextPinnedSessionIds)
+    }).catch(() => {
+      if (cancelled) return
+
+      pinnedSessionIdsHydratedRef.current = true
+
+      if (pinnedSessionIdsChangedBeforeHydrationRef.current) {
+        setPinnedSessionIds(Array.from(useAgentStore.getState().pinnedSessionIds))
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [setPinnedSessionIds])
+
+  useEffect(() => {
+    if (!pinnedSessionIdsHydratedRef.current) return
+
+    const nextPinnedSessionIds = Array.from(pinnedSessionIds)
+    if (areStringArraysEqual(nextPinnedSessionIds, lastPersistedPinnedSessionIdsRef.current)) {
+      return
+    }
+
+    let cancelled = false
+
+    tipcClient.saveConfig({
+      config: {
+        pinnedSessionIds: nextPinnedSessionIds,
+      },
+    }).then(() => {
+      if (cancelled) return
+
+      lastPersistedPinnedSessionIdsRef.current = nextPinnedSessionIds
+      queryClient.setQueryData(['config'], (previousConfig: Record<string, unknown> | undefined) => ({
+        ...(previousConfig ?? {}),
+        pinnedSessionIds: nextPinnedSessionIds,
+      }))
+    }).catch((error) => {
+      if (cancelled) return
+      reportConfigSaveError(error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [pinnedSessionIds])
 
   // Listen for conversation history changes from remote server (mobile sync)
   // This ensures the sidebar refreshes when conversations are created/updated remotely

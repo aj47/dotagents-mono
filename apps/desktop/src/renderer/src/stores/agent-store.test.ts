@@ -77,5 +77,13 @@ describe('agent-store delegation merge', () => {
     expect(delegation?.status).toBe('completed')
     expect(delegation?.conversationId).toBe('delegated-conversation-1')
   })
+
+  it('replaces pinned session ids during hydration', () => {
+    useAgentStore.getState().togglePinSession('session-1')
+
+    useAgentStore.getState().setPinnedSessionIds(['session-2', 'session-2', 'session-3'])
+
+    expect(Array.from(useAgentStore.getState().pinnedSessionIds)).toEqual(['session-2', 'session-3'])
+  })
 })
 

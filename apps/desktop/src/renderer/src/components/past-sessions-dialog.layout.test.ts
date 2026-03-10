@@ -31,7 +31,7 @@ describe("past sessions dialog layout", () => {
     )
   })
 
-  it("keeps per-session delete affordances keyboard-accessible", () => {
+  it("keeps per-session row actions keyboard-accessible", () => {
     expect(pastSessionsDialogSource).toContain(
       'focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     )
@@ -42,8 +42,18 @@ describe("past sessions dialog layout", () => {
       'group-hover:opacity-0 group-focus-within:opacity-0',
     )
     expect(pastSessionsDialogSource).toContain(
-      'focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto',
+      'group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto',
+    )
+    expect(pastSessionsDialogSource).toContain(
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
     )
     expect(pastSessionsDialogSource).toContain('aria-label={`Delete ${session.title}`}')
+  })
+
+  it("includes a keyboard-accessible pin action and pinned-first sort for past sessions", () => {
+    expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst")
+    expect(pastSessionsDialogSource).toContain("return orderConversationHistoryByPinnedFirst(filteredSessions, pinnedSessionIds)")
+    expect(pastSessionsDialogSource).toContain('aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}')
+    expect(pastSessionsDialogSource).toContain('onKeyDown={stopSessionRowKeyPropagation}')
   })
 })
