@@ -288,8 +288,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
-  const { height: screenHeight } = useWindowDimensions();
-  const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const styles = useMemo(() => createStyles(theme, screenHeight, screenWidth), [theme, screenHeight, screenWidth]);
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
@@ -2681,17 +2681,16 @@ export default function ChatScreen({ route, navigation }: any) {
         )}
         {/* Retry banner - shows when there's a failed message that can be retried */}
         {lastFailedMessage && !responding && (
-          <View style={[styles.connectionBanner, styles.connectionBannerFailed]}>
-            <View style={styles.connectionBannerContent}>
-              <Text style={styles.connectionBannerIcon}>⚠️</Text>
+          <View style={[styles.connectionBanner, styles.connectionBannerFailed, styles.retryBanner]}>
+            <View style={[styles.connectionBannerContent, styles.retryBannerContent]}>
               <View style={styles.connectionBannerTextContainer}>
                 <Text style={styles.connectionBannerText}>Message failed to send</Text>
                 <Text style={styles.connectionBannerSubtext} numberOfLines={1}>
-                  Tap retry to try again
+                  Retry when you're ready
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.retryButton}
+                style={[styles.retryButton, styles.retryButtonCompact]}
                 onPress={async () => {
                   const messageToRetry = lastFailedMessage;
                   setLastFailedMessage(null);
@@ -2978,8 +2977,16 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 }
 
-function createStyles(theme: Theme, screenHeight: number) {
-  const micButtonHeight = Math.round(screenHeight * 0.2);
+function createStyles(theme: Theme, screenHeight: number, screenWidth: number) {
+  const isCompactViewport = screenWidth <= 430;
+  const composerRowVerticalPadding = isCompactViewport ? 6 : spacing.xs;
+  const micButtonHeight = Math.min(
+    Math.max(
+      Math.round(screenHeight * (isCompactViewport ? 0.14 : 0.16)),
+      isCompactViewport ? 96 : 104,
+    ),
+    isCompactViewport ? 128 : 144,
+  );
   const headerActionButton = createMinimumTouchTargetStyle();
   const headerEdgeActionButton = createMinimumTouchTargetStyle({ horizontalPadding: 12 });
   return StyleSheet.create({
@@ -3104,7 +3111,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       gap: spacing.xs,
       paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      paddingVertical: composerRowVerticalPadding,
     },
     input: {
       ...theme.input,
@@ -3119,7 +3126,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     micWrapper: {
       paddingHorizontal: spacing.sm,
-      paddingBottom: spacing.xs,
+      paddingBottom: isCompactViewport ? 6 : spacing.xs,
     },
     mic: {
       width: '100%' as any,
@@ -3136,12 +3143,12 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.primary,
     },
     micText: {
-      fontSize: 32,
+      fontSize: isCompactViewport ? 30 : 32,
     },
     micLabel: {
       fontSize: 13,
       color: theme.colors.mutedForeground,
-      marginTop: 4,
+      marginTop: isCompactViewport ? 3 : 4,
       fontWeight: '600',
     },
     micLabelOn: {
@@ -3211,9 +3218,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.1),
       borderColor: hexToRgba(theme.colors.destructive, 0.3),
     },
+    retryBanner: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
     connectionBannerContent: {
       flexDirection: 'row',
       alignItems: 'center',
+    },
+    retryBannerContent: {
+      gap: spacing.sm,
     },
     connectionBannerIcon: {
       fontSize: 16,
@@ -3238,6 +3252,12 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingVertical: spacing.sm,
       borderRadius: radius.md,
       marginLeft: spacing.sm,
+    },
+    retryButtonCompact: {
+      minHeight: 44,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      marginLeft: 0,
     },
     retryButtonText: {
       color: theme.colors.primaryForeground,
