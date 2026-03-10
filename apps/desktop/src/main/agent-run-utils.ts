@@ -12,6 +12,8 @@ export interface AgentIterationLimits {
 interface ConversationMessageLike {
   role: string
   content?: string | null
+  toolCalls?: unknown[] | null
+  toolResults?: unknown[] | null
 }
 
 type ProfileContextSource = {
@@ -77,6 +79,48 @@ export function getLatestAssistantMessageContent(
   }
 
   return undefined
+}
+
+export function getLatestPlainAssistantMessageContent(
+  conversation?: ConversationMessageLike[],
+): string | undefined {
+  if (!Array.isArray(conversation)) return undefined
+
+  for (let index = conversation.length - 1; index >= 0; index--) {
+    const message = conversation[index]
+    if (message?.role !== "assistant") continue
+    if ((message.toolCalls?.length ?? 0) > 0 || (message.toolResults?.length ?? 0) > 0) continue
+    if (typeof message.content !== "string") continue
+
+    const trimmedContent = message.content.trim()
+    if (trimmedContent.length > 0) {
+      return message.content
+    }
+  }
+
+  return undefined
+}
+
+export function getPreferredAgentFinalOutput(
+  output: string | undefined,
+  conversation?: ConversationMessageLike[],
+  userResponse?: string,
+): string {
+  const normalizedOutput = typeof output === "string" ? output : ""
+  const normalizedUserResponse = typeof userResponse === "string" && userResponse.trim().length > 0
+    ? userResponse
+    : undefined
+
+  if (normalizedOutput.includes(AGENT_STOP_NOTE)) {
+    return normalizedOutput
+  }
+
+  return (
+    getLatestPlainAssistantMessageContent(conversation) ??
+    normalizedUserResponse ??
+    getLatestAssistantMessageContent(conversation) ??
+    normalizedOutput
+  )
 }
 
 export function buildProfileContext(

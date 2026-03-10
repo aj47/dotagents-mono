@@ -43,6 +43,7 @@ import {
 } from "../shared/builtin-tool-names"
 import {
   appendAgentStopNote,
+  getPreferredAgentFinalOutput,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 import { filterEphemeralMessages } from "./conversation-history-utils"
@@ -2969,6 +2970,12 @@ Return ONLY JSON per schema.`,
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
   }
+
+    finalContent = getPreferredAgentFinalOutput(
+      finalContent,
+      conversationHistory,
+      getSessionUserResponse(currentSessionId),
+    )
 
     return {
       content: finalContent,

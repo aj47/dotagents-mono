@@ -4,6 +4,8 @@ import {
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
   appendAgentStopNote,
   buildProfileContext,
+  getLatestPlainAssistantMessageContent,
+  getPreferredAgentFinalOutput,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
@@ -110,6 +112,43 @@ describe("agent-run-utils", () => {
           { role: "assistant", content: "Real final output" },
         ]),
       ).toBe("Real final output")
+    })
+  })
+
+  describe("getLatestPlainAssistantMessageContent", () => {
+    it("skips assistant entries that only carry tool metadata", () => {
+      expect(
+        getLatestPlainAssistantMessageContent([
+          { role: "assistant", content: "[respond_to_user] { ... }", toolCalls: [{ name: "respond_to_user" }] },
+          { role: "assistant", content: "Cleanup is done." },
+        ]),
+      ).toBe("Cleanup is done.")
+    })
+  })
+
+  describe("getPreferredAgentFinalOutput", () => {
+    it("prefers the latest plain assistant message over stale finalContent", () => {
+      expect(
+        getPreferredAgentFinalOutput("Earlier answer", [
+          { role: "assistant", content: "Earlier answer" },
+          { role: "assistant", content: "[respond_to_user] { ... }", toolCalls: [{ name: "respond_to_user" }] },
+          { role: "assistant", content: "Cleanup is done and one loop is running." },
+        ]),
+      ).toBe("Cleanup is done and one loop is running.")
+    })
+
+    it("falls back to stored respond_to_user content when conversation only has tool-call wrappers", () => {
+      expect(
+        getPreferredAgentFinalOutput("", [
+          { role: "assistant", content: "[respond_to_user] { ... }", toolCalls: [{ name: "respond_to_user" }] },
+        ], "Actual final user-facing response"),
+      ).toBe("Actual final user-facing response")
+    })
+
+    it("preserves emergency-stop content instead of reviving stale respond_to_user text", () => {
+      expect(
+        getPreferredAgentFinalOutput(AGENT_STOP_NOTE, undefined, "Older response"),
+      ).toBe(AGENT_STOP_NOTE)
     })
   })
 })
