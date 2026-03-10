@@ -12,7 +12,7 @@
 - [x] Mobile `Desktop Settings -> Skills`, `MCP Servers`, `Memories`, `Agents`, and `Agent Loops` expose the main remote-management surfaces that desktop users can inspect and change.
 - [x] Mobile chat header agent switching now matches the desktop selector expectation in API mode by listing enabled agent profiles instead of only legacy user profiles.
 - [ ] Desktop host-only `General` settings (`Launch at Login`, `Hide Dock Icon`, app hotkeys, `.agents` folder paths) are still not configurable from mobile. Rationale: they change desktop-host behavior rather than mobile runtime behavior. Next step: decide whether mobile should remotely edit those host settings or explicitly document them as desktop-only.
-- [ ] Desktop `Remote Server` setup/parity is still only partially checked from mobile. `Connection` covers entering a known base URL and API key, but mobile has not yet been validated against the desktop remote-server enable/pairing workflow end-to-end.
+- [ ] Desktop `Remote Server` setup/parity is still only partially checked from mobile. `Connection` now covers entering a known base URL and API key plus the Expo Web deep-link paste guardrails, but mobile has not yet been validated against the desktop remote-server enable/pairing workflow end-to-end.
 
 ## Coverage Map
 
@@ -31,6 +31,7 @@
 - [x] Chat header agent selector sheet in API mode on a narrow Expo Web viewport
 - [x] Settings local text-to-speech voice picker sheet in Expo Web on a narrow viewport
 - [x] Settings desktop `Profile & Model -> Select Model` picker sheet in Expo Web on a narrow viewport
+- [x] Connection `Scan QR Code or Paste Link` blank and incomplete desktop deep-link validation states on Expo Web
 
 ### Not yet checked
 
@@ -56,6 +57,7 @@
 - [x] Settings local TTS voice picker lost its viewport-anchored web sheet guardrails and left the `Close` action below the 44px minimum touch-target height
 - [x] Settings desktop model picker modal exposed a `Close` action below the 44px minimum touch-target height on Expo Web
 - [x] Connection `Scan QR Code` opened a blank Expo Web camera modal with no recovery copy or manual deep-link fallback
+- [x] Connection web deep-link fallback left `Apply Link` enabled while blank, treated blank and malformed input the same, and accepted incomplete `dotagents://config` links that could partially apply only a Base URL
 
 ### Improved
 
@@ -72,6 +74,7 @@
 - [x] Settings local TTS voice picker close affordance and viewport anchoring on Expo Web
 - [x] Settings shared overlay close affordances for model/configuration modals on Expo Web
 - [x] Connection setup web QR/deep-link fallback clarity and recoverability on Expo Web
+- [x] Connection setup deep-link validation guardrails for blank and incomplete desktop pairing links on Expo Web
 
 ### Verified
 
@@ -80,6 +83,7 @@
 - [x] Live Expo Web verification that the local TTS voice picker now spans the viewport width and exposes a 44px-tall close action on a narrow screen
 - [x] Live Expo Web verification that the `Profile & Model` model picker now exposes a 44px-tall `Close` action on a narrow screen
 - [x] Live Expo Web verification that `Connection -> Scan QR Code` now opens a desktop deep-link fallback on web and fills Base URL/API key from a pasted sample link
+- [x] Live Expo Web verification plus behavior-level tests that `Connection -> Scan QR Code or Paste Link` keeps `Apply Link` disabled while blank and rejects incomplete desktop deep links without partially applying config
 
 ### Blocked
 
@@ -93,6 +97,54 @@
 - [ ] Real desktop remote-server pairing still needs an end-to-end pass with an actual copied deep link or scanned QR code, and the native camera-permission path remains unverified in this worktree
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 16: harden mobile web pairing links so blank or incomplete deep links cannot misapply config
+
+- Status: completed with live Expo Web verification
+- Area:
+  - `ConnectionSettingsScreen` Expo Web pairing fallback in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - app-level mobile pairing deep-link handling in `apps/mobile/App.tsx`
+  - new shared pairing parser in `apps/mobile/src/lib/mobilePairing.ts`
+- Why this area:
+  - this was a justified revisit because unresolved QA feedback explicitly called out weak behavior coverage for Iteration 15 and a bad commit SHA in the ledger, so the onboarding/setup pairing surface was still part of the unapproved review stack
+  - live re-inspection on Expo Web found a real user-facing reliability issue: `Apply Link` stayed enabled while blank, blank and malformed inputs shared one generic message, and an incomplete `dotagents://config?...` link could close the modal after partially filling only `Base URL`
+- What was investigated:
+  - live Expo Web behavior at `http://localhost:8107` on a `390x664` iPhone-12-sized viewport in `Connection -> Scan QR Code or Paste Link`
+  - current mobile pairing parsing/application logic in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` and `apps/mobile/App.tsx`
+  - desktop `Remote Server -> Copy Deep Link` generation in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and `apps/desktop/src/main/remote-server.ts`
+  - existing connection-screen regression coverage plus the mobile package's vitest entrypoint
+- Findings:
+  - desktop-generated pairing links always include both `baseUrl` and `apiKey`, so the mobile pairing flow can safely require both fields instead of accepting partial config payloads
+  - the Expo Web fallback let users tap `Apply Link` on an empty field, which immediately pushed them into an avoidable error state
+  - the mobile screen and app-level deep-link listener both used permissive config parsing, so malformed or incomplete pairing links could be silently ignored in one place or partially applied in another
+- Change made:
+  - extracted a shared `mobilePairing` helper that strictly parses `dotagents://config` links, requires both `baseUrl` and `apiKey`, normalizes the base URL, and centralizes config application for both the connection screen and app-level deep-link handling
+  - disabled `Apply Link` while the deep-link field is blank and exposed that disabled state to accessibility APIs
+  - differentiated blank, malformed, and incomplete manual-link failures so Expo Web users get a specific message when the copied desktop link is missing either `Base URL` or `API Key`
+  - added behavior-level vitest coverage for valid parsing, incomplete-link rejection, blank-vs-invalid manual-link errors, and config application; kept the source-backed screen test for the blank disabled-state guard; corrected Iteration 15's bad commit SHA in the ledger
+- Verification:
+  - `pnpm --filter @dotagents/mobile web --port 8107`
+  - `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js`
+  - `pnpm --filter @dotagents/mobile exec vitest run src/lib/mobilePairing.test.ts`
+  - `pnpm --filter @dotagents/mobile test`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `git diff --check`
+  - live Expo Web verification at `http://localhost:8107`
+- Follow-up checks:
+  - run a real end-to-end desktop pairing pass with an actual `Copy Deep Link` payload next so the remaining `Remote Server` parity gap is narrowed with real credentials instead of only controlled samples
+  - once the app is paired again in this worktree, continue widening coverage to the still-unchecked remote TTS voice/model pickers, endpoint picker, and destructive confirmation modals rather than returning to the connection screen without a new regression signal
+
+Evidence
+- Evidence ID: qr-link-apply-guard
+- Scope: mobile Expo Web pairing fallback in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` plus shared pairing deep-link handling in `apps/mobile/src/lib/mobilePairing.ts` and `apps/mobile/App.tsx`
+- Commit range: 8bf9c6b6d4610bc5c640c020f351fcae4fa48dfb..8805ee6528805d59ae740a0e6d1f62467fca2840
+- Rationale: The mobile Expo Web fallback introduced in the prior iteration made pairing possible again, but it still left the primary `Apply Link` action enabled for blank input and allowed incomplete desktop deep links to partially affect config state. That was both a live onboarding risk and an unresolved QA concern because the fallback logic had no behavior-level regression coverage. Hardening the parser and button state removes a confusing dead-end, prevents partial misconfiguration, and makes the pairing flow enforce the same data shape desktop already generates.
+- QA feedback: Addressing prior QA findings that Iteration 15 recorded a non-existent end SHA and lacked behavior-level coverage for the manual `Apply Link` flow, parsed deep-link application, and invalid/incomplete link handling.
+- Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--before--connection-qr-modal--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--before--connection-qr-invalid--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed `Connection -> Scan QR Code or Paste Link` opening with `Apply Link` already enabled even when the field was blank, and the fallback showed the same generic error after both blank input and obviously invalid text. In the same live pass, an incomplete `dotagents://config?baseUrl=...` link also closed the modal and partially filled only `Base URL`, which was insufficient because a primary onboarding/setup control could mislead users into a half-configured state.
+- Change: Added a shared strict mobile-pairing parser/applicator, reused it in both the connection screen and app-level deep-link listener, disabled `Apply Link` until users paste something, differentiated blank vs malformed vs incomplete manual-link errors, added behavior-level vitest coverage for the pairing flow, extended the existing source-backed screen test for the disabled blank state, and corrected the prior iteration's bad commit SHA in the ledger.
+- After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--after--connection-qr-modal--qa-r1--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--after--connection-qr-invalid--qa-r1--20260310.png`. On the same `390x664` viewport, live Expo Web verification now shows the blank-state `Apply Link` control disabled with `aria-disabled="true"` and no error side effect on click attempts, while an incomplete `dotagents://config?baseUrl=...` link keeps the modal open and shows `The copied desktop link must include both Base URL and API Key.`. This after state is preferable because the pairing fallback now guides the user before failure, refuses incomplete credentials, and no longer partially misapplies config.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8107` ✅ (Expo Web started successfully at `http://localhost:8107`); `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js` ✅ (8/8 passing); `pnpm --filter @dotagents/mobile exec vitest run src/lib/mobilePairing.test.ts` ✅ (4/4 passing); `pnpm --filter @dotagents/mobile test` ✅ (69 node tests + 54 vitest tests passing through the package's normal test entrypoint); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅ (completed with a non-blocking Node engine warning under Node `v25.2.1`); `git diff --check` ✅; live Expo Web verification at `http://localhost:8107` ✅ (`Apply Link` stayed disabled while blank, and an incomplete link left the modal open with a specific `Base URL and API Key` error).
+- Blockers/remaining uncertainty: This iteration tightened the Expo Web/manual deep-link path and app-level pairing parser, but it still used controlled sample links rather than a real desktop secret. End-to-end `Remote Server -> Copy Deep Link` pairing with live credentials, the native QR camera-permission path, and higher-level remote settings modals remain unchecked in this worktree.
 
 ### 2026-03-10 — Iteration 15: make mobile web QR setup recoverable with a desktop deep-link fallback
 
@@ -129,7 +181,7 @@
 Evidence
 - Evidence ID: web-qr-link-fallback
 - Scope: mobile onboarding/setup recovery in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, specifically `Connection -> Scan QR Code` on Expo Web
-- Commit range: a86c85b4cc2b1f8ea231bc84a2fa3f17adc90730..905bd9af23850faf7303ab4e578d2e2fa19d1e0a
+- Commit range: a86c85b4cc2b1f8ea231bc84a2fa3f17adc90730..905bd9af1820c06458452cca26b998b17f9d6539
 - Rationale: In the current unpaired Expo Web session, the `Scan QR Code` path was the most obvious way to connect the app to desktop settings, but it opened into a mostly black camera surface with no usable fallback. That left setup stranded before users could reach higher-value configuration surfaces like remote TTS pickers. Adding a web-safe deep-link path resolves the immediate setup dead end and makes the desktop remote-server `Copy Deep Link` affordance actionable from mobile web.
 - QA feedback: None (new iteration)
 - Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/web-qr-link-fallback--before--connection-qr-modal--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed `Connection -> Scan QR Code` opening a nearly all-black full-screen scanner view with only `Scan a DotAgents QR code` and `Close` visible. That before state was insufficient because a primary onboarding/setup action on web provided no recovery copy, no manual deep-link path, and no useful next step after the camera surface failed.
