@@ -2346,8 +2346,9 @@ export default function SettingsScreen({ navigation }: any) {
                       <TouchableOpacity
                         style={styles.memoryDeleteButton}
                         onPress={() => handleMemoryDelete(memory.id)}
-                        accessibilityLabel={`Delete memory ${memory.title}`}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Delete memory ${memory.title}`)}
+                        accessibilityHint="Opens a confirmation prompt before permanently deleting this memory."
                       >
                         <Text style={styles.memoryDeleteButtonText}>Delete</Text>
                       </TouchableOpacity>
@@ -2412,8 +2413,9 @@ export default function SettingsScreen({ navigation }: any) {
                           <TouchableOpacity
                             style={styles.agentDeleteButton}
                             onPress={() => handleAgentProfileDelete(profile)}
-                            accessibilityLabel={`Delete agent ${profile.displayName}`}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Delete agent ${profile.displayName}`)}
+                            accessibilityHint="Opens a confirmation prompt before permanently deleting this agent."
                           >
                             <Text style={styles.agentDeleteButtonText}>Delete</Text>
                           </TouchableOpacity>
@@ -3346,21 +3348,44 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignSelf: 'flex-start',
     },
     agentDeleteButton: {
-      padding: spacing.xs,
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+        verticalPadding: spacing.xs,
+        horizontalPadding: spacing.sm,
+      }),
+      minWidth: 72,
+      borderWidth: 1,
+      borderColor: theme.colors.destructive,
+      borderRadius: radius.md,
+      alignSelf: 'flex-start',
+      backgroundColor: theme.colors.background,
     },
     agentDeleteButtonText: {
       color: theme.colors.destructive,
       fontSize: 12,
       fontWeight: '500',
+      textAlign: 'center',
     },
     memoryDeleteButton: {
-      padding: spacing.xs,
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+        verticalPadding: spacing.xs,
+        horizontalPadding: spacing.sm,
+      }),
+      minWidth: 72,
+      borderWidth: 1,
+      borderColor: theme.colors.destructive,
+      borderRadius: radius.md,
       alignSelf: 'flex-start',
+      backgroundColor: theme.colors.background,
     },
     memoryDeleteButtonText: {
       color: theme.colors.destructive,
       fontSize: 12,
       fontWeight: '500',
+      textAlign: 'center',
     },
     loopActions: {
       width: '100%' as const,

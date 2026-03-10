@@ -26,5 +26,12 @@ test('keeps the mobile Memories subsection free of decorative delete emoji chrom
 
   assert.doesNotMatch(memoriesSection, /🗑️/);
   assert.match(memoriesSection, /<Text style=\{styles\.memoryDeleteButtonText\}>Delete<\/Text>/);
-  assert.match(memoriesSection, /accessibilityLabel=\{`Delete memory \$\{memory\.title\}`\}/);
+  assert.match(memoriesSection, /accessibilityRole="button"/);
+  assert.match(memoriesSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Delete memory \$\{memory\.title\}`\)\}/);
+  assert.match(memoriesSection, /Opens a confirmation prompt before permanently deleting this memory\./);
+});
+
+test('keeps mobile Memories delete actions at a 44px minimum touch target with centered text', () => {
+  assert.match(settingsSource, /memoryDeleteButton:\s*\{[\s\S]*?createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\),[\s\S]*?minWidth:\s*72,/);
+  assert.match(settingsSource, /memoryDeleteButtonText:\s*\{[\s\S]*?textAlign:\s*'center',/);
 });

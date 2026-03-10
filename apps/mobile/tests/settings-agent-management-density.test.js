@@ -26,7 +26,14 @@ test('keeps the mobile Agents subsection free of decorative delete emoji chrome'
 
   assert.doesNotMatch(agentsSection, /🗑️/);
   assert.match(agentsSection, /<Text style=\{styles\.agentDeleteButtonText\}>Delete<\/Text>/);
-  assert.match(agentsSection, /accessibilityLabel=\{`Delete agent \$\{profile\.displayName\}`\}/);
+  assert.match(agentsSection, /accessibilityRole="button"/);
+  assert.match(agentsSection, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Delete agent \$\{profile\.displayName\}`\)\}/);
+  assert.match(agentsSection, /Opens a confirmation prompt before permanently deleting this agent\./);
+});
+
+test('keeps mobile Agents delete actions at a 44px minimum touch target with centered text', () => {
+  assert.match(settingsSource, /agentDeleteButton:\s*\{[\s\S]*?createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\),[\s\S]*?minWidth:\s*72,/);
+  assert.match(settingsSource, /agentDeleteButtonText:\s*\{[\s\S]*?textAlign:\s*'center',/);
 });
 
 test('keeps mobile Agent Loop actions text-first and explicitly labeled', () => {
