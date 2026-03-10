@@ -7,6 +7,7 @@
 
 ## Checked
 
+- [x] Reviewed QA round 1 findings for `mobile-web-qr-scanner` evidence provenance and weak denied-permission regression coverage.
 - [x] Reviewed QA round 1 findings for the Metro watch-folders remediation scope.
 - [x] Reviewed QA round 2 finding for evidence provenance drift in `mobile-expo-symlink-watchfolders`.
 - [x] Reviewed `apps/desktop/DEBUGGING.md` for documented runtime workflows.
@@ -31,6 +32,7 @@
 
 - [x] `apps/mobile/metro.config.js` now adds realpaths for symlinked `node_modules` directories plus linked `@dotagents/*` workspace packages to Metro `watchFolders`, which lets Expo Web bundle in the symlinked-worktree setup used for this iteration.
 - [x] `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` now clears stale connection errors before QR attempts and shows a platform-aware inline error when camera permission is denied instead of failing silently on Expo Web.
+- [x] QA round 1 remediation extracted the QR permission decision into a small pure helper, added executable denied-permission coverage under Vitest, and corrected the `mobile-web-qr-scanner` evidence provenance so this ledger matches the reviewed iteration.
 
 ## Verified
 
@@ -42,6 +44,9 @@
 - [x] `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/connection-settings-density.test.js`
 - [x] Live Expo Web repro on `http://localhost:8110` now shows an inline camera-permission error after `Scan QR Code` in a denied-permission browser context.
 - [x] Live Expo Web regression check on `http://localhost:8110` still opens the scanner modal with an active camera preview when camera permission is granted.
+- [x] `pnpm --filter @dotagents/mobile run test:vitest`
+- [x] `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/package-scripts.test.js`
+- [x] Refreshed the denied-permission QR screenshot on `http://localhost:8110` at `.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--qa-r1--20260310.png`.
 
 ## Blocked
 
@@ -77,11 +82,11 @@
 ### Evidence ID: mobile-web-qr-scanner
 
 - Scope: `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` Expo Web QR scan action when browser camera permission is denied
-- Commit range: `f1a861ee6c96f07e8ac57f3ca38da5ea2db90196..7aa8f31a147e14cb57d4026d9bbabffb26aff41c`
+- Commit range: `f1a861ee6c96f07e8ac57f3ca38da5ea2db90196..90a3722da13dd438c0c9ac9dfdeee8d75cd16595`
 - Rationale: `Scan QR Code` is a primary mobile onboarding path from the desktop app. On Expo Web, when the browser denied camera access, the button left users on the same Connection screen with no modal and no visible explanation, which looked like a dead action and blocked recovery even though the app knew scanning could not proceed.
-- QA feedback: None (new iteration)
+- QA feedback: QA round 1 found two scope-limited issues in this evidence chain: (1) the `Commit range` used a non-existent `7aa8f31a147e14cb57d4026d9bbabffb26aff41c` hash and omitted the reviewed draft head `90a3722da13dd438c0c9ac9dfdeee8d75cd16595`, and (2) the new QR permission regression coverage only regex-matched source text instead of executing the denied-permission behavior.
 - Before evidence: Screenshot: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/bug-fix-loop/.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--before--connection-qr-scanner--20260310.png` (viewport `1440x900`, desktop Chrome automation). The captured state shows the unchanged Connection screen immediately after clicking `Scan QR Code` in a browser context where camera permission was denied; no scanner dialog, camera preview, or inline guidance appears, so the action looks broken and gives the user no recovery path. Supporting runtime evidence from the same repro showed `navigator.mediaDevices.getUserMedia({ video: true })` rejecting with `NotAllowedError: Permission denied`.
-- Change: Added a small permission-error helper in `ConnectionSettingsScreen.tsx`, cleared stale connection errors at the start of `handleScanQR`, and set a platform-aware inline error when `requestPermission()` returns denied instead of silently returning. Extended `apps/mobile/tests/connection-settings-validation.test.js` to lock the new QR permission error path in source-based regression coverage.
-- After evidence: Screenshot: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/bug-fix-loop/.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--20260310.png` (viewport `430x932`, mobile-sized Chrome automation). After clicking `Scan QR Code` with browser camera permission denied, the Connection screen now renders the inline error `Camera access is required to scan a QR code. Allow camera access in your browser and try scanning again.` directly in the visible form flow. This is preferable because the user gets immediate feedback and a concrete next step instead of a silent no-op. Separate regression validation in a granted-permission browser context confirmed the scanner modal still opens with an active camera preview.
-- Verification commands/run results: `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/connection-settings-density.test.js` ✅ (7 tests passing); `git diff --check` ✅; live Expo Web repro at `http://localhost:8110` with denied camera permission ✅ now shows the inline error and no longer fails silently; live Expo Web regression check at `http://localhost:8110` with granted camera permission ✅ still opens the scanner modal and active camera preview; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ❌ with pre-existing unrelated errors in `apps/mobile/src/screens/LoopEditScreen.tsx` (`Property 'guidelines' does not exist on type 'ApiAgentProfile'`).
-- Blockers/remaining uncertainty: I did not complete an end-to-end real-camera QR decode run in this iteration; browser automation used denied-permission and fake-camera contexts to validate the failure and non-regression paths. App-level mobile typecheck is currently red for an unrelated pre-existing `LoopEditScreen.tsx` issue, so this iteration relies on targeted tests plus live QR-flow validation rather than a clean full mobile typecheck.
+- Change: Kept the existing user-visible QR permission fix intact, corrected this evidence block to the exact reviewed iteration range, extracted the QR permission decision into `apps/mobile/src/screens/connection-settings-qr.ts`, added executable denied-permission coverage in `apps/mobile/src/screens/connection-settings-qr.test.ts`, and updated `apps/mobile/package.json` plus `apps/mobile/tests/package-scripts.test.js` so the behavior-level test runs under the standard mobile Vitest suite. `apps/mobile/tests/connection-settings-validation.test.js` now focuses on the visible inline error wiring instead of pretending to execute the permission flow via regex.
+- After evidence: Screenshot: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/bug-fix-loop/.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--qa-r1--20260310.png` (same Connection screen surface, denied-permission repro refreshed in Chrome automation for QA round 1). After clicking `Scan QR Code` with browser camera permission denied, the screen still renders the inline error `Camera access is required to scan a QR code. Allow camera access in your browser and try scanning again.` directly in the visible form flow, so the observable recovery behavior remains correct after the helper extraction. This remediation also adds executable regression coverage for the denied-permission state transition, so the bug is no longer protected only by screenshots plus source-shape checks.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile run test:vitest` ✅ (7 files / 53 tests passing, including `src/screens/connection-settings-qr.test.ts`); `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/package-scripts.test.js` ✅ (7 tests passing); `git diff --check` ✅; live Expo Web denied-permission repro at `http://localhost:8110` ✅ still shows the inline QR camera-permission error and refreshed the QA-round screenshot at `.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--qa-r1--20260310.png`.
+- Blockers/remaining uncertainty: I did not re-run the separate granted-permission scanner-modal path in this QA pass because the remediation only refactored the already-fixed permission decision into a pure helper and added targeted executable coverage for both denied and already-granted states. End-to-end real-camera QR decoding also remains outside this pass's scope.

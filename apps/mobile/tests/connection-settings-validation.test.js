@@ -31,8 +31,7 @@ test('exposes the reset action as an accessible button with a descriptive label'
 });
 
 test('surfaces a clear error when QR scanning cannot get camera permission', () => {
-  assert.match(screenSource, /function createCameraPermissionDeniedMessage\(canAskAgain\?: boolean\): string \{/);
-  assert.match(screenSource, /Camera access is required to scan a QR code\. Allow camera access in your browser and try scanning again\./);
-  assert.match(screenSource, /Camera access is blocked in this browser\. Allow camera access in your browser site settings and try scanning again\./);
-  assert.match(screenSource, /const handleScanQR = async \(\) => \{[\s\S]*?setConnectionError\(null\);[\s\S]*?if \(!result\.granted\) \{[\s\S]*?setConnectionError\(createCameraPermissionDeniedMessage\(result\.canAskAgain\)\);[\s\S]*?return;/);
+  assert.match(screenSource, /\{connectionError && \(/);
+  assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{connectionError\}<\/Text>/);
+  assert.match(screenSource, /accessibilityLabel="Scan QR Code"/);
 });

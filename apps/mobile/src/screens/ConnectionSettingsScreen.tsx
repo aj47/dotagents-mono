@@ -13,6 +13,7 @@ import {
   createMinimumTouchTargetStyle,
   createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
+import { resolveQrScannerActivation } from './connection-settings-qr';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
@@ -34,22 +35,6 @@ function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?:
     console.warn('Failed to parse QR code:', e);
   }
   return null;
-}
-
-function createCameraPermissionDeniedMessage(canAskAgain?: boolean): string {
-  if (Platform.OS === 'web') {
-    if (canAskAgain === false) {
-      return 'Camera access is blocked in this browser. Allow camera access in your browser site settings and try scanning again.';
-    }
-
-    return 'Camera access is required to scan a QR code. Allow camera access in your browser and try scanning again.';
-  }
-
-  if (canAskAgain === false) {
-    return 'Camera access is blocked. Allow camera access in your device settings and try scanning again.';
-  }
-
-  return 'Camera access is required to scan a QR code. Allow camera access and try scanning again.';
 }
 
 export default function ConnectionSettingsScreen({ navigation }: any) {
@@ -170,13 +155,17 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const handleScanQR = async () => {
     setConnectionError(null);
 
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        setConnectionError(createCameraPermissionDeniedMessage(result.canAskAgain));
-        return;
-      }
+    const scanActivation = await resolveQrScannerActivation({
+      hasPermission: permission?.granted === true,
+      isWeb: Platform.OS === 'web',
+      requestPermission,
+    });
+
+    if (scanActivation.errorMessage) {
+      setConnectionError(scanActivation.errorMessage);
+      return;
     }
+
     setScanned(false);
     setShowScanner(true);
   };
