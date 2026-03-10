@@ -2979,7 +2979,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 function createStyles(theme: Theme, screenHeight: number, screenWidth: number) {
   const isCompactViewport = screenWidth <= 430;
-  const composerRowVerticalPadding = isCompactViewport ? 6 : spacing.xs;
+  const composerRowVerticalPadding = isCompactViewport ? 3 : spacing.xs;
   const micButtonHeight = Math.min(
     Math.max(
       Math.round(screenHeight * (isCompactViewport ? 0.14 : 0.16)),
