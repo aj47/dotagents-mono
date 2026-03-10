@@ -3489,6 +3489,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingRight: spacing.xs,
     },
     modalCloseButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalMargin: 0,
+        verticalPadding: spacing.xs,
+        horizontalPadding: spacing.sm,
+      }),
       borderRadius: radius.md,
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,

@@ -53,3 +53,8 @@ test('keeps mobile settings overlay headers compact and flex-safe on narrow widt
   assert.match(importModalTitleStyles, /flexShrink:\s*1/);
   assert.match(importModalTitleStyles, /paddingRight:\s*spacing\.xs/);
 });
+
+test('keeps mobile settings overlay close actions at 44px minimum tap height', () => {
+  const modalCloseButtonStyles = extractBetween('modalCloseButton: {', 'modalCloseText: {');
+  assert.match(modalCloseButtonStyles, /createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
+});

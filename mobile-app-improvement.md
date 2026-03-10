@@ -29,6 +29,7 @@
 - [x] Settings desktop partial-load warning / retry state (source-backed in this worktree)
 - [x] Chat header agent selector sheet in API mode on a narrow Expo Web viewport
 - [x] Settings local text-to-speech voice picker sheet in Expo Web on a narrow viewport
+- [x] Settings desktop `Profile & Model -> Select Model` picker sheet in Expo Web on a narrow viewport
 
 ### Not yet checked
 
@@ -36,7 +37,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Modal/sheet surfaces beyond the checked chat/local-TTS selectors on narrow web viewports (model picker, remote TTS voice picker, confirmations)
+- [ ] Modal/sheet surfaces beyond the checked chat/local-TTS/model selectors on narrow web viewports (remote TTS voice picker, TTS model picker, endpoint picker, confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -51,6 +52,7 @@
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
 - [x] Chat header agent selector sheet said `No agents available` even though `Settings -> Agents` listed multiple enabled agents on the same connected server
 - [x] Settings local TTS voice picker lost its viewport-anchored web sheet guardrails and left the `Close` action below the 44px minimum touch-target height
+- [x] Settings desktop model picker modal exposed a `Close` action below the 44px minimum touch-target height on Expo Web
 
 ### Improved
 
@@ -65,12 +67,14 @@
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
 - [x] Chat header agent selector parity with desktop agent profiles in API mode
 - [x] Settings local TTS voice picker close affordance and viewport anchoring on Expo Web
+- [x] Settings shared overlay close affordances for model/configuration modals on Expo Web
 
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
 - [x] Live Expo Web verification that the chat header agent selector now lists enabled agents and updates the header label after selection
 - [x] Live Expo Web verification that the local TTS voice picker now spans the viewport width and exposes a 44px-tall close action on a narrow screen
+- [x] Live Expo Web verification that the `Profile & Model` model picker now exposes a 44px-tall `Close` action on a narrow screen
 
 ### Blocked
 
@@ -80,9 +84,52 @@
 
 - [ ] Runtime visual fit of earlier source-backed fixes that still have not had a dedicated live Expo Web pass in this worktree
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
-- [ ] Other modal/sheet surfaces still need live parity checks, especially the model picker, remote TTS voice picker, and destructive confirmations
+- [ ] Other modal/sheet surfaces still need live parity checks, especially the remote TTS voice picker, TTS model picker, endpoint picker, and destructive confirmations
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 14: make settings modal close affordances reliably tappable on mobile web
+
+- Status: completed with live Expo Web verification
+- Area:
+  - desktop `Settings -> Profile & Model -> Select Model` picker in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - shared `SettingsScreen` modal close affordance used by the model picker, endpoint picker, remote TTS model picker, remote TTS voice picker, and import-profile modal
+- Why this area:
+  - the ledger still listed model pickers as an unchecked modal/sheet surface on narrow Expo Web viewports, so this was a good way to widen real runtime coverage instead of polishing an already-checked flow
+  - live Expo Web inspection found a concrete actionability issue on a high-value configuration surface: the model picker's `Close` action was visibly below the 44px mobile tap-height guardrail
+- What was investigated:
+  - live Expo Web behavior at `http://localhost:8105` on a `390x664` iPhone-12-sized viewport in `Settings -> Desktop Settings -> Profile & Model -> Select Model`
+  - the shared `modalCloseButton` style and existing settings overlay regression tests in `apps/mobile/tests/settings-overlay-density.test.js`
+  - outstanding QA feedback in `../../aloops/.mobile-app-improvement-loop.qa-feedback.txt` about Iteration 13 still using a moving commit range
+- Findings:
+  - the `Select Model` modal's `Close` action measured about `53x25`, which is too short for a reliable mobile touch target even though the rest of the sheet fit the viewport
+  - `SettingsScreen` reused the same undersized `modalCloseButton` style across the model picker, endpoint picker, remote TTS model picker, remote TTS voice picker, and import-profile modal, so one shared fix could improve multiple configuration overlays at once
+  - the current QA stack also still needed the Iteration 13 evidence range bounded to a real commit SHA instead of `HEAD`
+- Change made:
+  - added `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })` to the shared `modalCloseButton` style in `SettingsScreen.tsx` so settings modal close affordances keep the existing text-first appearance but reach the 44px minimum mobile tap height
+  - extended `apps/mobile/tests/settings-overlay-density.test.js` with a regression guard for the shared 44px close-action target
+  - bounded Iteration 13's `voice-picker-offscreen` evidence block to the reviewed end SHA instead of a moving `HEAD`
+- Verification:
+  - `pnpm --filter @dotagents/mobile web --port 8105`
+  - `node --test apps/mobile/tests/settings-overlay-density.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `git diff --check`
+  - live Expo Web verification at `http://localhost:8105`
+- Follow-up checks:
+  - inspect the adjacent remote desktop `Text-to-Speech -> Voice` and `Text-to-Speech -> Model` pickers next so the rest of the unchecked settings-modal coverage gets live runtime passes instead of only inheriting this shared close-button fix source-side
+  - inspect endpoint picker and destructive confirmation sheets on narrow web viewports before making broader claims about settings-modal parity
+
+Evidence
+- Evidence ID: model-picker-close-target
+- Scope: shared `SettingsScreen` modal close affordance in `apps/mobile/src/screens/SettingsScreen.tsx`, live-verified through `Desktop Settings -> Profile & Model -> Select Model`
+- Commit range: 1aba66708f799fdb095f49196476784fdf699d6d..0c3a128d8c7c390fb889d8138eca064b78021457
+- Rationale: The desktop settings model picker is a meaningful mobile configuration flow, and on Expo Web its primary dismissal affordance was only about `53x25`, which is too small for dependable tapping on a narrow viewport. Fixing the shared close-button style resolves that live usability risk on the checked model picker and lifts the same touch-target guardrail across sibling settings modals that reuse the same header control.
+- QA feedback: Addressing prior QA feedback that Iteration 13 still used a moving commit range, while also fixing a new model-picker close-target issue found during this iteration's live Expo Web pass.
+- Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/model-picker-close-target--before--settings-model-picker--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed the `Select Model` sheet open from `Desktop Settings -> Profile & Model` with a `Close` action measuring about `53x25`. That before state was insufficient because the main dismissal control for a high-value settings modal fell below the expected 44px mobile tap height.
+- Change: Added the shared `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })` guardrail to `SettingsScreen`'s `modalCloseButton`, added a focused regression test for the shared overlay close target, and replaced Iteration 13's moving `..HEAD` evidence range with the reviewed end SHA.
+- After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/model-picker-close-target--after--settings-model-picker--20260310.png`. On the same `390x664` viewport, live Expo Web verification measured the `Close` action at `53x44` with computed `min-width: 44px` and `min-height: 44px`, while the control remained fully visible in the header above the search field. This after state is preferable because the model picker's dismissal affordance is now reliably tappable without sacrificing the compact sheet header layout.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8105` ✅ (Expo Web started successfully at `http://localhost:8105`); `node --test apps/mobile/tests/settings-overlay-density.test.js` ✅ (3/3 passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅ (completed with a non-blocking Node engine warning under Node `v25.2.1`); `git diff --check` ✅; live Expo Web verification at `http://localhost:8105` ✅ (model-picker `Close` measured `53x44` on a `390x664` viewport and remained fully visible in the header).
+- Blockers/remaining uncertainty: This iteration live-verified the shared close-button guardrail only through the `Profile & Model` model picker. The sibling endpoint picker, remote TTS model picker, remote TTS voice picker, and import-profile modal now inherit the same source-backed fix, but they still need dedicated runtime passes; destructive confirmations remain unchecked.
 
 ### 2026-03-10 — Iteration 13: restore the local TTS voice picker sheet guardrails on mobile web
 
@@ -119,7 +166,7 @@
 Evidence
 - Evidence ID: voice-picker-offscreen
 - Scope: local Settings `Text-to-Speech -> Voice` picker in `apps/mobile/src/ui/TTSSettings.tsx` plus durable provenance for the prior chat-agent-selector screenshots
-- Commit range: 3b42e30f107d2fc1f2b60719f47f270023679d54..HEAD
+- Commit range: 3b42e30f107d2fc1f2b60719f47f270023679d54..1aba66708f799fdb095f49196476784fdf699d6d
 - Rationale: The reviewed stack had dropped the earlier voice-picker web-sheet guardrails, so an important settings modal lost explicit viewport anchoring and the `Close` action fell back below the minimum mobile tap height. That left the picker fragile on narrow/awkward web containers and meant the ledger no longer matched the actually shipped UI behavior. This pass also resolves the evidence-provenance risk from the prior iteration by committing the referenced screenshots and replacing the older moving-`HEAD` range with a stable one.
 - QA feedback: Addressing prior QA findings that the local TTS voice picker regression from `45b352d16f0c1b49b0af3938a7905dce7ab3f508` had been dropped and that Iteration 12's screenshot-backed evidence was not durably committed.
 - Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/voice-picker-offscreen--before--settings-voice-picker--qa-r1--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed the local TTS voice picker open with a visually tight header and a `Close` control that measured only about `53x25`, which is too short for reliable mobile tapping. Source review at the same time confirmed the web-specific viewport-anchor/full-width sheet guardrails had been removed, so this before state was both less tappable in the observed viewport and structurally fragile across other narrow containers.
