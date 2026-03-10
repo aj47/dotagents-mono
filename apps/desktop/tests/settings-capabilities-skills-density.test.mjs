@@ -13,6 +13,13 @@ const skillsPageSource = fs.readFileSync(
   'utf8',
 )
 
+const toolbarStart = skillsPageSource.indexOf('<div className="flex flex-wrap items-start justify-end gap-1.5">')
+const selectModeStart = skillsPageSource.indexOf('{isSelectMode ? (', toolbarStart)
+const branchDivider = skillsPageSource.indexOf('\n          ) : (\n            <>', selectModeStart)
+const toolbarEnd = skillsPageSource.indexOf('\n        </div>', branchDivider)
+const selectModeToolbarBlock = skillsPageSource.slice(selectModeStart, branchDivider)
+const defaultToolbarBlock = skillsPageSource.slice(branchDivider, toolbarEnd)
+
 test('desktop capabilities tab keeps the Skills label in the shared tab bar', () => {
   assert.match(capabilitiesPageSource, /\{ id: "skills", label: "Skills", icon: "i-mingcute-sparkles-line" \}/)
   assert.match(capabilitiesPageSource, /\{activeTab === "skills" && <SkillsPage \/>\}/)
@@ -24,6 +31,14 @@ test('desktop skills page avoids a redundant Agent Skills hero header above the 
   assert.match(skillsPageSource, /<div className="flex flex-wrap items-start justify-end gap-1\.5">[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
   assert.doesNotMatch(skillsPageSource, /Skills are specialized instructions that improve AI performance on specific tasks\./)
   assert.match(skillsPageSource, /<p className="text-xs text-muted-foreground">\s*Enabled skills add their instructions to the system prompt\./)
+})
+
+test('desktop skills keeps the compact button class scoped to the default populated toolbar row', () => {
+  assert.ok(selectModeToolbarBlock, 'expected to isolate the select-mode toolbar block')
+  assert.ok(defaultToolbarBlock, 'expected to isolate the default toolbar block')
+  assert.match(defaultToolbarBlock, /className=\{toolbarButtonClassName\}[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
+  assert.doesNotMatch(selectModeToolbarBlock, /className=\{toolbarButtonClassName\}/)
+  assert.match(selectModeToolbarBlock, /className="gap-1\.5"[\s\S]*?Select All[\s\S]*?Export Bundle[\s\S]*?Delete[\s\S]*?Cancel/)
 })
 
 test('desktop skills loading, error, and empty states stay compact and text-first', () => {

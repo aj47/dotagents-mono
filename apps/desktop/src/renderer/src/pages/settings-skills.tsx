@@ -447,7 +447,7 @@ Write your skill instructions here.
               <Button
                 variant="outline"
                 size="sm"
-                className={toolbarButtonClassName}
+                className="gap-1.5"
                 onClick={toggleSelectAll}
               >
                 {selectedSkillIds.size === skills.length && skills.length > 0 ? (
@@ -460,7 +460,7 @@ Write your skill instructions here.
               <Button
                 variant="outline"
                 size="sm"
-                className={toolbarButtonClassName}
+                className="gap-1.5"
                 onClick={handleExportSelectedBundle}
                 disabled={selectedSkillIds.size === 0 || exportBundleMutation.isPending}
               >
@@ -474,7 +474,7 @@ Write your skill instructions here.
               <Button
                 variant="destructive"
                 size="sm"
-                className={toolbarButtonClassName}
+                className="gap-1.5"
                 onClick={handleDeleteSelected}
                 disabled={selectedSkillIds.size === 0 || deleteSkillsMutation.isPending}
               >
@@ -488,7 +488,7 @@ Write your skill instructions here.
               <Button
                 variant="ghost"
                 size="sm"
-                className={toolbarButtonClassName}
+                className="gap-1.5"
                 onClick={exitSelectMode}
               >
                 <X className="h-3 w-3" />
