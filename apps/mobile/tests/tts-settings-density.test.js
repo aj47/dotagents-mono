@@ -25,6 +25,9 @@ test('keeps mobile TTS settings actions text-first and explicitly labeled', () =
   assert.doesNotMatch(ttsSettingsSource, />✕<\/Text>/);
   assert.match(ttsSettingsSource, /accessibilityLabel="Close voice picker"/);
   assert.match(ttsSettingsSource, /<Text style=\{styles\.modalCloseText\}>Close<\/Text>/);
+
+  const modalCloseButtonStyles = extractBetween('modalCloseButton: {', 'modalCloseText: {');
+  assert.match(modalCloseButtonStyles, /createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
 });
 
 test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () => {
@@ -38,4 +41,14 @@ test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () =
   assert.match(modalTitleStyles, /flex:\s*1/);
   assert.match(modalTitleStyles, /flexShrink:\s*1/);
   assert.match(modalTitleStyles, /paddingRight:\s*spacing\.xs/);
+});
+
+test('keeps the mobile TTS voice picker sheet viewport-anchored on web', () => {
+  const modalOverlayStyles = extractBetween('modalOverlay: {', 'modalContent: {');
+  assert.match(modalOverlayStyles, /StyleSheet\.absoluteFillObject/);
+  assert.match(modalOverlayStyles, /justifyContent:\s*'flex-end'/);
+
+  const modalContentStyles = extractBetween('modalContent: {', 'modalHeader: {');
+  assert.match(modalContentStyles, /width:\s*'100%'/);
+  assert.match(modalContentStyles, /maxHeight:\s*'70%'/);
 });

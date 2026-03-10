@@ -4,6 +4,7 @@ import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
+import { createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
 
 export type Voice = {
@@ -309,7 +310,7 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.foreground,
     },
     modalOverlay: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'flex-end',
     },
@@ -318,6 +319,7 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: radius.lg,
       borderTopRightRadius: radius.lg,
       maxHeight: '70%',
+      width: '100%',
     },
     modalHeader: {
       flexDirection: 'row',
@@ -338,9 +340,13 @@ const createStyles = (theme: Theme) =>
       paddingRight: spacing.xs,
     },
     modalCloseButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
       borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
     },
     modalCloseText: {
       fontSize: 14,

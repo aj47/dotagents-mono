@@ -28,6 +28,7 @@
 - [x] Memory create/edit screen (`MemoryEdit`) importance selection section (source-backed in this worktree)
 - [x] Settings desktop partial-load warning / retry state (source-backed in this worktree)
 - [x] Chat header agent selector sheet in API mode on a narrow Expo Web viewport
+- [x] Settings local text-to-speech voice picker sheet in Expo Web on a narrow viewport
 
 ### Not yet checked
 
@@ -35,7 +36,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Modal/sheet surfaces beyond the chat agent selector on narrow web viewports (model picker, voice pickers, confirmations)
+- [ ] Modal/sheet surfaces beyond the checked chat/local-TTS selectors on narrow web viewports (model picker, remote TTS voice picker, confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -49,6 +50,7 @@
 - [x] MemoryEdit importance chips crowd narrow screens and communicate priority mostly through color-only state
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
 - [x] Chat header agent selector sheet said `No agents available` even though `Settings -> Agents` listed multiple enabled agents on the same connected server
+- [x] Settings local TTS voice picker lost its viewport-anchored web sheet guardrails and left the `Close` action below the 44px minimum touch-target height
 
 ### Improved
 
@@ -62,11 +64,13 @@
 - [x] MemoryEdit importance selection clarity, touch targets, and priority guidance
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
 - [x] Chat header agent selector parity with desktop agent profiles in API mode
+- [x] Settings local TTS voice picker close affordance and viewport anchoring on Expo Web
 
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
 - [x] Live Expo Web verification that the chat header agent selector now lists enabled agents and updates the header label after selection
+- [x] Live Expo Web verification that the local TTS voice picker now spans the viewport width and exposes a 44px-tall close action on a narrow screen
 
 ### Blocked
 
@@ -76,9 +80,53 @@
 
 - [ ] Runtime visual fit of earlier source-backed fixes that still have not had a dedicated live Expo Web pass in this worktree
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
-- [ ] Other modal/sheet surfaces still need live parity checks, especially the model picker, voice pickers, and destructive confirmations
+- [ ] Other modal/sheet surfaces still need live parity checks, especially the model picker, remote TTS voice picker, and destructive confirmations
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 13: restore the local TTS voice picker sheet guardrails on mobile web
+
+- Status: completed with live Expo Web verification
+- Area:
+  - local `Text-to-Speech -> Voice` picker in `apps/mobile/src/ui/TTSSettings.tsx`
+  - narrow Expo Web Settings flow on the default mobile configuration screen
+- Why this area:
+  - unresolved QA feedback called out that the earlier voice-picker fix had been dropped from the reviewed stack, so the worktree lost viewport-anchoring and 44px close-button guardrails on an important modal/sheet surface
+  - the ledger still had voice pickers listed as weakly checked modal coverage, so fixing and re-verifying this sheet widened coverage without revisiting a fully-settled area
+- What was investigated:
+  - current `TTSSettings.tsx` styles and `apps/mobile/tests/tts-settings-density.test.js` against the prior QA-described regression
+  - earlier shipped commit `45b352d16f0c1b49b0af3938a7905dce7ab3f508` to recover the exact viewport-anchor and touch-target guardrails that were lost
+  - live Expo Web behavior at `http://localhost:8104` on an iPhone-12-sized viewport before and after the fix
+- Findings:
+  - the current worktree had indeed dropped the earlier web-sheet guardrails: `modalOverlay` no longer used `StyleSheet.absoluteFillObject`, `modalContent` no longer forced full-width sheet coverage, and the `Close` control no longer used `createMinimumTouchTargetStyle(...)`
+  - live Expo Web inspection at `390x664` showed the clearest user-visible regression as an undersized `Close` hit target at roughly `53x25`, which is below the 44px minimum mobile touch-target height
+  - even when the sheet still happened to fit this viewport, the missing source guardrails left the picker fragile for awkward web containers and no longer matched the previously shipped behavior QA referenced
+- Change made:
+  - restored the viewport-anchored modal overlay with `StyleSheet.absoluteFillObject` so the web sheet reliably covers the full viewport
+  - restored full-width sheet sizing for the picker content and reinstated a 44px minimum close-button touch target via `createMinimumTouchTargetStyle(...)`
+  - extended `apps/mobile/tests/tts-settings-density.test.js` so it now guards the 44px close action plus the web-specific viewport-anchor/full-width sheet behavior
+  - committed the previously referenced Iteration 12 chat-agent-selector screenshots and froze that older Evidence block to an explicit commit range so the ledger's screenshot provenance is durable instead of depending on untracked files plus a moving `HEAD`
+- Verification:
+  - `pnpm --filter @dotagents/mobile web --port 8104`
+  - `node --test apps/mobile/tests/tts-settings-density.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `git diff --check`
+  - live Expo Web verification at `http://localhost:8104`
+- Follow-up checks:
+  - inspect the remote desktop `Text-to-Speech -> Voice` picker next so modal coverage includes both the local and remote TTS voice-selection flows instead of only the local one
+  - keep widening modal/sheet coverage to model pickers and destructive confirmations rather than polishing this local picker again without a new regression signal
+
+Evidence
+- Evidence ID: voice-picker-offscreen
+- Scope: local Settings `Text-to-Speech -> Voice` picker in `apps/mobile/src/ui/TTSSettings.tsx` plus durable provenance for the prior chat-agent-selector screenshots
+- Commit range: 3b42e30f107d2fc1f2b60719f47f270023679d54..HEAD
+- Rationale: The reviewed stack had dropped the earlier voice-picker web-sheet guardrails, so an important settings modal lost explicit viewport anchoring and the `Close` action fell back below the minimum mobile tap height. That left the picker fragile on narrow/awkward web containers and meant the ledger no longer matched the actually shipped UI behavior. This pass also resolves the evidence-provenance risk from the prior iteration by committing the referenced screenshots and replacing the older moving-`HEAD` range with a stable one.
+- QA feedback: Addressing prior QA findings that the local TTS voice picker regression from `45b352d16f0c1b49b0af3938a7905dce7ab3f508` had been dropped and that Iteration 12's screenshot-backed evidence was not durably committed.
+- Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/voice-picker-offscreen--before--settings-voice-picker--qa-r1--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed the local TTS voice picker open with a visually tight header and a `Close` control that measured only about `53x25`, which is too short for reliable mobile tapping. Source review at the same time confirmed the web-specific viewport-anchor/full-width sheet guardrails had been removed, so this before state was both less tappable in the observed viewport and structurally fragile across other narrow containers.
+- Change: Restored `StyleSheet.absoluteFillObject` on the web overlay, restored full-width sheet sizing, reinstated `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })` for the picker close action, expanded the density test to lock those guardrails back in, and committed the earlier chat-agent-selector screenshots referenced by Iteration 12.
+- After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/voice-picker-offscreen--after--settings-voice-picker--qa-r1--20260310.png`. On the same `390x664` viewport, live Expo Web verification measured the picker sheet at `left=0`, `right=390`, `width=390`, and `bottom=664`, matching the viewport exactly, while the `Close` action now measured about `53.2x44` with a computed `min-height` of `44px`. This after state is preferable because the modal now has explicit web viewport guardrails again and the primary dismissal control meets the expected mobile hit-target height.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8104` ✅ (Expo Web started successfully at `http://localhost:8104`); `node --test apps/mobile/tests/tts-settings-density.test.js` ✅ (3/3 passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅ (completed with a non-blocking Node engine warning under Node `v25.2.1`); `git diff --check` ✅; live Expo Web verification at `http://localhost:8104` ✅ (voice picker sheet measured full viewport width/height anchoring and the close button measured `53.2x44`).
+- Blockers/remaining uncertainty: This pass fixed and live-verified the local TTS voice picker only. The adjacent remote desktop TTS voice picker in `SettingsScreen` still has not had a dedicated Expo Web modal pass in this worktree, and no large-text or landscape validation was performed for either picker yet.
 
 ### 2026-03-10 — Iteration 12: restore chat agent-selector parity with desktop-managed agents
 
@@ -115,7 +163,7 @@
 Evidence
 - Evidence ID: chat-agent-selector-parity
 - Scope: chat header agent selector parity in `apps/mobile/src/ui/AgentSelectorSheet.tsx` and connected chat flow on Expo Web
-- Commit range: bd56d13a07e1a6df5234fdc7d4451fec98974697..HEAD
+- Commit range: bd56d13a07e1a6df5234fdc7d4451fec98974697..3b42e30f107d2fc1f2b60719f47f270023679d54
 - Rationale: Mobile users could reach a live chat and see multiple agents in `Settings -> Agents`, but the primary in-chat selector sheet still reported `No agents available`. That broke a meaningful runtime configuration flow on mobile and created a direct parity mismatch with desktop-managed agent switching.
 - QA feedback: None (new iteration)
 - Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/chat-agent-selector-parity--before--chat-agent-selector-dialog--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/chat-agent-selector-parity--before--settings-agents-expanded--20260310.png`. Playwright Chromium on an iPhone 12-sized `390x664` viewport showed the chat selector sheet open with `Select Agent` + `No agents available`, while the adjacent Settings evidence showed multiple configured agents. This before state was insufficient because the core chat control hid valid runtime choices that mobile users could already see elsewhere in the app.
