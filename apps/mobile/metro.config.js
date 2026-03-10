@@ -181,4 +181,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 module.exports = config;
+module.exports.__testUtils = {
+  addWorkspacePackageWatchFolders,
+  collectWatchFolders,
+  monorepoRoot,
+  nodeModulesPaths,
+  projectRoot,
+};
 

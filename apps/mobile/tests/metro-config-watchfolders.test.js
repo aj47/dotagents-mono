@@ -1,17 +1,40 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
-const metroConfigSource = fs.readFileSync(
-  path.join(__dirname, '..', 'metro.config.js'),
-  'utf8'
-);
+const metroConfig = require(path.join(__dirname, '..', 'metro.config.js'));
+const { collectWatchFolders, monorepoRoot, nodeModulesPaths } = metroConfig.__testUtils;
 
-test('watches real node_modules paths so Expo web can run from symlinked worktrees', () => {
-  assert.match(metroConfigSource, /function addWorkspacePackageWatchFolders\(nodeModulesPath, watchFolders\)/);
-  assert.match(metroConfigSource, /function collectWatchFolders\(paths\)/);
-  assert.match(metroConfigSource, /watchFolders\.add\(fs\.realpathSync\(candidatePath\)\)/);
-  assert.match(metroConfigSource, /addWorkspacePackageWatchFolders\(candidatePath, watchFolders\);/);
-  assert.match(metroConfigSource, /config\.watchFolders = collectWatchFolders\(nodeModulesPaths\);/);
+test('loads Metro config with watchFolders derived from the configured nodeModules paths', () => {
+  assert.deepEqual(new Set(metroConfig.watchFolders), new Set(collectWatchFolders(nodeModulesPaths)));
+  assert.ok(metroConfig.watchFolders.includes(monorepoRoot));
+});
+
+test('collectWatchFolders includes symlinked node_modules realpaths and linked workspace packages', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'metro-watchfolders-'));
+
+  try {
+    const dependencyStoreNodeModules = path.join(tempRoot, 'dependency-store', 'node_modules');
+    const linkedWorkspacePackageRealPath = path.join(tempRoot, 'workspace-packages', 'shared');
+    const symlinkedNodeModulesPath = path.join(tempRoot, 'apps', 'mobile', 'node_modules');
+    const linkedWorkspacePackagePath = path.join(dependencyStoreNodeModules, '@dotagents', 'shared');
+
+    fs.mkdirSync(path.join(dependencyStoreNodeModules, '@dotagents'), { recursive: true });
+    fs.mkdirSync(linkedWorkspacePackageRealPath, { recursive: true });
+    fs.mkdirSync(path.dirname(symlinkedNodeModulesPath), { recursive: true });
+
+    fs.symlinkSync(dependencyStoreNodeModules, symlinkedNodeModulesPath, 'dir');
+    fs.symlinkSync(linkedWorkspacePackageRealPath, linkedWorkspacePackagePath, 'dir');
+
+    const watchFolders = new Set(collectWatchFolders([symlinkedNodeModulesPath]));
+
+    assert.ok(watchFolders.has(monorepoRoot));
+    assert.ok(watchFolders.has(symlinkedNodeModulesPath));
+    assert.ok(watchFolders.has(fs.realpathSync(symlinkedNodeModulesPath)));
+    assert.ok(watchFolders.has(fs.realpathSync(linkedWorkspacePackageRealPath)));
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
