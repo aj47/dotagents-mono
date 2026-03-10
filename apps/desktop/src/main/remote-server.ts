@@ -1326,7 +1326,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mainAgentName: cfg.mainAgentName || "",
         acpInjectBuiltinTools: cfg.acpInjectBuiltinTools !== false,
         // TTS voice/model per provider
-        openaiTtsModel: cfg.openaiTtsModel || "tts-1",
+        openaiTtsModel: cfg.openaiTtsModel || "gpt-4o-mini-tts",
         openaiTtsVoice: cfg.openaiTtsVoice || "alloy",
         openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
         groqTtsModel: cfg.groqTtsModel || "canopylabs/orpheus-v1-english",
@@ -1522,7 +1522,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       // OpenAI TTS settings
       if (typeof body.openaiTtsModel === "string") {
-        updates.openaiTtsModel = body.openaiTtsModel as "tts-1" | "tts-1-hd"
+        updates.openaiTtsModel = body.openaiTtsModel as "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd"
       }
       if (typeof body.openaiTtsVoice === "string") {
         updates.openaiTtsVoice = body.openaiTtsVoice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"

@@ -1283,7 +1283,7 @@ export type Config = {
   ttsProviderId?: TTS_PROVIDER_ID
 
   // OpenAI TTS Configuration
-  openaiTtsModel?: "tts-1" | "tts-1-hd"
+  openaiTtsModel?: "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd"
   openaiTtsVoice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
   openaiTtsSpeed?: number // 0.25 to 4.0
   openaiTtsResponseFormat?: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"

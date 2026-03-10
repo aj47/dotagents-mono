@@ -3291,9 +3291,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Initial scroll to bottom on mount and when first display item appears
   useEffect(() => {
-    if (!shouldAutoScrollContent) return
+    if (!shouldAutoScrollContent) return undefined
     const scrollContainer = scrollContainerRef.current
-    if (!scrollContainer) return
+    if (!scrollContainer) return undefined
 
     clearPendingInitialScrollAttempts()
 

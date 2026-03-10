@@ -58,6 +58,7 @@ const OPENAI_TTS_VOICES = [
 ] as const;
 
 const OPENAI_TTS_MODELS = [
+  { label: 'GPT-4o Mini TTS', value: 'gpt-4o-mini-tts' },
   { label: 'TTS-1 (Standard)', value: 'tts-1' },
   { label: 'TTS-1-HD (High Quality)', value: 'tts-1-hd' },
 ] as const;
@@ -957,9 +958,9 @@ export default function SettingsScreen({ navigation }: any) {
   const getModelPlaceholder = () => {
     if (!remoteSettings) return '';
     const provider = remoteSettings.mcpToolsProviderId;
-    if (provider === 'openai') return 'gpt-4o-mini';
-    if (provider === 'groq') return 'llama-3.3-70b-versatile';
-    return 'gemini-1.5-flash-002';
+    if (provider === 'openai') return 'gpt-4.1-mini';
+    if (provider === 'groq') return 'openai/gpt-oss-120b';
+    return 'gemini-2.5-flash';
   };
 
   // Get display name for current model

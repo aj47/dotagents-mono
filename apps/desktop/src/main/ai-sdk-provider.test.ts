@@ -40,19 +40,34 @@ describe("ai-sdk-provider chat model sanitization", () => {
 
     const model = mod.createLanguageModel("groq", "transcript")
 
-    expect(chat).toHaveBeenCalledWith("llama-3.1-70b-versatile")
-    expect(mod.getCurrentModelName("groq", "transcript")).toBe("llama-3.1-70b-versatile")
-    expect(model).toEqual({ provider: "openai-compatible", model: "llama-3.1-70b-versatile" })
+    expect(chat).toHaveBeenCalledWith("openai/gpt-oss-120b")
+    expect(mod.getCurrentModelName("groq", "transcript")).toBe("openai/gpt-oss-120b")
+    expect(model).toEqual({ provider: "openai-compatible", model: "openai/gpt-oss-120b" })
+  })
+
+  it.each([
+    "gpt-4o-transcribe",
+    "gpt-4o-mini-transcribe",
+  ])("falls back when an OpenAI STT-only model is configured for chat/text usage: %s", async (configuredModel) => {
+    const { mod, chat } = await loadModule({
+      transcriptPostProcessingOpenaiModel: configuredModel,
+    })
+
+    const model = mod.createLanguageModel("openai", "transcript")
+
+    expect(chat).toHaveBeenCalledWith("gpt-4.1-mini")
+    expect(mod.getCurrentModelName("openai", "transcript")).toBe("gpt-4.1-mini")
+    expect(model).toEqual({ provider: "openai-compatible", model: "gpt-4.1-mini" })
   })
 
   it("preserves valid Groq chat models for transcript post-processing", async () => {
     const { mod, chat } = await loadModule({
-      transcriptPostProcessingGroqModel: "llama-3.3-70b-versatile",
+      transcriptPostProcessingGroqModel: "openai/gpt-oss-120b",
     })
 
     mod.createLanguageModel("groq", "transcript")
 
-    expect(chat).toHaveBeenCalledWith("llama-3.3-70b-versatile")
-    expect(mod.getCurrentModelName("groq", "transcript")).toBe("llama-3.3-70b-versatile")
+    expect(chat).toHaveBeenCalledWith("openai/gpt-oss-120b")
+    expect(mod.getCurrentModelName("groq", "transcript")).toBe("openai/gpt-oss-120b")
   })
 })

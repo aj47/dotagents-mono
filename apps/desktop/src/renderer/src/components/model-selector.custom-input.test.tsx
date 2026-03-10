@@ -23,7 +23,7 @@ function createHookRuntime() {
 
 function findNodes(node: any, predicate: (node: any) => boolean): any[] { if (node == null) return []; if (Array.isArray(node)) return node.flatMap(child => findNodes(child, predicate)); if (typeof node === "object") return [ ...(predicate(node) ? [node] : []), ...findNodes(node.props?.children, predicate) ]; return [] }
 function findNode(node: any, predicate: (node: any) => boolean): any { return findNodes(node, predicate)[0] ?? null }
-function findCustomInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "Enter custom model name (e.g., gpt-4o, claude-3-opus)") }
+function findCustomInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "Enter custom model name (e.g., gpt-4.1, claude-sonnet-4)") }
 
 async function loadModelSelector(runtime: ReturnType<typeof createHookRuntime>, models = [{ id: "llama-3.1-70b", name: "Llama 3.1 70B" }]) {
   vi.resetModules()

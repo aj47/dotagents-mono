@@ -59,7 +59,7 @@ Open the app and configure Settings:
 - Tenant ID: Your tenant
 - Project ID: Your project under the tenant
 - Graph ID: Associated graph (if required by your setup)
-- Model: Model identifier used by Run API (default: gpt-4o-mini)
+- Model: Model identifier used by Run API (default: gpt-4.1-mini)
 - Environment: Toggle Local vs Cloud
   - Run API Base URL (Local/Cloud)
   - Manage API Base URL (Local/Cloud)

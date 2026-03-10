@@ -75,6 +75,7 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
   "gpt-5": { contextWindow: 128_000, maxOutputTokens: 128_000 },
   // GPT-4.x series
   "gpt-4.1": { contextWindow: 128_000, maxOutputTokens: 16_384 },
+  "gpt-4.1-mini": { contextWindow: 128_000, maxOutputTokens: 16_384 },
   "gpt-4o-mini": { contextWindow: 128_000, maxOutputTokens: 16_384 },
   "gpt-4o": { contextWindow: 128_000, maxOutputTokens: 16_384 },
   "gpt-4-turbo": { contextWindow: 128_000, maxOutputTokens: 4_096 },
@@ -131,6 +132,7 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
   // -------------------------------------------------------------------------
   // Meta Llama models (commonly via Groq, Together, etc.)
   // -------------------------------------------------------------------------
+  "openai/gpt-oss-120b": { contextWindow: 131_072, maxOutputTokens: 65_536 },
   "llama-3.3-70b": { contextWindow: 128_000, maxOutputTokens: 32_768 },
   "llama-3.2-90b": { contextWindow: 128_000, maxOutputTokens: 4_096 },
   "llama-3.2-11b": { contextWindow: 128_000, maxOutputTokens: 4_096 },
@@ -400,13 +402,13 @@ export function estimateTokensFromMessages(messages: LLMMessage[]): number {
 export function getProviderAndModel(): { providerId: string; model: string } {
   const config = configStore.get()
   const providerId = config.mcpToolsProviderId || "openai"
-  let model = "gpt-4o-mini"
+  let model = "gpt-4.1-mini"
   if (providerId === "openai") {
-    model = config.mcpToolsOpenaiModel || "gpt-4o-mini"
+    model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
   } else if (providerId === "groq") {
-    model = config.mcpToolsGroqModel || "llama-3.3-70b-versatile"
+    model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
   } else if (providerId === "gemini") {
-    model = config.mcpToolsGeminiModel || "gemini-1.5-flash-002"
+    model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
   }
   return { providerId, model }
 }

@@ -22,7 +22,7 @@ describe('normalizeStoredConfig', () => {
     const normalized = normalizeStoredConfig({
       apiKey: 'test',
       baseUrl: 'https://api.openai.com/v1/',
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-mini',
     });
 
     expect(normalized.handsFree).toBe(false);

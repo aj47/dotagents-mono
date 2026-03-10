@@ -48,6 +48,7 @@ export const OPENAI_TTS_VOICES = [
 ] as const;
 
 export const OPENAI_TTS_MODELS = [
+  { label: "GPT-4o Mini TTS", value: "gpt-4o-mini-tts" },
   { label: "TTS-1 (Standard)", value: "tts-1" },
   { label: "TTS-1-HD (High Quality)", value: "tts-1-hd" },
 ] as const;

@@ -4960,7 +4960,7 @@ async function generateOpenAITTS(
   input: { voice?: string; model?: string; speed?: number },
   config: Config
 ): Promise<ArrayBuffer> {
-  const model = input.model || config.openaiTtsModel || "tts-1"
+  const model = input.model || config.openaiTtsModel || "gpt-4o-mini-tts"
   const voice = input.voice || config.openaiTtsVoice || "alloy"
   const speed = input.speed || config.openaiTtsSpeed || 1.0
   const responseFormat = config.openaiTtsResponseFormat || "mp3"

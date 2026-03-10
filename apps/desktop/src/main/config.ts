@@ -236,7 +236,7 @@ const getConfig = (): LoadedConfig => {
     // LLM-based TTS preprocessing (off by default - uses regex for fast/free processing)
     ttsUseLLMPreprocessing: false,
     // OpenAI TTS defaults
-    openaiTtsModel: "tts-1",
+    openaiTtsModel: "gpt-4o-mini-tts",
     openaiTtsVoice: "alloy",
     openaiTtsSpeed: 1.0,
     openaiTtsResponseFormat: "mp3",

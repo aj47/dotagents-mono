@@ -9,7 +9,7 @@ vi.mock('./config', () => ({
       apiRetryMaxDelay: 1000,
       openaiApiKey: 'test-key',
       openaiBaseUrl: 'https://api.openai.com/v1',
-      mcpToolsOpenaiModel: 'gpt-4o-mini',
+      mcpToolsOpenaiModel: 'gpt-4.1-mini',
       mcpToolsProviderId: 'openai',
     }),
   },
@@ -61,7 +61,7 @@ vi.mock('./ai-sdk-provider', () => ({
   createLanguageModel: vi.fn(() => ({})),
   getCurrentProviderId: vi.fn(() => 'openai'),
   getTranscriptProviderId: vi.fn(() => 'openai'),
-  getCurrentModelName: vi.fn(() => 'gpt-4o-mini'),
+  getCurrentModelName: vi.fn(() => 'gpt-4.1-mini'),
 }))
 
 // Mock the langfuse-service module

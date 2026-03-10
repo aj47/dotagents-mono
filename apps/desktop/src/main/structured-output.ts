@@ -89,12 +89,12 @@ function getModel(
   if (context === "transcript") {
     return chatProviderId === "groq"
       ? config.transcriptPostProcessingGroqModel || "gemma2-9b-it"
-      : config.transcriptPostProcessingOpenaiModel || "gpt-4o-mini"
+      : config.transcriptPostProcessingOpenaiModel || "gpt-4.1-mini"
   }
 
   return chatProviderId === "groq"
-    ? config.mcpToolsGroqModel || "llama-3.3-70b-versatile"
-    : config.mcpToolsOpenaiModel || "gpt-4o-mini"
+    ? config.mcpToolsGroqModel || "openai/gpt-oss-120b"
+    : config.mcpToolsOpenaiModel || "gpt-4.1-mini"
 }
 
 /**

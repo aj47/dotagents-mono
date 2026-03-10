@@ -14,21 +14,21 @@ export type ProviderType = "openai" | "groq" | "gemini"
 
 const DEFAULT_CHAT_MODELS = {
   openai: {
-    mcp: "gpt-4o-mini",
-    transcript: "gpt-4o-mini",
+    mcp: "gpt-4.1-mini",
+    transcript: "gpt-4.1-mini",
   },
   groq: {
-    mcp: "llama-3.3-70b-versatile",
-    transcript: "llama-3.1-70b-versatile",
+    mcp: "openai/gpt-oss-120b",
+    transcript: "openai/gpt-oss-120b",
   },
   gemini: {
-    mcp: "gemini-1.5-flash-002",
-    transcript: "gemini-1.5-flash-002",
+    mcp: "gemini-2.5-flash",
+    transcript: "gemini-2.5-flash",
   },
 } as const
 
 const TRANSCRIPTION_ONLY_MODEL_PATTERNS = {
-  openai: ["whisper-1"],
+  openai: ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],
   groq: ["whisper-large-v3", "whisper-large-v3-turbo", "distil-whisper-large-v3-en"],
 } as const
 

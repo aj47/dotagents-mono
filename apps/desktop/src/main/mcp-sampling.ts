@@ -88,7 +88,7 @@ export async function executeSampling(
     // Determine which provider to use
     // Use modelPreferences hints if provided, otherwise use configured defaults
     let providerId = config.mcpToolsProviderId || "openai"
-    let model = config.mcpToolsOpenaiModel || "gpt-4o"
+    let model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
 
     if (request.modelPreferences?.hints) {
       const hint = request.modelPreferences.hints[0]

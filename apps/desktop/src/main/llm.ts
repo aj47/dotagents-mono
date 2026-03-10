@@ -519,12 +519,12 @@ export async function processTranscriptWithAgentMode(
   // Get model info for progress display
   const providerId = config.mcpToolsProviderId || "openai"
   const modelName = providerId === "openai"
-    ? config.mcpToolsOpenaiModel || "gpt-4o-mini"
+    ? config.mcpToolsOpenaiModel || "gpt-4.1-mini"
     : providerId === "groq"
-    ? config.mcpToolsGroqModel || "llama-3.3-70b-versatile"
+    ? config.mcpToolsGroqModel || "openai/gpt-oss-120b"
     : providerId === "gemini"
-    ? config.mcpToolsGeminiModel || "gemini-1.5-flash-002"
-    : "gpt-4o-mini"
+    ? config.mcpToolsGeminiModel || "gemini-2.5-flash"
+    : "gpt-4.1-mini"
   // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
   const providerDisplayName = providerId === "openai"
     ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)

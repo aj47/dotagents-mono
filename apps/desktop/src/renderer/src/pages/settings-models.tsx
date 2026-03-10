@@ -236,7 +236,7 @@ export function Component() {
             {ttsProviderId === "openai" && (
               <>
                 <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the OpenAI TTS model to use." />}>
-                  <Select value={config.openaiTtsModel || "tts-1"} onValueChange={(value) => saveConfig({ openaiTtsModel: value as "tts-1" | "tts-1-hd" })}>
+                  <Select value={config.openaiTtsModel || "gpt-4o-mini-tts"} onValueChange={(value) => saveConfig({ openaiTtsModel: value as "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd" })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {OPENAI_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}

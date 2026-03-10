@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import {
   Select,
   SelectContent,
@@ -112,11 +112,17 @@ export function ModelSelector({
   const isLoading = modelsQuery.isLoading || isRefreshing
   const hasError = modelsQuery.isError && !modelsQuery.data
   const allModels = modelsQuery.data || []
-  const selectableModels = onlyTranscriptionModels
-    ? allModels.filter((model) => model.supportsTranscription)
-    : excludeTranscriptionOnlyModels
-      ? allModels.filter((model) => !model.supportsTranscription)
-      : allModels
+  const selectableModels = useMemo(() => {
+    if (onlyTranscriptionModels) {
+      return allModels.filter((model) => model.supportsTranscription)
+    }
+
+    if (excludeTranscriptionOnlyModels) {
+      return allModels.filter((model) => !model.supportsTranscription)
+    }
+
+    return allModels
+  }, [allModels, excludeTranscriptionOnlyModels, onlyTranscriptionModels])
 
   // Auto-detect if current value is a custom model (not in list)
   useEffect(() => {
@@ -223,7 +229,7 @@ export function ModelSelector({
 
             commitCustomInputDraft(e.currentTarget.value)
           }}
-          placeholder="Enter custom model name (e.g., gpt-4o, claude-3-opus)"
+          placeholder="Enter custom model name (e.g., gpt-4.1, claude-sonnet-4)"
           disabled={disabled}
           className="w-full"
           maxLength={100}
