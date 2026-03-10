@@ -20,7 +20,8 @@ test('desktop capabilities tab keeps the Skills label in the shared tab bar', ()
 
 test('desktop skills page avoids a redundant Agent Skills hero header above the actions', () => {
   assert.doesNotMatch(skillsPageSource, /<h2 className="text-lg font-semibold">Agent Skills<\/h2>/)
-  assert.match(skillsPageSource, /<div className="flex flex-wrap justify-end gap-2">[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
+  assert.match(skillsPageSource, /const toolbarButtonClassName = "h-7 gap-1 px-2 text-\[11px\]"/)
+  assert.match(skillsPageSource, /<div className="flex flex-wrap items-start justify-end gap-1\.5">[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
   assert.doesNotMatch(skillsPageSource, /Skills are specialized instructions that improve AI performance on specific tasks\./)
   assert.match(skillsPageSource, /<p className="text-xs text-muted-foreground">\s*Enabled skills add their instructions to the system prompt\./)
 })

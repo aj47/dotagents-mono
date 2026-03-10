@@ -28,6 +28,7 @@ import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2,
 
 export function Component() {
   const queryClient = useQueryClient()
+  const toolbarButtonClassName = "h-7 gap-1 px-2 text-[11px]"
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
@@ -440,13 +441,13 @@ Write your skill instructions here.
   return (
     <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="min-w-0 space-y-6">
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap items-start justify-end gap-1.5">
           {isSelectMode ? (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={toggleSelectAll}
               >
                 {selectedSkillIds.size === skills.length && skills.length > 0 ? (
@@ -459,7 +460,7 @@ Write your skill instructions here.
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={handleExportSelectedBundle}
                 disabled={selectedSkillIds.size === 0 || exportBundleMutation.isPending}
               >
@@ -473,7 +474,7 @@ Write your skill instructions here.
               <Button
                 variant="destructive"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={handleDeleteSelected}
                 disabled={selectedSkillIds.size === 0 || deleteSkillsMutation.isPending}
               >
@@ -487,7 +488,7 @@ Write your skill instructions here.
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={exitSelectMode}
               >
                 <X className="h-3 w-3" />
@@ -500,7 +501,7 @@ Write your skill instructions here.
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5"
+                  className={toolbarButtonClassName}
                   onClick={() => setIsSelectMode(true)}
                 >
                   <CheckSquare className="h-3 w-3" />
@@ -510,7 +511,7 @@ Write your skill instructions here.
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={() => openSkillsFolderMutation.mutate()}
               >
                 <FolderOpen className="h-3 w-3" />
@@ -519,7 +520,7 @@ Write your skill instructions here.
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={() => openWorkspaceSkillsFolderMutation.mutate()}
                 disabled={!agentsFoldersQuery.data?.workspace?.skillsDir || openWorkspaceSkillsFolderMutation.isPending}
               >
@@ -529,7 +530,7 @@ Write your skill instructions here.
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={() => scanSkillsFolderMutation.mutate()}
                 disabled={scanSkillsFolderMutation.isPending}
               >
@@ -541,7 +542,7 @@ Write your skill instructions here.
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5"
+                    className={toolbarButtonClassName}
                     disabled={importSkillMutation.isPending || importSkillFolderMutation.isPending || importSkillsFromParentFolderMutation.isPending || importSkillFromGitHubMutation.isPending}
                   >
                     <Upload className="h-3 w-3" />
@@ -574,7 +575,7 @@ Write your skill instructions here.
               </DropdownMenu>
               <Button
                 size="sm"
-                className="gap-1.5"
+                className={toolbarButtonClassName}
                 onClick={() => setIsCreateDialogOpen(true)}
               >
                 <Plus className="h-3 w-3" />
