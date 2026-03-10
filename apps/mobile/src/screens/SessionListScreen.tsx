@@ -785,7 +785,7 @@ export default function SessionListScreen({ navigation }: Props) {
           </View>
           <Text style={styles.sessionDate}>{formatDate(item.updatedAt)}</Text>
         </View>
-        <Text style={styles.sessionPreview} numberOfLines={2}>
+        <Text style={styles.sessionPreview} numberOfLines={1}>
           {item.preview || 'No messages yet'}
         </Text>
         <Text style={styles.sessionMeta}>
@@ -1002,8 +1002,9 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionItem: {
       backgroundColor: theme.colors.card,
       borderRadius: radius.xl,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      marginBottom: spacing.sm - 2,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -1014,7 +1015,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 4,
+      marginBottom: spacing.xs,
     },
     sessionTitleRow: {
       flexDirection: 'row',
@@ -1036,7 +1037,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionPreview: {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     sessionMeta: {
       ...theme.typography.caption,
