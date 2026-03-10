@@ -228,7 +228,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
       {/* Recent past sessions */}
       {recentSessions.length > 0 && (
-        <div className="mt-6 w-full max-w-md text-left">
+        <div className="mt-6 w-full max-w-xl text-left">
           <div className="flex items-center justify-between mb-2 px-1">
             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
@@ -259,22 +259,30 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
                       onPastSessionClick(session.id)
                     }
                   }}
-                  className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="group flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="truncate flex-1">{session.title}</span>
-                  <div className="ml-auto flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => handleTogglePinnedSession(session.id, e)}
-                      onKeyDown={stopSessionRowKeyPropagation}
-                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                      title={isPinned ? "Unpin session" : "Pin session"}
-                      aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
-                      aria-pressed={isPinned}
+                  <div className="ml-auto flex shrink-0 items-center">
+                    <span
+                      className={isPinned
+                        ? "mr-1 flex w-5 items-center justify-center opacity-100 transition-all"
+                        : "mr-0 flex w-0 items-center justify-center overflow-hidden opacity-0 transition-all group-hover:mr-1 group-hover:w-5 group-hover:opacity-100 group-focus-within:mr-1 group-focus-within:w-5 group-focus-within:opacity-100"}
                     >
-                      <Pin className={isPinned ? "h-3.5 w-3.5 fill-current text-foreground" : "h-3.5 w-3.5"} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleTogglePinnedSession(session.id, e)}
+                        onKeyDown={stopSessionRowKeyPropagation}
+                        className={isPinned
+                          ? "rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                          : "pointer-events-none rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group-hover:pointer-events-auto group-focus-within:pointer-events-auto"}
+                        title={isPinned ? "Unpin session" : "Pin session"}
+                        aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
+                        aria-pressed={isPinned}
+                      >
+                        <Pin className={isPinned ? "h-3.5 w-3.5 fill-current text-foreground" : "h-3.5 w-3.5"} />
+                      </button>
+                    </span>
                     <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
                       {formatTimestamp(session.updatedAt)}
                     </span>
