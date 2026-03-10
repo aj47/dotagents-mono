@@ -84,7 +84,7 @@ Last updated: 2026-03-10
 
 - Evidence ID: `desktop-empty-recent-session-row-chrome`
 - Scope: Desktop main `/` renderer target at `1440x900 desktop`, focused on the empty-state `Recent Sessions` list populated from real local conversation history.
-- Commit range: `65bd286b65e0fe2f5261ad7b45602ce3fc929d37..TO_FILL_AFTER_COMMIT`
+- Commit range: `65bd286b65e0fe2f5261ad7b45602ce3fc929d37..5707586f42bd260df815b1d9b81f5a2e9e6bd95c`
 - Rationale: The desktop empty-state recent-session list was truncating titles much earlier than necessary because the list stayed narrowly capped on a wide viewport and every idle row permanently spent space on low-signal pin chrome, reducing scanability before a user had even started a new session.
 - QA feedback: Addressed prior reviewer findings by correcting the earlier mobile evidence provenance in this ledger; this desktop row-chrome reduction is new work for the current iteration.
 - Before evidence: `docs/aloops-evidence/sessions-compact-ui-loop/desktop-empty-recent-session-row-chrome--before--empty-state-recent-sessions--20260310.png` — before-state screenshot at `1440x900 desktop` shows the empty-state recent-session list occupying only a narrow central column with long titles already ellipsized. Live measurement on the first row showed a row width of about `448px`, a title width of about `358px`, and a trailing metadata cluster of about `44px`, including an always-visible unpinned pin button that consumed about `18px` even while idle.
