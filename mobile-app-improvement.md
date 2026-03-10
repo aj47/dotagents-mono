@@ -106,7 +106,7 @@
 Evidence
 - Evidence ID: connection-paste-link-fallback
 - Scope: Mobile Connection setup QR-permission failure state and desktop deep-link parity in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
-- Commit range: db9b2966..233ec6a3
+- Commit range: db9b2966..12060b58
 - Rationale: Mobile web users could hit a setup dead-end when `Scan QR Code` failed to open a usable scanner surface because camera access was unavailable, even though desktop already exposed a compatible `Copy Deep Link` pairing payload. Adding an explicit non-camera path removes a real first-run configuration blocker and closes an important desktop-settings parity gap for remote server pairing.
 - QA feedback: Deferred unresolved prior QA findings about earlier settings evidence claims; this iteration focused on a new live-verified Connection setup issue instead.
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-paste-link-fallback--before--scan-error-state--20260310.png` — Expo Web at `390x844` on `Settings -> Connection` after tapping `Scan QR Code`. The screen shows only the inline camera-permission error and no alternate setup action, which makes the QR failure state feel like a dead end on mobile web.
