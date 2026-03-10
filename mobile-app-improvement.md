@@ -6,6 +6,14 @@
 - Prefer one small, shippable improvement per iteration.
 - Use Expo Web when practical for repeatable inspection.
 
+## Settings parity checklist vs desktop
+
+- [x] Mobile `Desktop Settings -> Profile & Model` exposes remote profile switching plus provider/model controls that map to the desktop settings model/config surfaces.
+- [x] Mobile `Desktop Settings -> Skills`, `MCP Servers`, `Memories`, `Agents`, and `Agent Loops` expose the main remote-management surfaces that desktop users can inspect and change.
+- [x] Mobile chat header agent switching now matches the desktop selector expectation in API mode by listing enabled agent profiles instead of only legacy user profiles.
+- [ ] Desktop host-only `General` settings (`Launch at Login`, `Hide Dock Icon`, app hotkeys, `.agents` folder paths) are still not configurable from mobile. Rationale: they change desktop-host behavior rather than mobile runtime behavior. Next step: decide whether mobile should remotely edit those host settings or explicitly document them as desktop-only.
+- [ ] Desktop `Remote Server` setup/parity is still only partially checked from mobile. `Connection` covers entering a known base URL and API key, but mobile has not yet been validated against the desktop remote-server enable/pairing workflow end-to-end.
+
 ## Coverage Map
 
 ### Checked screens/flows
@@ -19,6 +27,7 @@
 - [x] Agent create/edit screen (`AgentEdit`) connection-type selection and mode-specific fields (source-backed in this worktree)
 - [x] Memory create/edit screen (`MemoryEdit`) importance selection section (source-backed in this worktree)
 - [x] Settings desktop partial-load warning / retry state (source-backed in this worktree)
+- [x] Chat header agent selector sheet in API mode on a narrow Expo Web viewport
 
 ### Not yet checked
 
@@ -26,7 +35,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
+- [ ] Modal/sheet surfaces beyond the chat agent selector on narrow web viewports (model picker, voice pickers, confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -39,6 +48,7 @@
 - [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
 - [x] MemoryEdit importance chips crowd narrow screens and communicate priority mostly through color-only state
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
+- [x] Chat header agent selector sheet said `No agents available` even though `Settings -> Agents` listed multiple enabled agents on the same connected server
 
 ### Improved
 
@@ -51,21 +61,68 @@
 - [x] AgentEdit connection-type clarity, touch targets, and ACP/remote field mapping
 - [x] MemoryEdit importance selection clarity, touch targets, and priority guidance
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
+- [x] Chat header agent selector parity with desktop agent profiles in API mode
 
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Live Expo Web verification that the chat header agent selector now lists enabled agents and updates the header label after selection
 
 ### Blocked
 
-- [-] Live Expo Web inspection in this worktree while `node_modules` is absent (`expo: command not found`)
+- [ ] No current blocking Expo Web runtime issue in this worktree after rebuilding `packages/shared`
 
 ### Still uncertain
 
-- [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
+- [ ] Runtime visual fit of earlier source-backed fixes that still have not had a dedicated live Expo Web pass in this worktree
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
+- [ ] Other modal/sheet surfaces still need live parity checks, especially the model picker, voice pickers, and destructive confirmations
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 12: restore chat agent-selector parity with desktop-managed agents
+
+- Status: completed with live Expo Web verification
+- Area:
+  - chat header agent selector sheet in `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - connected chat flow reached from `Settings -> Go to Chats -> existing chat session`
+- Why this area:
+  - the ledger still had modal/sheet coverage weak on narrow web viewports, and a fresh Expo Web pass found a core chat control failing on a primary screen instead of a niche edit form
+  - the issue was also a settings/configuration parity gap: `Settings -> Agents` showed multiple desktop-managed agents, but the chat selector modal claimed none were available
+- What was investigated:
+  - live Expo Web behavior on an iPhone-12-sized viewport in the connected chat flow and the adjacent `Settings -> Agents` surface
+  - `AgentSelectorSheet.tsx`, `profile.ts`, and the desktop remote-server endpoints for `/v1/profiles` vs `/v1/agent-profiles`
+  - existing mobile selector/chat density tests and the shared `ApiAgentProfile` type contract
+- Findings:
+  - in API mode, the mobile chat selector still fetched legacy `/profiles`, which only returns user profiles, while the actual agent-management surface and desktop selector use `/agent-profiles`
+  - on the connected server used for this pass, that mismatch produced an empty `No agents available` modal even though `Settings -> Agents` listed enabled agents like `Main Agent`, `augustus`, and `Web Browser`
+  - the shared `ApiAgentProfile` type was also missing `guidelines`, even though the desktop remote-server list response already returns it and nearby mobile screens rely on it
+- Change made:
+  - switched the API-mode chat selector to fetch enabled desktop agent profiles from `/agent-profiles` and map them into the mobile selector rows using the display name plus description/guidelines helper copy
+  - kept ACP-mode selector behavior intact, so ACP main-agent selection still comes from `mainAgentName` + ACP-capable agent options
+  - aligned `packages/shared/src/api-types.ts` so `ApiAgentProfile` includes optional `guidelines`, which matches the server response and unblocks clean mobile typechecking
+  - extended `apps/mobile/tests/agent-selector-sheet-density.test.js` with a regression guard that the API-mode selector uses enabled desktop agent profiles and no longer calls the legacy `getProfiles()` path
+- Verification:
+  - `pnpm build:shared`
+  - `node --test apps/mobile/tests/agent-selector-sheet-density.test.js apps/mobile/tests/chat-screen-density.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `git diff --check`
+  - live Expo Web verification at `http://localhost:8103`
+- Follow-up checks:
+  - inspect the remaining unchecked modal/sheet surfaces next, especially model-picker and voice-picker states on narrow viewports, instead of returning to this selector without a new regression signal
+  - run a dedicated settings-parity pass for desktop host-only `General` and `Remote Server` configuration so the ledger better separates intentional desktop-only gaps from missing mobile configuration
+
+Evidence
+- Evidence ID: chat-agent-selector-parity
+- Scope: chat header agent selector parity in `apps/mobile/src/ui/AgentSelectorSheet.tsx` and connected chat flow on Expo Web
+- Commit range: bd56d13a07e1a6df5234fdc7d4451fec98974697..HEAD
+- Rationale: Mobile users could reach a live chat and see multiple agents in `Settings -> Agents`, but the primary in-chat selector sheet still reported `No agents available`. That broke a meaningful runtime configuration flow on mobile and created a direct parity mismatch with desktop-managed agent switching.
+- QA feedback: None (new iteration)
+- Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/chat-agent-selector-parity--before--chat-agent-selector-dialog--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/chat-agent-selector-parity--before--settings-agents-expanded--20260310.png`. Playwright Chromium on an iPhone 12-sized `390x664` viewport showed the chat selector sheet open with `Select Agent` + `No agents available`, while the adjacent Settings evidence showed multiple configured agents. This before state was insufficient because the core chat control hid valid runtime choices that mobile users could already see elsewhere in the app.
+- Change: Rewired API-mode selector loading from legacy user profiles to enabled desktop agent profiles, preserved ACP-mode selection behavior, aligned the shared agent-profile type with the server response, and added regression coverage for the selector's data-source parity.
+- After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/chat-agent-selector-parity--after--chat-agent-selector-dialog--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/chat-agent-selector-parity--after--chat-header-selected-agent--20260310.png`. On the same `390x664` viewport, the selector sheet now lists available agents instead of an empty state, and selecting `augustus` updates the chat header label before being restored to `Main Agent`. This after state is preferable because the primary chat control now exposes the same enabled agent choices users can inspect in Settings and provides immediate feedback that the selection took effect.
+- Verification commands/run results: `pnpm build:shared` ✅; `node --test apps/mobile/tests/agent-selector-sheet-density.test.js apps/mobile/tests/chat-screen-density.test.js` ✅ (7/7 passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅; `git diff --check` ✅; live Expo Web verification at `http://localhost:8103` ✅ (selector listed agents; selecting `augustus` updated the chat header, then the state was restored to `Main Agent`).
+- Blockers/remaining uncertainty: This iteration cleared the earlier Expo Web startup blocker in this worktree, but it did not yet cover the remaining unchecked modal/sheet surfaces or desktop-host-only settings parity decisions. Runtime warnings unrelated to this fix (for example Expo web notification-listener limitations and React Native Web deprecation warnings) were observed earlier in the session but were not part of this shippable change.
 
 ### 2026-03-09 — Iteration 11: make the Settings desktop warning readable and actionable on narrow screens
 

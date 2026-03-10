@@ -73,9 +73,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         })));
       } else {
         setSelectorMode('profile');
-        const res = await client.getProfiles();
-        setProfiles((res.profiles || []).map((profile) => ({
-          ...profile,
+        const agentProfilesResponse = await client.getAgentProfiles();
+        setProfiles((agentProfilesResponse.profiles || []).filter((profile) => profile.enabled !== false).map((profile) => ({
+          id: profile.id,
+          name: profile.displayName || profile.name,
+          guidelines: profile.guidelines || profile.description || '',
           selectorMode: 'profile',
           selectionValue: profile.id,
         })));

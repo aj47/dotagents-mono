@@ -21,3 +21,10 @@ test('keeps the mobile agent selector title shrink-safe beside the header close 
   assert.match(sheetSource, /title:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?lineHeight:\s*22,/);
   assert.match(sheetSource, /<Text style=\{styles\.title\} numberOfLines=\{1\}>/);
 });
+
+test('uses enabled desktop agent profiles for API-mode chat selection parity', () => {
+  assert.match(sheetSource, /setSelectorMode\('profile'\);[\s\S]*?const agentProfilesResponse = await client\.getAgentProfiles\(\);/);
+  assert.match(sheetSource, /agentProfilesResponse\.profiles \|\| \[\]\)\.filter\(\(profile\) => profile\.enabled !== false\)/);
+  assert.match(sheetSource, /name: profile\.displayName \|\| profile\.name/);
+  assert.doesNotMatch(sheetSource, /await client\.getProfiles\(\)/);
+});

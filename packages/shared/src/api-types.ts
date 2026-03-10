@@ -292,6 +292,7 @@ export interface ApiAgentProfile {
   name: string;
   displayName: string;
   description?: string;
+  guidelines?: string;
   enabled: boolean;
   isBuiltIn?: boolean;
   isUserProfile?: boolean;
