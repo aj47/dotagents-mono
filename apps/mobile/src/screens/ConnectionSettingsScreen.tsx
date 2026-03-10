@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
@@ -13,6 +13,7 @@ import {
   createMinimumTouchTargetStyle,
   createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
+import { resolveQrScannerActivation } from './connection-settings-qr';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
@@ -152,12 +153,19 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   };
 
   const handleScanQR = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        return;
-      }
+    setConnectionError(null);
+
+    const qrPermissionError = await resolveQrScannerActivation({
+      hasPermission: permission?.granted === true,
+      isWeb: Platform.OS === 'web',
+      requestPermission,
+    });
+
+    if (qrPermissionError) {
+      setConnectionError(qrPermissionError);
+      return;
     }
+
     setScanned(false);
     setShowScanner(true);
   };

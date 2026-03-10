@@ -9,14 +9,57 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// 1. Watch all files within the monorepo
-config.watchFolders = [monorepoRoot];
-
-// 2. Let Metro know where to resolve packages and in what order
-config.resolver.nodeModulesPaths = [
+const nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(monorepoRoot, 'node_modules'),
 ];
+
+function addWorkspacePackageWatchFolders(nodeModulesPath, watchFolders) {
+  const workspaceScopePath = path.join(nodeModulesPath, '@dotagents');
+  if (!fs.existsSync(workspaceScopePath)) {
+    return;
+  }
+
+  for (const entry of fs.readdirSync(workspaceScopePath, { withFileTypes: true })) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) {
+      continue;
+    }
+
+    try {
+      watchFolders.add(fs.realpathSync(path.join(workspaceScopePath, entry.name)));
+    } catch {
+      // Ignore broken workspace-package links and keep Metro using the package path.
+    }
+  }
+}
+
+function collectWatchFolders(paths) {
+  const watchFolders = new Set([monorepoRoot]);
+
+  for (const candidatePath of paths) {
+    if (!fs.existsSync(candidatePath)) continue;
+
+    watchFolders.add(candidatePath);
+
+    try {
+      watchFolders.add(fs.realpathSync(candidatePath));
+    } catch {
+      // Ignore unreadable symlinks and let Metro fall back to the declared path.
+    }
+
+    addWorkspacePackageWatchFolders(candidatePath, watchFolders);
+  }
+
+  return Array.from(watchFolders);
+}
+
+// 1. Watch all files within the monorepo plus the realpaths of any symlinked
+// node_modules directories. This keeps Metro's SHA-1/file watching logic happy
+// in worktrees that reuse dependencies from another checkout.
+config.watchFolders = collectWatchFolders(nodeModulesPaths);
+
+// 2. Let Metro know where to resolve packages and in what order
+config.resolver.nodeModulesPaths = nodeModulesPaths;
 
 // 3. Enable symlinks for pnpm
 config.resolver.unstable_enableSymlinks = true;
@@ -138,4 +181,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 module.exports = config;
+module.exports.__testUtils = {
+  addWorkspacePackageWatchFolders,
+  collectWatchFolders,
+  monorepoRoot,
+  nodeModulesPaths,
+  projectRoot,
+};
 

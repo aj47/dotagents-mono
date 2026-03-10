@@ -29,3 +29,9 @@ test('exposes the reset action as an accessible button with a descriptive label'
   assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
   assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
 });
+
+test('surfaces a clear error when QR scanning cannot get camera permission', () => {
+  assert.match(screenSource, /\{connectionError && \(/);
+  assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{connectionError\}<\/Text>/);
+  assert.match(screenSource, /accessibilityLabel="Scan QR Code"/);
+});

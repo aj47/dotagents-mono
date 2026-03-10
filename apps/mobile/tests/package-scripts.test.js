@@ -14,4 +14,5 @@ test('keeps mobile node tests compatible with the repo minimum Node version', ()
 
 test('runs TypeScript-backed mobile utility tests under vitest instead of node --test', () => {
   assert.match(packageJson.scripts['test:vitest'], /src\/screens\/agent-edit-connection-utils\.test\.ts/);
+  assert.match(packageJson.scripts['test:vitest'], /src\/screens\/connection-settings-qr\.test\.ts/);
 });
