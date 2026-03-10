@@ -32,6 +32,8 @@
 - [x] Settings local text-to-speech voice picker sheet in Expo Web on a narrow viewport
 - [x] Settings desktop `Profile & Model -> Select Model` picker sheet in Expo Web on a narrow viewport
 - [x] Connection `Scan QR Code or Paste Link` blank and incomplete desktop deep-link validation states on Expo Web
+- [x] Settings desktop endpoint picker plus remote TTS model/voice picker sheets on a narrow Expo Web viewport
+- [x] Settings `Agents` and `Memories` destructive delete entry controls on a narrow Expo Web viewport
 
 ### Not yet checked
 
@@ -39,7 +41,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Modal/sheet surfaces beyond the checked chat/local-TTS/model selectors on narrow web viewports (remote TTS voice picker, TTS model picker, endpoint picker, confirmations)
+- [ ] Modal/sheet surfaces beyond the checked chat/local-TTS/model/endpoint/remote-TTS selectors on narrow web viewports (import profile modal and destructive confirmations still need dedicated coverage)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 - [ ] Native QR camera permission, denied-permission recovery, and invalid-code retry states beyond the new Expo Web fallback
 
@@ -58,6 +60,7 @@
 - [x] Settings desktop model picker modal exposed a `Close` action below the 44px minimum touch-target height on Expo Web
 - [x] Connection `Scan QR Code` opened a blank Expo Web camera modal with no recovery copy or manual deep-link fallback
 - [x] Connection web deep-link fallback left `Apply Link` enabled while blank, treated blank and malformed input the same, and accepted incomplete `dotagents://config` links that could partially apply only a Base URL
+- [x] Settings `Agents` and `Memories` delete triggers rendered below the 44px minimum touch-target height on a narrow Expo Web viewport
 
 ### Improved
 
@@ -75,6 +78,7 @@
 - [x] Settings shared overlay close affordances for model/configuration modals on Expo Web
 - [x] Connection setup web QR/deep-link fallback clarity and recoverability on Expo Web
 - [x] Connection setup deep-link validation guardrails for blank and incomplete desktop pairing links on Expo Web
+- [x] Settings `Agents` and `Memories` delete-action touch targets and confirmation-entry accessibility on Expo Web
 
 ### Verified
 
@@ -84,6 +88,8 @@
 - [x] Live Expo Web verification that the `Profile & Model` model picker now exposes a 44px-tall `Close` action on a narrow screen
 - [x] Live Expo Web verification that `Connection -> Scan QR Code` now opens a desktop deep-link fallback on web and fills Base URL/API key from a pasted sample link
 - [x] Live Expo Web verification plus behavior-level tests that `Connection -> Scan QR Code or Paste Link` keeps `Apply Link` disabled while blank and rejects incomplete desktop deep links without partially applying config
+- [x] Live Expo Web verification that the desktop endpoint picker plus remote TTS model/voice pickers still fit the `390x664` narrow viewport in this worktree
+- [x] Live Expo Web verification that `Settings -> Agents` and `Settings -> Memories` now expose `Delete` controls at `72x44` on a narrow screen, with source-backed regression coverage for both row patterns
 
 ### Blocked
 
@@ -93,10 +99,55 @@
 
 - [ ] Runtime visual fit of earlier source-backed fixes that still have not had a dedicated live Expo Web pass in this worktree
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
-- [ ] Other modal/sheet surfaces still need live parity checks, especially the remote TTS voice picker, TTS model picker, endpoint picker, and destructive confirmations
+- [ ] Browser-native destructive confirmations on Expo Web still need dedicated parity decisions/documentation because the current `confirm(...)` prompt is functional but not an in-app sheet; the import profile modal also still needs a dedicated narrow-screen pass
 - [ ] Real desktop remote-server pairing still needs an end-to-end pass with an actual copied deep link or scanned QR code, and the native camera-permission path remains unverified in this worktree
 
 ## Recent Iterations
+
+### 2026-03-10 — Iteration 17: make settings delete actions reliably tappable on narrow mobile screens
+
+- Status: completed with live Expo Web verification
+- Area:
+  - `SettingsScreen` destructive row actions in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `Settings -> Agents` and `Settings -> Memories` on Expo Web
+- Why this area:
+  - the ledger still needed destructive-action coverage beyond the previously fixed loop row, and a fresh Expo Web pass was supposed to widen unchecked settings/modal coverage instead of revisiting the connection flow again
+  - live inspection showed the endpoint picker plus remote TTS model/voice pickers were already fitting the narrow viewport, but the visible `Delete` entry point for `Settings -> Agents` was only about `45.4x23`, making a destructive management flow precision-dependent on mobile
+- What was investigated:
+  - live Expo Web behavior at `http://localhost:8108` on a `390x664` iPhone-12-sized viewport in `Settings -> Agents`, `Settings -> Memories`, `Profile & Model -> Select Endpoint`, and `Text-to-Speech -> Select TTS Model/Voice`
+  - the current `agentDeleteButton` / `memoryDeleteButton` styling and accessibility metadata in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - existing source-backed density tests around mobile settings management rows
+- Findings:
+  - the checked endpoint picker and remote TTS model/voice sheets did not show a stronger new viewport-fit issue in this pass, so they were not the highest-value target for a code change
+  - `Settings -> Agents` exposed a `Delete` control at roughly `45.4x23`, which fell well below the expected 44px minimum touch-target height even before the browser-native confirmation prompt appeared
+  - `Settings -> Memories` reused the same small text-only delete-button pattern, and Expo Web confirmed it benefited from the same fix once the shared styling was updated
+  - the actual confirmation step on web still uses the browser-native `confirm(...)` prompt, so this iteration could improve the destructive-flow entry control and semantics without yet replacing that higher-level confirmation surface
+- Change made:
+  - upgraded the `Settings -> Agents` and `Settings -> Memories` delete controls to bordered 44px minimum touch targets with centered labels while preserving the compact text-first row layout
+  - added explicit button roles plus descriptive accessibility labels/hints so both destructive entry points better communicate that they open a confirmation prompt before deleting data
+  - extended the focused mobile settings density tests to lock in the larger touch targets, centered labels, and destructive-action accessibility copy for both row patterns
+- Verification:
+  - `pnpm --filter @dotagents/mobile web --port 8108`
+  - `node --test apps/mobile/tests/settings-agent-management-density.test.js apps/mobile/tests/settings-memories-density.test.js apps/mobile/tests/agent-loops-actions.test.js`
+  - `pnpm --filter @dotagents/mobile test`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `git diff --check`
+  - live Expo Web verification at `http://localhost:8108`
+- Follow-up checks:
+  - give the import-profile modal a dedicated narrow-screen pass next so the remaining unchecked settings overlay coverage keeps widening instead of staying concentrated on row actions
+  - decide whether Expo Web destructive confirmations should stay browser-native or move to an in-app confirmation sheet/modal for stronger parity and screenshotable runtime coverage
+
+Evidence
+- Evidence ID: agent-delete-touch-target
+- Scope: mobile `Settings -> Agents` destructive delete entry control in `apps/mobile/src/screens/SettingsScreen.tsx`, with the same touch-target fix also reused by `Settings -> Memories`
+- Commit range: 9ad40086a448609ee86ac9b0a4e97028650b81f5..74d23edc043d9b89913c1be6a5542759b48f2d80
+- Rationale: Mobile users could reach desktop-managed agents and memories on web, but the visible destructive `Delete` entry point was too short for reliable tapping on a narrow screen. Tightening the trigger itself removes a precision-dependent control in a meaningful configuration flow and makes the path into confirmation more understandable even before the browser-native prompt opens.
+- QA feedback: Picked up the outstanding QA note about Iteration 16 evidence provenance and corrected that ledger wording in this pass; the new user-facing work for this iteration is a fresh destructive-action touch-target fix rather than another connection-flow revisit.
+- Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/agent-delete-touch-target--before--settings-agents-expanded--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed `Settings -> Agents` expanded with the visible `Delete` trigger measuring about `45.4x23`, which is below the expected 44px mobile tap height. That before state was insufficient because a destructive management action on a narrow screen required precise tapping before the confirmation step even appeared.
+- Change: Added 44px minimum touch-target styling, a clearer bordered destructive affordance, centered label text, and explicit button accessibility metadata to the `Settings -> Agents` and `Settings -> Memories` delete triggers, then extended the focused mobile density tests to lock those guardrails in.
+- After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/agent-delete-touch-target--after--settings-agents-expanded--20260310.png`. On the same `390x664` viewport, live Expo Web verification measured the visible `Settings -> Agents` delete control at `72x44` with computed `min-height: 44px`; the corresponding `Settings -> Memories` delete control measured the same `72x44` in the same session. This after state is preferable because both destructive entry points are now reliably tappable while staying compact beside their row content.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8108` ✅ (Expo Web started successfully at `http://localhost:8108`); `node --test apps/mobile/tests/settings-agent-management-density.test.js apps/mobile/tests/settings-memories-density.test.js apps/mobile/tests/agent-loops-actions.test.js` ✅ (7/7 passing); `pnpm --filter @dotagents/mobile test` ✅ (71 node tests + 54 vitest tests passing through the package's normal test entrypoint); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅ (completed with a non-blocking Node engine warning under Node `v25.2.1`); `git diff --check` ✅; live Expo Web verification at `http://localhost:8108` ✅ (`Settings -> Agents` and `Settings -> Memories` delete controls both measured `72x44`).
+- Blockers/remaining uncertainty: On Expo Web, the actual destructive confirmation step is still the browser-native `confirm(...)` prompt rather than an in-app sheet or modal, so this iteration improved the entry control but did not yet settle the broader confirmation-surface parity question. The import-profile modal also remains unchecked on a narrow runtime viewport.
 
 ### 2026-03-10 — Iteration 16: harden mobile web pairing links so blank or incomplete deep links cannot misapply config
 
@@ -106,7 +157,7 @@
   - app-level mobile pairing deep-link handling in `apps/mobile/App.tsx`
   - new shared pairing parser in `apps/mobile/src/lib/mobilePairing.ts`
 - Why this area:
-  - this was a justified revisit because unresolved QA feedback explicitly called out weak behavior coverage for Iteration 15 and a bad commit SHA in the ledger, so the onboarding/setup pairing surface was still part of the unapproved review stack
+  - this was a justified revisit because unresolved QA feedback explicitly called out weak behavior coverage for Iteration 15 and a lingering ledger provenance issue around that stack, so the onboarding/setup pairing surface was still part of the unapproved review stack
   - live re-inspection on Expo Web found a real user-facing reliability issue: `Apply Link` stayed enabled while blank, blank and malformed inputs shared one generic message, and an incomplete `dotagents://config?...` link could close the modal after partially filling only `Base URL`
 - What was investigated:
   - live Expo Web behavior at `http://localhost:8107` on a `390x664` iPhone-12-sized viewport in `Connection -> Scan QR Code or Paste Link`
@@ -121,7 +172,7 @@
   - extracted a shared `mobilePairing` helper that strictly parses `dotagents://config` links, requires both `baseUrl` and `apiKey`, normalizes the base URL, and centralizes config application for both the connection screen and app-level deep-link handling
   - disabled `Apply Link` while the deep-link field is blank and exposed that disabled state to accessibility APIs
   - differentiated blank, malformed, and incomplete manual-link failures so Expo Web users get a specific message when the copied desktop link is missing either `Base URL` or `API Key`
-  - added behavior-level vitest coverage for valid parsing, incomplete-link rejection, blank-vs-invalid manual-link errors, and config application; kept the source-backed screen test for the blank disabled-state guard; corrected Iteration 15's bad commit SHA in the ledger
+  - added behavior-level vitest coverage for valid parsing, incomplete-link rejection, blank-vs-invalid manual-link errors, and config application; kept the source-backed screen test for the blank disabled-state guard
 - Verification:
   - `pnpm --filter @dotagents/mobile web --port 8107`
   - `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js`
@@ -139,9 +190,9 @@ Evidence
 - Scope: mobile Expo Web pairing fallback in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` plus shared pairing deep-link handling in `apps/mobile/src/lib/mobilePairing.ts` and `apps/mobile/App.tsx`
 - Commit range: 8bf9c6b6d4610bc5c640c020f351fcae4fa48dfb..8805ee6528805d59ae740a0e6d1f62467fca2840
 - Rationale: The mobile Expo Web fallback introduced in the prior iteration made pairing possible again, but it still left the primary `Apply Link` action enabled for blank input and allowed incomplete desktop deep links to partially affect config state. That was both a live onboarding risk and an unresolved QA concern because the fallback logic had no behavior-level regression coverage. Hardening the parser and button state removes a confusing dead-end, prevents partial misconfiguration, and makes the pairing flow enforce the same data shape desktop already generates.
-- QA feedback: Addressing prior QA findings that Iteration 15 recorded a non-existent end SHA and lacked behavior-level coverage for the manual `Apply Link` flow, parsed deep-link application, and invalid/incomplete link handling.
+- QA feedback: Addressing prior QA findings that the manual `Apply Link` flow, parsed deep-link application, and invalid/incomplete link handling lacked behavior-level coverage; a later docs-only pass separately corrected Iteration 15's bad end SHA in the ledger.
 - Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--before--connection-qr-modal--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--before--connection-qr-invalid--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed `Connection -> Scan QR Code or Paste Link` opening with `Apply Link` already enabled even when the field was blank, and the fallback showed the same generic error after both blank input and obviously invalid text. In the same live pass, an incomplete `dotagents://config?baseUrl=...` link also closed the modal and partially filled only `Base URL`, which was insufficient because a primary onboarding/setup control could mislead users into a half-configured state.
-- Change: Added a shared strict mobile-pairing parser/applicator, reused it in both the connection screen and app-level deep-link listener, disabled `Apply Link` until users paste something, differentiated blank vs malformed vs incomplete manual-link errors, added behavior-level vitest coverage for the pairing flow, extended the existing source-backed screen test for the disabled blank state, and corrected the prior iteration's bad commit SHA in the ledger.
+- Change: Added a shared strict mobile-pairing parser/applicator, reused it in both the connection screen and app-level deep-link listener, disabled `Apply Link` until users paste something, differentiated blank vs malformed vs incomplete manual-link errors, added behavior-level vitest coverage for the pairing flow, and extended the existing source-backed screen test for the disabled blank state.
 - After evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--after--connection-qr-modal--qa-r1--20260310.png` and `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/qr-link-apply-guard--after--connection-qr-invalid--qa-r1--20260310.png`. On the same `390x664` viewport, live Expo Web verification now shows the blank-state `Apply Link` control disabled with `aria-disabled="true"` and no error side effect on click attempts, while an incomplete `dotagents://config?baseUrl=...` link keeps the modal open and shows `The copied desktop link must include both Base URL and API Key.`. This after state is preferable because the pairing fallback now guides the user before failure, refuses incomplete credentials, and no longer partially misapplies config.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8107` ✅ (Expo Web started successfully at `http://localhost:8107`); `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js` ✅ (8/8 passing); `pnpm --filter @dotagents/mobile exec vitest run src/lib/mobilePairing.test.ts` ✅ (4/4 passing); `pnpm --filter @dotagents/mobile test` ✅ (69 node tests + 54 vitest tests passing through the package's normal test entrypoint); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅ (completed with a non-blocking Node engine warning under Node `v25.2.1`); `git diff --check` ✅; live Expo Web verification at `http://localhost:8107` ✅ (`Apply Link` stayed disabled while blank, and an incomplete link left the modal open with a specific `Base URL and API Key` error).
 - Blockers/remaining uncertainty: This iteration tightened the Expo Web/manual deep-link path and app-level pairing parser, but it still used controlled sample links rather than a real desktop secret. End-to-end `Remote Server -> Copy Deep Link` pairing with live credentials, the native QR camera-permission path, and higher-level remote settings modals remain unchecked in this worktree.
