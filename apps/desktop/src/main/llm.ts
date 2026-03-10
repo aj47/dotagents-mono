@@ -511,6 +511,7 @@ export async function processTranscriptWithAgentMode(
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
+  let appendedSyntheticTimeoutMessage = false
 
   try {
   // Track context usage info for progress display
@@ -2947,6 +2948,7 @@ Return ONLY JSON per schema.`,
         content: finalContent,
         timestamp: Date.now(),
       })
+      appendedSyntheticTimeoutMessage = true
     }
 
     // Add timeout completion step with better context
@@ -2971,9 +2973,13 @@ Return ONLY JSON per schema.`,
     })
   }
 
+    const conversationHistoryForFinalOutput = appendedSyntheticTimeoutMessage
+      ? conversationHistory.slice(0, -1)
+      : conversationHistory
+
     finalContent = getPreferredAgentFinalOutput(
       finalContent,
-      conversationHistory,
+      conversationHistoryForFinalOutput,
       getSessionUserResponse(currentSessionId),
     )
 
