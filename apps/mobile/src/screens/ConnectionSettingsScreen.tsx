@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
@@ -16,7 +16,9 @@ import {
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
-function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
+type ParsedQrConfig = { baseUrl?: string; apiKey?: string; model?: string };
+
+function parseQRCode(data: string): ParsedQrConfig | null {
   try {
     const parsed = Linking.parse(data);
     // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
@@ -44,12 +46,31 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const [showScanner, setShowScanner] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [manualConfigLink, setManualConfigLink] = useState('');
+  const [scannerError, setScannerError] = useState<string | null>(null);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const { connect: tunnelConnect, disconnect: tunnelDisconnect } = useTunnelConnection();
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const closeScanner = useCallback(() => {
+    setShowScanner(false);
+    setScanned(false);
+    setManualConfigLink('');
+    setScannerError(null);
+  }, []);
+
+  const applyParsedQrConfig = useCallback((params: ParsedQrConfig) => {
+    setDraft(prev => ({
+      ...prev,
+      ...(params.baseUrl && { baseUrl: params.baseUrl }),
+      ...(params.apiKey && { apiKey: params.apiKey }),
+      ...(params.model && { model: params.model }),
+    }));
+    closeScanner();
+  }, [closeScanner]);
 
   useEffect(() => {
     setDraft(config);
@@ -152,13 +173,21 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   };
 
   const handleScanQR = async () => {
+    setScanned(false);
+    setManualConfigLink('');
+    setScannerError(null);
+
+    if (Platform.OS === 'web') {
+      setShowScanner(true);
+      return;
+    }
+
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
         return;
       }
     }
-    setScanned(false);
     setShowScanner(true);
   };
 
@@ -168,18 +197,22 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
     const params = parseQRCode(data);
     if (params) {
-      setDraft(prev => ({
-        ...prev,
-        ...(params.baseUrl && { baseUrl: params.baseUrl }),
-        ...(params.apiKey && { apiKey: params.apiKey }),
-        ...(params.model && { model: params.model }),
-      }));
-      setShowScanner(false);
+      applyParsedQrConfig(params);
     } else {
+      setScannerError('Invalid QR code format. Scan the DotAgents desktop QR code or paste the copied deep link instead.');
       // Invalid QR code, allow scanning again
       setTimeout(() => setScanned(false), 2000);
     }
   };
+
+  const handleApplyManualConfigLink = useCallback(() => {
+    const params = parseQRCode(manualConfigLink.trim());
+    if (params) {
+      applyParsedQrConfig(params);
+      return;
+    }
+    setScannerError('Paste the full dotagents://config deep link copied from DotAgents desktop.');
+  }, [applyParsedQrConfig, manualConfigLink]);
 
   const resetBaseUrl = () => {
     setDraft(prev => ({ ...prev, baseUrl: DEFAULT_OPENAI_BASE_URL }));
@@ -218,10 +251,12 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         )}
 
         <TouchableOpacity style={styles.scanButton} onPress={handleScanQR} accessibilityRole="button" accessibilityLabel="Scan QR Code">
-          <Text style={styles.scanButtonText}>Scan QR Code</Text>
+          <Text style={styles.scanButtonText}>{Platform.OS === 'web' ? 'Scan QR Code or Paste Link' : 'Scan QR Code'}</Text>
         </TouchableOpacity>
         <Text style={styles.helperText}>
-          Scan the QR code from your DotAgents desktop app to connect
+          {Platform.OS === 'web'
+            ? 'Use the desktop QR code to connect. On web, you can also paste the copied desktop deep link if camera scanning is unavailable.'
+            : 'Scan the QR code from your DotAgents desktop app to connect'}
         </Text>
 
         <View style={styles.labelRow}>
@@ -289,29 +324,84 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         </TouchableOpacity>
       </ScrollView>
 
-      <Modal visible={showScanner} animationType="slide" onRequestClose={() => setShowScanner(false)}>
-        <View style={styles.scannerContainer}>
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={handleBarCodeScanned}
-          />
-          <View style={styles.scannerOverlay}>
-            <View style={styles.scannerFrame} />
-            <Text style={styles.scannerText}>
-              {scanned ? 'Invalid QR code format' : 'Scan a DotAgents QR code'}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowScanner(false)}
-            accessibilityRole="button"
-            accessibilityLabel="Close QR scanner"
+      <Modal visible={showScanner} animationType="slide" onRequestClose={closeScanner}>
+        {Platform.OS === 'web' ? (
+          <ScrollView
+            style={styles.scannerFallbackScreen}
+            contentContainerStyle={[styles.scannerFallbackContent, { paddingBottom: insets.bottom + spacing.lg }]}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.scannerFallbackCard}>
+              <Text style={styles.scannerFallbackTitle}>Paste the desktop deep link</Text>
+              <Text style={styles.scannerFallbackBody}>
+                Expo Web cannot reliably use the QR camera in every browser. In DotAgents desktop, open Remote Server, choose Copy Deep Link, then paste it here to fill your Base URL and API key.
+              </Text>
+              <Text style={styles.label}>Desktop deep link</Text>
+              <TextInput
+                style={styles.scannerFallbackInput}
+                value={manualConfigLink}
+                onChangeText={(value) => {
+                  setManualConfigLink(value);
+                  if (scannerError) {
+                    setScannerError(null);
+                  }
+                }}
+                placeholder="dotagents://config?baseUrl=...&apiKey=..."
+                placeholderTextColor={theme.colors.mutedForeground}
+                multiline
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel={createTextInputAccessibilityLabel('Desktop connection deep link')}
+                accessibilityHint="Paste the DotAgents desktop deep link to auto-fill the connection fields"
+              />
+              {scannerError && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{scannerError}</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handleApplyManualConfigLink}
+                accessibilityRole="button"
+                accessibilityLabel="Apply desktop deep link"
+              >
+                <Text style={styles.primaryButtonText}>Apply Link</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.fallbackCloseButton}
+                onPress={closeScanner}
+                accessibilityRole="button"
+                accessibilityLabel="Close QR scanner"
+              >
+                <Text style={styles.fallbackCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        ) : (
+          <View style={styles.scannerContainer}>
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={handleBarCodeScanned}
+            />
+            <View style={styles.scannerOverlay}>
+              <View style={styles.scannerFrame} />
+              <Text style={styles.scannerText}>
+                {scanned ? 'Invalid QR code format' : 'Scan a DotAgents QR code'}
+              </Text>
+              {scannerError && <Text style={styles.scannerSubtext}>{scannerError}</Text>}
+            </View>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={closeScanner}
+              accessibilityRole="button"
+              accessibilityLabel="Close QR scanner"
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </Modal>
     </>
   );
@@ -394,10 +484,16 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       ...theme.input,
     },
     scanButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
       backgroundColor: theme.colors.secondary,
-      padding: spacing.md,
       borderRadius: radius.lg,
       alignItems: 'center',
+      justifyContent: 'center',
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
@@ -464,6 +560,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginTop: 20,
       textAlign: 'center',
     },
+    scannerSubtext: {
+      color: '#fff',
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: spacing.sm,
+      marginHorizontal: spacing.xl,
+      textAlign: 'center',
+    },
     closeButton: {
       position: 'absolute',
       top: 60,
@@ -476,6 +580,57 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: '#fff',
       fontSize: 16,
       fontWeight: '600',
+    },
+    scannerFallbackScreen: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    scannerFallbackContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    scannerFallbackCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    scannerFallbackTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.foreground,
+    },
+    scannerFallbackBody: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: theme.colors.mutedForeground,
+    },
+    scannerFallbackInput: {
+      ...theme.input,
+      minHeight: 120,
+      paddingTop: spacing.md,
+      textAlignVertical: 'top',
+    },
+    fallbackCloseButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    fallbackCloseButtonText: {
+      color: theme.colors.foreground,
+      fontSize: 16,
+      fontWeight: '500',
     },
   });
 }
