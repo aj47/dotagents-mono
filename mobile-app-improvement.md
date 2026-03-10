@@ -122,7 +122,7 @@
 Evidence
 - Evidence ID: model-picker-close-target
 - Scope: shared `SettingsScreen` modal close affordance in `apps/mobile/src/screens/SettingsScreen.tsx`, live-verified through `Desktop Settings -> Profile & Model -> Select Model`
-- Commit range: 1aba66708f799fdb095f49196476784fdf699d6d..0c3a128d8c7c390fb889d8138eca064b78021457
+- Commit range: 1aba66708f799fdb095f49196476784fdf699d6d..e95d37193ae0ecc410b31bf9f0372b02403b8736
 - Rationale: The desktop settings model picker is a meaningful mobile configuration flow, and on Expo Web its primary dismissal affordance was only about `53x25`, which is too small for dependable tapping on a narrow viewport. Fixing the shared close-button style resolves that live usability risk on the checked model picker and lifts the same touch-target guardrail across sibling settings modals that reuse the same header control.
 - QA feedback: Addressing prior QA feedback that Iteration 13 still used a moving commit range, while also fixing a new model-picker close-target issue found during this iteration's live Expo Web pass.
 - Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/.aloops-artifacts/mobile-app-improvement-loop/model-picker-close-target--before--settings-model-picker--20260310.png`. Live Expo Web inspection on a `390x664` iPhone-12-sized viewport showed the `Select Model` sheet open from `Desktop Settings -> Profile & Model` with a `Close` action measuring about `53x25`. That before state was insufficient because the main dismissal control for a high-value settings modal fell below the expected 44px mobile tap height.
