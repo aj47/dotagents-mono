@@ -998,7 +998,7 @@ Evidence
 Evidence
 - Evidence ID: mobile-chat-bottom-chrome-density
 - Scope: Mobile `ChatScreen` active-chat failed-send state at compact mobile widths (`390x844` and `430x844`), with a desktop main-renderer layout probe to determine whether the oversized bottom-chrome issue looked shared or mobile-specific.
-- Commit range: PENDING_COMMIT_RANGE
+- Commit range: bd56d13a07e1a6df5234fdc7d4451fec98974697..17308b91d0b099414a4f70e2962a0befb9f3be95
 - Rationale: The live Expo web pass showed that the active chat surface lost too much usable transcript height after a failed send because the composer row, oversized hold-to-talk control, and padded retry banner stacked into a very tall bottom region. This change resolves a user-visible scanability and session-flow risk by reclaiming space in the primary chat viewport without hiding the retry action or making the core composer controls feel cramped.
 - QA feedback: None (new iteration)
 - Before evidence: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/compact-ui-loop/.aloops-artifacts/compact-ui-loop/mobile-chat-bottom-chrome-density--before--active-chat-error-390w--20260310.png` shows the reproduced failed-send state at `390x844`, where the retry banner, composer row, and bottom hold-to-talk control together consume a large share of the visible chat height after a send failure. Supplemental runtime observations at `430x844` (`/Users/ajjoobandi/Development/dotagents-mono-worktrees/compact-ui-loop/.aloops-artifacts/compact-ui-loop/e03--before--active-chat-error-430w--20260310.png`) showed the same issue softening slightly but remaining chrome-heavy.
