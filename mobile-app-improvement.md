@@ -17,6 +17,7 @@
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` composer helper copy, blocked send state, and pre-send guidance in Expo Web (`390x844` mobile viewport)
+- [x] Disconnected `Chats -> + New Chat` empty debug-info state on Expo Web no longer emits repeated `Unexpected text node` console errors at `390x844`
 - [x] Settings -> Text-to-Speech voice picker modal close/action surface in Expo Web (connected desktop-settings runtime, `390x844` mobile viewport)
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
 - [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
@@ -57,6 +58,7 @@
 - [x] Settings -> Text-to-Speech voice picker showed a plain small `Close` action and weak picker semantics on narrow Expo Web
 - [x] Settings home disabled `Go to Chats` on the disconnected default screen, stranding users away from saved chats/history with no explanation
 - [x] Disconnected `Chats -> + New Chat` let users type and attempt `Send` with no usable connection config, then surfaced a raw 401-style failure plus generic retry/internet guidance
+- [x] Disconnected `Chats -> + New Chat` emitted repeated Expo Web `Unexpected text node: . A text node cannot be a child of a <View>.` errors because blank `debugInfo` used string short-circuit rendering under a `View`
 - [x] Connection Settings QR scanner modal close button measured about `66.7x42` CSS px in Expo Web, sat low with a hardcoded `top: 60`, and read like a generic overlay dismiss instead of a tuned scanner escape action
 - [x] Connection Settings `Scan QR Code` did nothing visibly on Expo Web: no scanner modal, no close control, no inline blocker, and no browser-specific permission guidance after the tap
 
@@ -75,6 +77,7 @@
 - [x] Settings -> Text-to-Speech voice picker close affordance plus source-level picker semantics/touch-target guardrails
 - [x] Settings home Chats access and offline-state explanation on the disconnected default screen
 - [x] Disconnected `Chats -> + New Chat` composer honesty, blocked-send behavior, and first-run guidance before failure
+- [x] Disconnected `Chats -> + New Chat` empty debug-info state no longer produces Expo Web empty-text-node console noise on open or while typing
 - [x] Connection Settings QR scanner close affordance clarity, safe-area placement, and 44px touch-target coverage
 - [x] Connection Settings QR scanner web launch now opens an explicit browser-permission guidance sheet with a visible escape action instead of behaving like a dead tap
 
@@ -88,6 +91,7 @@
 - [x] Executable vitest coverage plus a fresh Expo Web tap-through recheck for the disconnected `Settings -> Open Chats` CTA on mobile web
 - [x] Live Expo Web before/after evidence plus focused send-availability coverage for disconnected `Chats -> + New Chat` at `390x844`
 - [x] QA follow-up recapture for the disconnected Settings-home CTA and disconnected `Chats -> + New Chat` evidence now uses matched `390x844` Expo Web screenshots plus corrected authored commit provenance
+- [x] Live Expo Web before/after evidence plus focused chat regression coverage for the disconnected `Chats -> + New Chat` empty-debug-info runtime warning at `390x844`
 - [x] Live Expo Web before/after evidence plus focused connection-settings density coverage for the QR scanner modal close affordance at `390x844`
 - [x] Live Expo Web before/after evidence plus focused QR helper/density coverage for the Connection Settings QR scanner web guidance sheet at `390x844`
 
@@ -100,9 +104,53 @@
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 - [ ] The disconnected new-chat text-send path is now guarded, but mic/handsfree send affordances plus existing-chat retry/reconnect states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
+- [ ] The disconnected `Chats -> + New Chat` empty-debug-info warning is fixed, but unrelated offline/sync console noise (`401 Unauthorized`, `ERR_CONNECTION_REFUSED`, `syncService` fetch failures) still appears during Expo Web chat passes and needs its own dedicated investigation before claiming a clean disconnected runtime.
 - [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 19: stop blank chat debug state from emitting Expo Web text-node errors
+
+- Status: completed with live Expo Web before/after evidence, a minimal disconnected-chat runtime fix, and targeted regression coverage
+- Area:
+  - disconnected `Chats -> + New Chat` empty debug-info state in `apps/mobile/src/screens/ChatScreen.tsx`
+  - narrow mobile web viewport (`390x844`) for the disconnected new-chat ready state and subsequent typing pass
+- Why this area:
+  - this iteration directly addresses unresolved QA feedback on the current review stack: the claimed-verified disconnected `Chats -> + New Chat` flow still emitted reproducible Expo Web `Unexpected text node` errors on the reviewed head
+  - the surface had already earned offline/send-guard coverage, so fixing the noisy runtime regression was a higher-value follow-up than widening scope again while the previous verification notes were overstated
+- What was investigated:
+  - live Expo Web at `390x844` through `Settings -> Open Chats -> + New Chat` on the disconnected default state
+  - browser console output before opening `+ New Chat`, immediately after opening it, and after typing in the composer
+  - `apps/mobile/src/screens/ChatScreen.tsx` around the `debugInfo` render path and nearby string-gated UI blocks
+- Findings:
+  - QA was correct: the disconnected `+ New Chat` ready state reproduced repeated `Unexpected text node: . A text node cannot be a child of a <View>.` console errors as soon as the screen opened, and typing caused additional repeats
+  - the underlying UI looked mostly normal, which made the problem easy to miss visually; the warning came from the render path using `debugInfo && (...)` while `debugInfo` is initialized to `''`
+  - other offline/sync console noise still exists on this path, but the empty-text-node warning itself is isolated from those broader disconnected-runtime issues
+- Change made:
+  - added an explicit `hasDebugInfo` boolean guard in `ChatScreen` so blank debug strings no longer render as stray text nodes under a `View` on Expo Web / React Native Web
+  - extended `apps/mobile/tests/chat-screen-density.test.js` to lock the boolean guard and prevent the old `debugInfo && (...)` pattern from returning
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8144 --clear`
+  - `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js`
+  - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--before--new-chat-ready--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--after--new-chat-ready--20260311.png`
+  - `git diff --check`
+  - live Expo Web browser automation at `390x844` confirming the target warning reproduced before the fix, then no longer appeared after opening `+ New Chat` or typing into the composer
+- Follow-up checks:
+  - investigate the remaining disconnected-chat console noise (`401` / `ERR_CONNECTION_REFUSED` / sync fetch failures) so offline verification can move from this one targeted warning toward a cleaner end-to-end runtime story
+  - continue widening offline coverage with existing-chat retry/reconnect and mic/handsfree disconnected flows instead of revisiting this same render guard without new evidence
+
+Evidence
+- Evidence ID: chat-debug-info-empty-state
+- Scope: disconnected `Chats -> + New Chat` empty debug-info state on mobile web plus tracked before/after screenshots (`apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/tests/chat-screen-density.test.js`, `docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--before--new-chat-ready--20260311.png`, `docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--after--new-chat-ready--20260311.png`). This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: 15db6d59b2aead829c7b541f4a5a7d0f3f3fd31b..472119f71149168eb502f76b104c54e8a7730e4e
+- Rationale: The disconnected new-chat send guard was already in place, but the same flow still emitted repeated Expo Web runtime errors on every open/typing pass. Fixing that blank-debug render path removes a concrete verification/trustworthiness problem on a core chat surface without broadening scope beyond the exact QA finding.
+- QA feedback: Addressed the unresolved reviewer finding that the disconnected `Chats -> + New Chat` flow still emitted `Unexpected text node: . A text node cannot be a child of a <View>.` during the claimed live recheck, so the earlier verification notes were too strong until this runtime warning was actually fixed.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--before--new-chat-ready--20260311.png` — `390x844` Expo Web viewport on the disconnected `+ New Chat` ready state. Before the fix, the screen looked visually normal enough to miss the bug in a screenshot alone, but entering this exact state immediately emitted repeated `Unexpected text node` console errors because the blank `debugInfo` string was being short-circuited directly under a `View`.
+- Change: Replaced the direct `debugInfo && (...)` JSX guard with an explicit `hasDebugInfo` boolean derived from `debugInfo.trim().length > 0`, and added a focused node test that fails if the old render pattern returns.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--after--new-chat-ready--20260311.png` — same `390x844` Expo Web viewport and view. After the fix, the disconnected new-chat screen still shows the same helper copy and disabled `Send` behavior, but the target `Unexpected text node` warning no longer appears when the view opens or after typing into the composer.
+- Verification commands/run results: `pnpm build:shared` ✅ (shared package rebuilt successfully; pnpm emitted the existing non-blocking Node engine warning under `v25.2.1`); `pnpm --filter @dotagents/mobile web --port 8144 --clear` ✅ (Expo Web served `http://localhost:8144` and hot-reloaded the updated chat screen); `node --test apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js` ✅ (10/10 passing, including the new debug-info guardrail); `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--before--new-chat-ready--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-debug-info-empty-state--after--new-chat-ready--20260311.png` ✅ (both curated screenshots are matched `390x844` PNGs); `git diff --check` ✅; live Expo Web browser automation at `390x844` ✅ confirmed two occurrences of the target warning immediately after opening `+ New Chat` plus additional repeats after typing before the fix, then no matches for `Unexpected text node` or `A text node cannot be a child of a <View>` after the fix while the same flow and viewport were re-run.
+- Blockers/remaining uncertainty: This pass fixes the specific empty-debug-info warning that QA flagged, but it does not yet resolve the other offline/sync console noise still visible on the disconnected chat path (`401 Unauthorized`, `ERR_CONNECTION_REFUSED`, `syncService` fetch failures). Those should get a dedicated follow-up before the broader disconnected-chat runtime is called clean.
 
 ### 2026-03-11 — Iteration 18: make QR scanning visibly actionable on mobile web
 
