@@ -146,7 +146,7 @@ Last updated: 2026-03-11
 
 - Evidence ID: `mobile-session-placeholder-preview-density`
 - Scope: Mobile Expo web `Chats` list at `390x844 mobile`, using an exact seeded dataset of three desktop-origin stub sessions with blank preview metadata (`6 / 4 / 2 messages`) plus one empty local chat (`0 messages`) so the preview/count hierarchy could be compared like-for-like.
-- Commit range: `TBD_AFTER_COMMIT`
+- Commit range: `1fa7419741109bc8a22dd16070d0ce14a2497564..f392fbc62500661ae4a378b125e8eef2a7ca5b2e`
 - Rationale: Mobile session picking was wasting a full line on the `No messages yet` placeholder even when a row already exposed nonzero message counts from synced desktop metadata, which both reduced above-the-fold density and created a misleading preview/count contradiction during fast scanning.
 - QA feedback: Deferred the outstanding older reviewer finding about `desktop-sidebar-session-recognition` screenshot provenance for this iteration; this pass instead ships a new mobile sessions-row density improvement with a fully matched seeded before/after screenshot pair.
 - Before evidence: `docs/aloops-evidence/sessions-compact-ui-loop/mobile-session-placeholder-preview-density--before--chats-list--20260311.png` — before-state screenshot at `390x844 mobile` shows the exact seeded chats list with all four rows spending a full preview line on `No messages yet`, including the three desktop-stub rows that simultaneously report `6 / 4 / 2 messages · from desktop`. In that captured state only about `4` rows fit above the Rapid Fire control, and the placeholder preview directly contradicts the visible nonzero count metadata.
