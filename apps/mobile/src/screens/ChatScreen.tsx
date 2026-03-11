@@ -3013,6 +3013,7 @@ export default function ChatScreen({ route, navigation }: any) {
       <AgentSelectorSheet
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
+        onOpenConnectionSettings={() => navigation.navigate('ConnectionSettings')}
       />
     </KeyboardAvoidingView>
   );

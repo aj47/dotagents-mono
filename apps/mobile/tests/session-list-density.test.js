@@ -17,3 +17,7 @@ test('keeps the session title row shrinkable for narrow mobile widths', () => {
   assert.match(screenSource, /sessionTitleRow:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:\s*8,/);
   assert.match(screenSource, /sessionTitle:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,/);
 });
+
+test('lets the chats header agent sheet deep-link directly to connection settings when switching is blocked', () => {
+  assert.match(screenSource, /<AgentSelectorSheet[\s\S]*?visible=\{agentSelectorVisible\}[\s\S]*?onOpenConnectionSettings=\{\(\) => navigation\.navigate\('ConnectionSettings'\)\}/);
+});

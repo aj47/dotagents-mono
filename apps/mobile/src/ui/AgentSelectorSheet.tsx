@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient, Profile } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
@@ -30,9 +31,14 @@ interface SelectableProfile extends Profile {
 interface AgentSelectorSheetProps {
   visible: boolean;
   onClose: () => void;
+  onOpenConnectionSettings?: () => void;
 }
 
-export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
+export function AgentSelectorSheet({
+  visible,
+  onClose,
+  onOpenConnectionSettings,
+}: AgentSelectorSheetProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
@@ -94,6 +100,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   }, [visible, fetchProfiles]);
 
+  const handleOpenConnectionSettings = useCallback(() => {
+    onClose();
+    onOpenConnectionSettings?.();
+  }, [onClose, onOpenConnectionSettings]);
+
   const handleSelectProfile = async (profile: SelectableProfile) => {
     if (!hasApiConfig) {
       setProfiles([]);
@@ -150,6 +161,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     );
   };
 
+  const showConfigBlocker = error === missingConfigError;
+
   return (
     <Modal
       visible={visible}
@@ -180,6 +193,26 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
             <Text style={styles.loadingText}>Loading agents...</Text>
+          </View>
+        ) : showConfigBlocker ? (
+          <View style={styles.configBlockerCard}>
+            <Text style={styles.configBlockerEyebrow}>Agent switching unavailable</Text>
+            <Text style={styles.configBlockerTitle}>Finish connection setup to choose an agent</Text>
+            <Text style={styles.configBlockerText}>
+              Open Connection settings to add your DotAgents server URL and API key, then return here to switch agents.
+            </Text>
+            <Text style={styles.configBlockerNote}>
+              You can keep reviewing existing chats while disconnected.
+            </Text>
+            <TouchableOpacity
+              style={styles.configBlockerPrimaryButton}
+              onPress={handleOpenConnectionSettings}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Open connection settings')}
+              accessibilityHint="Closes the agent selector and opens connection settings so you can finish setup."
+            >
+              <Text style={styles.configBlockerPrimaryButtonText}>Open connection settings</Text>
+            </TouchableOpacity>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -301,6 +334,50 @@ function createStyles(theme: Theme) {
     errorContainer: {
       alignItems: 'center',
       paddingVertical: spacing.lg,
+    },
+    configBlockerCard: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.xl,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.lg,
+      gap: spacing.sm,
+    },
+    configBlockerEyebrow: {
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+      textTransform: 'uppercase',
+      color: theme.colors.primary,
+    },
+    configBlockerTitle: {
+      fontSize: 18,
+      lineHeight: 24,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    configBlockerText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: theme.colors.foreground,
+    },
+    configBlockerNote: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.mutedForeground,
+    },
+    configBlockerPrimaryButton: {
+      ...createMinimumTouchTargetStyle({ horizontalPadding: spacing.lg, verticalPadding: spacing.sm, horizontalMargin: 0 }),
+      width: '100%',
+      marginTop: spacing.xs,
+      borderRadius: radius.lg,
+      backgroundColor: theme.colors.primary,
+    },
+    configBlockerPrimaryButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.background,
     },
     errorText: {
       color: theme.colors.destructive,

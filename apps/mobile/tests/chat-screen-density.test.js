@@ -35,3 +35,7 @@ test('guards debug info rendering with a boolean check so empty strings do not c
   assert.match(screenSource, /\{hasDebugInfo && \([\s\S]*?<Text style=\{styles\.debugText\}>\{debugInfo\}<\/Text>/);
   assert.doesNotMatch(screenSource, /\{debugInfo && \(/);
 });
+
+test('lets the chat header agent sheet deep-link directly to connection settings when switching is blocked', () => {
+  assert.match(screenSource, /<AgentSelectorSheet[\s\S]*?visible=\{agentSelectorVisible\}[\s\S]*?onOpenConnectionSettings=\{\(\) => navigation\.navigate\('ConnectionSettings'\)\}/);
+});

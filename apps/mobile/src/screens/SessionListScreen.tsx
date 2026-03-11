@@ -928,6 +928,7 @@ export default function SessionListScreen({ navigation }: Props) {
       <AgentSelectorSheet
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
+        onOpenConnectionSettings={() => navigation.navigate('ConnectionSettings')}
       />
     </View>
   );

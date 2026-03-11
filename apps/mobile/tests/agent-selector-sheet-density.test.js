@@ -21,3 +21,12 @@ test('keeps the mobile agent selector title shrink-safe beside the header close 
   assert.match(sheetSource, /title:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?lineHeight:\s*22,/);
   assert.match(sheetSource, /<Text style=\{styles\.title\} numberOfLines=\{1\}>/);
 });
+
+test('turns the missing-config agent selector state into a direct connection-settings action', () => {
+  assert.match(sheetSource, /const showConfigBlocker = error === missingConfigError;/);
+  assert.match(sheetSource, /Finish connection setup to choose an agent/);
+  assert.match(sheetSource, /Open Connection settings to add your DotAgents server URL and API key, then return here to switch agents\./);
+  assert.match(sheetSource, /You can keep reviewing existing chats while disconnected\./);
+  assert.match(sheetSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Open connection settings'\)\}/);
+  assert.match(sheetSource, /configBlockerPrimaryButton:\s*\{[\s\S]*?createMinimumTouchTargetStyle\(\{ horizontalPadding: spacing\.lg, verticalPadding: spacing\.sm, horizontalMargin: 0 \}\),[\s\S]*?width:\s*'100%',/);
+});
