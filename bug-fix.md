@@ -399,7 +399,7 @@
 ### Evidence ID: mobile-chat-direct-no-session
 
 - Scope: `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-connection-gate.test.js` for the configured Expo Web direct `/chat` route when no current session exists yet.
-- Commit range: `TO_FILL_AFTER_HANDOFF_COMMIT`
+- Commit range: `6c6838ada864aba2f8b76c7c0aef0e7fb4bfc9d3..e645bbc64438dd7b5d98b4c4b9d1afd241cd27e7`
 - Rationale: A configured user could deep-link straight to `/chat`, see an enabled composer, and reasonably expect their first message to start a conversation. Instead, the screen only revealed `Error: No session available` after the send attempt because the initial hydration effect treated `null` `currentSessionId` as if chat state were already loaded, so no first session was ever created. That is a visible broken flow on a core chat entry path.
 - QA feedback: Deferred the older unresolved QA follow-ups from previous iterations for this pass; `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent, so this is a new runtime-confirmed iteration rather than a direct QA remediation.
 - Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-direct-no-session--before--chat-direct-send-error--20260311.png` (viewport `390x844`, fresh browser context at `http://localhost:8220/chat` after saving `http://127.0.0.1:8787/v1` + `sk-local` against a local mock OpenAI-compatible server). The screenshot shows the same direct `/chat` surface after typing `hello from before screenshot` and pressing `Send`; the inline `Error: No session available` is visible even though connection setup succeeded, which is insufficient because the user hit a dead-end on the very first configured chat attempt.
