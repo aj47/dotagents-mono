@@ -31,11 +31,47 @@ describe("agent-low-context-guard", () => {
     expect(getLowContextPromptGuardResponse("What should I do next?", true)).toBeNull()
   })
 
+  it("asks for clarification on fragmentary follow-ups that repeat recent user context", () => {
+    expect(
+      getLowContextPromptGuardResponse(
+        "terminals and one agent running in each",
+        true,
+        [
+          "okay yeah lets clean up first and dont start any new tasks yet we should have one agent running in an item terminal window thats working on those a loops",
+        ],
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        response: expect.stringContaining("may have been cut off"),
+      }),
+    )
+  })
+
+  it("asks for clarification on dangling cut-off follow-ups", () => {
+    expect(
+      getLowContextPromptGuardResponse("the file then you give the", true, ["show me the file and then give the trigger words"]),
+    ).toEqual(
+      expect.objectContaining({
+        response: expect.stringContaining("may have been cut off"),
+      }),
+    )
+  })
+
   it("does not over-trigger on prompts that already include real context", () => {
     expect(getLowContextPromptGuardResponse("What should I do next after pnpm test fails?", false)).toBeNull()
   })
 
   it("does not treat explicit actionable pause commands as passive deferrals", () => {
     expect(getLowContextPromptGuardResponse("pause the mobile-app-improvement-loop", true)).toBeNull()
+  })
+
+  it("does not block short follow-ups that still read like complete statements", () => {
+    expect(
+      getLowContextPromptGuardResponse(
+        "you have checked out on your machine",
+        true,
+        ["what kind of trigger words would activate the new skill"],
+      ),
+    ).toBeNull()
   })
 })

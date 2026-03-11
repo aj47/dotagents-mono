@@ -934,6 +934,10 @@ export async function processTranscriptWithAgentMode(
   const lowContextPromptGuard = getLowContextPromptGuardResponse(
     transcript,
     (previousConversationHistory?.length ?? 0) > 0,
+    (previousConversationHistory || [])
+      .filter((entry) => entry.role === "user")
+      .map((entry) => entry.content)
+      .slice(-3),
   )
 
   if (lowContextPromptGuard) {

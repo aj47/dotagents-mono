@@ -620,7 +620,18 @@ export async function processTranscriptWithACPAgent(
     conversationHistory.length > 0 &&
     !(conversationHistory.length === 1 && conversationHistory[0]?.role === "user" && conversationHistory[0]?.content === transcript)
 
-  const lowContextPromptGuard = getLowContextPromptGuardResponse(transcript, hasPriorConversationHistory)
+  const recentUserMessages = conversationHistory
+    .filter((message) => message.role === "user")
+    .map((message) => message.content)
+  if (recentUserMessages[recentUserMessages.length - 1] === transcript) {
+    recentUserMessages.pop()
+  }
+
+  const lowContextPromptGuard = getLowContextPromptGuardResponse(
+    transcript,
+    hasPriorConversationHistory,
+    recentUserMessages.slice(-3),
+  )
 
   if (lowContextPromptGuard) {
     const timestamp = Date.now()

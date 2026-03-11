@@ -267,6 +267,52 @@ describe("llm low-context guard", () => {
     }))
   })
 
+  it("short-circuits fragmentary follow-ups with history before starting tool work", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const progressUpdates: Array<Record<string, unknown>> = []
+    const executeToolCall = vi.fn()
+
+    const result = await processTranscriptWithAgentMode(
+      "terminals and one agent running in each",
+      [{ name: "execute_command", description: "Run shell commands", inputSchema: { type: "object" } }],
+      executeToolCall,
+      10,
+      [
+        {
+          role: "user",
+          content:
+            "okay yeah lets clean up first and dont start any new tasks yet we should have one agent running in an item terminal window thats working on those a loops",
+        },
+      ],
+      "conversation-1",
+      "session-1",
+      (update) => progressUpdates.push(update as unknown as Record<string, unknown>),
+      undefined,
+      1,
+    )
+
+    expect(result).toEqual(expect.objectContaining({
+      content: expect.stringContaining("may have been cut off"),
+      totalIterations: 0,
+    }))
+    expect(executeToolCall).not.toHaveBeenCalled()
+    expect(mockConstructSystemPrompt).not.toHaveBeenCalled()
+    expect(mockMakeLLMCallWithFetch).not.toHaveBeenCalled()
+    expect(mockMakeLLMCallWithStreamingAndTools).not.toHaveBeenCalled()
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      expect.stringContaining("may have been cut off"),
+      "assistant",
+      undefined,
+      undefined,
+    )
+    expect(progressUpdates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: expect.stringContaining("may have been cut off"),
+      userResponse: expect.stringContaining("may have been cut off"),
+    }))
+  })
+
   it("creates a distinct Langfuse trace id for each run even when the desktop session is reused", async () => {
     mockIsLangfuseEnabled.mockReturnValue(true)
 

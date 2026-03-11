@@ -177,6 +177,48 @@ describe("acp-main-agent", () => {
     }))
   })
 
+  it("short-circuits fragmentary follow-ups with history before sending ACP work", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<{ isComplete?: boolean; finalContent?: string }> = []
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [
+        {
+          role: "user",
+          content:
+            "okay yeah lets clean up first and dont start any new tasks yet we should have one agent running in an item terminal window thats working on those a loops",
+          timestamp: 1,
+        },
+        { role: "user", content: "terminals and one agent running in each", timestamp: 2 },
+      ],
+    })
+
+    const result = await processTranscriptWithACPAgent("terminals and one agent running in each", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      response: expect.stringContaining("may have been cut off"),
+    }))
+    expect(mockSendPrompt).not.toHaveBeenCalled()
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      expect.stringContaining("may have been cut off"),
+      "assistant",
+      undefined,
+      undefined,
+    )
+    expect(updates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: expect.stringContaining("may have been cut off"),
+    }))
+  })
+
   it("handles malformed config option choices without throwing", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<{ acpSessionInfo?: Record<string, unknown> }> = []
