@@ -117,7 +117,7 @@
 Evidence
 - Evidence ID: connection-settings-back-button-affordance
 - Scope: `Settings -> Connection settings` nested-screen header back affordance on mobile web (`apps/mobile/App.tsx`)
-- Commit range: PENDING_AFTER_COMMIT
+- Commit range: 23866557bb3c7f1c8637f2fdf725653c151173dc..ca8211d0fa4ae1d628406c20ceabbf8c39543ebf
 - Rationale: QA confirmed that iteration 13 fixed the touch-target size but still left the runtime control reading like a bare transparent arrow at the screen edge. This follow-up resolves the remaining actionability gap by making the same primary navigation control read as an explicit mobile button.
 - QA feedback: Addressed the outstanding reviewer finding that iteration 13 improved hit-target size without improving visual affordance, and corrected the earlier `settings-voice-picker-close-affordance` ledger provenance to the connected desktop-settings runtime conditions.
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-back-button-affordance--before--connection-settings-screen--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the `Connection Settings` header control had the larger tap target from iteration 13 but still appeared as a plain `←` with no label, fill, or border, which under-signaled that it was the main escape action.
