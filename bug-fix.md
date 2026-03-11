@@ -30,6 +30,7 @@
 - [x] Launched Expo Web at `http://localhost:8140`, cleared persisted mobile app storage, and live-reproduced a new unconfigured-chat gating bug from the Sessions deep link path.
 - [x] Reviewed `bug-fix.md` and the current outstanding QA feedback from `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt`, then explicitly deferred the unresolved `mobile-web-browser-history`, `mobile-web-qr-scanner`, and `mobile-chat-connection-gate` QA findings for this iteration.
 - [x] Launched Expo Web at `http://localhost:8150/chat`, reproduced repeated `Unexpected text node: . A text node cannot be a child of a <View>.` console errors on the initial Chat screen render, and traced the component stack back to `ChatScreen`'s `debugInfo &&` conditional.
+- [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent for this pass, and live-inspected a fresh Expo Web agent-creation flow on `http://localhost:8160/agents/edit` for a new concrete mobile-web bug.
 
 ## Not yet checked
 
@@ -46,6 +47,7 @@
 - [x] Mobile Expo Web reopened failed chats from Sessions with the stale persisted placeholder assistant message, so the thread showed an indefinite `Assistant is thinking` loader and hid the actual failure + retry UI after reopening.
 - [x] Mobile Expo Web still allowed unconfigured users to deep-link into `/sessions`, start a first chat, and send a message, which surfaced a raw `401` / missing API key chat error instead of redirecting them back to `Connection Settings`.
 - [x] Mobile Expo Web rendered the initial `/chat` screen with an empty-string child under a `ScrollView`, which emitted the React Native Web error `Unexpected text node: . A text node cannot be a child of a <View>.` three times on initial render even though the visible chat surface otherwise looked idle.
+- [x] Mobile Expo Web let an unconfigured user open `/agents/edit` with the primary `Create Agent` action still enabled, but tapping it performed no save, no navigation, and no visible error because `AgentEditScreen` returned early when no connection settings client was available.
 
 ## Fixed
 
@@ -59,6 +61,7 @@
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now persists settled same-length chat-message updates after a request finishes, so reopening a failed thread restores the saved error + retry state instead of the earlier blank assistant placeholder loader.
 - [x] `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SessionListScreen.tsx`, and `apps/mobile/src/screens/ChatScreen.tsx` now share a missing-connection gate so unconfigured mobile users are redirected back to `Connection Settings` before Sessions/Chat can create or send a chat, including the Sessions Rapid Fire and queued-send entry points.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now uses `shouldRenderOptionalChild()` from `apps/mobile/src/screens/chat-render-guards.ts` before rendering optional blocks whose conditions may evaluate to an empty string, so Expo Web no longer mounts invalid raw text nodes under chat `View` / `ScrollView` containers during the initial `/chat` render.
+- [x] `apps/mobile/src/screens/AgentEditScreen.tsx` now matches the existing Memory/Loop edit guard pattern by surfacing missing-connection guidance, showing a visible save error if the action is invoked without config, and disabling `Create Agent` / `Save Changes` until Base URL + API key settings exist.
 
 ## Verified
 
@@ -100,6 +103,10 @@
 - [x] `pnpm --filter @dotagents/mobile test`
 - [x] Live Expo Web repro at `http://localhost:8150/chat` now renders the same initial chat screen without any `Unexpected text node` console errors in a fresh `390x844` mobile browser context.
 - [x] Curated matching before/after screenshots for the initial chat render were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `node --test apps/mobile/tests/agent-edit-missing-connection.test.js apps/mobile/tests/agent-edit-density.test.js`
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] Live Expo Web repro at `http://localhost:8160/agents/edit` now shows the missing-connection helper text and a disabled non-interactive `Create Agent` control in a fresh `390x844` mobile browser context.
+- [x] Curated matching before/after screenshots for the unconfigured agent-create screen were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 
 ## Blocked
 
@@ -111,6 +118,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web reopened-failed-chat persistence bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web unconfigured-chat gating bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web chat empty-string render warning bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web agent-create missing-connection bug.
 
 ## Still uncertain
 
@@ -120,6 +128,7 @@
 - [ ] Whether deeper Expo Web deep-link/refresh cases for edit/detail screens with route params need richer route serialization beyond the fixed `Settings` ↔ `Connection` browser-history path.
 - [ ] Whether live Expo Web refresh/back navigation for memory and loop edit screens behaves correctly against a configured remote settings backend; this iteration verified the exact serializer/parser bug and screen fallback logic without re-running a full remote-backed browser session.
 - [ ] Whether reopened successful chats without a message-count change were also previously stale for the same persistence reason; this iteration fixed the shared settled-message persistence path and verified the failure-state repro specifically.
+- [ ] Whether direct deep links into other mobile edit/detail routes still have any missing-configuration edge cases beyond the now-fixed `AgentEditScreen` silent no-op path.
 
 ## Candidate leads
 
@@ -128,6 +137,7 @@
 - Mobile Expo Web QR decoding with a real camera feed and real DotAgents QR payload once permission handling is no longer silent.
 - Mobile flow/runtime bugs that can now be inspected live again because the symlinked-worktree Expo Web bundle no longer dies resolving `@dotagents/shared`.
 - Mobile chat/session state edge cases after reopen, retry, and offline failures now that the placeholder-persistence bug is fixed.
+- Mobile Expo Web edit/detail deep links that are reachable without configuration, especially around remaining save/load gating consistency and scroll/interaction edge cases.
 
 ## Evidence
 
@@ -226,3 +236,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-empty-string-warning--after--chat-screen--20260311.png` (same `390x844` viewport and same initial `/chat` surface). After restoring the fix, the chat screen still renders normally but the matched fresh-browser run emits zero `Unexpected text node` console errors, showing the invalid child is gone without changing the visible layout.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-render-guards.test.ts` ✅ (2 tests passing for empty/whitespace string suppression and truthy-value rendering); `pnpm --filter @dotagents/mobile test` ✅ (73 Node tests + 70 Vitest assertions passing after adding the new helper coverage); `git diff --check` ✅ before the product-change commit; live Expo Web repro at `http://localhost:8150/chat` ✅ showed `Unexpected text node` count `3` before the one-line guard revert and `0` after restoring the fix in fresh `390x844` browser contexts.
 - Blockers/remaining uncertainty: This iteration fixed the confirmed empty-string child warning on the default Expo Web chat render and hardened the adjacent optional-block guard sites in `ChatScreen`. Other unrelated Expo Web warnings still appear (`expo-notifications` web-listener limitation, `pointerEvents` deprecation, and `shadow*` deprecation), but they were not the selected bug for this pass.
+
+### Evidence ID: mobile-agent-edit-missing-connection
+
+- Scope: `apps/mobile/src/screens/AgentEditScreen.tsx` and `apps/mobile/tests/agent-edit-missing-connection.test.js` for the unconfigured Expo Web create-agent flow at `/agents/edit`
+- Commit range: `d30422677fc92c4815c60edaeee0e83bf01b90f1..PENDING_FINAL_HANDOFF_COMMIT_SHA`
+- Rationale: Users can reach the mobile agent editor through web routing and deep links even when Base URL / API key are not configured. Before this fix, the primary `Create Agent` action still looked available but silently returned early without a save attempt, navigation change, or explanatory error, which made a core creation flow feel broken and left users without a recovery path.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-agent-edit-missing-connection--before--create-agent-screen--20260311.png` (viewport `390x844`, mobile browser, fresh unconfigured Expo Web state at `http://localhost:8160/agents/edit`). The screenshot shows the `Create Agent` form rendered with the primary CTA visible but no helper copy explaining that connection settings are required; in the same run, clicking `Create Agent` kept the app on `/agents/edit`, triggered no network request, showed no error, and performed no navigation, so the primary action behaved like a silent no-op.
+- Change: Updated `AgentEditScreen.tsx` to follow the existing Memory/Loop edit pattern for missing configuration: when no settings client exists it now renders inline helper text, disables the primary save CTA, and sets a visible error if save is invoked programmatically anyway. Added `apps/mobile/tests/agent-edit-missing-connection.test.js` to lock the missing-connection helper/error text and disabled-button wiring in source-level regression coverage.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-agent-edit-missing-connection--after--create-agent-screen--20260311.png` (same `390x844` viewport, same unconfigured `/agents/edit` surface). After the fix, the screen visibly explains `Configure Base URL and API key in Settings to save changes.` and the `Create Agent` control is rendered disabled/non-interactive, which prevents the misleading no-op and clearly directs the user toward the required setup flow.
+- Verification commands/run results: `node --test apps/mobile/tests/agent-edit-missing-connection.test.js apps/mobile/tests/agent-edit-density.test.js` ✅ (4 tests passing, including the new missing-connection guard assertions); `pnpm --filter @dotagents/mobile test` ✅ (75 Node tests + 70 Vitest assertions passing); `git diff --check` ✅; live Expo Web repro at `http://localhost:8160/agents/edit` ✅ now shows the helper text and a disabled `Create Agent` control in a fresh `390x844` browser context after clearing storage; curated matching before/after screenshots saved under `docs/aloops-evidence/bug-fix-loop/` ✅.
+- Blockers/remaining uncertainty: This iteration fixed and live-verified the unconfigured mobile-web create-agent path specifically. I did not separately revalidate configured agent creation/editing against a live backend in this pass, and I did not expand the scope into the earlier inconclusive inner-scroll interaction hypothesis because the missing-configuration silent no-op had clearer user impact and a smaller safe fix.
