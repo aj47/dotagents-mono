@@ -50,6 +50,10 @@ import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
+import {
+  appendAndPersistTerminalAssistantMessage,
+  buildUnexpectedAgentFailureMessage,
+} from "./agent-terminal-error"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -510,6 +514,17 @@ export async function processTranscriptWithAgentMode(
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
+  const conversationHistory: Array<{
+    role: "user" | "assistant" | "tool"
+    content: string
+    toolCalls?: MCPToolCall[]
+    toolResults?: MCPToolResult[]
+    timestamp?: number
+    ephemeral?: boolean
+  }> = [
+    ...(previousConversationHistory || []),
+    { role: "user", content: transcript, timestamp: Date.now() },
+  ]
 
   try {
   // Track context usage info for progress display
@@ -916,18 +931,6 @@ export async function processTranscriptWithAgentMode(
   if (previousConversationHistory && previousConversationHistory.length > 0) {
     logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
   }
-
-  const conversationHistory: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: MCPToolCall[]
-    toolResults?: MCPToolResult[]
-    timestamp?: number
-    ephemeral?: boolean
-  }> = [
-    ...(previousConversationHistory || []),
-    { role: "user", content: transcript, timestamp: Date.now() },
-  ]
 
   // Track the index where the current user prompt was added
   // This is used to scope tool result checks to only the current turn
@@ -2975,6 +2978,35 @@ Return ONLY JSON per schema.`,
       conversationHistory: filterEphemeralMessages(conversationHistory),
       totalIterations: iteration,
     }
+  } catch (error) {
+    if (!wasAborted) {
+      const failureContent = finalContent.trim() || buildUnexpectedAgentFailureMessage(error)
+      finalContent = failureContent
+
+      const lastMessage = conversationHistory[conversationHistory.length - 1]
+      if (
+        !lastMessage ||
+        lastMessage.role !== "assistant" ||
+        lastMessage.content !== failureContent
+      ) {
+        try {
+          await appendAndPersistTerminalAssistantMessage({
+            conversationId: currentConversationId,
+            conversationHistory,
+            assistantContent: failureContent,
+          })
+        } catch (persistError) {
+          logLLM("[processTranscriptWithAgentMode] Failed to persist terminal error message:", persistError)
+          conversationHistory.push({
+            role: "assistant",
+            content: failureContent,
+            timestamp: Date.now(),
+          })
+        }
+      }
+    }
+
+    throw error
   } finally {
     // End Langfuse trace for this agent session if enabled
     // This is in a finally block to ensure traces are closed even on unexpected exceptions
