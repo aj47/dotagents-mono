@@ -32,3 +32,9 @@ test('keeps a global save button visible on mobile settings so typed changes are
   assert.match(settingsSource, /flushAllSettingsSaves/);
   assert.match(settingsSource, /saveBar:/);
 });
+
+test('keeps chats reachable from the disconnected settings home instead of hard-disabling the CTA', () => {
+  assert.match(settingsSource, /const chatsCtaLabel = isConnected \? 'Go to Chats' : 'Open Chats';/);
+  assert.match(settingsSource, /Review saved chats while disconnected\. Connect before sending new messages\./);
+  assert.doesNotMatch(settingsSource, /disabled=\{!\(config\.baseUrl && config\.apiKey\)\}/);
+});

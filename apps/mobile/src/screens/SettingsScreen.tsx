@@ -1107,6 +1107,11 @@ export default function SettingsScreen({ navigation }: any) {
   ]);
 
   const hasPendingSaves = hasPendingLocalSave || pendingRemoteSaveKeys.length > 0;
+  const isConnected = Boolean(config.baseUrl && config.apiKey);
+  const chatsCtaLabel = isConnected ? 'Go to Chats' : 'Open Chats';
+  const chatsCtaHint = isConnected
+    ? 'Opens your chat list.'
+    : 'Opens saved chats even while disconnected. Connect first to send new messages.';
   const saveButtonLabel = isSavingAllSettings
     ? 'Saving…'
     : hasPendingSaves
@@ -1198,14 +1203,19 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* Go to Chats button */}
         <TouchableOpacity
-          style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
+          style={styles.primaryButton}
           onPress={() => navigation.navigate('Sessions')}
-          disabled={!(config.baseUrl && config.apiKey)}
           accessibilityRole="button"
-          accessibilityLabel="Go to Chats"
+          accessibilityLabel={chatsCtaLabel}
+          accessibilityHint={chatsCtaHint}
         >
-          <Text style={styles.primaryButtonText}>Go to Chats</Text>
+          <Text style={styles.primaryButtonText}>{chatsCtaLabel}</Text>
         </TouchableOpacity>
+        {!isConnected && (
+          <Text style={styles.primaryActionHelperText}>
+            Review saved chats while disconnected. Connect before sending new messages.
+          </Text>
+        )}
 
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.themeSelector}>
@@ -3153,6 +3163,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primaryForeground,
       fontSize: 16,
       fontWeight: '600',
+    },
+    primaryActionHelperText: {
+      marginTop: spacing.sm,
+      fontSize: 12,
+      lineHeight: 17,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
     },
     saveBar: {
       borderTopWidth: 1,

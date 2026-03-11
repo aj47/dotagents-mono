@@ -15,6 +15,7 @@
 - [x] Connection Settings screen back navigation, header affordance, QR scanner modal, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
+- [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
 - [x] Settings -> Text-to-Speech voice picker modal close/action surface in Expo Web (connected desktop-settings runtime, `390x844` mobile viewport)
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
 - [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
@@ -35,6 +36,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
+- [ ] Disconnected/offline session-list and chat send states after entering Chats from Settings
 - [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and initial Connection Settings QR/save pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
@@ -51,6 +53,7 @@
 - [x] MemoryEdit importance chips crowd narrow screens and communicate priority mostly through color-only state
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
 - [x] Settings -> Text-to-Speech voice picker showed a plain small `Close` action and weak picker semantics on narrow Expo Web
+- [x] Settings home disabled `Go to Chats` on the disconnected default screen, stranding users away from saved chats/history with no explanation
 
 ### Improved
 
@@ -65,6 +68,7 @@
 - [x] MemoryEdit importance selection clarity, touch targets, and priority guidance
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
 - [x] Settings -> Text-to-Speech voice picker close affordance plus source-level picker semantics/touch-target guardrails
+- [x] Settings home Chats access and offline-state explanation on the disconnected default screen
 
 ### Verified
 
@@ -72,6 +76,7 @@
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button touch-target fix at `390x844` CSS viewport
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button visual affordance follow-up at `390x844`
 - [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
+- [x] Live Expo Web before/after evidence for the disconnected Settings-home chats CTA at `390x844`
 
 ### Blocked
 
@@ -82,8 +87,52 @@
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
 - [ ] The Connection Settings QR scanner close button measured about `66.7x43` CSS px in Expo Web during this pass, so the close affordance likely still deserves its own touch-target check before calling that modal fully tuned.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
+- [ ] The disconnected `Open Chats` entry point is now verified, but the offline `Sessions -> Chat` send/failure path still needs its own dedicated runtime pass before claiming solid offline-state coverage.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 15: unblock Chats from the disconnected Settings home
+
+- Status: completed with live Expo Web evidence and targeted regression coverage
+- Area:
+  - default `Settings` home CTA on mobile web in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - disconnected first-run / offline entry path from `DotAgents` home into `Chats` at a `390x844` CSS viewport
+- Why this area:
+  - even though the settings root had already been checked, a fresh Expo Web pass found a new first-run/offline navigation problem worth a focused revisit: the home screen showed a primary `Go to Chats` action but hard-disabled it whenever the app was disconnected
+  - that stranded users away from saved chats/history on mobile and weakened offline/disconnected-state coverage, which is a higher-value gap than further polishing already-tuned header chrome
+- What was investigated:
+  - live Expo Web startup via the existing repo workflow after rebuilding `packages/shared`
+  - the default disconnected `Settings` home at `390x844`
+  - current `Go to Chats` gating in `SettingsScreen.tsx` plus the destination `SessionListScreen.tsx` behavior to confirm the list itself does not require an active server connection just to render local sessions/history
+- Findings:
+  - the default screen rendered `Not connected` and still showed `Go to Chats`, but the CTA was disabled on the disconnected home screen in Expo Web
+  - source review confirmed the button was gated directly on `config.baseUrl && config.apiKey`, even though `SessionListScreen` can render local sessions and empty-state UI without an active server connection
+  - this made the default mobile home screen unnecessarily block offline review of saved chats/history and gave users little explanation about what was actually unavailable versus still safe to open
+- Change made:
+  - removed the disconnected-state disable guard from the Settings-home chats CTA so mobile users can still open `Chats` while offline/disconnected
+  - changed the disconnected label from `Go to Chats` to `Open Chats` and added helper copy clarifying that saved chats remain viewable but sending new messages still requires a connection
+  - extended `apps/mobile/tests/settings-screen-density.test.js` to lock the reachable disconnected CTA plus the new helper copy
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8115 --clear`
+  - `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/session-list-empty-state.test.js`
+  - `git diff --check`
+  - live Expo Web automation at `390x844` CSS viewport with before/after screenshots of the Settings home and a post-change tap-through into `Chats`
+- Follow-up checks:
+  - inspect the disconnected `Sessions` and `Chat` flows next, especially empty/new-chat/send failure states, so offline coverage continues past the entry CTA instead of stopping at navigation
+  - keep widening runtime coverage to session sync/error states or the remaining modal/sheet surfaces rather than returning to this same Settings CTA without a new regression signal
+
+Evidence
+- Evidence ID: settings-offline-open-chats
+- Scope: disconnected `Settings` home chats CTA and offline helper copy on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
+- Commit range: REPLACE_COMMIT_RANGE
+- Rationale: The default mobile home screen is both a first-run setup surface and an offline recovery surface. Leaving a visible primary `Go to Chats` action disabled there made the app feel more blocked than it really was, because users could not reach saved chats/history even though the chats list itself can render without an active server connection.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--before--settings-home--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the disconnected `DotAgents` home showed `Not connected` and a visible `Go to Chats` CTA, but the button was disabled, which stranded users away from saved chats/history and did not explain what remained available offline.
+- Change: Updated `apps/mobile/src/screens/SettingsScreen.tsx` so the chats CTA stays enabled while disconnected, renames the disconnected state to `Open Chats`, adds helper copy explaining offline access versus send limitations, and adds focused regression coverage in `apps/mobile/tests/settings-screen-density.test.js`.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--after--settings-home--20260311.png` — same `390x844` CSS viewport on Expo Web. The disconnected Settings home now shows an enabled `Open Chats` action plus helper copy explaining that saved chats stay reachable while disconnected, which makes the offline/default-state navigation more honest and actionable.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8115 --clear` ✅ (Expo Web live at `http://localhost:8115`); `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/session-list-empty-state.test.js` ✅ (8/8 passing); `git diff --check` ✅; live Expo Web before/after screenshots captured ✅; live tap-through from `Open Chats` into the `Chats` screen while still disconnected ✅.
+- Blockers/remaining uncertainty: This pass verified the offline/disconnected entry point into `Chats`, but it did not yet do a full disconnected runtime pass on new-chat creation, composer send failure handling, or session sync/reconnect states after entering the chats surfaces.
 
 ### 2026-03-11 — Iteration 14: make the Connection Settings back button read like a real mobile control
 
