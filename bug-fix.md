@@ -43,6 +43,8 @@
 - [x] Live-reproduced a new Expo Web `/agents/edit` disconnected editable-form bug at `http://localhost:8210/agents/edit` in a fresh cleared `390x844` mobile browser context: the screen still let the user type an `Unsavable Agent Draft`, change visible agent controls, and offered no direct route to `Connection Settings` even though the route could not save without configuration.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred the older unresolved QA follow-ups for this iteration, and launched Expo Web at `http://localhost:8220/chat` to inspect a fresh configured direct-chat route.
 - [x] Live-reproduced a new Expo Web configured `/chat` bug at `http://localhost:8220/chat` in a fresh `390x844` browser context backed by a local mock OpenAI-compatible server: after saving a valid connection and navigating directly to `/chat` with no existing session, the composer looked ready but pressing `Send` surfaced `Error: No session available` instead of creating a chat.
+- [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred the older unresolved QA follow-ups for this iteration, and launched Expo Web at `http://localhost:8230` to inspect fresh disconnected chat/session flows.
+- [x] Live-reproduced a new Expo Web disconnected `/chat` phantom-session bug at `http://localhost:8230` in a fresh `390x844` browser context: visiting `/chat` without connection settings silently created a persisted empty `New Chat` thread, and returning to `/sessions` showed that bogus row plus `Clear All` even though chat setup was still blocked.
 
 ## Not yet checked
 
@@ -67,6 +69,7 @@
 - [x] Mobile Expo Web let an unconfigured user deep-link straight to `/loops/edit`, type into the loop name/prompt/interval fields, and toggle loop settings even though the route could not save; the visible `Create Loop` action was disabled and the screen offered no direct CTA to open connection settings.
 - [x] Mobile Expo Web still let an unconfigured user deep-link straight to `/agents/edit`, type into the agent form, toggle agent settings, and interact with connection-type choices even though the route could not save; the visible screen behaved like a real editor but offered no direct CTA to open connection settings.
 - [x] Mobile Expo Web let a configured user deep-link straight to `/chat` with no active session, showed a normal enabled composer, and only surfaced `Error: No session available` after pressing `Send` because the first-load session hydration logic incorrectly treated `currentSessionId === null` as an already-loaded stable state.
+- [x] Mobile Expo Web let a disconnected user deep-link straight to `/chat`, and the screen's no-session hydration path still created and persisted an empty `New Chat` session even though the same user was blocked from composing or sending; returning to `/sessions` then showed a phantom chat row and `Clear All` action that should never exist before setup.
 
 ## Fixed
 
@@ -91,6 +94,7 @@
 - [x] `apps/mobile/src/screens/edit-screens-connection-gate.test.ts`, `apps/mobile/tests/agent-edit-missing-connection.test.js`, and `apps/mobile/tests/agent-edit-connection-types.test.js` now cover the disconnected agent-edit gate directly so the screen's setup CTA and disabled controls are locked by executable and source-level regression checks.
 - [x] Refreshed the curated `mobile-chat-disconnected-composer` and `mobile-web-qr-scanner` screenshot evidence at matching viewports (`390x844` and `1440x900`) so those older QA findings no longer point at mixed-dimension or raw-artifact-only images.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now waits for `sessionStore.ready` before deciding whether chat hydration is complete and only skips repeat hydration work for non-null session IDs, so a configured direct visit to `/chat` with no current session auto-creates the first chat instead of leaving the composer in a dead-end `No session available` state.
+- [x] `apps/mobile/src/screens/ChatScreen.tsx` now only auto-creates a first session when chat is actually configured, so disconnected direct visits to `/chat` no longer persist a bogus empty `New Chat` thread; `apps/mobile/src/screens/chat-session-hydration.ts` and its new Vitest coverage lock that gating logic so configured direct `/chat` recovery and delete-in-progress behavior still work.
 
 ## Verified
 
@@ -170,6 +174,9 @@
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this disconnected agent-edit fix; no new `AgentEditScreen.tsx` type error was introduced.
 - [x] Live Expo Web verification at `http://localhost:8210/agents/edit` now shows connection-required guidance in the same fresh `390x844` mobile browser context, keeps the agent fields read-only while disconnected, disables the connection-type buttons plus toggles, and routes `Open Connection Settings` to `/connection`.
 - [x] Curated matching before/after screenshots for the disconnected `/agents/edit` screen were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-session-hydration.test.ts`
+- [x] Live Expo Web verification at `http://localhost:8230` now keeps `/sessions` in the same disconnected empty state after a fresh `/sessions` → `/chat` → `/sessions` flow in a cleared `390x844` browser context, so no phantom `New Chat` row or `Clear All` action appears before setup.
+- [x] Curated matching before/after screenshots for the disconnected `/chat` phantom-session flow were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 
 ## Blocked
 
@@ -188,6 +195,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/loops/edit` create-loop bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/agents/edit` editable-form bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web configured direct `/chat` no-session bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/chat` phantom-session bug.
 
 ## Still uncertain
 
@@ -202,6 +210,7 @@
 - [ ] Whether any other ephemeral mobile web route params beyond `Chat.initialMessage` should also be stripped from generated/pasted URLs for privacy or replay-safety; this iteration fixed only the confirmed rapid-fire draft case.
 - [ ] Whether disconnected users who reopen `/chat` with existing session history should also see a lightweight read-only banner above the transcript; this iteration fixed the misleading editable-composer path specifically.
 - [ ] Whether any other mobile chat/session deep-link paths still accidentally treat `null` session state as already hydrated after async store load; this iteration fixed the directly confirmed configured `/chat` no-session case specifically.
+- [ ] Whether disconnected users with an already-selected historical session can still hit any stale session-selection edge case after the new no-auto-create guard; this iteration verified the fresh no-session `/chat` → `/sessions` phantom-thread repro specifically.
 
 ## Candidate leads
 
@@ -407,3 +416,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-direct-no-session--after--chat-direct-send-error--20260311.png` (same `390x844` viewport and same direct `/chat` flow against the same local mock server). After the fix, the old `Error: No session available` dead-end is gone: the screenshot shows `hello from after screenshot`, the mock assistant reply `Mock reply from local bug-fix server.`, and `Completed!`, which demonstrates that the direct route now creates a session and completes the first send instead of failing before any request can start.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (6 tests passing, including the new direct-`/chat` session-hydration guard assertion); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; `git diff --check` ✅; live Expo Web verification at `http://localhost:8220/chat` ✅ in a fresh `390x844` browser context with a local mock server at `http://127.0.0.1:8787/v1` reproduced the original `Error: No session available` state before the fix and then showed a successful direct-route send with `Mock reply from local bug-fix server.` after the fix.
 - Blockers/remaining uncertainty: The exact configured direct `/chat` no-session path is fixed and live-verified. I did not broaden this iteration into every possible deep-link/session hydration edge case or replace the local verification server with a real remote backend, because that would widen scope beyond the directly reproduced first-message failure.
+
+### Evidence ID: mobile-chat-disconnected-phantom-session
+
+- Scope: `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/chat-session-hydration.ts`, `apps/mobile/src/screens/chat-session-hydration.test.ts`, `apps/mobile/tests/chat-connection-gate.test.js`, and `apps/mobile/package.json` for the disconnected Expo Web `/chat` → `/sessions` flow with no current session.
+- Commit range: `adca0ad5b1d039a097eb2f7960e03f794f195818..37fda1bc930bc4a4e08d050b443913005ed894cd`
+- Rationale: The earlier direct-`/chat` no-session recovery fix correctly auto-created a first session for configured users, but it also ran for disconnected users who were still blocked from chatting. That left `/chat` silently polluting `/sessions` with a fake empty `New Chat` thread and `Clear All` action before setup, which is visibly incorrect state on a core chat entry path and makes the app look like it already contains a usable conversation when it does not.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-disconnected-phantom-session--before--sessions-list--20260311.png` (viewport `390x844`, fresh cleared Expo Web browser context at `http://localhost:8230` after reproducing `/sessions` → `/chat` → `/sessions` while disconnected). The screenshot shows the bad post-repro Sessions state with a bogus empty `New Chat` row and `Clear All`, which is insufficient because no connection settings exist and the user never successfully started a chat.
+- Change: Extracted a small `shouldAutoCreateChatSession()` helper so `ChatScreen.tsx` only creates a first session when chat is actually configured and no deletion is still in progress. In the disconnected no-session case, the screen now stays empty instead of persisting a phantom session. Added focused Vitest coverage for the new helper and refreshed the existing source-level chat gate assertion so the configured direct-`/chat` recovery path remains locked while disconnected users no longer get fake chat history.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-disconnected-phantom-session--after--sessions-list--20260311.png` (same `390x844` viewport, same fresh cleared Expo Web `/sessions` → `/chat` → `/sessions` flow). The screenshot shows `/sessions` remaining in the correct disconnected empty state after the same repro path, and live verification confirmed there is no phantom `New Chat` row and no `Clear All` action, which is preferable because the app no longer invents chat history before setup is complete.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-session-hydration.test.ts` ✅ (3 tests passing for disconnected, configured, and delete-in-progress session-creation decisions); `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (6 tests passing, including the refreshed direct-`/chat` source assertion); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors and no new `ChatScreen` / `chat-session-hydration` type failures; `pnpm --filter @dotagents/mobile test` ✅ (81 Node tests + 78 Vitest assertions passing across the mobile suite); `git diff --check` ✅; live Expo Web verification at `http://localhost:8230` ✅ in a fresh `390x844` browser context kept `/sessions` empty after `/sessions` → `/chat` → `/sessions` while disconnected.
+- Blockers/remaining uncertainty: The exact disconnected no-session `/chat` phantom-thread repro is fixed and live-verified on Expo Web. I did not broaden this iteration into every disconnected historical-session or native-app chat hydration edge case, because those are separate follow-ups beyond the directly reproduced phantom-session bug.
