@@ -77,6 +77,7 @@ import {
   createChatMessagePersistenceSignature,
   shouldPersistChatMessages,
 } from './chat-message-persistence';
+import { shouldRenderOptionalChild } from './chat-render-guards';
 
 interface PendingImageAttachment {
   id: string;
@@ -2555,7 +2556,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                   </Pressable>
 
                                   {/* Parameters */}
-                                  {toolCall.arguments && (
+                                  {shouldRenderOptionalChild(toolCall.arguments) && (
                                     <View style={styles.toolParamsSection}>
                                       <Text style={styles.toolSectionLabel}>Input:</Text>
                                       <ScrollView
@@ -2592,7 +2593,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                           {result.content || 'No content returned'}
                                         </Text>
                                       </ScrollView>
-                                      {result.error && (
+                                      {shouldRenderOptionalChild(result.error) && (
                                         <View style={styles.toolResultErrorSection}>
                                           <Text style={styles.toolResultErrorLabel}>Error:</Text>
                                           <Text style={styles.toolResultErrorText}>{result.error}</Text>
@@ -2646,7 +2647,7 @@ export default function ChatScreen({ route, navigation }: any) {
               </Text>
             </View>
           )}
-          {debugInfo && (
+          {shouldRenderOptionalChild(debugInfo) && (
             <View style={styles.debugInfo}>
               <Text style={styles.debugText}>{debugInfo}</Text>
             </View>
@@ -2727,7 +2728,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 <Text style={styles.connectionBannerText}>
                   Reconnecting... (attempt {connectionState.retryCount})
                 </Text>
-                {connectionState.lastError && (
+                {shouldRenderOptionalChild(connectionState.lastError) && (
                   <Text style={styles.connectionBannerSubtext} numberOfLines={1}>
                     {connectionState.lastError}
                   </Text>
