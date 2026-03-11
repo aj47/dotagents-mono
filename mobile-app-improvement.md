@@ -125,7 +125,7 @@
 Evidence
 - Evidence ID: settings-offline-open-chats
 - Scope: disconnected `Settings` home chats CTA and offline helper copy on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
-- Commit range: REPLACE_COMMIT_RANGE
+- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..1d2d049c8399e89d4d19fc6c0134ced48a48ad5f
 - Rationale: The default mobile home screen is both a first-run setup surface and an offline recovery surface. Leaving a visible primary `Go to Chats` action disabled there made the app feel more blocked than it really was, because users could not reach saved chats/history even though the chats list itself can render without an active server connection.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--before--settings-home--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the disconnected `DotAgents` home showed `Not connected` and a visible `Go to Chats` CTA, but the button was disabled, which stranded users away from saved chats/history and did not explain what remained available offline.
