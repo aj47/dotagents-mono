@@ -55,6 +55,15 @@ test('chat screen waits for hydrated sessions, avoids disconnected phantom sessi
   assert.match(chatScreenSource, /currentSession = sessionStore\.createNewSession\(\);/);
 });
 
+test('chat screen stops auto-retrying failed desktop stub loads and shows an inline recovery action', () => {
+  assert.match(chatScreenSource, /shouldAttemptStubSessionLoad\(\{[\s\S]*?failedSessionId:\s*failedStubLoadSessionIdRef\.current,[\s\S]*?\}\)/);
+  assert.match(chatScreenSource, /failedStubLoadSessionIdRef\.current = stubSessionId;/);
+  assert.match(chatScreenSource, /setSessionLoadError\(DESKTOP_STUB_LOAD_ERROR_MESSAGE\);/);
+  assert.match(chatScreenSource, /\{sessionLoadError && !sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
+  assert.match(chatScreenSource, /Desktop chat failed to load/);
+  assert.match(chatScreenSource, /Retry loading/);
+});
+
 test('chat screen disables the header new-chat action while disconnected so it cannot create phantom sessions', () => {
   assert.match(chatScreenSource, /const canStartManualNewChat = shouldAllowManualChatSessionCreation\(\{ canComposeChat \}\);/);
   assert.match(chatScreenSource, /if \(!canStartManualNewChat\) \{\s*return;\s*\}/);
