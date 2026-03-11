@@ -115,7 +115,7 @@
 Evidence
 - Evidence ID: settings-voice-picker-close-affordance
 - Scope: `Settings -> Desktop Settings -> Text-to-Speech -> Voice picker` close action on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
-- Commit range: TO_FILL_AFTER_COMMIT
+- Commit range: e46d01822ce065cf4b6b0ee3aa64f0078c0cd00e..d8e290633d46a169232ceabc90a0409d1b876778
 - Rationale: The TTS voice picker is a meaningful configuration surface that a mobile user can reach even before connecting to desktop. On a narrow viewport, the picker needed a clearer exit affordance so the modal state feels obviously actionable instead of relying on a tiny text-only close control.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--before--voice-picker-open--20260311.png` — `390x844` mobile viewport in Expo Web, open `Text-to-Speech -> Voice picker`. Before the change, the `Close` affordance reads as a plain text action in the picker header, which is easy to under-read on a narrow mobile surface.
