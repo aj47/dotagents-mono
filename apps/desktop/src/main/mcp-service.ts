@@ -1444,7 +1444,15 @@ export class MCPService {
         }
 
         for (const [paramName, paramValue] of Object.entries(processedArguments)) {
-          if (requiredParams.has(paramName)) continue
+          const isGitHubSearchIssuesMissingTypeFilter =
+            serverName === 'github' &&
+            toolName === 'search_issues' &&
+            paramName === 'q' &&
+            typeof paramValue === 'string' &&
+            paramValue.trim() !== '' &&
+            !/\bis:(?:issue|pull-request|pr)\b/i.test(paramValue)
+
+          if (requiredParams.has(paramName) && !isGitHubSearchIssuesMissingTypeFilter) continue
 
           const isGitHubCreateIssuePlaceholder =
             serverName === 'github' &&
@@ -1465,6 +1473,11 @@ export class MCPService {
 
           if (isGitHubCreateIssuePlaceholder || isGitHubListIssuesSincePlaceholder) {
             delete processedArguments[paramName]
+            continue
+          }
+
+          if (isGitHubSearchIssuesMissingTypeFilter) {
+            processedArguments[paramName] = `${paramValue.trim()} is:issue`
           }
         }
 

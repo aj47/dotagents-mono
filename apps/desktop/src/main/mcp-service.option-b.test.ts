@@ -357,6 +357,99 @@ describe("MCPService Option B (builtin allowlist)", () => {
     })
   })
 
+  it("adds github search_issues is:issue filter when the traced query omitted a required type", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "[]" }], isError: false }))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "github:search_issues",
+        description: "Search GitHub issues and pull requests",
+        inputSchema: {
+          type: "object",
+          properties: {
+            q: { type: "string" },
+            sort: { type: "string" },
+            order: { type: "string" },
+            page: { type: "number" },
+            per_page: { type: "number" },
+          },
+          required: ["q"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "github:search_issues",
+        arguments: {
+          q: "repo:aj47/dotagents-mono mobile session agent dropdown can't select",
+          sort: "updated",
+          order: "desc",
+          page: 1,
+          per_page: 10,
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "search_issues",
+      arguments: {
+        q: "repo:aj47/dotagents-mono mobile session agent dropdown can't select is:issue",
+        sort: "updated",
+        order: "desc",
+        page: 1,
+        per_page: 10,
+      },
+    })
+  })
+
+  it("preserves explicit github search_issues pull-request filters", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "[]" }], isError: false }))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "github:search_issues",
+        description: "Search GitHub issues and pull requests",
+        inputSchema: {
+          type: "object",
+          properties: {
+            q: { type: "string" },
+            per_page: { type: "number" },
+          },
+          required: ["q"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "github:search_issues",
+        arguments: {
+          q: "repo:aj47/dotagents-mono is:pull-request label:bug",
+          per_page: 5,
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "search_issues",
+      arguments: {
+        q: "repo:aj47/dotagents-mono is:pull-request label:bug",
+        per_page: 5,
+      },
+    })
+  })
+
   it("does not broadly prune empty optional values for unrelated tools", async () => {
     const { mcpService } = await import("./mcp-service")
     const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "saved" }], isError: false }))
