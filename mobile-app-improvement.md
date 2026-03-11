@@ -12,7 +12,7 @@
 
 - [x] Settings root screen and nested back navigation
 - [x] Connection setup flow, save validation, and inline connection actions
-- [x] Connection Settings screen back navigation, header affordance, QR scanner modal close/action surface, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
+- [x] Connection Settings screen back navigation, header affordance, QR scanner web launch guidance / close surface, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
@@ -39,6 +39,7 @@
 - [ ] Session loading, error, reconnect, and sync states
 - [ ] Remaining disconnected/offline chat states after entering `Chats` beyond the new-chat text-send guard (existing-chat retry/reconnect, mic/handsfree affordances, and sync states)
 - [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and the Connection Settings QR scanner close pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
+- [ ] Connection Settings QR scanner live camera-preview / successful scan state after permission is actually granted on web or native
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -57,6 +58,7 @@
 - [x] Settings home disabled `Go to Chats` on the disconnected default screen, stranding users away from saved chats/history with no explanation
 - [x] Disconnected `Chats -> + New Chat` let users type and attempt `Send` with no usable connection config, then surfaced a raw 401-style failure plus generic retry/internet guidance
 - [x] Connection Settings QR scanner modal close button measured about `66.7x42` CSS px in Expo Web, sat low with a hardcoded `top: 60`, and read like a generic overlay dismiss instead of a tuned scanner escape action
+- [x] Connection Settings `Scan QR Code` did nothing visibly on Expo Web: no scanner modal, no close control, no inline blocker, and no browser-specific permission guidance after the tap
 
 ### Improved
 
@@ -74,6 +76,7 @@
 - [x] Settings home Chats access and offline-state explanation on the disconnected default screen
 - [x] Disconnected `Chats -> + New Chat` composer honesty, blocked-send behavior, and first-run guidance before failure
 - [x] Connection Settings QR scanner close affordance clarity, safe-area placement, and 44px touch-target coverage
+- [x] Connection Settings QR scanner web launch now opens an explicit browser-permission guidance sheet with a visible escape action instead of behaving like a dead tap
 
 ### Verified
 
@@ -86,6 +89,7 @@
 - [x] Live Expo Web before/after evidence plus focused send-availability coverage for disconnected `Chats -> + New Chat` at `390x844`
 - [x] QA follow-up recapture for the disconnected Settings-home CTA and disconnected `Chats -> + New Chat` evidence now uses matched `390x844` Expo Web screenshots plus corrected authored commit provenance
 - [x] Live Expo Web before/after evidence plus focused connection-settings density coverage for the QR scanner modal close affordance at `390x844`
+- [x] Live Expo Web before/after evidence plus focused QR helper/density coverage for the Connection Settings QR scanner web guidance sheet at `390x844`
 
 ### Blocked
 
@@ -96,8 +100,55 @@
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 - [ ] The disconnected new-chat text-send path is now guarded, but mic/handsfree send affordances plus existing-chat retry/reconnect states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
+- [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 18: make QR scanning visibly actionable on mobile web
+
+- Status: completed with live Expo Web before/after evidence, a focused web-permission guidance fix, and targeted regression coverage
+- Area:
+  - `Settings -> Connection settings -> Scan QR Code` launch state on mobile web in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - supporting browser-guidance helpers in `apps/mobile/src/screens/connection-settings-qr.ts`
+  - narrow mobile web viewport (`390x844`) for the QR scanner launch / permission-guidance surface
+- Why this area:
+  - this revisit was justified by unresolved QA on the previous QR pass: on the reviewed head, Expo Web could no longer reproduce a visible scanner modal after tapping `Scan QR Code`, so the control looked dead and the prior QR evidence was not reliably reproducible from current runtime behavior
+  - fixing that gap had clearer user value than moving on to another modal surface, because QR scanning is a first-run setup affordance and mobile web users need an obvious response when camera permission has not been granted yet
+- What was investigated:
+  - live Expo Web at `390x844` through `Settings -> Connection settings -> Scan QR Code`
+  - current `handleScanQR` permission gating plus the existing QR helper logic in `connection-settings-qr.ts`
+  - whether the browser showed any modal, blocker, or close affordance before permission succeeded
+- Findings:
+  - on Expo Web, tapping `Scan QR Code` produced no visible modal, no `Close scanner` control, no inline blocker, and no visible browser-permission guidance; the screen looked unchanged after the tap
+  - the current implementation only opened the scanner modal after camera permission was already available, which meant browser permission friction could leave the main QR action feeling inert on web
+  - there was no explicit mobile-web fallback state explaining that the browser may need camera permission or that manual API key/base URL entry remained available
+- Change made:
+  - changed the web QR launch path so `Scan QR Code` opens a scanner sheet immediately on Expo Web instead of waiting for permission success first
+  - added explicit browser guidance copy plus a visible `Allow camera access` / retry action driven by new `getQrScannerWebSheetContent` helper logic in `connection-settings-qr.ts`
+  - preserved the existing camera-preview path for granted permission and kept the strengthened `Close scanner` escape action
+  - extended `apps/mobile/src/screens/connection-settings-qr.test.ts` and `apps/mobile/tests/connection-settings-density.test.js` to lock the new web guidance states and launch behavior
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8136 --clear`
+  - `pnpm --filter @dotagents/mobile run test:vitest`
+  - `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js`
+  - `git diff --check`
+  - live Expo Web automation at `390x844` CSS viewport with matched before/after screenshots of the QR launch state
+- Follow-up checks:
+  - verify the actual camera-preview / successful QR scan state in a browser or native session where camera permission can be granted reliably, so this surface has coverage beyond the pre-permission guidance state
+  - continue widening modal/sheet coverage next with the model picker, endpoint picker, agent selector, or import/destructive confirmation surfaces rather than staying inside `Connection Settings` again without a fresh runtime reason
+
+Evidence
+- Evidence ID: connection-settings-qr-web-guidance
+- Scope: `Settings -> Connection settings -> Scan QR Code` pre-permission launch state on mobile web plus tracked before/after screenshots (`apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/src/screens/connection-settings-qr.ts`, `apps/mobile/tests/connection-settings-density.test.js`, `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-web-guidance--before--qr-scanner-launch--20260311.png`, `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-web-guidance--after--qr-scanner-launch--20260311.png`). This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: 201c24632ef54f3375626b07cb9b4f96a74ddc6d..c68dee3b6f662c21c24ff217d6304eee9938b697
+- Rationale: The QR scanner is part of the first-run connection flow, but on current Expo Web the primary `Scan QR Code` action had regressed into an apparently dead tap with no visible response. Making that tap open an explicit browser-guidance sheet removes a concrete setup/actionability risk and gives mobile-web users an honest next step before camera permission is available.
+- QA feedback: Addressed the unresolved reviewer finding that `Settings -> Connection settings -> Scan QR Code` produced no visible scanner modal, no close control, and no blocker/guidance state on Expo Web; also corrected the earlier `connection-settings-qr-close-affordance` evidence provenance to include its final authored docs commit.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-web-guidance--before--qr-scanner-launch--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, tapping `Scan QR Code` left the `Connection settings` screen looking unchanged: there was no visible scanner modal, no `Close scanner` affordance, and no browser-specific permission guidance, so the primary QR action read like a dead tap.
+- Change: Updated `ConnectionSettingsScreen` so Expo Web opens a visible QR guidance sheet immediately, added a browser-specific helper model with explicit `Allow camera access` / retry copy, and kept the existing camera-preview path plus strengthened close affordance for the granted-permission case.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-web-guidance--after--qr-scanner-launch--20260311.png` — same `390x844` CSS viewport on Expo Web. After the fix, tapping `Scan QR Code` opens a visible dialog/sheet with browser camera guidance, a clear `Allow camera access` action, and a visible `Close scanner` escape control, so the QR path now communicates an actionable next step instead of failing silently.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8136 --clear` ✅ (Expo Web served `http://localhost:8136` and reloaded the updated mobile screen); `pnpm --filter @dotagents/mobile run test:vitest` ✅ (62/62 passing, including the new QR web-sheet helper coverage); `node --test apps/mobile/tests/connection-settings-density.test.js apps/mobile/tests/connection-settings-validation.test.js` ✅ (9/9 passing); `git diff --check` ✅; live Expo Web browser automation at `390x844` ✅ with matched before/after screenshots confirming the pre-change dead tap versus the new visible QR guidance dialog.
+- Blockers/remaining uncertainty: This pass makes the pre-permission web QR state visible and actionable, but it does not yet prove a full granted-permission camera preview or successful scan on web/native. Browser permission prompts are still automation-constrained, so the actual post-permission scan path should get its own dedicated live pass later.
 
 ### 2026-03-11 — Iteration 17: make the QR scanner modal close control feel like a real mobile action
 
@@ -132,7 +183,7 @@
 Evidence
 - Evidence ID: connection-settings-qr-close-affordance
 - Scope: `Settings -> Connection settings -> Scan QR Code` modal close control on mobile web (`apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/tests/connection-settings-density.test.js`)
-- Commit range: e19461200e750340f37d895e20d72555297ea4e9..fcf52597f46888f1ea478643fc4987629ad4a919
+- Commit range: e19461200e750340f37d895e20d72555297ea4e9..201c24632ef54f3375626b07cb9b4f96a74ddc6d
 - Rationale: The QR scanner is a primary connection-setup affordance, and the only obvious way out of that modal was still slightly undersized and weakly tuned on narrow mobile web. Tightening the dismiss control removes a small but real actionability risk in a setup flow users may need repeatedly.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-close-affordance--before--qr-scanner-modal--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the scanner modal showed a generic `Close` pill about `66.7x42` CSS px at roughly `top: 60`, which left the main escape action just under the 44px touch-target bar and visually less specific than the scanner context deserved.
