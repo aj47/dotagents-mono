@@ -224,6 +224,49 @@ describe("llm low-context guard", () => {
     expect(mockCleanupSession).toHaveBeenCalledWith("session-1")
   })
 
+  it("acknowledges short pause requests with history before restarting tool work", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const progressUpdates: Array<Record<string, unknown>> = []
+    const executeToolCall = vi.fn()
+
+    const result = await processTranscriptWithAgentMode(
+      "i actually have to hold on this for now",
+      [{ name: "execute_command", description: "Run shell commands", inputSchema: { type: "object" } }],
+      executeToolCall,
+      10,
+      [{ role: "assistant", content: "Work on issue #57 next." }],
+      "conversation-1",
+      "session-1",
+      (update) => progressUpdates.push(update as unknown as Record<string, unknown>),
+      undefined,
+      1,
+    )
+
+    expect(result).toEqual(expect.objectContaining({
+      content: expect.stringContaining("pause this for now"),
+      totalIterations: 0,
+    }))
+    expect(executeToolCall).not.toHaveBeenCalled()
+    expect(mockConstructSystemPrompt).not.toHaveBeenCalled()
+    expect(mockMakeLLMCallWithFetch).not.toHaveBeenCalled()
+    expect(mockMakeLLMCallWithStreamingAndTools).not.toHaveBeenCalled()
+    expect(mockGetCurrentProfile).not.toHaveBeenCalled()
+    expect(mockGetSkills).not.toHaveBeenCalled()
+    expect(mockGetAllMemories).not.toHaveBeenCalled()
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      expect.stringContaining("pause this for now"),
+      "assistant",
+      undefined,
+      undefined,
+    )
+    expect(progressUpdates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: expect.stringContaining("pause this for now"),
+      userResponse: expect.stringContaining("pause this for now"),
+    }))
+  })
+
   it("creates a distinct Langfuse trace id for each run even when the desktop session is reused", async () => {
     mockIsLangfuseEnabled.mockReturnValue(true)
 

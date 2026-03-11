@@ -140,6 +140,43 @@ describe("acp-main-agent", () => {
     }))
   })
 
+  it("acknowledges short pause requests with history before sending ACP work", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<{ isComplete?: boolean; finalContent?: string }> = []
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [
+        { role: "assistant", content: "Work on #57 now.", timestamp: 1 },
+        { role: "user", content: "i actually have to hold on this for now", timestamp: 2 },
+      ],
+    })
+
+    const result = await processTranscriptWithACPAgent("i actually have to hold on this for now", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      response: expect.stringContaining("pause this for now"),
+    }))
+    expect(mockSendPrompt).not.toHaveBeenCalled()
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      expect.stringContaining("pause this for now"),
+      "assistant",
+      undefined,
+      undefined,
+    )
+    expect(updates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: expect.stringContaining("pause this for now"),
+    }))
+  })
+
   it("handles malformed config option choices without throwing", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<{ acpSessionInfo?: Record<string, unknown> }> = []
