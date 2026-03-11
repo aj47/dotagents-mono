@@ -45,6 +45,8 @@
 - [x] Live-reproduced a new Expo Web configured `/chat` bug at `http://localhost:8220/chat` in a fresh `390x844` browser context backed by a local mock OpenAI-compatible server: after saving a valid connection and navigating directly to `/chat` with no existing session, the composer looked ready but pressing `Send` surfaced `Error: No session available` instead of creating a chat.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred the older unresolved QA follow-ups for this iteration, and launched Expo Web at `http://localhost:8230` to inspect fresh disconnected chat/session flows.
 - [x] Live-reproduced a new Expo Web disconnected `/chat` phantom-session bug at `http://localhost:8230` in a fresh `390x844` browser context: visiting `/chat` without connection settings silently created a persisted empty `New Chat` thread, and returning to `/sessions` showed that bogus row plus `Clear All` even though chat setup was still blocked.
+- [x] Re-reviewed `bug-fix.md` plus the current QA feedback from `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt`, explicitly deferred the outstanding `mobile-chat-direct-no-session` screenshot viewport provenance finding for this iteration, and launched Expo Web at `http://localhost:8240` for a fresh mobile-web connection-state repro.
+- [x] Live-reproduced a new Expo Web whitespace-credential bug at `http://localhost:8240` in a fresh `390x844` browser context by seeding `localStorage.app_config_v1` with `baseUrl: "https://api.openai.com/v1"` and `apiKey: "   "`: `Settings` incorrectly showed `Connected`, enabled `Go to Chats`, and then `/sessions` immediately contradicted that state with the missing-connection setup gate.
 
 ## Not yet checked
 
@@ -70,6 +72,7 @@
 - [x] Mobile Expo Web still let an unconfigured user deep-link straight to `/agents/edit`, type into the agent form, toggle agent settings, and interact with connection-type choices even though the route could not save; the visible screen behaved like a real editor but offered no direct CTA to open connection settings.
 - [x] Mobile Expo Web let a configured user deep-link straight to `/chat` with no active session, showed a normal enabled composer, and only surfaced `Error: No session available` after pressing `Send` because the first-load session hydration logic incorrectly treated `currentSessionId === null` as an already-loaded stable state.
 - [x] Mobile Expo Web let a disconnected user deep-link straight to `/chat`, and the screen's no-session hydration path still created and persisted an empty `New Chat` session even though the same user was blocked from composing or sending; returning to `/sessions` then showed a phantom chat row and `Clear All` action that should never exist before setup.
+- [x] Mobile Expo Web loaded whitespace-only stored API keys as truthy connection state, so `Settings` and `Connection` could show `Connected` and enable `Go to Chats` while the actual chat/session flows still treated the same config as missing because their gate trims whitespace.
 
 ## Fixed
 
@@ -95,6 +98,7 @@
 - [x] Refreshed the curated `mobile-chat-disconnected-composer` and `mobile-web-qr-scanner` screenshot evidence at matching viewports (`390x844` and `1440x900`) so those older QA findings no longer point at mixed-dimension or raw-artifact-only images.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now waits for `sessionStore.ready` before deciding whether chat hydration is complete and only skips repeat hydration work for non-null session IDs, so a configured direct visit to `/chat` with no current session auto-creates the first chat instead of leaving the composer in a dead-end `No session available` state.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now only auto-creates a first session when chat is actually configured, so disconnected direct visits to `/chat` no longer persist a bogus empty `New Chat` thread; `apps/mobile/src/screens/chat-session-hydration.ts` and its new Vitest coverage lock that gating logic so configured direct `/chat` recovery and delete-in-progress behavior still work.
+- [x] `apps/mobile/src/store/config.ts` now trims stored API keys during normalization, and the remaining mobile connection-state surfaces (`SettingsScreen`, `ConnectionSettingsScreen`, edit screens, and `AgentSelectorSheet`) now reuse `hasConfiguredConnection(config)` instead of raw truthy `config.baseUrl && config.apiKey` checks, so whitespace-only saved credentials no longer look connected or bootstrap API clients.
 
 ## Verified
 
@@ -177,6 +181,13 @@
 - [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-session-hydration.test.ts`
 - [x] Live Expo Web verification at `http://localhost:8230` now keeps `/sessions` in the same disconnected empty state after a fresh `/sessions` → `/chat` → `/sessions` flow in a cleared `390x844` browser context, so no phantom `New Chat` row or `Clear All` action appears before setup.
 - [x] Curated matching before/after screenshots for the disconnected `/chat` phantom-session flow were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts`
+- [x] `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/trimmed-connection-gates.test.js`
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/edit-screens-connection-gate.test.ts`
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] Live Expo Web verification at `http://localhost:8240` now normalizes the same whitespace-only stored API key to a disconnected state, shows `Not connected` on both `Settings` and `Connection`, and keeps `Go to Chats` disabled in the same fresh `390x844` browser context.
+- [x] Curated matching before/after screenshots for the whitespace-only connection-state bug were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this whitespace-credential fix; no new type error was introduced by the connection-state normalization changes.
 
 ## Blocked
 
@@ -196,6 +207,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/agents/edit` editable-form bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web configured direct `/chat` no-session bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/chat` phantom-session bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web whitespace-only connection-state bug.
 
 ## Still uncertain
 
@@ -211,6 +223,7 @@
 - [ ] Whether disconnected users who reopen `/chat` with existing session history should also see a lightweight read-only banner above the transcript; this iteration fixed the misleading editable-composer path specifically.
 - [ ] Whether any other mobile chat/session deep-link paths still accidentally treat `null` session state as already hydrated after async store load; this iteration fixed the directly confirmed configured `/chat` no-session case specifically.
 - [ ] Whether disconnected users with an already-selected historical session can still hit any stale session-selection edge case after the new no-auto-create guard; this iteration verified the fresh no-session `/chat` → `/sessions` phantom-thread repro specifically.
+- [ ] Whether any desktop or other non-mobile surfaces still use raw truthy connection checks instead of `hasConfiguredConnection`, now that the confirmed whitespace-only mismatch has been removed from the reproduced mobile screens.
 
 ## Candidate leads
 
@@ -222,6 +235,7 @@
 - Mobile Expo Web edit/detail deep links that are reachable without configuration, especially around remaining save/load gating consistency and scroll/interaction edge cases.
 - Mobile Expo Web disconnected states where a route still renders primary creation actions before setup is complete.
 - Mobile Expo Web flows that pass transient user-entered text or other ephemeral action state through route params, especially if they can still bleed into browser history after the `Chat.initialMessage` fix.
+- Any remaining surfaces that derive `connected` state from raw config truthiness instead of the shared trimmed `hasConfiguredConnection()` helper, especially outside the reproduced mobile screens fixed this iteration.
 
 ## Evidence
 
@@ -404,6 +418,18 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-agent-edit-disconnected-form--after--agent-edit-screen--20260311.png` (same `390x844` viewport and same fresh unconfigured `/agents/edit` surface). After the fix, the screen makes the setup requirement explicit before any draft can begin: live verification confirmed the `Display Name` field stays read-only, the connection-type controls and toggles stay disabled, and `Open Connection Settings` routes to `/connection`, so the user sees the correct recovery path instead of an unsavable editor.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/agent-edit-missing-connection.test.js` ✅ (2 tests passing for the helper copy, setup CTA wiring, and disconnected field gate); `pnpm --filter @dotagents/mobile exec vitest run src/screens/edit-screens-connection-gate.test.ts` ✅ (3 tests passing, including the new executable disconnected `AgentEditScreen` assertions); `pnpm --filter @dotagents/mobile test` ✅ (80 Node tests + 75 Vitest assertions passing after refreshing the stale connection-type expectation); `git diff --check` ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; live Expo Web verification at `http://localhost:8210/agents/edit` ✅ in a fresh `390x844` browser context now keeps the form read-only/disabled while disconnected and routes `Open Connection Settings` to `/connection`.
 - Blockers/remaining uncertainty: The exact misleading disconnected `/agents/edit` editable-form path is fixed and live-verified on Expo Web. I did not broaden this iteration into configured agent creation/editing against a live backend or other remaining detail-route audits, because those are separate follow-ups beyond this local setup-gate bug.
+
+### Evidence ID: mobile-settings-whitespace-connection
+
+- Scope: `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/src/screens/AgentEditScreen.tsx`, `apps/mobile/src/screens/MemoryEditScreen.tsx`, `apps/mobile/src/screens/LoopEditScreen.tsx`, `apps/mobile/src/ui/AgentSelectorSheet.tsx`, `apps/mobile/src/screens/edit-screens-connection-gate.test.ts`, `apps/mobile/src/store/config.test.ts`, `apps/mobile/tests/connection-settings-validation.test.js`, and `apps/mobile/tests/trimmed-connection-gates.test.js` for whitespace-only stored API keys on mobile Expo Web.
+- Commit range: `be924f0409940fa8d702332b3db7cedf9f185dee..076d57858cdd3430bcf3016e4d59dc6e902d57f0`
+- Rationale: The mobile app already treated whitespace-only credentials as missing in the actual chat/session gate, but several visible connection surfaces still used raw truthiness. That let a malformed or legacy stored API key of only spaces make `Settings` and `Connection` show `Connected` and enable `Go to Chats`, only for `/sessions` and `/chat` to immediately contradict that state with a connection-required setup gate. The result was a visibly broken first-run state mismatch on a core navigation path.
+- QA feedback: Deferred the outstanding reviewer finding for `mobile-chat-direct-no-session` screenshot viewport provenance in `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt`; this iteration intentionally fixes a separate newly reproduced product bug with clear runtime evidence instead of spending the pass on evidence-only remediation.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-settings-whitespace-connection--before--settings-screen--20260311.png` (viewport `390x844`, fresh Expo Web browser context at `http://localhost:8240` after seeding `localStorage.app_config_v1` with `baseUrl: "https://api.openai.com/v1"` and `apiKey: "   "`). The screenshot shows `Settings` incorrectly reporting `Connected` with the default OpenAI base URL still visible, and the same live repro confirmed `Go to Chats` was enabled even though clicking it immediately landed on `/sessions` with `Connection required` and `Open connection settings`, which is insufficient because the app visibly disagreed with itself about whether setup was complete.
+- Change: Trimmed stored API keys in `normalizeStoredConfig()` so whitespace-only saved credentials collapse to an empty string on load/save, then replaced the remaining reproduced mobile connection truthiness checks with the shared trimmed `hasConfiguredConnection(config)` helper. That keeps `Settings`, `Connection`, edit screens, and the agent selector aligned with the actual chat/session gate and avoids constructing API clients from whitespace-only credentials. Added focused regression coverage for the normalization behavior, screen/helper usage, and the updated disconnected edit-screen mock.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-settings-whitespace-connection--after--settings-screen--20260311.png` (same `390x844` viewport and same Expo Web seeded-config scenario). After the fix, the same stored whitespace-only API key is normalized into a disconnected state, `Settings` now shows `Not connected`, `Go to Chats` stays disabled, and live verification confirmed the `Connection` screen also shows `Not connected`, so the visible setup state now matches the real chat/session gate before the user can enter a broken flow.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts` ✅ (1 file / 7 tests passing, including the new whitespace-only API-key normalization assertion); `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/trimmed-connection-gates.test.js` ✅ (7 tests passing, including the new source-level coverage for trimmed connection-state usage); `pnpm --filter @dotagents/mobile exec vitest run src/screens/edit-screens-connection-gate.test.ts` ✅ (3 tests passing after updating the mocked config module to export `hasConfiguredConnection`); `pnpm --filter @dotagents/mobile test` ✅ (83 Node tests + 79 Vitest assertions passing across the mobile suite); `git diff --check` ✅; live Expo Web verification at `http://localhost:8240` ✅ in a fresh `390x844` browser context now shows `Not connected` on both `Settings` and `Connection` with `Go to Chats` disabled after seeding the same whitespace-only stored API key; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors.
+- Blockers/remaining uncertainty: The exact reproduced mobile mismatch from whitespace-only stored credentials is fixed and live-verified on Expo Web. I did not widen this iteration into auditing every desktop or non-mobile connection-state surface, so any remaining raw-truthiness checks outside the reproduced mobile files remain follow-up candidates rather than part of this validated fix.
 
 ### Evidence ID: mobile-chat-direct-no-session
 
