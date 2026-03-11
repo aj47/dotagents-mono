@@ -57,7 +57,7 @@ Track recent Langfuse sessions/traces inspected so this loop does not repeat the
 #### Evidence
 - Evidence ID: `github-create-issue-milestone-placeholder`
 - Scope: Align the GitHub issue-creation placeholder fix with the actual Langfuse evidence by stripping only the traced invalid `github:create_issue` placeholders and avoiding broader optional-argument pruning.
-- Commit range: `cdb34fd523739a2ffa5ddd6da9e5d011fd8da5cc..3a7d0725621d0d8c4711b4aee0ab4b176dd8bf99`
+- Commit range: `cdb34fd523739a2ffa5ddd6da9e5d011fd8da5cc..3a7d0725abbc295b376a4a668c79db14834416a3`
 - Rationale: The prior implementation solved the traced loop but overreached by pruning empty/null optional values for every MCP tool without corresponding evidence. Narrowing the behavior to the traced GitHub placeholders preserves the first-run fix while reducing regression risk for other tools that may legitimately distinguish between omitted and explicitly empty optional values.
 - QA feedback: Addressed reviewer finding that the previous change/evidence overclaimed generic optional-argument pruning when the Langfuse trace only showed `github:create_issue` placeholders (`milestone: 0`, `assignees: []`, `labels: []`).
 - Before evidence: Langfuse trace `session_1773175401371_tauywx6ze` (session `conv_1773175305930_77qxfmg2z`) still shows the failing generation emitting `github:create_issue` tool arguments with `assignees: []`, `labels: []`, and `milestone: 0` before the MCP server returned `Validation Failed`. Re-inspection via `langfuse-cli` did not surface evidence for empty-string/null pruning on unrelated tools, so the broader sanitization from the prior commit was not trace-backed.
