@@ -11,6 +11,7 @@
 ### Checked screens/flows
 
 - [x] Settings root screen and nested back navigation
+- [x] Settings home `Text-to-Speech -> Voice` picker trigger and modal close/action surface in Expo Web (`390x844` mobile viewport)
 - [x] Connection setup flow, save validation, and inline connection actions
 - [x] Connection Settings screen back navigation, header affordance, QR scanner web launch guidance / close surface, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
 - [x] Sessions list entry points, top actions, and empty state
@@ -30,7 +31,7 @@
 ### Settings parity checklist vs desktop
 
 - [~] Desktop `Models -> Choose a Provider for Each Job`: mobile exposes the main STT / Agent-MCP / TTS provider selectors inside `Settings -> Desktop Settings`, but broader runtime coverage across every provider combination is still incomplete.
-- [~] Desktop `Models -> Speech & Voice Models`: mobile exposes TTS model and voice pickers plus the OpenAI-compatible endpoint/model selectors. This iteration improved the TTS voice picker close affordance on mobile web, but the picker trigger itself still needs deeper Expo Web semantics validation and the remaining model/preset pickers are only partially checked.
+- [~] Desktop `Models -> Speech & Voice Models`: mobile exposes TTS model and voice pickers plus the OpenAI-compatible endpoint/model selectors. Live Expo Web now covers both the connected desktop-settings TTS picker close surface and the default settings-home TTS voice picker trigger/close density, but the remaining desktop-backed model/preset pickers and final web semantics validation are still only partially checked.
 - [ ] Desktop `Providers -> Provider Setup`: desktop still owns API keys, provider-specific base URLs, local engine downloads, and quick diagnostics; mobile currently covers remote server connection (`Connection settings`) but does not yet show verified parity for provider setup controls.
 - [-] Desktop-only window/general controls: launch-at-login, panel/window behavior, and desktop hotkeys are intentionally desktop-specific and should remain documented as non-mobile parity items rather than backlogged mobile gaps.
 
@@ -49,6 +50,7 @@
 ### Reproduced
 
 - [x] Missing in-place CTA on the session empty state
+- [x] Default Settings `Text-to-Speech -> Voice` used a `220x33` trigger and a `53x25` modal `Close` action on Expo Web, leaving both controls below the 44px mobile touch-target floor
 - [x] Undersized chat composer send/accessory controls and missing web state semantics
 - [x] Weak Connection inline action affordances
 - [x] Disconnected chat agent selector sheet stranded users behind a retry-only warning with no direct path to `Connection settings`
@@ -70,6 +72,7 @@
 ### Improved
 
 - [x] Nested-screen back navigation
+- [x] Default Settings `Text-to-Speech -> Voice` picker trigger and modal close affordance now meet 44px touch-target sizing with clearer button treatment on mobile web
 - [x] Connection first-run validation and inline action affordances
 - [x] Connection Settings header back-button touch target and visual affordance on nested screens
 - [x] Disconnected chat agent selector blocked-state clarity and direct handoff into `Connection settings`
@@ -91,6 +94,7 @@
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Live Expo Web before/after evidence plus focused density coverage for Settings home `Text-to-Speech -> Voice` at `390x844`
 - [x] Live Expo Web before/after evidence plus focused header/sheet coverage for the disconnected chat agent selector blocked state at `390x844`
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button touch-target fix at `390x844` CSS viewport
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button visual affordance follow-up at `390x844`
@@ -119,6 +123,50 @@
 - [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 22: make the default TTS voice picker feel tappable on mobile
+
+- Status: completed with live Expo Web before/after evidence, a focused settings-surface touch-target fix, and targeted regression coverage
+- Area:
+  - default Settings-home `Text-to-Speech -> Voice` picker in `apps/mobile/src/ui/TTSSettings.tsx`
+  - tracked mobile-web evidence for the default settings root at `390x844`
+  - focused source guardrails in `apps/mobile/tests/tts-settings-density.test.js`
+- Why this area:
+  - the ledger and recent runtime work were already concentrated on disconnected chat and connection setup, so a new pass on the default settings surface widened coverage more honestly than polishing the same offline chat path again
+  - live Expo Web inspection of the landing Settings screen showed a concrete usability gap on a configuration control users can hit without any setup: the local TTS voice trigger and the modal close action were both visibly undersized on mobile web
+- What was investigated:
+  - the default Expo Web landing state at `390x844`, specifically `Text-to-Speech -> Voice` on the root settings screen rather than the separate connected desktop-settings TTS picker already covered earlier
+  - the rendered size and feel of the voice trigger before opening the picker plus the visible modal close affordance after opening it
+  - `apps/mobile/src/ui/TTSSettings.tsx` to confirm whether the component was still using its own smaller touch targets instead of the shared mobile accessibility helper already adopted elsewhere in the app
+- Findings:
+  - the Settings-home voice trigger measured about `220x33` CSS px in Expo Web, which made an important configuration control look shallower and less tappable than nearby mobile actions
+  - once the picker opened, the visible `Close` action measured about `53x25` CSS px, which was even further below the 44px touch-target floor and felt inconsistent with the stronger close affordances already added to other mobile sheets/modals
+  - this gap lived in `TTSSettings`, a separate local-settings component from the previously checked connected desktop-settings picker, so the stronger earlier coverage did not actually protect the default landing-state control users see first
+- Change made:
+  - updated `TTSSettings` to use `createMinimumTouchTargetStyle` for both the voice trigger and the picker close action, with bordered secondary-button treatment that better matches the rest of the app's mobile controls
+  - added explicit button semantics and expanded-state metadata on the voice trigger for the web-rendered picker entry point
+  - extended `apps/mobile/tests/tts-settings-density.test.js` to lock the new touch-target sizing, button semantics, and modal-close styling guardrails
+- Verification:
+  - `node --test apps/mobile/tests/tts-settings-density.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` (reported pre-existing unrelated errors in `LoopEditScreen.tsx` and `settings-home-chats-cta.test.tsx`; no new TTSSettings-specific type error surfaced before those existing failures stopped the run)
+  - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--before--settings-voice-picker--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--after--settings-voice-picker--20260311.png`
+  - `git diff --check`
+  - live Expo Web browser automation at `390x844` confirming the trigger grew from about `220x33` to `221x44` CSS px and the modal close action from about `53x25` to `64x44`
+- Follow-up checks:
+  - continue widening settings/modal coverage with the remaining unchecked picker surfaces (`Settings -> Desktop Settings` model picker, endpoint picker, and other modal states) rather than returning to disconnected chat again immediately
+  - run a large-text / awkward-viewport pass on the settings root once another small high-value control or layout issue is identified there
+
+Evidence
+- Evidence ID: settings-tts-voice-picker-density
+- Scope: default Settings-home `Text-to-Speech -> Voice` picker touch-target and close-action density (`apps/mobile/src/ui/TTSSettings.tsx`, `apps/mobile/tests/tts-settings-density.test.js`, `docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--before--settings-voice-picker--20260311.png`, `docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--after--settings-voice-picker--20260311.png`). This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: 501e36e601183dd3d370429df6d0b9692ef12972..eaf2fbda0791d4f80b976cd34af5bb58bc3384ef
+- Rationale: The first screen mobile users see still had a TTS voice picker that looked smaller and weaker than the app's newer mobile action patterns, even though a different connected TTS picker had already been improved elsewhere. Raising both the trigger and the modal close action to 44px minimum targets removes a concrete settings usability risk on the default landing path without broadening into a larger settings refactor.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--before--settings-voice-picker--20260311.png` — `390x844` Expo Web viewport on the default Settings screen with the `Select Voice` modal open. Before the fix, the Settings-home voice trigger measured about `220x33` CSS px and the visible `Close` action about `53x25`, so both the picker entry point and the sheet escape control fell below the 44px mobile touch-target floor on a first-run-accessible configuration surface.
+- Change: Updated `apps/mobile/src/ui/TTSSettings.tsx` so the Settings-home voice trigger and modal close button use the shared minimum-touch-target helper, added bordered secondary-button treatment for clearer affordance, and exposed explicit button/expanded semantics for the voice-picker trigger. Added focused node coverage in `apps/mobile/tests/tts-settings-density.test.js`.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--after--settings-voice-picker--20260311.png` — same `390x844` Expo Web viewport and view. After the fix, the Settings-home voice trigger measures about `221x44` CSS px and the visible `Close` action about `64x44`, so the default TTS picker now reads like a deliberate mobile control and the sheet escape action no longer feels undersized.
+- Verification commands/run results: `node --test apps/mobile/tests/tts-settings-density.test.js` ✅ (3/3 passing, including the new trigger and close-action touch-target guardrails); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ surfaced pre-existing unrelated type errors in `apps/mobile/src/screens/LoopEditScreen.tsx` (`ApiAgentProfile.guidelines`) and `apps/mobile/src/screens/settings-home-chats-cta.test.tsx` (`children` on `{}`) before any TTSSettings-specific issue appeared; `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--before--settings-voice-picker--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/settings-tts-voice-picker-density--after--settings-voice-picker--20260311.png` ✅ (both curated screenshots are matched `780x1688` PNGs captured from the same `390x844` Expo Web viewport at DPR 2); `git diff --check` ✅; live Expo Web browser automation at `390x844` ✅ confirmed the before-state `220x33` trigger / `53x25` close control and the after-state `221x44` trigger / `64x44` close control.
+- Blockers/remaining uncertainty: This iteration fixes the default local TTS picker density only. The remaining desktop-backed model/endpoint/preset pickers still need their own live Expo Web passes, and the broader mobile package typecheck currently fails on unrelated pre-existing files outside this change.
 
 ### 2026-03-11 — Iteration 21: stop disconnected chat from pretending handsfree is live
 
