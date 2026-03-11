@@ -109,12 +109,13 @@ export function reinitializeLangfuse(): void {
  * - tags: Categorization labels for filtering in the Langfuse dashboard
  * - release: Application version for tracking across releases
  *
- * @param traceId - Unique ID for this trace (our internal sessionId)
+ * @param traceKey - Stable lookup key used while the run is active (typically our internal sessionId)
  * @param options - Trace configuration options
  */
 export function createAgentTrace(
-  traceId: string,
+  traceKey: string,
   options: {
+    traceId?: string
     name?: string
     userId?: string
     sessionId?: string  // Langfuse session ID (groups traces together, e.g., conversation ID)
@@ -128,8 +129,9 @@ export function createAgentTrace(
   if (!langfuse) return null
 
   try {
+    const langfuseTraceId = options.traceId || traceKey
     const trace = langfuse.trace({
-      id: traceId,
+      id: langfuseTraceId,
       name: options.name || "Agent Session",
       userId: options.userId,
       sessionId: options.sessionId,  // This groups traces in Langfuse's Sessions view
@@ -138,11 +140,12 @@ export function createAgentTrace(
       tags: options.tags,
       release: options.release,
     })
-    activeTraces.set(traceId, trace)
+    activeTraces.set(traceKey, trace)
 
     if (isDebugLLM()) {
       logLLM("[Langfuse] Created trace", {
-        traceId,
+        traceKey,
+        traceId: langfuseTraceId,
         sessionId: options.sessionId,
         name: options.name,
         hasTags: !!options.tags?.length,
@@ -157,7 +160,7 @@ export function createAgentTrace(
 }
 
 /**
- * Get an existing trace by session ID
+ * Get an existing trace by lookup key (typically session ID)
  */
 export function getAgentTrace(sessionId: string): LangfuseTraceClient | null {
   return activeTraces.get(sessionId) || null

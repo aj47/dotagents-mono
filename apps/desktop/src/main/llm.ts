@@ -489,17 +489,21 @@ export async function processTranscriptWithAgentMode(
 
   // Track step summaries for dual-model mode
   const stepSummaries: import("../shared/types").AgentStepSummary[] = []
+  const currentTraceId = `${currentSessionId}_run_${effectiveRunId}`
 
   // Create Langfuse trace for this agent session if enabled
-  // - traceId: unique ID for this trace (our agent session ID)
+  // - trace key: stable local key for linking spans/generations during this run
+  // - traceId: unique Langfuse trace ID for this specific run
   // - sessionId: groups traces together in Langfuse (our conversation ID)
   if (isLangfuseEnabled()) {
     createAgentTrace(currentSessionId, {
+      traceId: currentTraceId,
       name: "Agent Session",
       sessionId: currentConversationId,  // Groups all agent sessions in this conversation
       metadata: {
         maxIterations,
         hasHistory: !!previousConversationHistory?.length,
+        runId: effectiveRunId,
         profileId: effectiveProfileSnapshot?.profileId,
         profileName: effectiveProfileSnapshot?.profileName,
       },

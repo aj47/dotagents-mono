@@ -13,6 +13,9 @@ const mockCreateSession = vi.fn()
 const mockGetSessionProfileSnapshot = vi.fn(() => undefined)
 const mockCleanupSession = vi.fn()
 const mockClearSessionUserResponse = vi.fn()
+const mockCreateAgentTrace = vi.fn()
+const mockEndAgentTrace = vi.fn()
+const mockIsLangfuseEnabled = vi.fn(() => false)
 
 vi.mock("./config", () => ({
   configStore: {
@@ -86,9 +89,9 @@ vi.mock("../shared", () => ({
 }))
 
 vi.mock("./langfuse-service", () => ({
-  createAgentTrace: vi.fn(),
-  endAgentTrace: vi.fn(),
-  isLangfuseEnabled: vi.fn(() => false),
+  createAgentTrace: mockCreateAgentTrace,
+  endAgentTrace: mockEndAgentTrace,
+  isLangfuseEnabled: mockIsLangfuseEnabled,
   flushLangfuse: vi.fn(() => Promise.resolve()),
 }))
 
@@ -161,6 +164,7 @@ describe("llm low-context guard", () => {
     mockGetEnabledSkillsInstructionsForProfile.mockReturnValue(undefined)
     mockGetAllMemories.mockResolvedValue([])
     mockGetSessionProfileSnapshot.mockReturnValue(undefined)
+    mockIsLangfuseEnabled.mockReturnValue(false)
   })
 
   it("short-circuits bare next-step prompts before loading heavy context or LLM work", async () => {
@@ -218,5 +222,56 @@ describe("llm low-context guard", () => {
     expect(mockClearSessionUserResponse).toHaveBeenCalledWith("session-1")
     expect(mockCreateSession).toHaveBeenCalledWith("session-1", undefined)
     expect(mockCleanupSession).toHaveBeenCalledWith("session-1")
+  })
+
+  it("creates a distinct Langfuse trace id for each run even when the desktop session is reused", async () => {
+    mockIsLangfuseEnabled.mockReturnValue(true)
+
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    await processTranscriptWithAgentMode(
+      "What should I do next?",
+      [{ name: "execute_command", description: "Run shell commands", inputSchema: { type: "object" } }],
+      vi.fn(),
+      10,
+      undefined,
+      "conversation-1",
+      "session-1",
+      undefined,
+      undefined,
+      1,
+    )
+
+    await processTranscriptWithAgentMode(
+      "What should I do next?",
+      [{ name: "execute_command", description: "Run shell commands", inputSchema: { type: "object" } }],
+      vi.fn(),
+      10,
+      undefined,
+      "conversation-1",
+      "session-1",
+      undefined,
+      undefined,
+      2,
+    )
+
+    expect(mockCreateAgentTrace).toHaveBeenNthCalledWith(
+      1,
+      "session-1",
+      expect.objectContaining({
+        traceId: "session-1_run_1",
+        sessionId: "conversation-1",
+        metadata: expect.objectContaining({ runId: 1 }),
+      }),
+    )
+    expect(mockCreateAgentTrace).toHaveBeenNthCalledWith(
+      2,
+      "session-1",
+      expect.objectContaining({
+        traceId: "session-1_run_2",
+        sessionId: "conversation-1",
+        metadata: expect.objectContaining({ runId: 2 }),
+      }),
+    )
   })
 })
