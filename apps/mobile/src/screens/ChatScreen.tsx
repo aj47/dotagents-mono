@@ -997,6 +997,9 @@ export default function ChatScreen({ route, navigation }: any) {
   // Load messages when currentSession changes (fixes #470)
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
+    if (!sessionStore.ready) {
+      return;
+    }
     const hasServerAuth = !!config.baseUrl && !!config.apiKey;
     let currentSession = sessionStore.getCurrentSession();
     const shouldAttemptStubLoad = !!(
@@ -1007,7 +1010,7 @@ export default function ChatScreen({ route, navigation }: any) {
     );
 
     // Avoid repeated work on stable sessions unless we still need to lazy-load stub messages.
-    if (lastLoadedSessionIdRef.current === currentSessionId && !shouldAttemptStubLoad) {
+    if (currentSessionId !== null && lastLoadedSessionIdRef.current === currentSessionId && !shouldAttemptStubLoad) {
       return;
     }
 
@@ -1119,7 +1122,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } else {
       setMessages([]);
     }
-  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey]);
+  }, [sessionStore.currentSessionId, sessionStore, sessionStore.ready, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);

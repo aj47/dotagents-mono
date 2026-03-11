@@ -41,6 +41,8 @@
 - [x] Re-reviewed `bug-fix.md` plus the current QA feedback, explicitly deferred the unresolved screenshot viewport mismatches for `mobile-chat-disconnected-composer` and `mobile-web-qr-scanner`, then launched Expo Web at `http://localhost:8190/memories/edit` to inspect a fresh unconfigured memory-create flow.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent for this pass, explicitly deferred the older unresolved QA follow-ups, and launched Expo Web at `http://localhost:8210/agents/edit` to inspect whether the disconnected mobile agent-create flow was now fully gated.
 - [x] Live-reproduced a new Expo Web `/agents/edit` disconnected editable-form bug at `http://localhost:8210/agents/edit` in a fresh cleared `390x844` mobile browser context: the screen still let the user type an `Unsavable Agent Draft`, change visible agent controls, and offered no direct route to `Connection Settings` even though the route could not save without configuration.
+- [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred the older unresolved QA follow-ups for this iteration, and launched Expo Web at `http://localhost:8220/chat` to inspect a fresh configured direct-chat route.
+- [x] Live-reproduced a new Expo Web configured `/chat` bug at `http://localhost:8220/chat` in a fresh `390x844` browser context backed by a local mock OpenAI-compatible server: after saving a valid connection and navigating directly to `/chat` with no existing session, the composer looked ready but pressing `Send` surfaced `Error: No session available` instead of creating a chat.
 
 ## Not yet checked
 
@@ -64,6 +66,7 @@
 - [x] Mobile Expo Web let an unconfigured user deep-link straight to `/memories/edit`, type into the memory title/content/tags fields, and change memory importance even though the route could not save; the visible `Create Memory` form provided no direct path to connection setup and the primary action produced no user-visible result.
 - [x] Mobile Expo Web let an unconfigured user deep-link straight to `/loops/edit`, type into the loop name/prompt/interval fields, and toggle loop settings even though the route could not save; the visible `Create Loop` action was disabled and the screen offered no direct CTA to open connection settings.
 - [x] Mobile Expo Web still let an unconfigured user deep-link straight to `/agents/edit`, type into the agent form, toggle agent settings, and interact with connection-type choices even though the route could not save; the visible screen behaved like a real editor but offered no direct CTA to open connection settings.
+- [x] Mobile Expo Web let a configured user deep-link straight to `/chat` with no active session, showed a normal enabled composer, and only surfaced `Error: No session available` after pressing `Send` because the first-load session hydration logic incorrectly treated `currentSessionId === null` as an already-loaded stable state.
 
 ## Fixed
 
@@ -87,6 +90,7 @@
 - [x] `apps/mobile/src/screens/AgentEditScreen.tsx` now fully gates the disconnected `/agents/edit` route instead of only disabling save: the agent text inputs become read-only, the connection-type buttons plus enabled/auto-spawn toggles are disabled, the helper text now explains that connection settings are required before creating or editing agents, and the primary action becomes `Open Connection Settings` so users are routed to setup instead of drafting an unsavable agent.
 - [x] `apps/mobile/src/screens/edit-screens-connection-gate.test.ts`, `apps/mobile/tests/agent-edit-missing-connection.test.js`, and `apps/mobile/tests/agent-edit-connection-types.test.js` now cover the disconnected agent-edit gate directly so the screen's setup CTA and disabled controls are locked by executable and source-level regression checks.
 - [x] Refreshed the curated `mobile-chat-disconnected-composer` and `mobile-web-qr-scanner` screenshot evidence at matching viewports (`390x844` and `1440x900`) so those older QA findings no longer point at mixed-dimension or raw-artifact-only images.
+- [x] `apps/mobile/src/screens/ChatScreen.tsx` now waits for `sessionStore.ready` before deciding whether chat hydration is complete and only skips repeat hydration work for non-null session IDs, so a configured direct visit to `/chat` with no current session auto-creates the first chat instead of leaving the composer in a dead-end `No session available` state.
 
 ## Verified
 
@@ -132,6 +136,9 @@
 - [x] `pnpm --filter @dotagents/mobile test`
 - [x] Live Expo Web repro at `http://localhost:8160/agents/edit` now shows the missing-connection helper text and a disabled non-interactive `Create Agent` control in a fresh `390x844` mobile browser context.
 - [x] Curated matching before/after screenshots for the unconfigured agent-create screen were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js`
+- [x] Live Expo Web verification at `http://localhost:8220/chat` now auto-creates a session for the same direct configured `/chat` visit and sends successfully against a local mock OpenAI-compatible server, so the old `Error: No session available` dead-end no longer appears in the same fresh `390x844` browser context.
+- [x] Curated matching before/after screenshots for the direct `/chat` no-session flow were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 - [x] `pnpm --filter @dotagents/mobile run test:node`
 - [x] `pnpm --filter @dotagents/mobile run test:vitest`
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after the temporary local `SessionListScreen` typing issues were removed.
@@ -180,6 +187,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/memories/edit` create-memory bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/loops/edit` create-loop bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/agents/edit` editable-form bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web configured direct `/chat` no-session bug.
 
 ## Still uncertain
 
@@ -193,6 +201,7 @@
 - [ ] Whether unconfigured users who already have historical sessions should also see a lightweight read-only banner on `/sessions`; this iteration fixed the misleading empty-state/create-entry path specifically.
 - [ ] Whether any other ephemeral mobile web route params beyond `Chat.initialMessage` should also be stripped from generated/pasted URLs for privacy or replay-safety; this iteration fixed only the confirmed rapid-fire draft case.
 - [ ] Whether disconnected users who reopen `/chat` with existing session history should also see a lightweight read-only banner above the transcript; this iteration fixed the misleading editable-composer path specifically.
+- [ ] Whether any other mobile chat/session deep-link paths still accidentally treat `null` session state as already hydrated after async store load; this iteration fixed the directly confirmed configured `/chat` no-session case specifically.
 
 ## Candidate leads
 
@@ -386,3 +395,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-agent-edit-disconnected-form--after--agent-edit-screen--20260311.png` (same `390x844` viewport and same fresh unconfigured `/agents/edit` surface). After the fix, the screen makes the setup requirement explicit before any draft can begin: live verification confirmed the `Display Name` field stays read-only, the connection-type controls and toggles stay disabled, and `Open Connection Settings` routes to `/connection`, so the user sees the correct recovery path instead of an unsavable editor.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/agent-edit-missing-connection.test.js` ✅ (2 tests passing for the helper copy, setup CTA wiring, and disconnected field gate); `pnpm --filter @dotagents/mobile exec vitest run src/screens/edit-screens-connection-gate.test.ts` ✅ (3 tests passing, including the new executable disconnected `AgentEditScreen` assertions); `pnpm --filter @dotagents/mobile test` ✅ (80 Node tests + 75 Vitest assertions passing after refreshing the stale connection-type expectation); `git diff --check` ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; live Expo Web verification at `http://localhost:8210/agents/edit` ✅ in a fresh `390x844` browser context now keeps the form read-only/disabled while disconnected and routes `Open Connection Settings` to `/connection`.
 - Blockers/remaining uncertainty: The exact misleading disconnected `/agents/edit` editable-form path is fixed and live-verified on Expo Web. I did not broaden this iteration into configured agent creation/editing against a live backend or other remaining detail-route audits, because those are separate follow-ups beyond this local setup-gate bug.
+
+### Evidence ID: mobile-chat-direct-no-session
+
+- Scope: `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-connection-gate.test.js` for the configured Expo Web direct `/chat` route when no current session exists yet.
+- Commit range: `TO_FILL_AFTER_HANDOFF_COMMIT`
+- Rationale: A configured user could deep-link straight to `/chat`, see an enabled composer, and reasonably expect their first message to start a conversation. Instead, the screen only revealed `Error: No session available` after the send attempt because the initial hydration effect treated `null` `currentSessionId` as if chat state were already loaded, so no first session was ever created. That is a visible broken flow on a core chat entry path.
+- QA feedback: Deferred the older unresolved QA follow-ups from previous iterations for this pass; `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent, so this is a new runtime-confirmed iteration rather than a direct QA remediation.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-direct-no-session--before--chat-direct-send-error--20260311.png` (viewport `390x844`, fresh browser context at `http://localhost:8220/chat` after saving `http://127.0.0.1:8787/v1` + `sk-local` against a local mock OpenAI-compatible server). The screenshot shows the same direct `/chat` surface after typing `hello from before screenshot` and pressing `Send`; the inline `Error: No session available` is visible even though connection setup succeeded, which is insufficient because the user hit a dead-end on the very first configured chat attempt.
+- Change: Updated `ChatScreen.tsx` so the chat hydration effect waits for `sessionStore.ready` before making any load-or-create decision, and only treats the current screen as already hydrated when `currentSessionId` is non-null and unchanged. That preserves the existing lazy-load/anti-race behavior for real sessions while allowing a configured direct visit to `/chat` with no active session to auto-create the first session. Added a focused regression assertion in `apps/mobile/tests/chat-connection-gate.test.js` that locks both pieces of the fix: waiting for store hydration and still calling `sessionStore.createNewSession()` for direct configured `/chat` visits.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-direct-no-session--after--chat-direct-send-error--20260311.png` (same `390x844` viewport and same direct `/chat` flow against the same local mock server). After the fix, the old `Error: No session available` dead-end is gone: the screenshot shows `hello from after screenshot`, the mock assistant reply `Mock reply from local bug-fix server.`, and `Completed!`, which demonstrates that the direct route now creates a session and completes the first send instead of failing before any request can start.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (6 tests passing, including the new direct-`/chat` session-hydration guard assertion); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; `git diff --check` ✅; live Expo Web verification at `http://localhost:8220/chat` ✅ in a fresh `390x844` browser context with a local mock server at `http://127.0.0.1:8787/v1` reproduced the original `Error: No session available` state before the fix and then showed a successful direct-route send with `Mock reply from local bug-fix server.` after the fix.
+- Blockers/remaining uncertainty: The exact configured direct `/chat` no-session path is fixed and live-verified. I did not broaden this iteration into every possible deep-link/session hydration edge case or replace the local verification server with a real remote backend, because that would widen scope beyond the directly reproduced first-message failure.
