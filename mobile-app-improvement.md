@@ -166,7 +166,7 @@
 Evidence
 - Evidence ID: chat-header-overflow-density
 - Scope: narrow-screen `Chat -> + New Chat` header action density in `apps/mobile/src/screens/ChatScreen.tsx`, focused source guardrails in `apps/mobile/tests/chat-screen-density.test.js`, and matched tracked Expo Web screenshots at `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--before--new-chat-header--20260311.png` and `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--after--new-chat-header--20260311.png`. This scope intentionally excludes the final ledger-only provenance commit.
-- Commit range: PENDING_AFTER_HANDOFF_COMMIT
+- Commit range: afd257bb849ff5f85c92cba35af52caab7139798..f1a219ba7f9d361735a56078b5f1b5743b0634c4
 - Rationale: The mobile chat header is one of the highest-frequency surfaces in the app, and live Expo Web inspection showed it was trying to keep too many controls visible at once on a `390x844` viewport. Consolidating low-frequency settings and kill-switch actions into an overflow sheet resolves a real narrow-screen hierarchy problem without removing those capabilities or refactoring navigation broadly.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--before--new-chat-header--20260311.png` — `390x844` Expo Web viewport on disconnected `Open Chats -> New chat`. Before the fix, the top bar kept back navigation, the agent title chip, `New chat`, `Emergency stop`, handsfree, and `Settings` all in one cramped row, which squeezed the title area and made secondary actions visually compete with the primary chat controls.
