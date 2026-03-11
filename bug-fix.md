@@ -28,6 +28,8 @@
 - [x] Reproduced a new Expo Web chat-state bug at `http://localhost:8130`: reopening a failed thread from Sessions showed a stuck `Assistant is thinking` loader instead of the saved failure + retry state.
 - [x] Reviewed `bug-fix.md` and confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` does not exist for this iteration, so prior QA findings were not picked up here.
 - [x] Launched Expo Web at `http://localhost:8140`, cleared persisted mobile app storage, and live-reproduced a new unconfigured-chat gating bug from the Sessions deep link path.
+- [x] Reviewed `bug-fix.md` and the current outstanding QA feedback from `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt`, then explicitly deferred the unresolved `mobile-web-browser-history`, `mobile-web-qr-scanner`, and `mobile-chat-connection-gate` QA findings for this iteration.
+- [x] Launched Expo Web at `http://localhost:8150/chat`, reproduced repeated `Unexpected text node: . A text node cannot be a child of a <View>.` console errors on the initial Chat screen render, and traced the component stack back to `ChatScreen`'s `debugInfo &&` conditional.
 
 ## Not yet checked
 
@@ -43,6 +45,7 @@
 - [x] Mobile Expo Web edit routes for existing memories and loops serialized full route objects into the URL as `memory=%5Bobject%20Object%5D` / `loop=%5Bobject%20Object%5D`; on reload or deep-link parse those truthy strings prevented `MemoryEditScreen` and `LoopEditScreen` from falling back to the intended `memoryId` / `loopId` fetch path.
 - [x] Mobile Expo Web reopened failed chats from Sessions with the stale persisted placeholder assistant message, so the thread showed an indefinite `Assistant is thinking` loader and hid the actual failure + retry UI after reopening.
 - [x] Mobile Expo Web still allowed unconfigured users to deep-link into `/sessions`, start a first chat, and send a message, which surfaced a raw `401` / missing API key chat error instead of redirecting them back to `Connection Settings`.
+- [x] Mobile Expo Web rendered the initial `/chat` screen with an empty-string child under a `ScrollView`, which emitted the React Native Web error `Unexpected text node: . A text node cannot be a child of a <View>.` three times on initial render even though the visible chat surface otherwise looked idle.
 
 ## Fixed
 
@@ -55,6 +58,7 @@
 - [x] `apps/mobile/src/screens/edit-route-params.ts` now strips non-serializable memory/loop objects from web edit navigation, while `MemoryEditScreen.tsx` and `LoopEditScreen.tsx` now ignore stale stringified route-object params and fall back to loading the selected record by ID.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now persists settled same-length chat-message updates after a request finishes, so reopening a failed thread restores the saved error + retry state instead of the earlier blank assistant placeholder loader.
 - [x] `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SessionListScreen.tsx`, and `apps/mobile/src/screens/ChatScreen.tsx` now share a missing-connection gate so unconfigured mobile users are redirected back to `Connection Settings` before Sessions/Chat can create or send a chat, including the Sessions Rapid Fire and queued-send entry points.
+- [x] `apps/mobile/src/screens/ChatScreen.tsx` now uses `shouldRenderOptionalChild()` from `apps/mobile/src/screens/chat-render-guards.ts` before rendering optional blocks whose conditions may evaluate to an empty string, so Expo Web no longer mounts invalid raw text nodes under chat `View` / `ScrollView` containers during the initial `/chat` render.
 
 ## Verified
 
@@ -92,6 +96,10 @@
 - [x] `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts`
 - [x] Live Expo Web repro at `http://localhost:8140/sessions` now alerts on missing connection setup and routes the same unconfigured first-chat attempt to `/connection` instead of showing the raw `401` chat error.
 - [x] Curated matching before/after screenshots for the unconfigured first-chat attempt were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `1280x800` browser viewport.
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-render-guards.test.ts`
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] Live Expo Web repro at `http://localhost:8150/chat` now renders the same initial chat screen without any `Unexpected text node` console errors in a fresh `390x844` mobile browser context.
+- [x] Curated matching before/after screenshots for the initial chat render were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 
 ## Blocked
 
@@ -102,11 +110,11 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web edit-route-param serialization bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web reopened-failed-chat persistence bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web unconfigured-chat gating bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web chat empty-string render warning bug.
 
 ## Still uncertain
 
 - [ ] Whether the historical Expo Web `normalizeApiBaseUrl is not a function` failure is still reproducible once the current worktree uses a normal local install instead of the symlink workaround.
-- [ ] Whether the historical React Native Web `Unexpected text node ... child of a <View>` warning still maps to a concrete, local user-facing bug.
 - [ ] Whether end-to-end QR decoding works reliably on Expo Web with a real camera feed, not just modal open/close and permission handling.
 - [ ] Whether Expo Web now surfaces any remaining in-app runtime warnings or user-facing mobile flow regressions once the current symlinked worktree can bundle again.
 - [ ] Whether deeper Expo Web deep-link/refresh cases for edit/detail screens with route params need richer route serialization beyond the fixed `Settings` ↔ `Connection` browser-history path.
@@ -115,7 +123,7 @@
 
 ## Candidate leads
 
-- Mobile React Native Web warning about unexpected text nodes inside `<View>`.
+- Remaining Expo Web runtime warnings such as the web-only `expo-notifications` listener limitation plus React Native Web `pointerEvents` / `shadow*` deprecation warnings.
 - Mobile/runtime behavior around historical `normalizeApiBaseUrl is not a function` errors.
 - Mobile Expo Web QR decoding with a real camera feed and real DotAgents QR payload once permission handling is no longer silent.
 - Mobile flow/runtime bugs that can now be inspected live again because the symlinked-worktree Expo Web bundle no longer dies resolving `@dotagents/shared`.
@@ -198,7 +206,7 @@
 ### Evidence ID: mobile-chat-connection-gate
 
 - Scope: `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SessionListScreen.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, and `apps/mobile/tests/chat-connection-gate.test.js` for unconfigured Expo Web chat entry from the Sessions/Chat surfaces
-- Commit range: `7ebb31a41aa9541acae40dc778d119c3e4dd4087..462d8a39da40831c166e6a9f07eab7322ad06e89`
+- Commit range: `7ebb31a41aa9541acae40dc778d119c3e4dd4087..fd5476029c7dfa383db247e48bbb040f26048370`
 - Rationale: The mobile onboarding flow already disabled `Go to Chats` from Settings when no API key was configured, but users could still deep-link into `/sessions`, tap `Start first chat`, and send a message. That exposed a raw OpenAI-compatible `401` missing-API-key error inside Chat instead of taking users back to the connection setup they actually needed, which is a broken first-run experience on a core product flow.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-connection-gate--before--unconfigured-chat-attempt--20260311.png` (viewport `1280x800`, desktop browser running Expo Web). After clearing persisted app storage to force an unconfigured state, navigating to `/sessions`, tapping `Start first chat`, typing `hello`, and sending, the app stayed on Chat and rendered a raw `Error: Chat failed: 401` response with the missing API key text plus `Retry`. That screenshot is insufficient because it proves the existing Settings gate was bypassable from deep-linkable chat surfaces and surfaced an internal auth failure instead of a recovery path.
@@ -206,3 +214,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-connection-gate--after--unconfigured-chat-attempt--20260311.png` (same `1280x800` viewport and same unconfigured first-chat attempt on Expo Web). After the fix, the same `/sessions` → `Start first chat` attempt shows the missing-connection prompt and lands on the `Connection` screen with `Not connected`, `API Key`, `Base URL`, and `Test & Save` visible, which demonstrates the user is redirected to the correct recovery flow before any raw chat request/error can occur.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (3 tests passing for Sessions gating, Rapid Fire missing-connection messaging, and Chat/queued-send guards); `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts` ✅ (6 tests passing, including the new trimmed-credential helper checks); live Expo Web repro at `http://localhost:8140/sessions` ✅ reproduced the broken raw-401 behavior before the fix and, after restoring the patch, reproduced the corrected alert + redirect to `/connection` in a fresh browser context with storage cleared; matching before/after screenshots saved under `docs/aloops-evidence/bug-fix-loop/` ✅.
 - Blockers/remaining uncertainty: The exact reproduced Expo Web first-chat bypass is fixed and live-verified, and the same guard now covers queued-send plus Sessions Rapid Fire entry points in source/tests. I did not separately run native iOS/Android for this iteration, so the native alert presentation for the same guard remains source-verified rather than device-verified.
+
+### Evidence ID: mobile-chat-empty-string-warning
+
+- Scope: `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/chat-render-guards.ts`, and `apps/mobile/src/screens/chat-render-guards.test.ts` for the Expo Web `/chat` initial-render warning state
+- Commit range: `fd5476029c7dfa383db247e48bbb040f26048370..8532df717564d4db6c0a8162b7b93d2efca6b1e8`
+- Rationale: The chat screen appeared idle but still emitted repeated React Native Web errors on first render because an empty string was being returned as a direct child of a `ScrollView`. That polluted console-based debugging, signaled invalid render output in a core chat surface, and risked masking more important runtime errors during mobile-web investigation.
+- QA feedback: Deferred prior QA findings for `mobile-web-browser-history`, `mobile-web-qr-scanner`, and `mobile-chat-connection-gate` to keep this iteration tightly focused on a newly reproduced runtime-confirmed `ChatScreen` render warning.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-empty-string-warning--before--chat-screen--20260311.png` (viewport `390x844`, mobile browser). The screenshot shows the default chat surface on initial load; in that same run the browser console emitted `Unexpected text node: . A text node cannot be a child of a <View>.` three times from `ChatScreen`, so even this apparently idle first-render state was mounting an invalid raw text node and generating noisy runtime errors.
+- Change: Added a tiny `shouldRenderOptionalChild()` helper that converts empty or whitespace-only strings into a strict boolean `false` before JSX short-circuit rendering. `ChatScreen.tsx` now uses that helper for `debugInfo` plus adjacent optional child blocks that may be backed by strings or string-like values, and a focused Vitest file locks the helper behavior for empty, whitespace-only, visible, and truthy non-string values.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-empty-string-warning--after--chat-screen--20260311.png` (same `390x844` viewport and same initial `/chat` surface). After restoring the fix, the chat screen still renders normally but the matched fresh-browser run emits zero `Unexpected text node` console errors, showing the invalid child is gone without changing the visible layout.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-render-guards.test.ts` ✅ (2 tests passing for empty/whitespace string suppression and truthy-value rendering); `pnpm --filter @dotagents/mobile test` ✅ (73 Node tests + 70 Vitest assertions passing after adding the new helper coverage); `git diff --check` ✅ before the product-change commit; live Expo Web repro at `http://localhost:8150/chat` ✅ showed `Unexpected text node` count `3` before the one-line guard revert and `0` after restoring the fix in fresh `390x844` browser contexts.
+- Blockers/remaining uncertainty: This iteration fixed the confirmed empty-string child warning on the default Expo Web chat render and hardened the adjacent optional-block guard sites in `ChatScreen`. Other unrelated Expo Web warnings still appear (`expo-notifications` web-listener limitation, `pointerEvents` deprecation, and `shadow*` deprecation), but they were not the selected bug for this pass.
