@@ -18,6 +18,8 @@
 - [x] Re-ran Expo Web after a minimal non-install dependency workaround plus `pnpm build:shared`.
 - [x] Reviewed the current `ConnectionSettingsScreen.tsx` QR scanner flow and existing mobile connection tests for a concrete web repro path.
 - [x] Live-checked Expo Web QR scanning in fresh browser contexts with denied and granted camera permission to separate the silent failure path from the working modal path.
+- [x] Re-created the symlink-based mobile runtime workaround in this worktree and re-ran `pnpm --filter @dotagents/mobile web --port 8112` to look for a fresh concrete failure now that Metro watch folders are fixed.
+- [x] Reviewed `apps/mobile/metro.config.js`, `packages/shared/package.json`, and the Metro regression tests after Expo Web failed resolving `@dotagents/shared` from the symlinked dependency tree.
 
 ## Not yet checked
 
@@ -28,6 +30,7 @@
 
 - [x] Mobile Expo Web failed to bundle in this worktree when dependencies were reused via symlinked `node_modules`; Metro threw SHA-1/watch errors for files outside the current monorepo root.
 - [x] Mobile Expo Web `Scan QR Code` failed silently when browser camera permission was denied: clicking the button left the user on the same Connection screen with no scanner modal and no visible error.
+- [x] Mobile Expo Web failed again in the symlinked-worktree setup even after the watch-folder fix: Metro resolved `@dotagents/shared` through the sibling worktree's package link, logged repeated invalid `exports` warnings for the sibling `packages/shared/dist/index.mjs`, and then aborted with `Unable to resolve "@dotagents/shared" from "apps/mobile/src/store/config.ts"`.
 
 ## Fixed
 
@@ -35,6 +38,7 @@
 - [x] `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` now clears stale connection errors before QR attempts and shows a platform-aware inline error when camera permission is denied instead of failing silently on Expo Web.
 - [x] QA round 1 remediation extracted the QR permission decision into a small pure helper, added executable denied-permission coverage under Vitest, and corrected the `mobile-web-qr-scanner` evidence provenance so this ledger matches the reviewed iteration.
 - [x] QA round 2 remediation tightened `resolveQrScannerActivation()` to return only the permission error actually consumed by the screen, removing the unused `shouldShowScanner` plumbing while keeping the visible denied-permission recovery behavior unchanged.
+- [x] `apps/mobile/metro.config.js` now pins `@dotagents/*` workspace packages to the current worktree through `resolver.extraNodeModules`, so symlinked `node_modules` trees no longer send Expo Web to a sibling worktree's stale `@dotagents/shared` package when bundling the mobile app.
 
 ## Verified
 
@@ -52,23 +56,29 @@
 - [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/connection-settings-qr.test.ts`
 - [x] `node --test apps/mobile/tests/connection-settings-validation.test.js`
 - [x] Refreshed the denied-permission QR screenshot on `http://localhost:8110` at `.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--qa-r2--20260310.png`.
+- [x] `pnpm build:shared`
+- [x] Re-ran `node --test apps/mobile/tests/metro-config-watchfolders.test.js` after pinning workspace packages to the current worktree and confirmed the new resolver mapping coverage passes.
+- [x] `pnpm --filter @dotagents/mobile web --port 8112` now reaches `Web Bundled ... apps/mobile/index.ts` with `LOG  [web] Logs will appear in the browser console` instead of failing to resolve `@dotagents/shared`.
 
 ## Blocked
 
 - [ ] No remaining blocker for this iteration's selected Metro/worktree bug.
 - [ ] No remaining blocker for this iteration's selected QR permission-handling bug.
+- [ ] No remaining blocker for this iteration's selected workspace-package resolution bug.
 
 ## Still uncertain
 
 - [ ] Whether the historical Expo Web `normalizeApiBaseUrl is not a function` failure is still reproducible once the current worktree uses a normal local install instead of the symlink workaround.
 - [ ] Whether the historical React Native Web `Unexpected text node ... child of a <View>` warning still maps to a concrete, local user-facing bug.
 - [ ] Whether end-to-end QR decoding works reliably on Expo Web with a real camera feed, not just modal open/close and permission handling.
+- [ ] Whether Expo Web now surfaces any remaining in-app runtime warnings or user-facing mobile flow regressions once the current symlinked worktree can bundle again.
 
 ## Candidate leads
 
 - Mobile React Native Web warning about unexpected text nodes inside `<View>`.
 - Mobile/runtime behavior around historical `normalizeApiBaseUrl is not a function` errors.
 - Mobile Expo Web QR decoding with a real camera feed and real DotAgents QR payload once permission handling is no longer silent.
+- Mobile flow/runtime bugs that can now be inspected live again because the symlinked-worktree Expo Web bundle no longer dies resolving `@dotagents/shared`.
 
 ## Evidence
 
@@ -87,7 +97,7 @@
 ### Evidence ID: mobile-web-qr-scanner
 
 - Scope: `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` Expo Web QR scan action when browser camera permission is denied
-- Commit range: `f1a861ee6c96f07e8ac57f3ca38da5ea2db90196..HEAD`
+- Commit range: `f1a861ee6c96f07e8ac57f3ca38da5ea2db90196..3a3952feb660032537330ed8255e5f0945b2b4ac`
 - Rationale: `Scan QR Code` is a primary mobile onboarding path from the desktop app. On Expo Web, when the browser denied camera access, the button left users on the same Connection screen with no modal and no visible explanation, which looked like a dead action and blocked recovery even though the app knew scanning could not proceed.
 - QA feedback: QA round 2 reported that this evidence block still stopped at `90a3722da13dd438c0c9ac9dfdeee8d75cd16595` even though the reviewed draft head was `7624c4092c6a2e5d012942507e7da96ceb81fcb4`, so the provenance no longer covered the helper extraction, executable Vitest coverage, package wiring, screenshot refresh, and screen refactor it described. The same review also called out dead helper plumbing: `resolveQrScannerActivation()` returned `shouldShowScanner`, but its only caller already treated the helper as a simple error-or-proceed gate and never read that extra field.
 - Before evidence: Screenshot: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/bug-fix-loop/.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--before--connection-qr-scanner--20260310.png` (viewport `1440x900`, desktop Chrome automation). The captured state shows the unchanged Connection screen immediately after clicking `Scan QR Code` in a browser context where camera permission was denied; no scanner dialog, camera preview, or inline guidance appears, so the action looks broken and gives the user no recovery path. Supporting runtime evidence from the same repro showed `navigator.mediaDevices.getUserMedia({ video: true })` rejecting with `NotAllowedError: Permission denied`.
@@ -95,3 +105,15 @@
 - After evidence: Screenshot: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/bug-fix-loop/.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--qa-r2--20260310.png` (same Connection screen surface, denied-permission repro refreshed in Chrome automation for QA round 2). After clicking `Scan QR Code` with browser camera permission denied, the screen still renders the inline error `Camera access is required to scan a QR code. Allow camera access in your browser and try scanning again.` directly in the visible form flow, so the observable recovery behavior remains correct after removing the unused helper field.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/connection-settings-qr.test.ts` ✅ (1 file / 3 tests passing, including denied and granted permission states against the narrowed helper contract); `node --test apps/mobile/tests/connection-settings-validation.test.js` ✅ (5 tests passing, including the QR inline-error wiring assertion); `git diff --check` ✅; live Expo Web denied-permission repro at `http://localhost:8110` ✅ still shows the inline QR camera-permission error and refreshed the QA-round screenshot at `.aloops-artifacts/bug-fix-loop/mobile-web-qr-scanner--after--connection-qr-scanner--qa-r2--20260310.png`.
 - Blockers/remaining uncertainty: This QA round 2 pass revalidated only the denied-permission surface called out by the findings. I did not re-run the separate granted-permission scanner-modal path or end-to-end real-camera QR decoding because the remediation here intentionally stayed limited to provenance accuracy and removing unused helper plumbing.
+
+### Evidence ID: mobile-symlinked-shared-resolution
+
+- Scope: `apps/mobile/metro.config.js` Expo Web bundling in a symlinked-worktree setup where `apps/mobile/node_modules` points at another checkout's dependency tree
+- Commit range: `e46d01822ce065cf4b6b0ee3aa64f0078c0cd00e..e6f58ec20d21dcb0b7fda94d42dc5efab96ceda4`
+- Rationale: The mobile bug-fix workflow depends on `pnpm --filter @dotagents/mobile web`, but in this worktree Expo Web still crashed before any user-flow debugging could happen. Even after the earlier watch-folder fix, Metro followed the symlinked `@dotagents/shared` package into a sibling worktree instead of the current checkout, hit a missing `dist/index.mjs` export there, and aborted the bundle. Pinning workspace packages to the current worktree restores the actual mobile runtime needed for further product-bug investigation.
+- QA feedback: None (new iteration)
+- Before evidence: Reproduced with the same minimal non-install workaround used earlier in this ledger: symlinked `node_modules` from a sibling worktree, `pnpm build:shared`, then `pnpm --filter @dotagents/mobile web --port 8112`. Before the fix, Expo logged repeated warnings that `apps/mobile/node_modules/@dotagents/shared` resolved to `/Users/ajjoobandi/Development/dotagents-mono-worktrees/mobile-app-improvement-loop/packages/shared/dist/index.mjs` even though that file did not exist there, then failed with `Unable to resolve "@dotagents/shared" from "apps/mobile/src/store/config.ts"`.
+- Change: Added a small Metro helper that discovers the current worktree's `@dotagents/*` packages under `apps/*` and `packages/*`, then feeds that map into `resolver.extraNodeModules` so workspace imports resolve to the current checkout instead of whichever sibling checkout a symlinked `node_modules` tree happens to reference. Extended `apps/mobile/tests/metro-config-watchfolders.test.js` to lock the `@dotagents/shared` mapping to `packages/shared` in the current worktree.
+- After evidence: Re-running `pnpm --filter @dotagents/mobile web --port 8112` after restarting Metro now reaches `Web Bundled 888ms apps/mobile/index.ts (954 modules)` followed by `LOG  [web] Logs will appear in the browser console`. The prior `@dotagents/shared` resolution failure and sibling-package export warnings do not recur in the successful bundling run, and the new regression test confirms the resolver mapping points at the current worktree's `packages/shared` path.
+- Verification commands/run results: `pnpm build:shared` ✅; `node --test apps/mobile/tests/metro-config-watchfolders.test.js` ✅ (3 tests passing, including the new workspace-package pinning assertion); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8112` ✅ (`Waiting on http://localhost:8112`, then `Web Bundled 888ms apps/mobile/index.ts (954 modules)` and `LOG  [web] Logs will appear in the browser console`).
+- Blockers/remaining uncertainty: Verification intentionally stopped at the reproduced bundle failure that blocked further mobile debugging. I did not spend this iteration on a separate in-app mobile flow bug after the bundle recovered; the next pass can now use the restored Expo Web runtime to investigate the remaining user-facing candidates in this ledger.
