@@ -37,6 +37,7 @@ import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
+import { shouldAutoCreateChatSession } from './chat-session-hydration';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
@@ -1097,9 +1098,17 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    // No current session - only auto-create if no deletions are in progress (fixes #571)
-    // This prevents race conditions where a new session is created before the deletion completes
-    if (sessionStore.deletingSessionIds.size > 0) {
+    // No current session - only auto-create when chat is configured and no deletions are in progress.
+    // This preserves the direct configured /chat recovery path without creating phantom empty sessions
+    // for disconnected users who are gated from chatting anyway.
+    if (!shouldAutoCreateChatSession({
+      canComposeChat,
+      currentSessionId,
+      deletingSessionCount: sessionStore.deletingSessionIds.size,
+    })) {
+      lastLoadedSessionIdRef.current = null;
+      setMessages([]);
+      setRespondToUserHistory([]);
       return;
     }
 

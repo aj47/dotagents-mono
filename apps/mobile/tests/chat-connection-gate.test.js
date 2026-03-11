@@ -48,8 +48,9 @@ test('chat screen shows setup guidance and disables composer controls before dis
   assert.match(chatScreenSource, /<Pressable[\s\S]*?disabled=\{!canComposeChat\}[\s\S]*?accessibilityLabel=\{createMicControlAccessibilityLabel\(\)\}/);
 });
 
-test('chat screen waits for hydrated sessions, then auto-creates a session for direct configured /chat visits', () => {
+test('chat screen waits for hydrated sessions, avoids disconnected phantom sessions, and still auto-creates for direct configured /chat visits', () => {
   assert.match(chatScreenSource, /if \(!sessionStore\.ready\) \{\s*return;\s*\}/);
   assert.match(chatScreenSource, /if \(currentSessionId !== null && lastLoadedSessionIdRef\.current === currentSessionId && !shouldAttemptStubLoad\) \{\s*return;\s*\}/);
+  assert.match(chatScreenSource, /shouldAutoCreateChatSession\(\{[\s\S]*?canComposeChat,[\s\S]*?currentSessionId,[\s\S]*?deletingSessionCount:\s*sessionStore\.deletingSessionIds\.size,[\s\S]*?\}\)/);
   assert.match(chatScreenSource, /currentSession = sessionStore\.createNewSession\(\);/);
 });
