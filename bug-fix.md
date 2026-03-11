@@ -132,7 +132,7 @@
 ### Evidence ID: mobile-web-browser-history
 
 - Scope: `apps/mobile/App.tsx` Expo Web browser history between `Settings` and `Connection`
-- Commit range: `8b60032cfe4786692221f4ff84b6078cd771b812..2645f2e4cd2c8220bfc6a9f158ccce8abbd5085e`
+- Commit range: `8b60032cfe4786692221f4ff84b6078cd771b812..8e3d964030b9d4983cbb2ad0067b48f34af3fd47`
 - Rationale: On Expo Web, tapping `Connection settings` visibly changed screens but did not update the browser URL or history. That broke normal browser Back navigation, made the web surface feel stuck on subpages, and left route state out of sync with the URL for a core settings flow.
 - QA feedback: Deferred prior QA finding for `mobile-web-qr-scanner` screenshot viewport mismatch; this iteration intentionally addresses a new Expo Web navigation bug instead of reworking the earlier QR evidence pair.
 - Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-web-browser-history--before--connection-screen--20260311.png` (viewport `1440x900`, desktop browser). The screenshot shows the Connection screen immediately after tapping `Connection settings`; browser automation confirmed the URL still remained `/`, so the visible route changed without adding a browser history entry and the browser Back button could not return to `Settings`.
