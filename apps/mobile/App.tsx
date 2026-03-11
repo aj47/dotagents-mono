@@ -20,6 +20,7 @@ import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
 import { View, Image, Text, TouchableOpacity, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
+import type { Theme } from './src/ui/theme';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from './src/lib/accessibility';
 import * as Linking from 'expo-linking';
@@ -62,7 +63,7 @@ function Navigation() {
   const messageQueueStore = useMessageQueue();
   const navigationRef = useNavigationContainerRef();
   const isNavigationReady = useRef(false);
-  const navigationStyles = useMemo(() => createNavigationStyles(theme.colors.foreground), [theme.colors.foreground]);
+  const navigationStyles = useMemo(() => createNavigationStyles(theme), [theme]);
 
   // Initialize tunnel connection manager for persistence and auto-reconnection
   const tunnelConnection = useTunnelConnectionProvider();
@@ -379,8 +380,12 @@ function Navigation() {
                               accessibilityLabel={createButtonAccessibilityLabel('Go back')}
                               accessibilityHint="Returns to the previous screen."
                               style={navigationStyles.backButton}
+                              activeOpacity={0.8}
                             >
-                              <Text style={navigationStyles.backButtonText}>←</Text>
+                              <View style={navigationStyles.backButtonContent}>
+                                <Text style={navigationStyles.backButtonIcon}>←</Text>
+                                <Text style={navigationStyles.backButtonText}>Back</Text>
+                              </View>
                             </TouchableOpacity>
                           ),
                       headerRight: () => (
@@ -443,14 +448,31 @@ function StatusBarWrapper() {
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
-function createNavigationStyles(foregroundColor: string) {
+function createNavigationStyles(theme: Theme) {
   return StyleSheet.create({
     backButton: {
       ...createMinimumTouchTargetStyle({ horizontalPadding: 12, horizontalMargin: 0 }),
+      borderRadius: theme.radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      alignSelf: 'center',
+    },
+    backButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    backButtonIcon: {
+      fontSize: 16,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     backButtonText: {
-      fontSize: 20,
-      color: foregroundColor,
+      fontSize: 13,
+      color: theme.colors.foreground,
       fontWeight: '600',
       textAlign: 'center',
     },

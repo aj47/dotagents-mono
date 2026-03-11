@@ -16,5 +16,8 @@ test('uses a custom 44px back button for nested mobile screens', () => {
   assert.match(appSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Go back'\)\}/);
   assert.match(appSource, /style=\{navigationStyles\.backButton\}/);
   assert.match(appSource, /createMinimumTouchTargetStyle\(\{ horizontalPadding: 12, horizontalMargin: 0 \}\)/);
-  assert.match(appSource, /<Text style=\{navigationStyles\.backButtonText\}>←<\/Text>/);
+  assert.match(appSource, /backgroundColor: theme\.colors\.secondary/);
+  assert.match(appSource, /borderColor: theme\.colors\.border/);
+  assert.match(appSource, /<Text style=\{navigationStyles\.backButtonIcon\}>←<\/Text>/);
+  assert.match(appSource, /<Text style=\{navigationStyles\.backButtonText\}>Back<\/Text>/);
 });
