@@ -699,6 +699,10 @@ function extractTextualToolDirective(
   }
 }
 
+function looksLikeTextualToolDirectivePrefix(str: string): boolean {
+  return /^\s*\[(?:Calling tools?|Tool|Tools?):/i.test(str)
+}
+
 /**
  * Main function to make LLM calls using AI SDK with automatic retry
  * Now supports native AI SDK tool calling when tools are provided
@@ -1081,6 +1085,15 @@ export async function makeLLMCallWithStreamingAndTools(
         let accumulated = ""
         const collectedToolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = []
         let finishUsage: { inputTokens?: number; outputTokens?: number } | undefined
+        let emittedLength = 0
+        let bufferingPotentialTextualDirective = false
+
+        const flushBufferedText = () => {
+          if (accumulated.length <= emittedLength) return
+          const chunk = accumulated.slice(emittedLength)
+          emittedLength = accumulated.length
+          onChunk(chunk, accumulated)
+        }
 
         for await (const event of streamResult.fullStream) {
           if (
@@ -1093,7 +1106,29 @@ export async function makeLLMCallWithStreamingAndTools(
 
           if (event.type === "text-delta") {
             accumulated += event.text
-            onChunk(event.text, accumulated)
+
+            if (
+              !bufferingPotentialTextualDirective &&
+              collectedToolCalls.length === 0 &&
+              looksLikeTextualToolDirectivePrefix(accumulated)
+            ) {
+              bufferingPotentialTextualDirective = true
+              continue
+            }
+
+            if (bufferingPotentialTextualDirective) {
+              if (collectedToolCalls.length > 0) {
+                continue
+              }
+
+              if (looksLikeTextualToolDirectivePrefix(accumulated)) {
+                continue
+              }
+
+              bufferingPotentialTextualDirective = false
+            }
+
+            flushBufferedText()
           } else if (event.type === "tool-call") {
             collectedToolCalls.push({
               name: restoreToolName(event.toolName, convertedTools?.nameMap),
@@ -1125,6 +1160,10 @@ export async function makeLLMCallWithStreamingAndTools(
           ? extractTextualToolDirective(accumulated, convertedTools?.nameMap)
           : null
         const recoveredToolCalls = textualToolDirective?.toolCalls
+
+        if (collectedToolCalls.length === 0 && !recoveredToolCalls?.length) {
+          flushBufferedText()
+        }
 
         if (generationId) {
           endLLMGeneration(generationId, {

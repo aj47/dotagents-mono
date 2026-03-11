@@ -910,11 +910,12 @@ describe('LLM Fetch with AI SDK', () => {
   it('should recover a single textual tool directive from streaming text output', async () => {
     const { streamText } = await import('ai')
     const streamTextMock = vi.mocked(streamText)
+    const onChunk = vi.fn()
 
     streamTextMock.mockReturnValue({
       fullStream: (async function* () {
-        yield { type: 'text-delta', text: '[Calling tools: iterm:read_terminal_output]\n' }
-        yield { type: 'text-delta', text: 'RTLUjson\n{"linesOfOutput":30,"session_id":"tab-123"}' }
+        yield { type: 'text-delta', text: '[Calling tools: iterm:read_terminal_output] to=iterm:read_terminal_output\n' }
+        yield { type: 'text-delta', text: '{"linesOfOutput":30,"session_id":"tab-123"}' }
         yield { type: 'finish', totalUsage: { inputTokens: 10, outputTokens: 20 } }
       })(),
     } as any)
@@ -923,7 +924,7 @@ describe('LLM Fetch with AI SDK', () => {
 
     const result = await makeLLMCallWithStreamingAndTools(
       [{ role: 'user', content: 'test' }],
-      vi.fn(),
+      onChunk,
       'openai',
       undefined,
       undefined,
@@ -943,6 +944,36 @@ describe('LLM Fetch with AI SDK', () => {
         arguments: { linesOfOutput: 30, session_id: 'tab-123' },
       },
     ])
+    expect(onChunk).not.toHaveBeenCalled()
+  })
+
+  it('should flush buffered bracket-prefixed text when it is not a tool directive', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+    const onChunk = vi.fn()
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: '[Tool: progress note]\nStill plain text for the user.' }
+        yield { type: 'finish', totalUsage: { inputTokens: 10, outputTokens: 20 } }
+      })(),
+    } as any)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    const result = await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'test' }],
+      onChunk,
+      'openai',
+    )
+
+    expect(result.toolCalls).toBeUndefined()
+    expect(result.content).toBe('[Tool: progress note]\nStill plain text for the user.')
+    expect(onChunk).toHaveBeenCalledTimes(1)
+    expect(onChunk).toHaveBeenCalledWith(
+      '[Tool: progress note]\nStill plain text for the user.',
+      '[Tool: progress note]\nStill plain text for the user.'
+    )
   })
 
   it('should surface object stream errors that only include a message field', async () => {
