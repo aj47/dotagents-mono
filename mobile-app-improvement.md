@@ -99,9 +99,10 @@
 
 ### 2026-03-11 — QA remediation 3: recapture matched offline evidence and correct iteration 16 provenance
 
-- Status: completed with matched-resolution Expo Web evidence recaptures and corrected ledger provenance for the disconnected offline review stack
+- Status: completed with matched-resolution Expo Web evidence recaptures, stale blocker cleanup, and corrected ledger provenance for the disconnected offline review stack
 - Area:
   - historical evidence/provenance for the disconnected `Settings -> Open Chats` CTA and disconnected `Chats -> + New Chat` send-guard iterations in `mobile-app-improvement.md`
+  - stale present-tense runtime-blocker wording in earlier 2026-03-09 ledger entries that no longer reflects the current worktree
   - no product code changes; this pass is limited to truthful evidence repair and comparison-safe screenshot recapture
 - Why this area:
   - it deserved the immediate next pass because unresolved QA found three factual problems in the ledger: iteration 16 stopped its authored SHA span before the final docs/evidence commit, the disconnected new-chat before screenshot was a stitched `390x2060` capture paired against a `390x844` after view, and the disconnected Settings-home QA screenshot was saved at `780x1688` instead of the matched mobile viewport
@@ -114,20 +115,34 @@
   - QA was correct that the prior `chat-disconnected-send-guard` ready-to-send before capture was a full-page `390x2060` image, so it could not safely be compared against the `390x844` after screenshot for the same view
   - QA was also correct that the remediation screenshot for `settings-offline-open-chats` had drifted to `780x1688`, which broke same-view comparison against the `390x844` before capture
   - iteration 16's Evidence block really did under-report provenance by ending at `bd572eb1778dc3aa7498d33efc3ba9f22ef5f92a` instead of the full authored head `f1f7375df34698bc813e4c64ca3fe2d2cd48d5b9`
+  - QA was also correct that several older 2026-03-09 source-backed entries still spoke in the present tense about missing `node_modules` / `expo`, even though Expo Web is now available in this worktree after `pnpm build:shared`
 - Change made:
   - recaptured the disconnected Settings-home remediation screenshot at an exact `390x844` viewport and saved it as `settings-offline-open-chats--after--settings-home--qa-r2--20260311.png`
   - reproduced the pre-fix disconnected new-chat state, then recaptured the `ready` and `send-error` before screenshots plus the guarded after screenshot at the same `390x844` viewport using QA-specific filenames
   - corrected the historical ledger references so iteration 16 now points at the matched `qa-r1` chat screenshots and reports the full authored SHA span through `f1f7375df34698bc813e4c64ca3fe2d2cd48d5b9`, while the prior Settings remediation now references the corrected `qa-r2` screenshot
+  - added the missing structured Evidence block for this remediation pass, reframed the older 2026-03-09 runtime notes as historical gaps instead of current blockers, and removed the superseded tracked screenshots that QA identified as mismatched
 - Verification:
   - `pnpm --filter @dotagents/mobile web --port 8120 --clear`
   - `pnpm --filter @dotagents/mobile web --port 8121 --clear`
   - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--before--new-chat-ready--qa-r1--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--before--send-error--qa-r1--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--after--new-chat-ready--qa-r1--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--after--settings-home--qa-r2--20260311.png`
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8131 --clear`
   - `git diff --check`
 - Follow-up checks:
   - return to uncovered offline runtime behavior next, especially existing-chat retry/reconnect, mic/handsfree disconnected flows, and broader session loading/error states
   - avoid revisiting these same evidence blocks again unless a later QA pass finds another factual mismatch
 
-- Evidence repair recorded directly in the corrected historical Evidence blocks below, which now point at the matched `qa-r1` / `qa-r2` screenshots and the full iteration 16 authored SHA span.
+Evidence
+- Evidence ID: offline-evidence-provenance-repair
+- Scope: QA remediation for the disconnected offline review stack in `mobile-app-improvement.md`, including the missing structured Evidence block for this section, stale runtime-blocker cleanup in older 2026-03-09 entries, and removal of superseded tracked screenshots under `docs/aloops-evidence/mobile-app-improvement-loop`
+- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..e32129daece486b61acc5b9993e577d93330356d
+- Rationale: The underlying disconnected mobile behavior was already improved, but the ledger still contained factual QA defects: this remediation section had no required Evidence block of its own, several older entries still implied Expo Web is currently unavailable when that is no longer true in this worktree, and the repo still tracked superseded mismatched screenshots. Fixing those provenance problems is necessary so the mobile review stack stays auditable and does not mislead later parity work.
+- QA feedback: Addressed reviewer findings that QA remediation 3 lacked its own required Evidence block, that stale present-tense `node_modules` / `expo` blocker claims still remained in older ledger entries despite current Expo Web availability, and that superseded `chat-disconnected-send-guard` / `settings-offline-open-chats` screenshots were still tracked after matched recaptures replaced them.
+- Before evidence: QA feedback against reviewed range `91c7db81c8bbafe55927771981e24acde4345568..e32129daece486b61acc5b9993e577d93330356d` documented three provenance defects: this remediation section stopped without a literal Evidence block, multiple older entries still claimed in the present tense that Expo Web could not start because `node_modules` were missing, and the repo still tracked the known-bad screenshot files `chat-disconnected-send-guard--before--new-chat-ready--20260311.png`, `chat-disconnected-send-guard--before--send-error--20260311.png`, `chat-disconnected-send-guard--after--new-chat-ready--20260311.png`, and `settings-offline-open-chats--after--settings-home--qa-r1--20260311.png` even though matched `qa-r1` / `qa-r2` captures had superseded them.
+- Change: Added this structured Evidence block directly under QA remediation 3, updated the earlier 2026-03-09 source-backed entries so they now describe the Expo Web failures as historical original-pass conditions rather than current worktree blockers, and removed the superseded tracked screenshots that no longer belong in the curated evidence set.
+- After evidence: `mobile-app-improvement.md` now contains an explicit Evidence block for QA remediation 3, the earlier 2026-03-09 entries now preserve the original `expo: command not found` results as dated historical context while explicitly noting that current Expo Web availability was restored later in this worktree, and the curated evidence directory now contains only the retained offline screenshots (`settings-offline-open-chats--before--settings-home--20260311.png`, `settings-offline-open-chats--after--settings-home--20260311.png`, `settings-offline-open-chats--after--settings-home--qa-r2--20260311.png`, plus the `chat-disconnected-send-guard` `qa-r1` set) instead of the superseded mismatched files.
+- Verification commands/run results: Historical recapture verification already recorded here remains `pnpm --filter @dotagents/mobile web --port 8120 --clear` ✅; `pnpm --filter @dotagents/mobile web --port 8121 --clear` ✅; `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--before--new-chat-ready--qa-r1--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--before--send-error--qa-r1--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--after--new-chat-ready--qa-r1--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--after--settings-home--qa-r2--20260311.png` ✅; current truthfulness cleanup additionally ran `pnpm build:shared` ✅ (shared package rebuilt successfully; pnpm emitted only non-blocking engine warnings under Node `v25.2.1`), `pnpm --filter @dotagents/mobile web --port 8131 --clear` ✅ (Expo Web started, Metro bundled `apps/mobile/index.ts`, and served `http://localhost:8131` before shutdown; Expo also emitted non-blocking package-version drift warnings), and `git diff --check` ✅.
+- Blockers/remaining uncertainty: This remediation pass repairs evidence truthfulness and curated screenshot provenance only; it does not widen product/runtime coverage beyond the already-checked disconnected Settings-home and disconnected new-chat text-send flows. Existing-chat retry/reconnect plus disconnected mic/handsfree states remain the next uncovered offline surfaces.
 
 ### 2026-03-11 — Iteration 16: block disconnected new-chat sends before they fail opaquely
 
@@ -393,7 +408,7 @@ Evidence
 
 ### 2026-03-09 — Iteration 11: make the Settings desktop warning readable and actionable on narrow screens
 
-- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Status: completed with source-backed verification; live Expo Web inspection was unavailable during the original 2026-03-09 pass before this worktree later regained Expo Web runtime availability
 - Area:
   - `Settings` desktop partial-load warning in `apps/mobile/src/screens/SettingsScreen.tsx`
   - warning state reached when some desktop settings endpoints fail but the app still has enough data to show the `Desktop Settings` section, e.g. `Failed to load: settings`
@@ -405,7 +420,7 @@ Evidence
   - nearby mobile button/touch-target patterns already used elsewhere in the app
   - attempted Expo Web startup via the existing repo workflow
 - Findings:
-  - live runtime inspection is still blocked in this worktree because both root and `apps/mobile` `node_modules` are absent, so `pnpm --filter @dotagents/mobile web --port 8102` fails with `expo: command not found`
+  - during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8102` failed with `expo: command not found`, so live runtime inspection was deferred for that pass
   - the warning used a single horizontal row, which is fragile for longer partial-failure messages like `Failed to load: profiles, MCP servers, settings`
   - the `Retry` affordance was rendered as small inline text instead of a clear full-width action, and the UI did not explain that desktop values might be temporarily out of date
 - Change made:
@@ -417,20 +432,20 @@ Evidence
   - `git diff --check`
   - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8102`
 - Follow-up checks:
-  - once dependencies are available, verify in Expo Web that longer partial-load warnings wrap cleanly above the retry button without pushing the rest of `Desktop Settings` too far down on a narrow viewport
+  - when revisiting this surface in a fresh Expo Web pass, verify that longer partial-load warnings wrap cleanly above the retry button without pushing the rest of `Desktop Settings` too far down on a narrow viewport
   - continue widening coverage to session loading/error/sync states or modal/sheet surfaces rather than returning to already-improved settings subsections without a new finding
 
 Evidence
 - Scope: Settings desktop partial-load warning / retry state in `apps/mobile/src/screens/SettingsScreen.tsx`
-- Before evidence: Source review showed the warning rendering as `styles.warningContainer` with `flexDirection: 'row'`, `justifyContent: 'space-between'`, and `alignItems: 'center'`, containing only `⚠️ {remoteError}` plus a text-only `Retry` action. The retry affordance had no mobile-sized button styling, no `createMinimumTouchTargetStyle(...)`, and no explanation that partially loaded desktop settings may now be stale. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8102`, but the command failed because both root and mobile `node_modules` are missing and `expo` was not found.
+- Before evidence: Source review showed the warning rendering as `styles.warningContainer` with `flexDirection: 'row'`, `justifyContent: 'space-between'`, and `alignItems: 'center'`, containing only `⚠️ {remoteError}` plus a text-only `Retry` action. The retry affordance had no mobile-sized button styling, no `createMinimumTouchTargetStyle(...)`, and no explanation that partially loaded desktop settings may now be stale. During the original 2026-03-09 pass, live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8102`, but the command failed with `expo: command not found`; that missing-runtime note is historical and does not describe the current worktree, where Expo Web later became available again after `pnpm build:shared`.
 - Change: Reworked the Settings warning into a stacked alert card with a title, raw error detail, stale-data guidance, and a full-width retry button using the shared 44px touch-target helper plus explicit accessibility metadata. Added a focused regression test file.
 - After evidence: Source now shows `styles.warningContainer` with `width: '100%'`, `gap: spacing.md`, and `alignItems: 'stretch'`; `styles.warningContent` groups the message copy; and the UI now includes `Desktop settings need attention` plus `Some desktop sections may be out of date until the retry finishes.`. The retry action now uses `styles.warningRetryButton` with `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, `width: '100%'`, centered label text, and `createButtonAccessibilityLabel('Retry loading desktop settings')`. `apps/mobile/tests/settings-remote-warning-state.test.js` passes and locks those guardrails.
-- Verification commands/run results: `node --test apps/mobile/tests/settings-remote-warning-state.test.js apps/mobile/tests/agent-loops-actions.test.js` ✅ (4/4 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8102` ❌ (`node_modules` missing, `expo: command not found`).
-- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web still cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime wrapping, vertical spacing, and visual prominence of the stacked warning card until dependencies are available.
+- Verification commands/run results: `node --test apps/mobile/tests/settings-remote-warning-state.test.js apps/mobile/tests/agent-loops-actions.test.js` ✅ (4/4 passing); `git diff --check` ✅; during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8102` ❌ (`expo: command not found`; current worktree later regained Expo Web availability after `pnpm build:shared`).
+- Blockers/remaining uncertainty: No live before/after visual evidence was captured during the original 2026-03-09 pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to the exact runtime wrapping, vertical spacing, and visual prominence of the stacked warning card until a fresh Expo Web pass revisits this surface.
 
 ### 2026-03-09 — Iteration 10: make MemoryEdit importance choices readable and tappable on narrow screens
 
-- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Status: completed with source-backed verification; live Expo Web inspection was unavailable during the original 2026-03-09 pass before this worktree later regained Expo Web runtime availability
 - Area:
   - `MemoryEdit` importance selection in `apps/mobile/src/screens/MemoryEditScreen.tsx`
   - create/edit flow reached from `Settings -> Memories -> + Create New Memory` or tapping an existing memory
@@ -442,7 +457,7 @@ Evidence
   - existing mobile narrow-screen selector patterns in `LoopEdit` and `AgentEdit`
   - attempted Expo Web startup via the existing repo workflow
 - Findings:
-  - live runtime inspection is still blocked in this worktree because both root and `apps/mobile` `node_modules` are absent, so `pnpm --filter @dotagents/mobile web --port 8101` fails with `expo: command not found`
+  - during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8101` failed with `expo: command not found`, so live runtime inspection was deferred for that pass
   - the importance selector used a wrapping chip row with inline padding only, which is fragile on narrow mobile widths
   - the chosen importance level was communicated mostly through color alone, and the UI did not explain how importance affects memory retrieval priority
 - Change made:
@@ -454,21 +469,21 @@ Evidence
   - `git diff --check`
   - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8101`
 - Follow-up checks:
-  - once dependencies are available, verify `MemoryEdit` in Expo Web on a narrow viewport and confirm the stacked importance rows, helper descriptions, and save-button spacing remain readable without excessive scrolling
+  - when revisiting this surface in a fresh Expo Web pass, verify `MemoryEdit` on a narrow viewport and confirm the stacked importance rows, helper descriptions, and save-button spacing remain readable without excessive scrolling
   - inspect the rest of `MemoryEdit` next, especially loading/error states and large-text behavior for the title/content/tags fields, so memory coverage broadens beyond this selector subsection
   - continue widening coverage to remaining modal/sheet and session-state surfaces instead of revisiting already-checked edit selectors without a new finding
 
 Evidence
 - Scope: `MemoryEdit` importance selection in `apps/mobile/src/screens/MemoryEditScreen.tsx`
-- Before evidence: Source review showed the importance control rendering as `styles.optionRow` (`flexDirection: 'row'`, `flexWrap: 'wrap'`) with each `styles.option` using only inline padding, no `createMinimumTouchTargetStyle(...)`, no explicit `accessibilityRole`, and no selected-state metadata. The UI exposed only `Low` / `Medium` / `High` / `Critical` labels with no guidance about how priority changes memory retrieval. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8101`, but the command failed because both root and mobile `node_modules` are missing and `expo` was not found.
+- Before evidence: Source review showed the importance control rendering as `styles.optionRow` (`flexDirection: 'row'`, `flexWrap: 'wrap'`) with each `styles.option` using only inline padding, no `createMinimumTouchTargetStyle(...)`, no explicit `accessibilityRole`, and no selected-state metadata. The UI exposed only `Low` / `Medium` / `High` / `Critical` labels with no guidance about how priority changes memory retrieval. During the original 2026-03-09 pass, live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8101`, but the command failed with `expo: command not found`; that runtime note is historical only and no longer describes the current worktree.
 - Change: Reworked the MemoryEdit importance selector into full-width descriptive rows, added 44px minimum touch-target styling plus explicit button labels/hints/selected-state metadata, added a visible checkmark for the selected option, and added a focused regression test file.
 - After evidence: Source now shows `styles.importanceOptions` with `width: '100%'`, `styles.importanceOption` using `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, and each option exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: isSelected, disabled: isSaving }}`. The screen now explains `Higher-priority memories are surfaced first when the agent loads context.` and each importance row includes a description, while the selected option also shows a `✓` checkmark so selection is not color-only. `apps/mobile/tests/memory-edit-importance-options.test.js` passes and locks those guardrails.
-- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (22/22 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8101` ❌ (`node_modules` missing, `expo: command not found`).
-- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web still cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, copy wrapping, and scroll depth of the new MemoryEdit importance rows until dependencies are available.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (22/22 passing); `git diff --check` ✅; during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8101` ❌ (`expo: command not found`; current worktree later regained Expo Web availability after `pnpm build:shared`).
+- Blockers/remaining uncertainty: No live before/after visual evidence was captured during the original 2026-03-09 pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to the exact runtime spacing, copy wrapping, and scroll depth of the new MemoryEdit importance rows until a fresh Expo Web pass revisits this surface.
 
 ### 2026-03-09 — Iteration 9: make AgentEdit connection modes mobile-readable and stop misrouting ACP setup
 
-- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Status: completed with source-backed verification; live Expo Web inspection was unavailable during the original 2026-03-09 pass before this worktree later regained Expo Web runtime availability
 - Area:
   - `AgentEdit` connection-type selection and mode-specific fields in `apps/mobile/src/screens/AgentEditScreen.tsx`
   - create/edit flow reached from `Settings -> Agent Profiles -> + Create New Agent` or tapping an existing agent
@@ -480,7 +495,7 @@ Evidence
   - shared/mobile/server agent profile types and handlers in `packages/shared/src/api-types.ts`, `apps/desktop/src/shared/types.ts`, and `apps/desktop/src/main/remote-server.ts`
   - attempted Expo Web startup via the existing repo workflow
 - Findings:
-  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - during the original 2026-03-09 pass, Expo Web startup failed with `expo: command not found`, so live runtime inspection was deferred for that pass
   - the connection-type control used small wrapping pills with no explicit button semantics or selected-state metadata, which is fragile on narrow mobile widths
   - `ACP` profiles loaded and saved `connectionCommand` / `connectionArgs` / `connectionCwd`, but the form only showed `Base URL` for `acp`, making that mode misleading and preventing users from editing the fields the backend actually uses
 - Change made:
@@ -492,21 +507,21 @@ Evidence
   - `git diff --check`
   - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8097`
 - Follow-up checks:
-  - once dependencies are installed, verify `AgentEdit` in Expo Web on a narrow viewport and confirm the stacked connection rows, long descriptions, and mode-specific fields remain readable without pushing the save action too far down
+  - when revisiting this surface in a fresh Expo Web pass, verify `AgentEdit` on a narrow viewport and confirm the stacked connection rows, long descriptions, and mode-specific fields remain readable without pushing the save action too far down
   - inspect `MemoryEdit` next so coverage continues widening across the edit flows instead of staying inside agent/loop configuration
   - validate the remaining `AgentEdit` states later, especially built-in-agent limited editing and large-text behavior across long prompt/guidelines inputs
 
 Evidence
 - Scope: `AgentEdit` connection-type selection and mode-specific setup fields in `apps/mobile/src/screens/AgentEditScreen.tsx`
-- Before evidence: Source review showed `CONNECTION_TYPES` as four label-only chips, `styles.connectionTypeRow` as a wrapping row, and `styles.connectionTypeOption` using only inline padding with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The form rendered `Base URL` for `(formData.connectionType === 'remote' || formData.connectionType === 'acp')`, while shared/server types describe `acp` as a local command-based profile (`command`, `args`, `cwd`) and only `remote` as URL-based. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8097` but failed because `node_modules` is missing and `expo` was not found.
+- Before evidence: Source review showed `CONNECTION_TYPES` as four label-only chips, `styles.connectionTypeRow` as a wrapping row, and `styles.connectionTypeOption` using only inline padding with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The form rendered `Base URL` for `(formData.connectionType === 'remote' || formData.connectionType === 'acp')`, while shared/server types describe `acp` as a local command-based profile (`command`, `args`, `cwd`) and only `remote` as URL-based. During the original 2026-03-09 pass, live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8097`, but the command failed with `expo: command not found`; that runtime note is historical only and no longer describes the current worktree.
 - Change: Reworked the `AgentEdit` connection-type selector into full-width descriptive rows with 44px minimum touch targets and selected-state button semantics, then split the mode-specific fields so `acp` and `stdio` share local command inputs while `remote` alone shows `Base URL`. Added a focused regression test file.
 - After evidence: Source now shows `styles.connectionTypeOptions` with `width: '100%'`, `styles.connectionTypeOption` using `createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, ... })`, and each connection choice exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: ... }}`. `AgentEditScreen.tsx` now uses `showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio'` and `showRemoteBaseUrlField = formData.connectionType === 'remote'`, so ACP no longer reuses the remote-only URL field. `apps/mobile/tests/agent-edit-connection-types.test.js` passes and locks those guardrails.
-- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (19/19 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8097` ❌ (`node_modules` missing, `expo: command not found`).
-- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, description wrapping, and scroll depth of the new `AgentEdit` connection rows until dependencies are available.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (19/19 passing); `git diff --check` ✅; during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8097` ❌ (`expo: command not found`; current worktree later regained Expo Web availability after `pnpm build:shared`).
+- Blockers/remaining uncertainty: No live before/after visual evidence was captured during the original 2026-03-09 pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to the exact runtime spacing, description wrapping, and scroll depth of the new `AgentEdit` connection rows until a fresh Expo Web pass revisits this surface.
 
 ### 2026-03-09 — QA remediation 1: stop hidden AgentEdit base-URL persistence and add real switch/save coverage
 
-- Status: completed with targeted source + behavior verification; live Expo Web remained blocked by missing dependencies in this worktree
+- Status: completed with targeted source + behavior verification; live Expo Web remained unavailable during the original 2026-03-09 QA pass before this worktree later regained Expo Web runtime availability
 - Area:
   - `AgentEdit` connection-type switching and save payload construction in `apps/mobile/src/screens/AgentEditScreen.tsx`
   - agent-profile connection persistence sanitization in `apps/desktop/src/main/remote-server.ts`
@@ -525,7 +540,7 @@ Evidence
   - `node --experimental-strip-types --test apps/mobile/tests/agent-edit-connection-types.test.js apps/mobile/tests/agent-edit-connection-persistence.test.mjs apps/desktop/src/main/agent-profile-connection-sanitize.test.mjs`
   - `git diff --check`
 - Follow-up checks:
-  - once dependencies are available, verify in Expo Web that switching `Remote -> ACP` clears the remote-only field value and that saving an existing ACP profile with previously stale hidden URL data does not rehydrate that URL in the form
+  - when revisiting this surface in a fresh Expo Web pass, verify that switching `Remote -> ACP` clears the remote-only field value and that saving an existing ACP profile with previously stale hidden URL data does not rehydrate that URL in the form
   - keep future mobile coverage widening outside `AgentEdit` after this QA pass, especially `MemoryEdit` and broader loading/error states, instead of returning to the same subsection without a new finding
 
 Evidence
@@ -534,11 +549,11 @@ Evidence
 - Change: Added `apps/mobile/src/screens/agent-edit-connection-utils.ts` to clear stale remote URL state on type switches and build type-specific save payloads, wired `AgentEditScreen.tsx` through that helper, added `apps/desktop/src/main/agent-profile-connection-sanitize.ts` so the server drops type-incompatible connection fields during create/update, and added focused behavior tests for both paths.
 - After evidence: The mobile helper now clears `connectionBaseUrl` whenever the form leaves `remote` and only includes `connectionBaseUrl` in save payloads for `remote`. The desktop sanitization helper now returns `{ type: 'acp' | 'stdio' }` connections without `baseUrl`, returns `{ type: 'remote' }` connections without local command fields, and removes blank visible values instead of preserving stale saved ones. The new behavior tests directly cover remote-to-ACP switching, ACP save payload shaping, remote save payload shaping, stale `baseUrl` removal for ACP persistence, remote-only persistence, and explicit remote URL clearing.
 - Verification commands/run results: `node --experimental-strip-types --test apps/mobile/tests/agent-edit-connection-types.test.js apps/mobile/tests/agent-edit-connection-persistence.test.mjs apps/desktop/src/main/agent-profile-connection-sanitize.test.mjs` ✅ (9/9 passing; Node emitted a non-blocking `MODULE_TYPELESS_PACKAGE_JSON` warning while importing the new mobile `.ts` helper directly for the test run); `git diff --check` ✅.
-- Blockers/remaining uncertainty: Expo Web is still unavailable in this worktree because dependencies are missing, so this remediation pass has no new live visual evidence. Remaining uncertainty is limited to runtime web/mobile form behavior until the existing dependency blocker is cleared.
+- Blockers/remaining uncertainty: No live visual evidence was captured during the original 2026-03-09 QA pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to runtime web/mobile form behavior until a fresh Expo Web pass revisits the switch/save flow.
 
 ### 2026-03-09 — Iteration 8: make LoopEdit profile selection readable and tappable on narrow screens
 
-- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Status: completed with source-backed verification; live Expo Web inspection was unavailable during the original 2026-03-09 pass before this worktree later regained Expo Web runtime availability
 - Area:
   - `LoopEdit` agent-profile selection in `apps/mobile/src/screens/LoopEditScreen.tsx`
   - create/edit flow reached from `Settings -> Agent Loops -> + Create New Loop` or tapping an existing loop
@@ -550,7 +565,7 @@ Evidence
   - current `LoopEditScreen.tsx` markup and styles for the profile-selection section
   - existing mobile accessibility/touch-target helpers used elsewhere in the app
 - Findings:
-  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - during the original 2026-03-09 pass, Expo Web startup failed with `expo: command not found`, so live runtime inspection was deferred for that pass
   - `styles.profileOptions` used a wrapping chip row and each `profileOption` only used inline padding, with no minimum 44px touch target guardrail
   - profile choices lacked explicit button semantics and selected-state metadata, so the currently chosen agent was communicated mostly through color alone
   - the default fallback behavior was not explained, which makes `No profile` ambiguous when creating a loop quickly on mobile
@@ -564,21 +579,21 @@ Evidence
   - `git diff --check`
   - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8096`
 - Follow-up checks:
-  - once dependencies are installed, verify the LoopEdit profile selector in Expo Web on a narrow viewport and confirm long profile names wrap cleanly without crowding the save action
+  - when revisiting this surface in a fresh Expo Web pass, verify the LoopEdit profile selector on a narrow viewport and confirm long profile names wrap cleanly without crowding the save action
   - inspect `MemoryEdit` next so coverage continues widening across edit flows instead of staying in Settings/Loop surfaces
   - inspect the rest of `LoopEdit` for large-text behavior, especially the prompt and interval fields, once live runtime validation is available
 
 Evidence
 - Scope: `LoopEdit` agent-profile selection in `apps/mobile/src/screens/LoopEditScreen.tsx`
-- Before evidence: Source review showed `styles.profileOptions` as a wrapping chip row (`flexDirection: 'row'`, `flexWrap: 'wrap'`) and `styles.profileOption` using only `paddingVertical: spacing.sm` / `paddingHorizontal: spacing.md`, with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The default fallback choice was labeled only as `No profile`, with no copy explaining that the loop would use the default active agent. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8096` but failed because `node_modules` is missing and `expo` was not found.
+- Before evidence: Source review showed `styles.profileOptions` as a wrapping chip row (`flexDirection: 'row'`, `flexWrap: 'wrap'`) and `styles.profileOption` using only `paddingVertical: spacing.sm` / `paddingHorizontal: spacing.md`, with no `createMinimumTouchTargetStyle(...)`, no explicit button role, and no selected-state metadata. The default fallback choice was labeled only as `No profile`, with no copy explaining that the loop would use the default active agent. During the original 2026-03-09 pass, live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8096`, but the command failed with `expo: command not found`; that runtime note is historical only and no longer describes the current worktree.
 - Change: Reworked the LoopEdit profile selector into full-width rows, added 44px minimum touch-target styling plus explicit button labels/hints/selected-state metadata, clarified the default-agent fallback copy, and added a focused regression test file.
 - After evidence: Source now shows `styles.profileOptions` with `width: '100%'`, `styles.profileOption` using `createMinimumTouchTargetStyle({ minSize: 44, ... })`, and each option exposing `accessibilityRole="button"` plus `accessibilityState={{ selected: ... }}`. The UI copy now explains `Choose a dedicated agent for this loop, or leave it on the default agent.` and `No saved agent profiles yet. This loop will use the default agent until you create one.` `apps/mobile/tests/loop-edit-profile-selection.test.js` passes and locks those guardrails.
-- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (16/16 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8096` ❌ (`node_modules` missing, `expo: command not found`).
-- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime spacing, text wrapping, and visual weight of the new full-width profile rows until dependencies are available.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (16/16 passing); `git diff --check` ✅; during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8096` ❌ (`expo: command not found`; current worktree later regained Expo Web availability after `pnpm build:shared`).
+- Blockers/remaining uncertainty: No live before/after visual evidence was captured during the original 2026-03-09 pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to the exact runtime spacing, text wrapping, and visual weight of the new full-width profile rows until a fresh Expo Web pass revisits this surface.
 
 ### 2026-03-09 — Iteration 7: make agent loop row actions readable and tappable
 
-- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Status: completed with source-backed verification; live Expo Web inspection was unavailable during the original 2026-03-09 pass before this worktree later regained Expo Web runtime availability
 - Area:
   - Settings -> Agent Loops list in `apps/mobile/src/screens/SettingsScreen.tsx`
   - row actions for existing loops: enable toggle, `Run`, and `Delete`
@@ -589,7 +604,7 @@ Evidence
   - attempted Expo Web startup via the existing repo workflow
   - current loop row markup, action labels, and styles in `SettingsScreen.tsx`
 - Findings:
-  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - during the original 2026-03-09 pass, Expo Web startup failed with `expo: command not found`, so live runtime inspection was deferred for that pass
   - the per-loop `Run` and `Delete` actions used only `padding: 4` with `fontSize: 12`, well below the app's recent 44px touch-target guardrails
   - those actions also lacked explicit button labels/hints, making them less discoverable and less trustworthy as primary row actions
 - Change made:
@@ -602,21 +617,21 @@ Evidence
   - `git diff --check`
   - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8095`
 - Follow-up checks:
-  - once dependencies are installed, verify the Agent Loops action row in Expo Web on a narrow viewport and confirm the switch + buttons wrap cleanly without crowding loop content
+  - when revisiting this surface in a fresh Expo Web pass, verify the Agent Loops action row on a narrow viewport and confirm the switch + buttons wrap cleanly without crowding loop content
   - inspect the adjacent `LoopEdit` screen next so coverage moves from list-row actions into the loop create/edit flow itself
   - continue broadening edit-flow coverage to `MemoryEdit` and `AgentEdit`
 
 Evidence
 - Scope: Settings -> Agent Loops list row actions in `apps/mobile/src/screens/SettingsScreen.tsx`
-- Before evidence: Source review showed each loop row rendering `Run` and `Delete` as tiny text controls with inline styles `padding: 4` and `fontSize: 12`, plus no explicit button labels/hints. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8095` but failed because `node_modules` is missing and `expo` was not found.
+- Before evidence: Source review showed each loop row rendering `Run` and `Delete` as tiny text controls with inline styles `padding: 4` and `fontSize: 12`, plus no explicit button labels/hints. During the original 2026-03-09 pass, live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8095`, but the command failed with `expo: command not found`; that runtime note is historical only and no longer describes the current worktree.
 - Change: Reworked the loop action area into a wrapping full-width row, restyled `Run now` and `Delete` as 44px minimum touch-target buttons, and added descriptive accessibility labels/hints plus a focused regression test file.
 - After evidence: Source now shows `styles.loopActions` with `width: '100%'` and `flexWrap: 'wrap'`, and both loop actions use `styles.loopActionButton` with `createMinimumTouchTargetStyle({ minSize: 44, ... })`, explicit button semantics, and descriptive labels/hints. `apps/mobile/tests/agent-loops-actions.test.js` passes and locks those guardrails.
-- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (13/13 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8095` ❌ (`node_modules` missing, `expo: command not found`).
-- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime wrap/spacing of the new loop action row until dependencies are available.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (13/13 passing); `git diff --check` ✅; during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8095` ❌ (`expo: command not found`; current worktree later regained Expo Web availability after `pnpm build:shared`).
+- Blockers/remaining uncertainty: No live before/after visual evidence was captured during the original 2026-03-09 pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to the exact runtime wrap/spacing of the new loop action row until a fresh Expo Web pass revisits this surface.
 
 ### 2026-03-09 — Iteration 6: make the session empty state actionable in-place
 
-- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Status: completed with source-backed verification; live Expo Web inspection was unavailable during the original 2026-03-09 pass before this worktree later regained Expo Web runtime availability
 - Area:
   - session list empty state in `apps/mobile/src/screens/SessionListScreen.tsx`
   - intended flow: `Settings -> Go to Chats` with zero existing sessions
@@ -630,7 +645,7 @@ Evidence
 - Findings:
   - the empty state only showed `No Sessions Yet` plus helper text, with no CTA embedded in the focal empty-state area
   - on narrow mobile layouts, that weakens actionability and hierarchy because the only visible next step lives separately in the top header
-  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - during the original 2026-03-09 pass, Expo Web startup failed with `expo: command not found`, so live runtime inspection was deferred for that pass
 - Change made:
   - updated the empty-state copy to clearer chat-focused language (`No chats yet`)
   - added an in-place primary `Start first chat` CTA wired to the existing `handleCreateSession` flow
@@ -640,16 +655,16 @@ Evidence
   - `node --test apps/mobile/tests/session-list-empty-state.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/navigation-header.test.js`
   - `git diff --check`
 - Follow-up checks:
-  - once dependencies are installed, verify the session empty state in Expo Web on narrow viewports and confirm the CTA remains above the Rapid Fire footer without crowding
+  - when revisiting this surface in a fresh Expo Web pass, verify the session empty state on narrow viewports and confirm the CTA remains above the Rapid Fire footer without crowding
   - continue widening coverage to under-checked screens like `AgentEdit`, `MemoryEdit`, `LoopEdit`, and session loading/error/sync states
 
 Evidence
 - Scope: Session list empty state (`Settings -> Go to Chats` with no sessions) in `apps/mobile/src/screens/SessionListScreen.tsx`
-- Before evidence: Source review showed the empty state only rendered `No Sessions Yet` plus `Start a new chat to begin a conversation`, with no in-place CTA. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8094` but failed because `node_modules` is missing and `expo` was not found.
+- Before evidence: Source review showed the empty state only rendered `No Sessions Yet` plus `Start a new chat to begin a conversation`, with no in-place CTA. During the original 2026-03-09 pass, live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8094`, but the command failed with `expo: command not found`; that runtime note is historical only and no longer describes the current worktree.
 - Change: Added a centered `Start first chat` button inside the empty state, wired it to `handleCreateSession`, tightened empty-state width constraints for narrow layouts, and added a focused regression test file.
 - After evidence: Source now shows the empty state rendering `Start first chat` with button semantics and the existing create-session handler; `apps/mobile/tests/session-list-empty-state.test.js` passes and locks the CTA text, wiring, and width constraints.
-- Verification commands/run results: `node --test apps/mobile/tests/session-list-empty-state.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/navigation-header.test.js` ✅ (11/11 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8094` ❌ (`node_modules` missing, `expo: command not found`).
-- Blockers/remaining uncertainty: No live Expo Web before/after visual evidence this iteration because dependencies are not installed in the worktree. Remaining uncertainty is limited to runtime spacing/visual fit of the new empty-state CTA until Expo Web can be launched.
+- Verification commands/run results: `node --test apps/mobile/tests/session-list-empty-state.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/navigation-header.test.js` ✅ (11/11 passing); `git diff --check` ✅; during the original 2026-03-09 pass, `pnpm --filter @dotagents/mobile web --port 8094` ❌ (`expo: command not found`; current worktree later regained Expo Web availability after `pnpm build:shared`).
+- Blockers/remaining uncertainty: No live Expo Web before/after visual evidence was captured during the original 2026-03-09 pass. That is now a historical evidence gap rather than a current runtime blocker; remaining uncertainty is limited to runtime spacing/visual fit of the new empty-state CTA until a fresh Expo Web pass revisits this surface.
 
 ### 2026-03-07 — Iteration 5: enlarge chat composer accessory controls and expose edit-toggle state on web
 
