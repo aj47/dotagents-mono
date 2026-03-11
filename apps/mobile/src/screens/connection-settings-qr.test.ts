@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveQrScannerActivation } from './connection-settings-qr';
+import { getQrScannerWebSheetContent, resolveQrScannerActivation } from './connection-settings-qr';
 
 describe('resolveQrScannerActivation', () => {
   it('returns a visible browser guidance error when camera permission is denied', async () => {
@@ -33,5 +33,38 @@ describe('resolveQrScannerActivation', () => {
       requestPermission,
     })).resolves.toBeNull();
     expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it('shows an explicit browser guidance sheet before web camera permission is requested', () => {
+    expect(getQrScannerWebSheetContent({
+      permission: null,
+      hasRequestedPermission: false,
+    })).toEqual({
+      title: 'Allow camera access to scan',
+      message: 'On web, your browser may show a camera prompt after you continue. If nothing appears, check the address bar or site settings. You can still enter the API key and base URL manually below.',
+      actionLabel: 'Allow camera access',
+    });
+  });
+
+  it('keeps browser guidance visible after a denied permission attempt that can still be retried', () => {
+    expect(getQrScannerWebSheetContent({
+      permission: { granted: false, canAskAgain: true },
+      hasRequestedPermission: true,
+    })).toEqual({
+      title: 'Allow camera access to keep scanning',
+      message: 'Camera access is required to scan a QR code. If no browser prompt appeared, check the address bar or browser site settings, then try again. You can still enter the API key and base URL manually below.',
+      actionLabel: 'Try camera access again',
+    });
+  });
+
+  it('shows a blocked-browser state without a retry button when camera access is blocked', () => {
+    expect(getQrScannerWebSheetContent({
+      permission: { granted: false, canAskAgain: false },
+      hasRequestedPermission: true,
+    })).toEqual({
+      title: 'Camera blocked in this browser',
+      message: 'Camera access is blocked in this browser. Allow camera access in your browser site settings and reopen the scanner. You can still enter the API key and base URL manually below.',
+      actionLabel: null,
+    });
   });
 });

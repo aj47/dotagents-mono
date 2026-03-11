@@ -13,7 +13,7 @@ import {
   createMinimumTouchTargetStyle,
   createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
-import { resolveQrScannerActivation } from './connection-settings-qr';
+import { getQrScannerWebSheetContent, resolveQrScannerActivation } from './connection-settings-qr';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
@@ -44,13 +44,19 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const [draft, setDraft] = useState<AppConfig>(config);
   const [showScanner, setShowScanner] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
+  const [hasRequestedScannerPermission, setHasRequestedScannerPermission] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const { connect: tunnelConnect, disconnect: tunnelDisconnect } = useTunnelConnection();
+  const isWeb = Platform.OS === 'web';
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const webScannerSheet = useMemo(() => getQrScannerWebSheetContent({
+    permission,
+    hasRequestedPermission: hasRequestedScannerPermission,
+  }), [hasRequestedScannerPermission, permission]);
 
   useEffect(() => {
     setDraft(config);
@@ -154,10 +160,17 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
   const handleScanQR = async () => {
     setConnectionError(null);
+    setHasRequestedScannerPermission(false);
+    setScanned(false);
+
+    if (Platform.OS === 'web') {
+      setShowScanner(true);
+      return;
+    }
 
     const qrPermissionError = await resolveQrScannerActivation({
       hasPermission: permission?.granted === true,
-      isWeb: Platform.OS === 'web',
+      isWeb,
       requestPermission,
     });
 
@@ -166,9 +179,18 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
       return;
     }
 
-    setScanned(false);
     setShowScanner(true);
   };
+
+  const requestWebQrPermission = useCallback(async () => {
+    setHasRequestedScannerPermission(true);
+
+    try {
+      await requestPermission();
+    } catch (error) {
+      console.warn('[ConnectionSettings] Failed to request camera permission on web:', error);
+    }
+  }, [requestPermission]);
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
@@ -299,18 +321,40 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
       <Modal visible={showScanner} animationType="slide" onRequestClose={() => setShowScanner(false)}>
         <View style={styles.scannerContainer}>
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={handleBarCodeScanned}
-          />
-          <View style={styles.scannerOverlay}>
-            <View style={styles.scannerFrame} />
-            <Text style={styles.scannerText}>
-              {scanned ? 'Invalid QR code format' : 'Scan a DotAgents QR code'}
-            </Text>
-          </View>
+          {!isWeb || permission?.granted ? (
+            <>
+              <CameraView
+                style={styles.camera}
+                facing="back"
+                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                onBarcodeScanned={handleBarCodeScanned}
+              />
+              <View style={styles.scannerOverlay}>
+                <View style={styles.scannerFrame} />
+                <Text style={styles.scannerText}>
+                  {scanned ? 'Invalid QR code format' : 'Scan a DotAgents QR code'}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.webScannerFallback}>
+              <View style={styles.webScannerFallbackCard}>
+                <Text style={styles.webScannerFallbackTitle}>{webScannerSheet.title}</Text>
+                <Text style={styles.webScannerFallbackText}>{webScannerSheet.message}</Text>
+                {webScannerSheet.actionLabel ? (
+                  <TouchableOpacity
+                    style={styles.webScannerFallbackActionButton}
+                    onPress={requestWebQrPermission}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel(webScannerSheet.actionLabel)}
+                    accessibilityHint="Requests browser camera access so the QR scanner can open on mobile web."
+                  >
+                    <Text style={styles.webScannerFallbackActionButtonText}>{webScannerSheet.actionLabel}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.closeButton, { top: Math.max(insets.top + spacing.sm, spacing.lg) }]}
             onPress={() => setShowScanner(false)}
@@ -470,6 +514,49 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: '#fff',
       fontSize: 16,
       marginTop: 20,
+      textAlign: 'center',
+    },
+    webScannerFallback: {
+      flex: 1,
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    webScannerFallbackCard: {
+      backgroundColor: 'rgba(15,23,42,0.92)',
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.12)',
+      gap: spacing.md,
+    },
+    webScannerFallbackTitle: {
+      color: '#fff',
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    webScannerFallbackText: {
+      color: 'rgba(255,255,255,0.84)',
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    webScannerFallbackActionButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.lg,
+      backgroundColor: '#fff',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.24)',
+    },
+    webScannerFallbackActionButtonText: {
+      color: '#0f172a',
+      fontSize: 15,
+      fontWeight: '600',
       textAlign: 'center',
     },
     closeButton: {
