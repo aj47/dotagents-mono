@@ -24,3 +24,10 @@ test('keeps session rows compact by clamping previews and trimming vertical chro
   assert.match(screenSource, /sessionHeader:\s*\{[\s\S]*?marginBottom:\s*spacing\.xs,/);
   assert.match(screenSource, /sessionPreview:\s*\{[\s\S]*?marginBottom:\s*2,/);
 });
+
+test('demotes Clear all into a secondary chats-header cluster with count context', () => {
+  assert.match(screenSource, /const sessionCountLabel = `\$\{sessions\.length\} chat\$\{sessions\.length !== 1 \? 's' : ''\}`;/);
+  assert.match(screenSource, /<View style=\{styles\.headerSecondaryActions\}>[\s\S]*?<Text style=\{styles\.sessionCountText\}>\{sessionCountLabel\}<\/Text>[\s\S]*?<Text style=\{styles\.clearButtonText\}>Clear all<\/Text>/);
+  assert.match(screenSource, /headerSecondaryActions:\s*\{[\s\S]*?flexShrink:\s*1,[\s\S]*?marginLeft:\s*spacing\.sm,/);
+  assert.match(screenSource, /clearButtonTouchTarget:\s*\{[\s\S]*?createMinimumTouchTargetStyle\([\s\S]*?horizontalPadding:\s*spacing\.sm,[\s\S]*?verticalPadding:\s*spacing\.xs,/);
+});

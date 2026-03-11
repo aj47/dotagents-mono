@@ -831,6 +831,7 @@ export default function SessionListScreen({ navigation }: Props) {
               : rfStatus === 'error'
                 ? 'Rapid Fire failed. Try again.'
                 : 'Hold to talk (Rapid Fire)';
+  const sessionCountLabel = `${sessions.length} chat${sessions.length !== 1 ? 's' : ''}`;
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -844,23 +845,26 @@ export default function SessionListScreen({ navigation }: Props) {
         >
           <Text style={styles.newButtonText}>+ New Chat</Text>
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerSecondaryActions}>
           {sessionStore.isSyncing && (
             <Image
               source={isDark ? darkSpinner : lightSpinner}
-              style={{ width: 16, height: 16, marginRight: 8 }}
+              style={styles.headerSyncSpinner}
               resizeMode="contain"
             />
           )}
           {sessions.length > 0 && (
+            <Text style={styles.sessionCountText}>{sessionCountLabel}</Text>
+          )}
+          {sessions.length > 0 && (
             <TouchableOpacity
-              style={[styles.clearButton, styles.sessionActionTouchTarget]}
+              style={styles.clearButtonTouchTarget}
               onPress={handleClearAll}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
               accessibilityHint="Deletes all chat sessions."
             >
-              <Text style={styles.clearButtonText}>Clear All</Text>
+              <Text style={styles.clearButtonText}>Clear all</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -961,6 +965,17 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderBottomWidth: theme.hairline,
       borderBottomColor: theme.colors.border,
     },
+    headerSecondaryActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 1,
+      marginLeft: spacing.sm,
+    },
+    headerSyncSpinner: {
+      width: 16,
+      height: 16,
+      marginRight: spacing.xs,
+    },
     newButton: {
       backgroundColor: theme.colors.primary,
       borderRadius: radius.lg,
@@ -976,12 +991,22 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
-    clearButton: {
-      borderRadius: radius.lg,
+    sessionCountText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginRight: spacing.xs,
+    },
+    clearButtonTouchTarget: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
     },
     clearButtonText: {
       color: theme.colors.destructive,
-      fontSize: 14,
+      fontSize: 13,
+      fontWeight: '500',
     },
     headerSettingsButton: {
       ...createMinimumTouchTargetStyle({
