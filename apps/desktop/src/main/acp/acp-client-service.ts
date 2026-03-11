@@ -352,9 +352,12 @@ export class ACPClientService {
   }
 
   /**
-   * Cancel all active runs that belong to a specific parent session.
-   * This is used when a user stops a session to also cancel any remote ACP runs
-   * that were spawned by that session.
+   * Abort client-side tracking for all active runs belonging to a specific parent session.
+   * This aborts the local AbortController (stopping polling/streaming on our side) and
+   * removes the run from our active tracking. Note: this does NOT cancel the run on the
+   * remote ACP server — the server-side run may continue to completion independently.
+   * The primary purpose is to prevent completed remote runs from writing back to a
+   * session that the user has already stopped (zombie session prevention).
    */
   cancelRunsByParentSession(parentSessionId: string): number {
     let cancelledCount = 0;

@@ -1139,8 +1139,9 @@ export const router = {
       // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
       toolApprovalManager.cancelSessionApprovals(input.sessionId)
 
-      // Cancel any remote ACP runs spawned by this session so they don't keep running
-      // and writing back to the dead session (zombie session prevention)
+      // Abort client-side tracking of ACP runs spawned by this session.
+      // This stops our polling/streaming but does NOT cancel the server-side run.
+      // Prevents completed remote runs from writing back to the dead session (zombie prevention).
       try {
         const { acpClientService } = await import("./acp")
         const cancelledAcpRuns = acpClientService.cancelRunsByParentSession(input.sessionId)
