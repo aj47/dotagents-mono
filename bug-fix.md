@@ -34,6 +34,8 @@
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent, explicitly deferred the older unresolved QA follow-ups, and live-inspected Expo Web at `http://localhost:8170/sessions` for a new runtime-confirmed Sessions empty-state bug.
 - [x] Re-reviewed `bug-fix.md` plus the current QA feedback, and explicitly deferred the unresolved `mobile-web-qr-scanner` screenshot viewport mismatch for this iteration because the selected bug is a fresh Expo Web chat-link privacy/state issue.
 - [x] Directly confirmed via React Navigation's `getPathFromState()` / `getStateFromPath()` that `Chat` route params currently serialize a pending rapid-fire draft into `/chat?initialMessage=hello%20secret%20world` and parse the same draft back from the browser URL.
+- [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred the older unresolved QA follow-ups, and launched Expo Web at `http://localhost:8180/chat` to inspect a fresh disconnected Chat surface.
+- [x] Live-reproduced a new Expo Web `/chat` disconnected-composer bug at `http://localhost:8180/chat` in a fresh cleared browser context: the screen showed a normal editable composer even without connection settings, let the user type a draft, and only revealed setup was required after pressing `Send` and losing the draft.
 
 ## Not yet checked
 
@@ -53,6 +55,7 @@
 - [x] Mobile Expo Web let an unconfigured user open `/agents/edit` with the primary `Create Agent` action still enabled, but tapping it performed no save, no navigation, and no visible error because `AgentEditScreen` returned early when no connection settings client was available.
 - [x] Mobile Expo Web still rendered the generic `/sessions` empty state for an unconfigured user, including normal-looking `+ New Chat`, `Start first chat`, and `Hold to talk (Rapid Fire)` entry points, even though the same screen could not actually start chat creation until connection settings were completed.
 - [x] Expo Web `Chat` route generation leaked pending rapid-fire draft text into browser history as `/chat?initialMessage=...`, and the default parser restored that same draft back into `route.params.initialMessage` from the URL.
+- [x] Mobile Expo Web let an unconfigured user deep-link straight to `/chat` and type into a normal-looking composer, but pressing `Send` then redirected to `Connection Settings` and dropped the drafted text instead of making the setup requirement explicit before composition.
 
 ## Fixed
 
@@ -69,6 +72,7 @@
 - [x] `apps/mobile/src/screens/AgentEditScreen.tsx` now matches the existing Memory/Loop edit guard pattern by surfacing missing-connection guidance, showing a visible save error if the action is invoked without config, and disabling `Create Agent` / `Save Changes` until Base URL + API key settings exist.
 - [x] `apps/mobile/src/screens/SessionListScreen.tsx` now turns the disconnected `/sessions` empty state into explicit setup guidance: the header action becomes `Open Connection`, the empty state explains that a connection is required before starting a chat, the empty-state CTA routes straight to `ConnectionSettings`, and Rapid Fire is visibly disabled with the same missing-connection guidance instead of looking ready.
 - [x] `apps/mobile/src/navigation/navigationLinking.ts` now strips transient `Chat` draft params such as `initialMessage` from Expo Web URL generation and inbound URL parsing, so the rapid-fire resume flow can still use in-memory route state without leaking draft content into browser URLs/history or rehydrating it from a pasted link.
+- [x] `apps/mobile/src/screens/ChatScreen.tsx` now turns the disconnected `/chat` composer into an explicit setup-required state: the screen shows missing-connection guidance plus an `Open Connection Settings` CTA before send, and the input, image attach, send, and mic controls are disabled until Base URL + API key settings exist so unconfigured users cannot type and lose a draft.
 
 ## Verified
 
@@ -123,6 +127,10 @@
 - [x] `pnpm --filter @dotagents/mobile test`
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this chat-link fix; no new type errors were introduced.
 - [x] `git diff --check`
+- [x] `node --test apps/mobile/tests/chat-connection-gate.test.js`
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this disconnected-composer fix; no new `ChatScreen.tsx` type error was introduced.
+- [x] Live Expo Web verification at `http://localhost:8180/chat` now shows connection-required guidance in the same fresh `390x844` mobile browser context, keeps the composer read-only/disabled while disconnected, and routes `Open Connection Settings` to `/connection`.
+- [x] Curated matching before/after screenshots for the disconnected `/chat` composer were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 
 ## Blocked
 
@@ -136,6 +144,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web chat empty-string render warning bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web agent-create missing-connection bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected Sessions empty-state bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/chat` composer bug.
 
 ## Still uncertain
 
@@ -148,6 +157,7 @@
 - [ ] Whether direct deep links into other mobile edit/detail routes still have any missing-configuration edge cases beyond the now-fixed `AgentEditScreen` silent no-op path.
 - [ ] Whether unconfigured users who already have historical sessions should also see a lightweight read-only banner on `/sessions`; this iteration fixed the misleading empty-state/create-entry path specifically.
 - [ ] Whether any other ephemeral mobile web route params beyond `Chat.initialMessage` should also be stripped from generated/pasted URLs for privacy or replay-safety; this iteration fixed only the confirmed rapid-fire draft case.
+- [ ] Whether disconnected users who reopen `/chat` with existing session history should also see a lightweight read-only banner above the transcript; this iteration fixed the misleading editable-composer path specifically.
 
 ## Candidate leads
 
@@ -293,3 +303,15 @@
 - After evidence: No screenshot for this runtime-free route-serialization bug. The new `navigationLinking` regression tests now prove the observable improvement directly: `linking.getPathFromState({ routes: [{ name: 'Chat', params: { initialMessage: 'hello secret world' } }] }, linking.config)` resolves to `/chat`, and `linking.getStateFromPath('/chat?initialMessage=hello%20secret%20world', linking.config)` returns a `Chat` route without `params.initialMessage`. That removes the draft-text URL leak and inbound replay path while preserving the normal `/chat` route.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` ✅ (9 tests passing, including the new generated-path and inbound-parse guards for transient chat draft params); `pnpm --filter @dotagents/mobile test` ✅ (77 Node tests + 72 Vitest assertions passing across the mobile suite after the linking change); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; `git diff --check` ✅.
 - Blockers/remaining uncertainty: This iteration fixed the confirmed `Chat.initialMessage` URL leak/replay path specifically. I did not broaden the sanitizer to every possible future transient route param because only this draft-chat case was directly confirmed as user-facing and privacy-sensitive in the current code.
+
+### Evidence ID: mobile-chat-disconnected-composer
+
+- Scope: `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-connection-gate.test.js` for the unconfigured Expo Web `/chat` composer state.
+- Commit range: `5d82b73fe45eca215103667d97eea6d5d6605c8f..77b4bd9cf87163d604fb265f3e3acd5e50110308`
+- Rationale: Unconfigured users could deep-link directly to `/chat`, see a normal editable composer, type a message, and only discover setup was required after pressing `Send` and losing that draft during the redirect to `Connection`. This change makes the disconnected state explicit before composition so the screen no longer invites a broken draft-and-loss flow.
+- QA feedback: Deferred prior unresolved QA follow-ups for `mobile-web-browser-history`, `mobile-web-qr-scanner`, and `mobile-chat-connection-gate`; the QA feedback file was absent for this pass, and this iteration instead addresses a newly reproduced runtime-confirmed `/chat` disconnected-composer bug.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-disconnected-composer--before--chat-screen--20260311.png` (viewport `390x844`, fresh cleared Expo Web browser context at `http://localhost:8180/chat`). The screenshot shows the disconnected Chat screen still presenting a normal editable composer with a typed draft (`draft should not vanish`) and active-looking entry controls even though no connection settings exist, which is insufficient because the user has no visible warning that pressing `Send` will reroute setup and lose the draft.
+- Change: Updated `ChatScreen.tsx` to derive a shared `canComposeChat` missing-connection gate for the `/chat` composer, render inline setup guidance plus an `Open Connection Settings` CTA above the input area when disconnected, change the placeholder/accessibility hints to explain setup is required, and disable the text input, image attach button, send button, and mic control until connection settings exist. Extended `apps/mobile/tests/chat-connection-gate.test.js` with focused regression coverage that locks the new guidance block and disabled-composer wiring in source.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-disconnected-composer--after--chat-screen--20260311.png` (same `390x844` viewport, same fresh cleared Expo Web `/chat` surface). The screenshot now shows the missing-connection helper copy plus `Open Connection Settings`, and the live verification run confirmed the composer stays read-only while send/attach/mic controls are disabled and the CTA navigates to `/connection`, so the user sees the required recovery path before any draft can be lost.
+- Verification commands/run results: `node --test apps/mobile/tests/chat-connection-gate.test.js` ✅ (5 tests passing, including the new disconnected-composer regression assertions); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors and no new `ChatScreen.tsx` type failure; `git diff --check` ✅; live Expo Web verification at `http://localhost:8180/chat` ✅ in a fresh `390x844` browser context now renders the setup guidance, keeps the composer read-only, disables send/attach/mic controls, and navigates `Open Connection Settings` to `/connection`.
+- Blockers/remaining uncertainty: The exact misleading disconnected `/chat` composer path is fixed and live-verified on Expo Web. I did not expand this iteration into broader offline/read-only transcript UX for previously saved chats while disconnected, because that is a separate state from the reproduced draft-loss bug and would widen the scope beyond this local fix.
