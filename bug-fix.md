@@ -24,11 +24,13 @@
 - [x] Launched Expo Web on `http://localhost:8120`, reproduced the browser-history failure between `Settings` and `Connection`, and reviewed `apps/mobile/App.tsx` for the missing web linking config.
 - [x] Reviewed the unresolved QA findings for `mobile-web-browser-history`, especially the weak route-history regression coverage and the unverified param-heavy linking scope.
 - [x] Directly confirmed via React Navigation's `getPathFromState()` / `getStateFromPath()` that `MemoryEdit` and `LoopEdit` generated polluted Expo Web URLs like `/memories/edit?memoryId=memory-123&memory=%5Bobject%20Object%5D` and `/loops/edit?loopId=loop-123&loop=%5Bobject%20Object%5D`.
+- [x] Re-reviewed the unresolved `mobile-web-qr-scanner` evidence provenance finding and explicitly deferred it for this iteration in favor of a new runtime-confirmed chat-state bug.
+- [x] Reproduced a new Expo Web chat-state bug at `http://localhost:8130`: reopening a failed thread from Sessions showed a stuck `Assistant is thinking` loader instead of the saved failure + retry state.
 
 ## Not yet checked
 
 - [ ] Desktop-specific renderer/main-process bug candidates for a future iteration.
-- [ ] User-facing mobile flow bugs now that Expo Web can bundle again in this worktree.
+- [ ] Remaining user-facing mobile flow bugs now that Expo Web can bundle again in this worktree.
 
 ## Reproduced
 
@@ -37,6 +39,7 @@
 - [x] Mobile Expo Web failed again in the symlinked-worktree setup even after the watch-folder fix: Metro resolved `@dotagents/shared` through the sibling worktree's package link, logged repeated invalid `exports` warnings for the sibling `packages/shared/dist/index.mjs`, and then aborted with `Unable to resolve "@dotagents/shared" from "apps/mobile/src/store/config.ts"`.
 - [x] Mobile Expo Web navigation from `Settings` to `Connection` changed the visible screen but left the browser URL at `/`, so browser Back did nothing and normal web history navigation was broken.
 - [x] Mobile Expo Web edit routes for existing memories and loops serialized full route objects into the URL as `memory=%5Bobject%20Object%5D` / `loop=%5Bobject%20Object%5D`; on reload or deep-link parse those truthy strings prevented `MemoryEditScreen` and `LoopEditScreen` from falling back to the intended `memoryId` / `loopId` fetch path.
+- [x] Mobile Expo Web reopened failed chats from Sessions with the stale persisted placeholder assistant message, so the thread showed an indefinite `Assistant is thinking` loader and hid the actual failure + retry UI after reopening.
 
 ## Fixed
 
@@ -47,6 +50,7 @@
 - [x] `apps/mobile/metro.config.js` now pins `@dotagents/*` workspace packages to the current worktree through `resolver.extraNodeModules`, so symlinked `node_modules` trees no longer send Expo Web to a sibling worktree's stale `@dotagents/shared` package when bundling the mobile app.
 - [x] `apps/mobile/App.tsx` now passes a web-only React Navigation linking config built in `apps/mobile/src/navigation/navigationLinking.ts`, so Expo Web writes stable screen paths like `/connection` into browser history and the browser Back button can return from `Connection` to `Settings`.
 - [x] `apps/mobile/src/screens/edit-route-params.ts` now strips non-serializable memory/loop objects from web edit navigation, while `MemoryEditScreen.tsx` and `LoopEditScreen.tsx` now ignore stale stringified route-object params and fall back to loading the selected record by ID.
+- [x] `apps/mobile/src/screens/ChatScreen.tsx` now persists settled same-length chat-message updates after a request finishes, so reopening a failed thread restores the saved error + retry state instead of the earlier blank assistant placeholder loader.
 
 ## Verified
 
@@ -76,6 +80,10 @@
 - [x] `pnpm --filter @dotagents/mobile test`
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; no new type errors from this edit-route-param fix remain.
 - [x] `git diff --check`
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-message-persistence.test.ts`
+- [x] Live Expo Web repro at `http://localhost:8130` now reopens failed chats with the saved error + retry UI visible and without the stale `Assistant is thinking` loader.
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails only on the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; the new chat persistence helper and `ChatScreen` wiring did not introduce a new type error.
+- [x] `git diff --check`
 
 ## Blocked
 
@@ -84,6 +92,7 @@
 - [ ] No remaining blocker for this iteration's selected workspace-package resolution bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web browser-history bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web edit-route-param serialization bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web reopened-failed-chat persistence bug.
 
 ## Still uncertain
 
@@ -93,6 +102,7 @@
 - [ ] Whether Expo Web now surfaces any remaining in-app runtime warnings or user-facing mobile flow regressions once the current symlinked worktree can bundle again.
 - [ ] Whether deeper Expo Web deep-link/refresh cases for edit/detail screens with route params need richer route serialization beyond the fixed `Settings` ↔ `Connection` browser-history path.
 - [ ] Whether live Expo Web refresh/back navigation for memory and loop edit screens behaves correctly against a configured remote settings backend; this iteration verified the exact serializer/parser bug and screen fallback logic without re-running a full remote-backed browser session.
+- [ ] Whether reopened successful chats without a message-count change were also previously stale for the same persistence reason; this iteration fixed the shared settled-message persistence path and verified the failure-state repro specifically.
 
 ## Candidate leads
 
@@ -100,6 +110,7 @@
 - Mobile/runtime behavior around historical `normalizeApiBaseUrl is not a function` errors.
 - Mobile Expo Web QR decoding with a real camera feed and real DotAgents QR payload once permission handling is no longer silent.
 - Mobile flow/runtime bugs that can now be inspected live again because the symlinked-worktree Expo Web bundle no longer dies resolving `@dotagents/shared`.
+- Mobile chat/session state edge cases after reopen, retry, and offline failures now that the placeholder-persistence bug is fixed.
 
 ## Evidence
 
@@ -162,3 +173,15 @@
 - After evidence: No screenshot for this runtime-free iteration. The targeted Vitest regression now proves the exact observable improvement: generated web edit URLs are `/memories/edit?memoryId=memory-123` and `/loops/edit?loopId=loop-123` with no serialized object payload, and stale parsed params like `memory: "[object Object]"` / `loop: "[object Object]"` are ignored so the screens recover via their ID-based load path instead of trusting broken route data.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` ✅ (7 tests passing, including React Navigation serializer/parser round-trips plus stale-param coercion checks); `pnpm --filter @dotagents/mobile test` ✅ (70 node tests + 62 Vitest assertions passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; `git diff --check` ✅.
 - Blockers/remaining uncertainty: I did not re-run a full live Expo Web memory/loop edit session against a configured remote settings backend in this iteration, so the evidence here is serializer/parser-based rather than screenshot-based. The exact bug that was confirmed and fixed is the polluted edit URL + stale-route-param path, not broader end-to-end server-backed editing.
+
+### Evidence ID: mobile-chat-failed-reopen-state
+
+- Scope: `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/chat-message-persistence.ts`, and `apps/mobile/src/screens/chat-message-persistence.test.ts` for persisted chat state after reopening a failed Expo Web thread from Sessions
+- Commit range: `6a051cb3b2f99b629abb31c1dc75f0de06144706..a8a6d9203fa22e3545e95b8d40cfd070ea32ab90`
+- Rationale: When a mobile chat request failed, the screen replaced the in-memory assistant placeholder with the error text and retry banner, but the persistence effect only saved sessions when the message count changed. Reopening the same thread from Sessions therefore restored the older blank assistant placeholder instead of the real failure state, misleading users with an endless `Assistant is thinking` loader and hiding the retry affordance on a core chat flow.
+- QA feedback: Deferred prior QA finding for `mobile-web-qr-scanner` evidence provenance; this iteration intentionally addressed a new runtime-confirmed chat-state bug instead.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-failed-reopen-state--before--reopened-chat--20260311.png` (viewport `1440x900`, Expo Web at `http://localhost:8130`). The screenshot shows the reopened failed thread after sending a message while disconnected, returning to Sessions, and reopening the same chat: the prior user message is visible, but the saved thread still shows `Assistant is thinking` with no visible error body, so the persisted state wrongly looks in-progress instead of failed.
+- Change: Added a small chat-message persistence helper so `ChatScreen` now persists settled same-length message updates once a request finishes instead of only persisting length changes. That preserves the final error or final response that replaces the assistant placeholder without spamming storage writes during streaming, and the new Vitest file locks the exact decision logic for placeholder append vs. streaming token churn vs. settled error replacement.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-failed-reopen-state--after--reopened-chat--20260311.png` (same `1440x900` viewport, same reopened chat surface on Expo Web). After the fix, reopening the failed thread shows the saved error text and retry UI while the stale `Assistant is thinking` loader is gone, so the persisted chat state now matches what the user actually saw before leaving the thread.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-message-persistence.test.ts` ✅ (3 tests passing for placeholder append, no-save during same-length streaming, and save-on-settled-error replacement); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors; `git diff --check` ✅; live Expo Web repro at `http://localhost:8130` ✅ now preserves the failed chat state on reopen and no longer shows the stale loader.
+- Blockers/remaining uncertainty: The exact reproduced failure-state reopen path is fixed and live-verified. I did not spend this iteration on adjacent chat reopen cases like successful same-length completions or queued-message recovery, although the same persistence path now covers those settled same-length updates too.
