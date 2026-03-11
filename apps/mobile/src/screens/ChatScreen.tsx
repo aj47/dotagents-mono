@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   Image,
   AppState,
@@ -361,6 +362,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [responding, setResponding] = useState(false);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const [headerActionsVisible, setHeaderActionsVisible] = useState(false);
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -496,6 +498,24 @@ export default function ChatScreen({ route, navigation }: any) {
     sessionStore.createNewSession();
   }, [sessionStore]);
 
+  const handleOpenHeaderActions = useCallback(() => {
+    setHeaderActionsVisible(true);
+  }, []);
+
+  const handleCloseHeaderActions = useCallback(() => {
+    setHeaderActionsVisible(false);
+  }, []);
+
+  const handleOpenSettingsFromHeaderActions = useCallback(() => {
+    setHeaderActionsVisible(false);
+    navigation.navigate('Settings');
+  }, [navigation]);
+
+  const handleKillSwitchFromHeaderActions = useCallback(async () => {
+    setHeaderActionsVisible(false);
+    await handleKillSwitch();
+  }, [handleKillSwitch]);
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
@@ -565,24 +585,6 @@ export default function ChatScreen({ route, navigation }: any) {
             <Text style={{ fontSize: 18, color: theme.colors.foreground }}>✚</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleKillSwitch}
-            accessibilityRole="button"
-            accessibilityLabel="Emergency stop - kill all agent sessions"
-            accessibilityHint="Shows a confirmation before stopping all running sessions"
-            style={styles.headerActionButton}
-          >
-            <View style={{
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: theme.colors.danger,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Text style={{ fontSize: 14, color: '#FFFFFF' }}>⏹</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
             onPress={toggleHandsFree}
             accessibilityRole="switch"
             accessibilityLabel={createSwitchAccessibilityLabel('Hands-free voice mode')}
@@ -610,18 +612,18 @@ export default function ChatScreen({ route, navigation }: any) {
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Settings')}
+            onPress={handleOpenHeaderActions}
             accessibilityRole="button"
-            accessibilityLabel="Settings"
-            accessibilityHint="Opens app settings"
+            accessibilityLabel={createButtonAccessibilityLabel('Open chat actions')}
+            accessibilityHint="Opens settings and emergency stop actions"
             style={styles.headerEdgeActionButton}
           >
-            <Text style={{ fontSize: 18, color: theme.colors.foreground }}>⚙️</Text>
+            <Text style={styles.headerOverflowActionText}>⋯</Text>
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, handsFreeEnabled, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
+  }, [navigation, handsFreeEnabled, handleNewChat, handleOpenHeaderActions, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -3051,6 +3053,57 @@ export default function ChatScreen({ route, navigation }: any) {
         onClose={() => setAgentSelectorVisible(false)}
         onOpenConnectionSettings={() => navigation.navigate('ConnectionSettings')}
       />
+      <Modal
+        visible={headerActionsVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={handleCloseHeaderActions}
+      >
+        <Pressable style={styles.headerActionsBackdrop} onPress={handleCloseHeaderActions}>
+          <View style={{ flex: 1 }} />
+        </Pressable>
+        <View style={[styles.headerActionsSheet, { paddingBottom: insets.bottom + spacing.md }]}>
+          <View style={styles.headerActionsHandle} />
+          <View style={styles.headerActionsHeader}>
+            <Text style={styles.headerActionsTitle}>Chat actions</Text>
+            <TouchableOpacity
+              style={styles.headerActionsCloseButton}
+              onPress={handleCloseHeaderActions}
+              accessibilityRole="button"
+              accessibilityLabel="Close chat actions"
+            >
+              <Text style={styles.headerActionsCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.headerActionsHelperText}>
+            Open settings or stop all running agent work without crowding the mobile header.
+          </Text>
+          <TouchableOpacity
+            style={styles.headerActionsPrimaryButton}
+            onPress={handleOpenSettingsFromHeaderActions}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Open settings')}
+            accessibilityHint="Closes this menu and opens app settings."
+          >
+            <Text style={styles.headerActionsPrimaryButtonText}>Open settings</Text>
+            <Text style={styles.headerActionsPrimaryButtonSubtext}>
+              Adjust connection, voice, and app preferences.
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerActionsDestructiveButton}
+            onPress={() => { void handleKillSwitchFromHeaderActions(); }}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Emergency stop all agent sessions')}
+            accessibilityHint="Closes this menu and asks for confirmation before stopping all running sessions on the remote server."
+          >
+            <Text style={styles.headerActionsDestructiveButtonText}>Emergency stop</Text>
+            <Text style={styles.headerActionsDestructiveButtonSubtext}>
+              Stop all running agent sessions on the remote server.
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -3067,6 +3120,105 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerActionButton,
     headerEdgeActionButton,
+    headerOverflowActionText: {
+      fontSize: 24,
+      lineHeight: 24,
+      color: theme.colors.foreground,
+      fontWeight: '700',
+    },
+    headerActionsBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    },
+    headerActionsSheet: {
+      backgroundColor: theme.colors.card,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      gap: spacing.sm,
+    },
+    headerActionsHandle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.colors.border,
+      alignSelf: 'center',
+      marginBottom: spacing.xs,
+    },
+    headerActionsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    headerActionsTitle: {
+      flex: 1,
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.colors.foreground,
+    },
+    headerActionsCloseButton: {
+      ...createMinimumTouchTargetStyle({ horizontalPadding: 12 }),
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    headerActionsCloseButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    headerActionsHelperText: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.mutedForeground,
+    },
+    headerActionsPrimaryButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.md,
+      }),
+      alignItems: 'flex-start',
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      gap: 4,
+    },
+    headerActionsPrimaryButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.foreground,
+    },
+    headerActionsPrimaryButtonSubtext: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.mutedForeground,
+    },
+    headerActionsDestructiveButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.md,
+      }),
+      alignItems: 'flex-start',
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: hexToRgba(theme.colors.danger, 0.35),
+      backgroundColor: hexToRgba(theme.colors.danger, 0.08),
+      gap: 4,
+    },
+    headerActionsDestructiveButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.danger,
+    },
+    headerActionsDestructiveButtonSubtext: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.mutedForeground,
+    },
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {
       paddingLeft: spacing.xs,

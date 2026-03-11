@@ -17,6 +17,7 @@
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] `Chats` / `Chat` header agent selector blocked-state sheet plus direct `Connection settings` escape path in Expo Web (`390x844` mobile viewport)
+- [x] `Chat -> + New Chat` header action density / overflow menu on Expo Web (`390x844` mobile viewport)
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` composer helper copy, blocked send state, and pre-send guidance in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` handsfree activation blocker and draft-fallback guidance in Expo Web (`390x844` mobile viewport)
@@ -70,6 +71,7 @@
 - [x] Disconnected `Chats -> + New Chat` emitted repeated Expo Web `Unexpected text node: . A text node cannot be a child of a <View>.` errors because blank `debugInfo` used string short-circuit rendering under a `View`
 - [x] Connection Settings QR scanner modal close button measured about `66.7x42` CSS px in Expo Web, sat low with a hardcoded `top: 60`, and read like a generic overlay dismiss instead of a tuned scanner escape action
 - [x] Connection Settings `Scan QR Code` did nothing visibly on Expo Web: no scanner modal, no close control, no inline blocker, and no browser-specific permission guidance after the tap
+- [x] `Chat -> + New Chat` packed back navigation, agent title, new-chat, emergency-stop, handsfree, and settings controls into one crowded mobile header row at `390x844`, squeezing the title area and burying secondary actions among primary ones
 
 ### Improved
 
@@ -93,6 +95,7 @@
 - [x] Disconnected `Chats -> + New Chat` empty debug-info state no longer produces Expo Web empty-text-node console noise on open or while typing
 - [x] Connection Settings QR scanner close affordance clarity, safe-area placement, and 44px touch-target coverage
 - [x] Connection Settings QR scanner web launch now opens an explicit browser-permission guidance sheet with a visible escape action instead of behaving like a dead tap
+- [x] `Chat -> + New Chat` header now keeps new-chat / handsfree visible while moving secondary settings and emergency-stop actions into a single overflow sheet on narrow mobile widths
 
 ### Verified
 
@@ -111,6 +114,7 @@
 - [x] Live Expo Web before/after evidence plus focused chat regression coverage for the disconnected `Chats -> + New Chat` empty-debug-info runtime warning at `390x844`
 - [x] Live Expo Web before/after evidence plus focused connection-settings density coverage for the QR scanner modal close affordance at `390x844`
 - [x] Live Expo Web before/after evidence plus focused QR helper/density coverage for the Connection Settings QR scanner web guidance sheet at `390x844`
+- [x] Live Expo Web before/after evidence plus focused `Chat -> + New Chat` header-density coverage for a narrow-screen overflow menu at `390x844`
 
 ### Blocked
 
@@ -124,8 +128,52 @@
 - [ ] The disconnected new-chat text-send path and default handsfree activation path are now guarded, but existing-chat retry/reconnect and sync states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
 - [ ] The disconnected `Chats -> + New Chat` empty-debug-info warning is fixed, but unrelated offline/sync console noise (`401 Unauthorized`, `ERR_CONNECTION_REFUSED`, `syncService` fetch failures) still appears during Expo Web chat passes and needs its own dedicated investigation before claiming a clean disconnected runtime.
 - [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
+- [ ] This iteration only rebalanced the `Chat -> + New Chat` header. The `Chats` list header/title width at `390x844` still needs its own dedicated density pass before the broader chat-navigation chrome is considered fully checked.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 24: move secondary chat header actions into a narrow-screen overflow sheet
+
+- Status: completed with live Expo Web before/after evidence, a focused chat-header density fix, and targeted regression coverage
+- Area:
+  - `apps/mobile/src/screens/ChatScreen.tsx` mobile `Chat -> + New Chat` header actions at `390x844`
+  - tracked Expo Web before/after screenshots for the same narrow new-chat view
+  - focused source guardrails in `apps/mobile/tests/chat-screen-density.test.js`
+- Why this area:
+  - this was a justified revisit to chat chrome, not a repeat polish pass on the earlier disconnected agent-selector blocker work: the previous runtime coverage proved the selector sheet path, but it did not verify whether the overall chat header still fit cleanly on a real narrow viewport
+  - fresh Expo Web inspection showed a concrete usability issue on a core surface: the header tried to keep back navigation, agent context, new chat, emergency stop, handsfree, and settings all visible at once, which squeezed the title area and made secondary actions compete with primary ones
+- What was investigated:
+  - live Expo Web at `390x844` from the default landing screen through `Open Chats -> New chat`
+  - the visible balance of chat-header controls before changing code, plus whether the lowest-frequency actions actually needed always-on header slots
+  - `ChatScreen` header wiring to confirm a minimal overflow-sheet handoff could preserve settings and emergency-stop access without broadening into a navigation refactor
+- Findings:
+  - the `Chat` header was visibly overcrowded on narrow mobile web: the agent/title area lost space while `Settings` and `Emergency stop` occupied the same top row as higher-frequency actions like `New chat` and handsfree
+  - both secondary actions remained useful, but they did not need permanent first-row placement on the empty/new-chat mobile state where header space is the scarcest
+  - the smallest effective fix was to keep the primary chat actions visible and move the lower-frequency settings / emergency-stop pair into a single overflow sheet
+- Change made:
+  - replaced the standalone chat-header `Settings` icon with a `⋯` overflow action on mobile chat header wiring in `ChatScreen`
+  - moved `Open settings` and `Emergency stop` into a bottom-sheet-style modal with clearer labels, helper copy, and full-width touch targets while preserving the existing kill-switch confirmation flow
+  - extended `apps/mobile/tests/chat-screen-density.test.js` to lock the new overflow trigger and sheet content so the crowded direct emergency-stop header action does not silently return
+- Verification:
+  - `node --test apps/mobile/tests/chat-screen-density.test.js`
+  - `git diff --check`
+  - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--before--new-chat-header--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--after--new-chat-header--20260311.png`
+  - live Expo Web browser automation at `390x844` confirming the overflow trigger replaced the separate settings/emergency-stop header icons and that the new sheet exposed both actions correctly
+- Follow-up checks:
+  - run a matching `Chats` list-header density pass later, since the sessions header/title area is still not explicitly verified by this narrower chat-screen fix
+  - keep widening chat coverage into existing-chat reconnect/sync states and connected agent-switching rather than continuing to polish the same empty new-chat header without new evidence
+
+Evidence
+- Evidence ID: chat-header-overflow-density
+- Scope: narrow-screen `Chat -> + New Chat` header action density in `apps/mobile/src/screens/ChatScreen.tsx`, focused source guardrails in `apps/mobile/tests/chat-screen-density.test.js`, and matched tracked Expo Web screenshots at `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--before--new-chat-header--20260311.png` and `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--after--new-chat-header--20260311.png`. This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: PENDING_AFTER_HANDOFF_COMMIT
+- Rationale: The mobile chat header is one of the highest-frequency surfaces in the app, and live Expo Web inspection showed it was trying to keep too many controls visible at once on a `390x844` viewport. Consolidating low-frequency settings and kill-switch actions into an overflow sheet resolves a real narrow-screen hierarchy problem without removing those capabilities or refactoring navigation broadly.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--before--new-chat-header--20260311.png` — `390x844` Expo Web viewport on disconnected `Open Chats -> New chat`. Before the fix, the top bar kept back navigation, the agent title chip, `New chat`, `Emergency stop`, handsfree, and `Settings` all in one cramped row, which squeezed the title area and made secondary actions visually compete with the primary chat controls.
+- Change: Updated `apps/mobile/src/screens/ChatScreen.tsx` so the chat header now exposes a single overflow trigger for secondary actions, then renders `Open settings` and `Emergency stop` inside a bottom-sheet-style modal with clearer copy and larger action rows. Added focused density guardrails in `apps/mobile/tests/chat-screen-density.test.js`.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--after--new-chat-header--20260311.png` — same `390x844` Expo Web viewport and view. After the fix, the chat header keeps the primary `New chat` and handsfree controls visible while replacing separate `Settings` / `Emergency stop` buttons with one overflow action, so the top bar reads more cleanly and the secondary actions remain available through the verified sheet.
+- Verification commands/run results: `node --test apps/mobile/tests/chat-screen-density.test.js` ✅ (7/7 passing, including the new overflow-sheet guardrail); `git diff --check` ✅; `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--before--new-chat-header--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-header-overflow-density--after--new-chat-header--20260311.png` ✅ (both curated screenshots are matched `390x844` PNGs from the same Expo Web mobile viewport); live Expo Web browser automation at `390x844` ✅ confirmed the overflow control replaced the separate settings/emergency-stop icons and that opening it exposed working `Open settings` and `Emergency stop` actions.
+- Blockers/remaining uncertainty: This pass only verifies the narrow-screen `Chat -> + New Chat` header state with the overflow sheet closed in the matched screenshot pair. The `Chats` list header still needs its own dedicated density pass, and the responding/active-session variant of the chat header with its extra spinner state has not yet been screenshot-validated.
 
 ### 2026-03-11 — Iteration 23: stop persisted handsfree-on chat from looking live while disconnected
 

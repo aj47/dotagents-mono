@@ -39,3 +39,10 @@ test('guards debug info rendering with a boolean check so empty strings do not c
 test('lets the chat header agent sheet deep-link directly to connection settings when switching is blocked', () => {
   assert.match(screenSource, /<AgentSelectorSheet[\s\S]*?visible=\{agentSelectorVisible\}[\s\S]*?onOpenConnectionSettings=\{\(\) => navigation\.navigate\('ConnectionSettings'\)\}/);
 });
+
+test('moves secondary chat header actions into an overflow sheet on narrow mobile widths', () => {
+  assert.match(screenSource, /const \[headerActionsVisible, setHeaderActionsVisible\] = useState\(false\);/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Open chat actions'\)\}/);
+  assert.match(screenSource, /<Modal[\s\S]*?visible=\{headerActionsVisible\}[\s\S]*?Chat actions[\s\S]*?Open settings[\s\S]*?Emergency stop/);
+  assert.doesNotMatch(screenSource, /accessibilityLabel="Emergency stop - kill all agent sessions"/);
+});
