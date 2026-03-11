@@ -49,6 +49,8 @@ const MAX_RESPOND_TO_USER_IMAGES = 4
 const MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES = 8 * 1024 * 1024
 const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024
 const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024
+const EXECUTE_COMMAND_MAX_BUFFER_BYTES = 10 * 1024 * 1024
+const EXECUTE_COMMAND_MAX_OUTPUT_CHARS = 10000
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
@@ -86,6 +88,38 @@ const getDecodedBase64ByteLength = (rawBase64: string): number => {
       ? 1
       : 0
   return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding)
+}
+
+const truncateExecuteCommandOutput = (stdout: string) => {
+  const normalizedStdout = stdout || ""
+  if (normalizedStdout.length <= EXECUTE_COMMAND_MAX_OUTPUT_CHARS) {
+    return { stdout: normalizedStdout, outputTruncated: false }
+  }
+
+  const half = Math.floor(EXECUTE_COMMAND_MAX_OUTPUT_CHARS / 2)
+  const totalLines = normalizedStdout.split("\n").length
+  const totalBytes = normalizedStdout.length
+  const head = normalizedStdout.substring(0, half)
+  const tail = normalizedStdout.substring(normalizedStdout.length - half)
+
+  return {
+    stdout: head +
+      `\n\n... [OUTPUT TRUNCATED: ${totalBytes} bytes, ~${totalLines} lines total. ` +
+      `Showing first ${half} + last ${half} chars. ` +
+      `Use head/tail/sed to read specific ranges, e.g.: sed -n '100,200p' file] ...\n\n` +
+      tail,
+    outputTruncated: true,
+  }
+}
+
+const isExecuteCommandStdoutMaxBufferError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const maybeError = error as { code?: unknown; message?: unknown }
+  return maybeError.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" ||
+    (typeof maybeError.message === "string" && maybeError.message.toLowerCase().includes("stdout maxbuffer length exceeded"))
 }
 
 const getDataImageBytesFromUrl = (url: string): number | null => {
@@ -838,7 +872,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     try {
       const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string } = {
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
+        maxBuffer: EXECUTE_COMMAND_MAX_BUFFER_BYTES,
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       }
 
@@ -851,25 +885,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
 
       const { stdout, stderr } = await execAsync(command, execOptions)
-
-      // Truncate large outputs to prevent context bloat
-      // Keep first 5K + last 5K chars so agent sees both beginning and end
-      const MAX_OUTPUT_CHARS = 10000
-      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
-      let truncatedStdout = stdout || ""
-      let outputTruncated = false
-      if (truncatedStdout.length > MAX_OUTPUT_CHARS) {
-        const totalLines = truncatedStdout.split("\n").length
-        const totalBytes = truncatedStdout.length
-        const head = truncatedStdout.substring(0, HALF)
-        const tail = truncatedStdout.substring(truncatedStdout.length - HALF)
-        truncatedStdout = head +
-          `\n\n... [OUTPUT TRUNCATED: ${totalBytes} bytes, ~${totalLines} lines total. ` +
-          `Showing first ${HALF} + last ${HALF} chars. ` +
-          `Use head/tail/sed to read specific ranges, e.g.: sed -n '100,200p' file] ...\n\n` +
-          tail
-        outputTruncated = true
-      }
+      const { stdout: truncatedStdout, outputTruncated } = truncateExecuteCommandOutput(stdout || "")
 
       return {
         content: [
@@ -890,21 +906,35 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     } catch (error: any) {
       // exec errors include stdout/stderr in the error object
-      let stdout = error.stdout || ""
+      const stdout = error.stdout || ""
       const stderr = error.stderr || ""
       const errorMessage = error.message || String(error)
       const exitCode = error.code
+      const { stdout: truncatedStdout, outputTruncated } = truncateExecuteCommandOutput(stdout)
 
-      // Truncate large error outputs too
-      const MAX_OUTPUT_CHARS = 10000
-      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
-      if (stdout.length > MAX_OUTPUT_CHARS) {
-        const totalLines = stdout.split("\n").length
-        const head = stdout.substring(0, HALF)
-        const tail = stdout.substring(stdout.length - HALF)
-        stdout = head +
-          `\n\n... [OUTPUT TRUNCATED: ${stdout.length} bytes, ~${totalLines} lines. Use head/tail/sed to read specific ranges] ...\n\n` +
-          tail
+      if (isExecuteCommandStdoutMaxBufferError(error) && truncatedStdout.trim().length > 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                command,
+                cwd: cwd || process.cwd(),
+                skillName,
+                stdout: truncatedStdout,
+                stderr,
+                outputTruncated: true,
+                partialOutput: true,
+                bufferExceeded: true,
+                warning: "Command output exceeded the execute_command buffer, so only partial stdout is shown.",
+                hint: "Narrow the command with head/tail/sed or more specific globs if you need precise matches.",
+                exitCode,
+              }, null, 2),
+            },
+          ],
+          isError: false,
+        }
       }
 
       return {
@@ -918,8 +948,9 @@ const toolHandlers: Record<string, ToolHandler> = {
               skillName,
               error: errorMessage,
               exitCode,
-              stdout,
+              stdout: truncatedStdout,
               stderr,
+              ...(outputTruncated ? { outputTruncated: true } : {}),
             }, null, 2),
           },
         ],
