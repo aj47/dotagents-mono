@@ -54,3 +54,9 @@ test('chat screen waits for hydrated sessions, avoids disconnected phantom sessi
   assert.match(chatScreenSource, /shouldAutoCreateChatSession\(\{[\s\S]*?canComposeChat,[\s\S]*?currentSessionId,[\s\S]*?deletingSessionCount:\s*sessionStore\.deletingSessionIds\.size,[\s\S]*?\}\)/);
   assert.match(chatScreenSource, /currentSession = sessionStore\.createNewSession\(\);/);
 });
+
+test('chat screen disables the header new-chat action while disconnected so it cannot create phantom sessions', () => {
+  assert.match(chatScreenSource, /const canStartManualNewChat = shouldAllowManualChatSessionCreation\(\{ canComposeChat \}\);/);
+  assert.match(chatScreenSource, /if \(!canStartManualNewChat\) \{\s*return;\s*\}/);
+  assert.match(chatScreenSource, /<TouchableOpacity[\s\S]*?onPress=\{handleNewChat\}[\s\S]*?disabled=\{!canStartManualNewChat\}[\s\S]*?accessibilityState=\{\{ disabled: !canStartManualNewChat \}\}/);
+});

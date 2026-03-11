@@ -47,6 +47,8 @@
 - [x] Live-reproduced a new Expo Web disconnected `/chat` phantom-session bug at `http://localhost:8230` in a fresh `390x844` browser context: visiting `/chat` without connection settings silently created a persisted empty `New Chat` thread, and returning to `/sessions` showed that bogus row plus `Clear All` even though chat setup was still blocked.
 - [x] Re-reviewed `bug-fix.md` plus the current QA feedback from `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt`, explicitly deferred the outstanding `mobile-chat-direct-no-session` screenshot viewport provenance finding for this iteration, and launched Expo Web at `http://localhost:8240` for a fresh mobile-web connection-state repro.
 - [x] Live-reproduced a new Expo Web whitespace-credential bug at `http://localhost:8240` in a fresh `390x844` browser context by seeding `localStorage.app_config_v1` with `baseUrl: "https://api.openai.com/v1"` and `apiKey: "   "`: `Settings` incorrectly showed `Connected`, enabled `Go to Chats`, and then `/sessions` immediately contradicted that state with the missing-connection setup gate.
+- [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred older unresolved ledger follow-ups for this iteration, and launched Expo Web at `http://localhost:8250/chat` to inspect a fresh disconnected Chat header flow.
+- [x] Live-reproduced a new Expo Web disconnected `/chat` header-action bug at `http://localhost:8250/chat` in a fresh `390x844` browser context: the screen correctly showed setup guidance, but the visible header `+` still created and persisted an empty `New Chat` session, so returning to `/sessions` showed a phantom thread even though chat setup remained blocked.
 
 ## Not yet checked
 
@@ -73,6 +75,7 @@
 - [x] Mobile Expo Web let a configured user deep-link straight to `/chat` with no active session, showed a normal enabled composer, and only surfaced `Error: No session available` after pressing `Send` because the first-load session hydration logic incorrectly treated `currentSessionId === null` as an already-loaded stable state.
 - [x] Mobile Expo Web let a disconnected user deep-link straight to `/chat`, and the screen's no-session hydration path still created and persisted an empty `New Chat` session even though the same user was blocked from composing or sending; returning to `/sessions` then showed a phantom chat row and `Clear All` action that should never exist before setup.
 - [x] Mobile Expo Web loaded whitespace-only stored API keys as truthy connection state, so `Settings` and `Connection` could show `Connected` and enable `Go to Chats` while the actual chat/session flows still treated the same config as missing because their gate trims whitespace.
+- [x] Mobile Expo Web still left the `/chat` header `+` action enabled while disconnected, so tapping it from the setup-required Chat screen created and persisted an empty `New Chat` thread; returning to `/sessions` then showed a phantom row and `Clear All` even though no connection settings existed and chat creation should have remained blocked.
 
 ## Fixed
 
@@ -99,6 +102,7 @@
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now waits for `sessionStore.ready` before deciding whether chat hydration is complete and only skips repeat hydration work for non-null session IDs, so a configured direct visit to `/chat` with no current session auto-creates the first chat instead of leaving the composer in a dead-end `No session available` state.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now only auto-creates a first session when chat is actually configured, so disconnected direct visits to `/chat` no longer persist a bogus empty `New Chat` thread; `apps/mobile/src/screens/chat-session-hydration.ts` and its new Vitest coverage lock that gating logic so configured direct `/chat` recovery and delete-in-progress behavior still work.
 - [x] `apps/mobile/src/store/config.ts` now trims stored API keys during normalization, and the remaining mobile connection-state surfaces (`SettingsScreen`, `ConnectionSettingsScreen`, edit screens, and `AgentSelectorSheet`) now reuse `hasConfiguredConnection(config)` instead of raw truthy `config.baseUrl && config.apiKey` checks, so whitespace-only saved credentials no longer look connected or bootstrap API clients.
+- [x] `apps/mobile/src/screens/ChatScreen.tsx` now gates the manual header `+` action behind the same missing-connection check already used for the disconnected composer, so disconnected users can no longer create a persisted empty chat from `/chat`; `apps/mobile/src/screens/chat-session-hydration.ts` and its tests now also lock the manual-creation decision explicitly.
 
 ## Verified
 
@@ -188,6 +192,12 @@
 - [x] Live Expo Web verification at `http://localhost:8240` now normalizes the same whitespace-only stored API key to a disconnected state, shows `Not connected` on both `Settings` and `Connection`, and keeps `Go to Chats` disabled in the same fresh `390x844` browser context.
 - [x] Curated matching before/after screenshots for the whitespace-only connection-state bug were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this whitespace-credential fix; no new type error was introduced by the connection-state normalization changes.
+- [x] `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js`
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-session-hydration.test.ts`
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] `git diff --check`
+- [x] Live Expo Web verification at `http://localhost:8250` now shows the disconnected `/chat` header `+` action as disabled in the same fresh `390x844` browser context, and returning to `/sessions` after attempting the same flow leaves no phantom `New Chat` row.
+- [x] Curated matching before/after screenshots for the disconnected `/chat` header phantom-session bug were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 
 ## Blocked
 
@@ -208,6 +218,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web configured direct `/chat` no-session bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/chat` phantom-session bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web whitespace-only connection-state bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/chat` header phantom-session bug.
 
 ## Still uncertain
 
@@ -224,6 +235,7 @@
 - [ ] Whether any other mobile chat/session deep-link paths still accidentally treat `null` session state as already hydrated after async store load; this iteration fixed the directly confirmed configured `/chat` no-session case specifically.
 - [ ] Whether disconnected users with an already-selected historical session can still hit any stale session-selection edge case after the new no-auto-create guard; this iteration verified the fresh no-session `/chat` → `/sessions` phantom-thread repro specifically.
 - [ ] Whether any desktop or other non-mobile surfaces still use raw truthy connection checks instead of `hasConfiguredConnection`, now that the confirmed whitespace-only mismatch has been removed from the reproduced mobile screens.
+- [ ] Whether any other manual chat-creation entry points on mobile still bypass the disconnected setup gate now that both auto-create and the Chat header `+` action are fixed.
 
 ## Candidate leads
 
@@ -236,6 +248,7 @@
 - Mobile Expo Web disconnected states where a route still renders primary creation actions before setup is complete.
 - Mobile Expo Web flows that pass transient user-entered text or other ephemeral action state through route params, especially if they can still bleed into browser history after the `Chat.initialMessage` fix.
 - Any remaining surfaces that derive `connected` state from raw config truthiness instead of the shared trimmed `hasConfiguredConnection()` helper, especially outside the reproduced mobile screens fixed this iteration.
+- Mobile chat/session actions that can still create local state while disconnected, especially any remaining manual entry points beyond the now-fixed direct `/chat` auto-create path and header `+` action.
 
 ## Evidence
 
@@ -454,3 +467,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-disconnected-phantom-session--after--sessions-list--20260311.png` (same `390x844` viewport, same fresh cleared Expo Web `/sessions` → `/chat` → `/sessions` flow). The screenshot shows `/sessions` remaining in the correct disconnected empty state after the same repro path, and live verification confirmed there is no phantom `New Chat` row and no `Clear All` action, which is preferable because the app no longer invents chat history before setup is complete.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-session-hydration.test.ts` ✅ (3 tests passing for disconnected, configured, and delete-in-progress session-creation decisions); `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (6 tests passing, including the refreshed direct-`/chat` source assertion); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors and no new `ChatScreen` / `chat-session-hydration` type failures; `pnpm --filter @dotagents/mobile test` ✅ (81 Node tests + 78 Vitest assertions passing across the mobile suite); `git diff --check` ✅; live Expo Web verification at `http://localhost:8230` ✅ in a fresh `390x844` browser context kept `/sessions` empty after `/sessions` → `/chat` → `/sessions` while disconnected.
 - Blockers/remaining uncertainty: The exact disconnected no-session `/chat` phantom-thread repro is fixed and live-verified on Expo Web. I did not broaden this iteration into every disconnected historical-session or native-app chat hydration edge case, because those are separate follow-ups beyond the directly reproduced phantom-session bug.
+
+### Evidence ID: mobile-chat-plus-phantom-session
+
+- Scope: `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/chat-session-hydration.ts`, `apps/mobile/src/screens/chat-session-hydration.test.ts`, and `apps/mobile/tests/chat-connection-gate.test.js` for the disconnected Expo Web `/chat` header `+` action.
+- Commit range: `eab46e870ff1a2a320bb42fc96e2b2fe151b7f3f..PENDING_HEAD`
+- Rationale: The earlier disconnected `/chat` phantom-session fix stopped auto-creation on first load, but the same surface still left a visible enabled header `+` action that manually created and persisted an empty `New Chat` session. That contradicted the setup-required state shown in the composer, polluted `/sessions` with fake chat history before onboarding was complete, and made a core chat surface look partially usable when it was not.
+- QA feedback: The current QA feedback file is absent; older unresolved ledger follow-ups were explicitly deferred for this iteration so this pass could address a newly reproduced runtime-confirmed chat-state bug with clearer immediate user impact.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-plus-phantom-session--before--sessions-list--20260311.png` (viewport `390x844`, fresh cleared Expo Web browser context at `http://localhost:8250`). The screenshot shows the bad post-repro `/sessions` state after opening disconnected `/chat`, tapping the header `+`, and returning via the back arrow: a bogus empty `New Chat` row plus `Clear All` are visible even though the chat surface simultaneously said connection settings were required, which is insufficient because the app should not invent persistent chat history before setup.
+- Change: Added an explicit `shouldAllowManualChatSessionCreation()` helper alongside the existing chat hydration helper, then wired `ChatScreen.tsx` to derive `canStartManualNewChat` from the same trimmed missing-connection gate already used for the disconnected composer. The header `+` action now exits early when setup is incomplete, renders disabled styling plus disabled accessibility state, and no longer creates a session while disconnected. Focused regression coverage now locks both the executable helper behavior and the header-action gate in the existing chat connection tests.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-plus-phantom-session--after--sessions-list--20260311.png` (same `390x844` viewport and same fresh disconnected `/chat` → attempted header `+` → `/sessions` flow). After the fix, the header `+` shows as disabled on `/chat`, attempting the same flow leaves `/sessions` in the correct empty disconnected state, and no phantom `New Chat` row appears, which is preferable because the visible chat setup gate and the persisted session state now agree.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (7 tests passing, including the new source-level assertion that the disconnected header `+` action is disabled and guarded); `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-session-hydration.test.ts` ✅ (5 tests passing, including the new executable manual-creation gate assertions); `pnpm --filter @dotagents/mobile test` ✅ (84 Node tests + 81 Vitest assertions passing across the mobile suite after the helper and header gate change); `git diff --check` ✅; live Expo Web verification at `http://localhost:8250` ✅ in a fresh `390x844` browser context showed the disconnected `/chat` header `+` as disabled, produced no visible state change when attempted, and left `/sessions` without a phantom `New Chat` row.
+- Blockers/remaining uncertainty: The exact disconnected `/chat` header `+` phantom-session repro is fixed and live-verified on Expo Web. I did not expand this iteration into every historical-session or native-app disconnected chat edge case, so any remaining manual creation paths outside this reproduced header action remain follow-up candidates rather than part of this validated fix.

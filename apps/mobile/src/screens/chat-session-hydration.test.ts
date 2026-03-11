@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { shouldAutoCreateChatSession } from './chat-session-hydration';
+import {
+  shouldAllowManualChatSessionCreation,
+  shouldAutoCreateChatSession,
+} from './chat-session-hydration';
 
 describe('shouldAutoCreateChatSession', () => {
   it('does not auto-create a session for disconnected direct /chat visits', () => {
@@ -31,5 +34,23 @@ describe('shouldAutoCreateChatSession', () => {
         deletingSessionCount: 1,
       }),
     ).toBe(false);
+  });
+});
+
+describe('shouldAllowManualChatSessionCreation', () => {
+  it('blocks the chat header new-chat action until connection settings are configured', () => {
+    expect(
+      shouldAllowManualChatSessionCreation({
+        canComposeChat: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('allows the chat header new-chat action once chat is configured', () => {
+    expect(
+      shouldAllowManualChatSessionCreation({
+        canComposeChat: true,
+      }),
+    ).toBe(true);
   });
 });

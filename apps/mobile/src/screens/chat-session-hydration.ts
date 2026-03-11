@@ -7,3 +7,9 @@ export function shouldAutoCreateChatSession(options: {
 
   return canComposeChat && currentSessionId === null && deletingSessionCount === 0;
 }
+
+export function shouldAllowManualChatSessionCreation(options: {
+  canComposeChat: boolean;
+}): boolean {
+  return options.canComposeChat;
+}

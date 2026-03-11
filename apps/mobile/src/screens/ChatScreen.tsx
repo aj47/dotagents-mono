@@ -37,7 +37,10 @@ import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
-import { shouldAutoCreateChatSession } from './chat-session-hydration';
+import {
+  shouldAllowManualChatSessionCreation,
+  shouldAutoCreateChatSession,
+} from './chat-session-hydration';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
@@ -309,6 +312,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const canComposeChat = hasConfiguredConnection(config);
+  const canStartManualNewChat = shouldAllowManualChatSessionCreation({ canComposeChat });
   const openConnectionSettings = useCallback(() => {
     navigation.navigate('ConnectionSettings');
   }, [navigation]);
@@ -499,6 +503,10 @@ export default function ChatScreen({ route, navigation }: any) {
   };
 
   const handleNewChat = useCallback(() => {
+    if (!canStartManualNewChat) {
+      return;
+    }
+
     // Reset all UI states unconditionally when creating a new chat
     // This ensures the new session starts with a clean slate, even if
     // an old request is still in-flight (its callbacks will be ignored
@@ -507,7 +515,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setConnectionState(null);
     setDebugInfo('');
     sessionStore.createNewSession();
-  }, [sessionStore]);
+  }, [canStartManualNewChat, sessionStore]);
 
   useLayoutEffect(() => {
     navigation?.setOptions?.({
@@ -570,10 +578,17 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           <TouchableOpacity
             onPress={handleNewChat}
+            disabled={!canStartManualNewChat}
             accessibilityRole="button"
             accessibilityLabel="Start new chat"
-            accessibilityHint="Creates a new empty conversation"
-            style={styles.headerActionButton}
+            accessibilityHint={canStartManualNewChat
+              ? 'Creates a new empty conversation'
+              : 'Finish connection setup before starting a new chat.'}
+            accessibilityState={{ disabled: !canStartManualNewChat }}
+            style={[
+              styles.headerActionButton,
+              !canStartManualNewChat && styles.headerActionButtonDisabled,
+            ]}
           >
             <Text style={{ fontSize: 18, color: theme.colors.foreground }}>✚</Text>
           </TouchableOpacity>
@@ -632,7 +647,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles, canStartManualNewChat]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -3091,6 +3106,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: 2,
     },
     headerActionButton,
+    headerActionButtonDisabled: {
+      opacity: 0.45,
+    },
     headerEdgeActionButton,
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {
