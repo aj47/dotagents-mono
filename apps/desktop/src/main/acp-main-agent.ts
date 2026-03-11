@@ -211,6 +211,14 @@ function extractRespondToUserContentFromArgs(args: unknown): string | undefined 
   return combined.length > 0 ? combined : undefined
 }
 
+function extractMarkWorkCompleteSummaryFromArgs(args: unknown): string | undefined {
+  if (!args || typeof args !== "object") return undefined
+
+  const parsedArgs = args as Record<string, unknown>
+  const summary = typeof parsedArgs.summary === "string" ? parsedArgs.summary.trim() : ""
+  return summary.length > 0 ? summary : undefined
+}
+
 function normalizeAcpToolName(name: string | undefined): string | undefined {
   if (!name) return undefined
 
@@ -266,13 +274,59 @@ function deriveAcpUserResponseState(
   }
 }
 
-function pruneTrailingAssistantTextAfterUserResponse(
+function deriveAcpCompletionState(
   conversationHistory: ConversationHistoryMessage[],
-  lastResponseMessageIndex: number | undefined,
-): void {
-  if (typeof lastResponseMessageIndex !== "number") return
+  startIndex = 0,
+): {
+  completionSummary?: string
+  lastCompletionMessageIndex?: number
+} {
+  let completionSummary: string | undefined
+  let lastCompletionMessageIndex: number | undefined
 
-  while (conversationHistory.length > lastResponseMessageIndex + 1) {
+  for (let index = Math.max(0, startIndex); index < conversationHistory.length; index += 1) {
+    const message = conversationHistory[index]
+    if (message.role !== "assistant" || !message.toolCalls?.length) continue
+
+    for (const toolCall of message.toolCalls) {
+      if (normalizeAcpToolName(toolCall.name) !== MARK_WORK_COMPLETE_TOOL) continue
+      lastCompletionMessageIndex = index
+      completionSummary = extractMarkWorkCompleteSummaryFromArgs(toolCall.arguments) || completionSummary
+    }
+  }
+
+  return {
+    completionSummary,
+    lastCompletionMessageIndex,
+  }
+}
+
+function looksLikeAcpToolScaffoldingText(text: string | undefined): boolean {
+  if (typeof text !== "string") return false
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  return /^\[[a-z0-9_.:-]+\]\s*/i.test(trimmed)
+}
+
+function clearAssistantToolScaffoldingContent(
+  conversationHistory: ConversationHistoryMessage[],
+  startIndex = 0,
+): void {
+  for (let index = Math.max(0, startIndex); index < conversationHistory.length; index += 1) {
+    const message = conversationHistory[index]
+    if (message.role !== "assistant" || !message.toolCalls?.length) continue
+    if (!looksLikeAcpToolScaffoldingText(message.content)) continue
+    message.content = ""
+  }
+}
+
+function pruneTrailingPlainAssistantTextAfterMessage(
+  conversationHistory: ConversationHistoryMessage[],
+  lastMessageIndex: number | undefined,
+): void {
+  if (typeof lastMessageIndex !== "number") return
+
+  while (conversationHistory.length > lastMessageIndex + 1) {
     const lastEntry = conversationHistory[conversationHistory.length - 1]
     if (!lastEntry) return
     if (lastEntry.role !== "assistant") return
@@ -771,19 +825,33 @@ export async function processTranscriptWithACPAgent(
       const promptContext = buildProfileContext(profileSnapshot, ACP_BUILTIN_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
+      clearAssistantToolScaffoldingContent(conversationHistory, promptConversationStartIndex)
+
       const { userResponse, lastResponseMessageIndex } = deriveAcpUserResponseState(
         conversationHistory,
         promptConversationStartIndex,
       )
+      const { completionSummary, lastCompletionMessageIndex } = deriveAcpCompletionState(
+        conversationHistory,
+        promptConversationStartIndex,
+      )
       if (userResponse) {
-        pruneTrailingAssistantTextAfterUserResponse(conversationHistory, lastResponseMessageIndex)
+        pruneTrailingPlainAssistantTextAfterMessage(conversationHistory, lastResponseMessageIndex)
+      } else if (typeof lastCompletionMessageIndex === "number") {
+        pruneTrailingPlainAssistantTextAfterMessage(conversationHistory, lastCompletionMessageIndex)
       }
 
-      const completedSuccessfully = result.success || !!userResponse
-      // Use accumulated text if result.response is empty but we received streaming content
-      const finalResponse = userResponse || result.response || accumulatedText || undefined
+      const cleanPromptResponse = [result.response, accumulatedText].find(
+        (value): value is string => typeof value === "string" && value.trim().length > 0 && !looksLikeAcpToolScaffoldingText(value),
+      )
+      const usedCompletionSummaryFallback = !userResponse && !!completionSummary && !cleanPromptResponse
+      const completedSuccessfully = result.success || !!userResponse || !!completionSummary
+      const finalResponse = userResponse || cleanPromptResponse || completionSummary || undefined
 
-      if (finalResponse && !userResponse && !sawAssistantTextBlock) {
+      if (finalResponse && !userResponse && usedCompletionSummaryFallback) {
+        appendAssistantText(finalResponse, Date.now())
+        accumulatedText = finalResponse
+      } else if (finalResponse && !userResponse && !sawAssistantTextBlock) {
         appendAssistantText(finalResponse, Date.now())
       } else if (finalResponse && !userResponse && accumulatedText && finalResponse.startsWith(accumulatedText)) {
         appendAssistantText(finalResponse.slice(accumulatedText.length), Date.now())

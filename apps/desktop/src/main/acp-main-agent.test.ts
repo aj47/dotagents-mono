@@ -525,8 +525,92 @@ describe("acp-main-agent", () => {
     )
     expect(
       mockAddMessageToConversation.mock.calls.some(
-        ([, content, role]: [string, string, string]) =>
-          role === "assistant" && content.includes("couldn't complete the request after multiple attempts"),
+        (call: unknown[]) => {
+          const content = call[1]
+          const role = call[2]
+          return role === "assistant" && typeof content === "string" && content.includes("couldn't complete the request after multiple attempts")
+        },
+      ),
+    ).toBe(false)
+  })
+
+  it("falls back to mark_work_complete summary when ACP only returns raw tool scaffolding text", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+    const rawToolScaffolding = '[list_repeat_tasks] {"success":true,"tasks":[{"id":"weekly-memory-hygiene"}]}'
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        content: [{ type: "text", text: rawToolScaffolding }],
+        isComplete: false,
+      })
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-complete",
+          title: "Tool: mark_work_complete",
+          status: "completed",
+          rawInput: { summary: "Reported the enabled repeat tasks to the user." },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        content: [{ type: "text", text: rawToolScaffolding }],
+        isComplete: false,
+      })
+
+      return {
+        success: true,
+        response: rawToolScaffolding,
+      }
+    })
+
+    const result = await processTranscriptWithACPAgent("Are there any repeat tasks that should be turned on?", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      response: "Reported the enabled repeat tasks to the user.",
+      error: undefined,
+    }))
+
+    const completedUpdate = updates.at(-1)
+    expect(completedUpdate).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: "Reported the enabled repeat tasks to the user.",
+    }))
+    expect(
+      completedUpdate?.conversationHistory?.some(
+        (entry: any) => entry.role === "assistant" && typeof entry.content === "string" && entry.content.includes("[list_repeat_tasks]"),
+      ),
+    ).toBe(false)
+    expect(completedUpdate?.conversationHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "assistant",
+          content: "",
+          toolCalls: [expect.objectContaining({ name: "mark_work_complete" })],
+        }),
+        expect.objectContaining({
+          role: "assistant",
+          content: "Reported the enabled repeat tasks to the user.",
+        }),
+      ]),
+    )
+    expect(
+      mockAddMessageToConversation.mock.calls.some(
+        (call: unknown[]) => {
+          const content = call[1]
+          return typeof content === "string" && content.includes("[list_repeat_tasks]")
+        },
       ),
     ).toBe(false)
   })
