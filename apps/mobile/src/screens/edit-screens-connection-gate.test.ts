@@ -155,10 +155,12 @@ async function loadEditScreens(runtime: ReturnType<typeof createHookRuntime>) {
     getLoopEditRouteContext: () => ({ loopFromRoute: undefined, effectiveLoopId: undefined }),
   }));
 
+  const agentModule = await import('./AgentEditScreen');
   const memoryModule = await import('./MemoryEditScreen');
   const loopModule = await import('./LoopEditScreen');
 
   return {
+    AgentEditScreen: agentModule.default,
     MemoryEditScreen: memoryModule.default,
     LoopEditScreen: loopModule.default,
     navigation,
@@ -172,6 +174,42 @@ afterEach(() => {
 });
 
 describe('disconnected edit screens', () => {
+  it('turns disconnected agent edit into setup guidance before the user can draft unsavable changes', async () => {
+    const runtime = createHookRuntime();
+    const { AgentEditScreen, navigation } = await loadEditScreens(runtime);
+
+    let tree = runtime.render(AgentEditScreen, { navigation, route: { params: undefined } });
+    runtime.commitEffects();
+    tree = runtime.render(AgentEditScreen, { navigation, route: { params: undefined } });
+
+    expect(getText(tree)).toContain('Connection settings are required before you can create or edit agents.');
+
+    const inputs = findNodes(tree, node => node?.type === 'TextInput');
+    expect(inputs).toHaveLength(4);
+    inputs.forEach(input => expect(input.props.editable).toBe(false));
+
+    const connectionButtons = findNodes(
+      tree,
+      node => node?.type === 'TouchableOpacity' && String(node.props?.accessibilityLabel ?? '').includes('connection for this agent'),
+    );
+    expect(connectionButtons).toHaveLength(4);
+    connectionButtons.forEach(button => {
+      expect(button.props.disabled).toBe(true);
+      expect(button.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    const toggles = findNodes(tree, node => node?.type === 'Switch');
+    expect(toggles).toHaveLength(2);
+    toggles.forEach(toggle => expect(toggle.props.disabled).toBe(true));
+
+    const cta = findPressableByText(tree, 'Open Connection Settings');
+    expect(cta).toBeTruthy();
+    expect(cta.props.disabled).toBe(false);
+    cta.props.onPress();
+
+    expect(navigation.navigate).toHaveBeenCalledWith('ConnectionSettings');
+  });
+
   it('turns disconnected memory edit into an actionable setup gate instead of an unsavable draft form', async () => {
     const runtime = createHookRuntime();
     const { MemoryEditScreen, navigation } = await loadEditScreens(runtime);

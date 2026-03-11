@@ -13,8 +13,9 @@ test('explains agent connection types and exposes them as selected-state buttons
   assert.match(screenSource, /Uses the built-in DotAgents runtime with this profile’s prompts and settings\./);
   assert.match(screenSource, /Launches an ACP-compatible local agent command for delegation and tool work\./);
   assert.match(screenSource, /Connects to an external HTTP agent endpoint by URL\./);
+  assert.match(screenSource, /const isGeneralFieldsDisabled = isFormDisabled \|\| isBuiltInAgent;/);
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(`Use \$\{ct\.label\} connection for this agent`\)/);
-  assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isBuiltInAgent \}\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isGeneralFieldsDisabled \}\}/);
 });
 
 test('shows local launch fields for ACP and stdio while keeping Base URL remote-only', () => {

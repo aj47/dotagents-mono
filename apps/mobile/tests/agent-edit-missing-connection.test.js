@@ -10,11 +10,15 @@ const screenSource = fs.readFileSync(
 
 test('agent edit surfaces missing-connection guidance instead of silently no-oping', () => {
   assert.match(screenSource, /if \(!settingsClient\) \{[\s\S]*?setError\('Configure Base URL and API key in Settings before saving'\);[\s\S]*?return;[\s\S]*?\}/);
-  assert.match(screenSource, /\{!settingsClient && \([\s\S]*?Configure Base URL and API key in Settings to save changes\.[\s\S]*?\)\}/);
+  assert.match(screenSource, /\{!settingsClient && \([\s\S]*?Connection settings are required before you can create or edit agents\.[\s\S]*?\)\}/);
+  assert.match(screenSource, /const primaryActionLabel = !isConnectionConfigured[\s\S]*?'Open Connection Settings'/);
+  assert.match(screenSource, /onPress=\{isConnectionConfigured \? handleSave : openConnectionSettings\}/);
 });
 
-test('agent edit disables the primary save action until connection settings exist', () => {
-  assert.match(screenSource, /const isSaveDisabled = isSaving \|\| !settingsClient;/);
-  assert.match(screenSource, /style=\{\[styles\.saveButton, isSaveDisabled && styles\.saveButtonDisabled\]\}/);
-  assert.match(screenSource, /disabled=\{isSaveDisabled\}/);
+test('agent edit disables form controls while disconnected instead of letting users draft unsavable changes', () => {
+  assert.match(screenSource, /const isFormDisabled = isSaving \|\| !isConnectionConfigured;/);
+  assert.match(screenSource, /const isGeneralFieldsDisabled = isFormDisabled \|\| isBuiltInAgent;/);
+  assert.match(screenSource, /editable=\{!isGeneralFieldsDisabled\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isGeneralFieldsDisabled \}\}/);
+  assert.match(screenSource, /disabled=\{isFormDisabled\}/);
 });

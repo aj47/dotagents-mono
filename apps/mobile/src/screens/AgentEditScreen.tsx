@@ -178,12 +178,23 @@ export default function AgentEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const openConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
+
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
   }, []);
 
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
-  const isSaveDisabled = isSaving || !settingsClient;
+  const isConnectionConfigured = Boolean(settingsClient);
+  const isFormDisabled = isSaving || !isConnectionConfigured;
+  const isGeneralFieldsDisabled = isFormDisabled || isBuiltInAgent;
+  const primaryActionLabel = !isConnectionConfigured
+    ? 'Open Connection Settings'
+    : isEditing
+      ? 'Save Changes'
+      : 'Create Agent';
 
   // Check if connection fields should be shown
   const showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio';
@@ -211,7 +222,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       )}
 
       {!settingsClient && (
-        <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+        <Text style={styles.helperText}>Connection settings are required before you can create or edit agents.</Text>
       )}
 
       {isBuiltInAgent && (
@@ -222,23 +233,23 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       <Text style={styles.label}>Display Name *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFormDisabled && styles.inputDisabled]}
         value={formData.displayName}
         onChangeText={v => updateField('displayName', v)}
         placeholder="My Agent"
         placeholderTextColor={theme.colors.mutedForeground}
-        editable={!isBuiltInAgent}
+        editable={!isGeneralFieldsDisabled}
       />
 
       <Text style={styles.label}>Description</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFormDisabled && styles.inputDisabled]}
         value={formData.description}
         onChangeText={v => updateField('description', v)}
         placeholder="What this agent does..."
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
-        editable={!isBuiltInAgent}
+        editable={!isGeneralFieldsDisabled}
       />
 
       <Text style={styles.label}>Connection Type</Text>
@@ -255,8 +266,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${ct.label} connection for this agent`)}
             accessibilityHint={formData.connectionType === ct.value ? `Currently selected. ${ct.description}` : ct.description}
-            accessibilityState={{ selected: formData.connectionType === ct.value, disabled: isBuiltInAgent }}
-            disabled={isBuiltInAgent}
+            accessibilityState={{ selected: formData.connectionType === ct.value, disabled: isGeneralFieldsDisabled }}
+            disabled={isGeneralFieldsDisabled}
           >
             <View style={styles.connectionTypeOptionInfo}>
               <Text style={[
@@ -281,33 +292,33 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <>
           <Text style={styles.label}>Command</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isFormDisabled && styles.inputDisabled]}
             value={formData.connectionCommand}
             onChangeText={v => updateField('connectionCommand', v)}
             placeholder="node"
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
-            editable={!isBuiltInAgent}
+            editable={!isGeneralFieldsDisabled}
           />
           <Text style={styles.label}>Arguments</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isFormDisabled && styles.inputDisabled]}
             value={formData.connectionArgs}
             onChangeText={v => updateField('connectionArgs', v)}
             placeholder="agent.js --port 3000"
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
-            editable={!isBuiltInAgent}
+            editable={!isGeneralFieldsDisabled}
           />
           <Text style={styles.label}>Working Directory</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isFormDisabled && styles.inputDisabled]}
             value={formData.connectionCwd}
             onChangeText={v => updateField('connectionCwd', v)}
             placeholder="/path/to/agent"
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
-            editable={!isBuiltInAgent}
+            editable={!isGeneralFieldsDisabled}
           />
         </>
       )}
@@ -316,21 +327,21 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <>
           <Text style={styles.label}>Base URL</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isFormDisabled && styles.inputDisabled]}
             value={formData.connectionBaseUrl}
             onChangeText={v => updateField('connectionBaseUrl', v)}
             placeholder="http://localhost:3000"
             placeholderTextColor={theme.colors.mutedForeground}
             autoCapitalize="none"
             keyboardType="url"
-            editable={!isBuiltInAgent}
+            editable={!isGeneralFieldsDisabled}
           />
         </>
       )}
 
       <Text style={styles.label}>System Prompt</Text>
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[styles.input, styles.textArea, isFormDisabled && styles.inputDisabled]}
         value={formData.systemPrompt}
         onChangeText={v => updateField('systemPrompt', v)}
         placeholder="You are a helpful assistant..."
@@ -338,12 +349,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={4}
         textAlignVertical="top"
-        editable={!isBuiltInAgent}
+        editable={!isGeneralFieldsDisabled}
       />
 
       <Text style={styles.label}>Guidelines</Text>
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[styles.input, styles.textArea, isFormDisabled && styles.inputDisabled]}
         value={formData.guidelines}
         onChangeText={v => updateField('guidelines', v)}
         placeholder="Additional instructions for the agent..."
@@ -351,19 +362,21 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={3}
         textAlignVertical="top"
+        editable={!isFormDisabled}
       />
 
-      <View style={styles.switchRow}>
+      <View style={[styles.switchRow, isFormDisabled && styles.switchRowDisabled]}>
         <Text style={styles.switchLabel}>Enabled</Text>
         <Switch
           value={formData.enabled}
           onValueChange={v => updateField('enabled', v)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
           thumbColor={formData.enabled ? theme.colors.primaryForeground : theme.colors.background}
+          disabled={isFormDisabled}
         />
       </View>
 
-      <View style={styles.switchRow}>
+      <View style={[styles.switchRow, isFormDisabled && styles.switchRowDisabled]}>
         <View>
           <Text style={styles.switchLabel}>Auto Spawn</Text>
           <Text style={styles.switchHelperText}>Start agent automatically on app launch</Text>
@@ -373,18 +386,24 @@ export default function AgentEditScreen({ navigation, route }: any) {
           onValueChange={v => updateField('autoSpawn', v)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
           thumbColor={formData.autoSpawn ? theme.colors.primaryForeground : theme.colors.background}
+          disabled={isFormDisabled}
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={isSaveDisabled}
+        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        onPress={isConnectionConfigured ? handleSave : openConnectionSettings}
+        disabled={isSaving}
+        accessibilityRole="button"
+        accessibilityLabel={createButtonAccessibilityLabel(primaryActionLabel)}
+        accessibilityHint={isConnectionConfigured
+          ? `${isEditing ? 'Saves this agent' : 'Creates this agent'} using your current connection settings.`
+          : 'Opens connection settings so you can finish setup before creating or editing agents.'}
       >
         {isSaving ? (
           <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
         ) : (
-          <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Create Agent'}</Text>
+          <Text style={styles.saveButtonText}>{primaryActionLabel}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
@@ -453,6 +472,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       backgroundColor: theme.colors.background,
     },
+    inputDisabled: {
+      opacity: 0.55,
+    },
     textArea: {
       minHeight: 100,
     },
@@ -513,6 +535,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    switchRowDisabled: {
+      opacity: 0.55,
     },
     switchLabel: {
       fontSize: 14,
