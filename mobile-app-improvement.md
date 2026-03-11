@@ -12,6 +12,7 @@
 
 - [x] Settings root screen and nested back navigation
 - [x] Connection setup flow, save validation, and inline connection actions
+- [x] Connection Settings screen back navigation, QR scanner modal, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, DPR2 screenshots)
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings -> Text-to-Speech voice picker modal close/action surface in Expo Web (`390x844` mobile viewport)
@@ -34,7 +35,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker close-control pass (model picker, endpoint picker, agent selector, QR scanner, confirmations)
+- [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and initial Connection Settings QR/save pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -42,6 +43,7 @@
 - [x] Missing in-place CTA on the session empty state
 - [x] Undersized chat composer send/accessory controls and missing web state semantics
 - [x] Weak Connection inline action affordances
+- [x] Connection Settings header back button rendered as a 30x30 touch target on mobile web
 - [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
 - [x] LoopEdit profile selection chips crowd narrow screens and hide selected state behind color alone
 - [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
@@ -53,6 +55,7 @@
 
 - [x] Nested-screen back navigation
 - [x] Connection first-run validation and inline action affordances
+- [x] Connection Settings header back-button touch target and action clarity on nested screens
 - [x] Chat composer actions, toggles, and voice-state accessibility
 - [x] Session empty-state CTA and narrow-layout guardrails
 - [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
@@ -65,6 +68,7 @@
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Live Expo Web before/after evidence for the Connection Settings header back-button touch target at `390x844` CSS viewport (matched DPR2 screenshots)
 - [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
 
 ### Blocked
@@ -74,9 +78,54 @@
 ### Still uncertain
 
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
+- [ ] The Connection Settings QR scanner close button measured about `66.7x43` CSS px in Expo Web during this pass, so the close affordance likely still deserves its own touch-target check before calling that modal fully tuned.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 13: make the Connection Settings back button reliably tappable on mobile web
+
+- Status: completed with live Expo Web evidence and targeted regression coverage
+- Area:
+  - `Connection Settings` header back affordance in `apps/mobile/App.tsx`
+  - reachable first-run/disconnected flow from `Settings -> Connection settings` plus adjacent runtime checks for the QR scanner modal, save confirmation, and empty-save validation at a `390x844` CSS viewport on Expo Web
+- Why this area:
+  - the ledger still had modal/state coverage to widen outside the already-polished TTS picker work, and live Expo Web inspection of an under-checked settings flow found a fresh primary-navigation issue worth shipping immediately
+  - on the narrow mobile web pass, the nested-screen back affordance in `Connection Settings` rendered as only `30x30`, which undercut a core escape/navigation action users hit repeatedly while configuring the app
+- What was investigated:
+  - live Expo Web startup via the existing repo workflow after rebuilding `packages/shared`
+  - the disconnected `Settings` surface, `Connection Settings`, `Scan QR Code` modal, `Save settings now` confirmation state, and `Test & Save` empty-validation error state
+  - current global stack header wiring in `apps/mobile/App.tsx` plus nearby shared touch-target patterns already used in `ChatScreen.tsx`
+- Findings:
+  - the default nested-screen header back affordance on Expo Web measured `30x30`, below the 44px touch-target guardrail already used elsewhere in the mobile app
+  - the rest of the inspected `Connection Settings` flow remained reachable and stable on web: QR scanner modal opened, save confirmation appeared, and empty-save validation showed the expected inline error
+  - the QR scanner close button is close to acceptable but still measured slightly short at about `66.7x43`, so that modal should get its own follow-up pass instead of being overclaimed as fully tuned
+- Change made:
+  - replaced the default nested-screen back affordance with a shared custom `Go back` header button for non-root screens in `apps/mobile/App.tsx`
+  - sized that control with `createMinimumTouchTargetStyle({ horizontalPadding: 12, horizontalMargin: 0 })` so nested mobile headers inherit a reliable 44px minimum tap target instead of the tiny default web hit area
+  - extended `apps/mobile/tests/navigation-header.test.js` to lock the new nested-screen back-button semantics and touch-target helper usage
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8104 --clear`
+  - `node --test apps/mobile/tests/navigation-header.test.js apps/mobile/tests/connection-settings-density.test.js`
+  - live Expo Web automation at `390x844` CSS viewport with before/after screenshots of `Connection Settings`
+  - exploratory `pnpm --filter @dotagents/mobile exec tsc --noEmit` (still fails on pre-existing unrelated `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors)
+- Follow-up checks:
+  - inspect the QR scanner modal close affordance next so the entire Connection Settings modal/escape path meets the same touch-target bar
+  - return to the blocked desktop-backed settings pickers only once the reachable disconnected-state flow is exhausted or a higher-value parity path becomes available
+  - keep widening runtime coverage to session loading/error/sync states and large-text/awkward viewport behavior instead of repeatedly polishing the same header area
+
+Evidence
+- Evidence ID: connection-settings-back-button-touch-target
+- Scope: `Settings -> Connection settings` nested-screen header back affordance on mobile web (`apps/mobile/App.tsx`)
+- Commit range: fa4d9a29599b62ea1dc7a7256731916a5c879d11..b953b6cff881ed823495fee1348d358bb872966f
+- Rationale: `Connection Settings` is a first-run configuration surface that users revisit often. On mobile web, the only obvious escape action at the top of that screen was rendering as a 30x30 hit target, which made a primary navigation control harder to tap reliably during setup and validation flows.
+- QA feedback: Addressed the outstanding reviewer finding on the prior `settings-voice-picker-close-affordance` evidence by restoring matched-DPR tracked screenshots; this back-button improvement itself is a new iteration.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-back-button-touch-target--before--connection-settings-screen--20260311.png` — `390x844` CSS viewport on Expo Web, saved as a matched DPR2 `780x1688` PNG. The `Connection Settings` screen before the change used the default nested-screen back affordance, which browser inspection measured at only `30x30`, making the main exit action undersized for narrow-screen touch use.
+- Change: Added a custom non-root stack-header back button in `apps/mobile/App.tsx` using the shared touch-target helper and explicit button accessibility metadata. Extended `apps/mobile/tests/navigation-header.test.js` to lock the nested-screen back-button wiring and minimum-target pattern.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-back-button-touch-target--after--connection-settings-screen--20260311.png` — same `390x844` CSS viewport and matched DPR2 `780x1688` PNG. The `Connection Settings` header now exposes a custom `Go back` control that browser inspection measured at `44x44`, making the primary nested-screen escape action clearly tappable without changing the rest of the screen layout.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8104 --clear` ✅ (Expo Web live at `http://localhost:8104`); `node --test apps/mobile/tests/navigation-header.test.js apps/mobile/tests/connection-settings-density.test.js` ✅ (4/4 passing); live Expo Web before/after screenshots + DOM size checks captured ✅ (`30x30` before, `44x44` after); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ❌ with pre-existing unrelated `LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors.
+- Blockers/remaining uncertainty: The `Connection Settings` back-button improvement is verified, but the QR scanner modal close control still measured slightly under the 44px minimum-height bar in this pass, and deeper desktop-backed settings pickers were still unreachable from the disconnected default state.
 
 ### 2026-03-11 — Iteration 12: make the Settings TTS voice picker close action read like a real mobile control
 
@@ -117,10 +166,10 @@ Evidence
 - Scope: `Settings -> Desktop Settings -> Text-to-Speech -> Voice picker` close action on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
 - Commit range: e46d01822ce065cf4b6b0ee3aa64f0078c0cd00e..d8e290633d46a169232ceabc90a0409d1b876778
 - Rationale: The TTS voice picker is a meaningful configuration surface that a mobile user can reach even before connecting to desktop. On a narrow viewport, the picker needed a clearer exit affordance so the modal state feels obviously actionable instead of relying on a tiny text-only close control.
-- QA feedback: None (new iteration)
-- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--before--voice-picker-open--20260311.png` — `390x844` mobile viewport in Expo Web, open `Text-to-Speech -> Voice picker`. Before the change, the `Close` affordance reads as a plain text action in the picker header, which is easy to under-read on a narrow mobile surface.
+- QA feedback: Reviewer flagged a mismatched before/after screenshot size on the first pass; the tracked after screenshot now uses the matching DPR2 capture for the same `390x844` CSS viewport and view.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--before--voice-picker-open--20260311.png` — `390x844` CSS viewport in Expo Web, saved as a DPR2 `780x1688` PNG, open `Text-to-Speech -> Voice picker`. Before the change, the `Close` affordance reads as a plain text action in the picker header, which is easy to under-read on a narrow mobile surface.
 - Change: Converted the picker surfaces to `Pressable`, added explicit source-level role/expanded/selected metadata, and restyled modal close actions into bordered pill buttons with stronger minimum sizing. Added focused regression assertions in `apps/mobile/tests/settings-overlay-density.test.js`.
-- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--after--voice-picker-open--20260311.png` — same `390x844` viewport and view. The picker header now shows `Close` as a bordered pill-style control, which reads more clearly as a tappable mobile action while keeping the sheet compact.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--after--voice-picker-open--20260311.png` — same `390x844` CSS viewport and DPR2 `780x1688` PNG view. The picker header now shows `Close` as a bordered pill-style control, which reads more clearly as a tappable mobile action while keeping the sheet compact.
 - Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8103 --clear` ✅ (Expo Web live at `http://localhost:8103`); `node --test apps/mobile/tests/settings-overlay-density.test.js` ✅ (4/4 passing); live Expo Web before/after screenshots captured ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ❌ with pre-existing unrelated `LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors.
 - Blockers/remaining uncertainty: The visual close-affordance improvement is verified, but Expo Web still reports the picker trigger and option rows as generic focusable `DIV`s rather than surfaced button semantics. That unresolved runtime-semantic gap is documented above and should be treated as a follow-up investigation, not as solved parity.
 

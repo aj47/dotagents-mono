@@ -17,10 +17,11 @@ import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
 import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
-import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, Image, Text, TouchableOpacity, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from './src/lib/accessibility';
 import * as Linking from 'expo-linking';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useCallback, useRef } from 'react';
@@ -61,6 +62,7 @@ function Navigation() {
   const messageQueueStore = useMessageQueue();
   const navigationRef = useNavigationContainerRef();
   const isNavigationReady = useRef(false);
+  const navigationStyles = useMemo(() => createNavigationStyles(theme.colors.foreground), [theme.colors.foreground]);
 
   // Initialize tunnel connection manager for persistence and auto-reconnection
   const tunnelConnection = useTunnelConnectionProvider();
@@ -357,7 +359,7 @@ function Navigation() {
                 >
                   <Stack.Navigator
                     initialRouteName="Settings"
-                    screenOptions={({ route }) => ({
+                    screenOptions={({ route, navigation }) => ({
                       headerTitleStyle: { ...theme.typography.h2 },
                       headerStyle: { backgroundColor: theme.colors.card },
                       headerTintColor: theme.colors.foreground,
@@ -370,7 +372,17 @@ function Navigation() {
                               resizeMode="contain"
                             />
                           )
-                        : undefined,
+                        : () => (
+                            <TouchableOpacity
+                              onPress={() => navigation.goBack()}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel('Go back')}
+                              accessibilityHint="Returns to the previous screen."
+                              style={navigationStyles.backButton}
+                            >
+                              <Text style={navigationStyles.backButtonText}>←</Text>
+                            </TouchableOpacity>
+                          ),
                       headerRight: () => (
                         <ConnectionStatusIndicator
                           state={tunnelConnection.connectionInfo.state}
@@ -429,6 +441,20 @@ function Root() {
 function StatusBarWrapper() {
   const { isDark } = useTheme();
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
+function createNavigationStyles(foregroundColor: string) {
+  return StyleSheet.create({
+    backButton: {
+      ...createMinimumTouchTargetStyle({ horizontalPadding: 12, horizontalMargin: 0 }),
+    },
+    backButtonText: {
+      fontSize: 20,
+      color: foregroundColor,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+  });
 }
 
 const styles = StyleSheet.create({
