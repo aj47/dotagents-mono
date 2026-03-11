@@ -15,6 +15,7 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import { getAgentSelectorHeaderState } from '../ui/agent-selector-header-state';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
@@ -31,10 +32,15 @@ export default function SessionListScreen({ navigation }: Props) {
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
   const { config } = useConfigContext();
+  const canStartChat = hasConfiguredConnection(config);
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const agentHeaderState = getAgentSelectorHeaderState({
+    currentAgentLabel: currentProfile?.name || 'Default',
+    isConnectionConfigured: canStartChat,
+  });
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -80,6 +86,14 @@ export default function SessionListScreen({ navigation }: Props) {
   const openConnectionSettings = useCallback(() => {
     navigation.navigate('ConnectionSettings');
   }, [navigation]);
+  const handleAgentHeaderPress = useCallback(() => {
+    if (agentHeaderState.opensAgentSelector) {
+      setAgentSelectorVisible(true);
+      return;
+    }
+
+    openConnectionSettings();
+  }, [agentHeaderState.opensAgentSelector, openConnectionSettings]);
 
   const rfLog = useCallback((msg: string, extra?: any) => {
     if (!__DEV__) return;
@@ -634,10 +648,10 @@ export default function SessionListScreen({ navigation }: Props) {
       headerTitle: () => (
         <TouchableOpacity
           style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-          onPress={() => setAgentSelectorVisible(true)}
+          onPress={handleAgentHeaderPress}
           accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentProfile?.name || 'Default'}. Tap to change.`}
-          accessibilityHint="Opens agent selection menu"
+          accessibilityLabel={agentHeaderState.accessibilityLabel}
+          accessibilityHint={agentHeaderState.accessibilityHint}
         >
           <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chats</Text>
           <View style={{
@@ -654,7 +668,7 @@ export default function SessionListScreen({ navigation }: Props) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentProfile?.name || 'Default'} ▼
+              {agentHeaderState.badgeLabel}
             </Text>
           </View>
         </TouchableOpacity>
@@ -678,12 +692,11 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, handleAgentHeaderPress, agentHeaderState.accessibilityHint, agentHeaderState.accessibilityLabel, agentHeaderState.badgeLabel]);
   const insets = useSafeAreaInsets();
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
-  const canStartChat = hasConfiguredConnection(config);
   const showConnectionRequiredEmptyState = !canStartChat && sessions.length === 0;
 
   if (!sessionStore.ready) {

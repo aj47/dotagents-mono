@@ -64,6 +64,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import { getAgentSelectorHeaderState } from '../ui/agent-selector-header-state';
 import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
 import {
   createButtonAccessibilityLabel,
@@ -335,6 +336,18 @@ export default function ChatScreen({ route, navigation }: any) {
     );
   }, [openConnectionSettings]);
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
+  const agentHeaderState = getAgentSelectorHeaderState({
+    currentAgentLabel,
+    isConnectionConfigured: canComposeChat,
+  });
+  const handleAgentHeaderPress = useCallback(() => {
+    if (agentHeaderState.opensAgentSelector) {
+      setAgentSelectorVisible(true);
+      return;
+    }
+
+    openConnectionSettings();
+  }, [agentHeaderState.opensAgentSelector, openConnectionSettings]);
   const handsFree = !!config.handsFree;
 	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
@@ -524,10 +537,10 @@ export default function ChatScreen({ route, navigation }: any) {
       headerTitle: () => (
         <TouchableOpacity
           style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-          onPress={() => setAgentSelectorVisible(true)}
+          onPress={handleAgentHeaderPress}
           accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-          accessibilityHint="Opens agent selection menu"
+          accessibilityLabel={agentHeaderState.accessibilityLabel}
+          accessibilityHint={agentHeaderState.accessibilityHint}
         >
           <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chat</Text>
           <View style={{
@@ -544,7 +557,7 @@ export default function ChatScreen({ route, navigation }: any) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentAgentLabel} ▼
+              {agentHeaderState.badgeLabel}
             </Text>
           </View>
         </TouchableOpacity>
@@ -649,7 +662,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles, canStartManualNewChat]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, styles, canStartManualNewChat, handleAgentHeaderPress, agentHeaderState.accessibilityHint, agentHeaderState.accessibilityLabel, agentHeaderState.badgeLabel]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);

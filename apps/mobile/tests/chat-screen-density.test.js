@@ -10,8 +10,9 @@ const screenSource = fs.readFileSync(
 
 test('keeps agent selection in the navigation header for the mobile chat screen', () => {
   assert.match(screenSource, /headerTitle:\s*\(\) => \(/);
-  assert.match(screenSource, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
-  assert.match(screenSource, /\{currentAgentLabel\} ▼/);
+  assert.match(screenSource, /const agentHeaderState = getAgentSelectorHeaderState\(\{/);
+  assert.match(screenSource, /accessibilityLabel=\{agentHeaderState\.accessibilityLabel\}/);
+  assert.match(screenSource, /\{agentHeaderState\.badgeLabel\}/);
 });
 
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {

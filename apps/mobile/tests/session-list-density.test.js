@@ -17,3 +17,9 @@ test('keeps the session title row shrinkable for narrow mobile widths', () => {
   assert.match(screenSource, /sessionTitleRow:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:\s*8,/);
   assert.match(screenSource, /sessionTitle:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,/);
 });
+
+test('routes the disconnected session header agent affordance to setup guidance instead of a dead-end selector', () => {
+  assert.match(screenSource, /const agentHeaderState = getAgentSelectorHeaderState\(\{/);
+  assert.match(screenSource, /onPress=\{handleAgentHeaderPress\}/);
+  assert.match(screenSource, /accessibilityHint=\{agentHeaderState\.accessibilityHint\}/);
+});
