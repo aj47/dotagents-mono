@@ -1,11 +1,233 @@
 import { readFileSync } from "node:fs"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.meta.url), "utf8")
 const acpSessionBadgeSource = readFileSync(new URL("./acp-session-badge.tsx", import.meta.url), "utf8")
 const messageQueuePanelSource = readFileSync(new URL("./message-queue-panel.tsx", import.meta.url), "utf8")
 const audioPlayerSource = readFileSync(new URL("./audio-player.tsx", import.meta.url), "utf8")
 const sessionTileSource = readFileSync(new URL("./session-tile.tsx", import.meta.url), "utf8")
+
+function createHookRuntime() {
+  const states: any[] = []
+  const refs: Array<{ current: any }> = []
+  let stateIndex = 0
+  let refIndex = 0
+
+  const useState = <T,>(initial: T | (() => T)) => {
+    const idx = stateIndex++
+    if (states[idx] === undefined) states[idx] = typeof initial === "function" ? (initial as () => T)() : initial
+    return [states[idx] as T, (update: T | ((prev: T) => T)) => {
+      states[idx] = typeof update === "function" ? (update as (prev: T) => T)(states[idx]) : update
+    }] as const
+  }
+
+  const useRef = <T,>(initial: T) => {
+    const idx = refIndex++
+    refs[idx] ??= { current: initial }
+    return refs[idx] as { current: T }
+  }
+
+  const reactMock: any = {
+    __esModule: true,
+    createContext: (defaultValue: any) => ({ _currentValue: defaultValue ?? { isDark: false } }),
+    useState,
+    useRef,
+    useContext: (context: { _currentValue: any }) => context?._currentValue,
+    useEffect: () => undefined,
+    useLayoutEffect: () => undefined,
+    useMemo: (factory: () => unknown) => factory(),
+    useCallback: (callback: (...args: any[]) => any) => callback,
+    memo: (component: unknown) => component,
+  }
+  reactMock.default = reactMock
+
+  const Fragment = Symbol.for("react.fragment")
+  const invoke = (type: any, props: any) => {
+    if (type === Fragment) return props?.children ?? null
+    return typeof type === "function" ? type(props ?? {}) : { type, props: props ?? {} }
+  }
+
+  return {
+    render<P,>(Component: (props: P) => any, props: P) {
+      stateIndex = 0
+      refIndex = 0
+      return Component(props)
+    },
+    reactMock,
+    jsxRuntimeMock: { __esModule: true, Fragment, jsx: invoke, jsxs: invoke, jsxDEV: invoke },
+  }
+}
+
+function findNodes(node: any, predicate: (node: any) => boolean): any[] {
+  if (node == null) return []
+  if (Array.isArray(node)) return node.flatMap((child) => findNodes(child, predicate))
+  if (typeof node === "object") {
+    return [
+      ...(predicate(node) ? [node] : []),
+      ...findNodes(node.props?.children, predicate),
+    ]
+  }
+  return []
+}
+
+function getButtonTitles(node: any) {
+  return findNodes(node, (candidate) => candidate.type === "button")
+    .map((button) => button.props?.title)
+    .filter((title): title is string => typeof title === "string")
+}
+
+function createProgress(overrides: Record<string, unknown> = {}) {
+  return {
+    sessionId: "session-1",
+    conversationId: "conversation-1",
+    currentIteration: 1,
+    maxIterations: 10,
+    steps: [],
+    isComplete: true,
+    finalContent: "Done",
+    conversationTitle: "Duplicate maximize icons",
+    conversationHistory: [
+      { role: "user", content: "In a GitHub issue, there are still two maximize icons on the sessions tile in some cases.", timestamp: 1 },
+    ],
+    sessionStartIndex: 0,
+    contextInfo: null,
+    modelInfo: null,
+    profileName: "Main Agent",
+    acpSessionInfo: null,
+    isSnoozed: false,
+    ...overrides,
+  }
+}
+
+async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) {
+  vi.resetModules()
+  const Null = () => null
+  const Icon = (props: any) => ({ type: "Icon", props })
+  const useAgentStore = (selector: (state: any) => unknown) => selector({
+    setFocusedSessionId: vi.fn(),
+    setSessionSnoozed: vi.fn(),
+  })
+  useAgentStore.getState = () => ({ agentProgressById: new Map() })
+
+  vi.doMock("react", () => runtime.reactMock)
+  vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("zustand", () => ({
+    create: (initializer: (set: (update: any) => void, get: () => any) => any) => {
+      let state: any
+      const get = () => state
+      const set = (update: any) => {
+        const next = typeof update === "function" ? update(state) : update
+        state = { ...state, ...next }
+      }
+      state = initializer(set, get)
+      const store = (selector?: (value: any) => any) => selector ? selector(state) : state
+      store.getState = get
+      store.setState = set
+      return store
+    },
+  }))
+  vi.stubGlobal("window", {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    electron: {
+      ipcRenderer: {
+        invoke: vi.fn(),
+        on: vi.fn(),
+        send: vi.fn(),
+      },
+    },
+  })
+  vi.doMock("@egoist/tipc/renderer", () => ({
+    createClient: () => ({}),
+    createEventHandlers: () => ({}),
+  }))
+  vi.doMock("../../../shared/types", () => ({}))
+  vi.doMock("../../../shared/builtin-tool-names", () => ({
+    INTERNAL_COMPLETION_NUDGE_TEXT: "INTERNAL_COMPLETION_NUDGE_TEXT",
+    RESPOND_TO_USER_TOOL: "respond_to_user",
+    MARK_WORK_COMPLETE_TOOL: "mark_work_complete",
+  }))
+  vi.doMock("lucide-react", () => ({
+    ChevronDown: Icon,
+    ChevronUp: Icon,
+    ChevronRight: Icon,
+    X: Icon,
+    AlertTriangle: Icon,
+    Minimize2: Icon,
+    Shield: Icon,
+    Check: Icon,
+    XCircle: Icon,
+    Loader2: Icon,
+    Clock: Icon,
+    Copy: Icon,
+    CheckCheck: Icon,
+    GripHorizontal: Icon,
+    Activity: Icon,
+    Moon: Icon,
+    Maximize2: Icon,
+    RefreshCw: Icon,
+    Bot: Icon,
+    OctagonX: Icon,
+    MessageSquare: Icon,
+    Brain: Icon,
+    Volume2: Icon,
+    Wrench: Icon,
+  }))
+  vi.doMock("@renderer/lib/utils", () => ({ cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ") }))
+  vi.doMock("@renderer/components/markdown-renderer", () => ({ MarkdownRenderer: Null }))
+  vi.doMock("./ui/button", () => ({ Button: (props: any) => ({ type: "button", props }) }))
+  vi.doMock("./ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
+  vi.doMock("./ui/dialog", () => ({ Dialog: Null, DialogContent: Null, DialogDescription: Null, DialogHeader: Null, DialogTitle: Null }))
+  vi.doMock("@renderer/lib/tipc-client", () => ({
+    tipcClient: {
+      stopAgentSession: vi.fn(),
+      emergencyStopAgent: vi.fn(),
+      snoozeAgentSession: vi.fn(),
+      hidePanelWindow: vi.fn(),
+      clearAgentSessionProgress: vi.fn(),
+      closeAgentModeAndHidePanelWindow: vi.fn(),
+      respondToToolApproval: vi.fn(),
+      unsnoozeAgentSession: vi.fn(),
+      focusAgentSession: vi.fn(),
+      setPanelFocusable: vi.fn(),
+    },
+  }))
+  vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard: vi.fn() }))
+  vi.doMock("@renderer/stores", () => ({
+    __esModule: true,
+    useAgentStore,
+    useMessageQueue: () => [],
+    useIsQueuePaused: () => false,
+  }))
+  vi.doMock("@renderer/components/audio-player", () => ({ AudioPlayer: Null }))
+  vi.doMock("@renderer/lib/queries", () => ({ useConfigQuery: () => ({ data: { ttsEnabled: false } }) }))
+  vi.doMock("@renderer/contexts/theme-context", () => ({ useTheme: () => ({ isDark: false }) }))
+  vi.doMock("@renderer/lib/debug", () => ({ logUI: vi.fn(), logExpand: vi.fn() }))
+  vi.doMock("./tile-follow-up-input", () => ({ TileFollowUpInput: Null }))
+  vi.doMock("./overlay-follow-up-input", () => ({ OverlayFollowUpInput: Null }))
+  vi.doMock("@renderer/components/message-queue-panel", () => ({ MessageQueuePanel: Null }))
+  vi.doMock("@renderer/hooks/use-resizable", () => ({
+    useResizable: () => ({ height: 320, isResizing: false, handleHeightResizeStart: vi.fn() }),
+    TILE_DIMENSIONS: { height: { default: 320, min: 160, max: 640 } },
+  }))
+  vi.doMock("@dotagents/shared", () => ({ getToolResultsSummary: () => "" }))
+  vi.doMock("./tool-execution-stats", () => ({ ToolExecutionStats: Null }))
+  vi.doMock("./acp-session-badge", () => ({ ACPSessionBadge: Null }))
+  vi.doMock("./agent-summary-view", () => ({ AgentSummaryView: Null }))
+  vi.doMock("@renderer/lib/tts-tracking", () => ({ hasTTSPlayed: () => false, markTTSPlayed: vi.fn(), removeTTSKey: vi.fn(), clearSessionTTSTracking: vi.fn() }))
+  vi.doMock("@renderer/lib/tts-manager", () => ({ ttsManager: { stop: vi.fn() } }))
+  vi.doMock("@shared/message-display-utils", () => ({ sanitizeMessageContentForSpeech: (content: string) => content }))
+  vi.doMock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+
+  return import("./agent-progress")
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.resetModules()
+  vi.unstubAllGlobals()
+})
 
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
@@ -94,9 +316,37 @@ describe("agent progress tile layout", () => {
     )
   })
 
-  it("avoids showing duplicate maximize-style controls when a tile is already snoozed", () => {
-    expect(agentProgressSource).toContain('{onExpand && !isExpanded && !isSnoozed && (')
-    expect(agentProgressSource).toContain('title="Restore session"')
+  it("shows only the restore control when a tile is already snoozed", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+
+    const activeTile = runtime.render(AgentProgress, {
+      progress: createProgress(),
+      variant: "tile",
+      isFocused: false,
+      isExpanded: false,
+      isCollapsed: true,
+      onFocus: vi.fn(),
+      onDismiss: vi.fn(),
+      onExpand: vi.fn(),
+      onCollapsedChange: vi.fn(),
+    } as any)
+    expect(getButtonTitles(activeTile)).toContain("Maximize tile")
+    expect(getButtonTitles(activeTile)).not.toContain("Restore session")
+
+    const snoozedTile = runtime.render(AgentProgress, {
+      progress: createProgress({ isSnoozed: true }),
+      variant: "tile",
+      isFocused: false,
+      isExpanded: false,
+      isCollapsed: true,
+      onFocus: vi.fn(),
+      onDismiss: vi.fn(),
+      onExpand: vi.fn(),
+      onCollapsedChange: vi.fn(),
+    } as any)
+    expect(getButtonTitles(snoozedTile)).toContain("Restore session")
+    expect(getButtonTitles(snoozedTile)).not.toContain("Maximize tile")
   })
 
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {

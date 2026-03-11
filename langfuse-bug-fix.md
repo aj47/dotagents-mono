@@ -190,7 +190,7 @@ Track recent Langfuse sessions/traces inspected so this loop does not repeat the
 #### Evidence
 - Evidence ID: `desktop-snoozed-tile-duplicate-maximize`
 - Scope: Prevent desktop session tiles from showing duplicate maximize-style controls when a snoozed session already has a dedicated restore action.
-- Commit range: `66f635f4dd04ac8102e878c00f3c2c3b60927fa2..4c600433596a7a79d480c3c2ee285397ea615533`
+- Commit range: `66f635f4dd04ac8102e878c00f3c2c3b60927fa2..bdfb487850226baeb1eebbbeb3d5370469645b5f`
 - Rationale: The traced run failed a straightforward user-visible cleanup even after reaching the right file and code region, so the sessions UI kept presenting two near-identical maximize affordances for snoozed tiles. Hiding the generic maximize control in the snoozed state removes the duplicate visual affordance and makes the restore action unambiguous.
 - QA feedback: None (new iteration)
 - Before evidence: Langfuse trace `session_1773175182128_y5ykg6gnf` in session `conv_1773175182677_o15igzqp9` records the user report about duplicate maximize icons, repeated repo inspection commands, and a final fallback failure after `totalIterations: 10`. In the traced desktop code path, `apps/desktop/src/renderer/src/components/agent-progress.tsx` rendered `title="Maximize tile"` under `onExpand && !isExpanded` and also rendered `title="Restore session"` with the same `Maximize2` icon under `isSnoozed`, which is sufficient source-level evidence for the duplicated control state. Runtime profile is `none`, so no PR-visible before screenshot was captured.
