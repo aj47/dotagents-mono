@@ -24,6 +24,8 @@ test('keeps mobile TTS settings actions text-first and explicitly labeled', () =
 
   assert.doesNotMatch(ttsSettingsSource, />✕<\/Text>/);
   assert.match(ttsSettingsSource, /accessibilityLabel="Close voice picker"/);
+  assert.match(ttsSettingsSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Open voice picker'\)\}/);
+  assert.match(ttsSettingsSource, /aria-expanded=\{showVoicePicker\}/);
   assert.match(ttsSettingsSource, /<Text style=\{styles\.modalCloseText\}>Close<\/Text>/);
 });
 
@@ -38,4 +40,16 @@ test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () =
   assert.match(modalTitleStyles, /flex:\s*1/);
   assert.match(modalTitleStyles, /flexShrink:\s*1/);
   assert.match(modalTitleStyles, /paddingRight:\s*spacing\.xs/);
+});
+
+test('keeps the default-settings voice trigger and close control at minimum mobile touch targets', () => {
+  const voiceSelectorStyles = extractBetween('voiceSelector: {', 'voiceSelectorText: {');
+  assert.match(voiceSelectorStyles, /createMinimumTouchTargetStyle\(\{[\s\S]*minSize:\s*44,[\s\S]*horizontalMargin:\s*0,[\s\S]*\}\)/);
+  assert.match(voiceSelectorStyles, /justifyContent:\s*'space-between'/);
+  assert.match(voiceSelectorStyles, /borderWidth:\s*1/);
+
+  const modalCloseButtonStyles = extractBetween('modalCloseButton: {', 'modalCloseText: {');
+  assert.match(modalCloseButtonStyles, /createMinimumTouchTargetStyle\(\{[\s\S]*minSize:\s*44,[\s\S]*horizontalMargin:\s*0,[\s\S]*\}\)/);
+  assert.match(modalCloseButtonStyles, /minWidth:\s*64/);
+  assert.match(modalCloseButtonStyles, /backgroundColor:\s*theme\.colors\.secondary/);
 });

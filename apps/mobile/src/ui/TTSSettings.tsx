@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
 import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
@@ -35,6 +36,7 @@ export function TTSSettings({
   const [voices, setVoices] = useState<Voice[]>([]);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
+  const selectedVoiceName = selectedVoice?.name || 'System Default';
 
   const loadVoices = useCallback(async () => {
     try {
@@ -111,9 +113,16 @@ export function TTSSettings({
         <TouchableOpacity
           style={styles.voiceSelector}
           onPress={() => setShowVoicePicker(true)}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Open voice picker')}
+          accessibilityHint={`Currently ${selectedVoiceName}. Double tap to choose a different text-to-speech voice.`}
+          accessibilityState={{ expanded: showVoicePicker }}
+          role="button"
+          aria-label={createButtonAccessibilityLabel('Open voice picker')}
+          aria-expanded={showVoicePicker}
         >
           <Text style={styles.voiceSelectorText} numberOfLines={2}>
-            {selectedVoice?.name || 'System Default'}
+            {selectedVoiceName}
           </Text>
           <Text style={styles.chevron}>▼</Text>
         </TouchableOpacity>
@@ -257,11 +266,18 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
     },
     voiceSelector: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.muted,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.secondary,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
       borderRadius: radius.md,
       flexGrow: 1,
       maxWidth: '100%',
@@ -338,9 +354,17 @@ const createStyles = (theme: Theme) =>
       paddingRight: spacing.xs,
     },
     modalCloseButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      minWidth: 64,
       borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
     },
     modalCloseText: {
       fontSize: 14,
