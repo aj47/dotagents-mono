@@ -1446,28 +1446,17 @@ export class MCPService {
         for (const [paramName, paramValue] of Object.entries(processedArguments)) {
           if (requiredParams.has(paramName)) continue
 
-          if (paramValue == null) {
-            delete processedArguments[paramName]
-            continue
-          }
-
-          if (typeof paramValue === 'string' && paramValue.trim().length === 0) {
-            delete processedArguments[paramName]
-            continue
-          }
-
-          if (Array.isArray(paramValue) && paramValue.length === 0) {
-            delete processedArguments[paramName]
-            continue
-          }
-
-          if (
+          const isGitHubCreateIssuePlaceholder =
             serverName === 'github' &&
             toolName === 'create_issue' &&
-            paramName === 'milestone' &&
-            typeof paramValue === 'number' &&
-            paramValue <= 0
-          ) {
+            (
+              ((paramName === 'assignees' || paramName === 'labels') &&
+                Array.isArray(paramValue) &&
+                paramValue.length === 0) ||
+              (paramName === 'milestone' && typeof paramValue === 'number' && paramValue <= 0)
+            )
+
+          if (isGitHubCreateIssuePlaceholder) {
             delete processedArguments[paramName]
           }
         }

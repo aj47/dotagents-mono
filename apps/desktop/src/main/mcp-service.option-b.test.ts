@@ -177,5 +177,53 @@ describe("MCPService Option B (builtin allowlist)", () => {
       },
     })
   })
+
+  it("does not broadly prune empty optional values for unrelated tools", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "saved" }], isError: false }))
+
+    ;(mcpService as any).clients.set("notes", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "notes:save_draft",
+        description: "Save a draft note",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            body: { type: "string" },
+            tags: { type: "array" },
+            metadata: { type: "object" },
+          },
+          required: ["title"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "notes:save_draft",
+        arguments: {
+          title: "Draft",
+          body: "",
+          tags: [],
+          metadata: null,
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "save_draft",
+      arguments: {
+        title: "Draft",
+        body: "",
+        tags: [],
+        metadata: null,
+      },
+    })
+  })
 })
 
