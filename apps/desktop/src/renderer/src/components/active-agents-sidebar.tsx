@@ -8,7 +8,6 @@ import {
   Minimize2,
   Maximize2,
   Clock,
-  Archive,
   Bot,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
@@ -349,7 +348,7 @@ export function ActiveAgentsSidebar({
   )
 
   return (
-    <div className="px-2">
+    <div className="border-border/50 mb-2 border-b px-2 pb-2">
       <div
         className={cn(
           "w-full rounded-md px-2 py-1.5 text-sm font-medium",
@@ -403,7 +402,7 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && (
         <div
-          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
+          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-1.5 pr-0.5"
           onScroll={handleSidebarSessionsScroll}
         >
           {sidebarSessions.map(({ session, isPast, key }) => {
@@ -417,7 +416,7 @@ export function ActiveAgentsSidebar({
               : (sessionProgress?.isSnoozed ?? session.isSnoozed ?? false)
 
             if (isPast) {
-              // Past agent row — archive icon, no action buttons
+              // Past agent row — no inline action buttons so titles get maximum width.
               return (
                 <div
                   key={key}
@@ -431,13 +430,12 @@ export function ActiveAgentsSidebar({
                     }
                   }}
                   className={cn(
-                    "text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    "text-muted-foreground flex min-w-0 items-center rounded-md px-1 py-1 text-xs transition-colors",
                     session.conversationId &&
-                      "hover:bg-accent/50 cursor-pointer",
+                      "hover:bg-accent/50 cursor-pointer hover:text-foreground",
                   )}
+                  title={session.conversationTitle || "Untitled session"}
                 >
-                  {/* Archive icon for past agents */}
-                  <Archive className="h-3 w-3 shrink-0 opacity-50" />
                   <p className="flex-1 truncate">
                     {session.conversationTitle || "Untitled session"}
                   </p>
