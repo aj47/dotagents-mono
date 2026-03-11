@@ -16,6 +16,7 @@
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
+- [x] Disconnected `Chats -> + New Chat` composer helper copy, blocked send state, and pre-send guidance in Expo Web (`390x844` mobile viewport)
 - [x] Settings -> Text-to-Speech voice picker modal close/action surface in Expo Web (connected desktop-settings runtime, `390x844` mobile viewport)
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
 - [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
@@ -36,7 +37,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Disconnected/offline session-list and chat send states after entering Chats from Settings
+- [ ] Remaining disconnected/offline chat states after entering `Chats` beyond the new-chat text-send guard (existing-chat retry/reconnect, mic/handsfree affordances, and sync states)
 - [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and initial Connection Settings QR/save pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
@@ -54,6 +55,7 @@
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
 - [x] Settings -> Text-to-Speech voice picker showed a plain small `Close` action and weak picker semantics on narrow Expo Web
 - [x] Settings home disabled `Go to Chats` on the disconnected default screen, stranding users away from saved chats/history with no explanation
+- [x] Disconnected `Chats -> + New Chat` let users type and attempt `Send` with no usable connection config, then surfaced a raw 401-style failure plus generic retry/internet guidance
 
 ### Improved
 
@@ -69,6 +71,7 @@
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
 - [x] Settings -> Text-to-Speech voice picker close affordance plus source-level picker semantics/touch-target guardrails
 - [x] Settings home Chats access and offline-state explanation on the disconnected default screen
+- [x] Disconnected `Chats -> + New Chat` composer honesty, blocked-send behavior, and first-run guidance before failure
 
 ### Verified
 
@@ -78,6 +81,7 @@
 - [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
 - [x] Live Expo Web before/after evidence for the disconnected Settings-home chats CTA at `390x844`
 - [x] Executable vitest coverage plus a fresh Expo Web tap-through recheck for the disconnected `Settings -> Open Chats` CTA on mobile web
+- [x] Live Expo Web before/after evidence plus focused send-availability coverage for disconnected `Chats -> + New Chat` at `390x844`
 
 ### Blocked
 
@@ -88,9 +92,53 @@
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
 - [ ] The Connection Settings QR scanner close button measured about `66.7x43` CSS px in Expo Web during this pass, so the close affordance likely still deserves its own touch-target check before calling that modal fully tuned.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
-- [ ] The disconnected `Open Chats` entry point is now verified, but the offline `Sessions -> Chat` send/failure path still needs its own dedicated runtime pass before claiming solid offline-state coverage.
+- [ ] The disconnected new-chat text-send path is now guarded, but mic/handsfree send affordances plus existing-chat retry/reconnect states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 16: block disconnected new-chat sends before they fail opaquely
+
+- Status: completed with live Expo Web before/after evidence, a targeted disconnected-chat UX fix, and focused regression coverage
+- Area:
+  - disconnected `Chats -> + New Chat` composer/send state in `apps/mobile/src/screens/ChatScreen.tsx`
+  - new pure helper coverage in `apps/mobile/src/screens/chat-send-availability.ts`
+- Why this area:
+  - the ledger explicitly called out the post-`Open Chats` disconnected flow as still uncertain, so this was the highest-value next coverage expansion instead of another pass on already-tuned settings chrome
+  - live Expo Web inspection found a concrete first-run/offline reliability problem: mobile let users type into a brand-new disconnected chat, tap `Send`, and only then discover a raw 401-style failure with guidance that blamed internet/retry conditions instead of missing connection setup
+- What was investigated:
+  - Expo Web at `390x844` through `Settings -> Open Chats -> + New Chat` on the default disconnected state
+  - `apps/mobile/src/screens/ChatScreen.tsx` send gating, composer affordances, and error/debug messaging
+  - existing mobile test patterns that could protect disconnected send availability without broad refactors
+- Findings:
+  - the disconnected `+ New Chat` flow showed no inline warning before send, kept the `Send` button active after typing, and then surfaced a raw 401-style failure after the user tried to send without a configured API key
+  - the problem was larger than a single button state because any send path that reached `send()` while disconnected/no-config could fall through to confusing network/auth errors instead of a clear setup requirement
+  - mobile already had the right product intent on the Settings home (`Open Chats` is fine while offline, but sending needs connection); the chat composer simply was not enforcing or explaining that intent yet
+- Change made:
+  - added `apps/mobile/src/screens/chat-send-availability.ts` to centralize the disconnected send-config check plus the helper/accessibility copy for the composer send state
+  - updated `apps/mobile/src/screens/ChatScreen.tsx` to short-circuit `send()` when no connection config is present, keep the typed draft intact, show an inline composer notice, switch the composer placeholder to setup-focused guidance, and disable `Send` until the user both has content and a real connection config
+  - added `apps/mobile/src/screens/chat-send-availability.test.ts`, updated `apps/mobile/package.json` so the focused vitest suite runs it, and tightened `apps/mobile/tests/chat-composer-accessibility.test.js` around the new disconnected send notice and disabled-state semantics
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8117 --clear`
+  - `pnpm --filter @dotagents/mobile run test:vitest`
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-screen-density.test.js`
+  - `git diff --check`
+  - live Expo Web automation at `390x844` CSS viewport showing the typed disconnected new-chat state before/after the fix
+- Follow-up checks:
+  - inspect disconnected existing-chat retry/reconnect behavior next so the offline coverage map continues past the new-chat text path
+  - do a dedicated mic/handsfree disconnected pass, since the central send guard now covers it in source but the voice affordance copy/flow still needs live runtime validation
+
+Evidence
+- Evidence ID: chat-disconnected-send-guard
+- Scope: disconnected `Chats -> + New Chat` composer/send state on mobile web (`apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/chat-send-availability.ts`)
+- Commit range: 329351ba2e379046fad1e2617d742ff192d6f545..bd572eb1778dc3aa7498d33efc3ba9f22ef5f92a
+- Rationale: The disconnected `Open Chats` fix made chat history reachable offline, but the very next uncovered step still let a first-run user type into a brand-new chat, tap `Send`, and only then hit a raw 401-style failure. Guarding that state in the composer is a clearer, more actionable mobile experience because it explains the real prerequisite before the user trips a confusing error path.
+- QA feedback: Addressed the previously unresolved `settings-offline-open-chats` review findings in the remediation block below; this disconnected new-chat send guard itself is a new iteration.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--before--new-chat-ready--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the disconnected `+ New Chat` screen let the user type a draft with an apparently actionable `Send` button and no inline explanation that connection setup was still required. `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--before--send-error--20260311.png` — same `390x844` viewport after tapping `Send`, showing the raw 401-style failure and generic retry/internet messaging that made the missing-config problem feel like a runtime/server glitch.
+- Change: Added a focused disconnected send-availability helper, blocked `ChatScreen` send attempts up front when `baseUrl`/`apiKey` are not both configured, surfaced an inline composer notice plus setup-focused placeholder/accessibility copy, and disabled `Send` until the composer has both content and usable connection settings.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-send-guard--after--new-chat-ready--20260311.png` — same `390x844` CSS viewport on Expo Web. The disconnected new-chat composer now keeps the typed draft visible, shows an inline explanation that saved chats remain viewable while disconnected, and leaves `Send` disabled before any confusing auth/network failure can happen.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8117 --clear` ✅ (Expo Web live at `http://localhost:8117`); `pnpm --filter @dotagents/mobile run test:vitest` ✅; `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-screen-density.test.js` ✅; `git diff --check` ✅; live Expo Web before/after screenshots captured at `390x844` ✅; typed disconnected `+ New Chat` recheck confirmed visible helper copy and disabled `Send` with no raw-error attempt required ✅.
+- Blockers/remaining uncertainty: This pass verified the text-entry new-chat path while disconnected, but it did not yet do a live mic/handsfree pass or an existing-chat retry/reconnect pass after entering the chats surfaces.
 
 ### 2026-03-11 — QA remediation 2: harden disconnected Open Chats coverage and correct ledger provenance
 
@@ -123,6 +171,18 @@
 - Follow-up checks:
   - continue the offline/disconnected coverage map by testing what happens after entering `Chats`, especially `+ New Chat`, composer send failure handling, and reconnect/sync states
   - keep prioritizing unchecked session/error/modal surfaces rather than revisiting this Settings CTA again without a new runtime regression signal
+
+Evidence
+- Evidence ID: settings-offline-open-chats
+- Scope: QA remediation pass for the disconnected `Settings` home `Open Chats` CTA, executable coverage, and ledger provenance (`apps/mobile/src/screens/settings-home-chats-cta.tsx`, `mobile-app-improvement.md`)
+- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..329351ba2e379046fad1e2617d742ff192d6f545
+- Rationale: The disconnected Settings-home CTA had already been improved in runtime, but QA correctly flagged that the review stack still lacked a formal remediation Evidence block and that the prior recorded commit range stopped short of the reviewed head. Adding the missing evidence pair and correcting the span keeps the mobile ledger truthful and makes the already-approved offline CTA change auditable.
+- QA feedback: Addressed reviewer findings that the remediation pass lacked a proper Evidence block and that the earlier `settings-offline-open-chats` commit range stopped before the final reviewed SHA.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--before--settings-home--20260311.png` — `390x844` CSS viewport on Expo Web. This is the original blocked/disconnected Settings-home state that motivated the CTA fix: users saw `Not connected` plus a visible chats action, but the action remained disabled and gave no honest offline path into saved history.
+- Change: Extracted the disconnected Settings-home chats CTA into a small helper so it could receive executable render/press coverage, added focused vitest coverage for the offline helper copy plus enabled press behavior, and corrected the ledger to report the full reviewed SHA span for that change stack.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--after--settings-home--qa-r1--20260311.png` — same `390x844` CSS viewport on Expo Web during the QA remediation pass. The disconnected Settings home still shows an enabled `Open Chats` CTA with the offline helper copy intact, and the remediation pass also live-verified that the CTA still tap-throughs into `Chats` while disconnected.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8116 --clear` ✅ (Expo Web live at `http://localhost:8116` during the remediation pass); `pnpm --filter @dotagents/mobile run test:vitest` ✅; `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/session-list-empty-state.test.js` ✅; `git diff --check` ✅; live Expo Web disconnected Settings-home screenshot captured and tap-through into `Chats` re-verified ✅.
+- Blockers/remaining uncertainty: This remediation pass proved the `Open Chats` CTA stayed enabled and interactive, but it intentionally deferred the next uncovered offline gap inside `Chats` itself, which is why iteration 16 picks up the disconnected new-chat send flow above.
 
 ### 2026-03-11 — Iteration 15: unblock Chats from the disconnected Settings home
 
@@ -158,7 +218,7 @@
 Evidence
 - Evidence ID: settings-offline-open-chats
 - Scope: disconnected `Settings` home chats CTA and offline helper copy on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
-- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..a4fc684336cc576f14d2251f54639bcaa077e1c0
+- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..329351ba2e379046fad1e2617d742ff192d6f545
 - Rationale: The default mobile home screen is both a first-run setup surface and an offline recovery surface. Leaving a visible primary `Go to Chats` action disabled there made the app feel more blocked than it really was, because users could not reach saved chats/history even though the chats list itself can render without an active server connection.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--before--settings-home--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the disconnected `DotAgents` home showed `Not connected` and a visible `Go to Chats` CTA, but the button was disabled, which stranded users away from saved chats/history and did not explain what remained available offline.
