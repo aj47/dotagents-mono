@@ -32,6 +32,8 @@
 - [x] Launched Expo Web at `http://localhost:8150/chat`, reproduced repeated `Unexpected text node: . A text node cannot be a child of a <View>.` console errors on the initial Chat screen render, and traced the component stack back to `ChatScreen`'s `debugInfo &&` conditional.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent for this pass, and live-inspected a fresh Expo Web agent-creation flow on `http://localhost:8160/agents/edit` for a new concrete mobile-web bug.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent, explicitly deferred the older unresolved QA follow-ups, and live-inspected Expo Web at `http://localhost:8170/sessions` for a new runtime-confirmed Sessions empty-state bug.
+- [x] Re-reviewed `bug-fix.md` plus the current QA feedback, and explicitly deferred the unresolved `mobile-web-qr-scanner` screenshot viewport mismatch for this iteration because the selected bug is a fresh Expo Web chat-link privacy/state issue.
+- [x] Directly confirmed via React Navigation's `getPathFromState()` / `getStateFromPath()` that `Chat` route params currently serialize a pending rapid-fire draft into `/chat?initialMessage=hello%20secret%20world` and parse the same draft back from the browser URL.
 
 ## Not yet checked
 
@@ -50,6 +52,7 @@
 - [x] Mobile Expo Web rendered the initial `/chat` screen with an empty-string child under a `ScrollView`, which emitted the React Native Web error `Unexpected text node: . A text node cannot be a child of a <View>.` three times on initial render even though the visible chat surface otherwise looked idle.
 - [x] Mobile Expo Web let an unconfigured user open `/agents/edit` with the primary `Create Agent` action still enabled, but tapping it performed no save, no navigation, and no visible error because `AgentEditScreen` returned early when no connection settings client was available.
 - [x] Mobile Expo Web still rendered the generic `/sessions` empty state for an unconfigured user, including normal-looking `+ New Chat`, `Start first chat`, and `Hold to talk (Rapid Fire)` entry points, even though the same screen could not actually start chat creation until connection settings were completed.
+- [x] Expo Web `Chat` route generation leaked pending rapid-fire draft text into browser history as `/chat?initialMessage=...`, and the default parser restored that same draft back into `route.params.initialMessage` from the URL.
 
 ## Fixed
 
@@ -65,6 +68,7 @@
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now uses `shouldRenderOptionalChild()` from `apps/mobile/src/screens/chat-render-guards.ts` before rendering optional blocks whose conditions may evaluate to an empty string, so Expo Web no longer mounts invalid raw text nodes under chat `View` / `ScrollView` containers during the initial `/chat` render.
 - [x] `apps/mobile/src/screens/AgentEditScreen.tsx` now matches the existing Memory/Loop edit guard pattern by surfacing missing-connection guidance, showing a visible save error if the action is invoked without config, and disabling `Create Agent` / `Save Changes` until Base URL + API key settings exist.
 - [x] `apps/mobile/src/screens/SessionListScreen.tsx` now turns the disconnected `/sessions` empty state into explicit setup guidance: the header action becomes `Open Connection`, the empty state explains that a connection is required before starting a chat, the empty-state CTA routes straight to `ConnectionSettings`, and Rapid Fire is visibly disabled with the same missing-connection guidance instead of looking ready.
+- [x] `apps/mobile/src/navigation/navigationLinking.ts` now strips transient `Chat` draft params such as `initialMessage` from Expo Web URL generation and inbound URL parsing, so the rapid-fire resume flow can still use in-memory route state without leaking draft content into browser URLs/history or rehydrating it from a pasted link.
 
 ## Verified
 
@@ -115,6 +119,10 @@
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after the temporary local `SessionListScreen` typing issues were removed.
 - [x] Live Expo Web repro at `http://localhost:8170/sessions` now immediately shows connection-required setup guidance and routes `Open connection settings` to `/connection` in the same unconfigured `1280x800` browser context.
 - [x] Curated matching before/after screenshots for the unconfigured Sessions empty state were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `1280x800` viewport.
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts`
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this chat-link fix; no new type errors were introduced.
+- [x] `git diff --check`
 
 ## Blocked
 
@@ -139,6 +147,7 @@
 - [ ] Whether reopened successful chats without a message-count change were also previously stale for the same persistence reason; this iteration fixed the shared settled-message persistence path and verified the failure-state repro specifically.
 - [ ] Whether direct deep links into other mobile edit/detail routes still have any missing-configuration edge cases beyond the now-fixed `AgentEditScreen` silent no-op path.
 - [ ] Whether unconfigured users who already have historical sessions should also see a lightweight read-only banner on `/sessions`; this iteration fixed the misleading empty-state/create-entry path specifically.
+- [ ] Whether any other ephemeral mobile web route params beyond `Chat.initialMessage` should also be stripped from generated/pasted URLs for privacy or replay-safety; this iteration fixed only the confirmed rapid-fire draft case.
 
 ## Candidate leads
 
@@ -149,6 +158,7 @@
 - Mobile chat/session state edge cases after reopen, retry, and offline failures now that the placeholder-persistence bug is fixed.
 - Mobile Expo Web edit/detail deep links that are reachable without configuration, especially around remaining save/load gating consistency and scroll/interaction edge cases.
 - Mobile Expo Web disconnected states where a route still renders primary creation actions before setup is complete.
+- Mobile Expo Web flows that pass transient user-entered text or other ephemeral action state through route params, especially if they can still bleed into browser history after the `Chat.initialMessage` fix.
 
 ## Evidence
 
@@ -271,3 +281,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/session-list-connection-gate--after--sessions-empty-unconfigured--20260311.png` (same `1280x800` viewport and same unconfigured `/sessions` surface). After the fix, the screen immediately shows `Connection required`, the header action is `Open Connection`, the primary CTA is `Open connection settings`, and browser automation confirmed that CTA navigates straight to `/connection`, which makes the required recovery path visible before the user attempts a broken chat-creation flow.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile run test:node` ✅ (77 Node tests passing, including the new Sessions empty-state and connection-gate assertions); `pnpm --filter @dotagents/mobile run test:vitest` ✅ (10 mobile Vitest files / 70 tests passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after removing the temporary local `SessionListScreen` typing issues caught during development; `git diff --check` ✅ before the product commit; live Expo Web repro at `http://localhost:8170/sessions` ✅ now shows the proactive connection-required empty state and routes `Open connection settings` to `/connection` in the same unconfigured `1280x800` browser context.
 - Blockers/remaining uncertainty: The exact misleading empty-state/create-entry path on disconnected `/sessions` is fixed and live-verified. I did not expand this iteration into the separate question of whether previously saved sessions should show an additional read-only banner while disconnected, because that broader state is distinct from the reproduced empty-state bug and would widen the scope beyond this local fix.
+
+### Evidence ID: chat-initial-message-url-leak
+
+- Scope: `apps/mobile/src/navigation/navigationLinking.ts` and `apps/mobile/src/navigation/navigationLinking.test.ts` for Expo Web `Chat` route serialization/parsing of transient `initialMessage` drafts.
+- Commit range: `41f59a5e2405e128c5112ac30121269f6b777390..91ff64cc38910dbc84eb54433131b49331943ab5`
+- Rationale: The mobile rapid-fire/session-resume flow uses `navigation.navigate('Chat', { initialMessage })` to auto-send a pending draft when the chat screen opens. On Expo Web, React Navigation treated that draft as URL state, which leaked the full message text into browser history as `/chat?initialMessage=...` and also let pasted/refreshed links restore the draft back into `route.params.initialMessage`. That is a user-visible privacy and replay-safety bug on a core chat flow.
+- QA feedback: Deferred the older unresolved `mobile-web-qr-scanner` screenshot viewport mismatch for this iteration; that evidence-quality issue remains open, but this pass intentionally fixes a new product bug with clearer user impact.
+- Before evidence: No screenshot for this runtime-free route-serialization bug. Directly confirmed with `node --input-type=module` + `@react-navigation/core` that the current config generated `PATH=/chat?initialMessage=hello%20secret%20world` for `routes: [{ name: 'Chat', params: { initialMessage: 'hello secret world' } }]`, and parsed `/chat?initialMessage=hello%20secret%20world` back into `routes[0].params.initialMessage = "hello secret world"`. That proves pending chat text could leak into browser URLs/history and be rehydrated from inbound links.
+- Change: Wrapped the existing web linking config with custom `getPathFromState` / `getStateFromPath` sanitizers that recursively remove transient `Chat` params such as `initialMessage` before URL generation and after inbound URL parsing. This keeps the in-memory route param available for the one-shot auto-send flow while preventing browser-visible URLs from carrying the draft text. Added focused Vitest coverage that locks both behaviors: generated `Chat` URLs stay at `/chat`, and inbound `/chat?initialMessage=...` links no longer expose `params.initialMessage`.
+- After evidence: No screenshot for this runtime-free route-serialization bug. The new `navigationLinking` regression tests now prove the observable improvement directly: `linking.getPathFromState({ routes: [{ name: 'Chat', params: { initialMessage: 'hello secret world' } }] }, linking.config)` resolves to `/chat`, and `linking.getStateFromPath('/chat?initialMessage=hello%20secret%20world', linking.config)` returns a `Chat` route without `params.initialMessage`. That removes the draft-text URL leak and inbound replay path while preserving the normal `/chat` route.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` ✅ (9 tests passing, including the new generated-path and inbound-parse guards for transient chat draft params); `pnpm --filter @dotagents/mobile test` ✅ (77 Node tests + 72 Vitest assertions passing across the mobile suite after the linking change); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; `git diff --check` ✅.
+- Blockers/remaining uncertainty: This iteration fixed the confirmed `Chat.initialMessage` URL leak/replay path specifically. I did not broaden the sanitizer to every possible future transient route param because only this draft-chat case was directly confirmed as user-facing and privacy-sensitive in the current code.
