@@ -152,7 +152,7 @@ Track recent Langfuse sessions/traces inspected so this loop does not repeat the
 #### Evidence
 - Evidence ID: `acp-mark-work-complete-fallback`
 - Scope: Prevent ACP runs from surfacing raw bracketed tool scaffolding as the final answer when the agent completes with `mark_work_complete` but fails to send `respond_to_user`.
-- Commit range: `751431f01ad937b7413638c58c69c3c4ceb26ee2..PENDING_HEAD`
+- Commit range: `751431f01ad937b7413638c58c69c3c4ceb26ee2..64621c8d87d3e9411f1e2c3c3aec505e30046850`
 - Rationale: The traced repeat-task run did real work and even signaled completion, but the app still delivered raw `[list_repeat_tasks] ...` scaffold text to the user. Falling back to the completion summary, while stripping persisted scaffold text from assistant messages that host tool calls, restores a usable one-run answer and avoids making a successful ACP completion look broken.
 - QA feedback: Deferred prior QA findings on the older `streaming-textual-tool-buffering` iteration for this pass; this iteration instead fixes a new ACP completion fallback bug, while also resolving the scoped `apps/desktop/src/main/acp-main-agent.test.ts` tuple typecheck issue noted by QA.
 - Before evidence: Langfuse trace `session_1773171104053_50hdwno0p` in session `conv_1773171104051_sl7f7hfsd` shows the final output as raw scaffold text starting `[list_repeat_tasks] {"success":true,...}`. The persisted conversation file for the same session contains that raw assistant text, a `mark_work_complete` tool call with summary `Reported the enabled repeat tasks to the user.`, the tool result, and then the same raw scaffold text again—clear evidence that the user never received the synthesized answer in that single run.
