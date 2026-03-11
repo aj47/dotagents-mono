@@ -19,7 +19,9 @@ test('keeps the session title row shrinkable for narrow mobile widths', () => {
 });
 
 test('keeps session rows compact by clamping previews and trimming vertical chrome', () => {
-  assert.match(screenSource, /<Text style=\{styles\.sessionPreview\} numberOfLines=\{1\}>/);
+  assert.match(screenSource, /const trimmedPreview = item\.preview\?\.trim\(\) \?\? '';/);
+  assert.match(screenSource, /const sessionPreview = trimmedPreview\.length > 0[\s\S]*?item\.messageCount === 0[\s\S]*?'No messages yet'[\s\S]*?: null;/);
+  assert.match(screenSource, /\{sessionPreview \? \([\s\S]*?<Text style=\{styles\.sessionPreview\} numberOfLines=\{1\}>[\s\S]*?\{sessionPreview\}[\s\S]*?<\/Text>[\s\S]*?\) : null\}/);
   assert.match(screenSource, /sessionItem:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\.md,[\s\S]*?paddingVertical:\s*spacing\.sm \+ 2,[\s\S]*?marginBottom:\s*spacing\.sm - 2,/);
   assert.match(screenSource, /sessionHeader:\s*\{[\s\S]*?marginBottom:\s*spacing\.xs,/);
   assert.match(screenSource, /sessionPreview:\s*\{[\s\S]*?marginBottom:\s*2,/);

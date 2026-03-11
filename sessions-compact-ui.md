@@ -19,6 +19,7 @@ Last updated: 2026-03-11
 - [x] Mobile Expo web `Sessions` screen — populated synthetic session-list state with long titles/previews and one active row — 2026-03-10
 - [x] Mobile Expo web `Chats` list at `390x844` — populated real local sessions inspected live for top chrome, row hierarchy, timestamp weight, previews, and destructive adjacent controls; no code change shipped in this pass — 2026-03-11
 - [x] Mobile Expo web `Chats` list at `390x844` — populated seeded sessions re-checked live with matched before/after screenshots; header action-row hierarchy updated so `+ New Chat` stays primary while `Clear all` drops into lower-emphasis count context — 2026-03-11
+- [x] Mobile Expo web `Chats` list at `390x844` — seeded desktop-stub sessions with empty previews plus one empty local session, inspected live with matched before/after screenshots to verify placeholder-preview density and count/preview hierarchy — 2026-03-11
 - [ ] Mobile loading / syncing / error / offline states
 - [ ] Mobile very small width / larger mobile width comparisons
 - [ ] Mobile delete / long-press / overflow-adjacent affordances
@@ -31,6 +32,7 @@ Last updated: 2026-03-11
 
 - [x] `desktop-empty-recent-session-row-chrome` is desktop-specific so far: the desktop empty-state `Recent Sessions` list had a narrow max width plus always-visible row-level pin chrome, while the mobile sessions list already uses full-width rows and has no equivalent per-row pin affordance.
 - [x] `desktop-sidebar-session-recognition` is desktop-specific so far: the left sidebar compresses past-session picking into a narrow rail next to Agents/Settings, while the mobile chats list already gives full-width rows and clearer section isolation.
+- [x] `mobile-session-placeholder-preview-density` is mobile-specific so far: mobile stub rows could spend a whole extra line on the `No messages yet` placeholder even when server metadata already showed nonzero message counts, while the desktop sessions surfaces inspected so far do not render that contradictory placeholder pattern.
 
 ## Not yet checked
 
@@ -47,6 +49,7 @@ Last updated: 2026-03-11
 - [x] `mobile-chats-action-row-hierarchy`: Reproduced on mobile Expo web `Chats` at `390x844` with a seeded populated list; the header placed `Clear All` as the only secondary control opposite `+ New Chat`, so the destructive affordance read like a peer action before users had even scanned how many chats existed.
 - [x] `desktop-empty-recent-session-row-chrome`: Reproduced on desktop at `1440x900` in the empty-state `Recent Sessions` list; the list was capped to roughly `448px` wide and each idle row still reserved about `18px` for an always-visible unpinned pin button, so long titles truncated early despite abundant unused desktop width.
 - [x] `desktop-sidebar-session-recognition`: Reproduced on desktop at `1440x900` in the expanded left `Sessions` rail with no active sessions; each past-session row measured about `147px × 24px`, spent `12px` plus gap on a low-signal archive icon, and left only about `117px` for the title while the sessions block flowed directly into Agents/Settings with minimal boundary.
+- [x] `mobile-session-placeholder-preview-density`: Reproduced on mobile Expo web `Chats` at `390x844` with a seeded stub-heavy dataset; three desktop-origin rows with empty server previews still rendered a full `No messages yet` line above `6 / 4 / 2 messages · from desktop`, so only about four rows fit above Rapid Fire and the preview/count hierarchy contradicted itself.
 
 ## Improved
 
@@ -54,6 +57,7 @@ Last updated: 2026-03-11
 - [x] `mobile-chats-action-row-hierarchy`: Added a muted chat-count label to the mobile chats header and demoted `Clear all` into the secondary metadata cluster with a smaller touch-target padding profile, so the destructive action stops reading like a co-primary control while the list gains immediate count context.
 - [x] `desktop-empty-recent-session-row-chrome`: Widened the desktop empty-state `Recent Sessions` list from `max-w-md` to `max-w-xl`, tightened row padding/gaps, and collapsed the unpinned pin affordance to zero idle width so titles get more room while pinning still appears on hover/focus or when already pinned.
 - [x] `desktop-sidebar-session-recognition`: Removed redundant archive chrome from desktop sidebar past-session rows, tightened the list gutter, and added a divider under the sessions block so titles get more width and the session-picking surface reads as distinct from Agents/Settings.
+- [x] `mobile-session-placeholder-preview-density`: Mobile chat rows now only render the `No messages yet` preview for truly empty sessions; seeded desktop-stub rows with nonzero counts and empty preview strings collapse to a denser title + metadata stack instead of wasting a contradictory placeholder line.
 
 ## Verified
 
@@ -68,6 +72,8 @@ Last updated: 2026-03-11
 - [x] Mobile runtime re-check passed at `390x844` on the real populated `Chats` list; no change shipped, but the action-row chrome, title/preview hierarchy, timestamp weight, and `Clear All` prominence were inspected live and logged for follow-up prioritization — 2026-03-11
 - [x] Targeted source regression check passed: `node --test apps/mobile/tests/session-list-density.test.js` — 4/4 passing — 2026-03-11
 - [x] Mobile runtime re-check passed at `390x844` on Expo web with a seeded populated chats list; matched before/after screenshots confirm the header now shows `4 chats` context and a smaller `Clear all` secondary action while preserving `+ New Chat` as the lone primary CTA — 2026-03-11
+- [x] Targeted source regression check passed: `node --test apps/mobile/tests/session-list-density.test.js` — 4/4 passing after adding the empty-preview guard for nonzero-message rows — 2026-03-11
+- [x] Mobile runtime re-check passed at `390x844` on Expo web with an exact seeded stub dataset; matched before/after screenshots confirm `No messages yet` disappears from the `6 / 4 / 2 messages · from desktop` rows while remaining on the `0 messages` local row, increasing the estimated above-the-fold capacity from about `4` rows to about `8` compact rows above Rapid Fire — 2026-03-11
 
 ## Blocked
 
@@ -80,6 +86,7 @@ Last updated: 2026-03-11
 - [ ] Whether the mobile long-press delete affordance remains discoverable after compacting row content
 - [ ] Whether the mobile chats header should collapse `Clear all` into overflow entirely on narrower widths or when the syncing spinner is visible, now that the count-context demotion is in place
 - [ ] Whether the desktop empty-state `Recent Sessions` list should also surface pin affordance visibility on touch/non-hover environments beyond keyboard focus, or if the current focus-visible path is sufficient
+- [ ] Whether server-synced mobile stub sessions should eventually backfill a real last-message preview instead of simply omitting the placeholder line when preview metadata is blank
 
 ## Evidence
 
@@ -134,3 +141,16 @@ Last updated: 2026-03-11
 - After evidence: `docs/aloops-evidence/sessions-compact-ui-loop/mobile-chats-action-row-hierarchy--after--chats-list--20260311.png` — after-state screenshot at the same `390x844 mobile` viewport shows the header leading with `+ New Chat`, then a muted `4 chats` label, then the smaller `Clear all` action. The list now communicates list size before destructive affordances, and the secondary action occupies less visual weight while remaining reachable.
 - Verification commands/run results: `node --test apps/mobile/tests/session-list-density.test.js` ✅ (4/4 passing). Live Expo web runtime re-check via Puppeteer on `http://127.0.0.1:8081` at `390x844` captured matched before/after screenshots from the same seeded populated state; after the change, the header rendered `4 chats` at about `42px` width in muted caption styling and `Clear all` as a smaller secondary action (`~66px` wide with `8px/4px` padding) while `+ New Chat` remained the only prominent filled CTA.
 - Blockers/remaining uncertainty: This pass used a local seeded mobile dataset rather than live synced conversations so the action-row chrome could be reproduced consistently. I did not yet validate even narrower widths, spinner-visible syncing, or native long-press/touch behavior around the demoted destructive action.
+
+### Evidence block — mobile-session-placeholder-preview-density
+
+- Evidence ID: `mobile-session-placeholder-preview-density`
+- Scope: Mobile Expo web `Chats` list at `390x844 mobile`, using an exact seeded dataset of three desktop-origin stub sessions with blank preview metadata (`6 / 4 / 2 messages`) plus one empty local chat (`0 messages`) so the preview/count hierarchy could be compared like-for-like.
+- Commit range: `TBD_AFTER_COMMIT`
+- Rationale: Mobile session picking was wasting a full line on the `No messages yet` placeholder even when a row already exposed nonzero message counts from synced desktop metadata, which both reduced above-the-fold density and created a misleading preview/count contradiction during fast scanning.
+- QA feedback: Deferred the outstanding older reviewer finding about `desktop-sidebar-session-recognition` screenshot provenance for this iteration; this pass instead ships a new mobile sessions-row density improvement with a fully matched seeded before/after screenshot pair.
+- Before evidence: `docs/aloops-evidence/sessions-compact-ui-loop/mobile-session-placeholder-preview-density--before--chats-list--20260311.png` — before-state screenshot at `390x844 mobile` shows the exact seeded chats list with all four rows spending a full preview line on `No messages yet`, including the three desktop-stub rows that simultaneously report `6 / 4 / 2 messages · from desktop`. In that captured state only about `4` rows fit above the Rapid Fire control, and the placeholder preview directly contradicts the visible nonzero count metadata.
+- Change: In `apps/mobile/src/screens/SessionListScreen.tsx`, trim the preview string and only render the preview line when there is real preview text or the session is truly empty (`0 messages`); keep the placeholder for empty chats while collapsing nonempty blank-preview rows to a denser title + metadata stack. `apps/mobile/tests/session-list-density.test.js` now locks in that conditional rendering path.
+- After evidence: `docs/aloops-evidence/sessions-compact-ui-loop/mobile-session-placeholder-preview-density--after--chats-list--20260311.png` — after-state screenshot at the same `390x844 mobile` viewport shows the same seeded `6 / 4 / 2 / 0` dataset with the three nonempty desktop-stub rows collapsed to title + count metadata only, while the empty local row still shows `No messages yet`. Live inspection measured the compact non-preview rows at about `66–68px` tall, which raises the estimated above-the-fold capacity to about `8` compact rows above Rapid Fire and removes the preview/count contradiction.
+- Verification commands/run results: `node --test apps/mobile/tests/session-list-density.test.js` ✅ (4/4 passing). Live Expo web runtime re-check on `http://127.0.0.1:8081` at `390x844` hard-overwrote `chat_sessions_v1` and `current_session_id_v1` with the exact seeded dataset for both before and after captures; before, the visible row texts included `No messages yet` on all `6 / 4 / 2 / 0` rows, while after, only the `0 messages` local row retained the placeholder and the `6 / 4 / 2 messages · from desktop` rows rendered without a preview line.
+- Blockers/remaining uncertainty: This pass intentionally used a deterministic seeded storage state rather than live synced conversations so the blank-preview stub condition could be reproduced exactly. I have not yet fixed or re-captured the older `desktop-sidebar-session-recognition` evidence block that still carries the outstanding QA provenance finding, and I have not investigated why those stub rows lacked preview metadata in the first place.

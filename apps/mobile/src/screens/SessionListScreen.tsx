@@ -768,6 +768,12 @@ export default function SessionListScreen({ navigation }: Props) {
   const renderSession = ({ item }: { item: SessionListItem }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
+    const trimmedPreview = item.preview?.trim() ?? '';
+    const sessionPreview = trimmedPreview.length > 0
+      ? trimmedPreview
+      : item.messageCount === 0
+        ? 'No messages yet'
+        : null;
 
     return (
       <TouchableOpacity
@@ -785,9 +791,11 @@ export default function SessionListScreen({ navigation }: Props) {
           </View>
           <Text style={styles.sessionDate}>{formatDate(item.updatedAt)}</Text>
         </View>
-        <Text style={styles.sessionPreview} numberOfLines={1}>
-          {item.preview || 'No messages yet'}
-        </Text>
+        {sessionPreview ? (
+          <Text style={styles.sessionPreview} numberOfLines={1}>
+            {sessionPreview}
+          </Text>
+        ) : null}
         <Text style={styles.sessionMeta}>
           {item.messageCount} message{item.messageCount !== 1 ? 's' : ''}
           {isStub ? ' · from desktop' : ''}
