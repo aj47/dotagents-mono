@@ -31,6 +31,12 @@ vi.mock("fs/promises", () => ({
 
 // Mock state for toolApprovalManager
 vi.mock("./state", () => ({
+  state: {
+    shouldStopAgent: false,
+  },
+  agentSessionStateManager: {
+    getSessionRunId: vi.fn(),
+  },
   toolApprovalManager: {
     requestApproval: vi.fn(() => ({
       approvalId: "test-approval-id",
@@ -409,6 +415,48 @@ describe("ACP Service", () => {
       )
 
       rmSync(workspaceDir, { recursive: true, force: true })
+    })
+  })
+
+  describe("sendPrompt", () => {
+    it("retries once with a fresh session after a stale kill-switch failure", async () => {
+      const { acpService } = await import("./acp-service")
+
+      await acpService.spawnAgent("test-agent")
+
+      const getOrCreateSessionSpy = vi.spyOn(acpService, "getOrCreateSession").mockResolvedValue("fresh-session")
+      const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
+        .mockRejectedValueOnce(new Error("Session stopped by kill switch"))
+        .mockResolvedValueOnce({
+          content: [{ type: "text", text: "Recovered output" }],
+        })
+
+      const result = await acpService.sendPrompt("test-agent", "stale-session", "hello")
+
+      expect(getOrCreateSessionSpy).toHaveBeenCalledWith("test-agent", true)
+      expect(sendRequestSpy).toHaveBeenNthCalledWith(
+        1,
+        "test-agent",
+        "session/prompt",
+        {
+          sessionId: "stale-session",
+          prompt: [{ type: "text", text: "hello" }],
+        }
+      )
+      expect(sendRequestSpy).toHaveBeenNthCalledWith(
+        2,
+        "test-agent",
+        "session/prompt",
+        {
+          sessionId: "fresh-session",
+          prompt: [{ type: "text", text: "hello" }],
+        }
+      )
+      expect(result).toEqual({
+        success: true,
+        response: "Recovered output",
+        stopReason: undefined,
+      })
     })
   })
 

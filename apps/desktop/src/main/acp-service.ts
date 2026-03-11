@@ -17,7 +17,7 @@ import { homedir } from "os"
 import { dirname, isAbsolute, join, resolve } from "path"
 import { configStore } from "./config"
 import { ACPAgentConfig, ACPConfigOption } from "../shared/types"
-import { toolApprovalManager, agentSessionStateManager } from "./state"
+import { toolApprovalManager, agentSessionStateManager, state } from "./state"
 import { agentProfileService } from "./agent-profile-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { logACP, logApp } from "./debug"
@@ -46,6 +46,20 @@ interface JsonRpcResponse {
     message: string
     data?: unknown
   }
+}
+
+const ACP_STOP_ERROR_PATTERNS = [
+  /session stopped by kill switch/i,
+  /aborted by emergency stop/i,
+  /emergency kill switch/i,
+]
+
+function isACPStopErrorMessage(value: string | undefined | null): boolean {
+  if (!value) {
+    return false
+  }
+
+  return ACP_STOP_ERROR_PATTERNS.some((pattern) => pattern.test(value))
 }
 
 interface JsonRpcNotification {
@@ -2071,69 +2085,120 @@ class ACPService extends EventEmitter {
       }
     }
 
-    // Clear any stale session output from previous prompts in this session
-    // This ensures we only collect content blocks from the current prompt,
-    // preventing old messages from being included in the response
-    this.clearSessionOutput(sessionId)
+    const promptText = context ? `Context: ${context}\n\nTask: ${prompt}` : prompt
+    const promptContent = [{ type: "text", text: promptText }]
 
-    try {
-      // Format prompt as content blocks per ACP spec
-      const promptText = context ? `Context: ${context}\n\nTask: ${prompt}` : prompt
-      const promptContent = [{ type: "text", text: promptText }]
-
-      const result = await this.sendRequest(agentName, "session/prompt", {
-        sessionId,
-        prompt: promptContent,
-      }) as {
-        stopReason?: string
-        error?: { message?: string }
-        content?: ACPContentBlock[]
-        message?: { content?: ACPContentBlock[] }
+    const tryFreshSessionAfterStop = async (): Promise<string | null> => {
+      if (state.shouldStopAgent) {
+        return null
       }
 
-      if (result?.error) {
-        return {
-          success: false,
-          error: result.error.message || JSON.stringify(result.error),
-        }
-      }
-
-      // Collect text output from the response
-      let responseText = ""
-      const contentBlocks = result?.content || result?.message?.content || []
-
-      if (Array.isArray(contentBlocks)) {
-        for (const block of contentBlocks) {
-          if (typeof block === "string") {
-            responseText += block + "\n"
-          } else if (block?.type === "text" && block?.text) {
-            responseText += block.text + "\n"
-          }
-        }
-      }
-
-      // Also check session output collected from notifications
-      const sessionOutput = this.getSessionOutput(sessionId)
-      if (sessionOutput) {
-        for (const block of sessionOutput.contentBlocks) {
-          if (block.type === "text" && block.text && !responseText.includes(block.text)) {
-            responseText += block.text + "\n"
-          }
-        }
-      }
-
-      return {
-        success: true,
-        response: responseText.trim() || undefined,
-        stopReason: result?.stopReason,
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      return {
-        success: false,
-        error: errorMessage,
+      try {
+        const freshSessionId = await this.getOrCreateSession(agentName, true)
+        return freshSessionId !== sessionId ? freshSessionId : null
+      } catch (refreshError) {
+        logApp(
+          `[ACPService] Failed to refresh session for ${agentName} after stop-related prompt failure`,
+          refreshError,
+        )
+        return null
       }
     }
+
+    const attemptPrompt = async (
+      targetSessionId: string,
+      allowFreshSessionRetry: boolean,
+    ): Promise<{
+      success: boolean
+      response?: string
+      stopReason?: string
+      error?: string
+    }> => {
+      // Clear any stale session output from previous prompts in this session
+      // This ensures we only collect content blocks from the current prompt,
+      // preventing old messages from being included in the response
+      this.clearSessionOutput(targetSessionId)
+
+      try {
+        const result = await this.sendRequest(agentName, "session/prompt", {
+          sessionId: targetSessionId,
+          prompt: promptContent,
+        }) as {
+          stopReason?: string
+          error?: { message?: string }
+          content?: ACPContentBlock[]
+          message?: { content?: ACPContentBlock[] }
+        }
+
+        if (result?.error) {
+          return {
+            success: false,
+            error: result.error.message || JSON.stringify(result.error),
+          }
+        }
+
+        let responseText = ""
+        const contentBlocks = result?.content || result?.message?.content || []
+
+        if (Array.isArray(contentBlocks)) {
+          for (const block of contentBlocks) {
+            if (typeof block === "string") {
+              responseText += block + "\n"
+            } else if (block?.type === "text" && block?.text) {
+              responseText += block.text + "\n"
+            }
+          }
+        }
+
+        const sessionOutput = this.getSessionOutput(targetSessionId)
+        if (sessionOutput) {
+          for (const block of sessionOutput.contentBlocks) {
+            if (block.type === "text" && block.text && !responseText.includes(block.text)) {
+              responseText += block.text + "\n"
+            }
+          }
+        }
+
+        const normalizedResponse = responseText.trim() || undefined
+        const stopReason = result?.stopReason || sessionOutput?.stopReason
+
+        if (!normalizedResponse && isACPStopErrorMessage(stopReason)) {
+          if (allowFreshSessionRetry) {
+            const freshSessionId = await tryFreshSessionAfterStop()
+            if (freshSessionId) {
+              return attemptPrompt(freshSessionId, false)
+            }
+          }
+
+          return {
+            success: false,
+            error: stopReason,
+          }
+        }
+
+        return {
+          success: true,
+          response: normalizedResponse,
+          stopReason,
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+
+        if (allowFreshSessionRetry && isACPStopErrorMessage(errorMessage)) {
+          const freshSessionId = await tryFreshSessionAfterStop()
+          if (freshSessionId) {
+            return attemptPrompt(freshSessionId, false)
+          }
+        }
+
+        return {
+          success: false,
+          error: errorMessage,
+        }
+      }
+    }
+
+    return attemptPrompt(sessionId, true)
   }
 
   /**
