@@ -951,7 +951,7 @@ Evidence
 Evidence
 - Evidence ID: mobile-tool-block-touch-targets
 - Scope: Mobile active-session transcript tool-execution rows in `apps/mobile/src/screens/ChatScreen.tsx`, with a cross-check against desktop session surfaces to determine whether the issue is shared.
-- Commit range: PENDING_POST_COMMIT_UPDATE
+- Commit range: e46d01822ce065cf4b6b0ee3aa64f0078c0cd00e..35fd3f1deeade258fb3033f668ba297d8bfda4ca
 - Rationale: Live Expo web inspection showed the transcript's collapsed tool summary and expanded `Full Details` headers were far smaller than the surrounding chat controls, which hurt scanability and tap confidence in a core active-session flow. This change raises those tool-block controls to a compact-but-deliberate 32px height without broadening the rest of the transcript chrome.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/compact-ui-loop/mobile-tool-block-touch-targets--before--chat-tool-collapsed--20260311.png` and `docs/aloops-evidence/compact-ui-loop/mobile-tool-block-touch-targets--before--chat-tool-expanded--20260311.png` capture the same active chat at `390x844 mobile`. The collapsed tool row measured `368x18`, and the expanded header rows measured `367x20`, which made the transcript controls look accidental and undersized for tapping inside a high-frequency session surface.
