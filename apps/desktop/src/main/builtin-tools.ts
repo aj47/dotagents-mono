@@ -122,6 +122,31 @@ const isExecuteCommandStdoutMaxBufferError = (error: unknown) => {
     (typeof maybeError.message === "string" && maybeError.message.toLowerCase().includes("stdout maxbuffer length exceeded"))
 }
 
+const MISSING_PATH_REGEX = /(?:^|\n)[^:\n]+:\s+(.+?): No such file or directory(?:\n|$)/
+
+const shellQuote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`
+
+const getExecuteCommandMissingPathDetails = (stdout: string, stderr: string) => {
+  const combinedOutput = [stdout, stderr].filter(Boolean).join("\n")
+  const match = combinedOutput.match(MISSING_PATH_REGEX)
+  if (!match?.[1]) {
+    return null
+  }
+
+  const missingPath = match[1].trim()
+  const baseName = path.basename(missingPath)
+  const searchRoot = path.dirname(missingPath)
+  if (!missingPath || !baseName || !searchRoot || searchRoot === ".") {
+    return null
+  }
+
+  return {
+    missingPath,
+    hint: "File or directory was not found. If it may have moved, search nearby for the basename before giving up.",
+    suggestedSearchCommand: `find ${shellQuote(searchRoot)} -maxdepth 3 -iname ${shellQuote(baseName)} 2>&1`,
+  }
+}
+
 const getDataImageBytesFromUrl = (url: string): number | null => {
   const trimmed = url.trim()
   if (!DATA_IMAGE_BASE64_PREFIX_REGEX.test(trimmed)) {
@@ -911,6 +936,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       const errorMessage = error.message || String(error)
       const exitCode = error.code
       const { stdout: truncatedStdout, outputTruncated } = truncateExecuteCommandOutput(stdout)
+      const missingPathDetails = getExecuteCommandMissingPathDetails(stdout, stderr)
 
       if (isExecuteCommandStdoutMaxBufferError(error) && truncatedStdout.trim().length > 0) {
         return {
@@ -950,6 +976,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               exitCode,
               stdout: truncatedStdout,
               stderr,
+              ...(missingPathDetails ?? {}),
               ...(outputTruncated ? { outputTruncated: true } : {}),
             }, null, 2),
           },

@@ -80,4 +80,33 @@ describe("builtin execute_command", () => {
     expect(payload.stderr).toContain("bad pattern")
     expect(payload.bufferExceeded).toBeUndefined()
   })
+
+  it("adds a nearby-search hint for missing file paths", async () => {
+    const missingPath = "/Users/ajjoobandi/Documents/agent-notes/email-triage-plan.md"
+
+    mockExec.mockImplementation((_command: string, _options: unknown, callback: (error: unknown, stdout: string, stderr: string) => void) => {
+      const stdout = `cat: ${missingPath}: No such file or directory\n`
+      const error = Object.assign(new Error("Command failed: cat missing"), {
+        code: 1,
+        stdout,
+        stderr: "",
+      })
+
+      callback(error, stdout, "")
+      return {} as never
+    })
+
+    const { executeBuiltinTool } = await import("./builtin-tools")
+    const result = await executeBuiltinTool("execute_command", { command: `cat ${missingPath}` })
+
+    expect(result?.isError).toBe(true)
+
+    const payload = parseTextResult(result)
+    expect(payload.success).toBe(false)
+    expect(payload.missingPath).toBe(missingPath)
+    expect(payload.hint).toContain("search nearby")
+    expect(payload.suggestedSearchCommand).toBe(
+      "find '/Users/ajjoobandi/Documents/agent-notes' -maxdepth 3 -iname 'email-triage-plan.md' 2>&1",
+    )
+  })
 })
