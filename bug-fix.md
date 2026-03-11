@@ -7,6 +7,7 @@
 
 ## Checked
 
+- [x] Reviewed outstanding QA feedback from `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` and explicitly deferred the unresolved `mobile-web-qr-scanner` screenshot viewport mismatch for this iteration.
 - [x] Reviewed QA round 1 findings for `mobile-web-qr-scanner` evidence provenance and weak denied-permission regression coverage.
 - [x] Reviewed QA round 1 findings for the Metro watch-folders remediation scope.
 - [x] Reviewed QA round 2 finding for evidence provenance drift in `mobile-expo-symlink-watchfolders`.
@@ -20,6 +21,7 @@
 - [x] Live-checked Expo Web QR scanning in fresh browser contexts with denied and granted camera permission to separate the silent failure path from the working modal path.
 - [x] Re-created the symlink-based mobile runtime workaround in this worktree and re-ran `pnpm --filter @dotagents/mobile web --port 8112` to look for a fresh concrete failure now that Metro watch folders are fixed.
 - [x] Reviewed `apps/mobile/metro.config.js`, `packages/shared/package.json`, and the Metro regression tests after Expo Web failed resolving `@dotagents/shared` from the symlinked dependency tree.
+- [x] Launched Expo Web on `http://localhost:8120`, reproduced the browser-history failure between `Settings` and `Connection`, and reviewed `apps/mobile/App.tsx` for the missing web linking config.
 
 ## Not yet checked
 
@@ -31,6 +33,7 @@
 - [x] Mobile Expo Web failed to bundle in this worktree when dependencies were reused via symlinked `node_modules`; Metro threw SHA-1/watch errors for files outside the current monorepo root.
 - [x] Mobile Expo Web `Scan QR Code` failed silently when browser camera permission was denied: clicking the button left the user on the same Connection screen with no scanner modal and no visible error.
 - [x] Mobile Expo Web failed again in the symlinked-worktree setup even after the watch-folder fix: Metro resolved `@dotagents/shared` through the sibling worktree's package link, logged repeated invalid `exports` warnings for the sibling `packages/shared/dist/index.mjs`, and then aborted with `Unable to resolve "@dotagents/shared" from "apps/mobile/src/store/config.ts"`.
+- [x] Mobile Expo Web navigation from `Settings` to `Connection` changed the visible screen but left the browser URL at `/`, so browser Back did nothing and normal web history navigation was broken.
 
 ## Fixed
 
@@ -39,6 +42,7 @@
 - [x] QA round 1 remediation extracted the QR permission decision into a small pure helper, added executable denied-permission coverage under Vitest, and corrected the `mobile-web-qr-scanner` evidence provenance so this ledger matches the reviewed iteration.
 - [x] QA round 2 remediation tightened `resolveQrScannerActivation()` to return only the permission error actually consumed by the screen, removing the unused `shouldShowScanner` plumbing while keeping the visible denied-permission recovery behavior unchanged.
 - [x] `apps/mobile/metro.config.js` now pins `@dotagents/*` workspace packages to the current worktree through `resolver.extraNodeModules`, so symlinked `node_modules` trees no longer send Expo Web to a sibling worktree's stale `@dotagents/shared` package when bundling the mobile app.
+- [x] `apps/mobile/App.tsx` now passes a web-only React Navigation linking config built in `apps/mobile/src/navigation/navigationLinking.ts`, so Expo Web writes stable screen paths like `/connection` into browser history and the browser Back button can return from `Connection` to `Settings`.
 
 ## Verified
 
@@ -59,12 +63,18 @@
 - [x] `pnpm build:shared`
 - [x] Re-ran `node --test apps/mobile/tests/metro-config-watchfolders.test.js` after pinning workspace packages to the current worktree and confirmed the new resolver mapping coverage passes.
 - [x] `pnpm --filter @dotagents/mobile web --port 8112` now reaches `Web Bundled ... apps/mobile/index.ts` with `LOG  [web] Logs will appear in the browser console` instead of failing to resolve `@dotagents/shared`.
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts`
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] `git diff --check`
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports unrelated pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors, but the temporary new `App.tsx` linking type error introduced during this iteration was removed before the final verification run.
+- [x] Live Expo Web regression check on `http://localhost:8120` now changes the browser path from `/` to `/connection` on `Connection settings`, and browser Back returns the app to `Settings` at `/`.
 
 ## Blocked
 
 - [ ] No remaining blocker for this iteration's selected Metro/worktree bug.
 - [ ] No remaining blocker for this iteration's selected QR permission-handling bug.
 - [ ] No remaining blocker for this iteration's selected workspace-package resolution bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web browser-history bug.
 
 ## Still uncertain
 
@@ -72,6 +82,7 @@
 - [ ] Whether the historical React Native Web `Unexpected text node ... child of a <View>` warning still maps to a concrete, local user-facing bug.
 - [ ] Whether end-to-end QR decoding works reliably on Expo Web with a real camera feed, not just modal open/close and permission handling.
 - [ ] Whether Expo Web now surfaces any remaining in-app runtime warnings or user-facing mobile flow regressions once the current symlinked worktree can bundle again.
+- [ ] Whether deeper Expo Web deep-link/refresh cases for edit/detail screens with route params need richer route serialization beyond the fixed `Settings` ↔ `Connection` browser-history path.
 
 ## Candidate leads
 
@@ -117,3 +128,15 @@
 - After evidence: Re-running `pnpm --filter @dotagents/mobile web --port 8112` after restarting Metro now reaches `Web Bundled 888ms apps/mobile/index.ts (954 modules)` followed by `LOG  [web] Logs will appear in the browser console`. The prior `@dotagents/shared` resolution failure and sibling-package export warnings do not recur in the successful bundling run, and the new regression test confirms the resolver mapping points at the current worktree's `packages/shared` path.
 - Verification commands/run results: `pnpm build:shared` ✅; `node --test apps/mobile/tests/metro-config-watchfolders.test.js` ✅ (3 tests passing, including the new workspace-package pinning assertion); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8112` ✅ (`Waiting on http://localhost:8112`, then `Web Bundled 888ms apps/mobile/index.ts (954 modules)` and `LOG  [web] Logs will appear in the browser console`).
 - Blockers/remaining uncertainty: Verification intentionally stopped at the reproduced bundle failure that blocked further mobile debugging. I did not spend this iteration on a separate in-app mobile flow bug after the bundle recovered; the next pass can now use the restored Expo Web runtime to investigate the remaining user-facing candidates in this ledger.
+
+### Evidence ID: mobile-web-browser-history
+
+- Scope: `apps/mobile/App.tsx` Expo Web browser history between `Settings` and `Connection`
+- Commit range: `8b60032cfe4786692221f4ff84b6078cd771b812..2645f2e4cd2c8220bfc6a9f158ccce8abbd5085e`
+- Rationale: On Expo Web, tapping `Connection settings` visibly changed screens but did not update the browser URL or history. That broke normal browser Back navigation, made the web surface feel stuck on subpages, and left route state out of sync with the URL for a core settings flow.
+- QA feedback: Deferred prior QA finding for `mobile-web-qr-scanner` screenshot viewport mismatch; this iteration intentionally addresses a new Expo Web navigation bug instead of reworking the earlier QR evidence pair.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-web-browser-history--before--connection-screen--20260311.png` (viewport `1440x900`, desktop browser). The screenshot shows the Connection screen immediately after tapping `Connection settings`; browser automation confirmed the URL still remained `/`, so the visible route changed without adding a browser history entry and the browser Back button could not return to `Settings`.
+- Change: Added `apps/mobile/src/navigation/navigationLinking.ts` with stable screen-to-path mappings, wired `apps/mobile/App.tsx` to pass that config into `NavigationContainer` on web, and added `apps/mobile/src/navigation/navigationLinking.test.ts` plus the mobile Vitest script entry to keep the mapping covered.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-web-browser-history--after--connection-screen--20260311.png` (same `1440x900` viewport and same Connection screen surface). After the fix, browser automation shows the app now navigates to `/connection` when the Connection screen opens, giving the browser a real history entry so pressing browser Back returns the app to `Settings` at `/`.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` ✅ (2 tests passing for the web path mapping helper); `pnpm --filter @dotagents/mobile test` ✅ (mobile node + Vitest suites passing after adding the new regression file); `git diff --check` ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports unrelated pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors, but the earlier new `App.tsx` linking type error introduced during development no longer appears; live Expo Web validation at `http://localhost:8120` ✅ now changes `/` → `/connection` on click and browser Back returns to `/`.
+- Blockers/remaining uncertainty: Verified the exact Settings→Connection browser-history regression at runtime. I did not expand this iteration into broader deep-link/refresh behavior for edit/detail screens that may need route params, so those wider Expo Web navigation cases remain unverified.

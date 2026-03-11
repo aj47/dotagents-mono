@@ -16,6 +16,7 @@ import { TunnelConnectionContext, useTunnelConnectionProvider } from './src/stor
 import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
+import { buildNavigationLinking } from './src/navigation/navigationLinking';
 import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
 import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -99,6 +100,11 @@ function Navigation() {
       primary: theme.colors.primary,
     },
   };
+
+  const navigationLinking = useMemo(
+    () => (Platform.OS === 'web' ? buildNavigationLinking([Linking.createURL('/')]) : undefined),
+    [],
+  );
 
   // Handle deep links
   useEffect(() => {
@@ -352,6 +358,7 @@ function Navigation() {
               <TunnelConnectionContext.Provider value={tunnelConnection}>
                 <NavigationContainer
                   ref={navigationRef}
+                  linking={navigationLinking}
                   theme={navTheme}
                   onReady={() => { isNavigationReady.current = true; }}
                 >
