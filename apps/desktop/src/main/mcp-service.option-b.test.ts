@@ -178,6 +178,63 @@ describe("MCPService Option B (builtin allowlist)", () => {
     })
   })
 
+  it("preserves legitimate github create_issue optional values on the same tool", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "created" }], isError: false }))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "github:create_issue",
+        description: "Create a new issue in a GitHub repository",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            title: { type: "string" },
+            body: { type: "string" },
+            assignees: { type: "array" },
+            milestone: { type: "number" },
+            labels: { type: "array" },
+          },
+          required: ["owner", "repo", "title"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "github:create_issue",
+        arguments: {
+          owner: "aj47",
+          repo: "dotagents-mono",
+          title: "Keep valid GitHub issue options intact",
+          body: "Regression coverage for trace-backed placeholder sanitization.",
+          assignees: ["aj47"],
+          milestone: 12,
+          labels: ["bug", "desktop"],
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "create_issue",
+      arguments: {
+        owner: "aj47",
+        repo: "dotagents-mono",
+        title: "Keep valid GitHub issue options intact",
+        body: "Regression coverage for trace-backed placeholder sanitization.",
+        assignees: ["aj47"],
+        milestone: 12,
+        labels: ["bug", "desktop"],
+      },
+    })
+  })
+
   it("does not broadly prune empty optional values for unrelated tools", async () => {
     const { mcpService } = await import("./mcp-service")
     const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "saved" }], isError: false }))
