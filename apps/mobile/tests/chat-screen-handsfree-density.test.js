@@ -23,7 +23,7 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 });
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
-  assert.match(screenSource, /const next = !handsFreeRef\.current;\s*handsFreeRef\.current = next;/);
+  assert.match(screenSource, /const next = !handsFreeRef\.current;[\s\S]*?handsFreeRef\.current = next;/);
   assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?Handsfree mode turned off\./);
 });
 
@@ -34,4 +34,10 @@ test('falls back to normal direct-send handling for stale handsfree finalization
 test('surfaces recent voice debug events in chat when internal diagnostics are enabled', () => {
   assert.match(screenSource, /handsFreeDebugEnabled && voiceEvents\.length > 0/);
   assert.match(screenSource, /formatVoiceDebugEntry\(entry\)/);
+});
+
+test('blocks disconnected handsfree activation and keeps the fallback copy honest', () => {
+  assert.match(screenSource, /if \(next && !hasConnectionConfig\) \{[\s\S]*?Connect in Settings before enabling handsfree\. You can still hold the mic to dictate a draft\./);
+  assert.match(screenSource, /Connect in Settings before enabling hands-free mode\. You can still hold the mic to dictate a draft\./);
+  assert.match(screenSource, /Connect in Settings before handsfree can send\. Hold the mic to dictate a draft\./);
 });

@@ -54,12 +54,20 @@ export const createMicControlAccessibilityHint = ({
   handsFree,
   listening,
   willCancel,
+  hasConnectionConfig = true,
 }: {
   handsFree: boolean;
   listening: boolean;
   willCancel: boolean;
+  hasConnectionConfig?: boolean;
 }): string => {
   if (handsFree) {
+    if (!hasConnectionConfig) {
+      if (listening) {
+        return 'Voice dictation is active. Connect in Settings before hands-free can send. Double tap to stop recording.';
+      }
+      return 'Double tap to dictate a draft. Connect in Settings before hands-free can send automatically.';
+    }
     if (listening) {
       return 'Voice input is active. Double tap to stop recording.';
     }
@@ -80,15 +88,21 @@ export const createChatComposerAccessibilityHint = ({
   handsFree,
   listening,
   isWeb = false,
+  hasConnectionConfig = true,
 }: {
   handsFree: boolean;
   listening: boolean;
   isWeb?: boolean;
+  hasConnectionConfig?: boolean;
 }): string => {
   const baseHint = listening
-    ? 'Voice listening is active. Dictated text appears in this message field.'
+    ? hasConnectionConfig
+      ? 'Voice listening is active. Dictated text appears in this message field.'
+      : 'Voice dictation is active. Dictated text appears in this message field. Connect in Settings before sending.'
     : handsFree
-      ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
+      ? hasConnectionConfig
+        ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
+        : 'Type your message or tap the mic to dictate a draft. Connect in Settings before hands-free can send dictated speech automatically.'
       : 'Type your message or hold the mic to dictate before sending.';
 
   if (!isWeb) {

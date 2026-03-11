@@ -323,6 +323,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const toggleHandsFree = async () => {
     const next = !handsFreeRef.current;
+	    if (next && !hasConnectionConfig) {
+	      setDebugInfo('Connect in Settings before enabling handsfree. You can still hold the mic to dictate a draft.');
+	      return;
+	    }
 	    handsFreeRef.current = next;
     const nextCfg = { ...config, handsFree: next } as any;
     setConfig(nextCfg);
@@ -578,7 +582,9 @@ export default function ChatScreen({ route, navigation }: any) {
             onPress={toggleHandsFree}
             accessibilityRole="switch"
             accessibilityLabel={createSwitchAccessibilityLabel('Hands-free voice mode')}
-            accessibilityHint="When enabled, speech is sent automatically after each phrase"
+	            accessibilityHint={hasConnectionConfig
+	              ? 'When enabled, speech is sent automatically after each phrase'
+	              : 'Connect in Settings before enabling hands-free mode. You can still hold the mic to dictate a draft.'}
             accessibilityState={{ checked: handsFree }}
             aria-checked={handsFree}
             style={styles.headerActionButton}
@@ -2136,6 +2142,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	  handsFree,
 	  listening,
 	  isWeb: isWebPlatform,
+	  hasConnectionConfig,
 	});
 		const composerAccessibilityHint = hasConnectionConfig
 		  ? composerBaseAccessibilityHint
@@ -2144,6 +2151,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	  handsFree,
 	  listening,
 	  willCancel,
+	  hasConnectionConfig,
 	});
 	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
 	  listening,
@@ -2271,6 +2279,9 @@ export default function ChatScreen({ route, navigation }: any) {
 
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
+		if (!hasConnectionConfig) {
+			return 'Connect in Settings before handsfree can send. Hold the mic to dictate a draft.';
+		}
 		switch (handsFreeController.state.phase) {
 			case 'sleeping':
 				return `Say “${handsFreeWakePhrase}” to wake the assistant.`;
@@ -2293,6 +2304,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 	}, [
 		handsFree,
+			hasConnectionConfig,
 		handsFreeController.state.lastError,
 		handsFreeController.state.phase,
 		handsFreeForegroundOnly,

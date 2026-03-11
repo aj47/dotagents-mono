@@ -97,6 +97,15 @@ describe('createMicControlAccessibilityHint', () => {
       createMicControlAccessibilityHint({ handsFree: true, listening: true, willCancel: true }),
     ).toBe('Voice input is active. Double tap to stop recording.');
   });
+
+  it('explains disconnected hands-free draft behavior instead of implying automatic sends', () => {
+    expect(
+      createMicControlAccessibilityHint({ handsFree: true, listening: false, willCancel: false, hasConnectionConfig: false }),
+    ).toBe('Double tap to dictate a draft. Connect in Settings before hands-free can send automatically.');
+    expect(
+      createMicControlAccessibilityHint({ handsFree: true, listening: true, willCancel: false, hasConnectionConfig: false }),
+    ).toBe('Voice dictation is active. Connect in Settings before hands-free can send. Double tap to stop recording.');
+  });
 });
 
 describe('createChatComposerAccessibilityHint', () => {
@@ -110,6 +119,15 @@ describe('createChatComposerAccessibilityHint', () => {
     expect(
       createChatComposerAccessibilityHint({ handsFree: true, listening: false }),
     ).toBe('Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.');
+  });
+
+  it('explains disconnected hands-free behavior without promising automatic sends', () => {
+    expect(
+      createChatComposerAccessibilityHint({ handsFree: true, listening: false, hasConnectionConfig: false }),
+    ).toBe('Type your message or tap the mic to dictate a draft. Connect in Settings before hands-free can send dictated speech automatically.');
+    expect(
+      createChatComposerAccessibilityHint({ handsFree: true, listening: true, hasConnectionConfig: false }),
+    ).toBe('Voice dictation is active. Dictated text appears in this message field. Connect in Settings before sending.');
   });
 
   it('returns standard push-to-talk guidance when hands-free is off', () => {
