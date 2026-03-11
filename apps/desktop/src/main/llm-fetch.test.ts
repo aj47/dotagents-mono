@@ -364,6 +364,50 @@ describe('LLM Fetch with AI SDK', () => {
     ])
   })
 
+  it('should recover multiple bracketed builtin tool directives from generateText output', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: '[respond_to_user]\n{"text":"Loop progress ready."}\n[mark_work_complete]\n{"summary":"Reported loop progress.","confidence":0.98}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    const result = await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'test' }],
+      'openai',
+      undefined,
+      undefined,
+      [
+        {
+          name: 'respond_to_user',
+          description: 'Send response',
+          inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
+        },
+        {
+          name: 'mark_work_complete',
+          description: 'Mark task complete',
+          inputSchema: { type: 'object', properties: { summary: { type: 'string' }, confidence: { type: 'number' } } },
+        },
+      ],
+    )
+
+    expect(result.content).toBeUndefined()
+    expect(result.toolCalls).toEqual([
+      {
+        name: 'respond_to_user',
+        arguments: { text: 'Loop progress ready.' },
+      },
+      {
+        name: 'mark_work_complete',
+        arguments: { summary: 'Reported loop progress.', confidence: 0.98 },
+      },
+    ])
+  })
+
   it('should correctly restore tool names with colons from MCP server prefixes', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
@@ -942,6 +986,55 @@ describe('LLM Fetch with AI SDK', () => {
       {
         name: 'iterm:read_terminal_output',
         arguments: { linesOfOutput: 30, session_id: 'tab-123' },
+      },
+    ])
+    expect(onChunk).not.toHaveBeenCalled()
+  })
+
+  it('should recover multiple bracketed builtin tool directives from streaming text output', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+    const onChunk = vi.fn()
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: '[respond_to_user]\n{"text":"Loop progress ready."}' }
+        yield { type: 'text-delta', text: '\n[mark_work_complete]\n{"summary":"Reported loop progress.","confidence":0.98}' }
+        yield { type: 'finish', totalUsage: { inputTokens: 10, outputTokens: 20 } }
+      })(),
+    } as any)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    const result = await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'test' }],
+      onChunk,
+      'openai',
+      undefined,
+      undefined,
+      [
+        {
+          name: 'respond_to_user',
+          description: 'Send response',
+          inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
+        },
+        {
+          name: 'mark_work_complete',
+          description: 'Mark task complete',
+          inputSchema: { type: 'object', properties: { summary: { type: 'string' }, confidence: { type: 'number' } } },
+        },
+      ],
+    )
+
+    expect(result.content).toBeUndefined()
+    expect(result.toolCalls).toEqual([
+      {
+        name: 'respond_to_user',
+        arguments: { text: 'Loop progress ready.' },
+      },
+      {
+        name: 'mark_work_complete',
+        arguments: { summary: 'Reported loop progress.', confidence: 0.98 },
       },
     ])
     expect(onChunk).not.toHaveBeenCalled()

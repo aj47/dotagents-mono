@@ -637,7 +637,7 @@ function unregisterSessionAbortController(controller: AbortController, sessionId
 /**
  * Extract JSON object from a string response
  */
-function extractJsonObject(str: string): any | null {
+function extractJsonObjectWithBounds(str: string): { value: any; startIndex: number; endIndex: number } | null {
   let braceCount = 0
   let startIndex = -1
 
@@ -651,7 +651,11 @@ function extractJsonObject(str: string): any | null {
       if (braceCount === 0 && startIndex !== -1) {
         const jsonStr = str.substring(startIndex, i + 1)
         try {
-          return JSON.parse(jsonStr)
+          return {
+            value: JSON.parse(jsonStr),
+            startIndex,
+            endIndex: i + 1,
+          }
         } catch {
           startIndex = -1
         }
@@ -659,6 +663,56 @@ function extractJsonObject(str: string): any | null {
     }
   }
   return null
+}
+
+function extractJsonObject(str: string): any | null {
+  return extractJsonObjectWithBounds(str)?.value ?? null
+}
+
+function isKnownTextualToolDirectiveName(rawName: string, toolNameMap?: Map<string, string>): boolean {
+  const trimmedName = rawName.trim()
+  if (!trimmedName || !toolNameMap) return false
+  if (toolNameMap.has(trimmedName)) return true
+
+  const restoredName = restoreToolName(trimmedName, toolNameMap)
+  for (const originalName of toolNameMap.values()) {
+    if (originalName === trimmedName || originalName === restoredName) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function matchTextualToolDirectivePrefix(
+  str: string,
+  toolNameMap?: Map<string, string>,
+): { rawToolNames: string[]; remainder: string } | null {
+  const descriptiveMatch = str.match(/^\s*\[(?:Calling tools?|Tool|Tools?):\s*([^\]]+?)\]\s*([\s\S]*)$/i)
+  if (descriptiveMatch) {
+    const rawToolNames = descriptiveMatch[1]
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0)
+
+    return {
+      rawToolNames,
+      remainder: descriptiveMatch[2],
+    }
+  }
+
+  const directMatch = str.match(/^\s*\[([^\]\n]+?)\]\s*([\s\S]*)$/)
+  if (!directMatch) return null
+
+  const directToolName = directMatch[1].trim()
+  if (!isKnownTextualToolDirectiveName(directToolName, toolNameMap)) {
+    return null
+  }
+
+  return {
+    rawToolNames: [directToolName],
+    remainder: directMatch[2],
+  }
 }
 
 /**
@@ -673,34 +727,37 @@ function extractTextualToolDirective(
   str: string,
   toolNameMap?: Map<string, string>,
 ): LLMToolCallResponse | null {
-  const match = str.match(/^\s*\[(?:Calling tools?|Tool|Tools?):\s*([^\]]+?)\]\s*([\s\S]*)$/i)
-  if (!match) return null
+  let remaining = str.trim()
+  const toolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = []
 
-  const rawToolNames = match[1]
-    .split(",")
-    .map((name) => name.trim())
-    .filter((name) => name.length > 0)
+  while (remaining.length > 0) {
+    const prefixMatch = matchTextualToolDirectivePrefix(remaining, toolNameMap)
+    if (!prefixMatch) return null
 
-  // Only recover unambiguous single-tool directives.
-  if (rawToolNames.length !== 1) return null
+    // Only recover unambiguous single-tool directives.
+    if (prefixMatch.rawToolNames.length !== 1) return null
 
-  const parsedArgs = extractJsonObject(match[2])
-  if (!parsedArgs || typeof parsedArgs !== "object" || Array.isArray(parsedArgs)) {
-    return null
+    const parsedArgsWithBounds = extractJsonObjectWithBounds(prefixMatch.remainder)
+    const parsedArgs = parsedArgsWithBounds?.value
+    if (!parsedArgs || typeof parsedArgs !== "object" || Array.isArray(parsedArgs)) {
+      return null
+    }
+
+    toolCalls.push({
+      name: restoreToolName(prefixMatch.rawToolNames[0], toolNameMap),
+      arguments: parsedArgs as Record<string, unknown>,
+    })
+
+    remaining = prefixMatch.remainder.slice(parsedArgsWithBounds.endIndex).trim()
   }
 
   return {
-    toolCalls: [
-      {
-        name: restoreToolName(rawToolNames[0], toolNameMap),
-        arguments: parsedArgs as Record<string, unknown>,
-      },
-    ],
+    toolCalls,
   }
 }
 
-function looksLikeTextualToolDirectivePrefix(str: string): boolean {
-  return /^\s*\[(?:Calling tools?|Tool|Tools?):/i.test(str)
+function looksLikeTextualToolDirectivePrefix(str: string, toolNameMap?: Map<string, string>): boolean {
+  return matchTextualToolDirectivePrefix(str, toolNameMap) !== null
 }
 
 /**
@@ -1110,7 +1167,7 @@ export async function makeLLMCallWithStreamingAndTools(
             if (
               !bufferingPotentialTextualDirective &&
               collectedToolCalls.length === 0 &&
-              looksLikeTextualToolDirectivePrefix(accumulated)
+              looksLikeTextualToolDirectivePrefix(accumulated, convertedTools?.nameMap)
             ) {
               bufferingPotentialTextualDirective = true
               continue
@@ -1121,7 +1178,7 @@ export async function makeLLMCallWithStreamingAndTools(
                 continue
               }
 
-              if (looksLikeTextualToolDirectivePrefix(accumulated)) {
+              if (looksLikeTextualToolDirectivePrefix(accumulated, convertedTools?.nameMap)) {
                 continue
               }
 
