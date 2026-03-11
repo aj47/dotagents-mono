@@ -662,6 +662,44 @@ function extractJsonObject(str: string): any | null {
 }
 
 /**
+ * Recover a tool call from text scaffolding such as:
+ *   [Calling tools: iterm:read_terminal_output]\n{"linesOfOutput":30,...}
+ *
+ * Some providers/models occasionally emit a textual description of the tool call
+ * instead of a native tool-call event. When the pattern is unambiguous, convert it
+ * back into a structured tool call so the agent can continue in the same run.
+ */
+function extractTextualToolDirective(
+  str: string,
+  toolNameMap?: Map<string, string>,
+): LLMToolCallResponse | null {
+  const match = str.match(/^\s*\[(?:Calling tools?|Tool|Tools?):\s*([^\]]+?)\]\s*([\s\S]*)$/i)
+  if (!match) return null
+
+  const rawToolNames = match[1]
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+
+  // Only recover unambiguous single-tool directives.
+  if (rawToolNames.length !== 1) return null
+
+  const parsedArgs = extractJsonObject(match[2])
+  if (!parsedArgs || typeof parsedArgs !== "object" || Array.isArray(parsedArgs)) {
+    return null
+  }
+
+  return {
+    toolCalls: [
+      {
+        name: restoreToolName(rawToolNames[0], toolNameMap),
+        arguments: parsedArgs as Record<string, unknown>,
+      },
+    ],
+  }
+}
+
+/**
  * Main function to make LLM calls using AI SDK with automatic retry
  * Now supports native AI SDK tool calling when tools are provided
  */
@@ -825,6 +863,17 @@ export async function makeLLMCallWithFetch(
             })
           }
           return response
+        }
+
+        const textualToolDirective = extractTextualToolDirective(text, convertedTools?.nameMap)
+        if (textualToolDirective) {
+          if (generationId) {
+            endLLMGeneration(generationId, {
+              output: JSON.stringify(textualToolDirective),
+              usage: buildTokenUsage(result.usage),
+            })
+          }
+          return textualToolDirective
         }
 
         // Check for tool markers in plain text response
@@ -1072,22 +1121,32 @@ export async function makeLLMCallWithStreamingAndTools(
           }
         }
 
+        const textualToolDirective = collectedToolCalls.length === 0
+          ? extractTextualToolDirective(accumulated, convertedTools?.nameMap)
+          : null
+        const recoveredToolCalls = textualToolDirective?.toolCalls
+
         if (generationId) {
           endLLMGeneration(generationId, {
-            output: collectedToolCalls.length > 0
-              ? JSON.stringify({ content: accumulated, toolCalls: collectedToolCalls })
+            output: collectedToolCalls.length > 0 || recoveredToolCalls?.length
+              ? JSON.stringify({
+                  content: collectedToolCalls.length > 0 ? accumulated : undefined,
+                  toolCalls: collectedToolCalls.length > 0 ? collectedToolCalls : recoveredToolCalls,
+                })
               : accumulated,
             usage: buildTokenUsage(finishUsage),
           })
         }
 
-        if (!accumulated && collectedToolCalls.length === 0) {
+        if (!accumulated && collectedToolCalls.length === 0 && !recoveredToolCalls?.length) {
           throw new Error("LLM returned empty response")
         }
 
         return {
-          content: accumulated || undefined,
-          toolCalls: collectedToolCalls.length > 0 ? collectedToolCalls : undefined,
+          content: recoveredToolCalls?.length ? undefined : (accumulated || undefined),
+          toolCalls: collectedToolCalls.length > 0
+            ? collectedToolCalls
+            : recoveredToolCalls,
         }
       } catch (error: any) {
         if (generationId) {

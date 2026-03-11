@@ -329,6 +329,41 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.toolCalls![0].arguments).toEqual({ word: 'hello' })
   })
 
+  it('should recover a single textual tool directive from generateText output', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: '[Calling tools: iterm:read_terminal_output]\nRTLUjson\n{"linesOfOutput":30,"session_id":"tab-123"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    const result = await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'test' }],
+      'openai',
+      undefined,
+      undefined,
+      [
+        {
+          name: 'iterm:read_terminal_output',
+          description: 'Read terminal output',
+          inputSchema: { type: 'object', properties: {} },
+        },
+      ],
+    )
+
+    expect(result.content).toBeUndefined()
+    expect(result.toolCalls).toEqual([
+      {
+        name: 'iterm:read_terminal_output',
+        arguments: { linesOfOutput: 30, session_id: 'tab-123' },
+      },
+    ])
+  })
+
   it('should correctly restore tool names with colons from MCP server prefixes', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
@@ -870,6 +905,44 @@ describe('LLM Fetch with AI SDK', () => {
         vi.fn(),
       )
     ).rejects.toThrow('fatal stream failure')
+  })
+
+  it('should recover a single textual tool directive from streaming text output', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: '[Calling tools: iterm:read_terminal_output]\n' }
+        yield { type: 'text-delta', text: 'RTLUjson\n{"linesOfOutput":30,"session_id":"tab-123"}' }
+        yield { type: 'finish', totalUsage: { inputTokens: 10, outputTokens: 20 } }
+      })(),
+    } as any)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    const result = await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'test' }],
+      vi.fn(),
+      'openai',
+      undefined,
+      undefined,
+      [
+        {
+          name: 'iterm:read_terminal_output',
+          description: 'Read terminal output',
+          inputSchema: { type: 'object', properties: {} },
+        },
+      ],
+    )
+
+    expect(result.content).toBeUndefined()
+    expect(result.toolCalls).toEqual([
+      {
+        name: 'iterm:read_terminal_output',
+        arguments: { linesOfOutput: 30, session_id: 'tab-123' },
+      },
+    ])
   })
 
   it('should surface object stream errors that only include a message field', async () => {
