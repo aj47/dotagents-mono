@@ -73,6 +73,23 @@ describe('buildNavigationLinking', () => {
     });
   });
 
+  it('keeps transient chat draft params out of generated web URLs', () => {
+    const path = linking.getPathFromState?.({
+      routes: [{ name: 'Chat', params: { initialMessage: 'hello secret world' } }],
+    }, linking.config);
+
+    expect(path).toBe('/chat');
+  });
+
+  it('ignores transient chat draft params from inbound web URLs', () => {
+    expect(linking.getStateFromPath?.('/chat?initialMessage=hello%20secret%20world', linking.config)).toMatchObject({
+      routes: [{
+        name: 'Chat',
+      }],
+    });
+    expect(linking.getStateFromPath?.('/chat?initialMessage=hello%20secret%20world', linking.config)?.routes[0]).not.toHaveProperty('params.initialMessage');
+  });
+
   it('omits non-serializable memory and loop objects from generated web edit URLs', () => {
     const memoryPath = getPathFromState({
       routes: [{
