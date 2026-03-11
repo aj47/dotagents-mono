@@ -145,6 +145,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const openConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
+
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
       setError('Configure Base URL and API key in Settings before saving');
@@ -194,7 +198,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
     }
   }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
 
-  const isSaveDisabled = isSaving || !settingsClient;
+  const isConnectionConfigured = Boolean(settingsClient);
+  const isFormDisabled = isSaving || !isConnectionConfigured;
+  const primaryActionLabel = !isConnectionConfigured
+    ? 'Open Connection Settings'
+    : isEditing
+      ? 'Save Loop'
+      : 'Create Loop';
 
   if (isLoading) {
     return (
@@ -212,20 +222,23 @@ export default function LoopEditScreen({ navigation, route }: any) {
       keyboardShouldPersistTaps="handled"
     >
       {error && <Text style={styles.errorText}>{error}</Text>}
-      {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
+      {!settingsClient && (
+        <Text style={styles.helperText}>Connection settings are required before you can create or edit loops.</Text>
+      )}
 
       <Text style={styles.label}>Name *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFormDisabled && styles.inputDisabled]}
         value={formData.name}
         onChangeText={v => updateField('name', v)}
         placeholder="Daily review"
         placeholderTextColor={theme.colors.mutedForeground}
+        editable={!isFormDisabled}
       />
 
       <Text style={styles.label}>Prompt *</Text>
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[styles.input, styles.textArea, isFormDisabled && styles.inputDisabled]}
         value={formData.prompt}
         onChangeText={v => updateField('prompt', v)}
         placeholder="Summarize the latest updates and notify me"
@@ -233,25 +246,28 @@ export default function LoopEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={5}
         textAlignVertical="top"
+        editable={!isFormDisabled}
       />
 
       <Text style={styles.label}>Interval (minutes) *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFormDisabled && styles.inputDisabled]}
         value={formData.intervalMinutes}
         onChangeText={v => updateField('intervalMinutes', v)}
         placeholder="60"
         placeholderTextColor={theme.colors.mutedForeground}
         keyboardType="numeric"
+        editable={!isFormDisabled}
       />
 
-      <View style={styles.switchRow}>
+      <View style={[styles.switchRow, isFormDisabled && styles.switchRowDisabled]}>
         <Text style={styles.switchLabel}>Enabled</Text>
         <Switch
           value={formData.enabled}
           onValueChange={value => updateField('enabled', value)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
           thumbColor={formData.enabled ? theme.colors.primaryForeground : theme.colors.background}
+          disabled={isFormDisabled}
         />
       </View>
 
@@ -259,13 +275,17 @@ export default function LoopEditScreen({ navigation, route }: any) {
       <Text style={styles.sectionHelperText}>Choose a dedicated agent for this loop, or leave it on the default agent.</Text>
       <View style={styles.profileOptions}>
         <TouchableOpacity
-          style={[styles.profileOption, !formData.profileId && styles.profileOptionActive]}
+          style={[
+            styles.profileOption,
+            !formData.profileId && styles.profileOptionActive,
+            isFormDisabled && styles.profileOptionDisabled,
+          ]}
           onPress={() => updateField('profileId', '')}
           accessibilityRole="button"
           accessibilityLabel={createButtonAccessibilityLabel('Use the default agent for this loop')}
           accessibilityHint={!formData.profileId ? 'Currently selected. The loop runs with the default active agent.' : 'Leaves this loop on the default active agent instead of a dedicated profile.'}
-          accessibilityState={{ selected: !formData.profileId, disabled: isSaveDisabled }}
-          disabled={isSaveDisabled}
+          accessibilityState={{ selected: !formData.profileId, disabled: isFormDisabled }}
+          disabled={isFormDisabled}
         >
           <View style={styles.profileOptionInfo}>
             <Text style={[styles.profileOptionText, !formData.profileId && styles.profileOptionTextActive]}>No dedicated agent</Text>
@@ -276,13 +296,17 @@ export default function LoopEditScreen({ navigation, route }: any) {
         {profiles.map(profile => (
           <TouchableOpacity
             key={profile.id}
-            style={[styles.profileOption, formData.profileId === profile.id && styles.profileOptionActive]}
+            style={[
+              styles.profileOption,
+              formData.profileId === profile.id && styles.profileOptionActive,
+              isFormDisabled && styles.profileOptionDisabled,
+            ]}
             onPress={() => updateField('profileId', profile.id)}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${profile.displayName || profile.name} for this loop`)}
             accessibilityHint={formData.profileId === profile.id ? 'Currently selected for this loop.' : 'Assigns this loop to the selected agent profile.'}
-            accessibilityState={{ selected: formData.profileId === profile.id, disabled: isSaveDisabled }}
-            disabled={isSaveDisabled}
+            accessibilityState={{ selected: formData.profileId === profile.id, disabled: isFormDisabled }}
+            disabled={isFormDisabled}
           >
             <View style={styles.profileOptionInfo}>
               <Text style={[styles.profileOptionText, formData.profileId === profile.id && styles.profileOptionTextActive]}>{profile.displayName || profile.name}</Text>
@@ -304,8 +328,17 @@ export default function LoopEditScreen({ navigation, route }: any) {
       )}
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
 
-      <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
-        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
+      <TouchableOpacity
+        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        onPress={isConnectionConfigured ? handleSave : openConnectionSettings}
+        disabled={isSaving}
+        accessibilityRole="button"
+        accessibilityLabel={createButtonAccessibilityLabel(primaryActionLabel)}
+        accessibilityHint={isConnectionConfigured
+          ? `${isEditing ? 'Saves this loop' : 'Creates this loop'} using your current connection settings.`
+          : 'Opens connection settings so you can finish setup before creating or editing loops.'}
+      >
+        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{primaryActionLabel}</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -321,8 +354,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
     sectionHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
+    inputDisabled: { opacity: 0.55 },
     textArea: { minHeight: 110 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchRowDisabled: { opacity: 0.55 },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
     profileOptions: { width: '100%' as const, gap: spacing.xs },
     profileOption: {
@@ -341,6 +376,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.background,
     },
     profileOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    profileOptionDisabled: { opacity: 0.55 },
     profileOptionInfo: { flex: 1, minWidth: 0 },
     profileOptionText: { color: theme.colors.foreground, fontSize: 14, fontWeight: '500' },
     profileOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },

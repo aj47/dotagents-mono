@@ -17,9 +17,9 @@ test('explains the default-agent fallback in LoopEdit profile selection', () => 
 
 test('exposes LoopEdit profile choices as selected-state buttons', () => {
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Use the default agent for this loop'\)/);
-  assert.match(screenSource, /accessibilityState=\{\{ selected: !formData\.profileId, disabled: isSaveDisabled \}\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected: !formData\.profileId, disabled: isFormDisabled \}\}/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`Use \$\{profile\.displayName \|\| profile\.name\} for this loop`\)/);
-  assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: isSaveDisabled \}\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: isFormDisabled \}\}/);
 });
 
 test('keeps LoopEdit profile options full-width and touch-friendly for narrow screens', () => {

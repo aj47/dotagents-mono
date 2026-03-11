@@ -10,8 +10,8 @@ const screenSource = fs.readFileSync(
 
 test('exposes the chat composer send control as an accessible button', () => {
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Send message'\)\}/);
-  assert.match(screenSource, /accessibilityHint="Sends your typed text and any attached images to the selected agent\."/);
-  assert.match(screenSource, /accessibilityState=\{\{ disabled: !composerHasContent \}\}/);
+  assert.match(screenSource, /accessibilityHint=\{canComposeChat \? 'Sends your typed text and any attached images to the selected agent\.' : 'Open Connection settings before sending a chat message\.'\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ disabled: !canSubmitComposer \}\}/);
 });
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
