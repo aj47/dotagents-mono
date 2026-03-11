@@ -132,7 +132,7 @@
 Evidence
 - Evidence ID: connection-settings-qr-close-affordance
 - Scope: `Settings -> Connection settings -> Scan QR Code` modal close control on mobile web (`apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/tests/connection-settings-density.test.js`)
-- Commit range: e19461200e750340f37d895e20d72555297ea4e9..PENDING_HANDOFF_COMMIT
+- Commit range: e19461200e750340f37d895e20d72555297ea4e9..fcf52597f46888f1ea478643fc4987629ad4a919
 - Rationale: The QR scanner is a primary connection-setup affordance, and the only obvious way out of that modal was still slightly undersized and weakly tuned on narrow mobile web. Tightening the dismiss control removes a small but real actionability risk in a setup flow users may need repeatedly.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-close-affordance--before--qr-scanner-modal--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the scanner modal showed a generic `Close` pill about `66.7x42` CSS px at roughly `top: 60`, which left the main escape action just under the 44px touch-target bar and visually less specific than the scanner context deserved.
