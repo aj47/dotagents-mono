@@ -57,6 +57,14 @@ describe("agent-low-context-guard", () => {
     )
   })
 
+  it("asks for clarification on short cut-off action requests", () => {
+    expect(getLowContextPromptGuardResponse("create kentucky to", true)).toEqual(
+      expect.objectContaining({
+        response: expect.stringContaining("may have been cut off"),
+      }),
+    )
+  })
+
   it("does not over-trigger on prompts that already include real context", () => {
     expect(getLowContextPromptGuardResponse("What should I do next after pnpm test fails?", false)).toBeNull()
   })

@@ -100,6 +100,16 @@ function hasStrongRecentUserOverlap(transcript: string, recentUserMessages: stri
   })
 }
 
+function looksLikeDanglingActionFragment(transcript: string): boolean {
+  const words = transcript.split(/\s+/).filter(Boolean)
+  if (words.length < 2 || words.length > 8) return false
+  if (!ACTIONABLE_FOLLOW_UP_PREFIX.test(transcript)) return false
+  if (COMPLETE_FOLLOW_UP_PREFIX.test(transcript)) return false
+
+  const lastWord = normalizeComparisonToken(words[words.length - 1] || "")
+  return FRAGMENTARY_FOLLOW_UP_TRAILING_WORDS.has(lastWord)
+}
+
 function looksLikeFragmentaryFollowUp(transcript: string, recentUserMessages: string[]): boolean {
   const words = transcript.split(/\s+/).filter(Boolean)
   if (words.length < 4 || words.length > 12) return false
@@ -133,6 +143,16 @@ export function getLowContextPromptGuardResponse(
       progressTitle: "Paused for now",
       progressDescription:
         "Acknowledged the user’s request to pause instead of starting a new tool-driven run.",
+    }
+  }
+
+  if (looksLikeDanglingActionFragment(trimmedTranscript)) {
+    return {
+      response:
+        "I think that request may have been cut off. Restate the exact action you want me to take, and include the full create/open/check request in one message.",
+      progressTitle: "Need clarification",
+      progressDescription:
+        "Asked the user to restate a cut-off action request instead of spending iterations on clarification loops.",
     }
   }
 

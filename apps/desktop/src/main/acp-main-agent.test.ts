@@ -219,6 +219,46 @@ describe("acp-main-agent", () => {
     }))
   })
 
+  it("short-circuits short cut-off action requests before sending ACP work", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<{ isComplete?: boolean; finalContent?: string }> = []
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [
+        {
+          role: "user",
+          content: "can you use the skill to tell me the latest updates the running loops",
+          timestamp: 1,
+        },
+      ],
+    })
+
+    const result = await processTranscriptWithACPAgent("create kentucky to", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      response: expect.stringContaining("may have been cut off"),
+    }))
+    expect(mockSendPrompt).not.toHaveBeenCalled()
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      expect.stringContaining("may have been cut off"),
+      "assistant",
+      undefined,
+      undefined,
+    )
+    expect(updates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: expect.stringContaining("may have been cut off"),
+    }))
+  })
+
   it("handles malformed config option choices without throwing", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<{ acpSessionInfo?: Record<string, unknown> }> = []
