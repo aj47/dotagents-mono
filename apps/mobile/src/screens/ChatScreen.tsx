@@ -308,26 +308,30 @@ export default function ChatScreen({ route, navigation }: any) {
   const { currentProfile } = useProfile();
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const hasConnectionConfig = hasChatSendConnectionConfig(config);
-  const handsFree = !!config.handsFree;
+  const handsFreeEnabled = !!config.handsFree;
+  const disconnectedHandsFreeFallback = handsFreeEnabled && !hasConnectionConfig;
+  const handsFreeRuntimeEnabled = handsFreeEnabled && hasConnectionConfig;
 	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
   const handsFreeDebugEnabled = config.handsFreeDebug === true;
   const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
-  const handsFreeRef = useRef<boolean>(handsFree);
-  useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
+  const handsFreeEnabledRef = useRef<boolean>(handsFreeEnabled);
+  const handsFreeRuntimeEnabledRef = useRef<boolean>(handsFreeRuntimeEnabled);
+  useEffect(() => { handsFreeEnabledRef.current = !!config.handsFree; }, [config.handsFree]);
+  useEffect(() => { handsFreeRuntimeEnabledRef.current = handsFreeRuntimeEnabled; }, [handsFreeRuntimeEnabled]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
-  const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
+  const handsFreeRuntimeActive = handsFreeRuntimeEnabled && isFocused && isAppActive;
 
   const toggleHandsFree = async () => {
-    const next = !handsFreeRef.current;
+    const next = !handsFreeEnabledRef.current;
 	    if (next && !hasConnectionConfig) {
 	      setDebugInfo('Connect in Settings before enabling handsfree. You can still hold the mic to dictate a draft.');
 	      return;
 	    }
-	    handsFreeRef.current = next;
+	    handsFreeEnabledRef.current = next;
     const nextCfg = { ...config, handsFree: next } as any;
     setConfig(nextCfg);
     try { await saveConfig(nextCfg); } catch {}
@@ -585,13 +589,13 @@ export default function ChatScreen({ route, navigation }: any) {
 	            accessibilityHint={hasConnectionConfig
 	              ? 'When enabled, speech is sent automatically after each phrase'
 	              : 'Connect in Settings before enabling hands-free mode. You can still hold the mic to dictate a draft.'}
-            accessibilityState={{ checked: handsFree }}
-            aria-checked={handsFree}
+            accessibilityState={{ checked: handsFreeEnabled }}
+            aria-checked={handsFreeEnabled}
             style={styles.headerActionButton}
           >
             <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18 }}>🎙️</Text>
-              {!handsFree && (
+              {!handsFreeEnabled && (
                 <View
                   style={{
                     position: 'absolute',
@@ -617,7 +621,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
+  }, [navigation, handsFreeEnabled, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -654,7 +658,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	  }, [clearVoiceDebug, handsFreeDebugEnabled]);
 
 	  const handsFreeController = useHandsFreeController({
-		enabled: handsFree,
+			enabled: handsFreeRuntimeEnabled,
 		runtimeActive: handsFreeRuntimeActive,
 		wakePhrase: handsFreeWakePhrase,
 		sleepPhrase: handsFreeSleepPhrase,
@@ -671,7 +675,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		handlePushToTalkPressIn,
 		handlePushToTalkPressOut,
 	  } = useSpeechRecognizer({
-		handsFree,
+			handsFree: handsFreeRuntimeEnabled,
 			handsFreeDebounceMs: handsFreeMessageDebounceMs,
 		willCancel,
 		onVoiceFinalized: ({ text, mode }) => {
@@ -685,8 +689,15 @@ export default function ChatScreen({ route, navigation }: any) {
 				return;
 			}
 
+				if (disconnectedHandsFreeFallback) {
+					setInput((current) => mergeVoiceText(current, finalText));
+					setDebugInfo('Voice transcript added to the composer. Connect in Settings before handsfree can send automatically.');
+					setTimeout(() => inputRef.current?.focus(), 0);
+					return;
+				}
+
 				if (mode === 'handsfree') {
-					if (handsFreeRef.current) {
+						if (handsFreeRuntimeEnabledRef.current) {
 						const action = handsFreeController.handleFinalTranscript(finalText);
 						if (action.type === 'send') {
 							void sendRef.current(action.text);
@@ -698,7 +709,9 @@ export default function ChatScreen({ route, navigation }: any) {
 			void sendRef.current(finalText);
 		},
 		onRecognizerError: (message) => {
-			handsFreeController.onRecognizerError(message);
+				if (handsFreeRuntimeEnabledRef.current) {
+					handsFreeController.onRecognizerError(message);
+				}
 			setDebugInfo(`Voice error: ${message}`);
 		},
 		onPermissionDenied: () => {
@@ -714,17 +727,17 @@ export default function ChatScreen({ route, navigation }: any) {
 		return () => subscription.remove();
 	  }, []);
 
-	  useEffect(() => {
-		if (!handsFree) {
+		  useEffect(() => {
+			if (!handsFreeRuntimeEnabled) {
 			return;
 		}
 		if (!handsFreeRuntimeActive && listening) {
 			void stopRecognitionOnly();
 		}
-	  }, [handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
+		  }, [handsFreeRuntimeEnabled, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
 
 	  useEffect(() => {
-		if (!handsFree) {
+			if (!handsFreeRuntimeEnabled) {
 			return;
 		}
 
@@ -744,7 +757,7 @@ export default function ChatScreen({ route, navigation }: any) {
 			void stopRecognitionOnly();
 		}
 	  }, [
-		handsFree,
+			handsFreeRuntimeEnabled,
 		handsFreeController.resetError,
 		handsFreeController.shouldKeepRecognizerActive,
 		handsFreeController.state.phase,
@@ -763,13 +776,13 @@ export default function ChatScreen({ route, navigation }: any) {
 		const settle = () => {
 			if (settled) return;
 			settled = true;
-			if (handsFree) {
+				if (handsFreeRuntimeEnabled) {
 				handsFreeController.onSpeechFinished();
 				voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
 			}
 		};
 
-		if (handsFree) {
+			if (handsFreeRuntimeEnabled) {
 			handsFreeController.onSpeechStarted();
 			voiceLog('tts-started', `Assistant speech started (${reason}).`);
 		}
@@ -787,7 +800,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-	  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, voiceLog]);
+		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFreeRuntimeEnabled, handsFreeController, voiceLog]);
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -800,7 +813,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // Toggle off - stop speaking
       intendedSpeakingIndexRef.current = null;
       Speech.stop();
-	      if (handsFree) {
+		      if (handsFreeRuntimeEnabled) {
 	        handsFreeController.onSpeechFinished();
 	        voiceLog('tts-stopped', 'Assistant speech stopped from message playback.');
 	      }
@@ -815,7 +828,7 @@ export default function ChatScreen({ route, navigation }: any) {
       intendedSpeakingIndexRef.current = null;
       return;
     }
-	    if (handsFree) {
+		    if (handsFreeRuntimeEnabled) {
 	      handsFreeController.onSpeechStarted();
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
@@ -826,7 +839,7 @@ export default function ChatScreen({ route, navigation }: any) {
       pitch: config.ttsPitch ?? 1.0,
       onDone: () => {
         intendedSpeakingIndexRef.current = null;
-	        if (handsFree) {
+		        if (handsFreeRuntimeEnabled) {
 	          handsFreeController.onSpeechFinished();
 	          voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
 	        }
@@ -834,7 +847,7 @@ export default function ChatScreen({ route, navigation }: any) {
       },
       onError: () => {
         intendedSpeakingIndexRef.current = null;
-	        if (handsFree) {
+		        if (handsFreeRuntimeEnabled) {
 	          handsFreeController.onSpeechFinished();
 	          voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
 	        }
@@ -844,7 +857,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // Only clear if this callback is for the current intended message,
         // not a stale callback from a previously stopped utterance
         if (intendedSpeakingIndexRef.current === null) {
-	          if (handsFree) {
+		          if (handsFreeRuntimeEnabled) {
 	            handsFreeController.onSpeechFinished();
 	            voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
 	          }
@@ -861,7 +874,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
-		handsFree,
+			handsFreeRuntimeEnabled,
 		handsFreeController,
 		voiceLog,
 	  ]);
@@ -1492,7 +1505,7 @@ export default function ChatScreen({ route, navigation }: any) {
     progressMessagesRef.current = [];
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
-	    if (handsFree) {
+		    if (handsFreeRuntimeEnabled) {
 	      handsFreeController.onRequestStarted();
 	    }
 
@@ -1801,11 +1814,11 @@ export default function ChatScreen({ route, navigation }: any) {
       const ttsText = lastUserResponse || finalText;
       const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
       if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
-	        if (handsFree) {
+		        if (handsFreeRuntimeEnabled) {
 	          handsFreeController.onRequestCompleted();
 	        }
 	        speakAssistantResponse(ttsText, 'final response');
-	      } else if (handsFree) {
+		      } else if (handsFreeRuntimeEnabled) {
 	        handsFreeController.onRequestCompleted();
       }
     } catch (e: any) {
@@ -1867,7 +1880,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         return copy;
       });
-	      if (handsFree) {
+		      if (handsFreeRuntimeEnabled) {
 	        handsFreeController.onRequestCompleted();
 	      }
     } finally {
@@ -1955,7 +1968,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const messageCountBeforeTurn = currentMessages.length;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
-	    if (handsFree) {
+		    if (handsFreeRuntimeEnabled) {
 	      handsFreeController.onRequestStarted();
 	    }
 
@@ -2092,11 +2105,11 @@ export default function ChatScreen({ route, navigation }: any) {
       const ttsText = lastUserResponse || finalText;
       const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
       if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
-	        if (handsFree) {
+		        if (handsFreeRuntimeEnabled) {
 	          handsFreeController.onRequestCompleted();
 	        }
 	        speakAssistantResponse(ttsText, 'queued final response');
-	      } else if (handsFree) {
+		      } else if (handsFreeRuntimeEnabled) {
 	        handsFreeController.onRequestCompleted();
       }
 
@@ -2106,7 +2119,7 @@ export default function ChatScreen({ route, navigation }: any) {
       console.error('[ChatScreen] Queued message error:', e);
       messageQueue.markFailed(currentConversationId, queuedMsg.id, e.message || 'Unknown error');
       setMessages((m) => [...m, { role: 'assistant', content: `Error: ${e.message}` }]);
-	      if (handsFree) {
+		      if (handsFreeRuntimeEnabled) {
 	        handsFreeController.onRequestCompleted();
 	      }
     } finally {
@@ -2139,7 +2152,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 		const isWebPlatform = Platform.OS === 'web';
 		const composerBaseAccessibilityHint = createChatComposerAccessibilityHint({
-	  handsFree,
+	  handsFree: handsFreeEnabled,
 	  listening,
 	  isWeb: isWebPlatform,
 	  hasConnectionConfig,
@@ -2148,15 +2161,16 @@ export default function ChatScreen({ route, navigation }: any) {
 		  ? composerBaseAccessibilityHint
 		  : `${composerBaseAccessibilityHint} ${CHAT_SEND_BLOCKED_DEBUG_MESSAGE}`;
 	const micControlAccessibilityHint = createMicControlAccessibilityHint({
-	  handsFree,
+	  handsFree: handsFreeEnabled,
 	  listening,
 	  willCancel,
 	  hasConnectionConfig,
 	});
 	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
 	  listening,
-	  handsFree,
+	  handsFree: handsFreeRuntimeEnabled,
 	  willCancel,
+	  draftOnly: disconnectedHandsFreeFallback,
 	  liveTranscript,
 	  sttPreview,
 	});
@@ -2277,8 +2291,8 @@ export default function ChatScreen({ route, navigation }: any) {
     setInput(text);
   }, []);
 
-	const handsFreeStatusSubtitle = useMemo(() => {
-		if (!handsFree) return undefined;
+		const handsFreeStatusSubtitle = useMemo(() => {
+			if (!handsFreeEnabled) return undefined;
 		if (!hasConnectionConfig) {
 			return 'Connect in Settings before handsfree can send. Hold the mic to dictate a draft.';
 		}
@@ -2303,7 +2317,7 @@ export default function ChatScreen({ route, navigation }: any) {
 					: undefined;
 		}
 	}, [
-		handsFree,
+			handsFreeEnabled,
 			hasConnectionConfig,
 		handsFreeController.state.lastError,
 		handsFreeController.state.phase,
@@ -2312,17 +2326,27 @@ export default function ChatScreen({ route, navigation }: any) {
 		handsFreeWakePhrase,
 	]);
 
+		const handsFreeStatusLabel = disconnectedHandsFreeFallback
+			? 'Setup required'
+			: handsFreeController.statusLabel;
+
 		const composerPlaceholder = !hasConnectionConfig
 			? CHAT_SEND_BLOCKED_PLACEHOLDER
-			: handsFree
+				: handsFreeRuntimeEnabled
 		? (handsFreeController.state.phase === 'paused'
 			? 'Handsfree paused — tap mic to resume or type a message'
 			: `Say “${handsFreeWakePhrase}” or type a message`)
 		: (listening ? 'Listening…' : 'Type or hold mic');
 
-	const micButtonLabel = handsFree
+		const micButtonLabel = handsFreeRuntimeEnabled
 		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
 		: (listening ? '...' : 'Hold');
+
+		const voiceOverlayLabel = disconnectedHandsFreeFallback
+			? 'Release to add draft'
+			: handsFreeRuntimeEnabled
+				? 'Listening...'
+				: (willCancel ? 'Release to edit' : 'Release to send');
 
 
 
@@ -2670,7 +2694,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		          <View style={[styles.overlay, { bottom: 72 + insets.bottom }]} pointerEvents="none">
 		            <View style={styles.overlayCard}>
 		              <Text style={styles.overlayText}>
-		                {handsFree ? 'Listening...' : (willCancel ? 'Release to edit' : 'Release to send')}
+		                {voiceOverlayLabel}
 		              </Text>
 		              {!!liveTranscript && (
 		                <Text style={styles.overlayTranscript} numberOfLines={3}>
@@ -2919,7 +2943,7 @@ export default function ChatScreen({ route, navigation }: any) {
             >
               <Text style={styles.ttsToggleText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
             </TouchableOpacity>
-	            {!handsFree && (
+		            {!handsFreeEnabled && (
 	              <TouchableOpacity
 	                style={[styles.ttsToggle, willCancel && styles.ttsToggleOn]}
 		                onPress={() => setWillCancel((current) => !current)}
@@ -2933,10 +2957,10 @@ export default function ChatScreen({ route, navigation }: any) {
 	                <Text style={styles.ttsToggleText}>✏️</Text>
 	              </TouchableOpacity>
 	            )}
-		            {handsFree && (
+		            {handsFreeEnabled && (
 		              <HandsFreeStatusChip
 		                phase={handsFreeController.state.phase}
-		                label={handsFreeController.statusLabel}
+		                label={handsFreeStatusLabel}
 		                subtitle={handsFreeStatusSubtitle}
 		              />
 		            )}
@@ -2998,9 +3022,9 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityHint={micControlAccessibilityHint}
               accessibilityState={{ busy: listening }}
               aria-busy={listening}
-	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
-	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-              onPress={handsFree ? () => {
+		              onPressIn={!handsFreeRuntimeEnabled ? handlePushToTalkPressIn : undefined}
+		              onPressOut={!handsFreeRuntimeEnabled ? handlePushToTalkPressOut : undefined}
+	              onPress={handsFreeRuntimeEnabled ? () => {
 					if (handsFreeController.state.phase === 'paused') {
 						handsFreeController.resumeByUser();
 						setDebugInfo('Handsfree resumed.');

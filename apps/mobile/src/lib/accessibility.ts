@@ -64,9 +64,9 @@ export const createMicControlAccessibilityHint = ({
   if (handsFree) {
     if (!hasConnectionConfig) {
       if (listening) {
-        return 'Voice dictation is active. Connect in Settings before hands-free can send. Double tap to stop recording.';
+        return 'Voice dictation is active. Release to add dictated text to the composer. Connect in Settings before hands-free can send.';
       }
-      return 'Double tap to dictate a draft. Connect in Settings before hands-free can send automatically.';
+      return 'Press and hold to dictate a draft. Release to add dictated text to the composer. Connect in Settings before hands-free can send automatically.';
     }
     if (listening) {
       return 'Voice input is active. Double tap to stop recording.';
@@ -98,11 +98,11 @@ export const createChatComposerAccessibilityHint = ({
   const baseHint = listening
     ? hasConnectionConfig
       ? 'Voice listening is active. Dictated text appears in this message field.'
-      : 'Voice dictation is active. Dictated text appears in this message field. Connect in Settings before sending.'
+      : 'Voice dictation is active. Dictated text appears in this message field. Release to add it to your draft. Connect in Settings before sending.'
     : handsFree
       ? hasConnectionConfig
         ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
-        : 'Type your message or tap the mic to dictate a draft. Connect in Settings before hands-free can send dictated speech automatically.'
+        : 'Type your message or hold the mic to dictate a draft. Connect in Settings before hands-free can send dictated speech automatically.'
       : 'Type your message or hold the mic to dictate before sending.';
 
   if (!isWeb) {
@@ -136,12 +136,14 @@ export const createVoiceInputLiveRegionAnnouncement = ({
   listening,
   handsFree,
   willCancel,
+  draftOnly = false,
   liveTranscript,
   sttPreview,
 }: {
   listening: boolean;
   handsFree: boolean;
   willCancel: boolean;
+  draftOnly?: boolean;
   liveTranscript?: string;
   sttPreview?: string;
 }): string => {
@@ -150,7 +152,9 @@ export const createVoiceInputLiveRegionAnnouncement = ({
   );
 
   if (listening) {
-    const releaseInstruction = handsFree
+    const releaseInstruction = draftOnly
+      ? 'Release to add dictated text to your draft. Connect in Settings before hands-free can send.'
+      : handsFree
       ? 'Tap mic again to stop.'
       : willCancel
         ? 'Release to edit your message.'

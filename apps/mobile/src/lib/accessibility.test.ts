@@ -101,10 +101,10 @@ describe('createMicControlAccessibilityHint', () => {
   it('explains disconnected hands-free draft behavior instead of implying automatic sends', () => {
     expect(
       createMicControlAccessibilityHint({ handsFree: true, listening: false, willCancel: false, hasConnectionConfig: false }),
-    ).toBe('Double tap to dictate a draft. Connect in Settings before hands-free can send automatically.');
+    ).toBe('Press and hold to dictate a draft. Release to add dictated text to the composer. Connect in Settings before hands-free can send automatically.');
     expect(
       createMicControlAccessibilityHint({ handsFree: true, listening: true, willCancel: false, hasConnectionConfig: false }),
-    ).toBe('Voice dictation is active. Connect in Settings before hands-free can send. Double tap to stop recording.');
+    ).toBe('Voice dictation is active. Release to add dictated text to the composer. Connect in Settings before hands-free can send.');
   });
 });
 
@@ -124,10 +124,10 @@ describe('createChatComposerAccessibilityHint', () => {
   it('explains disconnected hands-free behavior without promising automatic sends', () => {
     expect(
       createChatComposerAccessibilityHint({ handsFree: true, listening: false, hasConnectionConfig: false }),
-    ).toBe('Type your message or tap the mic to dictate a draft. Connect in Settings before hands-free can send dictated speech automatically.');
+    ).toBe('Type your message or hold the mic to dictate a draft. Connect in Settings before hands-free can send dictated speech automatically.');
     expect(
       createChatComposerAccessibilityHint({ handsFree: true, listening: true, hasConnectionConfig: false }),
-    ).toBe('Voice dictation is active. Dictated text appears in this message field. Connect in Settings before sending.');
+    ).toBe('Voice dictation is active. Dictated text appears in this message field. Release to add it to your draft. Connect in Settings before sending.');
   });
 
   it('returns standard push-to-talk guidance when hands-free is off', () => {
@@ -220,6 +220,18 @@ describe('createVoiceInputLiveRegionAnnouncement', () => {
         liveTranscript: 'draft a short update',
       }),
     ).toBe('Voice listening active. Tap mic again to stop. Transcript: draft a short update');
+  });
+
+  it('announces disconnected hands-free draft capture without implying live automatic sending', () => {
+    expect(
+      createVoiceInputLiveRegionAnnouncement({
+        listening: true,
+        handsFree: true,
+        willCancel: false,
+        draftOnly: true,
+        liveTranscript: 'capture this idea',
+      }),
+    ).toBe('Voice listening active. Release to add dictated text to your draft. Connect in Settings before hands-free can send. Transcript: capture this idea');
   });
 
   it('announces captured transcript when listening stops', () => {
