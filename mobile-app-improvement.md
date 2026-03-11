@@ -77,6 +77,7 @@
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button visual affordance follow-up at `390x844`
 - [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
 - [x] Live Expo Web before/after evidence for the disconnected Settings-home chats CTA at `390x844`
+- [x] Executable vitest coverage plus a fresh Expo Web tap-through recheck for the disconnected `Settings -> Open Chats` CTA on mobile web
 
 ### Blocked
 
@@ -90,6 +91,38 @@
 - [ ] The disconnected `Open Chats` entry point is now verified, but the offline `Sessions -> Chat` send/failure path still needs its own dedicated runtime pass before claiming solid offline-state coverage.
 
 ## Recent Iterations
+
+### 2026-03-11 — QA remediation 2: harden disconnected Open Chats coverage and correct ledger provenance
+
+- Status: completed with live Expo Web re-verification, stronger executable regression coverage, and ledger provenance correction
+- Area:
+  - disconnected `Settings` home `Open Chats` CTA verification in `apps/mobile/src/screens/SettingsScreen.tsx` and extracted helper `apps/mobile/src/screens/settings-home-chats-cta.tsx`
+  - prior iteration 15 evidence provenance in `mobile-app-improvement.md`
+- Why this area:
+  - this area deserved an immediate revisit because unresolved QA flagged two concrete issues on the last pass: the evidence `Commit range` excluded the final authored docs/evidence commit, and the automated regression coverage only regex-checked source text instead of proving the disconnected CTA still rendered and remained pressable
+  - the live user-facing behavior was already valuable and should stay approved only if the ledger provenance is truthful and the behavior is protected by an executable test, not just a brittle source snapshot
+- What was investigated:
+  - current disconnected `Settings` home CTA wiring in `SettingsScreen.tsx`
+  - existing mobile vitest/node test patterns that could cover render/press behavior without adding new dependencies
+  - live Expo Web behavior at `390x844`, including a fresh disconnected-state tap-through from `Open Chats` into the `Chats` surface
+- Findings:
+  - the current runtime behavior remained correct: Expo Web still showed an enabled `Open Chats` CTA plus the offline helper copy, and tapping it still reached the `Chats` screen while disconnected
+  - QA was right that the prior automated coverage was too weak because it only matched source strings and would not fail if the CTA became non-interactive through different wiring
+  - the prior `settings-offline-open-chats` Evidence block also under-reported the authored SHA span by stopping before the final docs/evidence commit
+- Change made:
+  - extracted the disconnected Settings-home chats entry into a small `SettingsHomeChatsCta` helper so the rendered CTA copy and press behavior can be verified directly without broad screen refactoring
+  - added `apps/mobile/src/screens/settings-home-chats-cta.test.tsx`, which renders the disconnected state, verifies the `Open Chats` label and offline helper copy, confirms the CTA is not disabled, and asserts that pressing it triggers the navigation callback
+  - updated `apps/mobile/package.json` so the mobile vitest suite includes the new executable regression test, kept the source-level wiring check in `apps/mobile/tests/settings-screen-density.test.js`, and corrected the prior evidence block commit range to the full reviewed span
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8116 --clear`
+  - `pnpm --filter @dotagents/mobile run test:vitest`
+  - `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/session-list-empty-state.test.js`
+  - `git diff --check`
+  - live Expo Web automation at `390x844` CSS viewport with a fresh disconnected Settings-home screenshot saved to `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--after--settings-home--qa-r1--20260311.png` and a tap-through into `Chats`
+- Follow-up checks:
+  - continue the offline/disconnected coverage map by testing what happens after entering `Chats`, especially `+ New Chat`, composer send failure handling, and reconnect/sync states
+  - keep prioritizing unchecked session/error/modal surfaces rather than revisiting this Settings CTA again without a new runtime regression signal
 
 ### 2026-03-11 — Iteration 15: unblock Chats from the disconnected Settings home
 
@@ -125,7 +158,7 @@
 Evidence
 - Evidence ID: settings-offline-open-chats
 - Scope: disconnected `Settings` home chats CTA and offline helper copy on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
-- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..1d2d049c8399e89d4d19fc6c0134ced48a48ad5f
+- Commit range: 91c7db81c8bbafe55927771981e24acde4345568..a4fc684336cc576f14d2251f54639bcaa077e1c0
 - Rationale: The default mobile home screen is both a first-run setup surface and an offline recovery surface. Leaving a visible primary `Go to Chats` action disabled there made the app feel more blocked than it really was, because users could not reach saved chats/history even though the chats list itself can render without an active server connection.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-offline-open-chats--before--settings-home--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the disconnected `DotAgents` home showed `Not connected` and a visible `Go to Chats` CTA, but the button was disabled, which stranded users away from saved chats/history and did not explain what remained available offline.

@@ -21,6 +21,7 @@ import {
 } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
+import { SettingsHomeChatsCta } from './settings-home-chats-cta';
 import { TTSSettings } from '../ui/TTSSettings';
 import Slider from '@react-native-community/slider';
 
@@ -1108,10 +1109,6 @@ export default function SettingsScreen({ navigation }: any) {
 
   const hasPendingSaves = hasPendingLocalSave || pendingRemoteSaveKeys.length > 0;
   const isConnected = Boolean(config.baseUrl && config.apiKey);
-  const chatsCtaLabel = isConnected ? 'Go to Chats' : 'Open Chats';
-  const chatsCtaHint = isConnected
-    ? 'Opens your chat list.'
-    : 'Opens saved chats even while disconnected. Connect first to send new messages.';
   const saveButtonLabel = isSavingAllSettings
     ? 'Saving…'
     : hasPendingSaves
@@ -1201,21 +1198,13 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
 
-        {/* Go to Chats button */}
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Sessions')}
-          accessibilityRole="button"
-          accessibilityLabel={chatsCtaLabel}
-          accessibilityHint={chatsCtaHint}
-        >
-          <Text style={styles.primaryButtonText}>{chatsCtaLabel}</Text>
-        </TouchableOpacity>
-        {!isConnected && (
-          <Text style={styles.primaryActionHelperText}>
-            Review saved chats while disconnected. Connect before sending new messages.
-          </Text>
-        )}
+        <SettingsHomeChatsCta
+          isConnected={isConnected}
+          onOpenChats={() => navigation.navigate('Sessions')}
+          buttonStyle={styles.primaryButton}
+          buttonTextStyle={styles.primaryButtonText}
+          helperTextStyle={styles.primaryActionHelperText}
+        />
 
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.themeSelector}>

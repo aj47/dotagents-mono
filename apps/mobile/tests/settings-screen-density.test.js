@@ -8,6 +8,10 @@ const settingsSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'SettingsScreen.tsx'),
   'utf8'
 );
+const settingsHomeChatsCtaSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'screens', 'settings-home-chats-cta.tsx'),
+  'utf8'
+);
 
 test('keeps the root settings orientation in the navigation header', () => {
   assert.match(appSource, /name="Settings"[\s\S]*?options=\{\{ title: 'DotAgents' \}\}/);
@@ -34,7 +38,8 @@ test('keeps a global save button visible on mobile settings so typed changes are
 });
 
 test('keeps chats reachable from the disconnected settings home instead of hard-disabling the CTA', () => {
-  assert.match(settingsSource, /const chatsCtaLabel = isConnected \? 'Go to Chats' : 'Open Chats';/);
-  assert.match(settingsSource, /Review saved chats while disconnected\. Connect before sending new messages\./);
-  assert.doesNotMatch(settingsSource, /disabled=\{!\(config\.baseUrl && config\.apiKey\)\}/);
+  assert.match(settingsSource, /<SettingsHomeChatsCta[\s\S]*?isConnected=\{isConnected\}[\s\S]*?onOpenChats=\{\(\) => navigation\.navigate\('Sessions'\)\}/);
+  assert.match(settingsHomeChatsCtaSource, /label: isConnected \? 'Go to Chats' : 'Open Chats'/);
+  assert.match(settingsHomeChatsCtaSource, /Review saved chats while disconnected\. Connect before sending new messages\./);
+  assert.doesNotMatch(settingsHomeChatsCtaSource, /disabled=/);
 });
