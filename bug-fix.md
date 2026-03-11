@@ -31,6 +31,7 @@
 - [x] Reviewed `bug-fix.md` and the current outstanding QA feedback from `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt`, then explicitly deferred the unresolved `mobile-web-browser-history`, `mobile-web-qr-scanner`, and `mobile-chat-connection-gate` QA findings for this iteration.
 - [x] Launched Expo Web at `http://localhost:8150/chat`, reproduced repeated `Unexpected text node: . A text node cannot be a child of a <View>.` console errors on the initial Chat screen render, and traced the component stack back to `ChatScreen`'s `debugInfo &&` conditional.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent for this pass, and live-inspected a fresh Expo Web agent-creation flow on `http://localhost:8160/agents/edit` for a new concrete mobile-web bug.
+- [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is still absent, explicitly deferred the older unresolved QA follow-ups, and live-inspected Expo Web at `http://localhost:8170/sessions` for a new runtime-confirmed Sessions empty-state bug.
 
 ## Not yet checked
 
@@ -48,6 +49,7 @@
 - [x] Mobile Expo Web still allowed unconfigured users to deep-link into `/sessions`, start a first chat, and send a message, which surfaced a raw `401` / missing API key chat error instead of redirecting them back to `Connection Settings`.
 - [x] Mobile Expo Web rendered the initial `/chat` screen with an empty-string child under a `ScrollView`, which emitted the React Native Web error `Unexpected text node: . A text node cannot be a child of a <View>.` three times on initial render even though the visible chat surface otherwise looked idle.
 - [x] Mobile Expo Web let an unconfigured user open `/agents/edit` with the primary `Create Agent` action still enabled, but tapping it performed no save, no navigation, and no visible error because `AgentEditScreen` returned early when no connection settings client was available.
+- [x] Mobile Expo Web still rendered the generic `/sessions` empty state for an unconfigured user, including normal-looking `+ New Chat`, `Start first chat`, and `Hold to talk (Rapid Fire)` entry points, even though the same screen could not actually start chat creation until connection settings were completed.
 
 ## Fixed
 
@@ -62,6 +64,7 @@
 - [x] `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SessionListScreen.tsx`, and `apps/mobile/src/screens/ChatScreen.tsx` now share a missing-connection gate so unconfigured mobile users are redirected back to `Connection Settings` before Sessions/Chat can create or send a chat, including the Sessions Rapid Fire and queued-send entry points.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now uses `shouldRenderOptionalChild()` from `apps/mobile/src/screens/chat-render-guards.ts` before rendering optional blocks whose conditions may evaluate to an empty string, so Expo Web no longer mounts invalid raw text nodes under chat `View` / `ScrollView` containers during the initial `/chat` render.
 - [x] `apps/mobile/src/screens/AgentEditScreen.tsx` now matches the existing Memory/Loop edit guard pattern by surfacing missing-connection guidance, showing a visible save error if the action is invoked without config, and disabling `Create Agent` / `Save Changes` until Base URL + API key settings exist.
+- [x] `apps/mobile/src/screens/SessionListScreen.tsx` now turns the disconnected `/sessions` empty state into explicit setup guidance: the header action becomes `Open Connection`, the empty state explains that a connection is required before starting a chat, the empty-state CTA routes straight to `ConnectionSettings`, and Rapid Fire is visibly disabled with the same missing-connection guidance instead of looking ready.
 
 ## Verified
 
@@ -107,6 +110,11 @@
 - [x] `pnpm --filter @dotagents/mobile test`
 - [x] Live Expo Web repro at `http://localhost:8160/agents/edit` now shows the missing-connection helper text and a disabled non-interactive `Create Agent` control in a fresh `390x844` mobile browser context.
 - [x] Curated matching before/after screenshots for the unconfigured agent-create screen were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `pnpm --filter @dotagents/mobile run test:node`
+- [x] `pnpm --filter @dotagents/mobile run test:vitest`
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after the temporary local `SessionListScreen` typing issues were removed.
+- [x] Live Expo Web repro at `http://localhost:8170/sessions` now immediately shows connection-required setup guidance and routes `Open connection settings` to `/connection` in the same unconfigured `1280x800` browser context.
+- [x] Curated matching before/after screenshots for the unconfigured Sessions empty state were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `1280x800` viewport.
 
 ## Blocked
 
@@ -119,6 +127,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web unconfigured-chat gating bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web chat empty-string render warning bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web agent-create missing-connection bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web disconnected Sessions empty-state bug.
 
 ## Still uncertain
 
@@ -129,6 +138,7 @@
 - [ ] Whether live Expo Web refresh/back navigation for memory and loop edit screens behaves correctly against a configured remote settings backend; this iteration verified the exact serializer/parser bug and screen fallback logic without re-running a full remote-backed browser session.
 - [ ] Whether reopened successful chats without a message-count change were also previously stale for the same persistence reason; this iteration fixed the shared settled-message persistence path and verified the failure-state repro specifically.
 - [ ] Whether direct deep links into other mobile edit/detail routes still have any missing-configuration edge cases beyond the now-fixed `AgentEditScreen` silent no-op path.
+- [ ] Whether unconfigured users who already have historical sessions should also see a lightweight read-only banner on `/sessions`; this iteration fixed the misleading empty-state/create-entry path specifically.
 
 ## Candidate leads
 
@@ -138,6 +148,7 @@
 - Mobile flow/runtime bugs that can now be inspected live again because the symlinked-worktree Expo Web bundle no longer dies resolving `@dotagents/shared`.
 - Mobile chat/session state edge cases after reopen, retry, and offline failures now that the placeholder-persistence bug is fixed.
 - Mobile Expo Web edit/detail deep links that are reachable without configuration, especially around remaining save/load gating consistency and scroll/interaction edge cases.
+- Mobile Expo Web disconnected states where a route still renders primary creation actions before setup is complete.
 
 ## Evidence
 
@@ -240,7 +251,7 @@
 ### Evidence ID: mobile-agent-edit-missing-connection
 
 - Scope: `apps/mobile/src/screens/AgentEditScreen.tsx` and `apps/mobile/tests/agent-edit-missing-connection.test.js` for the unconfigured Expo Web create-agent flow at `/agents/edit`
-- Commit range: `d30422677fc92c4815c60edaeee0e83bf01b90f1..PENDING_FINAL_HANDOFF_COMMIT_SHA`
+- Commit range: `d30422677fc92c4815c60edaeee0e83bf01b90f1..4a8e233d37e20c4f665b5a91d4778b78e61bd1cb`
 - Rationale: Users can reach the mobile agent editor through web routing and deep links even when Base URL / API key are not configured. Before this fix, the primary `Create Agent` action still looked available but silently returned early without a save attempt, navigation change, or explanatory error, which made a core creation flow feel broken and left users without a recovery path.
 - QA feedback: None (new iteration)
 - Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-agent-edit-missing-connection--before--create-agent-screen--20260311.png` (viewport `390x844`, mobile browser, fresh unconfigured Expo Web state at `http://localhost:8160/agents/edit`). The screenshot shows the `Create Agent` form rendered with the primary CTA visible but no helper copy explaining that connection settings are required; in the same run, clicking `Create Agent` kept the app on `/agents/edit`, triggered no network request, showed no error, and performed no navigation, so the primary action behaved like a silent no-op.
@@ -248,3 +259,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-agent-edit-missing-connection--after--create-agent-screen--20260311.png` (same `390x844` viewport, same unconfigured `/agents/edit` surface). After the fix, the screen visibly explains `Configure Base URL and API key in Settings to save changes.` and the `Create Agent` control is rendered disabled/non-interactive, which prevents the misleading no-op and clearly directs the user toward the required setup flow.
 - Verification commands/run results: `node --test apps/mobile/tests/agent-edit-missing-connection.test.js apps/mobile/tests/agent-edit-density.test.js` ✅ (4 tests passing, including the new missing-connection guard assertions); `pnpm --filter @dotagents/mobile test` ✅ (75 Node tests + 70 Vitest assertions passing); `git diff --check` ✅; live Expo Web repro at `http://localhost:8160/agents/edit` ✅ now shows the helper text and a disabled `Create Agent` control in a fresh `390x844` browser context after clearing storage; curated matching before/after screenshots saved under `docs/aloops-evidence/bug-fix-loop/` ✅.
 - Blockers/remaining uncertainty: This iteration fixed and live-verified the unconfigured mobile-web create-agent path specifically. I did not separately revalidate configured agent creation/editing against a live backend in this pass, and I did not expand the scope into the earlier inconclusive inner-scroll interaction hypothesis because the missing-configuration silent no-op had clearer user impact and a smaller safe fix.
+
+### Evidence ID: session-list-connection-gate
+
+- Scope: `apps/mobile/src/screens/SessionListScreen.tsx`, `apps/mobile/tests/chat-connection-gate.test.js`, and `apps/mobile/tests/session-list-empty-state.test.js` for the disconnected Expo Web `/sessions` empty state.
+- Commit range: `4a8e233d37e20c4f665b5a91d4778b78e61bd1cb..1dced7ef9d8520e36dc19ad2e02214557131fbe8`
+- Rationale: Even after the earlier chat send/create guards, an unconfigured user who deep-linked into `/sessions` still saw the normal empty chat list with `+ New Chat`, `Start first chat`, and Rapid Fire. That visible state suggested chat creation was ready when the same screen could not complete those actions yet, forcing users to discover setup requirements only after an attempted action instead of immediately seeing the correct recovery path.
+- QA feedback: Deferred prior unresolved QA follow-ups for `mobile-web-browser-history`, `mobile-web-qr-scanner`, `mobile-chat-connection-gate`, and `mobile-agent-edit-missing-connection` to keep this iteration tightly scoped to a newly reproduced runtime-confirmed Sessions empty-state bug.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/session-list-connection-gate--before--sessions-empty-unconfigured--20260311.png` (viewport `1280x800`, desktop browser, fresh unconfigured Expo Web state at `http://localhost:8170/sessions`). The screenshot shows the generic chat empty state with `+ New Chat`, `No chats yet`, `Start first chat`, and `Hold to talk (Rapid Fire)` still visible even though local storage has no saved connection config and the header status is `Disconnected`, so the surface misleadingly looks ready for chat creation before setup is complete.
+- Change: Updated `SessionListScreen.tsx` so the disconnected empty state becomes proactive setup guidance instead of a normal ready-to-chat surface. The header action now routes to `ConnectionSettings` as `Open Connection`, the empty-state copy switches to `Connection required` plus the existing missing-connection guidance, the empty-state CTA opens connection settings directly, and Rapid Fire is disabled with the same connection-required explanation. Added source-level regression coverage in `apps/mobile/tests/chat-connection-gate.test.js` and `apps/mobile/tests/session-list-empty-state.test.js` for the new setup-action wiring and disconnected empty-state copy.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/session-list-connection-gate--after--sessions-empty-unconfigured--20260311.png` (same `1280x800` viewport and same unconfigured `/sessions` surface). After the fix, the screen immediately shows `Connection required`, the header action is `Open Connection`, the primary CTA is `Open connection settings`, and browser automation confirmed that CTA navigates straight to `/connection`, which makes the required recovery path visible before the user attempts a broken chat-creation flow.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile run test:node` ✅ (77 Node tests passing, including the new Sessions empty-state and connection-gate assertions); `pnpm --filter @dotagents/mobile run test:vitest` ✅ (10 mobile Vitest files / 70 tests passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after removing the temporary local `SessionListScreen` typing issues caught during development; `git diff --check` ✅ before the product commit; live Expo Web repro at `http://localhost:8170/sessions` ✅ now shows the proactive connection-required empty state and routes `Open connection settings` to `/connection` in the same unconfigured `1280x800` browser context.
+- Blockers/remaining uncertainty: The exact misleading empty-state/create-entry path on disconnected `/sessions` is fixed and live-verified. I did not expand this iteration into the separate question of whether previously saved sessions should show an additional read-only banner while disconnected, because that broader state is distinct from the reproduced empty-state bug and would widen the scope beyond this local fix.
