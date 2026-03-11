@@ -29,3 +29,9 @@ test('caps live transcript height so the recording overlay is less likely to cov
   assert.match(screenSource, /<Text style=\{styles\.overlayTranscript\} numberOfLines=\{3\}>/);
   assert.match(screenSource, /overlayTranscript:\s*\{[\s\S]*?marginTop:\s*4,[\s\S]*?lineHeight:\s*16,[\s\S]*?opacity:\s*0\.92,/);
 });
+
+test('guards debug info rendering with a boolean check so empty strings do not create stray text nodes on web', () => {
+  assert.match(screenSource, /const hasDebugInfo = debugInfo\.trim\(\)\.length > 0;/);
+  assert.match(screenSource, /\{hasDebugInfo && \([\s\S]*?<Text style=\{styles\.debugText\}>\{debugInfo\}<\/Text>/);
+  assert.doesNotMatch(screenSource, /\{debugInfo && \(/);
+});

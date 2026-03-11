@@ -631,6 +631,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const hasDebugInfo = debugInfo.trim().length > 0;
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
@@ -2621,7 +2622,7 @@ export default function ChatScreen({ route, navigation }: any) {
               </Text>
             </View>
           )}
-          {debugInfo && (
+          {hasDebugInfo && (
             <View style={styles.debugInfo}>
               <Text style={styles.debugText}>{debugInfo}</Text>
             </View>
