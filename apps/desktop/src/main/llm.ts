@@ -861,84 +861,6 @@ export async function processTranscriptWithAgentMode(
 
   const baseAvailableTools = uniqueAvailableTools
 
-  const { agentProfileService } = await import("./agent-profile-service")
-  const mainAgent = agentProfileService.getCurrentProfile()
-
-  // Use profile snapshot for session isolation if available, otherwise fall back to current profile
-  // This ensures the session uses the profile settings at creation time,
-  // even if the global profile is changed during session execution
-  const agentModeGuidelines = effectiveProfileSnapshot?.guidelines ?? mainAgent?.guidelines ?? ""
-  const customSystemPrompt = effectiveProfileSnapshot?.systemPrompt ?? mainAgent?.systemPrompt
-  // Get skills instructions from profile snapshot (typically set by agents/sub-sessions)
-  const agentSkillsInstructions = effectiveProfileSnapshot?.skillsInstructions
-  // Get agent properties from profile snapshot (dynamic key-value pairs)
-  const agentProperties = effectiveProfileSnapshot?.agentProperties
-
-  // Load enabled agent skills instructions for the current profile
-  // Skills provide specialized instructions that improve AI performance on specific tasks
-  // SKIP if agentSkillsInstructions already present — the snapshot already loaded skills for this profile,
-  // loading them again would duplicate the skills index section in the system prompt
-  let profileSkillsInstructions: string | undefined
-  if (!agentSkillsInstructions) {
-    const { skillsService } = await import("./skills-service")
-    const snapshotSkillsConfig = effectiveProfileSnapshot?.skillsConfig
-    // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
-    const enabledSkillIds = (!snapshotSkillsConfig || !snapshotSkillsConfig.allSkillsDisabledByDefault)
-      ? skillsService.getSkills().map(s => s.id)
-      : (snapshotSkillsConfig.enabledSkillIds ?? [])
-    logLLM(`[processTranscriptWithAgentMode] Loading skills for session ${currentSessionId}. enabledSkillIds: [${enabledSkillIds.join(', ')}]`)
-    profileSkillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
-    logLLM(`[processTranscriptWithAgentMode] Skills instructions loaded: ${profileSkillsInstructions ? `${profileSkillsInstructions.length} chars` : 'none'}`)
-  } else {
-    logLLM(`[processTranscriptWithAgentMode] Using agent skills instructions from profile snapshot (${agentSkillsInstructions.length} chars), skipping duplicate load`)
-  }
-
-  // Use agent-level skills if present (from snapshot), otherwise profile-level
-  const skillsInstructions = agentSkillsInstructions ?? profileSkillsInstructions
-  const skillsIndex = extractSkillsIndexForMinimalPrompt(skillsInstructions)
-
-  // Load memories for agent context (global shared pool)
-  let relevantMemories: AgentMemory[] = []
-  {
-    const allMemories = await memoryService.getAllMemories()
-    const importanceOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
-    const sortedMemories = [...allMemories].sort((a, b) => {
-      const impDiff = importanceOrder[a.importance] - importanceOrder[b.importance]
-      if (impDiff !== 0) return impDiff
-      return b.createdAt - a.createdAt
-    })
-    relevantMemories = sortedMemories.slice(0, 30) // Cap at 30 for agent mode
-    logLLM(`[processTranscriptWithAgentMode] Loaded ${relevantMemories.length} memories for context (from ${allMemories.length} total)`)
-  }
-
-  // The agent's profile ID is used to exclude itself from delegation targets in the system prompt
-  const excludeAgentId = effectiveProfileSnapshot?.profileId
-
-  // Construct system prompt using the new approach
-  const systemPrompt = constructSystemPrompt(
-    baseAvailableTools,
-    agentModeGuidelines,
-    true,
-    undefined, // relevantTools removed - let LLM decide tool relevance
-    customSystemPrompt, // custom base system prompt from profile snapshot or global config
-    skillsInstructions, // agent skills instructions
-    agentProperties, // dynamic agent properties
-    relevantMemories, // memories from previous sessions
-    excludeAgentId, // exclude this agent from delegation targets
-  )
-
-  logLLM(`[llm.ts processTranscriptWithAgentMode] Initializing conversationHistory for session ${currentSessionId}`)
-  logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory length: ${previousConversationHistory?.length || 0}`)
-  if (previousConversationHistory && previousConversationHistory.length > 0) {
-    logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
-  }
-
-  // Track the index where the current user prompt was added
-  // This is used to scope tool result checks to only the current turn
-  const currentPromptIndex = previousConversationHistory?.length || 0
-
-  logLLM(`[llm.ts processTranscriptWithAgentMode] conversationHistory initialized with ${conversationHistory.length} messages, roles: [${conversationHistory.map(m => m.role).join(', ')}]`)
-
   // Save the initial user message incrementally
   // Only save if this is a new message (not already in previous conversation history)
   // Check if ANY user message in previousConversationHistory has the same content (not just the last one)
@@ -953,9 +875,6 @@ export async function processTranscriptWithAgentMode(
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
     })
   }
-
-  // Track empty response retries to prevent infinite loops
-  let emptyResponseRetryCount = 0
 
   // Helper function to convert conversation history to the format expected by AgentProgressUpdate
   // - Filters out ephemeral messages (internal prompt-engineering nudges)
@@ -1041,6 +960,87 @@ export async function processTranscriptWithAgentMode(
       totalIterations: 0,
     }
   }
+
+  const { agentProfileService } = await import("./agent-profile-service")
+  const mainAgent = agentProfileService.getCurrentProfile()
+
+  // Use profile snapshot for session isolation if available, otherwise fall back to current profile
+  // This ensures the session uses the profile settings at creation time,
+  // even if the global profile is changed during session execution
+  const agentModeGuidelines = effectiveProfileSnapshot?.guidelines ?? mainAgent?.guidelines ?? ""
+  const customSystemPrompt = effectiveProfileSnapshot?.systemPrompt ?? mainAgent?.systemPrompt
+  // Get skills instructions from profile snapshot (typically set by agents/sub-sessions)
+  const agentSkillsInstructions = effectiveProfileSnapshot?.skillsInstructions
+  // Get agent properties from profile snapshot (dynamic key-value pairs)
+  const agentProperties = effectiveProfileSnapshot?.agentProperties
+
+  // Load enabled agent skills instructions for the current profile
+  // Skills provide specialized instructions that improve AI performance on specific tasks
+  // SKIP if agentSkillsInstructions already present — the snapshot already loaded skills for this profile,
+  // loading them again would duplicate the skills index section in the system prompt
+  let profileSkillsInstructions: string | undefined
+  if (!agentSkillsInstructions) {
+    const { skillsService } = await import("./skills-service")
+    const snapshotSkillsConfig = effectiveProfileSnapshot?.skillsConfig
+    // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
+    const enabledSkillIds = (!snapshotSkillsConfig || !snapshotSkillsConfig.allSkillsDisabledByDefault)
+      ? skillsService.getSkills().map(s => s.id)
+      : (snapshotSkillsConfig.enabledSkillIds ?? [])
+    logLLM(`[processTranscriptWithAgentMode] Loading skills for session ${currentSessionId}. enabledSkillIds: [${enabledSkillIds.join(', ')}]`)
+    profileSkillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
+    logLLM(`[processTranscriptWithAgentMode] Skills instructions loaded: ${profileSkillsInstructions ? `${profileSkillsInstructions.length} chars` : 'none'}`)
+  } else {
+    logLLM(`[processTranscriptWithAgentMode] Using agent skills instructions from profile snapshot (${agentSkillsInstructions.length} chars), skipping duplicate load`)
+  }
+
+  // Use agent-level skills if present (from snapshot), otherwise profile-level
+  const skillsInstructions = agentSkillsInstructions ?? profileSkillsInstructions
+  const skillsIndex = extractSkillsIndexForMinimalPrompt(skillsInstructions)
+
+  // Load memories for agent context (global shared pool)
+  let relevantMemories: AgentMemory[] = []
+  {
+    const allMemories = await memoryService.getAllMemories()
+    const importanceOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+    const sortedMemories = [...allMemories].sort((a, b) => {
+      const impDiff = importanceOrder[a.importance] - importanceOrder[b.importance]
+      if (impDiff !== 0) return impDiff
+      return b.createdAt - a.createdAt
+    })
+    relevantMemories = sortedMemories.slice(0, 30) // Cap at 30 for agent mode
+    logLLM(`[processTranscriptWithAgentMode] Loaded ${relevantMemories.length} memories for context (from ${allMemories.length} total)`)
+  }
+
+  // The agent's profile ID is used to exclude itself from delegation targets in the system prompt
+  const excludeAgentId = effectiveProfileSnapshot?.profileId
+
+  // Construct system prompt using the new approach
+  const systemPrompt = constructSystemPrompt(
+    baseAvailableTools,
+    agentModeGuidelines,
+    true,
+    undefined, // relevantTools removed - let LLM decide tool relevance
+    customSystemPrompt, // custom base system prompt from profile snapshot or global config
+    skillsInstructions, // agent skills instructions
+    agentProperties, // dynamic agent properties
+    relevantMemories, // memories from previous sessions
+    excludeAgentId, // exclude this agent from delegation targets
+  )
+
+  logLLM(`[llm.ts processTranscriptWithAgentMode] Initializing conversationHistory for session ${currentSessionId}`)
+  logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory length: ${previousConversationHistory?.length || 0}`)
+  if (previousConversationHistory && previousConversationHistory.length > 0) {
+    logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
+  }
+
+  // Track the index where the current user prompt was added
+  // This is used to scope tool result checks to only the current turn
+  const currentPromptIndex = previousConversationHistory?.length || 0
+
+  logLLM(`[llm.ts processTranscriptWithAgentMode] conversationHistory initialized with ${conversationHistory.length} messages, roles: [${conversationHistory.map(m => m.role).join(', ')}]`)
+
+  // Track empty response retries to prevent infinite loops
+  let emptyResponseRetryCount = 0
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
     finalContent = appendAgentStopNote(finalContent)
