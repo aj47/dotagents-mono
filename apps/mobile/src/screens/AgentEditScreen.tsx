@@ -6,7 +6,7 @@ import { spacing, radius } from '../ui/theme';
 import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
-import { useConfigContext } from '../store/config';
+import { hasConfiguredConnection, useConfigContext } from '../store/config';
 
 const CONNECTION_TYPES = [
   {
@@ -70,7 +70,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (hasConfiguredConnection(config)) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;

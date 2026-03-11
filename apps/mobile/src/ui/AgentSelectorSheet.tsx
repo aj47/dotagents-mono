@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
-import { useConfigContext } from '../store/config';
+import { hasConfiguredConnection, useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient, Profile } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
 import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
@@ -38,7 +38,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const { config } = useConfigContext();
   const { currentProfile, setCurrentProfile, refresh } = useProfile();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
+  const hasApiConfig = hasConfiguredConnection(config);
   const missingConfigError = 'Configure server URL and API key to switch agents';
 
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);

@@ -142,6 +142,7 @@ async function loadEditScreens(runtime: ReturnType<typeof createHookRuntime>) {
   }));
   vi.doMock('../store/config', () => ({
     useConfigContext: () => ({ config: { baseUrl: '', apiKey: '' } }),
+    hasConfiguredConnection: (config: { baseUrl?: string; apiKey?: string }) => Boolean(config.baseUrl?.trim() && config.apiKey?.trim()),
   }));
   vi.doMock('../lib/accessibility', () => ({
     createButtonAccessibilityLabel: (label: string) => `${label} button`,

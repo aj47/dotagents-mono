@@ -9,6 +9,7 @@ const screenSource = fs.readFileSync(
 );
 
 test('blocks first-time save when no API key is provided', () => {
+  assert.match(screenSource, /const isConnected = hasConfiguredConnection\(config\);/);
   assert.match(screenSource, /if \(!isConnected && !hasApiKey\) \{/);
   assert.match(screenSource, /Enter an API key or scan a DotAgents QR code before saving/);
 });

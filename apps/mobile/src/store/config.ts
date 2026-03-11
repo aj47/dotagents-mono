@@ -62,6 +62,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
   return {
     ...DEFAULT_APP_CONFIG,
     ...cfg,
+    apiKey: cfg.apiKey?.trim() ?? cfg.apiKey,
     baseUrl: cfg.baseUrl ? normalizeApiBaseUrl(cfg.baseUrl) : cfg.baseUrl,
     handsFreeMessageDebounceMs: normalizeHandsFreeMessageDebounceMs(cfg.handsFreeMessageDebounceMs),
     handsFreeWakePhrase: cfg.handsFreeWakePhrase?.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,

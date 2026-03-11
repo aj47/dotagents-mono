@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AppConfig,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  hasConfiguredConnection,
   MAX_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   saveConfig,
@@ -260,6 +261,7 @@ export default function SettingsScreen({ navigation }: any) {
   const inputTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const hasApiConfig = hasConfiguredConnection(config);
 
   useEffect(() => {
     setDraft(config);
@@ -302,11 +304,11 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Create settings API client when we have valid credentials
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (hasApiConfig) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.apiKey, config.baseUrl, hasApiConfig]);
 
   // Clear pending model update timeout when settingsClient changes
   // to prevent sending updates to the previous server
@@ -783,7 +785,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Handle push notification toggle
   const handleNotificationToggle = async (enabled: boolean) => {
-    if (!config.baseUrl || !config.apiKey) {
+    if (!hasApiConfig) {
       Alert.alert('Configuration Required', 'Please configure your server connection first.');
       return;
     }
@@ -1160,12 +1162,12 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={[
                   styles.statusDot,
                   { width: 10, height: 10, borderRadius: 5 },
-                  config.baseUrl && config.apiKey
+                  hasApiConfig
                     ? styles.statusConnected
                     : { backgroundColor: '#ef4444' }
                 ]} />
                 <Text style={styles.connectionCardTitle}>
-                  {config.baseUrl && config.apiKey ? 'Connected' : 'Not connected'}
+                  {hasApiConfig ? 'Connected' : 'Not connected'}
                 </Text>
               </View>
               {config.baseUrl && (
@@ -1180,9 +1182,9 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* Go to Chats button */}
         <TouchableOpacity
-          style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
+          style={[styles.primaryButton, !hasApiConfig && styles.primaryButtonDisabled]}
           onPress={() => navigation.navigate('Sessions')}
-          disabled={!(config.baseUrl && config.apiKey)}
+          disabled={!hasApiConfig}
           accessibilityRole="button"
           accessibilityLabel="Go to Chats"
         >

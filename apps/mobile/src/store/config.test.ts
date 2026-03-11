@@ -36,6 +36,17 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
   });
 
+  it('trims stored API keys so whitespace-only credentials stay disconnected', () => {
+    const normalized = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      apiKey: '   ',
+      baseUrl: 'https://api.openai.com/v1',
+    });
+
+    expect(normalized.apiKey).toBe('');
+    expect(hasConfiguredConnection(normalized)).toBe(false);
+  });
+
   it('trims custom handsfree phrases', () => {
     const normalized = normalizeStoredConfig({
       ...DEFAULT_APP_CONFIG,

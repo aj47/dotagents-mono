@@ -11,7 +11,7 @@ import {
   MemoryUpdateRequest,
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
-import { useConfigContext } from '../store/config';
+import { hasConfiguredConnection, useConfigContext } from '../store/config';
 import { getMemoryEditRouteContext } from './edit-route-params';
 
 const IMPORTANCE_OPTIONS: { label: string; value: MemoryImportance; description: string }[] = [
@@ -65,7 +65,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (hasConfiguredConnection(config)) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;

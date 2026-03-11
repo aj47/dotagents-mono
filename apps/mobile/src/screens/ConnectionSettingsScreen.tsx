@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppConfig, saveConfig, useConfigContext } from '../store/config';
+import { AppConfig, hasConfiguredConnection, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -194,7 +194,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   };
 
   // Connection status indicator
-  const isConnected = Boolean(config.baseUrl && config.apiKey);
+  const isConnected = hasConfiguredConnection(config);
 
   if (!ready) return null;
 
