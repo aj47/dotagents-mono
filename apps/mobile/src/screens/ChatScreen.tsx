@@ -24,7 +24,9 @@ const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+	CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE,
 	DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+	hasConfiguredConnection,
 	useConfigContext,
 	saveConfig,
 } from '../store/config';
@@ -304,6 +306,22 @@ export default function ChatScreen({ route, navigation }: any) {
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
+  const showConnectionSettingsPrompt = useCallback(() => {
+    if (Platform.OS === 'web') {
+      window.alert(CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE);
+      navigation.navigate('ConnectionSettings');
+      return;
+    }
+
+    Alert.alert(
+      'Connection settings required',
+      CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => navigation.navigate('ConnectionSettings') },
+      ],
+    );
+  }, [navigation]);
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const handsFree = !!config.handsFree;
 	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
@@ -1455,6 +1473,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
 
+    if (!hasConfiguredConnection(config)) {
+      setDebugInfo(`Error: ${CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE}`);
+      showConnectionSettingsPrompt();
+      return;
+    }
+
     // If message queue is enabled and we're already responding, queue the message
     if (messageQueueEnabled && responding) {
       console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(text));
@@ -1929,6 +1953,13 @@ export default function ChatScreen({ route, navigation }: any) {
     const text = queuedMsg.text;
     if (!text.trim()) {
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
+      return;
+    }
+
+    if (!hasConfiguredConnection(config)) {
+      messageQueue.markFailed(currentConversationId, queuedMsg.id, CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE);
+      setDebugInfo(`Error: ${CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE}`);
+      showConnectionSettingsPrompt();
       return;
     }
 

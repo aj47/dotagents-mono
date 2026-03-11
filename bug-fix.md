@@ -26,6 +26,8 @@
 - [x] Directly confirmed via React Navigation's `getPathFromState()` / `getStateFromPath()` that `MemoryEdit` and `LoopEdit` generated polluted Expo Web URLs like `/memories/edit?memoryId=memory-123&memory=%5Bobject%20Object%5D` and `/loops/edit?loopId=loop-123&loop=%5Bobject%20Object%5D`.
 - [x] Re-reviewed the unresolved `mobile-web-qr-scanner` evidence provenance finding and explicitly deferred it for this iteration in favor of a new runtime-confirmed chat-state bug.
 - [x] Reproduced a new Expo Web chat-state bug at `http://localhost:8130`: reopening a failed thread from Sessions showed a stuck `Assistant is thinking` loader instead of the saved failure + retry state.
+- [x] Reviewed `bug-fix.md` and confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` does not exist for this iteration, so prior QA findings were not picked up here.
+- [x] Launched Expo Web at `http://localhost:8140`, cleared persisted mobile app storage, and live-reproduced a new unconfigured-chat gating bug from the Sessions deep link path.
 
 ## Not yet checked
 
@@ -40,6 +42,7 @@
 - [x] Mobile Expo Web navigation from `Settings` to `Connection` changed the visible screen but left the browser URL at `/`, so browser Back did nothing and normal web history navigation was broken.
 - [x] Mobile Expo Web edit routes for existing memories and loops serialized full route objects into the URL as `memory=%5Bobject%20Object%5D` / `loop=%5Bobject%20Object%5D`; on reload or deep-link parse those truthy strings prevented `MemoryEditScreen` and `LoopEditScreen` from falling back to the intended `memoryId` / `loopId` fetch path.
 - [x] Mobile Expo Web reopened failed chats from Sessions with the stale persisted placeholder assistant message, so the thread showed an indefinite `Assistant is thinking` loader and hid the actual failure + retry UI after reopening.
+- [x] Mobile Expo Web still allowed unconfigured users to deep-link into `/sessions`, start a first chat, and send a message, which surfaced a raw `401` / missing API key chat error instead of redirecting them back to `Connection Settings`.
 
 ## Fixed
 
@@ -51,6 +54,7 @@
 - [x] `apps/mobile/App.tsx` now passes a web-only React Navigation linking config built in `apps/mobile/src/navigation/navigationLinking.ts`, so Expo Web writes stable screen paths like `/connection` into browser history and the browser Back button can return from `Connection` to `Settings`.
 - [x] `apps/mobile/src/screens/edit-route-params.ts` now strips non-serializable memory/loop objects from web edit navigation, while `MemoryEditScreen.tsx` and `LoopEditScreen.tsx` now ignore stale stringified route-object params and fall back to loading the selected record by ID.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now persists settled same-length chat-message updates after a request finishes, so reopening a failed thread restores the saved error + retry state instead of the earlier blank assistant placeholder loader.
+- [x] `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SessionListScreen.tsx`, and `apps/mobile/src/screens/ChatScreen.tsx` now share a missing-connection gate so unconfigured mobile users are redirected back to `Connection Settings` before Sessions/Chat can create or send a chat, including the Sessions Rapid Fire and queued-send entry points.
 
 ## Verified
 
@@ -84,6 +88,10 @@
 - [x] Live Expo Web repro at `http://localhost:8130` now reopens failed chats with the saved error + retry UI visible and without the stale `Assistant is thinking` loader.
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails only on the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; the new chat persistence helper and `ChatScreen` wiring did not introduce a new type error.
 - [x] `git diff --check`
+- [x] `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js`
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts`
+- [x] Live Expo Web repro at `http://localhost:8140/sessions` now alerts on missing connection setup and routes the same unconfigured first-chat attempt to `/connection` instead of showing the raw `401` chat error.
+- [x] Curated matching before/after screenshots for the unconfigured first-chat attempt were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `1280x800` browser viewport.
 
 ## Blocked
 
@@ -93,6 +101,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web browser-history bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web edit-route-param serialization bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web reopened-failed-chat persistence bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web unconfigured-chat gating bug.
 
 ## Still uncertain
 
@@ -185,3 +194,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-failed-reopen-state--after--reopened-chat--20260311.png` (same `1440x900` viewport, same reopened chat surface on Expo Web). After the fix, reopening the failed thread shows the saved error text and retry UI while the stale `Assistant is thinking` loader is gone, so the persisted chat state now matches what the user actually saw before leaving the thread.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/screens/chat-message-persistence.test.ts` ✅ (3 tests passing for placeholder append, no-save during same-length streaming, and save-on-settled-error replacement); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors; `git diff --check` ✅; live Expo Web repro at `http://localhost:8130` ✅ now preserves the failed chat state on reopen and no longer shows the stale loader.
 - Blockers/remaining uncertainty: The exact reproduced failure-state reopen path is fixed and live-verified. I did not spend this iteration on adjacent chat reopen cases like successful same-length completions or queued-message recovery, although the same persistence path now covers those settled same-length updates too.
+
+### Evidence ID: mobile-chat-connection-gate
+
+- Scope: `apps/mobile/src/store/config.ts`, `apps/mobile/src/screens/SessionListScreen.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, and `apps/mobile/tests/chat-connection-gate.test.js` for unconfigured Expo Web chat entry from the Sessions/Chat surfaces
+- Commit range: `7ebb31a41aa9541acae40dc778d119c3e4dd4087..462d8a39da40831c166e6a9f07eab7322ad06e89`
+- Rationale: The mobile onboarding flow already disabled `Go to Chats` from Settings when no API key was configured, but users could still deep-link into `/sessions`, tap `Start first chat`, and send a message. That exposed a raw OpenAI-compatible `401` missing-API-key error inside Chat instead of taking users back to the connection setup they actually needed, which is a broken first-run experience on a core product flow.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-connection-gate--before--unconfigured-chat-attempt--20260311.png` (viewport `1280x800`, desktop browser running Expo Web). After clearing persisted app storage to force an unconfigured state, navigating to `/sessions`, tapping `Start first chat`, typing `hello`, and sending, the app stayed on Chat and rendered a raw `Error: Chat failed: 401` response with the missing API key text plus `Retry`. That screenshot is insufficient because it proves the existing Settings gate was bypassable from deep-linkable chat surfaces and surfaced an internal auth failure instead of a recovery path.
+- Change: Added a shared `hasConfiguredConnection()` helper plus stable missing-connection copy in `config.ts`, then used it to gate Sessions new-chat creation, pending stub auto-send, Rapid Fire background send initiation, Chat composer send, and queued-message processing. Unconfigured attempts now show the setup prompt and route back to `ConnectionSettings`, while the new targeted Node/Vitest coverage locks the guard wiring and helper semantics.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-chat-connection-gate--after--unconfigured-chat-attempt--20260311.png` (same `1280x800` viewport and same unconfigured first-chat attempt on Expo Web). After the fix, the same `/sessions` → `Start first chat` attempt shows the missing-connection prompt and lands on the `Connection` screen with `Not connected`, `API Key`, `Base URL`, and `Test & Save` visible, which demonstrates the user is redirected to the correct recovery flow before any raw chat request/error can occur.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec node --test tests/chat-connection-gate.test.js` ✅ (3 tests passing for Sessions gating, Rapid Fire missing-connection messaging, and Chat/queued-send guards); `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts` ✅ (6 tests passing, including the new trimmed-credential helper checks); live Expo Web repro at `http://localhost:8140/sessions` ✅ reproduced the broken raw-401 behavior before the fix and, after restoring the patch, reproduced the corrected alert + redirect to `/connection` in a fresh browser context with storage cleared; matching before/after screenshots saved under `docs/aloops-evidence/bug-fix-loop/` ✅.
+- Blockers/remaining uncertainty: The exact reproduced Expo Web first-chat bypass is fixed and live-verified, and the same guard now covers queued-send plus Sessions Rapid Fire entry points in source/tests. I did not separately run native iOS/Android for this iteration, so the native alert presentation for the same guard remains source-verified rather than device-verified.

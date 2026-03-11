@@ -54,6 +54,8 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   ttsPitch: 1.0,
 };
 
+export const CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE = 'Add your API key in Connection settings before starting a chat.';
+
 const STORAGE_KEY = 'app_config_v1';
 
 export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
@@ -67,6 +69,10 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     handsFreeDebug: cfg.handsFreeDebug ?? false,
     handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? true,
   };
+}
+
+export function hasConfiguredConnection(config: Pick<AppConfig, 'apiKey' | 'baseUrl'>): boolean {
+  return Boolean(config.apiKey?.trim() && config.baseUrl?.trim());
 }
 
 export async function loadConfig(): Promise<AppConfig> {

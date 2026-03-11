@@ -4,6 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
+import {
+  CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE,
+  hasConfiguredConnection,
+  useConfigContext,
+} from '../store/config';
 import { useSessionContext, SessionStore } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -25,6 +30,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const { theme, isDark } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const { config } = useConfigContext();
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
@@ -34,7 +40,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const [rfListening, setRfListening] = useState(false);
   const [rfTranscript, setRfTranscript] = useState('');
   const [rfStatus, setRfStatus] = useState<
-    'idle' | 'listening' | 'sending' | 'sent' | 'empty' | 'permissionDenied' | 'unavailable' | 'error'
+    'idle' | 'listening' | 'sending' | 'sent' | 'empty' | 'permissionDenied' | 'unavailable' | 'needsConnection' | 'error'
   >('idle');
   const rfListeningRef = useRef(false);
   const rfStartingRef = useRef(false);
@@ -53,6 +59,23 @@ export default function SessionListScreen({ navigation }: Props) {
   const rfMinHoldMs = 200;
   const sessionStoreRef = useRef<SessionStore | null>(null);
   const rfStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showConnectionSettingsPrompt = useCallback(() => {
+    if (Platform.OS === 'web') {
+      window.alert(CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE);
+      navigation.navigate('ConnectionSettings');
+      return;
+    }
+
+    Alert.alert(
+      'Connection settings required',
+      CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => navigation.navigate('ConnectionSettings') },
+      ],
+    );
+  }, [navigation]);
 
   const rfLog = useCallback((msg: string, extra?: any) => {
     if (!__DEV__) return;
@@ -547,6 +570,14 @@ export default function SessionListScreen({ navigation }: Props) {
     rfLiveRef.current = '';
     setRfTranscript('');
     if (finalText) {
+      if (!hasConfiguredConnection(config)) {
+        setRfTranscript(finalText);
+        rfSetTransientStatus('needsConnection', 4000);
+        showConnectionSettingsPrompt();
+        rfStoppingRef.current = false;
+        return;
+      }
+
       // Create a new session and persist transcript, but keep user on Sessions screen.
       const ss = sessionStoreRef.current;
       if (ss) {
@@ -576,7 +607,7 @@ export default function SessionListScreen({ navigation }: Props) {
       rfSetTransientStatus('empty');
     }
     rfStoppingRef.current = false;
-  }, [mergeVoiceText, rfCleanupSubs, rfLog, rfRunBackgroundSend, rfSetListening, rfSetTransientStatus]);
+  }, [config, mergeVoiceText, rfCleanupSubs, rfLog, rfRunBackgroundSend, rfSetListening, rfSetTransientStatus, showConnectionSettingsPrompt]);
 
   rfStopAndFireRef.current = rfStopAndFire;
   // ── end Rapid Fire ─────────────────────────────────────────────────────────
@@ -648,6 +679,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
+  const canStartChat = hasConfiguredConnection(config);
 
   if (!sessionStore.ready) {
     return (
@@ -663,6 +695,11 @@ export default function SessionListScreen({ navigation }: Props) {
   }
 
   const handleCreateSession = () => {
+    if (!canStartChat) {
+      showConnectionSettingsPrompt();
+      return;
+    }
+
     sessionStore.createNewSession();
     navigation.navigate('Chat');
   };
@@ -680,6 +717,11 @@ export default function SessionListScreen({ navigation }: Props) {
     // Fallback only: if a user-only stub exists and no background rapid-fire request
     // is running, auto-send when opening chat.
     if (pendingUserOnlyText) {
+      if (!canStartChat) {
+        showConnectionSettingsPrompt();
+        return;
+      }
+
       rfLog('selectSession -> pending user-only session detected', { sessionId, pendingUserOnlyText });
       try {
         await sessionStore.setMessagesForSession(sessionId, []);
@@ -828,6 +870,8 @@ export default function SessionListScreen({ navigation }: Props) {
             ? 'Microphone permission denied. Enable it in settings.'
             : rfStatus === 'unavailable'
               ? 'Speech recognition unavailable on this build/device.'
+        : rfStatus === 'needsConnection'
+          ? 'Add your API key in Connection settings before using Rapid Fire.'
               : rfStatus === 'error'
                 ? 'Rapid Fire failed. Try again.'
                 : 'Hold to talk (Rapid Fire)';

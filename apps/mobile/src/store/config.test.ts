@@ -8,10 +8,12 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import {
+  CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE,
   DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  hasConfiguredConnection,
   MAX_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   normalizeStoredConfig,
@@ -57,5 +59,29 @@ describe('normalizeStoredConfig', () => {
 
     expect(tooLow.handsFreeMessageDebounceMs).toBe(MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS);
     expect(tooHigh.handsFreeMessageDebounceMs).toBe(MAX_HANDS_FREE_MESSAGE_DEBOUNCE_MS);
+  });
+});
+
+describe('hasConfiguredConnection', () => {
+  it('accepts trimmed API key and base URL values', () => {
+    expect(hasConfiguredConnection({
+      apiKey: '  sk-test  ',
+      baseUrl: '  https://example.com/v1  ',
+    })).toBe(true);
+  });
+
+  it('rejects missing or whitespace-only credentials', () => {
+    expect(hasConfiguredConnection({
+      apiKey: '   ',
+      baseUrl: 'https://example.com/v1',
+    })).toBe(false);
+    expect(hasConfiguredConnection({
+      apiKey: 'sk-test',
+      baseUrl: '   ',
+    })).toBe(false);
+  });
+
+  it('keeps the missing-connection guidance copy stable', () => {
+    expect(CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE).toBe('Add your API key in Connection settings before starting a chat.');
   });
 });
