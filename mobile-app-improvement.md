@@ -15,6 +15,7 @@
 - [x] Connection Settings screen back navigation, header affordance, QR scanner web launch guidance / close surface, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
+- [x] `Chats` / `Chat` header agent selector blocked-state sheet plus direct `Connection settings` escape path in Expo Web (`390x844` mobile viewport)
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` composer helper copy, blocked send state, and pre-send guidance in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` empty debug-info state on Expo Web no longer emits repeated `Unexpected text node` console errors at `390x844`
@@ -38,6 +39,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
+- [ ] Connected `Chats` / `Chat` header agent selector list contents, ACP main-agent variant, and successful agent switching after setup
 - [ ] Remaining disconnected/offline chat states after entering `Chats` beyond the new-chat text-send guard (existing-chat retry/reconnect, mic/handsfree affordances, and sync states)
 - [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and the Connection Settings QR scanner close pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
 - [ ] Connection Settings QR scanner live camera-preview / successful scan state after permission is actually granted on web or native
@@ -48,6 +50,7 @@
 - [x] Missing in-place CTA on the session empty state
 - [x] Undersized chat composer send/accessory controls and missing web state semantics
 - [x] Weak Connection inline action affordances
+- [x] Disconnected chat agent selector sheet stranded users behind a retry-only warning with no direct path to `Connection settings`
 - [x] Connection Settings header back button rendered as a 30x30 touch target on mobile web
 - [x] Connection Settings header back button still read like a bare screen-edge arrow after the 44px touch-target fix
 - [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
@@ -67,6 +70,7 @@
 - [x] Nested-screen back navigation
 - [x] Connection first-run validation and inline action affordances
 - [x] Connection Settings header back-button touch target and visual affordance on nested screens
+- [x] Disconnected chat agent selector blocked-state clarity and direct handoff into `Connection settings`
 - [x] Chat composer actions, toggles, and voice-state accessibility
 - [x] Session empty-state CTA and narrow-layout guardrails
 - [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
@@ -84,6 +88,7 @@
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Live Expo Web before/after evidence plus focused header/sheet coverage for the disconnected chat agent selector blocked state at `390x844`
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button touch-target fix at `390x844` CSS viewport
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button visual affordance follow-up at `390x844`
 - [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
@@ -102,12 +107,58 @@
 ### Still uncertain
 
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
+- [ ] The disconnected chat agent selector blocker is now actionable, but the fully connected agent list contents plus ACP main-agent switching still need their own live runtime pass before agent-selection coverage is considered complete.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 - [ ] The disconnected new-chat text-send path is now guarded, but mic/handsfree send affordances plus existing-chat retry/reconnect states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
 - [ ] The disconnected `Chats -> + New Chat` empty-debug-info warning is fixed, but unrelated offline/sync console noise (`401 Unauthorized`, `ERR_CONNECTION_REFUSED`, `syncService` fetch failures) still appears during Expo Web chat passes and needs its own dedicated investigation before claiming a clean disconnected runtime.
 - [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 20: make the blocked chat agent selector lead directly into setup
+
+- Status: completed with live Expo Web before/after evidence, a focused chat-sheet actionability fix, and targeted regression coverage
+- Area:
+  - disconnected `Chats` / `Chat` header agent selector sheet in `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - chat/session header wiring in `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx`
+  - narrow mobile web viewport (`390x844`) for the blocked agent-switching sheet and its setup handoff
+- Why this area:
+  - the intended next parity target was the unchecked desktop-settings model/endpoint picker surface, but live Expo Web investigation showed those remote settings sections were not reachable in the current disconnected runtime, so claiming that pass from source alone would have been weak
+  - the same runtime exposed a high-value unchecked modal on a core chat flow: the header agent selector opened successfully, but its disconnected state trapped users inside a retry-only warning even though the real next step was connection setup
+- What was investigated:
+  - live Expo Web at `390x844` through `Chats` and `Chat` header agent selector entry points on the disconnected default state
+  - the current blocked-state rendering and action wiring in `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - existing chat/session header navigation paths to confirm a small direct handoff into `ConnectionSettings` was already possible
+- Findings:
+  - the blocked selector state only showed `Configure server URL and API key to switch agents` plus `Retry`, which read like a dead-end warning instead of an actionable configuration flow
+  - the modal did not explain that users could keep reviewing existing chats while disconnected, and it did not offer the direct setup action most users would need next
+  - both `Chat` and `Chats` already had access to the `ConnectionSettings` route, so the missing behavior was a lightweight sheet-level handoff rather than a navigation-system gap
+- Change made:
+  - added a dedicated missing-config blocker card in `AgentSelectorSheet` with clearer setup copy, an explicit note that saved chats remain reviewable while disconnected, and a full-width `Open connection settings` action
+  - wired the sheet action from both `ChatScreen` and `SessionListScreen` so blocked users can jump directly into `Connection settings` from either header selector
+  - extended `apps/mobile/tests/agent-selector-sheet-density.test.js`, `apps/mobile/tests/chat-screen-density.test.js`, and `apps/mobile/tests/session-list-density.test.js` to lock the new copy, touch-target styling, and deep-link wiring
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8146 --clear`
+  - `node --test apps/mobile/tests/agent-selector-sheet-density.test.js apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/session-list-density.test.js`
+  - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--before--chat-agent-sheet--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--after--chat-agent-sheet--20260311.png`
+  - `git diff --check`
+  - live Expo Web browser automation at `390x844` confirming the blocked sheet showed the new action and that tapping it navigated into `Connection settings`
+- Follow-up checks:
+  - return to the original desktop-settings parity target once a connected runtime is available, specifically the unchecked model picker / endpoint picker / TTS model picker surfaces
+  - do a dedicated connected agent-selector pass later to verify the populated list, ACP main-agent variant, and successful switching behavior rather than stopping at the disconnected blocker state
+
+Evidence
+- Evidence ID: agent-selector-config-blocker
+- Scope: disconnected `Chats` / `Chat` header agent selector blocked state plus tracked before/after screenshots (`apps/mobile/src/ui/AgentSelectorSheet.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/SessionListScreen.tsx`, `apps/mobile/tests/agent-selector-sheet-density.test.js`, `apps/mobile/tests/chat-screen-density.test.js`, `apps/mobile/tests/session-list-density.test.js`, `docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--before--chat-agent-sheet--20260311.png`, `docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--after--chat-agent-sheet--20260311.png`). This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: 4610cd5c9ac5e1562a8b41322e52976f6c7f3145..63d1361e882049f7043f7a58c36ce970bfc2de89
+- Rationale: The next unchecked desktop-settings picker surfaces were not truthfully reachable in the current disconnected runtime, but the same investigation exposed a concrete blocker on a core chat flow: agent switching surfaced a modal that explained the problem without giving users the configuration path needed to fix it. Making that blocked state actionable improves mobile clarity and control without broadening into a larger refactor.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--before--chat-agent-sheet--20260311.png` — `390x844` Expo Web viewport on the disconnected `Chats` header agent selector sheet. Before this change, the modal only told users to configure the server URL and API key, then left them with a generic `Retry` path and no direct handoff into the configuration screen that would actually unblock agent switching.
+- Change: Added a dedicated setup-blocker card and full-width `Open connection settings` action inside `AgentSelectorSheet`, plus direct `ConnectionSettings` navigation wiring from both chat/session header selectors.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--after--chat-agent-sheet--20260311.png` — same `390x844` Expo Web viewport and view. After the fix, the blocked agent selector explains the setup prerequisite more clearly, tells users they can still review existing chats while disconnected, and offers a direct `Open connection settings` action that leads straight into the screen needed to finish setup.
+- Verification commands/run results: `pnpm build:shared` ✅ (shared package rebuilt successfully; pnpm emitted the existing non-blocking Node engine warning under `v25.2.1`); `pnpm --filter @dotagents/mobile web --port 8146 --clear` ✅ (Expo Web served `http://localhost:8146` and hot-reloaded the updated mobile UI); `node --test apps/mobile/tests/agent-selector-sheet-density.test.js apps/mobile/tests/chat-screen-density.test.js apps/mobile/tests/session-list-density.test.js` ✅ (12/12 passing, including the new blocked-state and deep-link guardrails); `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--before--chat-agent-sheet--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/agent-selector-config-blocker--after--chat-agent-sheet--20260311.png` ✅ (both curated screenshots are matched `390x844` PNGs); `git diff --check` ✅; live Expo Web browser automation at `390x844` ✅ confirmed the new `Open connection settings` action was visible on the blocked sheet and that tapping it navigated into `Connection settings`.
+- Blockers/remaining uncertainty: This pass fixes the disconnected blocker state only. The fully connected agent-selector list, ACP main-agent variant, and the originally intended desktop-settings picker parity surfaces still need their own dedicated live runtime passes once a connected DotAgents server state is available.
 
 ### 2026-03-11 — Iteration 19: stop blank chat debug state from emitting Expo Web text-node errors
 
