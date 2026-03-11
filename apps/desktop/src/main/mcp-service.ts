@@ -1456,7 +1456,14 @@ export class MCPService {
               (paramName === 'milestone' && typeof paramValue === 'number' && paramValue <= 0)
             )
 
-          if (isGitHubCreateIssuePlaceholder) {
+          const isGitHubListIssuesSincePlaceholder =
+            serverName === 'github' &&
+            toolName === 'list_issues' &&
+            paramName === 'since' &&
+            typeof paramValue === 'string' &&
+            paramValue.trim() === ''
+
+          if (isGitHubCreateIssuePlaceholder || isGitHubListIssuesSincePlaceholder) {
             delete processedArguments[paramName]
           }
         }

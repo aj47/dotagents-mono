@@ -235,6 +235,128 @@ describe("MCPService Option B (builtin allowlist)", () => {
     })
   })
 
+  it("strips github list_issues empty since placeholder before execution", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "[]" }], isError: false }))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "github:list_issues",
+        description: "List repository issues",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            state: { type: "string" },
+            sort: { type: "string" },
+            direction: { type: "string" },
+            page: { type: "number" },
+            per_page: { type: "number" },
+            since: { type: "string" },
+            labels: { type: "array" },
+          },
+          required: ["owner", "repo"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "github:list_issues",
+        arguments: {
+          owner: "aj47",
+          repo: "dotagents-mono",
+          state: "open",
+          sort: "updated",
+          direction: "desc",
+          page: 1,
+          per_page: 30,
+          labels: [],
+          since: "",
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "list_issues",
+      arguments: {
+        owner: "aj47",
+        repo: "dotagents-mono",
+        state: "open",
+        sort: "updated",
+        direction: "desc",
+        page: 1,
+        per_page: 30,
+        labels: [],
+      },
+    })
+  })
+
+  it("preserves legitimate github list_issues since values on the same tool", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "[]" }], isError: false }))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "github:list_issues",
+        description: "List repository issues",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            state: { type: "string" },
+            sort: { type: "string" },
+            direction: { type: "string" },
+            page: { type: "number" },
+            per_page: { type: "number" },
+            since: { type: "string" },
+          },
+          required: ["owner", "repo"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "github:list_issues",
+        arguments: {
+          owner: "aj47",
+          repo: "dotagents-mono",
+          state: "open",
+          sort: "updated",
+          direction: "desc",
+          page: 1,
+          per_page: 100,
+          since: "1970-01-01T00:00:00Z",
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "list_issues",
+      arguments: {
+        owner: "aj47",
+        repo: "dotagents-mono",
+        state: "open",
+        sort: "updated",
+        direction: "desc",
+        page: 1,
+        per_page: 100,
+        since: "1970-01-01T00:00:00Z",
+      },
+    })
+  })
+
   it("does not broadly prune empty optional values for unrelated tools", async () => {
     const { mcpService } = await import("./mcp-service")
     const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "saved" }], isError: false }))
