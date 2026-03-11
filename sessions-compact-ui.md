@@ -126,7 +126,7 @@ Last updated: 2026-03-11
 
 - Evidence ID: `mobile-chats-action-row-hierarchy`
 - Scope: Mobile Expo web `Chats` list at `390x844 mobile`, using a local seeded session dataset with long titles/previews and one active row to stress top-of-list chrome before the rapid-fire control.
-- Commit range: `PENDING_COMMIT_RANGE`
+- Commit range: `993cbed3fa192908a4625da51171ffab67c1dd7b..195783325f48bd54d40e3ec4f7c5808c2c56c97b`
 - Rationale: The chats header is part of the session-picking surface, but on narrow mobile widths it jumped straight from the primary `+ New Chat` CTA to a destructive `Clear All` control with no count context, making chrome louder than the actual list and increasing the chance of scanning or tapping the wrong thing before users oriented themselves.
 - QA feedback: Deferred the outstanding older reviewer finding about `desktop-sidebar-session-recognition` screenshot provenance for direct re-capture in this iteration; that block is now documented honestly above, while this mobile header-hierarchy fix is new work.
 - Before evidence: `docs/aloops-evidence/sessions-compact-ui-loop/mobile-chats-action-row-hierarchy--before--chats-list--20260311.png` — before-state screenshot at `390x844 mobile` shows a populated chats list whose header presents `+ New Chat` and `Clear All` as the only two peer actions above the rows. In that state the destructive control sits at the same visual level as the creation CTA, and users get no immediate sense of how many chats exist before their attention is pulled into chrome.
