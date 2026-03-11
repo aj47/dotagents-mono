@@ -9,10 +9,18 @@ const screenSource = fs.readFileSync(
 );
 
 test('gives the empty session state an in-place primary action', () => {
-  assert.match(screenSource, /<Text style=\{styles\.emptyTitle\}>No chats yet<\/Text>/);
+  assert.match(screenSource, /showConnectionRequiredEmptyState \? 'Connection required' : 'No chats yet'/);
   assert.match(screenSource, /Start your first chat so recent conversations show up here\./);
-  assert.match(screenSource, /onPress=\{handleCreateSession\}[\s\S]*?createButtonAccessibilityLabel\('Start first chat'\)/);
-  assert.match(screenSource, /accessibilityHint="Creates and opens your first chat\."/);
+  assert.match(screenSource, /onPress=\{showConnectionRequiredEmptyState \? openConnectionSettings : handleCreateSession\}[\s\S]*?createButtonAccessibilityLabel\(showConnectionRequiredEmptyState \? 'Open connection settings' : 'Start first chat'\)/);
+  assert.match(screenSource, /accessibilityHint=\{showConnectionRequiredEmptyState[\s\S]*?'Creates and opens your first chat\.'/);
+});
+
+test('replaces the empty chat state with setup guidance when connection settings are missing', () => {
+  assert.match(screenSource, /const showConnectionRequiredEmptyState = !canStartChat && sessions\.length === 0;/);
+  assert.match(screenSource, /showConnectionRequiredEmptyState \? 'Connection required' : 'No chats yet'/);
+  assert.match(screenSource, /showConnectionRequiredEmptyState[\s\S]*?CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE[\s\S]*?'Start your first chat so recent conversations show up here\.'/);
+  assert.match(screenSource, /Open connection settings/);
+  assert.match(screenSource, /Opens connection settings so you can finish setup before starting a chat\./);
 });
 
 test('keeps the empty-state primary action wide and centered for narrow mobile layouts', () => {

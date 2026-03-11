@@ -20,8 +20,17 @@ test('sessions screen redirects new chats and pending stub resumes to connection
 });
 
 test('sessions rapid fire explains missing connection setup instead of silently failing', () => {
+  assert.match(sessionListSource, /const rfHintText = !canStartChat\s*\? CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE/);
+  assert.match(sessionListSource, /disabled=\{!canStartChat\}/);
   assert.match(sessionListSource, /rfSetTransientStatus\('needsConnection', 4000\)/);
   assert.match(sessionListSource, /Add your API key in Connection settings before using Rapid Fire\./);
+});
+
+test('sessions screen turns disconnected chat entry points into setup actions before the user taps a broken flow', () => {
+  assert.match(sessionListSource, /const openConnectionSettings = useCallback\(\(\) => \{[\s\S]*?navigation\.navigate\('ConnectionSettings'\);[\s\S]*?\}, \[navigation\]\);/);
+  assert.match(sessionListSource, /onPress=\{canStartChat \? handleCreateSession : openConnectionSettings\}/);
+  assert.match(sessionListSource, /\{canStartChat \? '\+ New Chat' : 'Open Connection'\}/);
+  assert.match(sessionListSource, /showConnectionRequiredEmptyState \? 'Open connection settings' : 'Start first chat'/);
 });
 
 test('chat screen blocks sends and queued sends until connection settings are configured', () => {

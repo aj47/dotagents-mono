@@ -77,6 +77,10 @@ export default function SessionListScreen({ navigation }: Props) {
     );
   }, [navigation]);
 
+  const openConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
+
   const rfLog = useCallback((msg: string, extra?: any) => {
     if (!__DEV__) return;
     if (typeof extra !== 'undefined') console.log(`[RapidFireDebug] ${msg}`, extra);
@@ -301,7 +305,7 @@ export default function SessionListScreen({ navigation }: Props) {
   }, []);
 
   const rfSetTransientStatus = useCallback((
-    status: 'sent' | 'empty' | 'permissionDenied' | 'unavailable' | 'error',
+    status: 'sent' | 'empty' | 'permissionDenied' | 'unavailable' | 'needsConnection' | 'error',
     clearAfterMs = 2500
   ) => {
     if (rfStatusTimeoutRef.current) {
@@ -680,6 +684,7 @@ export default function SessionListScreen({ navigation }: Props) {
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
   const canStartChat = hasConfiguredConnection(config);
+  const showConnectionRequiredEmptyState = !canStartChat && sessions.length === 0;
 
   if (!sessionStore.ready) {
     return (
@@ -841,52 +846,64 @@ export default function SessionListScreen({ navigation }: Props) {
   const EmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyStateTextGroup}>
-        <Text style={styles.emptyTitle}>No chats yet</Text>
+        <Text style={styles.emptyTitle}>{showConnectionRequiredEmptyState ? 'Connection required' : 'No chats yet'}</Text>
         <Text style={styles.emptySubtitle}>
-          Start your first chat so recent conversations show up here.
+          {showConnectionRequiredEmptyState
+            ? CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE
+            : 'Start your first chat so recent conversations show up here.'}
         </Text>
       </View>
       <TouchableOpacity
         style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
-        onPress={handleCreateSession}
+        onPress={showConnectionRequiredEmptyState ? openConnectionSettings : handleCreateSession}
         accessibilityRole="button"
-        accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
-        accessibilityHint="Creates and opens your first chat."
+        accessibilityLabel={createButtonAccessibilityLabel(showConnectionRequiredEmptyState ? 'Open connection settings' : 'Start first chat')}
+        accessibilityHint={showConnectionRequiredEmptyState
+          ? 'Opens connection settings so you can finish setup before starting a chat.'
+          : 'Creates and opens your first chat.'}
       >
-        <Text style={styles.emptyStateButtonText}>Start first chat</Text>
+        <Text style={styles.emptyStateButtonText}>{showConnectionRequiredEmptyState ? 'Open connection settings' : 'Start first chat'}</Text>
       </TouchableOpacity>
     </View>
   );
 
-  const rfHintText = rfStatus === 'listening'
-    ? 'Release to send...'
-    : rfStatus === 'sending'
-      ? 'Sending...'
-      : rfStatus === 'sent'
-        ? 'Sent to a new chat. Tap it to open.'
-        : rfStatus === 'empty'
-          ? 'No speech detected. Try again.'
-          : rfStatus === 'permissionDenied'
-            ? 'Microphone permission denied. Enable it in settings.'
-            : rfStatus === 'unavailable'
-              ? 'Speech recognition unavailable on this build/device.'
-        : rfStatus === 'needsConnection'
-          ? 'Add your API key in Connection settings before using Rapid Fire.'
-              : rfStatus === 'error'
-                ? 'Rapid Fire failed. Try again.'
-                : 'Hold to talk (Rapid Fire)';
+  const rfHintText = !canStartChat
+    ? CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE
+    : rfStatus === 'listening'
+      ? 'Release to send...'
+      : rfStatus === 'sending'
+        ? 'Sending...'
+        : rfStatus === 'sent'
+          ? 'Sent to a new chat. Tap it to open.'
+          : rfStatus === 'empty'
+            ? 'No speech detected. Try again.'
+            : rfStatus === 'permissionDenied'
+              ? 'Microphone permission denied. Enable it in settings.'
+              : rfStatus === 'unavailable'
+                ? 'Speech recognition unavailable on this build/device.'
+          : rfStatus === 'needsConnection'
+            ? 'Add your API key in Connection settings before using Rapid Fire.'
+                : rfStatus === 'error'
+                  ? 'Rapid Fire failed. Try again.'
+                  : 'Hold to talk (Rapid Fire)';
+
+  const rfWebInteractionStyle = Platform.OS === 'web'
+    ? ({ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' } as any)
+    : undefined;
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <TouchableOpacity
           style={[styles.newButton, styles.sessionActionTouchTarget]}
-          onPress={handleCreateSession}
+          onPress={canStartChat ? handleCreateSession : openConnectionSettings}
           accessibilityRole="button"
-          accessibilityLabel={createButtonAccessibilityLabel('New chat')}
-          accessibilityHint="Creates and opens a new chat."
+          accessibilityLabel={createButtonAccessibilityLabel(canStartChat ? 'New chat' : 'Open connection settings')}
+          accessibilityHint={canStartChat
+            ? 'Creates and opens a new chat.'
+            : 'Opens connection settings so you can finish setup before starting a chat.'}
         >
-          <Text style={styles.newButtonText}>+ New Chat</Text>
+          <Text style={styles.newButtonText}>{canStartChat ? '+ New Chat' : 'Open Connection'}</Text>
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {sessionStore.isSyncing && (
@@ -928,13 +945,18 @@ export default function SessionListScreen({ navigation }: Props) {
         </Text>
         <Pressable
           ref={rfButtonRef}
+          disabled={!canStartChat}
           accessibilityRole="button"
-          accessibilityLabel={rfListening ? 'Release to send' : 'Hold to talk, Rapid Fire'}
+          accessibilityLabel={
+            !canStartChat
+              ? 'Connection settings required before using Rapid Fire'
+              : rfListening ? 'Release to send' : 'Hold to talk, Rapid Fire'
+          }
           style={({ pressed }) => [
             styles.rfButton,
             rfListening && styles.rfButtonOn,
-            // @ts-ignore - Web-only CSS to disable long-press selection/callouts
-            Platform.OS === 'web' && { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' },
+            !canStartChat && styles.rfButtonDisabled,
+            rfWebInteractionStyle,
             pressed && !rfListening && { opacity: 0.8 },
           ]}
           onPressIn={(e: GestureResponderEvent) => {
@@ -1150,6 +1172,9 @@ function createStyles(theme: Theme, screenHeight: number) {
     rfButtonOn: {
       backgroundColor: theme.colors.primary,
       borderColor: theme.colors.primary,
+    },
+    rfButtonDisabled: {
+      opacity: 0.5,
     },
     rfButtonText: {
       fontSize: 36,
