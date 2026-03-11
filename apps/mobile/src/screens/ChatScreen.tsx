@@ -58,6 +58,12 @@ import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
 import {
+  CHAT_SEND_BLOCKED_DEBUG_MESSAGE,
+  CHAT_SEND_BLOCKED_PLACEHOLDER,
+  getChatSendAvailability,
+  hasChatSendConnectionConfig,
+} from './chat-send-availability';
+import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
   createExpandCollapseAccessibilityLabel,
@@ -301,6 +307,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
+  const hasConnectionConfig = hasChatSendConnectionConfig(config);
   const handsFree = !!config.handsFree;
 	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
@@ -1439,6 +1446,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
 
+    if (!hasConnectionConfig) {
+      setLastFailedMessage(null);
+      setDebugInfo(CHAT_SEND_BLOCKED_DEBUG_MESSAGE);
+      return;
+    }
+
     // If message queue is enabled and we're already responding, queue the message
     if (messageQueueEnabled && responding) {
       console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(text));
@@ -2117,12 +2130,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	// We intentionally assign during render (not useEffect) so it is available immediately.
 	sendRef.current = send;
 
-	const isWebPlatform = Platform.OS === 'web';
-	const composerAccessibilityHint = createChatComposerAccessibilityHint({
+		const isWebPlatform = Platform.OS === 'web';
+		const composerBaseAccessibilityHint = createChatComposerAccessibilityHint({
 	  handsFree,
 	  listening,
 	  isWeb: isWebPlatform,
 	});
+		const composerAccessibilityHint = hasConnectionConfig
+		  ? composerBaseAccessibilityHint
+		  : `${composerBaseAccessibilityHint} ${CHAT_SEND_BLOCKED_DEBUG_MESSAGE}`;
 	const micControlAccessibilityHint = createMicControlAccessibilityHint({
 	  handsFree,
 	  listening,
@@ -2137,6 +2153,10 @@ export default function ChatScreen({ route, navigation }: any) {
 	});
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+  const composerSendState = getChatSendAvailability({
+    hasConnectionConfig,
+    composerHasContent,
+  });
 
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
@@ -2279,7 +2299,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		handsFreeWakePhrase,
 	]);
 
-	const composerPlaceholder = handsFree
+		const composerPlaceholder = !hasConnectionConfig
+			? CHAT_SEND_BLOCKED_PLACEHOLDER
+			: handsFree
 		? (handsFreeController.state.phase === 'paused'
 			? 'Handsfree paused — tap mic to resume or type a message'
 			: `Say “${handsFreeWakePhrase}” or type a message`)
@@ -2853,6 +2875,13 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
+		          {composerSendState.helperText && (
+		            <View style={styles.composerConnectionNotice}>
+		              <Text style={styles.composerConnectionNoticeText}>
+		                {composerSendState.helperText}
+		              </Text>
+		            </View>
+		          )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
@@ -2926,15 +2955,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {voiceInputLiveRegionAnnouncement}
 	              </Text>
 	            )}
-	            <TouchableOpacity
-	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
+		            <TouchableOpacity
+		              style={[styles.sendButton, !composerSendState.canSend && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
-	              disabled={!composerHasContent}
+		              disabled={!composerSendState.canSend}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Send message')}
-	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
-              accessibilityState={{ disabled: !composerHasContent }}
+		              accessibilityHint={composerSendState.sendAccessibilityHint}
+	              accessibilityState={{ disabled: !composerSendState.canSend }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
@@ -3107,6 +3136,21 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     sttPreviewText: {
       ...theme.typography.body,
+      color: theme.colors.foreground,
+    },
+    composerConnectionNotice: {
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: hexToRgba(theme.colors.info, 0.25),
+      backgroundColor: hexToRgba(theme.colors.info, 0.08),
+    },
+    composerConnectionNoticeText: {
+      fontSize: 12,
+      lineHeight: 17,
       color: theme.colors.foreground,
     },
     inputRow: {
