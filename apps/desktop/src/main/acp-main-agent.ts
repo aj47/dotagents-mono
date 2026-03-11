@@ -233,19 +233,26 @@ function normalizeAcpToolName(name: string | undefined): string | undefined {
   return withoutToolPrefix
 }
 
-function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMessage[]): {
+function deriveAcpUserResponseState(
+  conversationHistory: ConversationHistoryMessage[],
+  startIndex = 0,
+): {
   userResponse?: string
   userResponseHistory?: string[]
+  lastResponseMessageIndex?: number
 } {
   const responses: string[] = []
+  let lastResponseMessageIndex: number | undefined
 
-  for (const message of conversationHistory) {
+  for (let index = Math.max(0, startIndex); index < conversationHistory.length; index += 1) {
+    const message = conversationHistory[index]
     if (message.role !== "assistant" || !message.toolCalls?.length) continue
 
     for (const toolCall of message.toolCalls) {
       if (normalizeAcpToolName(toolCall.name) !== RESPOND_TO_USER_TOOL) continue
       const content = extractRespondToUserContentFromArgs(toolCall.arguments)
       if (!content) continue
+      lastResponseMessageIndex = index
       if (responses[responses.length - 1] === content) continue
       responses.push(content)
     }
@@ -255,6 +262,22 @@ function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMess
   return {
     userResponse,
     userResponseHistory: responses.length > 1 ? responses.slice(0, -1) : undefined,
+    lastResponseMessageIndex,
+  }
+}
+
+function pruneTrailingAssistantTextAfterUserResponse(
+  conversationHistory: ConversationHistoryMessage[],
+  lastResponseMessageIndex: number | undefined,
+): void {
+  if (typeof lastResponseMessageIndex !== "number") return
+
+  while (conversationHistory.length > lastResponseMessageIndex + 1) {
+    const lastEntry = conversationHistory[conversationHistory.length - 1]
+    if (!lastEntry) return
+    if (lastEntry.role !== "assistant") return
+    if (lastEntry.toolCalls?.length || lastEntry.toolResults?.length) return
+    conversationHistory.pop()
   }
 }
 
@@ -357,6 +380,7 @@ export async function processTranscriptWithACPAgent(
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)
   }
 
+  const promptConversationStartIndex = conversationHistory.length
   let persistedConversationLength = conversationHistory.length
 
   const persistConversationTail = async () => {
@@ -747,7 +771,15 @@ export async function processTranscriptWithACPAgent(
       const promptContext = buildProfileContext(profileSnapshot, ACP_BUILTIN_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
-      const { userResponse } = deriveAcpUserResponseState(conversationHistory)
+      const { userResponse, lastResponseMessageIndex } = deriveAcpUserResponseState(
+        conversationHistory,
+        promptConversationStartIndex,
+      )
+      if (userResponse) {
+        pruneTrailingAssistantTextAfterUserResponse(conversationHistory, lastResponseMessageIndex)
+      }
+
+      const completedSuccessfully = result.success || !!userResponse
       // Use accumulated text if result.response is empty but we received streaming content
       const finalResponse = userResponse || result.response || accumulatedText || undefined
 
@@ -763,9 +795,9 @@ export async function processTranscriptWithACPAgent(
         {
           id: generateStepId("acp-complete"),
           type: "completion",
-          title: result.success ? "Response complete" : "Request failed",
-          description: result.error,
-          status: result.success ? "completed" : "error",
+          title: completedSuccessfully ? "Response complete" : "Request failed",
+          description: completedSuccessfully ? undefined : result.error,
+          status: completedSuccessfully ? "completed" : "error",
           timestamp: Date.now(),
           llmContent: finalResponse,
         },
@@ -783,11 +815,11 @@ export async function processTranscriptWithACPAgent(
       logApp(`[ACP Main] Completed - success: ${result.success}, response length: ${finalResponse?.length || 0}`)
 
       return {
-        success: result.success,
+        success: completedSuccessfully,
         response: finalResponse,
         acpSessionId,
         stopReason: result.stopReason,
-        error: result.error,
+        error: completedSuccessfully ? undefined : result.error,
       }
     } finally {
       acpService.off("sessionUpdate", progressHandler)

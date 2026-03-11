@@ -450,6 +450,87 @@ describe("acp-main-agent", () => {
     )
   })
 
+  it("prefers current-prompt respond_to_user output over trailing fallback text and persists the clean result", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [{ name: "respond_to_user", arguments: { text: "Older user-facing answer" } }],
+          timestamp: 1,
+        },
+      ],
+    })
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-r-current",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "Fresh user-facing answer" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        content: [{ type: "text", text: "I couldn't complete the request after multiple attempts." }],
+        isComplete: false,
+      })
+
+      return {
+        success: false,
+        response: "I couldn't complete the request after multiple attempts.",
+        error: "I couldn't complete the request after multiple attempts.",
+      }
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      response: "Fresh user-facing answer",
+      error: undefined,
+    }))
+
+    const completedUpdate = updates.at(-1)
+    expect(completedUpdate).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: "Fresh user-facing answer",
+      userResponse: "Fresh user-facing answer",
+    }))
+    expect(
+      completedUpdate?.conversationHistory?.some(
+        (entry: any) => entry.role === "assistant" && entry.content?.includes("couldn't complete the request after multiple attempts"),
+      ),
+    ).toBe(false)
+
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      "",
+      "assistant",
+      [expect.objectContaining({ name: "respond_to_user", arguments: { text: "Fresh user-facing answer" } })],
+      undefined,
+    )
+    expect(
+      mockAddMessageToConversation.mock.calls.some(
+        ([, content, role]: [string, string, string]) =>
+          role === "assistant" && content.includes("couldn't complete the request after multiple attempts"),
+      ),
+    ).toBe(false)
+  })
+
   it("persists ACP tool-call and tool-result history back to the conversation", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
 
