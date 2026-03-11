@@ -2367,12 +2367,24 @@ const ResponseTTSButton: React.FC<{ text: string }> = ({ text }) => {
   )
 }
 
-// Response History Panel - sticky panel at top of tile showing all respond_to_user responses (like mobile)
+// Response History Panel - sticky panel showing all respond_to_user responses
+// 3 display states: collapsed (header only) → expanded (max 200px) → full (fills conversation height)
+type ResponsePanelState = "collapsed" | "expanded" | "full"
+
 const ResponseHistoryPanel: React.FC<{
   currentResponse: string
   pastResponses?: string[]
 }> = ({ currentResponse, pastResponses }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [displayState, setDisplayState] = useState<ResponsePanelState>("expanded")
+
+  const cycleState = useCallback(() => {
+    setDisplayState(prev => {
+      if (prev === "collapsed") return "expanded"
+      if (prev === "expanded") return "full"
+      return "collapsed"
+    })
+  }, [])
+
   // Build full list: past responses + current, newest first
   const allResponses = useMemo(() => {
     const responses: string[] = []
@@ -2383,13 +2395,21 @@ const ResponseHistoryPanel: React.FC<{
 
   if (allResponses.length === 0) return null
 
+  const stateLabel = displayState === "collapsed" ? "Expand" : displayState === "expanded" ? "Full height" : "Collapse"
+
   return (
-    <div className="flex-shrink-0 border-t bg-green-50/50 dark:bg-green-950/30">
+    <div className={cn(
+      "bg-green-50/50 dark:bg-green-950/30",
+      displayState === "full"
+        ? "absolute inset-0 z-20 flex flex-col"
+        : "flex-shrink-0 border-t",
+    )}>
       {/* Header */}
       <button
         type="button"
-        onClick={() => setIsCollapsed(prev => !prev)}
-        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left transition-colors hover:bg-green-100/50 dark:hover:bg-green-900/30"
+        onClick={cycleState}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left transition-colors hover:bg-green-100/50 dark:hover:bg-green-900/30 flex-shrink-0"
+        title={stateLabel}
       >
         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
         <span className="text-xs font-medium text-green-800 dark:text-green-200">
@@ -2399,15 +2419,21 @@ const ResponseHistoryPanel: React.FC<{
           {allResponses.length}
         </Badge>
         <div className="flex-1" />
-        {isCollapsed ? (
-          <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-400" />
-        ) : (
+        {displayState === "collapsed" ? (
           <ChevronUp className="h-3 w-3 text-green-600 dark:text-green-400" />
+        ) : displayState === "expanded" ? (
+          <Maximize2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+        ) : (
+          <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-400" />
         )}
       </button>
       {/* Response list */}
-      {!isCollapsed && (
-        <div className="max-h-[200px] overflow-y-auto scrollbar-hide-until-hover">
+      {displayState !== "collapsed" && (
+        <div className={cn(
+          "overflow-y-auto scrollbar-hide-until-hover",
+          displayState === "expanded" && "max-h-[200px]",
+          displayState === "full" && "flex-1 min-h-0",
+        )}>
           {allResponses.map((response, idx) => (
             <div
               key={`response-${idx}`}
