@@ -38,3 +38,12 @@ test('chat screen blocks sends and queued sends until connection settings are co
   assert.match(chatScreenSource, /messageQueue\.markFailed\(currentConversationId, queuedMsg\.id, CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE\)/);
   assert.match(chatScreenSource, /navigation\.navigate\('ConnectionSettings'\)/);
 });
+
+test('chat screen shows setup guidance and disables composer controls before disconnected users can lose a draft', () => {
+  assert.match(chatScreenSource, /const canComposeChat = hasConfiguredConnection\(config\);/);
+  assert.match(chatScreenSource, /\{!canComposeChat && \([\s\S]*?CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE[\s\S]*?onPress=\{openConnectionSettings\}[\s\S]*?Open Connection Settings[\s\S]*?\)\}/);
+  assert.match(chatScreenSource, /editable=\{canComposeChat\}/);
+  assert.match(chatScreenSource, /accessibilityLabel="Attach images"[\s\S]*?disabled=\{!canComposeChat\}/);
+  assert.match(chatScreenSource, /disabled=\{!canSubmitComposer\}[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Send message'\)\}/);
+  assert.match(chatScreenSource, /<Pressable[\s\S]*?disabled=\{!canComposeChat\}[\s\S]*?accessibilityLabel=\{createMicControlAccessibilityLabel\(\)\}/);
+});

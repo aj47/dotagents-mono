@@ -307,10 +307,14 @@ export default function ChatScreen({ route, navigation }: any) {
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
+  const canComposeChat = hasConfiguredConnection(config);
+  const openConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
   const showConnectionSettingsPrompt = useCallback(() => {
     if (Platform.OS === 'web') {
       window.alert(CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE);
-      navigation.navigate('ConnectionSettings');
+      openConnectionSettings();
       return;
     }
 
@@ -319,10 +323,10 @@ export default function ChatScreen({ route, navigation }: any) {
       CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => navigation.navigate('ConnectionSettings') },
+        { text: 'Open Settings', onPress: openConnectionSettings },
       ],
     );
-  }, [navigation]);
+  }, [openConnectionSettings]);
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const handsFree = !!config.handsFree;
 	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
@@ -2166,16 +2170,21 @@ export default function ChatScreen({ route, navigation }: any) {
 	sendRef.current = send;
 
 	const isWebPlatform = Platform.OS === 'web';
-	const composerAccessibilityHint = createChatComposerAccessibilityHint({
+		const disconnectedComposerHint = `${CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE} Open Connection settings to finish setup before composing a message.`;
+		const composerAccessibilityHint = canComposeChat
+		  ? createChatComposerAccessibilityHint({
 	  handsFree,
 	  listening,
 	  isWeb: isWebPlatform,
-	});
-	const micControlAccessibilityHint = createMicControlAccessibilityHint({
+		})
+		  : disconnectedComposerHint;
+		const micControlAccessibilityHint = canComposeChat
+		  ? createMicControlAccessibilityHint({
 	  handsFree,
 	  listening,
 	  willCancel,
-	});
+		})
+		  : 'Open Connection settings before recording or sending a chat message.';
 	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
 	  listening,
 	  handsFree,
@@ -2328,10 +2337,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	]);
 
 	const composerPlaceholder = handsFree
-		? (handsFreeController.state.phase === 'paused'
-			? 'Handsfree paused — tap mic to resume or type a message'
-			: `Say “${handsFreeWakePhrase}” or type a message`)
-		: (listening ? 'Listening…' : 'Type or hold mic');
+			? (handsFreeController.state.phase === 'paused'
+				? 'Handsfree paused — tap mic to resume or type a message'
+				: `Say “${handsFreeWakePhrase}” or type a message`)
+			: (listening ? 'Listening…' : 'Type or hold mic');
+		const effectiveComposerPlaceholder = canComposeChat
+			? composerPlaceholder
+			: 'Open Connection settings to start chatting';
+		const canSubmitComposer = canComposeChat && composerHasContent;
 
 	const micButtonLabel = handsFree
 		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
@@ -2875,6 +2888,20 @@ export default function ChatScreen({ route, navigation }: any) {
           </View>
         )}
 		        <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
+		          {!canComposeChat && (
+		            <View style={styles.chatSetupNotice}>
+		              <Text style={styles.chatSetupNoticeText}>{CHAT_CONNECTION_SETTINGS_REQUIRED_MESSAGE}</Text>
+		              <TouchableOpacity
+		                style={styles.chatSetupButton}
+		                onPress={openConnectionSettings}
+		                accessibilityRole="button"
+		                accessibilityLabel={createButtonAccessibilityLabel('Open connection settings')}
+		                accessibilityHint="Opens the Connection screen so you can finish chat setup."
+		              >
+		                <Text style={styles.chatSetupButtonText}>Open Connection Settings</Text>
+		              </TouchableOpacity>
+		            </View>
+		          )}
 	          {!!sttPreview && (
 	            <View style={styles.sttPreviewBox}>
 	              <Text style={styles.sttPreviewLabel}>STT preview</Text>
@@ -2904,12 +2931,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
-	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
-	              onPress={handlePickImages}
+		              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn, !canComposeChat && styles.composerControlDisabled]}
+		              onPress={handlePickImages}
 	              activeOpacity={0.7}
+		              disabled={!canComposeChat}
 	              accessibilityRole="button"
 	              accessibilityLabel="Attach images"
-	              accessibilityHint="Select one or more images to include with your next message."
+		              accessibilityHint={canComposeChat ? 'Select one or more images to include with your next message.' : 'Open Connection settings before attaching images to a chat.'}
+		              accessibilityState={{ disabled: !canComposeChat }}
 	            >
 	              <Text style={styles.ttsToggleText}>🖼️</Text>
 	            </TouchableOpacity>
@@ -2948,14 +2977,15 @@ export default function ChatScreen({ route, navigation }: any) {
 		            )}
             <TextInput
 	              ref={inputRef}
-              style={styles.input}
+		              style={[styles.input, !canComposeChat && styles.inputDisabled]}
               value={input}
               onChangeText={handleInputChange}
               onKeyPress={handleInputKeyPress}
+		              editable={canComposeChat}
               accessibilityLabel={createTextInputAccessibilityLabel('Message composer')}
               accessibilityHint={composerAccessibilityHint}
               aria-describedby={isWebPlatform ? CHAT_COMPOSER_HINT_NATIVE_ID : undefined}
-	              placeholder={composerPlaceholder}
+		              placeholder={effectiveComposerPlaceholder}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
             />
@@ -2975,14 +3005,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	              </Text>
 	            )}
 	            <TouchableOpacity
-	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
+		              style={[styles.sendButton, !canSubmitComposer && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
-	              disabled={!composerHasContent}
+		              disabled={!canSubmitComposer}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Send message')}
-	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
-              accessibilityState={{ disabled: !composerHasContent }}
+		              accessibilityHint={canComposeChat ? 'Sends your typed text and any attached images to the selected agent.' : 'Open Connection settings before sending a chat message.'}
+	              accessibilityState={{ disabled: !canSubmitComposer }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
@@ -2996,17 +3026,19 @@ export default function ChatScreen({ route, navigation }: any) {
               style={[
                 styles.mic,
                 listening && styles.micOn,
+	                !canComposeChat && styles.composerControlDisabled,
                 // @ts-ignore - Web-only CSS to disable long-press selection/callouts
                 Platform.OS === 'web' && { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' },
               ]}
+	              disabled={!canComposeChat}
               accessibilityRole="button"
               accessibilityLabel={createMicControlAccessibilityLabel()}
               accessibilityHint={micControlAccessibilityHint}
-              accessibilityState={{ busy: listening }}
+	              accessibilityState={{ busy: listening, disabled: !canComposeChat }}
               aria-busy={listening}
-	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
-	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-              onPress={handsFree ? () => {
+		              onPressIn={!canComposeChat || handsFree ? undefined : handlePushToTalkPressIn}
+		              onPressOut={!canComposeChat || handsFree ? undefined : handlePushToTalkPressOut}
+	              onPress={!canComposeChat ? undefined : handsFree ? () => {
 					if (handsFreeController.state.phase === 'paused') {
 						handsFreeController.resumeByUser();
 						setDebugInfo('Handsfree resumed.');
@@ -3100,6 +3132,36 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
     },
+    chatSetupNotice: {
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.sm,
+      marginBottom: 2,
+      padding: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+      gap: spacing.xs,
+    },
+    chatSetupNoticeText: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    chatSetupButton: {
+      alignSelf: 'flex-start',
+      minHeight: 36,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.primary,
+      justifyContent: 'center',
+    },
+    chatSetupButtonText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: '600',
+    },
     pendingImagesRow: {
       paddingHorizontal: spacing.sm,
       paddingTop: spacing.xs,
@@ -3169,6 +3231,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       flex: 1,
       maxHeight: 120,
     },
+    inputDisabled: {
+      opacity: 0.7,
+      color: theme.colors.mutedForeground,
+      backgroundColor: theme.colors.muted,
+    },
     visuallyHiddenComposerHint: {
       position: 'absolute',
       left: -10000,
@@ -3221,6 +3288,9 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     ttsToggleText: {
       fontSize: 14,
+    },
+    composerControlDisabled: {
+      opacity: 0.45,
     },
     sendButton: {
       backgroundColor: theme.colors.primary,
