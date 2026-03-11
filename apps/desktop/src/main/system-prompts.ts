@@ -47,6 +47,7 @@ RESPONDING TO USER:
 - Use respond_to_user whenever you want to communicate directly with the user
 - On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
 - Write respond_to_user content naturally and conversationally
+- For short conversational follow-ups, reactions, or refinements that you can answer from the existing conversation context, respond directly instead of restarting research or tool use
 - Markdown is allowed when useful (for example links or image captions)
 - To send images, use respond_to_user.images with either URL/data URL entries or local file paths
 - If respond_to_user is unavailable, provide your final user-facing answer in normal assistant text
@@ -348,7 +349,8 @@ export function constructMinimalSystemPrompt(
   let prompt =
     "You are an autonomous AI assistant that uses tools to complete tasks. Work iteratively until goals are fully achieved. " +
     "Use tools proactively - prefer tools over asking users for information you can gather yourself. " +
-    "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible."
+    "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible. " +
+    "For short conversational follow-ups, reactions, or refinements that can be answered from the existing conversation context, answer directly instead of restarting research or tool use."
 
   if (isAgentMode) {
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up."

@@ -92,4 +92,24 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("ALWAYS delegate")
     expect(prompt).not.toContain("Only respond directly if NO agent matches")
   })
+
+  it("tells agent mode to answer simple follow-up reactions from conversation context", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+
+    expect(prompt).toContain(
+      "For short conversational follow-ups, reactions, or refinements that you can answer from the existing conversation context, respond directly instead of restarting research or tool use",
+    )
+  })
+
+  it("preserves follow-up direct-answer guidance in the minimal prompt", async () => {
+    const { constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructMinimalSystemPrompt([], true)
+
+    expect(prompt).toContain(
+      "For short conversational follow-ups, reactions, or refinements that can be answered from the existing conversation context, answer directly instead of restarting research or tool use.",
+    )
+  })
 })
