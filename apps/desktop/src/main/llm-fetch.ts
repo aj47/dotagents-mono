@@ -715,6 +715,85 @@ function matchTextualToolDirectivePrefix(
   }
 }
 
+function looksLikeInlineQuotedJsonToolDirectivePrefix(
+  str: string,
+  toolNameMap?: Map<string, string>,
+): boolean {
+  const prefixMatch = str.match(/^\s*\[([^\]\s]+)([\s\S]*)$/)
+  if (!prefixMatch) return false
+
+  const rawToolName = prefixMatch[1].trim()
+  if (!isKnownTextualToolDirectiveName(rawToolName, toolNameMap)) {
+    return false
+  }
+
+  const suffix = prefixMatch[2]
+  return /^\s+[a-z_][a-z0-9_.:-]*(?:\s*=|\s*$|$)/i.test(suffix)
+}
+
+function extractInlineQuotedJsonToolDirective(
+  str: string,
+  toolNameMap?: Map<string, string>,
+): { name: string; arguments: Record<string, unknown>; endIndex: number } | null {
+  const prefixMatch = str.match(/^\s*\[([^\]\s]+)\s+([a-z_][a-z0-9_.:-]*)=(['"])/i)
+  if (!prefixMatch) return null
+
+  const rawToolName = prefixMatch[1].trim()
+  if (!isKnownTextualToolDirectiveName(rawToolName, toolNameMap)) {
+    return null
+  }
+
+  const quoteChar = prefixMatch[3]
+  const valueStartIndex = prefixMatch[0].length
+  let escaped = false
+
+  for (let index = valueStartIndex; index < str.length; index += 1) {
+    const char = str[index]
+
+    if (escaped) {
+      escaped = false
+      continue
+    }
+
+    if (char === "\\") {
+      escaped = true
+      continue
+    }
+
+    if (char !== quoteChar) {
+      continue
+    }
+
+    let closingBracketIndex = index + 1
+    while (closingBracketIndex < str.length && /\s/.test(str[closingBracketIndex])) {
+      closingBracketIndex += 1
+    }
+
+    if (str[closingBracketIndex] !== "]") {
+      continue
+    }
+
+    const jsonCandidate = str.slice(valueStartIndex, index)
+
+    try {
+      const parsedArguments = JSON.parse(jsonCandidate)
+      if (!parsedArguments || typeof parsedArguments !== "object" || Array.isArray(parsedArguments)) {
+        return null
+      }
+
+      return {
+        name: restoreToolName(rawToolName, toolNameMap),
+        arguments: parsedArguments as Record<string, unknown>,
+        endIndex: closingBracketIndex + 1,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
 /**
  * Recover a tool call from text scaffolding such as:
  *   [Calling tools: iterm:read_terminal_output]\n{"linesOfOutput":30,...}
@@ -731,6 +810,17 @@ function extractTextualToolDirective(
   const toolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = []
 
   while (remaining.length > 0) {
+    const inlineQuotedDirective = extractInlineQuotedJsonToolDirective(remaining, toolNameMap)
+    if (inlineQuotedDirective) {
+      toolCalls.push({
+        name: inlineQuotedDirective.name,
+        arguments: inlineQuotedDirective.arguments,
+      })
+
+      remaining = remaining.slice(inlineQuotedDirective.endIndex).trim()
+      continue
+    }
+
     const prefixMatch = matchTextualToolDirectivePrefix(remaining, toolNameMap)
     if (!prefixMatch) return null
 
@@ -757,7 +847,8 @@ function extractTextualToolDirective(
 }
 
 function looksLikeTextualToolDirectivePrefix(str: string, toolNameMap?: Map<string, string>): boolean {
-  return matchTextualToolDirectivePrefix(str, toolNameMap) !== null
+  return matchTextualToolDirectivePrefix(str, toolNameMap) !== null ||
+    looksLikeInlineQuotedJsonToolDirectivePrefix(str, toolNameMap)
 }
 
 /**
