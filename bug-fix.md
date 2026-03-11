@@ -36,6 +36,7 @@
 - [x] Directly confirmed via React Navigation's `getPathFromState()` / `getStateFromPath()` that `Chat` route params currently serialize a pending rapid-fire draft into `/chat?initialMessage=hello%20secret%20world` and parse the same draft back from the browser URL.
 - [x] Re-reviewed `bug-fix.md`, confirmed `/Users/ajjoobandi/Development/aloops/.bug-fix-loop.qa-feedback.txt` is absent for this pass, explicitly deferred the older unresolved QA follow-ups, and launched Expo Web at `http://localhost:8180/chat` to inspect a fresh disconnected Chat surface.
 - [x] Live-reproduced a new Expo Web `/chat` disconnected-composer bug at `http://localhost:8180/chat` in a fresh cleared browser context: the screen showed a normal editable composer even without connection settings, let the user type a draft, and only revealed setup was required after pressing `Send` and losing the draft.
+- [x] Re-reviewed `bug-fix.md` plus the current QA feedback, explicitly deferred the unresolved screenshot viewport mismatches for `mobile-chat-disconnected-composer` and `mobile-web-qr-scanner`, then launched Expo Web at `http://localhost:8190/memories/edit` to inspect a fresh unconfigured memory-create flow.
 
 ## Not yet checked
 
@@ -56,6 +57,7 @@
 - [x] Mobile Expo Web still rendered the generic `/sessions` empty state for an unconfigured user, including normal-looking `+ New Chat`, `Start first chat`, and `Hold to talk (Rapid Fire)` entry points, even though the same screen could not actually start chat creation until connection settings were completed.
 - [x] Expo Web `Chat` route generation leaked pending rapid-fire draft text into browser history as `/chat?initialMessage=...`, and the default parser restored that same draft back into `route.params.initialMessage` from the URL.
 - [x] Mobile Expo Web let an unconfigured user deep-link straight to `/chat` and type into a normal-looking composer, but pressing `Send` then redirected to `Connection Settings` and dropped the drafted text instead of making the setup requirement explicit before composition.
+- [x] Mobile Expo Web let an unconfigured user deep-link straight to `/memories/edit`, type into the memory title/content/tags fields, and change memory importance even though the route could not save; the visible `Create Memory` form provided no direct path to connection setup and the primary action produced no user-visible result.
 
 ## Fixed
 
@@ -73,6 +75,7 @@
 - [x] `apps/mobile/src/screens/SessionListScreen.tsx` now turns the disconnected `/sessions` empty state into explicit setup guidance: the header action becomes `Open Connection`, the empty state explains that a connection is required before starting a chat, the empty-state CTA routes straight to `ConnectionSettings`, and Rapid Fire is visibly disabled with the same missing-connection guidance instead of looking ready.
 - [x] `apps/mobile/src/navigation/navigationLinking.ts` now strips transient `Chat` draft params such as `initialMessage` from Expo Web URL generation and inbound URL parsing, so the rapid-fire resume flow can still use in-memory route state without leaking draft content into browser URLs/history or rehydrating it from a pasted link.
 - [x] `apps/mobile/src/screens/ChatScreen.tsx` now turns the disconnected `/chat` composer into an explicit setup-required state: the screen shows missing-connection guidance plus an `Open Connection Settings` CTA before send, and the input, image attach, send, and mic controls are disabled until Base URL + API key settings exist so unconfigured users cannot type and lose a draft.
+- [x] `apps/mobile/src/screens/MemoryEditScreen.tsx` now turns the disconnected `/memories/edit` route into explicit setup guidance: the title/content/tags fields plus importance buttons are read-only until Base URL + API key settings exist, and the primary action becomes `Open Connection Settings` so users are routed to setup instead of drafting an unsavable memory.
 
 ## Verified
 
@@ -131,6 +134,9 @@
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors after this disconnected-composer fix; no new `ChatScreen.tsx` type error was introduced.
 - [x] Live Expo Web verification at `http://localhost:8180/chat` now shows connection-required guidance in the same fresh `390x844` mobile browser context, keeps the composer read-only/disabled while disconnected, and routes `Open Connection Settings` to `/connection`.
 - [x] Curated matching before/after screenshots for the disconnected `/chat` composer were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
+- [x] `node --test apps/mobile/tests/memory-edit-missing-connection.test.js apps/mobile/tests/memory-edit-importance-options.test.js`
+- [x] Live Expo Web verification at `http://localhost:8190/memories/edit` now keeps the memory fields read-only, disables the importance buttons, and routes `Open Connection Settings` to `/connection` in the same fresh `390x844` mobile browser context.
+- [x] Curated matching before/after screenshots for the disconnected `/memories/edit` screen were saved under `docs/aloops-evidence/bug-fix-loop/` at the same `390x844` viewport.
 
 ## Blocked
 
@@ -145,6 +151,7 @@
 - [ ] No remaining blocker for this iteration's selected Expo Web agent-create missing-connection bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected Sessions empty-state bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/chat` composer bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web disconnected `/memories/edit` create-memory bug.
 
 ## Still uncertain
 
@@ -154,7 +161,7 @@
 - [ ] Whether deeper Expo Web deep-link/refresh cases for edit/detail screens with route params need richer route serialization beyond the fixed `Settings` ↔ `Connection` browser-history path.
 - [ ] Whether live Expo Web refresh/back navigation for memory and loop edit screens behaves correctly against a configured remote settings backend; this iteration verified the exact serializer/parser bug and screen fallback logic without re-running a full remote-backed browser session.
 - [ ] Whether reopened successful chats without a message-count change were also previously stale for the same persistence reason; this iteration fixed the shared settled-message persistence path and verified the failure-state repro specifically.
-- [ ] Whether direct deep links into other mobile edit/detail routes still have any missing-configuration edge cases beyond the now-fixed `AgentEditScreen` silent no-op path.
+- [ ] Whether direct deep links into other mobile edit/detail routes still have any missing-configuration edge cases beyond the now-fixed `AgentEditScreen`, `MemoryEditScreen`, and disconnected `ChatScreen` paths.
 - [ ] Whether unconfigured users who already have historical sessions should also see a lightweight read-only banner on `/sessions`; this iteration fixed the misleading empty-state/create-entry path specifically.
 - [ ] Whether any other ephemeral mobile web route params beyond `Chat.initialMessage` should also be stripped from generated/pasted URLs for privacy or replay-safety; this iteration fixed only the confirmed rapid-fire draft case.
 - [ ] Whether disconnected users who reopen `/chat` with existing session history should also see a lightweight read-only banner above the transcript; this iteration fixed the misleading editable-composer path specifically.
@@ -171,6 +178,18 @@
 - Mobile Expo Web flows that pass transient user-entered text or other ephemeral action state through route params, especially if they can still bleed into browser history after the `Chat.initialMessage` fix.
 
 ## Evidence
+
+### Evidence ID: mobile-memory-edit-disconnected-form
+
+- Scope: `apps/mobile/src/screens/MemoryEditScreen.tsx`, `apps/mobile/tests/memory-edit-missing-connection.test.js`, and `apps/mobile/tests/memory-edit-importance-options.test.js` for the unconfigured Expo Web `/memories/edit` create-memory route.
+- Commit range: `45254860581febdb6442dbe8b832663695cfa3d9..8b8a6961e5df002388fa00c28b9cf359d214e0a2`
+- Rationale: Unconfigured users could deep-link directly into `/memories/edit`, fill out a realistic memory draft, and even change importance despite having no usable connection settings. The screen showed a normal create form but could not actually save and did not surface a direct recovery action, which made the memory flow feel broken and risked users drafting unsavable data.
+- QA feedback: Deferred prior unresolved QA findings for `mobile-chat-disconnected-composer` and `mobile-web-qr-scanner` screenshot viewport mismatches for this iteration; this pass instead fixes a newly reproduced runtime-confirmed disconnected memory-create bug.
+- Before evidence: `docs/aloops-evidence/bug-fix-loop/mobile-memory-edit-disconnected-form--before--memory-edit-screen--20260311.png` (viewport `390x844`, fresh unconfigured Expo Web browser context at `http://localhost:8190/memories/edit`). The screenshot shows a full `Create Memory` form with editable-looking `Title`, `Content`, `Importance`, and `Tags` controls plus a primary `Create Memory` action even though no connection settings exist, which is insufficient because the user can start drafting but has no direct route to setup and no visible save path that can succeed.
+- Change: Updated `MemoryEditScreen.tsx` to derive an explicit disconnected-state gate for the memory editor. When no settings client exists, the title/content/tags inputs become read-only, the importance buttons are disabled, the helper text now explains that connection settings are required before memories can be created or edited, and the primary action becomes `Open Connection Settings` instead of a dead-end save CTA. Added `apps/mobile/tests/memory-edit-missing-connection.test.js` for the new setup-action/disabled-form wiring and refreshed `apps/mobile/tests/memory-edit-importance-options.test.js` so the selected-state accessibility expectations still track the screen after the new disabled gating.
+- After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-memory-edit-disconnected-form--after--memory-edit-screen--20260311.png` (same `390x844` viewport and same fresh unconfigured `/memories/edit` surface). After the fix, the screen clearly explains that connection settings are required and the primary action is now `Open Connection Settings`; live verification confirmed the form fields stay read-only, importance choices stay disabled, and the CTA routes to `/connection`, so the user sees setup guidance before any unsavable memory draft can begin.
+- Verification commands/run results: `node --test apps/mobile/tests/memory-edit-missing-connection.test.js apps/mobile/tests/memory-edit-importance-options.test.js` ✅ (5 tests passing, covering the new connection-setup CTA, disabled disconnected form fields, and the existing importance-option accessibility contract); `git diff --check` ✅; live Expo Web verification at `http://localhost:8190/memories/edit` ✅ in a fresh `390x844` browser context now keeps the form read-only while disconnected, disables importance selection, and routes `Open Connection Settings` to `/connection`; `pnpm --filter @dotagents/mobile test` ⚠️ still fails on the unrelated pre-existing `apps/mobile/tests/chat-composer-accessibility.test.js` expectation drift in `ChatScreen.tsx`; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors.
+- Blockers/remaining uncertainty: The exact misleading disconnected `/memories/edit` create flow is fixed and live-verified on Expo Web. I did not expand this iteration into the separate Loop edit route, configured remote-backed memory creation, or the older deferred screenshot-only QA findings, because those are distinct follow-ups and would widen the scope beyond this local fix.
 
 ### Evidence ID: mobile-expo-symlink-watchfolders
 
