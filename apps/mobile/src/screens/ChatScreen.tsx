@@ -2992,6 +2992,12 @@ function createStyles(theme: Theme, screenHeight: number) {
   const micButtonHeight = Math.round(screenHeight * 0.2);
   const headerActionButton = createMinimumTouchTargetStyle();
   const headerEdgeActionButton = createMinimumTouchTargetStyle({ horizontalPadding: 12 });
+  const compactTranscriptTapTarget = createMinimumTouchTargetStyle({
+    minSize: 32,
+    horizontalPadding: spacing.sm,
+    verticalPadding: 4,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     headerActionsRow: {
       flexDirection: 'row',
@@ -3327,12 +3333,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
     },
     toolCallCompactRow: {
+      ...compactTranscriptTapTarget,
+      width: '100%',
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 2,
-      paddingHorizontal: 3,
+      justifyContent: 'flex-start',
       borderRadius: radius.sm,
-      gap: 3,
+      gap: spacing.xs,
     },
     toolCallCompactPending: {
       backgroundColor: hexToRgba(theme.colors.info, 0.05),
@@ -3347,7 +3354,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       opacity: 0.7,
     },
     toolCallCompactIcon: {
-      fontSize: 8,
+      fontSize: 10,
     },
     toolCallCompactIconPending: {
       // uses default
@@ -3360,7 +3367,8 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolCallCompactName: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
+      fontSize: 11,
+      lineHeight: 16,
       fontWeight: '500',
       flexShrink: 1,
     },
@@ -3374,8 +3382,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
     },
     toolCallCompactStatus: {
-      fontSize: 9,
-      marginLeft: 1,
+      fontSize: 10,
+      marginLeft: 2,
     },
     toolCallCompactStatusPending: {
       color: theme.colors.info,
@@ -3387,15 +3395,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
     },
     toolCallCompactChevron: {
-      fontSize: 8,
+      fontSize: 10,
       color: theme.colors.mutedForeground,
-      opacity: 0.4,
+      opacity: 0.55,
       marginLeft: 'auto',
     },
     toolCallCompactPreview: {
-      fontSize: 9,
+      fontSize: 10,
+      lineHeight: 14,
       color: theme.colors.mutedForeground,
-      opacity: 0.6,
+      opacity: 0.72,
       flex: 1,
       marginLeft: 2,
     },
@@ -3426,21 +3435,24 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontWeight: '600',
       color: theme.colors.primary,
-      fontSize: 10,
+      fontSize: 11,
+      lineHeight: 16,
       flex: 1,
     },
     toolCallHeader: {
+      ...compactTranscriptTapTarget,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.xs,
       marginBottom: spacing.xs,
+      gap: spacing.xs,
     },
     toolCallHeaderPressed: {
       opacity: 0.7,
     },
     toolCallExpandHint: {
-      fontSize: 9,
+      fontSize: 11,
+      lineHeight: 16,
       color: theme.colors.mutedForeground,
       fontWeight: '500',
     },

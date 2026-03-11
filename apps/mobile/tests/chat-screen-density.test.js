@@ -29,3 +29,15 @@ test('caps live transcript height so the recording overlay is less likely to cov
   assert.match(screenSource, /<Text style=\{styles\.overlayTranscript\} numberOfLines=\{3\}>/);
   assert.match(screenSource, /overlayTranscript:\s*\{[\s\S]*?marginTop:\s*4,[\s\S]*?lineHeight:\s*16,[\s\S]*?opacity:\s*0\.92,/);
 });
+
+test('gives collapsed mobile tool summaries a larger transcript tap target', () => {
+  assert.match(screenSource, /const compactTranscriptTapTarget = createMinimumTouchTargetStyle\([\s\S]*?minSize:\s*32,[\s\S]*?horizontalPadding:\s*spacing\.sm,[\s\S]*?verticalPadding:\s*4,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\)/);
+  assert.match(screenSource, /toolCallCompactRow:\s*\{[\s\S]*?\.\.\.compactTranscriptTapTarget,[\s\S]*?width:\s*'100%',[\s\S]*?justifyContent:\s*'flex-start',[\s\S]*?gap:\s*spacing\.xs,/);
+  assert.match(screenSource, /toolCallCompactName:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?lineHeight:\s*16,/);
+});
+
+test('keeps expanded mobile tool headers comfortably tappable and legible', () => {
+  assert.match(screenSource, /toolCallHeader:\s*\{[\s\S]*?\.\.\.compactTranscriptTapTarget,[\s\S]*?justifyContent:\s*'space-between',[\s\S]*?gap:\s*spacing\.xs,/);
+  assert.match(screenSource, /toolName:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?lineHeight:\s*16,/);
+  assert.match(screenSource, /toolCallExpandHint:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?lineHeight:\s*16,/);
+});
