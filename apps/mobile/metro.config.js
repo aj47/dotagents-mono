@@ -14,6 +14,42 @@ const nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+function collectWorkspacePackageRoots(rootPath) {
+  const workspacePackageRoots = {};
+
+  for (const workspaceDir of ['apps', 'packages']) {
+    const workspaceRoot = path.join(rootPath, workspaceDir);
+    if (!fs.existsSync(workspaceRoot)) {
+      continue;
+    }
+
+    for (const entry of fs.readdirSync(workspaceRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const packageRoot = path.join(workspaceRoot, entry.name);
+      const packageJsonPath = path.join(packageRoot, 'package.json');
+      if (!fs.existsSync(packageJsonPath)) {
+        continue;
+      }
+
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        if (typeof packageJson.name === 'string' && packageJson.name.startsWith('@dotagents/')) {
+          workspacePackageRoots[packageJson.name] = packageRoot;
+        }
+      } catch {
+        // Ignore unreadable package manifests and keep Metro using node_modules resolution.
+      }
+    }
+  }
+
+  return workspacePackageRoots;
+}
+
+const workspacePackageRoots = collectWorkspacePackageRoots(monorepoRoot);
+
 function addWorkspacePackageWatchFolders(nodeModulesPath, watchFolders) {
   const workspaceScopePath = path.join(nodeModulesPath, '@dotagents');
   if (!fs.existsSync(workspaceScopePath)) {
@@ -60,6 +96,10 @@ config.watchFolders = collectWatchFolders(nodeModulesPaths);
 
 // 2. Let Metro know where to resolve packages and in what order
 config.resolver.nodeModulesPaths = nodeModulesPaths;
+config.resolver.extraNodeModules = {
+  ...(config.resolver.extraNodeModules || {}),
+  ...workspacePackageRoots,
+};
 
 // 3. Enable symlinks for pnpm
 config.resolver.unstable_enableSymlinks = true;
@@ -184,8 +224,10 @@ module.exports = config;
 module.exports.__testUtils = {
   addWorkspacePackageWatchFolders,
   collectWatchFolders,
+  collectWorkspacePackageRoots,
   monorepoRoot,
   nodeModulesPaths,
   projectRoot,
+  workspacePackageRoots,
 };
 

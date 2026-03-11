@@ -5,7 +5,12 @@ const os = require('node:os');
 const path = require('node:path');
 
 const metroConfig = require(path.join(__dirname, '..', 'metro.config.js'));
-const { collectWatchFolders, monorepoRoot, nodeModulesPaths } = metroConfig.__testUtils;
+const {
+  collectWatchFolders,
+  monorepoRoot,
+  nodeModulesPaths,
+  workspacePackageRoots,
+} = metroConfig.__testUtils;
 
 test('loads Metro config with watchFolders derived from the configured nodeModules paths', () => {
   assert.deepEqual(new Set(metroConfig.watchFolders), new Set(collectWatchFolders(nodeModulesPaths)));
@@ -37,4 +42,15 @@ test('collectWatchFolders includes symlinked node_modules realpaths and linked w
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+});
+
+test('pins @dotagents workspace packages to the current worktree roots', () => {
+  assert.equal(
+    workspacePackageRoots['@dotagents/shared'],
+    path.join(monorepoRoot, 'packages', 'shared')
+  );
+  assert.equal(
+    metroConfig.resolver.extraNodeModules['@dotagents/shared'],
+    path.join(monorepoRoot, 'packages', 'shared')
+  );
 });
