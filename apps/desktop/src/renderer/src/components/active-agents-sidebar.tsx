@@ -10,6 +10,7 @@ import {
   Clock,
   Archive,
   Bot,
+  Pin,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
@@ -74,6 +75,8 @@ export function ActiveAgentsSidebar({
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
+  const togglePinSession = useAgentStore((s) => s.togglePinSession)
   const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
   const navigate = useNavigate()
 
@@ -417,7 +420,8 @@ export function ActiveAgentsSidebar({
               : (sessionProgress?.isSnoozed ?? session.isSnoozed ?? false)
 
             if (isPast) {
-              // Past agent row — archive icon, no action buttons
+              const isPinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
+              // Past agent row — archive icon with pin action
               return (
                 <div
                   key={key}
@@ -431,16 +435,40 @@ export function ActiveAgentsSidebar({
                     }
                   }}
                   className={cn(
-                    "text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    "group text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  {/* Archive icon for past agents */}
-                  <Archive className="h-3 w-3 shrink-0 opacity-50" />
+                  {/* Archive or pinned icon for past agents */}
+                  {isPinned ? (
+                    <Pin className="h-3 w-3 shrink-0 fill-current text-foreground" />
+                  ) : (
+                    <Archive className="h-3 w-3 shrink-0 opacity-50" />
+                  )}
                   <p className="flex-1 truncate">
                     {session.conversationTitle || "Untitled session"}
                   </p>
+                  {session.conversationId && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (session.conversationId) {
+                          togglePinSession(session.conversationId)
+                        }
+                      }}
+                      className={cn(
+                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all",
+                        isPinned ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                      )}
+                      title={isPinned ? "Unpin session" : "Pin session"}
+                      aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
+                      aria-pressed={isPinned}
+                    >
+                      <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
+                    </button>
+                  )}
                 </div>
               )
             }

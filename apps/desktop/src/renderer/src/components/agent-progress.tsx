@@ -234,6 +234,8 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Track the ttsKey that's currently being generated, so we can clean it up on unmount
   const inFlightTtsKeyRef = useRef<string | null>(null)
+  // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
+  const lastAutoPlayedSourceRef = useRef<string | null>(null)
   const configQuery = useConfigQuery()
 
   // Cleanup copy timeout and in-flight TTS key on unmount
@@ -392,6 +394,13 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       return
     }
 
+    // Guard against replaying the same content on follow-up user messages.
+    // When a user sends a follow-up, the message list re-evaluates and this effect
+    // can re-fire even though the agent response hasn't changed. (fixes #72)
+    if (ttsSource && lastAutoPlayedSourceRef.current === ttsSource) {
+      return
+    }
+
     // Create a key to track TTS playback for this specific session + content combination
     // Use ttsSource (computed above) to ensure consistency with audioData invalidation
     const ttsKey = sessionId ? `${sessionId}:${ttsSource}` : null
@@ -408,6 +417,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       inFlightTtsKeyRef.current = ttsKey
     }
 
+    // Track the source we're auto-playing to prevent replay on follow-up
+    lastAutoPlayedSourceRef.current = ttsSource
+
     generateAudio()
       .then(() => {
         // Generation succeeded, clear the in-flight ref (key stays in set permanently)
@@ -420,6 +432,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         if (ttsKey && inFlightTtsKeyRef.current === ttsKey) {
           removeTTSKey(ttsKey)
           inFlightTtsKeyRef.current = null
+        }
+        // Clear the auto-played source so the user can retry
+        if (lastAutoPlayedSourceRef.current === ttsSource) {
+          lastAutoPlayedSourceRef.current = null
         }
         // Error is already handled in generateAudio function
       })
@@ -3455,7 +3471,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
 
-            {onExpand && !isExpanded && (
+            {!isSnoozed && onExpand && !isExpanded && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -3470,7 +3486,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </Button>
             )}
 
-            {!isComplete && !isSnoozed && (
+            {!isSnoozed && !isComplete && (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
                 <Minimize2 className="h-3 w-3" />
               </Button>

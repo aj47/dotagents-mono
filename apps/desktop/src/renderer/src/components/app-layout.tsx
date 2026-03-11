@@ -594,29 +594,27 @@ export const Component = () => {
                   </div>
                 )}
               </div>
+
+              {/* Logo/version pushed down by menu content, scrolls naturally */}
+              <div className="flex flex-col items-center pb-4 pt-2 space-y-2">
+                <LoadingSpinner size="lg" />
+                <div>DotAgents</div>
+                <div className="text-xs">{process.env.APP_VERSION}</div>
+              </div>
             </div>
           )}
 
           {/* Spacer to push footer down when collapsed */}
           {isCollapsed && <div className="flex-1" />}
 
-          {/* Loading spinner at the bottom of the sidebar */}
-          <div className="shrink-0">
-            <div
-              className={cn(
-                "flex flex-col items-center pb-4 pt-2",
-                isCollapsed ? "space-y-1" : "space-y-2",
-              )}
-            >
-              <LoadingSpinner size={isCollapsed ? "sm" : "lg"} />
-              {!isCollapsed && (
-                <>
-                  <div>DotAgents</div>
-                  <div className="text-xs">{process.env.APP_VERSION}</div>
-                </>
-              )}
+          {/* Loading spinner at the bottom of the sidebar - collapsed only */}
+          {isCollapsed && (
+            <div className="shrink-0">
+              <div className="flex flex-col items-center pb-4 pt-2 space-y-1">
+                <LoadingSpinner size="sm" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Resize handle - only visible when not collapsed */}
           {!isCollapsed && (
