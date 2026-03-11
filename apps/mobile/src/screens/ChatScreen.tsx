@@ -71,6 +71,10 @@ import {
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import {
+  createChatMessagePersistenceSignature,
+  shouldPersistChatMessages,
+} from './chat-message-persistence';
 
 interface PendingImageAttachment {
   id: string;
@@ -1120,8 +1124,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const prevMessagesLengthRef = useRef(0);
   const prevSessionIdRef = useRef<string | null>(null);
+  const lastPersistedMessagesSignatureRef = useRef<string | null>(null);
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
+    const currentMessagesSignature = createChatMessagePersistenceSignature(messages);
 
     // Don't save messages if the current session is being deleted (fixes #571)
     // Only skip if the current session is in the deleting set, not for any deletion
@@ -1134,10 +1140,18 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (isSessionSwitch) {
       prevMessagesLengthRef.current = messages.length;
+      lastPersistedMessagesSignatureRef.current = currentMessagesSignature;
       return;
     }
 
-    if (messages.length > 0 && messages.length !== prevMessagesLengthRef.current) {
+    if (
+      shouldPersistChatMessages({
+        messages,
+        previousMessageCount: prevMessagesLengthRef.current,
+        lastPersistedSignature: lastPersistedMessagesSignatureRef.current,
+        responding,
+      })
+    ) {
       if (skipNextPersistRef.current) {
         // Messages were just hydrated from a server lazy-load and are already
         // saved by loadSessionMessages; skip to avoid ID/updatedAt regeneration.
@@ -1145,14 +1159,16 @@ export default function ChatScreen({ route, navigation }: any) {
       } else {
         sessionStore.setMessages(messages);
       }
+      lastPersistedMessagesSignatureRef.current = currentMessagesSignature;
     } else if (skipNextPersistRef.current) {
       // Length didn't change (or is 0), so the effect above won't fire — clear
       // the flag now to prevent it from accidentally skipping the next real
       // message persistence (e.g., lazy-load returned same count as before).
       skipNextPersistRef.current = false;
+      lastPersistedMessagesSignatureRef.current = currentMessagesSignature;
     }
     prevMessagesLengthRef.current = messages.length;
-  }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
+  }, [messages, responding, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
 
   const toggleMessageExpansion = useCallback((index: number) => {
     setExpandedMessages(prev => ({ ...prev, [index]: !prev[index] }));
