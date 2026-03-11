@@ -215,27 +215,22 @@ export function SessionTileWrapper({
     storageKey: "session-tile",
   })
 
-  // Reset tile size when resetKey changes (user clicked layout cycle button)
-  useEffect(() => {
-    if (resetKey !== lastResetKeyRef.current && containerWidth > 0) {
-      lastResetKeyRef.current = resetKey
-      setSize({
-        width: calculateTileWidth(containerWidth, gap, layoutMode),
-        height: calculateTileHeight(containerHeight, gap, layoutMode),
-      })
-    }
-  }, [resetKey, containerWidth, containerHeight, gap, layoutMode, setSize])
-
-  // Update tile size when layout mode changes
-  useEffect(() => {
-    if (layoutMode !== lastLayoutModeRef.current && containerWidth > 0) {
-      lastLayoutModeRef.current = layoutMode
-      setSize({
-        width: calculateTileWidth(containerWidth, gap, layoutMode),
-        height: calculateTileHeight(containerHeight, gap, layoutMode),
-      })
-    }
-  }, [layoutMode, containerWidth, containerHeight, gap, setSize])
+  // Synchronously update tile size during render when layout mode or resetKey
+  // changes. Using useEffect caused a one-frame stale render where tiles kept
+  // their old (e.g. 1x1 full-width) size before the effect corrected them,
+  // breaking flex-wrap two-column layout.
+  if (resetKey !== lastResetKeyRef.current && containerWidth > 0) {
+    lastResetKeyRef.current = resetKey
+    const newWidth = calculateTileWidth(containerWidth, gap, layoutMode)
+    const newHeight = calculateTileHeight(containerHeight, gap, layoutMode)
+    setSize({ width: newWidth, height: newHeight })
+  }
+  if (layoutMode !== lastLayoutModeRef.current && containerWidth > 0) {
+    lastLayoutModeRef.current = layoutMode
+    const newWidth = calculateTileWidth(containerWidth, gap, layoutMode)
+    const newHeight = calculateTileHeight(containerHeight, gap, layoutMode)
+    setSize({ width: newWidth, height: newHeight })
+  }
 
   // Update width and height to fill container once it is measured (only on first valid measurement)
   // This handles the case where containerWidth/containerHeight are 0 on initial render
