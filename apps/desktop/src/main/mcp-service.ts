@@ -1424,6 +1424,8 @@ export class MCPService {
     if (client && this.availableTools.length > 0) {
       const toolSchema = this.availableTools.find(t => t.name === `${serverName}:${toolName}`)?.inputSchema
       if (toolSchema?.properties) {
+        const requiredParams = new Set(Array.isArray((toolSchema as any).required) ? (toolSchema as any).required : [])
+
         for (const [paramName, paramValue] of Object.entries(processedArguments)) {
           const expectedType = toolSchema.properties[paramName]?.type
           if (expectedType && typeof paramValue !== expectedType) {
@@ -1438,6 +1440,35 @@ export class MCPService {
             } else if (expectedType === 'boolean' && typeof paramValue === 'string') {
               processedArguments[paramName] = paramValue.toLowerCase() === 'true'
             }
+          }
+        }
+
+        for (const [paramName, paramValue] of Object.entries(processedArguments)) {
+          if (requiredParams.has(paramName)) continue
+
+          if (paramValue == null) {
+            delete processedArguments[paramName]
+            continue
+          }
+
+          if (typeof paramValue === 'string' && paramValue.trim().length === 0) {
+            delete processedArguments[paramName]
+            continue
+          }
+
+          if (Array.isArray(paramValue) && paramValue.length === 0) {
+            delete processedArguments[paramName]
+            continue
+          }
+
+          if (
+            serverName === 'github' &&
+            toolName === 'create_issue' &&
+            paramName === 'milestone' &&
+            typeof paramValue === 'number' &&
+            paramValue <= 0
+          ) {
+            delete processedArguments[paramName]
           }
         }
 

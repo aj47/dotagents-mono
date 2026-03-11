@@ -123,5 +123,59 @@ describe("MCPService Option B (builtin allowlist)", () => {
     expect(ok.isError).toBe(false)
     expect(mockExecuteBuiltinTool).toHaveBeenCalledTimes(1)
   })
+
+  it("strips github create_issue placeholder milestone and empty optional arrays before execution", async () => {
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(async () => ({ content: [{ type: "text", text: "created" }], isError: false }))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      {
+        name: "github:create_issue",
+        description: "Create a new issue in a GitHub repository",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+            title: { type: "string" },
+            body: { type: "string" },
+            assignees: { type: "array" },
+            milestone: { type: "number" },
+            labels: { type: "array" },
+          },
+          required: ["owner", "repo", "title"],
+        },
+      },
+    ]
+
+    const result = await mcpService.executeToolCall(
+      {
+        name: "github:create_issue",
+        arguments: {
+          owner: "aj47",
+          repo: "dotagents-mono",
+          title: "Sessions tile can show duplicate maximize icons in some cases",
+          body: "Observed from Langfuse trace replay.",
+          assignees: [],
+          milestone: 0,
+          labels: [],
+        },
+      } as any,
+      undefined,
+      true,
+    )
+
+    expect(result.isError).toBe(false)
+    expect(callTool).toHaveBeenCalledWith({
+      name: "create_issue",
+      arguments: {
+        owner: "aj47",
+        repo: "dotagents-mono",
+        title: "Sessions tile can show duplicate maximize icons in some cases",
+        body: "Observed from Langfuse trace replay.",
+      },
+    })
+  })
 })
 
