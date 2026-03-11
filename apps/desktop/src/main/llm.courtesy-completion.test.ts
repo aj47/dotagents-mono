@@ -119,4 +119,39 @@ describe("llm completion verification bypass", () => {
     expect(mockMakeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
     expect(mockVerifyCompletionWithFetch).not.toHaveBeenCalled()
   })
+
+  it("treats malformed mark_work_complete scaffolding as completion when a user response is already recorded", async () => {
+    let storedResponse: string | undefined
+    mockGetSessionUserResponse.mockImplementation(() => storedResponse)
+    mockMakeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [{ name: "respond_to_user", arguments: { text: "Yes — issue #70 tracks pinning sessions.", images: [] } }] })
+      .mockResolvedValueOnce({ content: "[Calling tools: mark_work_complete]ႈ\n", toolCalls: undefined })
+
+    const executeToolCall = vi.fn(async (toolCall: MCPToolCall): Promise<MCPToolResult> => {
+      if (toolCall.name === "respond_to_user") storedResponse = String(toolCall.arguments.text)
+      return { content: [{ type: "text", text: '{"success":true}' as const }], isError: false }
+    })
+
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const result = await processTranscriptWithAgentMode(
+      "Do we have a GitHub issue about pinning sessions?",
+      [
+        { name: "respond_to_user", description: "Respond to the user", inputSchema: { type: "object" } },
+        { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object" } },
+      ],
+      executeToolCall,
+      4,
+      undefined,
+      "conversation-1",
+      "session-1",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Yes — issue #70 tracks pinning sessions.")
+    expect(executeToolCall).toHaveBeenCalledTimes(1)
+    expect(mockMakeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mockVerifyCompletionWithFetch).not.toHaveBeenCalled()
+  })
 })

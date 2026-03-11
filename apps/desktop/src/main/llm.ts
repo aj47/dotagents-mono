@@ -1116,8 +1116,12 @@ export async function processTranscriptWithAgentMode(
   // Helper to check if content is just a tool call placeholder (not real content)
   const isToolCallPlaceholder = (content: string): boolean => {
     const trimmed = content.trim()
-    // Match patterns like "[Calling tools: ...]" or "[Tool: ...]"
-    return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
+    // Match patterns like "[Calling tools: ...]" or "[Tool: ...]".
+    // Some providers occasionally append trailing Unicode marks/control chars
+    // (for example: "[Calling tools: mark_work_complete]ႈ") to otherwise-empty
+    // tool scaffolding. Treat those as placeholders too so we do not reopen
+    // verification after a valid respond_to_user already completed the task.
+    return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\][\s\p{M}\p{Cf}\p{Cc}]*$/iu.test(trimmed)
   }
 
   // Helper to detect "status update" responses that describe future work instead of delivering results
@@ -2027,6 +2031,21 @@ Return ONLY JSON per schema.`,
         )
         noOpCount = 0
         continue
+      }
+
+      const explicitUserResponse = getSessionUserResponse(currentSessionId)
+      if (hasCompletionSignalTool && explicitUserResponse?.trim().length && isToolCallPlaceholder(contentText)) {
+        finalContent = explicitUserResponse
+        addMessage("assistant", finalContent)
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
       }
 
       // Scope tool evidence to this user prompt (current turn)
