@@ -171,7 +171,7 @@ Track recent Langfuse sessions/traces inspected so this loop does not repeat the
 #### Evidence
 - Evidence ID: `terminal-agent-error-persistence`
 - Scope: Ensure unexpected terminal agent failures in desktop agent-mode runs persist a user-visible assistant error message to conversation history and Langfuse output instead of leaving the run blank/null.
-- Commit range: `2ef66cf098c7e493ef7028844f72a8c5eea45557..PENDING`
+- Commit range: `2ef66cf098c7e493ef7028844f72a8c5eea45557..9c7880a491198fc6eb30393a0271ea1a5631b0c3`
 - Rationale: The traced run failed in a user-visible way, but reopening the conversation or inspecting Langfuse made it look like the assistant never answered at all. Persisting a terminal assistant error message preserves what happened, prevents silent-looking failed runs, and makes retries/debugging much more intelligible when upstream provider/API outages occur.
 - QA feedback: None (new iteration)
 - Before evidence: Langfuse trace `session_1773202803254_f4vuinopr` in session `conv_1773202803243_hxenk4w14` recorded input `Reply with exactly: session test ok`, `trace.output = null`, and a `Streaming LLM Call` observation at `ERROR` with status `Failed after 3 attempts. Last error: Cannot connect to API:`. The persisted conversation file for the same session contained only the user message, confirming the failure was not recorded as an assistant response in saved history.
