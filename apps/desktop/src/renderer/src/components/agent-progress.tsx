@@ -2434,7 +2434,7 @@ const MidTurnUserResponseBubble: React.FC<{
     (isExpanded || (variant === "overlay" && (configQuery.data?.ttsAutoPlay ?? true)))
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30">
+    <div className="sticky top-2 z-10 min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/90 backdrop-blur-sm shadow-sm dark:bg-green-950/90">
       {/* Header */}
       <div
         className={cn(
