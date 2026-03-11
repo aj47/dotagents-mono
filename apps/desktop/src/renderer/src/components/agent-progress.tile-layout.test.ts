@@ -94,6 +94,11 @@ describe("agent progress tile layout", () => {
     )
   })
 
+  it("avoids showing duplicate maximize-style controls when a tile is already snoozed", () => {
+    expect(agentProgressSource).toContain('{onExpand && !isExpanded && !isSnoozed && (')
+    expect(agentProgressSource).toContain('title="Restore session"')
+  })
+
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {
     expect(agentProgressSource).toContain(
       'className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30"'

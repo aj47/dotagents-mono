@@ -3455,7 +3455,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
 
-            {onExpand && !isExpanded && (
+            {onExpand && !isExpanded && !isSnoozed && (
               <Button
                 variant="ghost"
                 size="icon"
