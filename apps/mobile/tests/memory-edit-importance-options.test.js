@@ -16,7 +16,7 @@ test('explains how memory importance affects retrieval priority', () => {
 
 test('exposes MemoryEdit importance choices as selected-state buttons', () => {
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(`Set memory importance to \$\{option\.label\}`\)/);
-  assert.match(screenSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSaving \}\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected: isSelected, disabled: isFormDisabled \}\}/);
   assert.match(screenSource, /\{isSelected && <Text style=\{styles\.importanceOptionCheckmark\}>✓<\/Text>\}/);
 });
 

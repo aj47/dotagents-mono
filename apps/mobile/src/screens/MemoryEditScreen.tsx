@@ -120,6 +120,10 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const openConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
+
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
       setError('Configure Base URL and API key in Settings before saving');
@@ -161,7 +165,13 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     }
   }, [effectiveMemoryId, formData, isEditing, navigation, settingsClient]);
 
-  const isSaveDisabled = isSaving || !settingsClient;
+  const isConnectionConfigured = Boolean(settingsClient);
+  const isFormDisabled = isSaving || !isConnectionConfigured;
+  const primaryActionLabel = !isConnectionConfigured
+    ? 'Open Connection Settings'
+    : isEditing
+      ? 'Save Memory'
+      : 'Create Memory';
 
   if (isLoading) {
     return (
@@ -180,21 +190,22 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     >
       {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
       {!settingsClient && (
-        <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+        <Text style={styles.helperText}>Connection settings are required before you can create or edit memories.</Text>
       )}
 
       <Text style={styles.label}>Title *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFormDisabled && styles.inputDisabled]}
         value={formData.title}
         onChangeText={v => updateField('title', v)}
         placeholder="Memory title"
         placeholderTextColor={theme.colors.mutedForeground}
+        editable={!isFormDisabled}
       />
 
       <Text style={styles.label}>Content *</Text>
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[styles.input, styles.textArea, isFormDisabled && styles.inputDisabled]}
         value={formData.content}
         onChangeText={v => updateField('content', v)}
         placeholder="What should the agent remember?"
@@ -202,6 +213,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={6}
         textAlignVertical="top"
+        editable={!isFormDisabled}
       />
 
       <Text style={styles.label}>Importance</Text>
@@ -212,13 +224,17 @@ export default function MemoryEditScreen({ navigation, route }: any) {
           return (
             <TouchableOpacity
               key={option.value}
-              style={[styles.importanceOption, isSelected && styles.importanceOptionActive]}
+              style={[
+                styles.importanceOption,
+                isSelected && styles.importanceOptionActive,
+                isFormDisabled && styles.importanceOptionDisabled,
+              ]}
               onPress={() => updateField('importance', option.value)}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel(`Set memory importance to ${option.label}`)}
               accessibilityHint={isSelected ? `Currently selected. ${option.description}` : option.description}
-              accessibilityState={{ selected: isSelected, disabled: isSaving }}
-              disabled={isSaving}
+              accessibilityState={{ selected: isSelected, disabled: isFormDisabled }}
+              disabled={isFormDisabled}
             >
               <View style={styles.importanceOptionInfo}>
                 <Text style={[styles.importanceOptionText, isSelected && styles.importanceOptionTextActive]}>{option.label}</Text>
@@ -232,16 +248,26 @@ export default function MemoryEditScreen({ navigation, route }: any) {
 
       <Text style={styles.label}>Tags</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isFormDisabled && styles.inputDisabled]}
         value={formData.tagsInput}
         onChangeText={v => updateField('tagsInput', v)}
         placeholder="project, preference, follow-up"
         placeholderTextColor={theme.colors.mutedForeground}
         autoCapitalize="none"
+        editable={!isFormDisabled}
       />
 
-      <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
-        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Memory' : 'Create Memory'}</Text>}
+      <TouchableOpacity
+        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        onPress={isConnectionConfigured ? handleSave : openConnectionSettings}
+        disabled={isSaving}
+        accessibilityRole="button"
+        accessibilityLabel={createButtonAccessibilityLabel(primaryActionLabel)}
+        accessibilityHint={isConnectionConfigured
+          ? `${isEditing ? 'Saves this memory' : 'Creates this memory'} using your current connection settings.`
+          : 'Opens connection settings so you can finish setup before creating or editing memories.'}
+      >
+        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{primaryActionLabel}</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -257,6 +283,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     sectionHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
+    inputDisabled: { opacity: 0.55 },
     textArea: { minHeight: 120 },
     importanceOptions: { width: '100%' as const, gap: spacing.xs },
     importanceOption: {
@@ -275,6 +302,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.background,
     },
     importanceOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    importanceOptionDisabled: { opacity: 0.55 },
     importanceOptionInfo: { flex: 1, minWidth: 0 },
     importanceOptionText: { color: theme.colors.foreground, fontSize: 14, fontWeight: '500' },
     importanceOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
