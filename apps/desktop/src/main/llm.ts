@@ -56,6 +56,44 @@ import {
 } from "./agent-terminal-error"
 import { getLowContextPromptGuardResponse } from "./agent-low-context-guard"
 
+const NON_WORK_COMPLETION_TOOLS = new Set([RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL])
+
+function normalizeCourtesyText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[’]/g, "'")
+    .replace(/[^a-z0-9'\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function isCourtesyOnlyPrompt(text: string): boolean {
+  const normalized = normalizeCourtesyText(text)
+  if (!normalized) return false
+  const wordCount = normalized.split(" ").filter(Boolean).length
+  if (wordCount > 6) return false
+
+  return /^(?:(?:ok|okay|cool|awesome|great|perfect)\s+)?(?:thanks|thank you)(?:\s+(?:again|so much|very much))?$/.test(normalized)
+}
+
+function isCourtesyOnlyResponse(text: string): boolean {
+  const normalized = normalizeCourtesyText(text)
+  if (!normalized) return false
+  const wordCount = normalized.split(" ").filter(Boolean).length
+  if (wordCount > 8) return false
+
+  return /^(?:you(?:'re| are)? welcome|no problem|of course|anytime|happy to help|glad to help|you got it|got it)(?:\s+[a-z]+){0,4}$/.test(normalized)
+}
+
+function shouldSkipCompletionVerificationForCourtesyRun(
+  prompt: string,
+  response: string,
+  substantiveToolsExecuted: boolean,
+): boolean {
+  if (substantiveToolsExecuted) return false
+  return isCourtesyOnlyPrompt(prompt) && isCourtesyOnlyResponse(response)
+}
+
 /**
  * Clean error message by removing stack traces and noise
  */
@@ -519,6 +557,7 @@ export async function processTranscriptWithAgentMode(
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
+  let substantiveToolsExecutedInSession = false // Excludes respond_to_user / mark_work_complete-only runs
   const conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -2459,6 +2498,10 @@ Return ONLY JSON per schema.`,
         }
         progressSteps.push(toolCallStep)
 
+        if (!NON_WORK_COMPLETION_TOOLS.has(toolCall.name)) {
+          substantiveToolsExecutedInSession = true
+        }
+
         // Emit progress update
         emit({
           currentIteration: iteration,
@@ -2835,7 +2878,16 @@ Return ONLY JSON per schema.`,
 	      let completionForcedByVerificationLimit2 = false
 	      let completionForcedIncompleteDetails2: IncompleteTaskDetails | undefined
 
-	      if (config.mcpVerifyCompletionEnabled) {
+		      const shouldSkipVerificationForCourtesyOnlyRun = shouldSkipCompletionVerificationForCourtesyRun(
+		        transcript,
+		        existingUserResponse?.trim().length ? existingUserResponse : finalContent,
+		        substantiveToolsExecutedInSession,
+		      )
+		      if (shouldSkipVerificationForCourtesyOnlyRun) {
+		        skipPostVerifySummary2 = true
+		      }
+
+		      if (config.mcpVerifyCompletionEnabled && !shouldSkipVerificationForCourtesyOnlyRun) {
 	        const verifyStep = createProgressStep(
 	          "thinking",
 	          "Verifying completion",
