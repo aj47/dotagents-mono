@@ -971,6 +971,25 @@ export default function SettingsScreen({ navigation }: any) {
     return model?.name || currentValue;
   };
 
+  const getCurrentTtsModelDisplayName = () => {
+    const models = getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai');
+    const modelValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
+      : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
+      : remoteSettings?.geminiTtsModel;
+    const model = models.find(item => item.value === modelValue);
+    return model?.label || modelValue || 'Select model';
+  };
+
+  const getCurrentTtsVoiceDisplayName = () => {
+    const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
+    const voices = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel);
+    const voiceValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
+      : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
+      : remoteSettings?.geminiTtsVoice;
+    const voice = voices.find(item => item.value === voiceValue);
+    return voice?.label || voiceValue || 'Select voice';
+  };
+
   // Handle model selection from picker
   const handleModelSelect = async (modelId: string) => {
     setShowModelPicker(false);
@@ -1546,17 +1565,24 @@ export default function SettingsScreen({ navigation }: any) {
                 {remoteSettings.mcpToolsProviderId === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
                   <>
                     <Text style={styles.label}>OpenAI Compatible Endpoint</Text>
-                    <TouchableOpacity
+                    <Pressable
                       style={styles.modelSelector}
                       onPress={() => setShowPresetPicker(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel('Open endpoint picker')}
+                      accessibilityHint={`Currently ${getCurrentPresetName()}. Double tap to choose a different endpoint.`}
+                      accessibilityState={{ expanded: showPresetPicker }}
+                      role="button"
+                      aria-label={createButtonAccessibilityLabel('Open endpoint picker')}
+                      aria-expanded={showPresetPicker}
                     >
                       <View style={styles.modelSelectorContent}>
-                        <Text style={styles.modelSelectorText}>
+                        <Text style={styles.modelSelectorText} numberOfLines={1} ellipsizeMode="tail">
                           {getCurrentPresetName()}
                         </Text>
                         <Text style={styles.modelSelectorChevron}>▼</Text>
                       </View>
-                    </TouchableOpacity>
+                    </Pressable>
                   </>
                 )}
 
@@ -1599,10 +1625,18 @@ export default function SettingsScreen({ navigation }: any) {
                     autoCapitalize='none'
                   />
                 ) : (
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.modelSelector}
                     onPress={() => setShowModelPicker(true)}
                     disabled={isLoadingModels}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Open model picker')}
+                    accessibilityHint={`Currently ${getCurrentModelDisplayName()}. Double tap to choose a different model.`}
+                    accessibilityState={{ expanded: showModelPicker, disabled: isLoadingModels }}
+                    role="button"
+                    aria-label={createButtonAccessibilityLabel('Open model picker')}
+                    aria-expanded={showModelPicker}
+                    aria-disabled={isLoadingModels}
                   >
                     {isLoadingModels ? (
                       <View style={styles.modelSelectorContent}>
@@ -1614,13 +1648,13 @@ export default function SettingsScreen({ navigation }: any) {
                         <Text style={[
                           styles.modelSelectorText,
                           !getCurrentModelValue() && styles.modelSelectorPlaceholder
-                        ]}>
+                        ]} numberOfLines={1} ellipsizeMode="tail">
                           {getCurrentModelDisplayName()}
                         </Text>
                         <Text style={styles.modelSelectorChevron}>▼</Text>
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 )}
 
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Transcript Processing</Text>
@@ -1773,46 +1807,45 @@ export default function SettingsScreen({ navigation }: any) {
                       <>
                         {/* TTS Model Selector */}
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
-                        <TouchableOpacity
+                        <Pressable
                           style={styles.modelSelector}
                           onPress={() => setShowTtsModelPicker(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel('Open TTS model picker')}
+                          accessibilityHint={`Currently ${getCurrentTtsModelDisplayName()}. Double tap to choose a different text-to-speech model.`}
+                          accessibilityState={{ expanded: showTtsModelPicker }}
+                          role="button"
+                          aria-label={createButtonAccessibilityLabel('Open TTS model picker')}
+                          aria-expanded={showTtsModelPicker}
                         >
                           <View style={styles.modelSelectorContent}>
-                            <Text style={styles.modelSelectorText}>
-                              {(() => {
-                                const models = getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai');
-                                const modelValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
-                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
-                                  : remoteSettings.geminiTtsModel;
-                                const model = models.find(m => m.value === modelValue);
-                                return model?.label || modelValue || 'Select model';
-                              })()}
+                            <Text style={styles.modelSelectorText} numberOfLines={1} ellipsizeMode="tail">
+                              {getCurrentTtsModelDisplayName()}
                             </Text>
                             <Text style={styles.modelSelectorChevron}>▼</Text>
                           </View>
-                        </TouchableOpacity>
+                        </Pressable>
 
                         {/* TTS Voice Selector */}
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
-                        <TouchableOpacity
+                        <Pressable
                           style={styles.modelSelector}
                           onPress={() => setShowTtsVoicePicker(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel('Open TTS voice picker')}
+                          accessibilityHint={`Currently ${getCurrentTtsVoiceDisplayName()}. Double tap to choose a different text-to-speech voice.`}
+                          accessibilityState={{ expanded: showTtsVoicePicker }}
+                          role="button"
+                          aria-label={createButtonAccessibilityLabel('Open TTS voice picker')}
+                          aria-expanded={showTtsVoicePicker}
                         >
                           <View style={styles.modelSelectorContent}>
-                            <Text style={styles.modelSelectorText}>
-                              {(() => {
-                                const ttsModel = remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
-                                const voices = getTtsVoicesForProvider(remoteSettings.ttsProviderId || 'openai', ttsModel);
-                                const voiceValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
-                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
-                                  : remoteSettings.geminiTtsVoice;
-                                const voice = voices.find(v => v.value === voiceValue);
-                                return voice?.label || voiceValue || 'Select voice';
-                              })()}
+                            <Text style={styles.modelSelectorText} numberOfLines={1} ellipsizeMode="tail">
+                              {getCurrentTtsVoiceDisplayName()}
                             </Text>
                             <Text style={styles.modelSelectorChevron}>▼</Text>
                           </View>
-                        </TouchableOpacity>
+                        </Pressable>
 
                         {/* OpenAI Speed Slider */}
                         {remoteSettings.ttsProviderId === 'openai' && (
@@ -2575,7 +2608,7 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select Model</Text>
-              <TouchableOpacity
+              <Pressable
                 style={styles.modalCloseButton}
                 onPress={() => {
                   setShowModelPicker(false);
@@ -2583,9 +2616,11 @@ export default function SettingsScreen({ navigation }: any) {
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="Close model picker"
+                role="button"
+                aria-label="Close model picker"
               >
                 <Text style={styles.modalCloseText}>Close</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* Search Input */}
@@ -2613,13 +2648,19 @@ export default function SettingsScreen({ navigation }: any) {
                 filteredModels.map((model) => {
                   const isSelected = getCurrentModelValue() === model.id;
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={model.id}
                       style={[
                         styles.modelItem,
                         isSelected && styles.modelItemActive,
                       ]}
                       onPress={() => handleModelSelect(model.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Choose model ${model.name}`)}
+                      accessibilityState={{ selected: isSelected }}
+                      role="button"
+                      aria-label={createButtonAccessibilityLabel(`Choose model ${model.name}`)}
+                      aria-selected={isSelected}
                     >
                       <View style={styles.modelItemContent}>
                         <Text style={[
@@ -2635,7 +2676,7 @@ export default function SettingsScreen({ navigation }: any) {
                       {isSelected && (
                         <Text style={styles.modelItemCheck}>✓</Text>
                       )}
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })
               )}
@@ -2664,27 +2705,35 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select Endpoint</Text>
-              <TouchableOpacity
+              <Pressable
                 style={styles.modalCloseButton}
                 onPress={() => setShowPresetPicker(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Close endpoint picker"
+                role="button"
+                aria-label="Close endpoint picker"
               >
                 <Text style={styles.modalCloseText}>Close</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <ScrollView style={styles.modelList}>
               {remoteSettings?.availablePresets?.map((preset) => {
                 const isSelected = remoteSettings.currentModelPresetId === preset.id;
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={preset.id}
                     style={[
                       styles.modelItem,
                       isSelected && styles.modelItemActive,
                     ]}
                     onPress={() => handlePresetChange(preset.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel(`Use endpoint ${preset.name}`)}
+                    accessibilityState={{ selected: isSelected }}
+                    role="button"
+                    aria-label={createButtonAccessibilityLabel(`Use endpoint ${preset.name}`)}
+                    aria-selected={isSelected}
                   >
                     <View style={styles.modelItemContent}>
                       <Text style={[
@@ -2698,7 +2747,7 @@ export default function SettingsScreen({ navigation }: any) {
                     {isSelected && (
                       <Text style={styles.modelItemCheck}>✓</Text>
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </ScrollView>
@@ -2723,14 +2772,16 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select TTS Model</Text>
-              <TouchableOpacity
+              <Pressable
                 style={styles.modalCloseButton}
                 onPress={() => setShowTtsModelPicker(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Close TTS model picker"
+                role="button"
+                aria-label="Close TTS model picker"
               >
                 <Text style={styles.modalCloseText}>Close</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <ScrollView style={styles.modelList}>
@@ -2740,7 +2791,7 @@ export default function SettingsScreen({ navigation }: any) {
                   : remoteSettings?.geminiTtsModel;
                 const isSelected = currentValue === model.value;
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={model.value}
                     style={[
                       styles.modelItem,
@@ -2753,6 +2804,12 @@ export default function SettingsScreen({ navigation }: any) {
                       handleRemoteSettingUpdate(key, model.value);
                       setShowTtsModelPicker(false);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel(`Choose TTS model ${model.label}`)}
+                    accessibilityState={{ selected: isSelected }}
+                    role="button"
+                    aria-label={createButtonAccessibilityLabel(`Choose TTS model ${model.label}`)}
+                    aria-selected={isSelected}
                   >
                     <View style={styles.modelItemContent}>
                       <Text style={[
@@ -2766,7 +2823,7 @@ export default function SettingsScreen({ navigation }: any) {
                     {isSelected && (
                       <Text style={styles.modelItemCheck}>✓</Text>
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </ScrollView>
@@ -2791,14 +2848,16 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select TTS Voice</Text>
-              <TouchableOpacity
+              <Pressable
                 style={styles.modalCloseButton}
                 onPress={() => setShowTtsVoicePicker(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Close TTS voice picker"
+                role="button"
+                aria-label="Close TTS voice picker"
               >
                 <Text style={styles.modalCloseText}>Close</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <ScrollView style={styles.modelList}>
@@ -2811,7 +2870,7 @@ export default function SettingsScreen({ navigation }: any) {
                     : remoteSettings?.geminiTtsVoice;
                   const isSelected = currentValue === voice.value;
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={voice.value}
                       style={[
                         styles.modelItem,
@@ -2824,6 +2883,12 @@ export default function SettingsScreen({ navigation }: any) {
                         handleRemoteSettingUpdate(key, voice.value);
                         setShowTtsVoicePicker(false);
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Choose TTS voice ${voice.label}`)}
+                      accessibilityState={{ selected: isSelected }}
+                      role="button"
+                      aria-label={createButtonAccessibilityLabel(`Choose TTS voice ${voice.label}`)}
+                      aria-selected={isSelected}
                     >
                       <View style={styles.modelItemContent}>
                         <Text style={[
@@ -2836,7 +2901,7 @@ export default function SettingsScreen({ navigation }: any) {
                       {isSelected && (
                         <Text style={styles.modelItemCheck}>✓</Text>
                       )}
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 });
               })()}
@@ -2869,7 +2934,7 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.importModalContainer}>
             <View style={styles.importModalHeader}>
               <Text style={styles.importModalTitle}>Import Profile</Text>
-              <TouchableOpacity
+              <Pressable
                 style={styles.modalCloseButton}
                 onPress={() => {
                   setShowImportModal(false);
@@ -2877,9 +2942,11 @@ export default function SettingsScreen({ navigation }: any) {
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="Close import profile modal"
+                role="button"
+                aria-label="Close import profile modal"
               >
                 <Text style={styles.modalCloseText}>Close</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <Text style={styles.importModalDescription}>
@@ -3468,11 +3535,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primary,
     },
     modelSelector: {
+      width: '100%',
+      minHeight: 48,
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: radius.md,
       backgroundColor: theme.colors.background,
       padding: spacing.md,
+      justifyContent: 'center',
     },
     modelSelectorContent: {
       flexDirection: 'row',
@@ -3523,9 +3593,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingRight: spacing.xs,
     },
     modalCloseButton: {
+      ...createMinimumTouchTargetStyle({ minSize: 44, horizontalMargin: 0, horizontalPadding: spacing.sm, verticalPadding: spacing.xs }),
+      minWidth: 64,
       borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
     },
     modalCloseText: {
       fontSize: 14,
@@ -3553,6 +3626,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
     },
     modelItem: {
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',

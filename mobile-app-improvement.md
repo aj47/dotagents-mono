@@ -14,11 +14,19 @@
 - [x] Connection setup flow, save validation, and inline connection actions
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
+- [x] Settings -> Text-to-Speech voice picker modal close/action surface in Expo Web (`390x844` mobile viewport)
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
 - [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
 - [x] Agent create/edit screen (`AgentEdit`) connection-type selection and mode-specific fields (source-backed in this worktree)
 - [x] Memory create/edit screen (`MemoryEdit`) importance selection section (source-backed in this worktree)
 - [x] Settings desktop partial-load warning / retry state (source-backed in this worktree)
+
+### Settings parity checklist vs desktop
+
+- [~] Desktop `Models -> Choose a Provider for Each Job`: mobile exposes the main STT / Agent-MCP / TTS provider selectors inside `Settings -> Desktop Settings`, but broader runtime coverage across every provider combination is still incomplete.
+- [~] Desktop `Models -> Speech & Voice Models`: mobile exposes TTS model and voice pickers plus the OpenAI-compatible endpoint/model selectors. This iteration improved the TTS voice picker close affordance on mobile web, but the picker trigger itself still needs deeper Expo Web semantics validation and the remaining model/preset pickers are only partially checked.
+- [ ] Desktop `Providers -> Provider Setup`: desktop still owns API keys, provider-specific base URLs, local engine downloads, and quick diagnostics; mobile currently covers remote server connection (`Connection settings`) but does not yet show verified parity for provider setup controls.
+- [-] Desktop-only window/general controls: launch-at-login, panel/window behavior, and desktop hotkeys are intentionally desktop-specific and should remain documented as non-mobile parity items rather than backlogged mobile gaps.
 
 ### Not yet checked
 
@@ -26,7 +34,7 @@
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
-- [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
+- [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker close-control pass (model picker, endpoint picker, agent selector, QR scanner, confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -39,6 +47,7 @@
 - [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
 - [x] MemoryEdit importance chips crowd narrow screens and communicate priority mostly through color-only state
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
+- [x] Settings -> Text-to-Speech voice picker showed a plain small `Close` action and weak picker semantics on narrow Expo Web
 
 ### Improved
 
@@ -51,21 +60,69 @@
 - [x] AgentEdit connection-type clarity, touch targets, and ACP/remote field mapping
 - [x] MemoryEdit importance selection clarity, touch targets, and priority guidance
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
+- [x] Settings -> Text-to-Speech voice picker close affordance plus source-level picker semantics/touch-target guardrails
 
 ### Verified
 
 - [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
 
 ### Blocked
 
-- [-] Live Expo Web inspection in this worktree while `node_modules` is absent (`expo: command not found`)
+- [ ] No active runtime blocker at the moment: Expo Web is available in this worktree after rebuilding `packages/shared`.
 
 ### Still uncertain
 
-- [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
+- [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 12: make the Settings TTS voice picker close action read like a real mobile control
+
+- Status: completed with live Expo Web evidence and targeted regression coverage
+- Area:
+  - `Settings -> Desktop Settings -> Text-to-Speech -> Voice picker` in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - narrow mobile web viewport (`390x844`) while the app is in the disconnected first-run state but `Desktop Settings` remains reachable
+- Why this area:
+  - the ledger still had modal/sheet surfaces weakly checked, and prior iterations had not yet done a live narrow-viewport pass on the TTS voice picker
+  - Expo Web inspection showed a concrete actionability issue that was worth shipping immediately: once the voice picker opened, the `Close` affordance read like tiny inline text instead of a clear button on a narrow screen
+- What was investigated:
+  - live Expo Web startup via the existing repo workflow, including rebuilding `packages/shared` so Expo Web could actually run in this worktree
+  - the disconnected Settings flow, `Text-to-Speech -> Voice picker`, `Connection settings`, and reachable narrow-viewport modal behavior at `390x844`
+  - current picker trigger / option / close-control markup and nearby mobile accessibility helper usage in `SettingsScreen.tsx`
+  - desktop settings parity references in `apps/desktop/src/renderer/src/pages/settings-models.tsx` and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+- Findings:
+  - the stale ledger blocker was wrong for this worktree: `node_modules` are present and Expo Web is available after `pnpm build:shared`
+  - the open TTS voice picker modal fit the viewport, but its `Close` action was visually weak on mobile web; the browser pass described it as plain small text before the change
+  - the disconnected initial state still blocks deeper desktop-backed settings surfaces, so this pass stayed intentionally focused on the reachable voice picker modal rather than thrashing on unavailable flows
+  - Expo Web DOM inspection still reports the picker trigger and option rows as generic focusable `DIV`s even after adding explicit picker props, so full web semantics parity remains uncertain and is tracked separately
+- Change made:
+  - converted the voice/model/endpoint picker triggers and picker rows in `SettingsScreen.tsx` to `Pressable` controls and added explicit source-level button/selected/expanded metadata for consistency with the rest of the mobile app
+  - upgraded modal `Close` actions into pill-style bordered controls with stronger minimum sizing so the reachable voice picker exit action reads as a real button on narrow mobile web
+  - kept the picker rows and trigger text constrained with minimum-height / truncation guardrails and extended `apps/mobile/tests/settings-overlay-density.test.js` to lock the new touch-target and semantics expectations
+- Verification:
+  - `pnpm build:shared`
+  - `pnpm --filter @dotagents/mobile web --port 8103 --clear`
+  - `node --test apps/mobile/tests/settings-overlay-density.test.js`
+  - live Expo Web automation at `390x844` with before/after screenshots for the open voice picker
+  - exploratory `pnpm --filter @dotagents/mobile exec tsc --noEmit` (still fails on pre-existing unrelated `apps/mobile/src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` errors)
+- Follow-up checks:
+  - continue the modal/sheet coverage map with the endpoint picker, model picker, agent selector, and QR flow now that Expo Web is working again
+  - investigate why Expo Web still exposes the picker trigger/rows as generic focusable `DIV`s despite the new source props; likely next step is comparing this screen with known-good `Pressable` semantics already verified elsewhere in Chat
+  - keep expanding the settings parity ledger toward desktop `Provider Setup` rather than repeatedly polishing the same TTS subsection
+
+Evidence
+- Evidence ID: settings-voice-picker-close-affordance
+- Scope: `Settings -> Desktop Settings -> Text-to-Speech -> Voice picker` close action on mobile web (`apps/mobile/src/screens/SettingsScreen.tsx`)
+- Commit range: TO_FILL_AFTER_COMMIT
+- Rationale: The TTS voice picker is a meaningful configuration surface that a mobile user can reach even before connecting to desktop. On a narrow viewport, the picker needed a clearer exit affordance so the modal state feels obviously actionable instead of relying on a tiny text-only close control.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--before--voice-picker-open--20260311.png` — `390x844` mobile viewport in Expo Web, open `Text-to-Speech -> Voice picker`. Before the change, the `Close` affordance reads as a plain text action in the picker header, which is easy to under-read on a narrow mobile surface.
+- Change: Converted the picker surfaces to `Pressable`, added explicit source-level role/expanded/selected metadata, and restyled modal close actions into bordered pill buttons with stronger minimum sizing. Added focused regression assertions in `apps/mobile/tests/settings-overlay-density.test.js`.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/settings-voice-picker-close-affordance--after--voice-picker-open--20260311.png` — same `390x844` viewport and view. The picker header now shows `Close` as a bordered pill-style control, which reads more clearly as a tappable mobile action while keeping the sheet compact.
+- Verification commands/run results: `pnpm build:shared` ✅; `pnpm --filter @dotagents/mobile web --port 8103 --clear` ✅ (Expo Web live at `http://localhost:8103`); `node --test apps/mobile/tests/settings-overlay-density.test.js` ✅ (4/4 passing); live Expo Web before/after screenshots captured ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ❌ with pre-existing unrelated `LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors.
+- Blockers/remaining uncertainty: The visual close-affordance improvement is verified, but Expo Web still reports the picker trigger and option rows as generic focusable `DIV`s rather than surfaced button semantics. That unresolved runtime-semantic gap is documented above and should be treated as a follow-up investigation, not as solved parity.
 
 ### 2026-03-09 — Iteration 11: make the Settings desktop warning readable and actionable on narrow screens
 
