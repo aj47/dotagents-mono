@@ -12,6 +12,7 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import { getMemoryEditRouteContext } from './edit-route-params';
 
 const IMPORTANCE_OPTIONS: { label: string; value: MemoryImportance; description: string }[] = [
   { label: 'Low', value: 'low', description: 'Background context the agent can use when space allows.' },
@@ -44,9 +45,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
-  const memoryFromRoute = route.params?.memory as Memory | undefined;
-  const memoryId = route.params?.memoryId as string | undefined;
-  const effectiveMemoryId = memoryId ?? memoryFromRoute?.id;
+  const { memoryFromRoute, effectiveMemoryId } = getMemoryEditRouteContext(route.params);
   const isEditing = !!effectiveMemoryId;
 
   const [formData, setFormData] = useState<MemoryFormData>(() =>

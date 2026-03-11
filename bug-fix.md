@@ -22,6 +22,8 @@
 - [x] Re-created the symlink-based mobile runtime workaround in this worktree and re-ran `pnpm --filter @dotagents/mobile web --port 8112` to look for a fresh concrete failure now that Metro watch folders are fixed.
 - [x] Reviewed `apps/mobile/metro.config.js`, `packages/shared/package.json`, and the Metro regression tests after Expo Web failed resolving `@dotagents/shared` from the symlinked dependency tree.
 - [x] Launched Expo Web on `http://localhost:8120`, reproduced the browser-history failure between `Settings` and `Connection`, and reviewed `apps/mobile/App.tsx` for the missing web linking config.
+- [x] Reviewed the unresolved QA findings for `mobile-web-browser-history`, especially the weak route-history regression coverage and the unverified param-heavy linking scope.
+- [x] Directly confirmed via React Navigation's `getPathFromState()` / `getStateFromPath()` that `MemoryEdit` and `LoopEdit` generated polluted Expo Web URLs like `/memories/edit?memoryId=memory-123&memory=%5Bobject%20Object%5D` and `/loops/edit?loopId=loop-123&loop=%5Bobject%20Object%5D`.
 
 ## Not yet checked
 
@@ -34,6 +36,7 @@
 - [x] Mobile Expo Web `Scan QR Code` failed silently when browser camera permission was denied: clicking the button left the user on the same Connection screen with no scanner modal and no visible error.
 - [x] Mobile Expo Web failed again in the symlinked-worktree setup even after the watch-folder fix: Metro resolved `@dotagents/shared` through the sibling worktree's package link, logged repeated invalid `exports` warnings for the sibling `packages/shared/dist/index.mjs`, and then aborted with `Unable to resolve "@dotagents/shared" from "apps/mobile/src/store/config.ts"`.
 - [x] Mobile Expo Web navigation from `Settings` to `Connection` changed the visible screen but left the browser URL at `/`, so browser Back did nothing and normal web history navigation was broken.
+- [x] Mobile Expo Web edit routes for existing memories and loops serialized full route objects into the URL as `memory=%5Bobject%20Object%5D` / `loop=%5Bobject%20Object%5D`; on reload or deep-link parse those truthy strings prevented `MemoryEditScreen` and `LoopEditScreen` from falling back to the intended `memoryId` / `loopId` fetch path.
 
 ## Fixed
 
@@ -43,6 +46,7 @@
 - [x] QA round 2 remediation tightened `resolveQrScannerActivation()` to return only the permission error actually consumed by the screen, removing the unused `shouldShowScanner` plumbing while keeping the visible denied-permission recovery behavior unchanged.
 - [x] `apps/mobile/metro.config.js` now pins `@dotagents/*` workspace packages to the current worktree through `resolver.extraNodeModules`, so symlinked `node_modules` trees no longer send Expo Web to a sibling worktree's stale `@dotagents/shared` package when bundling the mobile app.
 - [x] `apps/mobile/App.tsx` now passes a web-only React Navigation linking config built in `apps/mobile/src/navigation/navigationLinking.ts`, so Expo Web writes stable screen paths like `/connection` into browser history and the browser Back button can return from `Connection` to `Settings`.
+- [x] `apps/mobile/src/screens/edit-route-params.ts` now strips non-serializable memory/loop objects from web edit navigation, while `MemoryEditScreen.tsx` and `LoopEditScreen.tsx` now ignore stale stringified route-object params and fall back to loading the selected record by ID.
 
 ## Verified
 
@@ -68,6 +72,10 @@
 - [x] `git diff --check`
 - [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports unrelated pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors, but the temporary new `App.tsx` linking type error introduced during this iteration was removed before the final verification run.
 - [x] Live Expo Web regression check on `http://localhost:8120` now changes the browser path from `/` to `/connection` on `Connection settings`, and browser Back returns the app to `Settings` at `/`.
+- [x] `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` now exercises real React Navigation URL round-trips for `ConnectionSettings`, `AgentEdit`, `MemoryEdit`, and `LoopEdit`, including the web-only `memoryId` / `loopId` serialization fix.
+- [x] `pnpm --filter @dotagents/mobile test`
+- [x] `pnpm --filter @dotagents/mobile exec tsc --noEmit` still reports only the pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; no new type errors from this edit-route-param fix remain.
+- [x] `git diff --check`
 
 ## Blocked
 
@@ -75,6 +83,7 @@
 - [ ] No remaining blocker for this iteration's selected QR permission-handling bug.
 - [ ] No remaining blocker for this iteration's selected workspace-package resolution bug.
 - [ ] No remaining blocker for this iteration's selected Expo Web browser-history bug.
+- [ ] No remaining blocker for this iteration's selected Expo Web edit-route-param serialization bug.
 
 ## Still uncertain
 
@@ -83,6 +92,7 @@
 - [ ] Whether end-to-end QR decoding works reliably on Expo Web with a real camera feed, not just modal open/close and permission handling.
 - [ ] Whether Expo Web now surfaces any remaining in-app runtime warnings or user-facing mobile flow regressions once the current symlinked worktree can bundle again.
 - [ ] Whether deeper Expo Web deep-link/refresh cases for edit/detail screens with route params need richer route serialization beyond the fixed `Settings` ↔ `Connection` browser-history path.
+- [ ] Whether live Expo Web refresh/back navigation for memory and loop edit screens behaves correctly against a configured remote settings backend; this iteration verified the exact serializer/parser bug and screen fallback logic without re-running a full remote-backed browser session.
 
 ## Candidate leads
 
@@ -140,3 +150,15 @@
 - After evidence: `docs/aloops-evidence/bug-fix-loop/mobile-web-browser-history--after--connection-screen--20260311.png` (same `1440x900` viewport and same Connection screen surface). After the fix, browser automation shows the app now navigates to `/connection` when the Connection screen opens, giving the browser a real history entry so pressing browser Back returns the app to `Settings` at `/`.
 - Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` ✅ (2 tests passing for the web path mapping helper); `pnpm --filter @dotagents/mobile test` ✅ (mobile node + Vitest suites passing after adding the new regression file); `git diff --check` ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports unrelated pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors, but the earlier new `App.tsx` linking type error introduced during development no longer appears; live Expo Web validation at `http://localhost:8120` ✅ now changes `/` → `/connection` on click and browser Back returns to `/`.
 - Blockers/remaining uncertainty: Verified the exact Settings→Connection browser-history regression at runtime. I did not expand this iteration into broader deep-link/refresh behavior for edit/detail screens that may need route params, so those wider Expo Web navigation cases remain unverified.
+
+### Evidence ID: mobile-web-edit-route-params
+
+- Scope: `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/screens/MemoryEditScreen.tsx`, `apps/mobile/src/screens/LoopEditScreen.tsx`, and `apps/mobile/src/navigation/navigationLinking.test.ts` for Expo Web edit-route serialization
+- Commit range: `2816ce82c61cffb208c34c9d8c02ab2d62dad298..6b4efbe0d2294e1517e5c8099433bb10f3474de9`
+- Rationale: After the earlier browser-history fix, Expo Web started assigning URLs to deeper edit screens too. For existing memories and loops, those navigations included whole route objects, so React Navigation serialized them as `memory=%5Bobject%20Object%5D` / `loop=%5Bobject%20Object%5D`. A copied or refreshed URL could then restore a truthy string instead of a real object, causing the edit screens to skip their ID-based fetch path and risk loading the wrong state for a real user edit flow.
+- QA feedback: Addresses the outstanding QA findings on `mobile-web-browser-history`: the prior regression coverage only checked object shapes instead of real URL round-trips, and it broadened web linking into param-heavy edit screens without verifying that those params serialized safely.
+- Before evidence: No curated screenshot for this iteration because the runtime profile is `none` and the bug was directly confirmed through the actual React Navigation serializer/parser APIs. Running `node --input-type=module` against `@react-navigation/core` reproduced `/memories/edit?memoryId=memory-123&memory=%5Bobject%20Object%5D` and `/loops/edit?loopId=loop-123&loop=%5Bobject%20Object%5D`. Source inspection then showed `MemoryEditScreen.tsx` and `LoopEditScreen.tsx` treated any truthy `route.params.memory` / `route.params.loop` as a valid object, which would block the fallback fetch-by-ID path after a reload or pasted deep link.
+- Change: Added `apps/mobile/src/screens/edit-route-params.ts` to build web-safe memory/loop edit params and to coerce route params back into trusted object-or-ID context. `SettingsScreen.tsx` now passes only `memoryId` / `loopId` on web, while `MemoryEditScreen.tsx` and `LoopEditScreen.tsx` ignore stale stringified object params and fall back to loading the selected record by ID. `navigationLinking.test.ts` now exercises real `getPathFromState()` / `getStateFromPath()` round-trips and asserts that the generated web edit URLs no longer contain `[object Object]`.
+- After evidence: No screenshot for this runtime-free iteration. The targeted Vitest regression now proves the exact observable improvement: generated web edit URLs are `/memories/edit?memoryId=memory-123` and `/loops/edit?loopId=loop-123` with no serialized object payload, and stale parsed params like `memory: "[object Object]"` / `loop: "[object Object]"` are ignored so the screens recover via their ID-based load path instead of trusting broken route data.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/navigation/navigationLinking.test.ts` ✅ (7 tests passing, including React Navigation serializer/parser round-trips plus stale-param coercion checks); `pnpm --filter @dotagents/mobile test` ✅ (70 node tests + 62 Vitest assertions passing); `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still reports only the pre-existing `src/screens/LoopEditScreen.tsx` `ApiAgentProfile.guidelines` type errors; `git diff --check` ✅.
+- Blockers/remaining uncertainty: I did not re-run a full live Expo Web memory/loop edit session against a configured remote settings backend in this iteration, so the evidence here is serializer/parser-based rather than screenshot-based. The exact bug that was confirmed and fixed is the polluted edit URL + stale-route-param path, not broader end-to-end server-backed editing.

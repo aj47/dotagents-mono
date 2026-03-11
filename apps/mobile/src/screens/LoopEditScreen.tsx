@@ -21,6 +21,7 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import { getLoopEditRouteContext } from './edit-route-params';
 
 type LoopFormData = {
   name: string;
@@ -43,9 +44,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
-  const loopFromRoute = route.params?.loop as Loop | undefined;
-  const loopId = route.params?.loopId as string | undefined;
-  const effectiveLoopId = loopId ?? loopFromRoute?.id;
+  const { loopFromRoute, effectiveLoopId } = getLoopEditRouteContext(route.params);
   const isEditing = !!effectiveLoopId;
 
   const [formData, setFormData] = useState<LoopFormData>(() =>

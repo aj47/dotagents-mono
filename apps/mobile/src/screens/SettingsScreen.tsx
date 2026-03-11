@@ -22,6 +22,7 @@ import {
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
+import { buildLoopEditNavigationParams, buildMemoryEditNavigationParams } from './edit-route-params';
 import Slider from '@react-native-community/slider';
 
 // STT Provider Options
@@ -687,10 +688,10 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Navigate to memory edit screen
   const handleMemoryEdit = useCallback((memory?: Memory) => {
-    navigation.navigate('MemoryEdit', {
-      memoryId: memory?.id,
-      memory,
-    });
+    navigation.navigate(
+      'MemoryEdit',
+      buildMemoryEditNavigationParams(memory, Platform.OS === 'web')
+    );
   }, [navigation]);
 
   // Handle agent profile toggle
@@ -733,10 +734,10 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Navigate to loop edit screen
   const handleLoopEdit = useCallback((loop?: Loop) => {
-    navigation.navigate('LoopEdit', {
-      loopId: loop?.id,
-      loop,
-    });
+    navigation.navigate(
+      'LoopEdit',
+      buildLoopEditNavigationParams(loop, Platform.OS === 'web')
+    );
   }, [navigation]);
 
   const handleLoopDelete = useCallback((loop: Loop) => {
