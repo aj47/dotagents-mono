@@ -20,7 +20,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
 import { memoryService } from "./memory-service"
 import { messageQueueService } from "./message-queue-service"
-import { setSessionUserResponse } from "./session-user-response-store"
+import { getSessionUserResponse, setSessionUserResponse } from "./session-user-response-store"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -798,7 +798,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  mark_work_complete: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+	  mark_work_complete: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (typeof args.summary !== "string" || args.summary.trim() === "") {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "summary must be a non-empty string" }) }],
@@ -817,6 +817,13 @@ const toolHandlers: Record<string, ToolHandler> = {
     const confidence = typeof args.confidence === "number"
       ? Math.max(0, Math.min(1, args.confidence))
       : undefined
+	    const hasRecordedUserResponse = !!(
+	      context.sessionId &&
+	      getSessionUserResponse(context.sessionId)?.trim().length
+	    )
+	    const message = hasRecordedUserResponse
+	      ? "Completion signal recorded. The final user-facing response is already stored, so stop here unless a tool genuinely needs recovery."
+	      : "Completion signal recorded. Call respond_to_user next with the final user-facing response, then stop."
 
     return {
       content: [
@@ -827,7 +834,7 @@ const toolHandlers: Record<string, ToolHandler> = {
             markedComplete: true,
             summary,
             confidence,
-            message: "Completion signal recorded. Provide the final user-facing response next.",
+	            message,
           }, null, 2),
         },
       ],

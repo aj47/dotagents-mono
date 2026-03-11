@@ -30,7 +30,7 @@ vi.mock("./agent-profile-service", () => ({ agentProfileService: { getCurrentPro
 vi.mock("./skills-service", () => ({ skillsService: { getSkills: vi.fn(() => []), getEnabledSkillsInstructionsForProfile: vi.fn(() => undefined) } }))
 vi.mock("./agent-low-context-guard", () => ({ getLowContextPromptGuardResponse: vi.fn(() => null) }))
 
-describe("llm courtesy completion bypass", () => {
+describe("llm completion verification bypass", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -70,6 +70,53 @@ describe("llm courtesy completion bypass", () => {
     expect(result.content).toBe("You're welcome, AJ. Anytime.")
     expect(executeToolCall).toHaveBeenCalledTimes(2)
     expect(mockMakeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mockVerifyCompletionWithFetch).not.toHaveBeenCalled()
+  })
+
+  it("stops after explicit respond_to_user + mark_work_complete instead of reopening the task", async () => {
+    let storedResponse: string | undefined
+    mockGetSessionUserResponse.mockImplementation(() => storedResponse)
+    mockVerifyCompletionWithFetch.mockResolvedValue({
+      isComplete: false,
+      confidence: 0.12,
+      missingItems: ["Do not reopen after the final user response is already recorded."],
+      reason: "A recovered earlier tool warning still appears in the transcript.",
+    })
+    mockMakeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [{ name: "execute_command", arguments: { command: "cat ~/Documents/agent-notes/email/email-triage-plan.md" } }] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [{ name: "respond_to_user", arguments: { text: "Done — triaged 10 unread unlabeled emails.", images: [] } }] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [{ name: "mark_work_complete", arguments: { summary: "Triaged 10 unread unlabeled emails.", confidence: 0.96 } }] })
+
+    const executeToolCall = vi.fn(async (toolCall: MCPToolCall): Promise<MCPToolResult> => {
+      if (toolCall.name === "respond_to_user") storedResponse = String(toolCall.arguments.text)
+      return { content: [{ type: "text", text: '{"success":true}' as const }], isError: false }
+    })
+
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const result = await processTranscriptWithAgentMode(
+      "Run the same thing again so we label more.",
+      [
+        { name: "execute_command", description: "Execute a shell command", inputSchema: { type: "object" } },
+        { name: "respond_to_user", description: "Respond to the user", inputSchema: { type: "object" } },
+        { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object" } },
+      ],
+      executeToolCall,
+      6,
+      undefined,
+      "conversation-1",
+      "session-1",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Done — triaged 10 unread unlabeled emails.")
+    expect(executeToolCall.mock.calls.map(([toolCall]) => toolCall.name)).toEqual([
+      "execute_command",
+      "respond_to_user",
+      "mark_work_complete",
+    ])
+    expect(mockMakeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
     expect(mockVerifyCompletionWithFetch).not.toHaveBeenCalled()
   })
 })

@@ -2746,11 +2746,13 @@ Return ONLY JSON per schema.`,
       const hasToolCalls = llmResponse.toolCalls && llmResponse.toolCalls.length > 0
       const hasMinimalContent = lastAssistantContent.trim().length < 50
 
-      // Skip summary generation if respond_to_user already provided a response (#1084)
-      const existingUserResponse = getSessionUserResponse(currentSessionId)
+	      // Skip summary generation if respond_to_user already provided a response (#1084)
+	      const existingUserResponse = getSessionUserResponse(currentSessionId)
+	      const explicitUserResponse = existingUserResponse?.trim().length ? existingUserResponse : undefined
+	      const hasExplicitUserResponse = !!explicitUserResponse
       let respondToUserAlreadyInHistory = false
-      if (existingUserResponse?.trim().length) {
-        finalContent = existingUserResponse
+	      if (hasExplicitUserResponse) {
+	        finalContent = explicitUserResponse
         conversationHistory.push({
           role: "assistant",
           content: finalContent,
@@ -2880,14 +2882,19 @@ Return ONLY JSON per schema.`,
 
 		      const shouldSkipVerificationForCourtesyOnlyRun = shouldSkipCompletionVerificationForCourtesyRun(
 		        transcript,
-		        existingUserResponse?.trim().length ? existingUserResponse : finalContent,
+		        explicitUserResponse ?? finalContent,
 		        substantiveToolsExecutedInSession,
 		      )
-		      if (shouldSkipVerificationForCourtesyOnlyRun) {
+		      const shouldSkipVerificationAfterExplicitCompletion = hasExplicitUserResponse
+		      if (shouldSkipVerificationForCourtesyOnlyRun || shouldSkipVerificationAfterExplicitCompletion) {
 		        skipPostVerifySummary2 = true
 		      }
 
-		      if (config.mcpVerifyCompletionEnabled && !shouldSkipVerificationForCourtesyOnlyRun) {
+		      if (
+		        config.mcpVerifyCompletionEnabled &&
+		        !shouldSkipVerificationForCourtesyOnlyRun &&
+		        !shouldSkipVerificationAfterExplicitCompletion
+		      ) {
 	        const verifyStep = createProgressStep(
 	          "thinking",
 	          "Verifying completion",
