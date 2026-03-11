@@ -312,12 +312,12 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.closeButton}
+            style={[styles.closeButton, { top: Math.max(insets.top + spacing.sm, spacing.lg) }]}
             onPress={() => setShowScanner(false)}
             accessibilityRole="button"
             accessibilityLabel="Close QR scanner"
           >
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Text style={styles.closeButtonText}>Close scanner</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -473,16 +473,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       textAlign: 'center',
     },
     closeButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
       position: 'absolute',
-      top: 60,
-      right: 20,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      padding: 12,
-      borderRadius: radius.lg,
+      right: spacing.md,
+      backgroundColor: 'rgba(15,23,42,0.78)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.24)',
+      borderRadius: radius.full,
     },
     closeButtonText: {
       color: '#fff',
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: '600',
     },
   });

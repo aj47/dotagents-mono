@@ -12,7 +12,7 @@
 
 - [x] Settings root screen and nested back navigation
 - [x] Connection setup flow, save validation, and inline connection actions
-- [x] Connection Settings screen back navigation, header affordance, QR scanner modal, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
+- [x] Connection Settings screen back navigation, header affordance, QR scanner modal close/action surface, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
@@ -38,7 +38,7 @@
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
 - [ ] Session loading, error, reconnect, and sync states
 - [ ] Remaining disconnected/offline chat states after entering `Chats` beyond the new-chat text-send guard (existing-chat retry/reconnect, mic/handsfree affordances, and sync states)
-- [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and initial Connection Settings QR/save pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
+- [ ] Remaining modal/sheet surfaces on narrow web viewports beyond the Settings TTS voice picker and the Connection Settings QR scanner close pass (model picker, endpoint picker, agent selector, broader destructive confirmations)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
 ### Reproduced
@@ -56,6 +56,7 @@
 - [x] Settings -> Text-to-Speech voice picker showed a plain small `Close` action and weak picker semantics on narrow Expo Web
 - [x] Settings home disabled `Go to Chats` on the disconnected default screen, stranding users away from saved chats/history with no explanation
 - [x] Disconnected `Chats -> + New Chat` let users type and attempt `Send` with no usable connection config, then surfaced a raw 401-style failure plus generic retry/internet guidance
+- [x] Connection Settings QR scanner modal close button measured about `66.7x42` CSS px in Expo Web, sat low with a hardcoded `top: 60`, and read like a generic overlay dismiss instead of a tuned scanner escape action
 
 ### Improved
 
@@ -72,6 +73,7 @@
 - [x] Settings -> Text-to-Speech voice picker close affordance plus source-level picker semantics/touch-target guardrails
 - [x] Settings home Chats access and offline-state explanation on the disconnected default screen
 - [x] Disconnected `Chats -> + New Chat` composer honesty, blocked-send behavior, and first-run guidance before failure
+- [x] Connection Settings QR scanner close affordance clarity, safe-area placement, and 44px touch-target coverage
 
 ### Verified
 
@@ -83,6 +85,7 @@
 - [x] Executable vitest coverage plus a fresh Expo Web tap-through recheck for the disconnected `Settings -> Open Chats` CTA on mobile web
 - [x] Live Expo Web before/after evidence plus focused send-availability coverage for disconnected `Chats -> + New Chat` at `390x844`
 - [x] QA follow-up recapture for the disconnected Settings-home CTA and disconnected `Chats -> + New Chat` evidence now uses matched `390x844` Expo Web screenshots plus corrected authored commit provenance
+- [x] Live Expo Web before/after evidence plus focused connection-settings density coverage for the QR scanner modal close affordance at `390x844`
 
 ### Blocked
 
@@ -91,11 +94,52 @@
 ### Still uncertain
 
 - [ ] Expo Web still reports the TTS voice trigger and picker rows as generic focusable `DIV`s despite the new source-level picker semantics; verify whether this is a React Native Web limitation or a control-specific wiring gap before claiming full web a11y parity.
-- [ ] The Connection Settings QR scanner close button measured about `66.7x43` CSS px in Expo Web during this pass, so the close affordance likely still deserves its own touch-target check before calling that modal fully tuned.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 - [ ] The disconnected new-chat text-send path is now guarded, but mic/handsfree send affordances plus existing-chat retry/reconnect states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 17: make the QR scanner modal close control feel like a real mobile action
+
+- Status: completed with live Expo Web before/after evidence, a focused scanner-dismiss affordance fix, and targeted regression coverage
+- Area:
+  - `Settings -> Connection settings -> Scan QR Code` modal close control in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - narrow mobile web viewport (`390x844`) for the QR scanner modal close/action surface and safe-area placement
+- Why this area:
+  - even though `Connection Settings` had prior runtime coverage, the ledger still marked the QR scanner close control as uncertain because the live Expo Web button measured slightly under the 44px height bar and had never received its own dedicated modal-close pass
+  - that made this a justified revisit of an unfinished modal surface, not another generic polish loop on already-approved header chrome
+- What was investigated:
+  - live Expo Web at `390x844` through `Settings -> Connection settings -> Scan QR Code`
+  - the current QR scanner close control wording, placement, and measured touch target on web
+  - nearby mobile modal-close patterns already used elsewhere in `SettingsScreen.tsx`
+- Findings:
+  - the QR scanner modal opened reliably, but the visible `Close` control measured about `66.7x42` CSS px in Expo Web, leaving the height just under the 44px touch-target floor
+  - the button was pinned with a hardcoded `top: 60`, which left it lower than necessary on web and less adaptive to real safe-area/container conditions
+  - the visible copy was generic enough that the control read more like a plain overlay dismiss than a scanner-specific mobile action
+- Change made:
+  - updated the QR scanner close control to use the shared `createMinimumTouchTargetStyle` helper with a 44px minimum target, a bordered pill treatment, and a safe-area-aware top offset
+  - changed the visible label from `Close` to `Close scanner` so the dismiss action reads more explicitly in-context on narrow screens while preserving the existing `Close QR scanner` accessibility label
+  - extended `apps/mobile/tests/connection-settings-density.test.js` to lock the explicit label, safe-area positioning, and minimum-target styling
+- Verification:
+  - `pnpm --filter @dotagents/mobile web --port 8132 --clear`
+  - `node --test apps/mobile/tests/connection-settings-density.test.js`
+  - `git diff --check`
+  - live Expo Web automation at `390x844` CSS viewport with before/after screenshots of the QR scanner modal and DOM measurement of the close control
+- Follow-up checks:
+  - widen modal/sheet coverage next to the remaining model picker, endpoint picker, agent selector, and destructive confirmation surfaces instead of revisiting `Connection Settings` again without a fresh regression signal
+  - continue the offline coverage map with existing-chat retry/reconnect or handsfree disconnected states once the next modal pass is no longer the highest-value unchecked item
+
+Evidence
+- Evidence ID: connection-settings-qr-close-affordance
+- Scope: `Settings -> Connection settings -> Scan QR Code` modal close control on mobile web (`apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/tests/connection-settings-density.test.js`)
+- Commit range: e19461200e750340f37d895e20d72555297ea4e9..PENDING_HANDOFF_COMMIT
+- Rationale: The QR scanner is a primary connection-setup affordance, and the only obvious way out of that modal was still slightly undersized and weakly tuned on narrow mobile web. Tightening the dismiss control removes a small but real actionability risk in a setup flow users may need repeatedly.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-close-affordance--before--qr-scanner-modal--20260311.png` — `390x844` CSS viewport on Expo Web. Before this change, the scanner modal showed a generic `Close` pill about `66.7x42` CSS px at roughly `top: 60`, which left the main escape action just under the 44px touch-target bar and visually less specific than the scanner context deserved.
+- Change: Updated the QR scanner modal close control to use the shared minimum-touch-target helper, moved it to a safe-area-aware top offset, strengthened the pill styling, and changed the visible text to `Close scanner` while keeping the existing accessibility label.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-qr-close-affordance--after--qr-scanner-modal--20260311.png` — same `390x844` CSS viewport on Expo Web. The close affordance now sits at `top: 16`, renders as a clearer bordered pill labeled `Close scanner`, and measures about `113.7x44` CSS px, so the scanner exit control reads as a deliberate mobile action and now clears the 44px minimum height bar.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile web --port 8132 --clear` ✅ (Expo Web served `http://localhost:8132` and reloaded the updated mobile screen); `node --test apps/mobile/tests/connection-settings-density.test.js` ✅ (3/3 passing, including the new close-control guardrail); `git diff --check` ✅; live Expo Web browser automation at `390x844` ✅ with before/after screenshots saved plus measured close-control geometry changing from about `66.7x42` before to `113.7x44` after.
+- Blockers/remaining uncertainty: This pass closes the QR scanner modal-close gap, but the broader modal/sheet checklist is still incomplete. The remaining model picker, endpoint picker, agent selector, destructive confirmation surfaces, and the disconnected existing-chat/handsfree states still need dedicated runtime coverage before those areas can be claimed as fully checked.
 
 ### 2026-03-11 — QA remediation 3: recapture matched offline evidence and correct iteration 16 provenance
 
