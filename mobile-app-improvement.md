@@ -20,6 +20,7 @@
 - [x] Settings home disconnected-state Chats entry point and offline helper copy in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` composer helper copy, blocked send state, and pre-send guidance in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` handsfree activation blocker and draft-fallback guidance in Expo Web (`390x844` mobile viewport)
+- [x] Disconnected `Settings -> Hands-free Voice Mode on -> Open Chats -> + New Chat` persisted handsfree-enabled state now stays setup-required instead of auto-listening in Expo Web (`390x844` mobile viewport)
 - [x] Disconnected `Chats -> + New Chat` empty debug-info state on Expo Web no longer emits repeated `Unexpected text node` console errors at `390x844`
 - [x] Settings -> Text-to-Speech voice picker modal close/action surface in Expo Web (connected desktop-settings runtime, `390x844` mobile viewport)
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
@@ -65,6 +66,7 @@
 - [x] Settings home disabled `Go to Chats` on the disconnected default screen, stranding users away from saved chats/history with no explanation
 - [x] Disconnected `Chats -> + New Chat` let users type and attempt `Send` with no usable connection config, then surfaced a raw 401-style failure plus generic retry/internet guidance
 - [x] Disconnected `Chats -> + New Chat` let users enable handsfree voice mode, enter an active listening state, and see speech-ready copy even when the same screen already knew sending was blocked by missing connection config
+- [x] Disconnected `Settings -> Hands-free Voice Mode on -> Open Chats -> + New Chat` still auto-entered a listening-looking state on Expo Web, showing `Listening...`, a busy `🎙️ Pause` mic, and voice-active live-region copy even though chat remained disconnected and send-blocked
 - [x] Disconnected `Chats -> + New Chat` emitted repeated Expo Web `Unexpected text node: . A text node cannot be a child of a <View>.` errors because blank `debugInfo` used string short-circuit rendering under a `View`
 - [x] Connection Settings QR scanner modal close button measured about `66.7x42` CSS px in Expo Web, sat low with a hardcoded `top: 60`, and read like a generic overlay dismiss instead of a tuned scanner escape action
 - [x] Connection Settings `Scan QR Code` did nothing visibly on Expo Web: no scanner modal, no close control, no inline blocker, and no browser-specific permission guidance after the tap
@@ -87,6 +89,7 @@
 - [x] Settings home Chats access and offline-state explanation on the disconnected default screen
 - [x] Disconnected `Chats -> + New Chat` composer honesty, blocked-send behavior, and first-run guidance before failure
 - [x] Disconnected `Chats -> + New Chat` handsfree activation honesty and disconnected draft fallback guidance
+- [x] Persisted/disconnected handsfree-on chat entry now stays honest: no fake listening overlay, no busy mic state, and draft-only guidance remains visible while setup is still required
 - [x] Disconnected `Chats -> + New Chat` empty debug-info state no longer produces Expo Web empty-text-node console noise on open or while typing
 - [x] Connection Settings QR scanner close affordance clarity, safe-area placement, and 44px touch-target coverage
 - [x] Connection Settings QR scanner web launch now opens an explicit browser-permission guidance sheet with a visible escape action instead of behaving like a dead tap
@@ -103,6 +106,7 @@
 - [x] Executable vitest coverage plus a fresh Expo Web tap-through recheck for the disconnected `Settings -> Open Chats` CTA on mobile web
 - [x] Live Expo Web before/after evidence plus focused send-availability coverage for disconnected `Chats -> + New Chat` at `390x844`
 - [x] Live Expo Web before/after evidence plus focused handsfree/chat accessibility coverage for disconnected `Chats -> + New Chat` at `390x844`
+- [x] QA remediation pass for disconnected `Settings -> Hands-free Voice Mode on -> Open Chats -> + New Chat` now has matched `390x844` Expo Web before/after evidence plus focused source-backed draft-only/runtime guardrails
 - [x] QA follow-up recapture for the disconnected Settings-home CTA and disconnected `Chats -> + New Chat` evidence now uses matched `390x844` Expo Web screenshots plus corrected authored commit provenance
 - [x] Live Expo Web before/after evidence plus focused chat regression coverage for the disconnected `Chats -> + New Chat` empty-debug-info runtime warning at `390x844`
 - [x] Live Expo Web before/after evidence plus focused connection-settings density coverage for the QR scanner modal close affordance at `390x844`
@@ -118,11 +122,56 @@
 - [ ] The disconnected chat agent selector blocker is now actionable, but the fully connected agent list contents plus ACP main-agent switching still need their own live runtime pass before agent-selection coverage is considered complete.
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 - [ ] The disconnected new-chat text-send path and default handsfree activation path are now guarded, but existing-chat retry/reconnect and sync states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
-- [ ] The new disconnected handsfree blocker was verified from the default handsfree-off state; a follow-up pass with a previously saved handsfree-on config would confirm the fallback subtitle remains honest in that persisted edge case.
 - [ ] The disconnected `Chats -> + New Chat` empty-debug-info warning is fixed, but unrelated offline/sync console noise (`401 Unauthorized`, `ERR_CONNECTION_REFUSED`, `syncService` fetch failures) still appears during Expo Web chat passes and needs its own dedicated investigation before claiming a clean disconnected runtime.
 - [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 23: stop persisted handsfree-on chat from looking live while disconnected
+
+- Status: completed with live Expo Web QA before/after evidence, a focused disconnected-chat runtime fix, and targeted regression coverage
+- Area:
+  - disconnected `Settings -> Hands-free Voice Mode on -> Open Chats -> + New Chat` persisted-state path in `apps/mobile/src/screens/ChatScreen.tsx`
+  - disconnected handsfree accessibility copy in `apps/mobile/src/lib/accessibility.ts`
+  - tracked `390x844` Expo Web evidence for the exact QA-remediation path
+- Why this area:
+  - revisiting disconnected chat was justified by active unresolved QA, not by polish: the review stack still showed a realistic persisted/settings-enabled handsfree path where chat looked actively listening even while disconnected
+  - fixing that path had higher value than widening into a new surface, because the earlier handsfree honesty claim was too broad until the saved-setting entry path actually matched it in runtime
+- What was investigated:
+  - live Expo Web at `390x844` following the exact reviewer path: enable `Hands-free Voice Mode` on Settings/home, open `Chats`, then create `+ New Chat` while still disconnected
+  - the final disconnected chat state after that path, including the header toggle state, listening overlay, live-region copy, mic label, and handsfree status chip
+  - `ChatScreen` and voice accessibility helpers to confirm whether the recognizer/runtime still keyed off the saved setting instead of actual disconnected send availability
+- Findings:
+  - QA was correct: with `Hands-free Voice Mode` enabled from Settings first, disconnected `+ New Chat` still showed a misleading live state on Expo Web, including `Listening...`, a busy `🎙️ Pause` mic, checked handsfree toggle, and voice-active live-region copy even though the same screen still blocked sending
+  - the root issue was that chat keyed handsfree runtime behavior off the saved `config.handsFree` flag, so entering chat with the setting already on could auto-start listening even when no connection config existed
+  - the smallest honest fix was to keep the saved setting visible, but gate the actual handsfree runtime behind real connection availability and treat disconnected voice capture as a draft-only fallback instead of a live handsfree session
+- Change made:
+  - split saved handsfree state from runtime-enabled handsfree state in `ChatScreen`, so disconnected chat no longer auto-starts listening or renders pause/listening affordances just because the setting was already enabled elsewhere
+  - added a disconnected draft-only voice fallback that inserts dictated text into the composer instead of implying automatic send semantics when handsfree is enabled but setup is still missing
+  - updated handsfree/composer/live-region accessibility copy so the disconnected persisted-setting path now says `hold to dictate a draft` / `setup required` instead of implying live listening
+  - extended `apps/mobile/src/lib/accessibility.test.ts` and `apps/mobile/tests/chat-screen-handsfree-density.test.js` to lock the new runtime gate, draft-only fallback, and QA-remediation copy
+- Verification:
+  - `pnpm --filter @dotagents/mobile exec vitest run src/lib/accessibility.test.ts`
+  - `node --test apps/mobile/tests/chat-screen-handsfree-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js`
+  - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--before--settings-enabled-new-chat--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--after--settings-enabled-new-chat--20260311.png`
+  - `git diff --check`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` (still reports the same pre-existing unrelated errors in `LoopEditScreen.tsx` and `settings-home-chats-cta.test.tsx`; no new type error from this handsfree fix surfaced before those failures stopped the run)
+  - live Expo Web browser automation at `390x844` confirming the pre-fix path reproduced the misleading listening state and the post-fix path stayed setup-required with a non-busy `🎤 Hold` mic plus `Voice input ready.` live-region output
+- Follow-up checks:
+  - continue widening disconnected chat coverage with existing-chat retry/reconnect and sync states rather than revisiting this same new-chat path again without fresh evidence
+  - return to the still-unchecked connected agent-selector list/model/provider settings surfaces once a connected runtime is available, since settings parity breadth remains a bigger uncovered area than further disconnected-chat polish
+
+Evidence
+- Evidence ID: chat-disconnected-handsfree-persisted-qa
+- Scope: disconnected `Settings -> Hands-free Voice Mode on -> Open Chats -> + New Chat` persisted handsfree-enabled QA-remediation path plus tracked before/after screenshots (`apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/lib/accessibility.ts`, `apps/mobile/src/lib/accessibility.test.ts`, `apps/mobile/tests/chat-screen-handsfree-density.test.js`, `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--before--settings-enabled-new-chat--20260311.png`, `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--after--settings-enabled-new-chat--20260311.png`). This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: 04b6f0ba76108d68f52bc10782183ba47853bb42..547c48169391cd6b3b7d4fc3a79221c74189071a
+- Rationale: The earlier disconnected handsfree fix only covered the default handsfree-off entry path, but a realistic Settings-enabled path still made disconnected chat look actively listening and voice-ready on Expo Web. Gating handsfree runtime behavior behind actual connection availability closes that trust gap without removing the saved setting itself or broadening into a larger voice-system refactor.
+- QA feedback: Addressed the unresolved reviewer finding that enabling `Hands-free Voice Mode` on Settings before `Open Chats -> + New Chat` still left the disconnected chat showing a checked/busy handsfree state with `Listening...`, `🎙️ Pause`, and voice-active live-region copy.
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--before--settings-enabled-new-chat--20260311.png` — `390x844` Expo Web viewport on the exact reviewer path after opening disconnected `+ New Chat` with handsfree already enabled from Settings. Before the fix, the screen still showed `Listening...`, a busy `🎙️ Pause` mic, checked handsfree toggle, and `Voice listening active. Tap mic again to stop.` even though sending was already blocked by missing setup, so the surface looked more capable than it really was.
+- Change: Updated `ChatScreen` to separate saved handsfree preference from runtime-enabled handsfree behavior, prevent disconnected chat from auto-starting or rendering active handsfree controls, route disconnected voice capture into a draft-only composer fallback, and tighten the related accessibility/live-region copy in `apps/mobile/src/lib/accessibility.ts`.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--after--settings-enabled-new-chat--20260311.png` — same `390x844` Expo Web viewport and view. After the fix, the disconnected chat still preserves the saved handsfree setting, but it now shows `Setup required`, a non-busy `🎤 Hold` mic, `Voice input ready.` live-region output, and explicit draft-only/setup guidance instead of pretending handsfree is actively listening or ready to auto-send.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/lib/accessibility.test.ts` ✅ (34/34 passing, including the new disconnected handsfree draft-only/accessibility assertions; pnpm emitted the existing non-blocking Node engine warning under `v25.2.1`); `node --test apps/mobile/tests/chat-screen-handsfree-density.test.js apps/mobile/tests/chat-composer-accessibility.test.js` ✅ (11/11 passing, including the new persisted-handsfree runtime gate assertions); `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--before--settings-enabled-new-chat--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/chat-disconnected-handsfree-persisted-qa--after--settings-enabled-new-chat--20260311.png` ✅ (both curated screenshots are matched `390x844` PNGs from the same mobile Expo Web viewport); `git diff --check` ✅; `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still fails on pre-existing unrelated issues in `apps/mobile/src/screens/LoopEditScreen.tsx` (`ApiAgentProfile.guidelines`) and `apps/mobile/src/screens/settings-home-chats-cta.test.tsx` (`children` on `{}`), with no new handsfree-specific type error surfacing before those existing failures; live Expo Web browser automation at `390x844` ✅ reproduced the misleading listening state before the fix and then confirmed the post-fix path showed no listening overlay, no busy mic state, and `Voice input ready.` instead.
+- Blockers/remaining uncertainty: The visible disconnected/persisted-handsfree state is now verified live, but the exact browser-microphone capture path was not audio-injected during automation; the new draft-only capture behavior on that path is therefore backed by focused source/tests plus the visible runtime state rather than a full end-to-end spoken-input run.
 
 ### 2026-03-11 — Iteration 22: make the default TTS voice picker feel tappable on mobile
 
