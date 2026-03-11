@@ -2324,8 +2324,12 @@ const ResponseTTSButton: React.FC<{ text: string }> = ({ text }) => {
 
     // If already has audio loaded, just play
     if (audioUrlRef.current) {
-      audio.src = audioUrlRef.current
-      await ttsManager.playExclusive(audio, { source: "response-history", autoPlay: false, textPreview: text.slice(0, 80) })
+      try {
+        audio.src = audioUrlRef.current
+        await ttsManager.playExclusive(audio, { source: "response-history", autoPlay: false, textPreview: text.slice(0, 80) })
+      } catch {
+        setState("idle")
+      }
       return
     }
 
@@ -2433,9 +2437,12 @@ const ResponseHistoryPanel: React.FC<{
           displayState === "expanded" && "max-h-[200px]",
           displayState === "full" && "flex-1 min-h-0",
         )}>
-          {allResponses.map((response, idx) => (
+          {allResponses.map((response, idx) => {
+            // Use a hash of the response content for a stable key
+            const stableKey = `response-${response.slice(0, 64).replace(/\W/g, "")}-${response.length}`
+            return (
             <div
-              key={`response-${idx}`}
+              key={stableKey}
               className={cn(
                 "px-3 py-2 text-xs text-green-900 dark:text-green-100",
                 idx > 0 && "border-t border-green-200/40 dark:border-green-800/40",
@@ -2456,7 +2463,7 @@ const ResponseHistoryPanel: React.FC<{
                 <ResponseTTSButton text={response} />
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>
