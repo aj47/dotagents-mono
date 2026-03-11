@@ -39,7 +39,7 @@ function normalizeHandsFreeMessageDebounceMs(value?: number) {
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   apiKey: '',
-  baseUrl: 'https://api.openai.com/v1',
+  baseUrl: '',
   model: 'gpt-4.1-mini',
   handsFree: false,
   handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,

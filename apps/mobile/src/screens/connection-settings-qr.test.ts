@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  CONNECTION_BASE_URL_HELPER_TEXT,
+  DEFAULT_OPENAI_BASE_URL,
+  resolveConnectionBaseUrlForSave,
+} from './connection-settings-copy';
 import { getQrScannerWebSheetContent, resolveQrScannerActivation } from './connection-settings-qr';
 
 describe('resolveQrScannerActivation', () => {
@@ -66,5 +71,19 @@ describe('resolveQrScannerActivation', () => {
       message: 'Camera access is blocked in this browser. Allow camera access in your browser site settings and reopen the scanner. You can still enter the API key and base URL manually below.',
       actionLabel: null,
     });
+  });
+});
+
+describe('connection settings manual setup copy', () => {
+  it('keeps the OpenAI helper text explicit for the manual path', () => {
+    expect(CONNECTION_BASE_URL_HELPER_TEXT).toBe(
+      'Leave Base URL empty to use OpenAI by default, or enter another OpenAI-compatible server URL.'
+    );
+  });
+
+  it('falls back to the OpenAI base URL only when saving an empty draft URL', () => {
+    expect(resolveConnectionBaseUrlForSave('')).toBe(DEFAULT_OPENAI_BASE_URL);
+    expect(resolveConnectionBaseUrlForSave('   ')).toBe(DEFAULT_OPENAI_BASE_URL);
+    expect(resolveConnectionBaseUrlForSave(' https://example.com/v1/ ')).toBe('https://example.com/v1/');
   });
 });

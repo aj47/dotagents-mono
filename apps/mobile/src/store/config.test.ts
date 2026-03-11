@@ -18,6 +18,10 @@ import {
 } from './config';
 
 describe('normalizeStoredConfig', () => {
+  it('starts disconnected without pre-filling a provider base URL', () => {
+    expect(DEFAULT_APP_CONFIG.baseUrl).toBe('');
+  });
+
   it('backfills the handsfree defaults for older configs', () => {
     const normalized = normalizeStoredConfig({
       apiKey: 'test',

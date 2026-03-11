@@ -14,6 +14,7 @@
 - [x] Settings home `Text-to-Speech -> Voice` picker trigger and modal close/action surface in Expo Web (`390x844` mobile viewport)
 - [x] Connection setup flow, save validation, and inline connection actions
 - [x] Connection Settings screen back navigation, header affordance, QR scanner web launch guidance / close surface, save confirmation, and empty-save validation in Expo Web (`390x844` CSS viewport, matched screenshots)
+- [x] Connection Settings first-run QR/manual setup state, blank-default Base URL behavior, and helper guidance in Expo Web (`390x844` CSS viewport, matched screenshots)
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
 - [x] `Chats` / `Chat` header agent selector blocked-state sheet plus direct `Connection settings` escape path in Expo Web (`390x844` mobile viewport)
@@ -34,7 +35,7 @@
 
 - [~] Desktop `Models -> Choose a Provider for Each Job`: mobile exposes the main STT / Agent-MCP / TTS provider selectors inside `Settings -> Desktop Settings`, but broader runtime coverage across every provider combination is still incomplete.
 - [~] Desktop `Models -> Speech & Voice Models`: mobile exposes TTS model and voice pickers plus the OpenAI-compatible endpoint/model selectors. Live Expo Web now covers both the connected desktop-settings TTS picker close surface and the default settings-home TTS voice picker trigger/close density, but the remaining desktop-backed model/preset pickers and final web semantics validation are still only partially checked.
-- [ ] Desktop `Providers -> Provider Setup`: desktop still owns API keys, provider-specific base URLs, local engine downloads, and quick diagnostics; mobile currently covers remote server connection (`Connection settings`) but does not yet show verified parity for provider setup controls.
+- [~] Desktop `Providers -> Provider Setup`: desktop still owns API keys, provider-specific base URLs, local engine downloads, and quick diagnostics; mobile `Connection settings` now has live-verified first-run guidance for DotAgents QR pairing vs manual OpenAI-compatible setup, but it still does not show full provider-setup parity.
 - [-] Desktop-only window/general controls: launch-at-login, panel/window behavior, and desktop hotkeys are intentionally desktop-specific and should remain documented as non-mobile parity items rather than backlogged mobile gaps.
 
 ### Not yet checked
@@ -55,6 +56,7 @@
 - [x] Default Settings `Text-to-Speech -> Voice` used a `220x33` trigger and a `53x25` modal `Close` action on Expo Web, leaving both controls below the 44px mobile touch-target floor
 - [x] Undersized chat composer send/accessory controls and missing web state semantics
 - [x] Weak Connection inline action affordances
+- [x] First-run `Connection` showed `https://api.openai.com/v1` as a prefilled Base URL while nearby copy pushed users toward scanning the DotAgents desktop QR code, making the default setup story misleading on narrow mobile web
 - [x] Disconnected chat agent selector sheet stranded users behind a retry-only warning with no direct path to `Connection settings`
 - [x] Connection Settings header back button rendered as a 30x30 touch target on mobile web
 - [x] Connection Settings header back button still read like a bare screen-edge arrow after the 44px touch-target fix
@@ -78,6 +80,7 @@
 - [x] Nested-screen back navigation
 - [x] Default Settings `Text-to-Speech -> Voice` picker trigger and modal close affordance now meet 44px touch-target sizing with clearer button treatment on mobile web
 - [x] Connection first-run validation and inline action affordances
+- [x] Connection first-run setup honesty for QR pairing vs manual OpenAI-compatible entry
 - [x] Connection Settings header back-button touch target and visual affordance on nested screens
 - [x] Disconnected chat agent selector blocked-state clarity and direct handoff into `Connection settings`
 - [x] Chat composer actions, toggles, and voice-state accessibility
@@ -104,6 +107,7 @@
 - [x] Live Expo Web before/after evidence plus focused header/sheet coverage for the disconnected chat agent selector blocked state at `390x844`
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button touch-target fix at `390x844` CSS viewport
 - [x] Live Expo Web before/after evidence for the Connection Settings header back-button visual affordance follow-up at `390x844`
+- [x] Live Expo Web before/after evidence plus focused first-run Connection setup guidance coverage at `390x844`
 - [x] Live Expo Web before/after evidence for the Settings -> Text-to-Speech voice picker close affordance at `390x844`
 - [x] Live Expo Web before/after evidence for the disconnected Settings-home chats CTA at `390x844`
 - [x] Executable vitest coverage plus a fresh Expo Web tap-through recheck for the disconnected `Settings -> Open Chats` CTA on mobile web
@@ -128,9 +132,54 @@
 - [ ] The disconnected new-chat text-send path and default handsfree activation path are now guarded, but existing-chat retry/reconnect and sync states still need their own dedicated offline runtime passes before claiming solid chat-offline coverage.
 - [ ] The disconnected `Chats -> + New Chat` empty-debug-info warning is fixed, but unrelated offline/sync console noise (`401 Unauthorized`, `ERR_CONNECTION_REFUSED`, `syncService` fetch failures) still appears during Expo Web chat passes and needs its own dedicated investigation before claiming a clean disconnected runtime.
 - [ ] The new Expo Web QR sheet makes the browser flow visible and actionable before permission is granted, but the actual camera-preview / successful scan state after allowing camera access still needs a dedicated live pass outside automation-constrained browser permissions.
+- [ ] The first-run `Connection` screen now keeps OpenAI as an explicit placeholder/default fallback instead of a prefilled value, but the API-key-only manual OpenAI save path still needs a real provider-backed live pass before claiming end-to-end OpenAI onboarding coverage.
 - [ ] This iteration only rebalanced the `Chat -> + New Chat` header. The `Chats` list header/title width at `390x844` still needs its own dedicated density pass before the broader chat-navigation chrome is considered fully checked.
 
 ## Recent Iterations
+
+### 2026-03-11 — Iteration 25: remove the misleading prefilled OpenAI base URL from first-run Connection setup
+
+- Status: completed with live Expo Web before/after evidence, a focused first-run setup-clarity fix, and targeted regression coverage
+- Area:
+  - `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` first-run `Settings -> Connection` content at `390x844`
+  - `apps/mobile/src/store/config.ts` saved default connection state plus `apps/mobile/src/screens/connection-settings-copy.ts` manual-save fallback helper
+  - tracked Expo Web before/after screenshots for the same `Connection` view and focused vitest coverage in `apps/mobile/src/screens/connection-settings-qr.test.ts` and `apps/mobile/src/store/config.test.ts`
+- Why this area:
+  - revisiting `Connection settings` was justified by fresh live evidence, not by polishing the earlier header/QR-sheet passes: those iterations improved affordances around the screen, but they did not verify whether the first-run content itself told a coherent setup story
+  - Expo Web inspection at `390x844` showed a concrete onboarding/configuration issue on a major setup surface: the screen encouraged scanning the DotAgents desktop QR code while the Base URL field already looked preconfigured to `https://api.openai.com/v1`, which made it unclear whether mobile expected QR pairing, manual OpenAI entry, or both
+- What was investigated:
+  - live Expo Web at `390x844` on the default disconnected path into `Settings -> Connection`
+  - whether the visible Base URL value was a true saved default or only placeholder copy, and how that interacted with the QR setup prompt on the same screen
+  - the stored config defaults plus the save-path logic needed to preserve the manual OpenAI-compatible flow without leaving the first-run screen misleadingly prefilled
+- Findings:
+  - the first-run `Connection` screen really did render `https://api.openai.com/v1` as a field value, not just a placeholder, so the UI looked partially configured before the user had chosen a setup path
+  - that prefilled value conflicted with the adjacent QR-first copy and made the screen read like two competing onboarding narratives on a narrow mobile viewport
+  - the smallest effective fix was to keep the saved default Base URL blank, leave the OpenAI URL as an explicit placeholder/fallback, and make the QR vs manual setup options explicit in the helper copy
+- Change made:
+  - changed the mobile default saved connection config so `baseUrl` starts blank instead of prefilled with the OpenAI URL
+  - added `apps/mobile/src/screens/connection-settings-copy.ts` to centralize the manual OpenAI default/fallback logic and reused it from `ConnectionSettingsScreen`
+  - updated the `Connection` screen copy and the inline action label so users can clearly choose between scanning the DotAgents desktop QR code or using the manual OpenAI-compatible path, while preserving the manual fallback on save
+  - extended `apps/mobile/src/screens/connection-settings-qr.test.ts` and `apps/mobile/src/store/config.test.ts` with focused regression coverage for the new helper text/default/fallback behavior
+- Verification:
+  - `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts src/screens/connection-settings-qr.test.ts`
+  - `git diff --check`
+  - `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--before--connection-settings--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--after--connection-settings--20260311.png`
+  - live Expo Web browser automation at `390x844` confirming the pre-fix screen showed a prefilled OpenAI Base URL and the post-fix screen left the field blank with the same URL shown only as placeholder text
+- Follow-up checks:
+  - run a real provider-backed manual save pass later to confirm that entering only an API key still routes through the intended OpenAI default successfully in runtime, not just in helper tests
+  - widen connection coverage into the successful QR scan/camera-preview state after permission is granted, since this iteration only clarified the first-run screen before that scan completes
+
+Evidence
+- Evidence ID: connection-default-openai-url-mismatch
+- Scope: first-run `Settings -> Connection` setup clarity in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, saved default connection state in `apps/mobile/src/store/config.ts`, the manual-save fallback helper in `apps/mobile/src/screens/connection-settings-copy.ts`, focused regression coverage in `apps/mobile/src/screens/connection-settings-qr.test.ts` and `apps/mobile/src/store/config.test.ts`, and matched tracked Expo Web screenshots at `docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--before--connection-settings--20260311.png` and `docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--after--connection-settings--20260311.png`. This scope intentionally excludes the final ledger-only provenance commit.
+- Commit range: e4e550e74700c6091474b3aeba8dedc21861ed63..TO_FILL_AFTER_CONTENT_COMMIT
+- Rationale: `Connection settings` is one of the first meaningful configuration surfaces a mobile user sees, and the prefilled OpenAI Base URL made the screen look half-configured while the nearby copy simultaneously nudged users toward desktop QR pairing. Removing that mismatch improves first-run clarity without taking away the manual OpenAI-compatible path, which reduces setup ambiguity on a narrow screen and makes the mobile configuration story more honest.
+- QA feedback: None (new iteration)
+- Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--before--connection-settings--20260311.png` — `390x844` Expo Web viewport on the default disconnected `Settings -> Connection` screen before the fix. The screenshot shows `https://api.openai.com/v1` visibly prefilled in the `Base URL` field while the helper copy above still says to scan the DotAgents desktop QR code, which makes the first-run setup path feel contradictory and already partly configured.
+- Change: Updated `apps/mobile/src/store/config.ts` so the mobile app no longer saves a prefilled OpenAI Base URL by default, added `apps/mobile/src/screens/connection-settings-copy.ts` to keep the manual OpenAI fallback explicit, and refreshed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` copy/action text so the QR-pairing path and manual OpenAI-compatible path are both understandable on first run. Added focused regression assertions in `apps/mobile/src/screens/connection-settings-qr.test.ts` and `apps/mobile/src/store/config.test.ts`.
+- After evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--after--connection-settings--20260311.png` — same `390x844` Expo Web viewport and `Settings -> Connection` view after the fix. The `Base URL` field is now blank, `https://api.openai.com/v1` appears only as placeholder text, and the surrounding helper copy makes the QR-pairing path versus manual server entry much clearer, so the screen no longer looks preconfigured before the user chooses a setup path.
+- Verification commands/run results: `pnpm --filter @dotagents/mobile exec vitest run src/store/config.test.ts src/screens/connection-settings-qr.test.ts` ✅ (2 files / 12 tests passing, including the new default/fallback assertions); `git diff --check` ✅; `sips -g pixelWidth -g pixelHeight docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--before--connection-settings--20260311.png docs/aloops-evidence/mobile-app-improvement-loop/connection-default-openai-url-mismatch--after--connection-settings--20260311.png` ✅ (both curated screenshots are matched `390x844` PNGs from the same Expo Web mobile viewport); live Expo Web browser automation at `390x844` ✅ confirmed the before state rendered the OpenAI URL as a prefilled field value and the after state rendered it only as placeholder text with clearer QR/manual guidance.
+- Blockers/remaining uncertainty: This iteration improves the first-run setup story but does not yet live-verify the full manual OpenAI save path against a real provider, and it still does not cover the successful QR scan/camera-preview state after browser camera permission is granted.
 
 ### 2026-03-11 — Iteration 24: move secondary chat header actions into a narrow-screen overflow sheet
 
