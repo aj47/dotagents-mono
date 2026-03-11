@@ -1149,6 +1149,18 @@ export async function processTranscriptWithAgentMode(
     return /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized)
   }
 
+  const isPlainTextToolIntentResponse = (content: string): boolean => {
+    const trimmed = content.trim()
+    if (!trimmed || !isProgressUpdateResponse(trimmed)) return false
+
+    const normalized = trimmed.toLowerCase().replace(/\s+/g, " ")
+    const mentionsToolLikeName = /(?:[a-z0-9]+:[a-z0-9_:-]+|[a-z0-9]+_[a-z0-9_]+)/i.test(trimmed)
+    const mentionsToolAction = /\b(?:call|use|run|invoke|trigger|execute|open|read|write|click|fill|press|switch|post|submit|navigate|check|inspect|load)\b/.test(normalized)
+    const mentionsToolContext = /\b(?:tool|tools|function|function-calling|terminal|command|browser|cdp|session|json|parameter|parameters|arg|args|argument|arguments)\b/.test(normalized)
+
+    return mentionsToolLikeName || (mentionsToolAction && mentionsToolContext)
+  }
+
   const isDeliverableResponse = (content: string, minLength: number = 1): boolean => {
     const trimmed = content.trim()
     if (trimmed.length < minLength) return false
@@ -1607,6 +1619,7 @@ Return ONLY JSON per schema.`,
 
   let noOpCount = 0 // Track iterations without meaningful progress
   let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
+  let plainTextToolIntentCount = 0 // Track repeated "let me call a tool" filler with no actual tool use
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
   const MAX_COMPLETION_SIGNAL_HINTS = 2
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
@@ -2018,6 +2031,8 @@ Return ONLY JSON per schema.`,
       )
       const contentText = llmResponse.content || ""
       const trimmedContent = contentText.trim()
+      const isPlainTextToolIntent = hasToolsAvailable && isPlainTextToolIntentResponse(contentText)
+      plainTextToolIntentCount = isPlainTextToolIntent ? plainTextToolIntentCount + 1 : 0
       const hasToolMarkers = /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(contentText)
 
       if (hasToolMarkers) {
@@ -2256,8 +2271,16 @@ Return ONLY JSON per schema.`,
 
       // Nudge path for non-deliverable/no-progress responses.
       if (config.mcpVerifyCompletionEnabled && (noOpCount >= 2 || (hasToolsAvailable && noOpCount >= 1))) {
-        if (totalNudgeCount >= MAX_NUDGES) {
-          finalContent = buildIncompleteTaskFallback(contentText)
+        const repeatedPlainTextToolIntent = isPlainTextToolIntent && plainTextToolIntentCount >= 3
+        if (totalNudgeCount >= MAX_NUDGES || repeatedPlainTextToolIntent) {
+          finalContent = buildIncompleteTaskFallback(
+            contentText,
+            repeatedPlainTextToolIntent
+              ? {
+                  reason: "The model kept describing tool calls in plain text instead of using native function-calling.",
+                }
+              : undefined,
+          )
           addMessage("assistant", finalContent)
           emit({
             currentIteration: iteration,
@@ -2270,16 +2293,20 @@ Return ONLY JSON per schema.`,
           break
         }
 
-        if (trimmedContent.length > 0 && !isToolCallPlaceholder(contentText)) {
+        if (trimmedContent.length > 0 && !isToolCallPlaceholder(contentText) && !isPlainTextToolIntent) {
           addMessage("assistant", contentText)
         }
 
-        const nudgeMessage = hasToolsAvailable
-          ? "Use available tools directly via native function-calling, or provide a complete final answer."
+        const nudgeMessage = isPlainTextToolIntent
+          ? "Do not describe the tool call in text. Call the tool directly via native function-calling with the required arguments, or provide a complete final answer."
+          : hasToolsAvailable
+            ? "Use available tools directly via native function-calling, or provide a complete final answer."
           : "Provide a complete final answer."
         addMessage("user", nudgeMessage)
 
-        noOpCount = 0
+        if (!isPlainTextToolIntent) {
+          noOpCount = 0
+        }
         totalNudgeCount++
         continue
       }
@@ -2299,6 +2326,8 @@ Return ONLY JSON per schema.`,
         break
       }
     } else {
+      plainTextToolIntentCount = 0
+
       // Check if the only tools called are communication-only (respond_to_user).
       // These don't represent real work progress — they're just the agent talking to the user.
       // If respond_to_user is called without mark_work_complete, don't reset the completion

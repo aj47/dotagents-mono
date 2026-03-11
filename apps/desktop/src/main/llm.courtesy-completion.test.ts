@@ -154,4 +154,46 @@ describe("llm completion verification bypass", () => {
     expect(mockMakeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
     expect(mockVerifyCompletionWithFetch).not.toHaveBeenCalled()
   })
+
+  it("stops after repeated plain-text tool intent filler instead of looping on native-call nudges", async () => {
+    mockMakeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "Let me read the terminal output.", toolCalls: undefined })
+      .mockResolvedValueOnce({ content: "Let me call write_to_terminal with the session_id and command.", toolCalls: undefined })
+      .mockResolvedValueOnce({ content: "Let me explicitly call iterm:read_terminal_output with the required parameters now.", toolCalls: undefined })
+
+    const executeToolCall = vi.fn(async (_toolCall: MCPToolCall): Promise<MCPToolResult> => ({
+      content: [{ type: "text", text: '{"success":true}' as const }],
+      isError: false,
+    }))
+
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const result = await processTranscriptWithAgentMode(
+      "Finish the posting flow using the terminal tools.",
+      [
+        { name: "iterm:read_terminal_output", description: "Read terminal output", inputSchema: { type: "object" } },
+        { name: "iterm:write_to_terminal", description: "Write to terminal", inputSchema: { type: "object" } },
+      ],
+      executeToolCall,
+      6,
+      undefined,
+      "conversation-1",
+      "session-1",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("I couldn't complete the request after multiple attempts.")
+    expect(result.content).toContain("describing tool calls in plain text")
+    expect(executeToolCall).not.toHaveBeenCalled()
+    expect(mockMakeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mockVerifyCompletionWithFetch).not.toHaveBeenCalled()
+
+    const assistantMessages = result.conversationHistory
+      .filter((entry) => entry.role === "assistant")
+      .map((entry) => entry.content)
+
+    expect(assistantMessages).not.toContain("Let me read the terminal output.")
+    expect(assistantMessages).not.toContain("Let me call write_to_terminal with the session_id and command.")
+  })
 })
