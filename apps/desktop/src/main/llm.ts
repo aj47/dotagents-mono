@@ -54,6 +54,7 @@ import {
   appendAndPersistTerminalAssistantMessage,
   buildUnexpectedAgentFailureMessage,
 } from "./agent-terminal-error"
+import { getLowContextPromptGuardResponse } from "./agent-low-context-guard"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -1005,6 +1006,40 @@ export async function processTranscriptWithAgentMode(
         // Preserve original timestamp if available, otherwise use current time
         timestamp: entry.timestamp || Date.now(),
       }))
+  }
+
+  const lowContextPromptGuard = getLowContextPromptGuardResponse(
+    transcript,
+    (previousConversationHistory?.length ?? 0) > 0,
+  )
+
+  if (lowContextPromptGuard) {
+    finalContent = lowContextPromptGuard.response
+    addMessage("assistant", finalContent)
+
+    saveMessageIncremental("assistant", finalContent).catch(err => {
+      logLLM("[processTranscriptWithAgentMode] Failed to save low-context guard response:", err)
+    })
+
+    initialStep.title = lowContextPromptGuard.progressTitle
+    initialStep.description = lowContextPromptGuard.progressDescription
+
+    emit({
+      currentIteration: 0,
+      maxIterations,
+      steps: progressSteps.slice(-3),
+      isComplete: true,
+      finalContent,
+      conversationHistory: formatConversationForProgress(conversationHistory),
+      userResponse: finalContent,
+      userResponseHistory: [finalContent],
+    })
+
+    return {
+      content: finalContent,
+      conversationHistory,
+      totalIterations: 0,
+    }
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {

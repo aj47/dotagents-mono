@@ -19,6 +19,7 @@ import { BUILTIN_SERVER_NAME, MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } fr
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
+import { getLowContextPromptGuardResponse } from "./agent-low-context-guard"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -614,6 +615,33 @@ export async function processTranscriptWithACPAgent(
 
   // Note: User message is already added to conversation by createMcpTextInput or processQueuedMessages
   // So we don't add it here - it's already in the loaded conversationHistory
+
+  const hasPriorConversationHistory =
+    conversationHistory.length > 0 &&
+    !(conversationHistory.length === 1 && conversationHistory[0]?.role === "user" && conversationHistory[0]?.content === transcript)
+
+  const lowContextPromptGuard = getLowContextPromptGuardResponse(transcript, hasPriorConversationHistory)
+
+  if (lowContextPromptGuard) {
+    const timestamp = Date.now()
+    appendAssistantText(lowContextPromptGuard.response, timestamp)
+    await persistConversationTail()
+    await emitProgress([
+      {
+        id: generateStepId("acp-clarify"),
+        type: "thinking",
+        title: lowContextPromptGuard.progressTitle,
+        description: lowContextPromptGuard.progressDescription,
+        status: "completed",
+        timestamp,
+      },
+    ], true, lowContextPromptGuard.response)
+
+    return {
+      success: true,
+      response: lowContextPromptGuard.response,
+    }
+  }
 
   // Show thinking step
   await emitProgress([

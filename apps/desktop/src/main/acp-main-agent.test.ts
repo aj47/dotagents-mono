@@ -106,6 +106,40 @@ describe("acp-main-agent", () => {
     }))
   })
 
+  it("short-circuits low-context next-step prompts before sending ACP work", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<{ isComplete?: boolean; finalContent?: string }> = []
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [{ role: "user", content: "What should I do next?", timestamp: 1 }],
+    })
+
+    const result = await processTranscriptWithACPAgent("What should I do next?", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      response: expect.stringContaining("I need a bit more context before I can suggest the next step."),
+    }))
+    expect(mockSendPrompt).not.toHaveBeenCalled()
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      expect.stringContaining("I need a bit more context before I can suggest the next step."),
+      "assistant",
+      undefined,
+      undefined,
+    )
+    expect(updates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: expect.stringContaining("I need a bit more context before I can suggest the next step."),
+    }))
+  })
+
   it("handles malformed config option choices without throwing", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<{ acpSessionInfo?: Record<string, unknown> }> = []
