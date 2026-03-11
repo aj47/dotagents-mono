@@ -2281,6 +2281,72 @@ const PastResponseItem: React.FC<{
   )
 }
 
+// Response History Panel - sticky panel at top of tile showing all respond_to_user responses (like mobile)
+const ResponseHistoryPanel: React.FC<{
+  currentResponse: string
+  pastResponses?: string[]
+}> = ({ currentResponse, pastResponses }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  // Build full list: past responses + current, newest first
+  const allResponses = useMemo(() => {
+    const responses: string[] = []
+    if (currentResponse) responses.push(currentResponse)
+    if (pastResponses) responses.push(...[...pastResponses].reverse())
+    return responses
+  }, [currentResponse, pastResponses])
+
+  if (allResponses.length === 0) return null
+
+  return (
+    <div className="flex-shrink-0 border-b bg-green-50/50 dark:bg-green-950/30">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setIsCollapsed(prev => !prev)}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left transition-colors hover:bg-green-100/50 dark:hover:bg-green-900/30"
+      >
+        <MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+        <span className="text-xs font-medium text-green-800 dark:text-green-200">
+          Agent Responses
+        </span>
+        <Badge variant="secondary" className="ml-0.5 h-4 shrink-0 px-1 py-0 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
+          {allResponses.length}
+        </Badge>
+        <div className="flex-1" />
+        {isCollapsed ? (
+          <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-400" />
+        ) : (
+          <ChevronUp className="h-3 w-3 text-green-600 dark:text-green-400" />
+        )}
+      </button>
+      {/* Response list */}
+      {!isCollapsed && (
+        <div className="max-h-[200px] overflow-y-auto scrollbar-hide-until-hover">
+          {allResponses.map((response, idx) => (
+            <div
+              key={`response-${idx}`}
+              className={cn(
+                "px-3 py-2 text-xs text-green-900 dark:text-green-100",
+                idx > 0 && "border-t border-green-200/40 dark:border-green-800/40",
+                idx === 0 && "bg-green-100/30 dark:bg-green-900/20",
+              )}
+            >
+              {idx > 0 && (
+                <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-green-600/60 dark:text-green-400/50">
+                  Response {allResponses.length - idx}
+                </div>
+              )}
+              <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                <MarkdownRenderer content={response} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Mid-turn User Response Bubble - shows userResponse from respond_to_user mid-turn with TTS support
 const MidTurnUserResponseBubble: React.FC<{
   userResponse: string
@@ -2434,7 +2500,7 @@ const MidTurnUserResponseBubble: React.FC<{
     (isExpanded || (variant === "overlay" && (configQuery.data?.ttsAutoPlay ?? true)))
 
   return (
-    <div className="sticky top-2 z-10 min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/90 backdrop-blur-sm shadow-sm dark:bg-green-950/90">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30">
       {/* Header */}
       <div
         className={cn(
@@ -3570,11 +3636,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
 
             {/* Message Stream (Chat Tab) */}
-            <div className={cn("relative flex-1 min-h-0", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+              {/* Response History Panel - sticky at top like mobile */}
+              {effectiveUserResponse && (
+                <ResponseHistoryPanel
+                  currentResponse={effectiveUserResponse}
+                  pastResponses={effectiveUserResponseHistory}
+                />
+              )}
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto scrollbar-hide-until-hover"
+                className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover"
               >
                 {visibleDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">
@@ -3634,19 +3707,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       } else if (item.kind === "streaming") {
                         return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
                       } else if (item.kind === "mid_turn_response") {
-                        return (
-                          <MidTurnUserResponseBubble
-                            key={itemKey}
-                            userResponse={item.data.userResponse}
-                            pastResponses={item.data.pastResponses}
-                            sessionId={progress.sessionId}
-                            agentLabel={primaryAgentLabel}
-                            variant="tile"
-                            isComplete={isComplete}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                          />
-                        )
+                        // Skip inline rendering — responses are shown in the ResponseHistoryPanel above
+                        return null
                       } else if (item.kind === "delegation") {
                         const delegationExpanded = expandedItems[itemKey] ?? false
                         return (
@@ -3947,10 +4009,17 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           maxItems={delegationSummaryMaxItems}
           onOpenDetails={setSelectedDelegationRunId}
         />
+        {/* Response History Panel - sticky at top like mobile */}
+        {effectiveUserResponse && (
+          <ResponseHistoryPanel
+            currentResponse={effectiveUserResponse}
+            pastResponses={effectiveUserResponseHistory}
+          />
+        )}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="h-full min-h-0 overflow-y-auto"
+          className="flex-1 min-h-0 overflow-y-auto"
         >
           {visibleDisplayItems.length > 0 ? (
             <div className="space-y-1 p-2">
@@ -4025,19 +4094,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "mid_turn_response") {
-                  return (
-                    <MidTurnUserResponseBubble
-                      key={itemKey}
-                      userResponse={item.data.userResponse}
-                      pastResponses={item.data.pastResponses}
-                      sessionId={progress.sessionId}
-                      agentLabel={primaryAgentLabel}
-                      variant={variant}
-                      isComplete={isComplete}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                    />
-                  )
+                  // Skip inline rendering — responses are shown in the ResponseHistoryPanel above
+                  return null
                 } else if (item.kind === "delegation") {
                   const delegationExpanded = expandedItems[itemKey] ?? false
                   return (
