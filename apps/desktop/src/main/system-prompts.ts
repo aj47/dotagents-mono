@@ -77,6 +77,9 @@ AGENT FILE & COMMAND EXECUTION:
 MEMORIES (optional):
 - Use save_memory to store durable preferences/patterns you learn about the user.`
 
+const MCP_RECOVERY_GUIDANCE =
+  "If a needed MCP server is configured and enabled but disconnected, first try toggle_mcp_server with { serverName, enabled: true } once to trigger an in-session reconnect, then re-check with list_mcp_servers before telling the user a restart is required."
+
 /**
  * Group tools by server and generate a brief description for each server
  */
@@ -287,6 +290,9 @@ export function constructSystemPrompt(
     // Full schemas are still available via native function calling
     prompt += `\n\nAVAILABLE MCP SERVERS (${availableTools.length} tools total):\n${formatLightweightToolInfo(availableTools)}`
     prompt += `\n\nTo discover tools: use list_server_tools(serverName) to see all tools in a server, or get_tool_schema(toolName) for full parameter details.`
+    if (availableTools.some((tool) => tool.name === "toggle_mcp_server")) {
+      prompt += `\n\nMCP RECOVERY:\n- ${MCP_RECOVERY_GUIDANCE}`
+    }
 
     // If relevant tools are identified, show them with full details
     if (
@@ -368,6 +374,9 @@ export function constructMinimalSystemPrompt(
 
   if (availableTools?.length) {
     prompt += `\n\nAVAILABLE TOOLS:\n${list(availableTools)}`
+    if (availableTools.some((tool) => tool.name === "toggle_mcp_server")) {
+      prompt += `\n\nMCP RECOVERY:\n- ${MCP_RECOVERY_GUIDANCE}`
+    }
   } else {
     prompt += `\n\nNo tools are currently available.`
   }

@@ -191,10 +191,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const serverName = args.serverName
+    const serverName = args.serverName.trim()
 
     const config = configStore.get()
     const mcpConfig = config.mcpConfig || { mcpServers: {} }
+    const serverStatus = mcpService.getServerStatus()
 
     // Check if server exists
     if (!mcpConfig.mcpServers[serverName]) {
@@ -221,6 +222,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     // Determine the new enabled state: use provided value or toggle current state
     const isCurrentlyRuntimeDisabled = runtimeDisabled.has(serverName)
     const isCurrentlyDisabled = isCurrentlyRuntimeDisabled || configDisabled
+    const wasConnected = serverStatus[serverName]?.connected === true
     const enabled = typeof args.enabled === "boolean" ? args.enabled : isCurrentlyDisabled // toggle to opposite
 
     if (enabled) {
@@ -229,20 +231,53 @@ const toolHandlers: Record<string, ToolHandler> = {
       runtimeDisabled.add(serverName)
     }
 
-    configStore.save({
+    const updatedConfig = {
       ...config,
       mcpRuntimeDisabledServers: Array.from(runtimeDisabled),
-    })
+    }
+    configStore.save(updatedConfig)
 
     // Calculate the effective enabled state (considering both runtime and config)
     const effectivelyEnabled = enabled && !configDisabled
+
+    let runtimeApplied = true
+    let runtimeAction: "restarted" | "stopped" | "none" = "none"
+    let runtimeError: string | undefined
+
+    if (effectivelyEnabled) {
+      const shouldRestartNow = isCurrentlyRuntimeDisabled || !wasConnected
+      if (shouldRestartNow) {
+        const restartResult = await mcpService.restartServer(serverName)
+        runtimeApplied = restartResult.success
+        runtimeAction = "restarted"
+        runtimeError = restartResult.error
+      }
+    } else if (!enabled || wasConnected) {
+      const stopResult = await mcpService.stopServer(serverName)
+      runtimeApplied = stopResult.success
+      runtimeAction = "stopped"
+      runtimeError = stopResult.error
+    }
+
+    const refreshedStatus = mcpService.getServerStatus()
+    const connected = refreshedStatus[serverName]?.connected ?? false
 
     // Build a clear message that indicates actual state
     let message = `Server '${serverName}' runtime setting has been ${enabled ? "enabled" : "disabled"}.`
     if (enabled && configDisabled) {
       message += ` Warning: Server is still disabled in config file (disabled: true). Edit mcp.json to fully enable.`
+    } else if (!runtimeApplied) {
+      message += ` Runtime ${runtimeAction === "stopped" ? "stop" : "restart"} failed: ${runtimeError || "unknown error"}`
+    } else if (runtimeAction === "restarted") {
+      message += connected
+        ? ` Restarted immediately and the server is now connected.`
+        : ` Restarted immediately, but the server still reports disconnected.`
+    } else if (runtimeAction === "stopped") {
+      message += ` Stopped immediately for the current session.`
+    } else if (effectivelyEnabled && connected) {
+      message += ` The server was already connected.`
     } else {
-      message += ` Restart agent mode or the app for changes to take effect.`
+      message += ` The runtime setting was updated for the current session.`
     }
 
     return {
@@ -250,16 +285,20 @@ const toolHandlers: Record<string, ToolHandler> = {
         {
           type: "text",
           text: JSON.stringify({
-            success: true,
+            success: runtimeApplied,
             serverName,
             enabled,
             configDisabled,
             effectivelyEnabled,
+            connected,
+            runtimeAction,
+            runtimeApplied,
+            runtimeError,
             message,
           }),
         },
       ],
-      isError: false,
+      isError: !runtimeApplied,
     }
   },
 

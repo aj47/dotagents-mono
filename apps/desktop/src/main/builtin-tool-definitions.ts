@@ -40,7 +40,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
   },
   {
     name: "toggle_mcp_server",
-    description: "Enable or disable an MCP server by name. Disabled servers will not be initialized on next startup.",
+    description: "Enable or disable an MCP server by name. Enabling applies immediately by attempting a live reconnect/start, and disabling stops the server for the current session.",
     inputSchema: {
       type: "object",
       properties: {

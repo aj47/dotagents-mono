@@ -47,6 +47,27 @@ describe("constructSystemPrompt", () => {
     expect(prompt.split(skills).length - 1).toBe(1)
   })
 
+  it("adds MCP reconnect guidance when toggle_mcp_server is available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt(
+      [
+        { name: "list_mcp_servers", description: "list", inputSchema: { type: "object", properties: {} } },
+        {
+          name: "toggle_mcp_server",
+          description: "toggle",
+          inputSchema: { type: "object", properties: { serverName: { type: "string" }, enabled: { type: "boolean" } } },
+        },
+      ],
+      undefined,
+      true,
+    )
+
+    expect(prompt).toContain("MCP RECOVERY:")
+    expect(prompt).toContain("toggle_mcp_server with { serverName, enabled: true } once")
+    expect(prompt).toContain("re-check with list_mcp_servers")
+  })
+
   it("prefers direct execution over mandatory delegation for simple tasks", async () => {
     mockAgentProfileService.getByRole.mockReturnValue([
       {
