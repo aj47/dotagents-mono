@@ -39,6 +39,8 @@ interface DelegatedRun extends ACPSubAgentState {
   conversation: ACPSubAgentMessage[];
   /** Last time we emitted a progress update to the UI (for rate limiting) */
   lastEmitTime: number;
+  /** In-flight result promise for synchronous delegations so follow-up turns can reuse it safely. */
+  pendingResultPromise?: Promise<DelegationResult>;
 }
 
 /**
@@ -207,6 +209,30 @@ function registerAgentRunMapping(agentName: string, runId: string): void {
  * Consolidates run state, conversation history, and emit timing.
  */
 const delegatedRuns: Map<string, DelegatedRun> = new Map();
+
+function findReusableSyncDelegation(parentSessionId: string | undefined, agentName: string): DelegatedRun | undefined {
+  if (!parentSessionId) {
+    return undefined;
+  }
+
+  let latestMatch: DelegatedRun | undefined;
+
+  for (const state of delegatedRuns.values()) {
+    if (
+      state.parentSessionId === parentSessionId &&
+      state.agentName === agentName &&
+      state.status === 'running' &&
+      state.isAsync !== true &&
+      state.pendingResultPromise
+    ) {
+      if (!latestMatch || state.startTime > latestMatch.startTime) {
+        latestMatch = state;
+      }
+    }
+  }
+
+  return latestMatch;
+}
 
 /** Map from agent session IDs to our delegation run IDs (needed for stdio agent session mapping) */
 const sessionToRunId: Map<string, string> = new Map();
@@ -1050,6 +1076,17 @@ async function executeACPAgent(
       };
     }
 
+    if (waitForResult) {
+      const existingRun = findReusableSyncDelegation(parentSessionId, args.agentName);
+      if (existingRun?.pendingResultPromise) {
+        const reusedResult = await existingRun.pendingResultPromise;
+        return {
+          ...reusedResult,
+          note: `Reused in-flight delegated run "${existingRun.runId}" for agent "${args.agentName}" instead of starting a concurrent prompt on the same ACP session.`,
+        };
+      }
+    }
+
     // Create unified sub-agent state (conversation initialized automatically)
     const subAgentState = createSubAgentState({
       agentName: args.agentName,
@@ -1081,7 +1118,14 @@ async function executeACPAgent(
     };
 
     if (waitForResult) {
-      return executeACPAgentSync(subAgentState, args, ensureStdioSession);
+      const pendingResultPromise = executeACPAgentSync(subAgentState, args, ensureStdioSession)
+        .finally(() => {
+          if (subAgentState.pendingResultPromise === pendingResultPromise) {
+            subAgentState.pendingResultPromise = undefined;
+          }
+        });
+      subAgentState.pendingResultPromise = pendingResultPromise;
+      return pendingResultPromise;
     } else {
       return executeACPAgentAsync(subAgentState, args, resolvedAgent, parentSessionId, ensureStdioSession);
     }
@@ -1097,7 +1141,7 @@ async function executeACPAgentSync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
   ensureStdioSession: () => Promise<string>
-): Promise<object> {
+): Promise<DelegationResult> {
   try {
     const sessionId = await ensureStdioSession();
 
