@@ -459,8 +459,10 @@ export function ActiveAgentsSidebar({
                         }
                       }}
                       className={cn(
-                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all",
-                        isPinned ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                        isPinned
+                          ? "opacity-100"
+                          : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
                       )}
                       title={isPinned ? "Unpin session" : "Pin session"}
                       aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
