@@ -118,7 +118,7 @@
 Evidence
 - Evidence ID: connection-settings-back-button-touch-target
 - Scope: `Settings -> Connection settings` nested-screen header back affordance on mobile web (`apps/mobile/App.tsx`)
-- Commit range: fa4d9a29599b62ea1dc7a7256731916a5c879d11..b953b6cff881ed823495fee1348d358bb872966f
+- Commit range: fa4d9a29599b62ea1dc7a7256731916a5c879d11..dbc6b4606bcce9f52935a8dd87a09784f1c9ab51
 - Rationale: `Connection Settings` is a first-run configuration surface that users revisit often. On mobile web, the only obvious escape action at the top of that screen was rendering as a 30x30 hit target, which made a primary navigation control harder to tap reliably during setup and validation flows.
 - QA feedback: Addressed the outstanding reviewer finding on the prior `settings-voice-picker-close-affordance` evidence by restoring matched-DPR tracked screenshots; this back-button improvement itself is a new iteration.
 - Before evidence: `docs/aloops-evidence/mobile-app-improvement-loop/connection-settings-back-button-touch-target--before--connection-settings-screen--20260311.png` — `390x844` CSS viewport on Expo Web, saved as a matched DPR2 `780x1688` PNG. The `Connection Settings` screen before the change used the default nested-screen back affordance, which browser inspection measured at only `30x30`, making the main exit action undersized for narrow-screen touch use.
