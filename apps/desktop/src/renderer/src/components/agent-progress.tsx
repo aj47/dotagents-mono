@@ -2352,8 +2352,9 @@ const ResponseTTSButton: React.FC<{ text: string }> = ({ text }) => {
       <button
         type="button"
         onClick={handleClick}
+        disabled={state === "generating"}
         className={cn(
-          "shrink-0 rounded p-0.5 transition-colors hover:bg-green-200/50 dark:hover:bg-green-800/50",
+          "shrink-0 rounded p-0.5 transition-colors hover:bg-green-200/50 disabled:cursor-default disabled:opacity-70 dark:hover:bg-green-800/50",
           state === "playing" && "text-green-600 dark:text-green-400",
         )}
         title={state === "generating" ? "Generating…" : state === "playing" ? "Stop" : "Listen"}
@@ -2381,6 +2382,33 @@ const ResponseHistoryPanel: React.FC<{
 }> = ({ currentResponse, pastResponses }) => {
   const [displayState, setDisplayState] = useState<ResponsePanelState>("expanded")
 
+  const responseEntries = useMemo(() => {
+    const fingerprint = (response: string) => `${response.slice(0, 64).replace(/\W/g, "")}-${response.length}`
+    const entries: Array<{ key: string; text: string; isCurrent: boolean; responseNumber?: number }> = []
+
+    if (currentResponse) {
+      entries.push({
+        key: `current-${fingerprint(currentResponse)}`,
+        text: currentResponse,
+        isCurrent: true,
+      })
+    }
+
+    if (pastResponses) {
+      ;[...pastResponses].reverse().forEach((response, idx) => {
+        const originalIndex = pastResponses.length - 1 - idx
+        entries.push({
+          key: `past-${originalIndex}-${fingerprint(response)}`,
+          text: response,
+          isCurrent: false,
+          responseNumber: originalIndex + 1,
+        })
+      })
+    }
+
+    return entries
+  }, [currentResponse, pastResponses])
+
   const cycleState = useCallback(() => {
     setDisplayState(prev => {
       if (prev === "collapsed") return "expanded"
@@ -2389,15 +2417,7 @@ const ResponseHistoryPanel: React.FC<{
     })
   }, [])
 
-  // Build full list: past responses + current, newest first
-  const allResponses = useMemo(() => {
-    const responses: string[] = []
-    if (currentResponse) responses.push(currentResponse)
-    if (pastResponses) responses.push(...[...pastResponses].reverse())
-    return responses
-  }, [currentResponse, pastResponses])
-
-  if (allResponses.length === 0) return null
+  if (responseEntries.length === 0) return null
 
   const stateLabel = displayState === "collapsed" ? "Expand" : displayState === "expanded" ? "Full height" : "Collapse"
 
@@ -2419,7 +2439,7 @@ const ResponseHistoryPanel: React.FC<{
           Agent Responses
         </span>
         <Badge variant="secondary" className="ml-0.5 h-4 shrink-0 px-1 py-0 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
-          {allResponses.length}
+          {responseEntries.length}
         </Badge>
         <div className="flex-1" />
         {displayState === "collapsed" ? (
@@ -2437,30 +2457,28 @@ const ResponseHistoryPanel: React.FC<{
           displayState === "expanded" && "max-h-[200px]",
           displayState === "full" && "flex-1 min-h-0",
         )}>
-          {allResponses.map((response, idx) => {
-            // Use a hash of the response content for a stable key
-            const stableKey = `response-${response.slice(0, 64).replace(/\W/g, "")}-${response.length}`
+          {responseEntries.map(({ key, text, isCurrent, responseNumber }) => {
             return (
             <div
-              key={stableKey}
+              key={key}
               className={cn(
                 "px-3 py-2 text-xs text-green-900 dark:text-green-100",
-                idx > 0 && "border-t border-green-200/40 dark:border-green-800/40",
-                idx === 0 && "bg-green-100/30 dark:bg-green-900/20",
+                !isCurrent && "border-t border-green-200/40 dark:border-green-800/40",
+                isCurrent && "bg-green-100/30 dark:bg-green-900/20",
               )}
             >
               <div className="flex items-start gap-1">
                 <div className="min-w-0 flex-1">
-                  {idx > 0 && (
+                  {!isCurrent && responseNumber !== undefined && (
                     <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-green-600/60 dark:text-green-400/50">
-                      Response {allResponses.length - idx}
+                      Response {responseNumber}
                     </div>
                   )}
                   <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    <MarkdownRenderer content={response} />
+                    <MarkdownRenderer content={text} />
                   </div>
                 </div>
-                <ResponseTTSButton text={response} />
+                <ResponseTTSButton text={text} />
               </div>
             </div>
           )})}
