@@ -4,11 +4,27 @@ import { describe, expect, it, vi } from "vitest"
 import { parseContinueReplayFixture, resolveContinueReplayMessages, type ContinueReplayFixture } from "./llm-verification-replay"
 
 const liveReplayEnabled = process.env.LIVE_LLM_REPLAY === "1"
-const fixtureInput = process.env.CONTINUE_REPLAY_FIXTURE
-const liveProviderId = (process.env.LIVE_LLM_PROVIDER_ID || "openai") as "openai" | "groq" | "gemini"
-const liveApiKey = process.env.LIVE_LLM_API_KEY || ""
-const liveBaseUrl = process.env.LIVE_LLM_BASE_URL || ""
-const liveModel = process.env.LIVE_LLM_MODEL || ""
+const liveReplayConfig = {
+  fixtureInput: process.env.CONTINUE_REPLAY_FIXTURE,
+  providerId: (process.env.LIVE_LLM_PROVIDER_ID || "openai") as "openai" | "groq" | "gemini",
+  apiKey: process.env.LIVE_LLM_API_KEY || "",
+  baseUrl: process.env.LIVE_LLM_BASE_URL || "",
+  model: process.env.LIVE_LLM_MODEL || "",
+}
+
+function logReplayEvent(message: string): void {
+  console.log(`[continue-replay] ${message}`)
+}
+
+function expectReplayResultToMatchFixture(result: { conversationState?: string, isComplete?: boolean }, fixture: ContinueReplayFixture): void {
+  expect(typeof result.conversationState).toBe("string")
+  if (fixture.expected?.conversationState) {
+    expect(result.conversationState).toBe(fixture.expected.conversationState)
+  }
+  if (typeof fixture.expected?.isComplete === "boolean") {
+    expect(result.isComplete).toBe(fixture.expected.isComplete)
+  }
+}
 
 vi.mock("./config", () => ({
   configStore: {
@@ -16,16 +32,16 @@ vi.mock("./config", () => ({
       apiRetryCount: 1,
       apiRetryBaseDelay: 50,
       apiRetryMaxDelay: 200,
-      mcpToolsProviderId: liveProviderId,
-      openaiApiKey: liveProviderId === "openai" ? liveApiKey : "",
-      openaiBaseUrl: liveProviderId === "openai" ? liveBaseUrl || undefined : undefined,
-      mcpToolsOpenaiModel: liveProviderId === "openai" ? liveModel : undefined,
-      groqApiKey: liveProviderId === "groq" ? liveApiKey : "",
-      groqBaseUrl: liveProviderId === "groq" ? liveBaseUrl || undefined : undefined,
-      mcpToolsGroqModel: liveProviderId === "groq" ? liveModel : undefined,
-      geminiApiKey: liveProviderId === "gemini" ? liveApiKey : "",
-      geminiBaseUrl: liveProviderId === "gemini" ? liveBaseUrl || undefined : undefined,
-      mcpToolsGeminiModel: liveProviderId === "gemini" ? liveModel : undefined,
+      mcpToolsProviderId: liveReplayConfig.providerId,
+      openaiApiKey: liveReplayConfig.providerId === "openai" ? liveReplayConfig.apiKey : "",
+      openaiBaseUrl: liveReplayConfig.providerId === "openai" ? liveReplayConfig.baseUrl || undefined : undefined,
+      mcpToolsOpenaiModel: liveReplayConfig.providerId === "openai" ? liveReplayConfig.model : undefined,
+      groqApiKey: liveReplayConfig.providerId === "groq" ? liveReplayConfig.apiKey : "",
+      groqBaseUrl: liveReplayConfig.providerId === "groq" ? liveReplayConfig.baseUrl || undefined : undefined,
+      mcpToolsGroqModel: liveReplayConfig.providerId === "groq" ? liveReplayConfig.model : undefined,
+      geminiApiKey: liveReplayConfig.providerId === "gemini" ? liveReplayConfig.apiKey : "",
+      geminiBaseUrl: liveReplayConfig.providerId === "gemini" ? liveReplayConfig.baseUrl || undefined : undefined,
+      mcpToolsGeminiModel: liveReplayConfig.providerId === "gemini" ? liveReplayConfig.model : undefined,
       langfuseEnabled: false,
     }),
   },
@@ -75,14 +91,16 @@ function loadReplayFixtures(inputPath: string): ContinueReplayFixture[] {
   })
 }
 
-const fixtures = liveReplayEnabled && fixtureInput ? loadReplayFixtures(fixtureInput) : []
+const fixtures = liveReplayEnabled && liveReplayConfig.fixtureInput
+  ? loadReplayFixtures(liveReplayConfig.fixtureInput)
+  : []
 const describeLiveReplay = liveReplayEnabled ? describe : describe.skip
 
 describeLiveReplay("llm continue replay live regression harness", () => {
   it("has the required live replay env configured", () => {
-    expect(fixtureInput).toBeTruthy()
-    expect(liveApiKey).toBeTruthy()
-    expect(liveModel).toBeTruthy()
+    expect(liveReplayConfig.fixtureInput).toBeTruthy()
+    expect(liveReplayConfig.apiKey).toBeTruthy()
+    expect(liveReplayConfig.model).toBeTruthy()
     expect(fixtures.length).toBeGreaterThan(0)
   })
 
@@ -92,19 +110,13 @@ describeLiveReplay("llm continue replay live regression harness", () => {
       const { normalizeVerificationResultForCompletion } = await import("./llm-continuation-guards")
       const messages = resolveContinueReplayMessages(fixture)
 
-      console.log(`[continue-replay] fixture=${fixture.id} provider=${liveProviderId} baseUrl=${liveBaseUrl || "(provider default)"} model=${liveModel}`)
-      const rawResult = await verifyCompletionWithFetch(messages, liveProviderId)
+      logReplayEvent(`fixture=${fixture.id} provider=${liveReplayConfig.providerId} baseUrl=${liveReplayConfig.baseUrl || "(provider default)"} model=${liveReplayConfig.model}`)
+      const rawResult = await verifyCompletionWithFetch(messages, liveReplayConfig.providerId)
       const result = normalizeVerificationResultForCompletion(rawResult, { verificationMessages: messages })
-      console.log(`[continue-replay] raw=${JSON.stringify(rawResult)}`)
-      console.log(`[continue-replay] result=${JSON.stringify(result)}`)
+      logReplayEvent(`raw=${JSON.stringify(rawResult)}`)
+      logReplayEvent(`result=${JSON.stringify(result)}`)
 
-      expect(typeof result.conversationState).toBe("string")
-      if (fixture.expected?.conversationState) {
-        expect(result.conversationState).toBe(fixture.expected.conversationState)
-      }
-      if (typeof fixture.expected?.isComplete === "boolean") {
-        expect(result.isComplete).toBe(fixture.expected.isComplete)
-      }
+      expectReplayResultToMatchFixture(result, fixture)
     }, 120000)
   }
 })

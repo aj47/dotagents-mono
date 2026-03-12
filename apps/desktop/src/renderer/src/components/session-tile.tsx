@@ -22,6 +22,7 @@ import {
   Moon,
   CheckCircle2,
 } from "lucide-react"
+import { Badge } from "@renderer/components/ui/badge"
 import { Button } from "@renderer/components/ui/button"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"

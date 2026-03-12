@@ -56,6 +56,13 @@ export type AgentStateReplayFixture = ReplayBaseFixture & {
 
 export type ContinueReplayFixture = ExactVerifierMessagesReplayFixture | AgentStateReplayFixture
 
+const AGENT_CONVERSATION_STATES = new Set<AgentConversationState>([
+  "running",
+  "complete",
+  "needs_input",
+  "blocked",
+])
+
 export const VERIFICATION_SYSTEM_PROMPT = `You are a strict conversation-state verifier for an agent run.
 
 Classify the CURRENT state of the conversation using exactly one value:
@@ -87,6 +94,54 @@ Return ONLY JSON with this schema:
 }
 
 Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
+
+export const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+function assertValidVerificationMessage(message: unknown, source: string): asserts message is VerificationMessage {
+  if (!isRecord(message)) throw new Error(`${source} must be an object`)
+  if (message.role !== "user" && message.role !== "assistant" && message.role !== "system") {
+    throw new Error(`${source} role must be user, assistant, or system`)
+  }
+  if (typeof message.content !== "string") {
+    throw new Error(`${source} content must be a string`)
+  }
+}
+
+function assertValidConversationHistoryEntry(
+  entry: unknown,
+  source: string,
+): asserts entry is ReplayConversationHistoryEntry {
+  if (!isRecord(entry)) throw new Error(`${source} must be an object`)
+  if (entry.role !== "user" && entry.role !== "assistant" && entry.role !== "tool") {
+    throw new Error(`${source} role must be user, assistant, or tool`)
+  }
+  if (typeof entry.content !== "string") {
+    throw new Error(`${source} content must be a string`)
+  }
+  if (entry.toolCalls !== undefined && !Array.isArray(entry.toolCalls)) {
+    throw new Error(`${source} toolCalls must be an array when present`)
+  }
+}
+
+function assertValidExpectedResult(expected: unknown, source: string): void {
+  if (expected === undefined) return
+  if (!isRecord(expected)) throw new Error(`${source} expected must be an object when present`)
+  if (expected.conversationState !== undefined && !AGENT_CONVERSATION_STATES.has(expected.conversationState as AgentConversationState)) {
+    throw new Error(`${source} expected.conversationState must be a valid AgentConversationState`)
+  }
+  if (expected.isComplete !== undefined && typeof expected.isComplete !== "boolean") {
+    throw new Error(`${source} expected.isComplete must be a boolean when present`)
+  }
+}
+
+export function buildVerificationJsonRequest(verificationFailCount = 0): string {
+  if (verificationFailCount <= 0) return VERIFICATION_JSON_REQUEST_BASE
+  return `${VERIFICATION_JSON_REQUEST_BASE}\n\nNote: This is verification attempt #${verificationFailCount + 1}. Do NOT lower the bar. If any requested work still remains, return conversationState=running and list the missingItems. Only use complete, needs_input, or blocked when the current run can legitimately stop now.`
+}
 
 export function buildVerificationMessagesFromAgentState(
   fixture: AgentStateReplayFixture,
@@ -141,11 +196,7 @@ export function buildVerificationMessagesFromAgentState(
     messages.push({ role: "assistant", content: sanitizedFinalAssistantText })
   }
 
-  let jsonRequestContent = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
-  if ((fixture.verificationFailCount ?? 0) > 0) {
-    jsonRequestContent += `\n\nNote: This is verification attempt #${(fixture.verificationFailCount ?? 0) + 1}. Do NOT lower the bar. If any requested work still remains, return conversationState=running and list the missingItems. Only use complete, needs_input, or blocked when the current run can legitimately stop now.`
-  }
-  messages.push({ role: "user", content: jsonRequestContent })
+  messages.push({ role: "user", content: buildVerificationJsonRequest(fixture.verificationFailCount ?? 0) })
   return messages
 }
 
@@ -164,10 +215,15 @@ export function parseContinueReplayFixture(raw: unknown, source = "fixture"): Co
     throw new Error(`${source} mode must be exact_verifier_messages or agent_state`)
   }
 
+  assertValidExpectedResult(fixture.expected, source)
+
   if (fixture.mode === "exact_verifier_messages") {
     if (!Array.isArray(fixture.messages) || fixture.messages.length === 0) {
       throw new Error(`${source} exact_verifier_messages fixture must include a non-empty messages array`)
     }
+    fixture.messages.forEach((message, index) => {
+      assertValidVerificationMessage(message, `${source} messages[${index}]`)
+    })
     return fixture as ExactVerifierMessagesReplayFixture
   }
 
@@ -175,5 +231,8 @@ export function parseContinueReplayFixture(raw: unknown, source = "fixture"): Co
   if (!Array.isArray(fixture.conversationHistory)) {
     throw new Error(`${source} agent_state fixture must include conversationHistory array`)
   }
+  fixture.conversationHistory.forEach((entry, index) => {
+    assertValidConversationHistoryEntry(entry, `${source} conversationHistory[${index}]`)
+  })
   return fixture as AgentStateReplayFixture
 }
