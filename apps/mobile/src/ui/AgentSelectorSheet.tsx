@@ -18,14 +18,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
 import { useConfigContext } from '../store/config';
-import { ExtendedSettingsApiClient, SettingsApiClient, Profile } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
-import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
-
-interface SelectableProfile extends Profile {
-  selectorMode?: 'profile' | 'acp';
-  selectionValue?: string;
-}
+import { SelectableProfile, buildSelectorProfiles } from './agentSelectorOptions';
 
 interface AgentSelectorSheetProps {
   visible: boolean;
@@ -36,7 +31,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
-  const { currentProfile, setCurrentProfile, refresh } = useProfile();
+  const { currentProfile, setCurrentProfile } = useProfile();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
   const missingConfigError = 'Configure server URL and API key to switch agents';
@@ -60,26 +55,13 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
     try {
       const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
-      const settings = await client.getSettings();
-
-      if (settings.mainAgentMode === 'acp') {
-        setSelectorMode('acp');
-        const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
-        const mainAgentOptions = getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []);
-        setProfiles(mainAgentOptions.map((option) => ({
-          ...toMainAgentProfile(option),
-          selectorMode: 'acp',
-          selectionValue: option.name,
-        })));
-      } else {
-        setSelectorMode('profile');
-        const res = await client.getProfiles();
-        setProfiles((res.profiles || []).map((profile) => ({
-          ...profile,
-          selectorMode: 'profile',
-          selectionValue: profile.id,
-        })));
-      }
+      const [settings, agentProfilesResponse] = await Promise.all([
+        client.getSettings(),
+        client.getAgentProfiles().catch(() => ({ profiles: [] })),
+      ]);
+      const nextState = buildSelectorProfiles(settings, agentProfilesResponse.profiles || []);
+      setSelectorMode(nextState.selectorMode);
+      setProfiles(nextState.profiles);
     } catch (err: any) {
       console.warn('[AgentSelectorSheet] Failed to fetch profiles:', err);
       setError(err?.message || 'Failed to load agents');
@@ -110,7 +92,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       const client = new SettingsApiClient(config.baseUrl, config.apiKey);
       if (profile.selectorMode === 'acp' && profile.selectionValue) {
         await client.updateSettings({ mainAgentName: profile.selectionValue });
-        setCurrentProfile(toMainAgentProfile({ name: profile.selectionValue, displayName: profile.name }));
+        setCurrentProfile(profile);
       } else {
         await client.setCurrentProfile(profile.id);
         setCurrentProfile(profile);
@@ -139,9 +121,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           <Text style={[styles.profileName, isSelected && styles.profileNameSelected]}>
             {item.name}
           </Text>
-          {item.guidelines && (
+          {(item.description || item.guidelines) && (
             <Text style={styles.profileDescription} numberOfLines={1}>
-              {item.guidelines}
+              {item.description || item.guidelines}
             </Text>
           )}
         </View>

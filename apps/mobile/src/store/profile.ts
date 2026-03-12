@@ -6,7 +6,7 @@
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { SettingsApiClient, Profile } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, Profile } from '../lib/settingsApi';
 import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
 
 export interface ProfileContextValue {
@@ -63,11 +63,12 @@ export function useProfileProvider(baseUrl: string, apiKey: string): ProfileCont
     setError(null);
     
     try {
-      const client = new SettingsApiClient(baseUrl, apiKey);
+      const client = new ExtendedSettingsApiClient(baseUrl, apiKey);
       const settings = await client.getSettings();
 
       if (settings.mainAgentMode === 'acp' && settings.mainAgentName) {
-        const options = getAcpMainAgentOptions(settings);
+        const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
+        const options = getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []);
         const selectedOption = options.find((option) => option.name === settings.mainAgentName)
           || { name: settings.mainAgentName, displayName: settings.mainAgentName };
         setCurrentProfile(toMainAgentProfile(selectedOption));

@@ -292,10 +292,13 @@ export interface ApiAgentProfile {
   name: string;
   displayName: string;
   description?: string;
+  guidelines?: string;
+  systemPrompt?: string;
   enabled: boolean;
   isBuiltIn?: boolean;
   isUserProfile?: boolean;
   isAgentTarget?: boolean;
+  isDefault?: boolean;
   role?: 'user-profile' | 'delegation-target' | 'external-agent';
   connectionType: 'internal' | 'acp' | 'stdio' | 'remote';
   autoSpawn?: boolean;
@@ -305,11 +308,8 @@ export interface ApiAgentProfile {
 
 // Full agent profile detail (from GET /v1/agent-profiles/:id)
 export interface ApiAgentProfileFull extends ApiAgentProfile {
-  systemPrompt?: string;
-  guidelines?: string;
   properties?: Record<string, string>;
   avatarDataUrl?: string;
-  isDefault?: boolean;
   isStateful?: boolean;
   conversationId?: string;
   connection?: {
