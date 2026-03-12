@@ -1,18 +1,23 @@
 import React, { useRef, useState, useEffect, useLayoutEffect, createContext, useContext, useCallback } from "react"
 import { cn } from "@renderer/lib/utils"
 import { GripVertical } from "lucide-react"
-import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
+import { useResizable } from "@renderer/hooks/use-resizable"
+import {
+  COLLAPSED_TILE_ROW_HEIGHT,
+  calculateTileHeight,
+  getTileGridRowSpan,
+  isMaximizedTileLayout,
+  parseTileLayoutMode,
+  type TileLayoutMode,
+} from "./session-grid-layout"
 
-/** Layout mode for session tiles: "1x2" = 2 columns, "2x2" = 4 tiles (2x2 grid), "1x1" = single maximized */
-export type TileLayoutMode = "1x2" | "2x2" | "1x1"
-
-// Context to share container width, height, gap, reset key, and layout mode with tile wrappers
 interface SessionGridContextValue {
   containerWidth: number
   containerHeight: number
   gap: number
   resetKey: number
   layoutMode: TileLayoutMode
+  columns: number
 }
 
 const SessionGridContext = createContext<SessionGridContextValue>({
@@ -21,6 +26,7 @@ const SessionGridContext = createContext<SessionGridContextValue>({
   gap: 12,
   resetKey: 0,
   layoutMode: "1x2",
+  columns: 2,
 })
 
 export function useSessionGridContext() {
@@ -34,9 +40,10 @@ interface SessionGridProps {
   resetKey?: number
   layoutMode?: TileLayoutMode
   layoutChangeKey?: number
+  onMetricsChange?: (metrics: { width: number; height: number; gap: number }) => void
 }
 
-export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey }: SessionGridProps) {
+export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey, onMetricsChange }: SessionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [containerHeight, setContainerHeight] = useState(0)
@@ -117,14 +124,24 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
     }
   }, [layoutChangeKey, updateMeasurements])
 
+  useEffect(() => {
+    onMetricsChange?.({ width: containerWidth, height: containerHeight, gap })
+  }, [containerWidth, containerHeight, gap, onMetricsChange])
+
+  const { columns } = parseTileLayoutMode(layoutMode)
+
   return (
-    <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey, layoutMode }}>
+    <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey, layoutMode, columns }}>
       <div
         ref={containerRef}
         className={cn(
-          "flex min-h-full w-full flex-wrap content-start gap-3 p-3",
+          "grid min-h-full w-full grid-flow-row-dense content-start gap-3 p-3",
           className
         )}
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(1, columns)}, minmax(0, 1fr))`,
+          gridAutoRows: `${COLLAPSED_TILE_ROW_HEIGHT}px`,
+        }}
       >
         {children}
       </div>
@@ -146,49 +163,6 @@ interface SessionTileWrapperProps {
   isDragging?: boolean
 }
 
-// Calculate tile width based on layout mode, clamped to min/max
-function calculateTileWidth(containerWidth: number, gap: number, layoutMode: TileLayoutMode): number {
-  if (containerWidth <= 0) {
-    return TILE_DIMENSIONS.width.default
-  }
-
-  // Leave a tiny amount of slack in multi-column modes. Exact-fit widths can
-  // wrap unpredictably at certain viewport/sidebar combinations due to
-  // subpixel rounding during layout/animation.
-  const MULTI_COLUMN_SAFETY_PX = 2
-
-  switch (layoutMode) {
-    case "1x1":
-      // Full width — use container width directly (no max clamp so ultrawide displays work)
-      return Math.max(TILE_DIMENSIONS.width.min, containerWidth)
-    case "2x2":
-    case "1x2":
-    default: {
-      // Half width — 2 columns, with a small safety buffer to avoid exact-fit
-      // wrapping when the sidebar is open and available width lands on a tight boundary.
-      const halfWidth = Math.floor((containerWidth - gap - MULTI_COLUMN_SAFETY_PX) / 2)
-      return Math.max(TILE_DIMENSIONS.width.min, halfWidth)
-    }
-  }
-}
-
-// Calculate tile height based on layout mode
-function calculateTileHeight(containerHeight: number, gap: number, layoutMode: TileLayoutMode): number {
-  if (containerHeight <= 0) return TILE_DIMENSIONS.height.default
-  switch (layoutMode) {
-    case "1x1":
-      // Full height
-      return Math.min(TILE_DIMENSIONS.height.max, Math.max(TILE_DIMENSIONS.height.min, containerHeight))
-    case "2x2":
-      // Half height — 2 rows
-      return Math.min(TILE_DIMENSIONS.height.max, Math.max(TILE_DIMENSIONS.height.min, Math.floor((containerHeight - gap) / 2)))
-    case "1x2":
-    default:
-      // Full height — single row
-      return Math.min(TILE_DIMENSIONS.height.max, Math.max(TILE_DIMENSIONS.height.min, containerHeight))
-  }
-}
-
 export function SessionTileWrapper({
   children,
   sessionId,
@@ -207,6 +181,8 @@ export function SessionTileWrapper({
   const hasInitializedRef = useRef(false)
   const lastResetKeyRef = useRef(resetKey)
   const lastLayoutModeRef = useRef(layoutMode)
+  const isMaximized = isMaximizedTileLayout(layoutMode)
+  const calculatedHeight = calculateTileHeight(containerHeight, gap, layoutMode)
 
   const {
     width,
@@ -215,76 +191,71 @@ export function SessionTileWrapper({
     handleWidthResizeStart,
     handleHeightResizeStart,
     handleCornerResizeStart,
+    hasPersistedSize,
     setSize,
   } = useResizable({
-    initialWidth: calculateTileWidth(containerWidth, gap, layoutMode),
-    initialHeight: calculateTileHeight(containerHeight, gap, layoutMode),
-    storageKey: "session-tile",
+    initialWidth: containerWidth,
+    initialHeight: calculatedHeight,
+    storageKey: isMaximized ? "session-tile" : undefined,
   })
+  const shouldPreservePersistedMaximizedSize = isMaximized && hasPersistedSize
 
   // Use useLayoutEffect (runs before browser paint) to update tile size when
   // layout mode or resetKey changes. Regular useEffect caused a one-frame stale
   // render where tiles kept their old (e.g. 1x1 full-width) size before the
   // effect corrected them, breaking flex-wrap two-column layout.
   useLayoutEffect(() => {
-    if (resetKey !== lastResetKeyRef.current && containerWidth > 0) {
+    if (resetKey !== lastResetKeyRef.current) {
       lastResetKeyRef.current = resetKey
+      if (shouldPreservePersistedMaximizedSize || containerWidth <= 0) return
+
       setSize({
-        width: calculateTileWidth(containerWidth, gap, layoutMode),
-        height: calculateTileHeight(containerHeight, gap, layoutMode),
+        width: containerWidth,
+        height: calculatedHeight,
       })
     }
-  }, [resetKey, containerWidth, containerHeight, gap, layoutMode, setSize])
+  }, [resetKey, containerWidth, calculatedHeight, setSize, shouldPreservePersistedMaximizedSize])
 
   useLayoutEffect(() => {
-    if (layoutMode !== lastLayoutModeRef.current && containerWidth > 0) {
+    if (layoutMode !== lastLayoutModeRef.current) {
       lastLayoutModeRef.current = layoutMode
+      if (shouldPreservePersistedMaximizedSize || containerWidth <= 0) return
+
       setSize({
-        width: calculateTileWidth(containerWidth, gap, layoutMode),
-        height: calculateTileHeight(containerHeight, gap, layoutMode),
+        width: containerWidth,
+        height: calculatedHeight,
       })
     }
-  }, [layoutMode, containerWidth, containerHeight, gap, setSize])
+  }, [layoutMode, containerWidth, calculatedHeight, setSize, shouldPreservePersistedMaximizedSize])
 
   // Update width and height to fill container once it is measured (only on first valid measurement)
   // This handles the case where containerWidth/containerHeight are 0 on initial render
   useEffect(() => {
+    if (shouldPreservePersistedMaximizedSize) return
+
     // Only run once when container dimensions become valid and we haven't initialized yet
     if (containerWidth > 0 && !hasInitializedRef.current) {
       hasInitializedRef.current = true
-      // Check if there's already a persisted size - if so, don't override it
-      let hasPersistedSize = false
-      try {
-        const persistedKey = "dotagents-resizable-session-tile"
-        hasPersistedSize = localStorage.getItem(persistedKey) !== null
-      } catch {
-        // Storage unavailable, fall back to default behavior
-      }
-      if (!hasPersistedSize) {
-        setSize({
-          width: calculateTileWidth(containerWidth, gap, layoutMode),
-          height: calculateTileHeight(containerHeight, gap, layoutMode),
-        })
-      }
+      setSize({ width: containerWidth, height: calculatedHeight })
     }
-  }, [containerWidth, containerHeight, gap, layoutMode, setSize])
+  }, [containerWidth, calculatedHeight, setSize, shouldPreservePersistedMaximizedSize])
 
   // Responsive reflow: when the container width changes significantly (e.g. sidebar toggle),
   // recalculate tile sizes to fill available space. Only fires after initial sizing and when
   // not actively resizing via drag handles.
   const lastContainerWidthRef = useRef(containerWidth)
   useEffect(() => {
+    if (shouldPreservePersistedMaximizedSize) return
     if (!hasInitializedRef.current || containerWidth <= 0 || isResizing) return
     const prevWidth = lastContainerWidthRef.current
     lastContainerWidthRef.current = containerWidth
     // Only reflow if width changed by more than 20px (avoids sub-pixel jitter)
     if (prevWidth > 0 && Math.abs(containerWidth - prevWidth) > 20) {
-      setSize({
-        width: calculateTileWidth(containerWidth, gap, layoutMode),
-        height: calculateTileHeight(containerHeight, gap, layoutMode),
-      })
+      setSize({ width: containerWidth, height: calculatedHeight })
     }
-  }, [containerWidth, containerHeight, gap, layoutMode, setSize, isResizing])
+  }, [containerWidth, calculatedHeight, setSize, isResizing, shouldPreservePersistedMaximizedSize])
+
+  const tileRowSpan = isCollapsed ? 1 : getTileGridRowSpan(isMaximized ? height : calculatedHeight, gap)
 
   const handleDragStart = (e: React.DragEvent) => {
     if (!isDraggable) return
@@ -315,7 +286,12 @@ export function SessionTileWrapper({
         isDragging && "opacity-50",
         className
       )}
-      style={{ width, height: isCollapsed ? "auto" : height }}
+      style={{
+        width: isMaximized ? width : "100%",
+        height: isMaximized && !isCollapsed ? height : undefined,
+        gridColumn: "span 1 / span 1",
+        gridRow: `span ${tileRowSpan} / span ${tileRowSpan}`,
+      }}
       draggable={isDraggable && !isResizing}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -337,7 +313,7 @@ export function SessionTileWrapper({
       </div>
 
       {/* Resize handles - hide when collapsed */}
-      {!isCollapsed && (
+      {!isCollapsed && isMaximized && (
         <>
           {/* Right edge resize handle */}
           <div

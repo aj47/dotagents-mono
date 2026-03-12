@@ -3,8 +3,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useParams, useOutletContext } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
-import { SessionGrid, SessionTileWrapper, type TileLayoutMode } from "@renderer/components/session-grid"
-import { clearPersistedSize } from "@renderer/hooks/use-resizable"
+import { SessionGrid, SessionTileWrapper } from "@renderer/components/session-grid"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
@@ -20,6 +19,8 @@ import { useConfigQuery } from "@renderer/lib/query-client"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
+import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
+import { DEFAULT_TILE_LAYOUT_MODES, getAvailableTileLayoutModes, getTileLayoutLabel, type TileLayoutMode } from "@renderer/components/session-grid-layout"
 
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
@@ -58,6 +59,14 @@ type SessionAgentTileProps = {
   onDragOver: (index: number) => void
   onDragEnd: () => void
   onMaximizeTile: (sessionId?: string) => void
+  onVoiceContinue: (options: {
+    conversationId?: string
+    sessionId?: string
+    fromTile: boolean
+    continueConversationTitle?: string
+    agentName?: string
+    onSubmitted?: () => void
+  }) => void
 }
 
 const SessionAgentTile = React.memo(function SessionAgentTile({
@@ -73,6 +82,7 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
   onDragOver,
   onDragEnd,
   onMaximizeTile,
+  onVoiceContinue,
 }: SessionAgentTileProps) {
   const progress = useAgentSessionProgress(sessionId)
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
@@ -137,6 +147,7 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
         onCollapsedChange={handleCollapsedChange}
         onExpand={showTileMaximize ? handleMaximize : undefined}
         isExpanded={isFocused && tileLayoutMode === "1x1"}
+        onVoiceContinue={onVoiceContinue}
       />
     </SessionTileWrapper>
   )
@@ -310,6 +321,17 @@ export function Component() {
   const [collapsedSessions, setCollapsedSessions] = useState<Record<string, boolean>>({})
   const [tileResetKey, setTileResetKey] = useState(0)
   const [tileLayoutMode, setTileLayoutMode] = useState<TileLayoutMode>("1x2")
+  const [gridMetrics, setGridMetrics] = useState({ width: 0, height: 0, gap: 12 })
+  const [sessionActionDialog, setSessionActionDialog] = useState<{
+    mode: SessionActionDialogMode
+    initialText?: string
+    conversationId?: string
+    sessionId?: string
+    fromTile?: boolean
+    continueConversationTitle?: string
+    agentName?: string
+    onSubmitted?: () => void
+  } | null>(null)
 
   const sessionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -659,23 +681,41 @@ export function Component() {
   const handleTextClick = async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindowWithTextInput({})
+    setSessionActionDialog({ mode: "text" })
   }
 
   // Handle voice start - trigger MCP recording
   const handleVoiceStart = async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindow({})
-    await tipcClient.triggerMcpRecording({})
+    setSessionActionDialog({ mode: "voice" })
   }
 
   // Handle predefined prompt selection - open panel with text input pre-filled
   const handleSelectPrompt = async (content: string) => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+    setSessionActionDialog({ mode: "text", initialText: content })
   }
+
+  const handleOpenVoiceContinuation = useCallback((options: {
+    conversationId?: string
+    sessionId?: string
+    fromTile: boolean
+    continueConversationTitle?: string
+    agentName?: string
+    onSubmitted?: () => void
+  }) => {
+    setSessionActionDialog({
+      mode: "voice",
+      conversationId: options.conversationId,
+      sessionId: options.sessionId,
+      fromTile: options.fromTile,
+      continueConversationTitle: options.continueConversationTitle,
+      agentName: options.agentName,
+      onSubmitted: options.onSubmitted,
+    })
+  }, [])
 
   // Drag and drop handlers
   const handleDragStart = useCallback((sessionId: string, _index: number) => {
@@ -721,43 +761,44 @@ export function Component() {
     }
   }
 
-  const LAYOUT_MODES: TileLayoutMode[] = ["1x2", "2x2", "1x1"]
-  const LAYOUT_LABELS: Record<TileLayoutMode, string> = {
-    "1x2": "2 columns",
-    "2x2": "2×2 grid",
-    "1x1": "Maximized",
-  }
+  const availableLayoutModes = useMemo(
+    () => getAvailableTileLayoutModes(gridMetrics.width, gridMetrics.height, gridMetrics.gap),
+    [gridMetrics.gap, gridMetrics.height, gridMetrics.width],
+  )
+
+  useEffect(() => {
+    if (availableLayoutModes.includes(tileLayoutMode)) return
+    const fallback = [...availableLayoutModes].reverse().find((mode) => mode !== "1x1") ?? availableLayoutModes[0] ?? "1x1"
+    setTileLayoutMode(fallback)
+    setTileResetKey((prev) => prev + 1)
+  }, [availableLayoutModes, tileLayoutMode])
 
   const handleCycleTileLayout = useCallback(() => {
-    clearPersistedSize("session-tile")
     setTileLayoutMode(prev => {
-      const idx = LAYOUT_MODES.indexOf(prev)
-      return LAYOUT_MODES[(idx + 1) % LAYOUT_MODES.length]
+      const layouts = availableLayoutModes.length > 0 ? availableLayoutModes : DEFAULT_TILE_LAYOUT_MODES
+      const idx = layouts.indexOf(prev)
+      return layouts[(idx + 1) % layouts.length]
     })
     setTileResetKey(prev => prev + 1)
-  }, [])
+  }, [availableLayoutModes])
 
   const nextTileLayoutMode = useMemo(() => {
-    const idx = LAYOUT_MODES.indexOf(tileLayoutMode)
-    return LAYOUT_MODES[(idx + 1) % LAYOUT_MODES.length]
-  }, [tileLayoutMode])
+    const layouts = availableLayoutModes.length > 0 ? availableLayoutModes : DEFAULT_TILE_LAYOUT_MODES
+    const idx = layouts.indexOf(tileLayoutMode)
+    return layouts[(idx + 1) % layouts.length]
+  }, [availableLayoutModes, tileLayoutMode])
 
   // Track previous layout mode so we can restore when exiting maximize
   const previousLayoutModeRef = useRef<TileLayoutMode>("1x2")
 
   const handleMaximizeTile = useCallback((sessionId?: string) => {
     if (tileLayoutMode === "1x1") {
-      // Restore previous layout mode
-      clearPersistedSize("session-tile")
       setTileLayoutMode(previousLayoutModeRef.current)
       setTileResetKey(prev => prev + 1)
     } else {
-      // Maximize: remember current layout and switch to 1x1
       previousLayoutModeRef.current = tileLayoutMode
-      clearPersistedSize("session-tile")
       setTileLayoutMode("1x1")
       setTileResetKey(prev => prev + 1)
-      // Focus the specific tile being maximized
       if (sessionId) {
         setFocusedSessionId(sessionId)
       }
@@ -823,8 +864,9 @@ export function Component() {
               size="sm"
               onClick={handleCycleTileLayout}
               className="h-7 px-2"
-              title={`Next layout: ${LAYOUT_LABELS[nextTileLayoutMode]} (click to cycle)`}
+              title={`Next layout: ${getTileLayoutLabel(nextTileLayoutMode)} (click to cycle)`}
               aria-label="Cycle tile layout"
+              disabled={availableLayoutModes.length <= 1}
             >
               {nextTileLayoutMode === "1x1" ? (
                 <Maximize2 className="h-4 w-4" />
@@ -873,6 +915,7 @@ export function Component() {
               resetKey={tileResetKey}
               layoutMode={tileLayoutMode}
               layoutChangeKey={sidebarWidth}
+              onMetricsChange={setGridMetrics}
             >
               {/* Pending continuation tile first */}
               {pendingProgress && pendingSessionId && (
@@ -900,6 +943,7 @@ export function Component() {
                     onExpand={showTileMaximize ? () => handleMaximizeTile(pendingSessionId) : undefined}
                     isExpanded={tileLayoutMode === "1x1"}
                     isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
+                    onVoiceContinue={handleOpenVoiceContinuation}
                   />
                 </SessionTileWrapper>
               )}
@@ -951,11 +995,33 @@ export function Component() {
                       onDragOver={handleDragOver}
                       onDragEnd={handleDragEnd}
                       onMaximizeTile={handleMaximizeTile}
+                      onVoiceContinue={handleOpenVoiceContinuation}
                     />
                   </div>
                 )
               })}
             </SessionGrid>
+        )}
+
+        {sessionActionDialog && (
+          <SessionActionDialog
+            open={true}
+            mode={sessionActionDialog.mode}
+            initialText={sessionActionDialog.initialText}
+            conversationId={sessionActionDialog.conversationId}
+            sessionId={sessionActionDialog.sessionId}
+            fromTile={sessionActionDialog.fromTile}
+            continueConversationTitle={sessionActionDialog.continueConversationTitle}
+            agentName={sessionActionDialog.agentName}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={setSelectedAgentId}
+            onSubmitted={sessionActionDialog.onSubmitted}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) {
+                setSessionActionDialog(null)
+              }
+            }}
+          />
         )}
       </div>
     </div>

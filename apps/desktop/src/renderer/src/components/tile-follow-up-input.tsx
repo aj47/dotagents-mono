@@ -23,10 +23,20 @@ interface TileFollowUpInputProps {
   className?: string
   /** Agent/profile name to display as indicator */
   agentName?: string
+  conversationTitle?: string
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
   onStopSession?: () => void | Promise<void>
+  /** Opens the in-app voice continuation modal when available */
+  onVoiceContinue?: (options: {
+    conversationId?: string
+    sessionId?: string
+    fromTile: boolean
+    continueConversationTitle?: string
+    agentName?: string
+    onSubmitted?: () => void
+  }) => void
 }
 
 /**
@@ -39,8 +49,10 @@ export function TileFollowUpInput({
   isInitializingSession = false,
   className,
   agentName,
+  conversationTitle,
   onMessageSent,
   onStopSession,
+  onVoiceContinue,
 }: TileFollowUpInputProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [text, setText] = useState("")
@@ -176,11 +188,19 @@ export function TileFollowUpInput({
     e.stopPropagation()
     if (isInitializingSession) return
 
-    // Pass conversationId and sessionId directly through IPC to continue in the same session
-    // This is more reliable than using Zustand store which has timing issues
-    // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
-    // Mark as fromTile so the floating panel doesn't show - session continues in the tile
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
+    if (onVoiceContinue) {
+      onVoiceContinue({
+        conversationId,
+        sessionId: realSessionId,
+        fromTile: true,
+        continueConversationTitle: conversationTitle,
+        agentName,
+        onSubmitted: onMessageSent,
+      })
+      return
+    }
+
     await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
   }
 

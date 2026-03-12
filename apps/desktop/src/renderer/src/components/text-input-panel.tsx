@@ -24,6 +24,7 @@ interface TextInputPanelProps {
   agentProgress?: AgentProgressUpdate | null
   initialText?: string
   continueConversationTitle?: string | null
+  showAgentSelector?: boolean
 }
 
 export interface TextInputPanelRef {
@@ -40,6 +41,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   agentProgress,
   initialText,
   continueConversationTitle,
+  showAgentSelector = true,
 }, ref) => {
   const [text, setText] = useState(initialText || "")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
@@ -190,11 +192,13 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
         <div className="flex flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
-              <AgentSelector
-                selectedAgentId={selectedAgentId}
-                onSelectAgent={onSelectAgent}
-                compact
-              />
+              {showAgentSelector && (
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onSelectAgent={onSelectAgent}
+                  compact
+                />
+              )}
             </div>
             {continueConversationTitle && (
               <div className="flex max-w-full items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">

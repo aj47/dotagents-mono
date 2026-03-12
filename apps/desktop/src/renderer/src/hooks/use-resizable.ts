@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react"
 
 export const TILE_DIMENSIONS = {
   width: {
@@ -54,7 +54,8 @@ export interface UseResizableReturn {
   handleHeightResizeStart: (e: React.MouseEvent) => void
   handleCornerResizeStart: (e: React.MouseEvent) => void
   reset: () => void
-  setSize: (size: { width?: number; height?: number }) => void
+  hasPersistedSize: boolean
+  setSize: (size: { width?: number; height?: number }, options?: { persist?: boolean }) => void
 }
 
 function loadPersistedSize(storageKey: string): { width?: number; height?: number } | null {
@@ -117,6 +118,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
 
   const clampWidth = useCallback((w: number) => Math.min(maxWidth, Math.max(minWidth, w)), [minWidth, maxWidth])
   const clampHeight = useCallback((h: number) => Math.min(maxHeight, Math.max(minHeight, h)), [minHeight, maxHeight])
+  const hasPersistedSize = storageKey ? loadPersistedSize(storageKey) !== null : false
 
   const storageKeyRef = useRef(storageKey)
 
@@ -128,18 +130,20 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     heightRef.current = height
   }, [height])
 
-  useEffect(() => {
-    if (storageKey && storageKey !== storageKeyRef.current) {
-      storageKeyRef.current = storageKey
-      const persisted = loadPersistedSize(storageKey)
-      if (persisted) {
-        const nextWidth = clampWidth(persisted.width ?? initialWidth)
-        const nextHeight = clampHeight(persisted.height ?? initialHeight)
-        widthRef.current = nextWidth
-        heightRef.current = nextHeight
-        setWidth(nextWidth)
-        setHeight(nextHeight)
-      }
+  useLayoutEffect(() => {
+    if (storageKey === storageKeyRef.current) return
+
+    storageKeyRef.current = storageKey
+    if (!storageKey) return
+
+    const persisted = loadPersistedSize(storageKey)
+    if (persisted) {
+      const nextWidth = clampWidth(persisted.width ?? initialWidth)
+      const nextHeight = clampHeight(persisted.height ?? initialHeight)
+      widthRef.current = nextWidth
+      heightRef.current = nextHeight
+      setWidth(nextWidth)
+      setHeight(nextHeight)
     }
   }, [storageKey, initialWidth, initialHeight, clampWidth, clampHeight])
 
@@ -350,7 +354,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     }
   }, [initialWidth, initialHeight, storageKey])
 
-  const setSize = useCallback((size: { width?: number; height?: number }) => {
+  const setSize = useCallback((size: { width?: number; height?: number }, options?: { persist?: boolean }) => {
     const newWidth = size.width !== undefined ? clampWidth(size.width) : widthRef.current
     const newHeight = size.height !== undefined ? clampHeight(size.height) : heightRef.current
 
@@ -364,7 +368,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
       setHeight(newHeight)
     }
 
-    if (storageKey) {
+    if (options?.persist && storageKey) {
       savePersistedSize(storageKey, { width: newWidth, height: newHeight })
     }
   }, [clampWidth, clampHeight, storageKey])
@@ -392,6 +396,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     handleHeightResizeStart,
     handleCornerResizeStart,
     reset,
+    hasPersistedSize,
     setSize,
   }
 }
