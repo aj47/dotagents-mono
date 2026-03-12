@@ -116,6 +116,17 @@ export interface Settings {
   whatsappAutoReply?: boolean;
   whatsappLogMessages?: boolean;
 
+  // Discord Integration
+  discordEnabled?: boolean;
+  discordBotToken?: string;
+  discordDmEnabled?: boolean;
+  discordRequireMention?: boolean;
+  discordAllowUserIds?: string[];
+  discordAllowGuildIds?: string[];
+  discordAllowChannelIds?: string[];
+  discordDefaultProfileId?: string;
+  discordLogMessages?: boolean;
+
   // Langfuse Observability
   langfuseEnabled?: boolean;
   langfusePublicKey?: string;
@@ -193,6 +204,17 @@ export interface SettingsUpdate {
   whatsappAllowFrom?: string[];
   whatsappAutoReply?: boolean;
   whatsappLogMessages?: boolean;
+
+  // Discord Integration
+  discordEnabled?: boolean;
+  discordBotToken?: string;
+  discordDmEnabled?: boolean;
+  discordRequireMention?: boolean;
+  discordAllowUserIds?: string[];
+  discordAllowGuildIds?: string[];
+  discordAllowChannelIds?: string[];
+  discordDefaultProfileId?: string;
+  discordLogMessages?: boolean;
 
   // Langfuse Observability
   langfuseEnabled?: boolean;

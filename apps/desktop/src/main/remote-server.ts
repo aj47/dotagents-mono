@@ -490,6 +490,7 @@ function extractUserPrompt(body: any): string | null {
 interface RunAgentOptions {
   prompt: string
   conversationId?: string
+  profileId?: string
   onProgress?: (update: AgentProgressUpdate) => void
 }
 
@@ -530,7 +531,7 @@ function formatConversationHistoryForApi(
   }))
 }
 
-async function runAgent(options: RunAgentOptions): Promise<{
+export async function runAgent(options: RunAgentOptions): Promise<{
   content: string
   conversationId: string
   conversationHistory: Array<{
@@ -541,7 +542,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
     timestamp?: number
   }>
 }> {
-  const { prompt, conversationId: inputConversationId, onProgress } = options
+  const { prompt, conversationId: inputConversationId, profileId, onProgress } = options
   const cfg = configStore.get()
 
   // Set agent mode state for process management - ensure clean state
@@ -654,9 +655,17 @@ async function runAgent(options: RunAgentOptions): Promise<{
 
   // Only capture a new snapshot if we don't have one from an existing session
   if (!profileSnapshot) {
-    const currentProfile = agentProfileService.getCurrentProfile()
-    if (currentProfile) {
-      profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
+    if (profileId) {
+      const configuredProfile = agentProfileService.getById(profileId)
+      if (!configuredProfile) {
+        throw new Error(`Configured profile not found: ${profileId}`)
+      }
+      profileSnapshot = createSessionSnapshotFromProfile(configuredProfile)
+    } else {
+      const currentProfile = agentProfileService.getCurrentProfile()
+      if (currentProfile) {
+        profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
+      }
     }
   }
 
@@ -911,6 +920,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Use undefined for absent/non-string values; treat empty string as absent
       const rawConversationId = typeof body.conversation_id === "string" ? body.conversation_id : undefined
       const conversationId = rawConversationId !== "" ? rawConversationId : undefined
+      const rawProfileId = typeof body.profile_id === "string" ? body.profile_id : undefined
+      const profileId = rawProfileId !== "" ? rawProfileId : undefined
       if (conversationId) {
         const conversationIdError = getConversationIdValidationError(conversationId)
         if (conversationIdError) {
@@ -946,7 +957,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         }
 
         try {
-          const result = await runAgent({ prompt, conversationId, onProgress })
+          const result = await runAgent({ prompt, conversationId, profileId, onProgress })
 
           // Record as if user submitted a text input
           recordHistory(result.content)
@@ -989,7 +1000,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       // Non-streaming mode (existing behavior)
-      const result = await runAgent({ prompt, conversationId })
+      const result = await runAgent({ prompt, conversationId, profileId })
 
       // Record as if user submitted a text input
       recordHistory(result.content)

@@ -36,6 +36,7 @@ import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
+import { discordService } from "./discord-service"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import { downloadHubBundleToTempFile, findHubBundleInstallBundleUrl } from "./hub-install"
 import { buildHubBundleInstallUrl, resolveStartupMainWindowDecision } from "./startup-routing"
@@ -539,6 +540,15 @@ app.whenReady().then(async () => {
 	        )
 	    }
 	  } catch (_e) {}
+
+		  try {
+		    const cfg = configStore.get()
+		    if (cfg.discordEnabled) {
+		      discordService.start().catch((err) =>
+		        logApp(`Discord integration failed to start: ${err instanceof Error ? err.message : String(err)}`),
+		      )
+		    }
+		  } catch (_e) {}
 
 
 

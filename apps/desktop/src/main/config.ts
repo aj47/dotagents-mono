@@ -302,6 +302,17 @@ const getConfig = (): LoadedConfig => {
     whatsappAutoReply: false,
     whatsappLogMessages: false,
 
+    // Discord Integration defaults
+    discordEnabled: false,
+    discordBotToken: "",
+    discordDmEnabled: true,
+    discordRequireMention: true,
+    discordAllowUserIds: [],
+    discordAllowGuildIds: [],
+    discordAllowChannelIds: [],
+    discordDefaultProfileId: undefined,
+    discordLogMessages: false,
+
     // Streamer Mode - hides sensitive info for screen sharing
     streamerModeEnabled: false,
 
