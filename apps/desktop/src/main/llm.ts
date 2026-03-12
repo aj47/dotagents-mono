@@ -52,6 +52,7 @@ import {
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 import {
+  isDeliverableResponseContent,
   normalizeMissingItemsList,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
@@ -1851,9 +1852,10 @@ export async function processTranscriptWithAgentMode(
       // For no-tool responses, require a bit more substance before treating as completion candidate.
       // Use a low threshold (2 chars) to avoid rejecting legitimate short answers like "Yes." or "42"
       // while still filtering truly empty/whitespace-only responses.
-      const hasSubstantiveResponse = hasToolResultsInCurrentTurn
+      const hasSubstantiveResponse = (hasToolResultsInCurrentTurn
         ? trimmedContent.length >= 1
-        : trimmedContent.length >= 2
+        : trimmedContent.length >= 2)
+        && isDeliverableResponseContent(contentText)
 
       // Unified completion candidate handling:
       // Any substantive response is either:

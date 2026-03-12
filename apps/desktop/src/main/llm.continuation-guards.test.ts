@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  isDeliverableResponseContent,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
 } from "./llm-continuation-guards"
@@ -98,6 +99,31 @@ describe("continuation guard helpers", () => {
     }))
   })
 
+  it("downgrades mid-analysis recovery strategy handoff to running", () => {
+    expect(normalizeVerificationResultForCompletion(
+      {
+        conversationState: "needs_input",
+        isComplete: true,
+        reason: "The assistant asked for the user's chosen recovery strategy and clean baseline commit before continuing.",
+        missingItems: [
+          "User's chosen recovery strategy (hard reset, selective revert, or cherry-pick)",
+          "The last clean commit hash before the loops ran",
+        ],
+      },
+      {
+        verificationMessages: [
+          { role: "system", content: "Verifier" },
+          { role: "user", content: "Original request:\nRecover the repo from the bad loops and get it back to a clean state." },
+          { role: "assistant", content: "We're mid-analysis — I've laid out the three recovery options (hard reset, selective revert, cherry-pick onto clean base) and need your input on which approach to take, plus the last clean commit hash before the loops ran. What do you want to do?" },
+          { role: "user", content: "Return JSON only." },
+        ],
+      },
+    )).toEqual(expect.objectContaining({
+      conversationState: "running",
+      isComplete: false,
+    }))
+  })
+
   it("prefers stored respond_to_user content at iteration limit", () => {
     expect(resolveIterationLimitFinalContent({
       finalContent: "",
@@ -141,5 +167,9 @@ describe("continuation guard helpers", () => {
       content: "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.",
       usedExplicitUserResponse: false,
     })
+  })
+
+  it("rejects tool placeholders as non-deliverable content", () => {
+    expect(isDeliverableResponseContent("[Calling tools: read_file]")).toBe(false)
   })
 })
