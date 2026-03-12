@@ -299,6 +299,7 @@ const getConfig = (): LoadedConfig => {
     // WhatsApp Integration defaults
     whatsappEnabled: false,
     whatsappAllowFrom: [],
+    whatsappOperatorAllowFrom: [],
     whatsappAutoReply: false,
     whatsappLogMessages: false,
 
@@ -310,6 +311,9 @@ const getConfig = (): LoadedConfig => {
     discordAllowUserIds: [],
     discordAllowGuildIds: [],
     discordAllowChannelIds: [],
+    discordOperatorAllowUserIds: [],
+    discordOperatorAllowGuildIds: [],
+    discordOperatorAllowChannelIds: [],
     discordDefaultProfileId: undefined,
     discordLogMessages: false,
 

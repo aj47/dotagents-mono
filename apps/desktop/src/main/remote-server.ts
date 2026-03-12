@@ -92,6 +92,7 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "cloudflareTunnelHostname",
   "whatsappEnabled",
   "whatsappAllowFrom",
+  "whatsappOperatorAllowFrom",
   "whatsappAutoReply",
   "whatsappLogMessages",
   "discordEnabled",
@@ -101,6 +102,9 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "discordAllowUserIds",
   "discordAllowGuildIds",
   "discordAllowChannelIds",
+  "discordOperatorAllowUserIds",
+  "discordOperatorAllowGuildIds",
+  "discordOperatorAllowChannelIds",
   "discordDefaultProfileId",
   "discordLogMessages",
   "langfuseEnabled",
@@ -109,6 +113,15 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "langfuseBaseUrl",
 ])
 const operatorAuditLog: OperatorAuditEntry[] = []
+
+function sanitizeStringList(values: unknown[]): string[] {
+  return [...new Set(
+    values
+      .filter((value: unknown): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  )]
+}
 
 // Track webContents IDs that already have a pending did-finish-load notification queued,
 // to avoid registering multiple once-listeners if notifyConversationHistoryChanged() is
@@ -2482,6 +2495,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         cloudflareTunnelHostname: cfg.cloudflareTunnelHostname ?? "",
         // WhatsApp (extended)
         whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
+        whatsappOperatorAllowFrom: cfg.whatsappOperatorAllowFrom ?? [],
         whatsappAutoReply: cfg.whatsappAutoReply ?? false,
         whatsappLogMessages: cfg.whatsappLogMessages ?? false,
         // Discord (extended)
@@ -2491,6 +2505,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         discordAllowUserIds: cfg.discordAllowUserIds ?? [],
         discordAllowGuildIds: cfg.discordAllowGuildIds ?? [],
         discordAllowChannelIds: cfg.discordAllowChannelIds ?? [],
+        discordOperatorAllowUserIds: cfg.discordOperatorAllowUserIds ?? [],
+        discordOperatorAllowGuildIds: cfg.discordOperatorAllowGuildIds ?? [],
+        discordOperatorAllowChannelIds: cfg.discordOperatorAllowChannelIds ?? [],
         discordDefaultProfileId: getDiscordResolvedDefaultProfileId(cfg).profileId ?? "",
         discordLogMessages: cfg.discordLogMessages ?? false,
         // Langfuse
@@ -2702,7 +2719,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       // WhatsApp (extended)
       if (Array.isArray(body.whatsappAllowFrom)) {
-        updates.whatsappAllowFrom = body.whatsappAllowFrom.filter((n: unknown) => typeof n === "string")
+        updates.whatsappAllowFrom = sanitizeStringList(body.whatsappAllowFrom)
+      }
+      if (Array.isArray(body.whatsappOperatorAllowFrom)) {
+        updates.whatsappOperatorAllowFrom = sanitizeStringList(body.whatsappOperatorAllowFrom)
       }
       if (typeof body.whatsappAutoReply === "boolean") {
         updates.whatsappAutoReply = body.whatsappAutoReply
@@ -2721,13 +2741,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.discordRequireMention = body.discordRequireMention
       }
       if (Array.isArray(body.discordAllowUserIds)) {
-        updates.discordAllowUserIds = body.discordAllowUserIds.filter((value: unknown) => typeof value === "string")
+        updates.discordAllowUserIds = sanitizeStringList(body.discordAllowUserIds)
       }
       if (Array.isArray(body.discordAllowGuildIds)) {
-        updates.discordAllowGuildIds = body.discordAllowGuildIds.filter((value: unknown) => typeof value === "string")
+        updates.discordAllowGuildIds = sanitizeStringList(body.discordAllowGuildIds)
       }
       if (Array.isArray(body.discordAllowChannelIds)) {
-        updates.discordAllowChannelIds = body.discordAllowChannelIds.filter((value: unknown) => typeof value === "string")
+        updates.discordAllowChannelIds = sanitizeStringList(body.discordAllowChannelIds)
+      }
+      if (Array.isArray(body.discordOperatorAllowUserIds)) {
+        updates.discordOperatorAllowUserIds = sanitizeStringList(body.discordOperatorAllowUserIds)
+      }
+      if (Array.isArray(body.discordOperatorAllowGuildIds)) {
+        updates.discordOperatorAllowGuildIds = sanitizeStringList(body.discordOperatorAllowGuildIds)
+      }
+      if (Array.isArray(body.discordOperatorAllowChannelIds)) {
+        updates.discordOperatorAllowChannelIds = sanitizeStringList(body.discordOperatorAllowChannelIds)
       }
       if (typeof body.discordDefaultProfileId === "string") {
         updates.discordDefaultProfileId = body.discordDefaultProfileId

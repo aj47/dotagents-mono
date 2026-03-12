@@ -45,6 +45,10 @@ type RemoteAccessDrafts = {
   cloudflareTunnelId: string;
   cloudflareTunnelHostname: string;
   cloudflareTunnelCredentialsPath: string;
+  whatsappOperatorAllowFrom: string;
+  discordOperatorAllowUserIds: string;
+  discordOperatorAllowGuildIds: string;
+  discordOperatorAllowChannelIds: string;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -106,7 +110,20 @@ function buildDrafts(settings: Settings | null): RemoteAccessDrafts {
     cloudflareTunnelId: settings?.cloudflareTunnelId ?? '',
     cloudflareTunnelHostname: settings?.cloudflareTunnelHostname ?? '',
     cloudflareTunnelCredentialsPath: settings?.cloudflareTunnelCredentialsPath ?? '',
+    whatsappOperatorAllowFrom: (settings?.whatsappOperatorAllowFrom ?? []).join(', '),
+    discordOperatorAllowUserIds: (settings?.discordOperatorAllowUserIds ?? []).join(', '),
+    discordOperatorAllowGuildIds: (settings?.discordOperatorAllowGuildIds ?? []).join(', '),
+    discordOperatorAllowChannelIds: (settings?.discordOperatorAllowChannelIds ?? []).join(', '),
   };
+}
+
+function parseCommaSeparatedList(value: string): string[] {
+  return [...new Set(
+    value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  )];
 }
 
 export default function OperationsScreen({ navigation }: any) {
@@ -826,6 +843,82 @@ export default function OperationsScreen({ navigation }: any) {
                 accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel credentials path')}
               />
               <Text style={styles.helperText}>Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.</Text>
+
+              <Text style={styles.subsectionTitle}>Channel operator allowlists</Text>
+              <Text style={styles.helperText}>If left blank, /ops uses the current channel access rules. Once you add values here, /ops becomes restricted to the matching identities.</Text>
+
+              <Text style={styles.label}>Discord Operator User IDs</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.discordOperatorAllowUserIds}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowUserIds: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { discordOperatorAllowUserIds: parseCommaSeparatedList(drafts.discordOperatorAllowUserIds) },
+                  'Discord operator user IDs',
+                  'Discord operator user allowlist updated.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="1234567890, 9876543210"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator user IDs')}
+              />
+
+              <Text style={styles.label}>Discord Operator Guild IDs</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.discordOperatorAllowGuildIds}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowGuildIds: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { discordOperatorAllowGuildIds: parseCommaSeparatedList(drafts.discordOperatorAllowGuildIds) },
+                  'Discord operator guild IDs',
+                  'Discord operator guild allowlist updated.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="1122334455"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator guild IDs')}
+              />
+
+              <Text style={styles.label}>Discord Operator Channel IDs</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.discordOperatorAllowChannelIds}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowChannelIds: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { discordOperatorAllowChannelIds: parseCommaSeparatedList(drafts.discordOperatorAllowChannelIds) },
+                  'Discord operator channel IDs',
+                  'Discord operator channel allowlist updated.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="5566778899"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator channel IDs')}
+              />
+
+              <Text style={styles.label}>WhatsApp Operator Allowlist</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.whatsappOperatorAllowFrom}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, whatsappOperatorAllowFrom: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { whatsappOperatorAllowFrom: parseCommaSeparatedList(drafts.whatsappOperatorAllowFrom) },
+                  'WhatsApp operator allowlist',
+                  'WhatsApp operator allowlist updated.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="61400111222, 61400999888"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('WhatsApp operator allowlist')}
+              />
+              <Text style={styles.helperText}>Use exact Discord IDs and WhatsApp sender numbers/LIDs. For WhatsApp, the sender or chat must match one of these identities once the operator allowlist is set.</Text>
             </View>
           )}
 

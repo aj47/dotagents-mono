@@ -279,6 +279,7 @@ export interface Settings {
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
+  whatsappOperatorAllowFrom?: string[];
   whatsappAutoReply?: boolean;
   whatsappLogMessages?: boolean;
 
@@ -290,6 +291,9 @@ export interface Settings {
   discordAllowUserIds?: string[];
   discordAllowGuildIds?: string[];
   discordAllowChannelIds?: string[];
+  discordOperatorAllowUserIds?: string[];
+  discordOperatorAllowGuildIds?: string[];
+  discordOperatorAllowChannelIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 
@@ -386,6 +390,7 @@ export interface SettingsUpdate {
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
+  whatsappOperatorAllowFrom?: string[];
   whatsappAutoReply?: boolean;
   whatsappLogMessages?: boolean;
 
@@ -397,6 +402,9 @@ export interface SettingsUpdate {
   discordAllowUserIds?: string[];
   discordAllowGuildIds?: string[];
   discordAllowChannelIds?: string[];
+  discordOperatorAllowUserIds?: string[];
+  discordOperatorAllowGuildIds?: string[];
+  discordOperatorAllowChannelIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 

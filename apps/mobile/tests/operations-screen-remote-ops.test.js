@@ -17,6 +17,11 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Tunnel Mode/);
   assert.match(operationsSource, /Auto-Start Tunnel/);
   assert.match(operationsSource, /Credentials Path/);
+  assert.match(operationsSource, /Channel operator allowlists/);
+  assert.match(operationsSource, /Discord Operator User IDs/);
+  assert.match(operationsSource, /Discord Operator Guild IDs/);
+  assert.match(operationsSource, /Discord Operator Channel IDs/);
+  assert.match(operationsSource, /WhatsApp Operator Allowlist/);
 });
 
 test('includes tunnel, Discord, and WhatsApp operator controls and summaries', () => {

@@ -129,6 +129,40 @@ function getOperatorHelpText(channel: string): string {
   ].join("\n")
 }
 
+function sanitizeDiscordAllowlist(values: string[] | undefined): string[] {
+  return (values ?? []).map((value) => value.trim()).filter(Boolean)
+}
+
+function getDiscordOperatorAccessRejectionReason(
+  cfg: ReturnType<typeof configStore.get>,
+  message: Message<boolean>,
+): string | null {
+  const allowUserIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowUserIds)
+  const allowGuildIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowGuildIds)
+  const allowChannelIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowChannelIds)
+
+  if (allowUserIds.length === 0 && allowGuildIds.length === 0 && allowChannelIds.length === 0) {
+    return null
+  }
+
+  if (allowUserIds.length > 0 && !allowUserIds.includes(message.author.id)) {
+    return "user is not in the Discord operator allowlist"
+  }
+
+  if (allowGuildIds.length > 0 && (!message.guildId || !allowGuildIds.includes(message.guildId))) {
+    return "guild is not in the Discord operator allowlist"
+  }
+
+  const operatorChannelId = message.channel.isThread()
+    ? (message.channel.parentId || message.channel.id)
+    : message.channel.id
+  if (allowChannelIds.length > 0 && !allowChannelIds.includes(operatorChannelId)) {
+    return "channel is not in the Discord operator allowlist"
+  }
+
+  return null
+}
+
 function parseOperatorCountToken(token: string | undefined): number | null {
   if (!token) return null
   const count = Number.parseInt(token, 10)
@@ -738,6 +772,14 @@ class DiscordService {
   private async maybeHandleOperatorCommand(message: Message<boolean>, prompt: string): Promise<boolean> {
     const command = parseOperatorCommand(prompt)
     if (!command) return false
+
+    const cfg = configStore.get()
+    const operatorAccessRejectionReason = getDiscordOperatorAccessRejectionReason(cfg, message)
+    if (operatorAccessRejectionReason) {
+      this.addLog("warn", `Denied Discord operator command from ${message.author.id}: ${operatorAccessRejectionReason}`)
+      await this.sendChunks(message, "Operator access denied for this Discord user/channel. Update the Discord operator allowlists in settings to grant /ops access.")
+      return true
+    }
 
     this.addLog("info", `Handling Discord operator command from ${message.author.id}: ${command.label}`)
 

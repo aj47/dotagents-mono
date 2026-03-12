@@ -35,6 +35,7 @@ import type { WhatsAppConfig, WhatsAppMessage } from "./types.js"
 const config: WhatsAppConfig = {
   authDir: process.env.WHATSAPP_AUTH_DIR || path.join(os.homedir(), ".dotagents", "whatsapp-auth"),
   allowFrom: process.env.WHATSAPP_ALLOW_FROM?.split(",").map((s) => s.trim()) || [],
+  operatorAllowFrom: process.env.WHATSAPP_OPERATOR_ALLOW_FROM?.split(",").map((s) => s.trim()).filter(Boolean) || [],
   autoReply: process.env.WHATSAPP_AUTO_REPLY === "true",
   callbackUrl: process.env.WHATSAPP_CALLBACK_URL,
   callbackApiKey: process.env.WHATSAPP_CALLBACK_API_KEY,
@@ -58,6 +59,10 @@ const MAX_PENDING_MESSAGES = 100
 function normalizeChatId(chatId: string): string {
   // Strip the @suffix and non-numeric characters to get a consistent key
   return chatId.replace(/@.*$/, "").replace(/[^0-9]/g, "")
+}
+
+function normalizeWhatsAppOperatorIdentity(value: string | undefined): string {
+  return (value || "").replace(/@.*$/, "").replace(/[^0-9]/g, "")
 }
 
 type OperatorCommandMethod = "GET" | "POST"
@@ -526,6 +531,25 @@ async function maybeHandleWhatsAppOperatorCommand(message: WhatsAppMessage): Pro
   if (!command) return false
 
   const replyTarget = message.chatId || message.from
+  const operatorAllowFrom = config.operatorAllowFrom ?? []
+  if (operatorAllowFrom.length > 0) {
+    const senderId = normalizeWhatsAppOperatorIdentity(message.from)
+    const chatId = normalizeWhatsAppOperatorIdentity(message.chatId)
+    const isOperatorAllowed = operatorAllowFrom.some((allowed) => {
+      const normalizedAllowed = normalizeWhatsAppOperatorIdentity(allowed)
+      return normalizedAllowed.length >= 7 && (normalizedAllowed === senderId || normalizedAllowed === chatId)
+    })
+
+    if (!isOperatorAllowed) {
+      console.error(`[MCP-WhatsApp] Denied operator command from ${replyTarget}: sender not in WHATSAPP_OPERATOR_ALLOW_FROM`)
+      await whatsapp.sendMessage({
+        to: replyTarget,
+        text: "Operator access denied for this WhatsApp sender/chat. Add the sender to the WhatsApp operator allowlist to grant /ops access.",
+      })
+      return true
+    }
+  }
+
   console.error(`[MCP-WhatsApp] Handling operator command from ${replyTarget}: ${command.label}`)
 
   try {
@@ -1356,6 +1380,12 @@ async function main() {
     console.error(`[MCP-WhatsApp] Allowlist: ${config.allowFrom.join(", ")}`)
   } else {
     console.error("[MCP-WhatsApp] No allowlist configured - all messages will be accepted")
+  }
+
+  if (config.operatorAllowFrom && config.operatorAllowFrom.length > 0) {
+    console.error(`[MCP-WhatsApp] Operator allowlist: ${config.operatorAllowFrom.join(", ")}`)
+  } else {
+    console.error("[MCP-WhatsApp] No operator allowlist configured - /ops follows the normal allowlist")
   }
 
   if (config.callbackUrl) {
