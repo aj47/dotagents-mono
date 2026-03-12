@@ -22,6 +22,12 @@ describe("continuation guard helpers", () => {
     expect(hasSelfAdmittedPartialCompletion("Not fully, but it's pretty close. I still need to finish one part.")).toBe(true)
   })
 
+  it("does not treat clarification or blocker requests as self-admitted partial completion", () => {
+    expect(hasSelfAdmittedPartialCompletion("I still need your 2FA code before I can continue.")).toBe(false)
+    expect(hasSelfAdmittedPartialCompletion("I still need to get your 2FA code before I can continue.")).toBe(false)
+    expect(hasSelfAdmittedPartialCompletion("I still have to wait for your confirmation before I can continue.")).toBe(false)
+  })
+
   it("overrides verifier false positives when the final response admits partial completion", () => {
     expect(normalizeVerificationResultForCompletion(
       { isComplete: true, confidence: 0.92, missingItems: [] },
@@ -36,6 +42,13 @@ describe("continuation guard helpers", () => {
     expect(normalizeVerificationResultForCompletion(
       { isComplete: true, confidence: 0.88, missingItems: [] },
       "I can't complete this without your 2FA code, so I need that from you before I can continue.",
+    )).toEqual(expect.objectContaining({ isComplete: true }))
+  })
+
+  it("preserves verifier-complete results for clarification responses that use still-need phrasing", () => {
+    expect(normalizeVerificationResultForCompletion(
+      { isComplete: true, confidence: 0.88, missingItems: [] },
+      "I still need to get your 2FA code before I can continue.",
     )).toEqual(expect.objectContaining({ isComplete: true }))
   })
 

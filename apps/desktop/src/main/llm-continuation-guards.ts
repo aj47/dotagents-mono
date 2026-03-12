@@ -2,7 +2,8 @@ import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 
 const TOOL_CALL_PLACEHOLDER_REGEX = /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i
 const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]*\}|\[[\s\S]*\])\s*$/i
-const SELF_ADMITTED_PARTIAL_COMPLETION_REGEX = /\b(?:not fully|not completely|pretty close|almost done|almost there|partially complete|partially done|remaining work|work remaining|left to do|still need to|still have to)\b/i
+const SELF_ADMITTED_PARTIAL_COMPLETION_REGEX = /\b(?:not fully|not completely|pretty close|almost done|almost there|partially complete|partially done|remaining work|work remaining|left to do)\b/i
+const SELF_ADMITTED_REMAINING_WORK_REGEX = /\b(?:still need to|still have to)\s+(?:finish|complete|wrap up|implement|fix|update|add|write|test|verify|clean up)\b/i
 
 type ConversationHistoryLike = Array<{
   role?: string
@@ -28,7 +29,8 @@ export function looksLikeToolCallPlaceholderContent(content: string): boolean {
 }
 
 export function hasSelfAdmittedPartialCompletion(content: string): boolean {
-  return SELF_ADMITTED_PARTIAL_COMPLETION_REGEX.test(content.trim())
+  const trimmed = content.trim()
+  return SELF_ADMITTED_PARTIAL_COMPLETION_REGEX.test(trimmed) || SELF_ADMITTED_REMAINING_WORK_REGEX.test(trimmed)
 }
 
 export function isProgressUpdateResponse(content: string): boolean {
