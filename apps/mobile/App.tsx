@@ -17,7 +17,7 @@ import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
 import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
-import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
@@ -362,15 +362,6 @@ function Navigation() {
                       headerStyle: { backgroundColor: theme.colors.card },
                       headerTintColor: theme.colors.foreground,
                       contentStyle: { backgroundColor: theme.colors.background },
-                      headerLeft: route.name === 'Settings'
-                        ? () => (
-                            <Image
-                              source={speakMCPIcon}
-                              style={{ width: 28, height: 28, marginLeft: 12, marginRight: 8 }}
-                              resizeMode="contain"
-                            />
-                          )
-                        : undefined,
                       headerRight: () => (
                         <ConnectionStatusIndicator
                           state={tunnelConnection.connectionInfo.state}
@@ -383,7 +374,27 @@ function Navigation() {
                     <Stack.Screen
                       name="Settings"
                       component={SettingsScreen}
-                      options={{ title: 'DotAgents', presentation: 'modal' }}
+                      options={({ navigation }) => ({
+                        title: 'DotAgents',
+                        presentation: 'modal',
+                        headerLeft: () => (
+                          <TouchableOpacity
+                            onPress={() => {
+                              if (navigation.canGoBack()) {
+                                navigation.goBack();
+                                return;
+                              }
+
+                              navigation.navigate('Sessions');
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Close settings"
+                            style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                          >
+                            <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Close</Text>
+                          </TouchableOpacity>
+                        ),
+                      })}
                     />
                     <Stack.Screen
                       name="ConnectionSettings"

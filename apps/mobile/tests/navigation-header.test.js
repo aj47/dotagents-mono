@@ -5,13 +5,14 @@ const path = require('node:path');
 
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
 
-test('shows the branded header icon only on the root Settings screen', () => {
+test('keeps the settings modal dismissible even with custom header content', () => {
   assert.match(appSource, /screenOptions=\{\(\{ route \}\) => \(\{/);
-  assert.match(appSource, /headerLeft:\s*route\.name === 'Settings'/);
-  assert.match(appSource, /route\.name === 'Settings'[\s\S]*: undefined/);
+  assert.doesNotMatch(appSource, /headerLeft:\s*route\.name === 'Settings'/);
+  assert.match(appSource, /name="Settings"[\s\S]*?options=\{\(\{ navigation \}\) => \(\{/);
+  assert.match(appSource, /accessibilityLabel="Close settings"/);
 });
 
 test('starts the mobile app on Sessions and opens Settings as a modal', () => {
   assert.match(appSource, /initialRouteName="Sessions"/);
-  assert.match(appSource, /name="Settings"[\s\S]*?options=\{\{ title: 'DotAgents', presentation: 'modal' \}\}/);
+  assert.match(appSource, /name="Settings"[\s\S]*?presentation: 'modal'/);
 });
