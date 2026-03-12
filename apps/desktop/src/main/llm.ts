@@ -51,6 +51,13 @@ import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
+import {
+  isDeliverableResponseContent,
+  looksLikeToolCallPlaceholderContent,
+  normalizeMissingItemsList,
+  normalizeVerificationResultForCompletion,
+  resolveIterationLimitFinalContent,
+} from "./llm-continuation-guards"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -1029,77 +1036,16 @@ export async function processTranscriptWithAgentMode(
     wasAborted = true
   }
 
-  // Helper to check if content is just a tool call placeholder (not real content)
-  const isToolCallPlaceholder = (content: string): boolean => {
-    const trimmed = content.trim()
-    // Match patterns like "[Calling tools: ...]" or "[Tool: ...]"
-    return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
-  }
-
-  // Helper to detect "status update" responses that describe future work instead of delivering results
-  const isProgressUpdateResponse = (content: string): boolean => {
-    const trimmed = content.trim()
-    if (!trimmed) return false
-
-    // Structured responses are usually deliverables, not progress updates
-    const lowerRaw = trimmed.toLowerCase()
-    const hasStructuredDeliverable =
-      /\n[-*]\s|\n\d+\.\s/.test(trimmed) ||
-      /\bhere(?:'s| is)\b/.test(lowerRaw)
-    if (hasStructuredDeliverable) {
-      return false
-    }
-
-    const normalized = lowerRaw.replace(/\s+/g, " ")
-    const wordCount = normalized.split(" ").filter(Boolean).length
-
-    // Keep this detector focused on short "I'm about to do X" updates to reduce false positives
-    if (wordCount > 40) {
-      return false
-    }
-
-    return /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized)
-  }
-
-  const isDeliverableResponse = (content: string, minLength: number = 1): boolean => {
-    const trimmed = content.trim()
-    if (trimmed.length < minLength) return false
-    if (isToolCallPlaceholder(trimmed)) return false
-    if (isProgressUpdateResponse(trimmed)) return false
-    return true
-  }
-
   interface IncompleteTaskDetails {
     missingItems?: string[]
     reason?: string
-  }
-
-  const normalizeMissingItems = (items?: string[]): string[] =>
-    Array.isArray(items)
-      ? items
-          .map((item) => (typeof item === "string" ? item.trim() : ""))
-          .filter((item) => item.length > 0)
-      : []
-
-  const normalizeVerificationResult = (verification: any) => {
-    const missingItems = normalizeMissingItems(verification?.missingItems)
-
-    if (verification?.isComplete === true && missingItems.length > 0) {
-      return {
-        ...verification,
-        isComplete: false,
-        missingItems,
-      }
-    }
-
-    return verification
   }
 
   const buildIncompleteTaskFallback = (
     _lastResponse: string,
     details?: IncompleteTaskDetails
   ): string => {
-    const missingItems = normalizeMissingItems(details?.missingItems)
+    const missingItems = normalizeMissingItemsList(details?.missingItems)
     const reason = typeof details?.reason === "string" ? details.reason.trim() : ""
 
     if (!reason && missingItems.length === 0) {
@@ -1309,7 +1255,7 @@ Return ONLY JSON per schema.`,
     // Build the JSON request with optional verification attempt note (combined into single message)
     let jsonRequestContent = "Return a JSON object with fields: isComplete (boolean), confidence (0..1), missingItems (string[]), reason (string). No extra commentary."
     if (currentVerificationFailCount > 0) {
-      jsonRequestContent += `\n\nNote: This is verification attempt #${currentVerificationFailCount + 1}. If the task appears reasonably complete, please mark as complete to avoid infinite loops.`
+      jsonRequestContent += `\n\nNote: This is verification attempt #${currentVerificationFailCount + 1}. Do NOT lower the bar for completion. If any requested work still remains, return isComplete=false and list the missingItems. Only mark complete when the user already has the final deliverable, a necessary clarification question, or a clear blocker that prevents any further progress.`
     }
     messages.push({ role: "user", content: jsonRequestContent })
 
@@ -1398,7 +1344,7 @@ Return ONLY JSON per schema.`,
     }
 
     // Gate 1: response must be a deliverable, not a status update or placeholder.
-    if (!isDeliverableResponse(finalContent)) {
+    if (!isDeliverableResponseContent(finalContent)) {
       const newFailCount = currentFailCount + 1
       if (newFailCount >= VERIFICATION_FAIL_LIMIT) {
         verifyStep.status = "error"
@@ -1440,11 +1386,11 @@ Return ONLY JSON per schema.`,
     let verification: any = null
     let verified = false
     for (let i = 0; i <= retries; i++) {
-      verification = normalizeVerificationResult(await verifyCompletionWithFetch(
+      verification = normalizeVerificationResultForCompletion(await verifyCompletionWithFetch(
         buildVerificationMessages(finalContent, currentFailCount),
         config.mcpToolsProviderId,
         currentSessionId,
-      ))
+      ), finalContent)
       if (verification?.isComplete === true) {
         verified = true
         break
@@ -1465,7 +1411,7 @@ Return ONLY JSON per schema.`,
 
     // Gate 3: verification failed; either continue with nudge or force incomplete.
     const newFailCount = currentFailCount + 1
-    const missingItems = normalizeMissingItems(verification?.missingItems)
+    const missingItems = normalizeMissingItemsList(verification?.missingItems)
     const verificationReason =
       typeof verification?.reason === "string" && verification.reason.trim().length > 0
         ? verification.reason.trim()
@@ -1953,8 +1899,8 @@ Return ONLY JSON per schema.`,
       // Use a low threshold (2 chars) to avoid rejecting legitimate short answers like "Yes." or "42"
       // while still filtering truly empty/whitespace-only responses.
       const hasSubstantiveResponse = hasToolResultsInCurrentTurn
-        ? isDeliverableResponse(contentText)
-        : isDeliverableResponse(contentText, 2)
+        ? isDeliverableResponseContent(contentText)
+        : isDeliverableResponseContent(contentText, 2)
 
       // Unified completion candidate handling:
       // Any substantive response is either:
@@ -2018,7 +1964,7 @@ Return ONLY JSON per schema.`,
         const noToolsCalledYet = !conversationHistory.some((e) => e.role === "tool")
         let skipPostVerifySummary =
           (config.mcpFinalSummaryEnabled === false) ||
-          (noToolsCalledYet && isDeliverableResponse(finalContent))
+          (noToolsCalledYet && isDeliverableResponseContent(finalContent))
         let completionForcedByVerificationLimit = false
         let completionForcedIncompleteDetails: IncompleteTaskDetails | undefined
 
@@ -2170,7 +2116,7 @@ Return ONLY JSON per schema.`,
           break
         }
 
-        if (trimmedContent.length > 0 && !isToolCallPlaceholder(contentText)) {
+        if (trimmedContent.length > 0 && !looksLikeToolCallPlaceholderContent(contentText)) {
           addMessage("assistant", contentText)
         }
 
@@ -2924,29 +2870,22 @@ Return ONLY JSON per schema.`,
       .slice(-5)
       .some((step) => step.status === "error")
 
-    // If we don't have final content, get the last assistant response or provide fallback
-    if (!finalContent) {
-      const lastAssistantMessage = conversationHistory
-        .slice()
-        .reverse()
-        .find((msg) => msg.role === "assistant")
-
-      if (lastAssistantMessage) {
-        finalContent = lastAssistantMessage.content
-      } else {
-        // Provide a fallback summary
-        finalContent = hasRecentErrors
-          ? "Task was interrupted due to repeated tool failures. Please review the errors above and try again with alternative approaches."
-          : "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above."
-      }
-    }
+    const iterationLimitResolution = resolveIterationLimitFinalContent({
+      finalContent,
+      storedResponse: getSessionUserResponse(currentSessionId),
+      conversationHistory: conversationHistory as any,
+      hasRecentErrors,
+    })
+    finalContent = iterationLimitResolution.content
 
     // Add context about the termination reason
     const terminationNote = hasRecentErrors
       ? "\n\n(Note: Task incomplete due to repeated tool failures. Please try again or use alternative methods.)"
       : "\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
 
-    finalContent += terminationNote
+    if (!iterationLimitResolution.usedExplicitUserResponse) {
+      finalContent += terminationNote
+    }
 
     // Make sure the final message is added to conversation history
     const lastMessage = conversationHistory[conversationHistory.length - 1]
@@ -2983,6 +2922,29 @@ Return ONLY JSON per schema.`,
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
   }
+
+    if (!finalContent?.trim()) {
+      const explicitUserResponse = resolveLatestUserFacingResponse({
+        storedResponse: getSessionUserResponse(currentSessionId),
+        conversationHistory: conversationHistory as any,
+      })
+
+      if (explicitUserResponse?.trim().length) {
+        finalContent = explicitUserResponse
+        const lastMessage = conversationHistory[conversationHistory.length - 1]
+        if (
+          !lastMessage ||
+          lastMessage.role !== "assistant" ||
+          lastMessage.content !== finalContent
+        ) {
+          conversationHistory.push({
+            role: "assistant",
+            content: finalContent,
+            timestamp: Date.now(),
+          })
+        }
+      }
+    }
 
     return {
       content: finalContent,

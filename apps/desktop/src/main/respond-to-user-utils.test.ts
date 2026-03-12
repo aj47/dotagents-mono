@@ -1,3 +1,4 @@
+import { extractRespondToUserContentFromArgs as extractSharedRespondToUserContentFromArgs } from "@dotagents/shared"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -13,6 +14,24 @@ describe("respond-to-user-utils", () => {
       text: "Done",
       images: [{ alt: "Preview", path: "/tmp/result.png" }],
     })).toBe("Done\n\n![Preview](/tmp/result.png)")
+  })
+
+  it("extracts image markdown from respond_to_user images[].url", () => {
+    expect(extractRespondToUserContentFromArgs({
+      images: [{ alt: "Preview", url: "https://example.com/result.png" }],
+    })).toBe("![Preview](https://example.com/result.png)")
+  })
+
+  it("keeps shared respond_to_user image URL extraction aligned", () => {
+    expect(extractSharedRespondToUserContentFromArgs({
+      images: [{ alt: "Preview", url: "https://example.com/result.png" }],
+    })).toBe("![Preview](https://example.com/result.png)")
+  })
+
+  it("keeps shared legacy embedded-image extraction working", () => {
+    expect(extractSharedRespondToUserContentFromArgs({
+      images: [{ altText: "Preview", mimeType: "image/png", data: "ZmFrZQ==" }],
+    })).toBe("![Preview](data:image/png;base64,ZmFrZQ==)")
   })
 
   it("returns the latest respond_to_user content from tool calls", () => {
