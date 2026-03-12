@@ -44,6 +44,154 @@ export interface ModelsResponse {
   models: ModelInfo[];
 }
 
+export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
+export type OperatorHealthOverall = 'healthy' | 'warning' | 'critical';
+
+export interface OperatorRemoteServerStatus {
+  running: boolean;
+  bind: string;
+  port: number;
+  url?: string;
+  connectableUrl?: string;
+  lastError?: string;
+}
+
+export interface OperatorTunnelStatus {
+  running: boolean;
+  starting: boolean;
+  mode: 'quick' | 'named' | null;
+  url?: string;
+  error?: string;
+}
+
+export interface OperatorHealthCheck {
+  status: OperatorHealthStatus;
+  message: string;
+}
+
+export interface OperatorHealthSnapshot {
+  checkedAt: number;
+  overall: OperatorHealthOverall;
+  checks: Record<string, OperatorHealthCheck>;
+}
+
+export interface OperatorRecentError {
+  timestamp: number;
+  level: 'error' | 'warning' | 'info';
+  component: string;
+  message: string;
+}
+
+export interface OperatorRecentErrorsResponse {
+  count: number;
+  errors: OperatorRecentError[];
+}
+
+export interface OperatorLogSummary {
+  total: number;
+  lastTimestamp?: number;
+  errorCount?: number;
+  warningCount?: number;
+  infoCount?: number;
+}
+
+export interface OperatorDiscordIntegrationSummary {
+  available: boolean;
+  enabled: boolean;
+  connected: boolean;
+  connecting: boolean;
+  tokenConfigured?: boolean;
+  defaultProfileId?: string;
+  defaultProfileName?: string;
+  botUsername?: string;
+  lastError?: string;
+  lastEventAt?: number;
+  logs: OperatorLogSummary;
+}
+
+export interface OperatorWhatsAppIntegrationSummary {
+  enabled: boolean;
+  available: boolean;
+  connected: boolean;
+  serverConfigured: boolean;
+  serverConnected: boolean;
+  autoReplyEnabled: boolean;
+  logMessagesEnabled: boolean;
+  allowedSenderCount: number;
+  hasCredentials?: boolean;
+  lastError?: string;
+  logs: OperatorLogSummary;
+}
+
+export interface OperatorPushNotificationsSummary {
+  enabled: boolean;
+  tokenCount: number;
+  platforms: string[];
+}
+
+export interface OperatorIntegrationsSummary {
+  discord: OperatorDiscordIntegrationSummary;
+  whatsapp: OperatorWhatsAppIntegrationSummary;
+  pushNotifications: OperatorPushNotificationsSummary;
+}
+
+export interface OperatorUpdaterStatus {
+  enabled: boolean;
+  mode: 'disabled' | 'manual' | 'auto';
+  currentVersion?: string;
+  updateInfo?: unknown;
+  manualReleasesUrl?: string;
+}
+
+export interface OperatorRuntimeStatus {
+  timestamp: number;
+  remoteServer: OperatorRemoteServerStatus;
+  health: OperatorHealthSnapshot;
+  tunnel: OperatorTunnelStatus;
+  integrations: OperatorIntegrationsSummary;
+  updater: OperatorUpdaterStatus;
+  recentErrors: {
+    total: number;
+    errorsInLastFiveMinutes: number;
+  };
+}
+
+export interface OperatorActionResponse {
+  success: boolean;
+  action: string;
+  message: string;
+  scheduled?: boolean;
+  error?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface OperatorAuditSource {
+  ip?: string;
+  origin?: string;
+  userAgent?: string;
+}
+
+export interface OperatorAuditEntry {
+  timestamp: number;
+  action: string;
+  path: string;
+  success: boolean;
+  deviceId?: string;
+  source?: OperatorAuditSource;
+  details?: Record<string, unknown>;
+  failureReason?: string;
+}
+
+export interface OperatorAuditResponse {
+  count: number;
+  entries: OperatorAuditEntry[];
+}
+
+export interface OperatorApiKeyRotationResponse extends OperatorActionResponse {
+  apiKey: string;
+  restartScheduled: boolean;
+}
+
 export interface PredefinedPromptSummary {
   id: string;
   name: string;
@@ -109,6 +257,24 @@ export interface Settings {
   groqTtsVoice?: string;
   geminiTtsModel?: string;
   geminiTtsVoice?: string;
+
+  // Remote Server Configuration
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: 'error' | 'info' | 'debug';
+  remoteServerCorsOrigins?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
+
+  // Cloudflare Tunnel Configuration
+  cloudflareTunnelMode?: 'quick' | 'named';
+  cloudflareTunnelAutoStart?: boolean;
+  cloudflareTunnelId?: string;
+  cloudflareTunnelName?: string;
+  cloudflareTunnelCredentialsPath?: string;
+  cloudflareTunnelHostname?: string;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;
@@ -198,6 +364,24 @@ export interface SettingsUpdate {
   groqTtsVoice?: string;
   geminiTtsModel?: string;
   geminiTtsVoice?: string;
+
+  // Remote Server Configuration
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: 'error' | 'info' | 'debug';
+  remoteServerCorsOrigins?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
+
+  // Cloudflare Tunnel Configuration
+  cloudflareTunnelMode?: 'quick' | 'named';
+  cloudflareTunnelAutoStart?: boolean;
+  cloudflareTunnelId?: string;
+  cloudflareTunnelName?: string;
+  cloudflareTunnelCredentialsPath?: string;
+  cloudflareTunnelHostname?: string;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;

@@ -1,4 +1,5 @@
-import Fastify, { FastifyInstance } from "fastify"
+import { app } from "electron"
+import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import cors from "@fastify/cors"
 import { Server as MCPServer } from "@modelcontextprotocol/sdk/server/index.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
@@ -19,13 +20,22 @@ import {
 import { diagnosticsService } from "./diagnostics"
 import { discordService } from "./discord-service"
 import { getErrorMessage } from "./error-utils"
-import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
+import {
+  checkCloudflaredInstalled,
+  checkCloudflaredLoggedIn,
+  getCloudflareTunnelStatus,
+  listCloudflareTunnels,
+  startCloudflareTunnel,
+  startNamedCloudflareTunnel,
+  stopCloudflareTunnel,
+} from "./cloudflare-tunnel"
+import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, handleWhatsAppToggle } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config } from "../shared/types"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
@@ -40,11 +50,65 @@ import {
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
 } from "./acp-session-state"
+import { MANUAL_RELEASES_URL, getUpdateInfo } from "./updater"
 import { WINDOWS } from "./window"
+import type {
+  OperatorActionResponse,
+  OperatorApiKeyRotationResponse,
+  OperatorAuditEntry,
+  OperatorAuditResponse,
+  OperatorHealthSnapshot,
+  OperatorIntegrationsSummary,
+  OperatorLogSummary,
+  OperatorRecentErrorsResponse,
+  OperatorRemoteServerStatus,
+  OperatorRuntimeStatus,
+  OperatorTunnelStatus,
+  OperatorUpdaterStatus,
+  OperatorWhatsAppIntegrationSummary,
+} from "@dotagents/shared"
 import type { RendererHandlers } from "./renderer-handlers"
 
 let server: FastifyInstance | null = null
 let lastError: string | undefined
+
+const REMOTE_SERVER_SECRET_MASK = "••••••••"
+const OPERATOR_AUDIT_LOG_LIMIT = 200
+const OPERATOR_AUDIT_DEVICE_HEADER_KEYS = ["x-device-id", "x-dotagents-device-id"] as const
+const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
+  "remoteServerEnabled",
+  "remoteServerPort",
+  "remoteServerBindAddress",
+  "remoteServerApiKey",
+  "remoteServerLogLevel",
+  "remoteServerCorsOrigins",
+  "remoteServerAutoShowPanel",
+  "remoteServerTerminalQrEnabled",
+  "cloudflareTunnelMode",
+  "cloudflareTunnelAutoStart",
+  "cloudflareTunnelId",
+  "cloudflareTunnelName",
+  "cloudflareTunnelCredentialsPath",
+  "cloudflareTunnelHostname",
+  "whatsappEnabled",
+  "whatsappAllowFrom",
+  "whatsappAutoReply",
+  "whatsappLogMessages",
+  "discordEnabled",
+  "discordBotToken",
+  "discordDmEnabled",
+  "discordRequireMention",
+  "discordAllowUserIds",
+  "discordAllowGuildIds",
+  "discordAllowChannelIds",
+  "discordDefaultProfileId",
+  "discordLogMessages",
+  "langfuseEnabled",
+  "langfusePublicKey",
+  "langfuseSecretKey",
+  "langfuseBaseUrl",
+])
+const operatorAuditLog: OperatorAuditEntry[] = []
 
 // Track webContents IDs that already have a pending did-finish-load notification queued,
 // to avoid registering multiple once-listeners if notifyConversationHistoryChanged() is
@@ -106,6 +170,13 @@ const INVALID_ACP_SESSION_CONTEXT_ERROR = "Unauthorized: invalid ACP session con
 interface InjectedMcpTransportState {
   server: MCPServer
   transport: StreamableHTTPServerTransport
+}
+
+interface OperatorAuditContext {
+  action?: string
+  success?: boolean
+  details?: Record<string, unknown>
+  failureReason?: string
 }
 
 const injectedMcpTransportsByToken = new Map<string, Map<string, InjectedMcpTransportState>>()
@@ -284,6 +355,173 @@ function redact(value?: string) {
   if (!value) return ""
   if (value.length <= 8) return "***"
   return `${value.slice(0, 4)}...${value.slice(-4)}`
+}
+
+function generateRemoteServerApiKey(): string {
+  return crypto.randomBytes(32).toString("hex")
+}
+
+function sanitizeOperatorAuditText(value: string | undefined, maxLength: number = 160): string | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const sanitized = value.replace(/\s+/g, " ").trim()
+  if (!sanitized) {
+    return undefined
+  }
+
+  return sanitized.length > maxLength ? sanitized.slice(0, maxLength) : sanitized
+}
+
+function sanitizeOperatorAuditValue(value: unknown, depth: number = 0): unknown {
+  if (value === null || value === undefined) {
+    return undefined
+  }
+
+  if (typeof value === "boolean" || typeof value === "number") {
+    return value
+  }
+
+  if (typeof value === "string") {
+    return sanitizeOperatorAuditText(value)
+  }
+
+  if (Array.isArray(value)) {
+    const sanitizedItems = value
+      .slice(0, 20)
+      .map((entry) => sanitizeOperatorAuditValue(entry, depth + 1))
+      .filter((entry) => entry !== undefined)
+
+    return sanitizedItems.length > 0 ? sanitizedItems : undefined
+  }
+
+  if (typeof value === "object" && depth < 2) {
+    const sanitized: Record<string, unknown> = {}
+
+    for (const [key, entry] of Object.entries(value)) {
+      if (/(token|secret|api.?key|password|credential)/i.test(key)) {
+        continue
+      }
+
+      const sanitizedEntry = sanitizeOperatorAuditValue(entry, depth + 1)
+      if (sanitizedEntry !== undefined) {
+        sanitized[key] = sanitizedEntry
+      }
+    }
+
+    return Object.keys(sanitized).length > 0 ? sanitized : undefined
+  }
+
+  return undefined
+}
+
+function sanitizeOperatorAuditDetails(details: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  const sanitized = sanitizeOperatorAuditValue(details)
+  return sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)
+    ? sanitized as Record<string, unknown>
+    : undefined
+}
+
+function getRequestHeaderValue(request: Pick<FastifyRequest, "headers">, headerName: string): string | undefined {
+  const rawValue = request.headers[headerName]
+  const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
+  return typeof value === "string" ? sanitizeOperatorAuditText(value) : undefined
+}
+
+function getOperatorAuditPath(request: FastifyRequest): string {
+  return request.url.split("?")[0] || "/"
+}
+
+function buildOperatorAuditActionFromPath(pathname: string): string {
+  const normalized = pathname.replace(/^\/v1\/operator\/?/, "")
+  return normalized ? normalized.replace(/\//g, "-") : "operator-action"
+}
+
+function getOperatorAuditDeviceId(request: Pick<FastifyRequest, "headers">): string | undefined {
+  for (const headerName of OPERATOR_AUDIT_DEVICE_HEADER_KEYS) {
+    const value = getRequestHeaderValue(request, headerName)
+    if (value) {
+      return sanitizeOperatorAuditText(value, 80)
+    }
+  }
+
+  return undefined
+}
+
+function getOperatorAuditSource(request: FastifyRequest): OperatorAuditEntry["source"] | undefined {
+  const ip = sanitizeOperatorAuditText(request.ip, 80)
+  const origin = getRequestHeaderValue(request, "origin")
+  const userAgent = sanitizeOperatorAuditText(getRequestHeaderValue(request, "user-agent"), 160)
+
+  const source = {
+    ...(ip ? { ip } : {}),
+    ...(origin ? { origin } : {}),
+    ...(userAgent ? { userAgent } : {}),
+  }
+
+  return Object.keys(source).length > 0 ? source : undefined
+}
+
+function appendOperatorAuditEntry(entry: OperatorAuditEntry): void {
+  operatorAuditLog.push(entry)
+
+  if (operatorAuditLog.length > OPERATOR_AUDIT_LOG_LIMIT) {
+    operatorAuditLog.splice(0, operatorAuditLog.length - OPERATOR_AUDIT_LOG_LIMIT)
+  }
+}
+
+function recordOperatorAuditEvent(
+  request: FastifyRequest,
+  options: {
+    action: string
+    path?: string
+    success: boolean
+    details?: Record<string, unknown>
+    failureReason?: string
+  },
+): void {
+  const deviceId = getOperatorAuditDeviceId(request)
+  const source = getOperatorAuditSource(request)
+  const details = sanitizeOperatorAuditDetails(options.details)
+
+  appendOperatorAuditEntry({
+    timestamp: Date.now(),
+    action: options.action,
+    path: options.path ?? getOperatorAuditPath(request),
+    success: options.success,
+    ...(deviceId ? { deviceId } : {}),
+    ...(source ? { source } : {}),
+    ...(details ? { details } : {}),
+    ...(options.failureReason ? { failureReason: sanitizeOperatorAuditText(options.failureReason, 120) } : {}),
+  })
+}
+
+function buildOperatorAuditResponse(count: number = 20): OperatorAuditResponse {
+  const limit = clampOperatorCount(count, 20, 100)
+  const entries = [...operatorAuditLog].slice(-limit).reverse()
+
+  return {
+    count: entries.length,
+    entries,
+  }
+}
+
+function getOperatorAuditContext(request: FastifyRequest): OperatorAuditContext {
+  const rawRequest = request.raw as typeof request.raw & { operatorAuditContext?: OperatorAuditContext }
+  if (!rawRequest.operatorAuditContext) {
+    rawRequest.operatorAuditContext = {}
+  }
+
+  return rawRequest.operatorAuditContext
+}
+
+function setOperatorAuditContext(request: FastifyRequest, context: Partial<OperatorAuditContext>): void {
+  Object.assign(getOperatorAuditContext(request), context)
+}
+
+function getSensitiveOperatorSettingsKeys(input: Record<string, unknown>): string[] {
+  return Object.keys(input).filter((key) => SENSITIVE_OPERATOR_SETTINGS_KEYS.has(key))
 }
 
 /**
@@ -829,6 +1067,550 @@ function recordHistory(transcript: string) {
   }
 }
 
+function clampOperatorCount(value: unknown, fallback: number, max: number): number {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? Number.parseInt(value, 10)
+      : Number.NaN
+
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+
+  return Math.max(1, Math.min(Math.trunc(parsed), max))
+}
+
+type RemoteServerLifecycleAction = "noop" | "start" | "stop" | "restart"
+
+function getMaskedRemoteServerApiKey(apiKey: string | undefined): string {
+  return apiKey ? REMOTE_SERVER_SECRET_MASK : ""
+}
+
+function areStringArraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false
+  }
+
+  return a.every((value, index) => value === b[index])
+}
+
+function getRemoteServerLifecycleAction(
+  prev: Pick<Config, "remoteServerEnabled" | "remoteServerPort" | "remoteServerBindAddress" | "remoteServerApiKey" | "remoteServerLogLevel" | "remoteServerCorsOrigins">,
+  next: Pick<Config, "remoteServerEnabled" | "remoteServerPort" | "remoteServerBindAddress" | "remoteServerApiKey" | "remoteServerLogLevel" | "remoteServerCorsOrigins">,
+): RemoteServerLifecycleAction {
+  const prevEnabled = !!prev.remoteServerEnabled
+  const nextEnabled = !!next.remoteServerEnabled
+
+  if (!prevEnabled && nextEnabled) {
+    return "start"
+  }
+
+  if (prevEnabled && !nextEnabled) {
+    return "stop"
+  }
+
+  if (!nextEnabled) {
+    return "noop"
+  }
+
+  const runtimeChanged =
+    (prev.remoteServerPort ?? 3210) !== (next.remoteServerPort ?? 3210)
+    || (prev.remoteServerBindAddress ?? "127.0.0.1") !== (next.remoteServerBindAddress ?? "127.0.0.1")
+    || (prev.remoteServerApiKey ?? "") !== (next.remoteServerApiKey ?? "")
+    || (prev.remoteServerLogLevel ?? "info") !== (next.remoteServerLogLevel ?? "info")
+    || !areStringArraysEqual(prev.remoteServerCorsOrigins ?? ["*"], next.remoteServerCorsOrigins ?? ["*"])
+
+  return runtimeChanged ? "restart" : "noop"
+}
+
+function scheduleTaskAfterReply(
+  reply: FastifyReply,
+  description: string,
+  task: () => Promise<void> | void,
+): void {
+  let hasRun = false
+
+  const run = () => {
+    if (hasRun) {
+      return
+    }
+    hasRun = true
+
+    setTimeout(() => {
+      void Promise.resolve(task()).catch((error) => {
+        diagnosticsService.logError("remote-server", `Failed to ${description}`, error)
+      })
+    }, 25)
+  }
+
+  reply.raw.once("finish", run)
+  reply.raw.once("close", run)
+}
+
+function scheduleRemoteServerLifecycleActionAfterReply(
+  reply: FastifyReply,
+  action: RemoteServerLifecycleAction,
+): void {
+  if (action === "noop") {
+    return
+  }
+
+  scheduleTaskAfterReply(reply, `apply remote server lifecycle action (${action})`, async () => {
+    if (action === "start") {
+      await startRemoteServer()
+      return
+    }
+
+    if (action === "stop") {
+      await stopRemoteServer()
+      return
+    }
+
+    await restartRemoteServer()
+  })
+}
+
+function buildOperatorRemoteServerStatus(): OperatorRemoteServerStatus {
+  const status = getRemoteServerStatus()
+
+  return {
+    running: status.running,
+    bind: status.bind,
+    port: status.port,
+    ...(status.url ? { url: status.url } : {}),
+    ...(status.connectableUrl ? { connectableUrl: status.connectableUrl } : {}),
+    ...(status.lastError ? { lastError: status.lastError } : {}),
+  }
+}
+
+function buildOperatorTunnelStatus(): OperatorTunnelStatus {
+  const status = getCloudflareTunnelStatus()
+
+  return {
+    running: status.running,
+    starting: status.starting,
+    mode: status.mode,
+    ...(status.url ? { url: status.url } : {}),
+    ...(status.error ? { error: status.error } : {}),
+  }
+}
+
+function buildOperatorDiscordIntegrationSummary(): OperatorIntegrationsSummary["discord"] {
+  const discordStatus = discordService.getStatus()
+
+  return {
+    available: discordStatus.available,
+    enabled: discordStatus.enabled,
+    connected: discordStatus.connected,
+    connecting: discordStatus.connecting,
+    ...(typeof discordStatus.tokenConfigured === "boolean" ? { tokenConfigured: discordStatus.tokenConfigured } : {}),
+    ...(discordStatus.defaultProfileId ? { defaultProfileId: discordStatus.defaultProfileId } : {}),
+    ...(discordStatus.defaultProfileName ? { defaultProfileName: discordStatus.defaultProfileName } : {}),
+    ...(discordStatus.botUsername ? { botUsername: discordStatus.botUsername } : {}),
+    ...(discordStatus.lastError ? { lastError: discordStatus.lastError } : {}),
+    ...(discordStatus.lastEventAt ? { lastEventAt: discordStatus.lastEventAt } : {}),
+    logs: buildOperatorLogSummary(discordService.getLogs()),
+  }
+}
+
+async function buildOperatorTunnelSetupSummary(): Promise<{
+  installed: boolean
+  loggedIn: boolean
+  mode: "quick" | "named"
+  autoStart: boolean
+  namedTunnelConfigured: boolean
+  configuredTunnelId?: string
+  configuredHostname?: string
+  credentialsPathConfigured: boolean
+  tunnelCount: number
+  tunnels: Array<{ id: string; name: string; createdAt?: string }>
+  error?: string
+}> {
+  const cfg = configStore.get()
+  const installed = await checkCloudflaredInstalled()
+  const loggedIn = installed ? await checkCloudflaredLoggedIn() : false
+
+  let tunnels: Array<{ id: string; name: string; createdAt?: string }> = []
+  let error: string | undefined
+
+  if (installed && loggedIn) {
+    const listResult = await listCloudflareTunnels()
+    if (listResult.success) {
+      tunnels = (listResult.tunnels ?? []).map((tunnel) => ({
+        id: tunnel.id,
+        name: tunnel.name,
+        ...(tunnel.created_at ? { createdAt: tunnel.created_at } : {}),
+      }))
+    } else {
+      error = listResult.error
+    }
+  }
+
+  return {
+    installed,
+    loggedIn,
+    mode: cfg.cloudflareTunnelMode ?? "quick",
+    autoStart: !!cfg.cloudflareTunnelAutoStart,
+    namedTunnelConfigured: !!cfg.cloudflareTunnelId && !!cfg.cloudflareTunnelHostname,
+    ...(cfg.cloudflareTunnelId ? { configuredTunnelId: cfg.cloudflareTunnelId } : {}),
+    ...(cfg.cloudflareTunnelHostname ? { configuredHostname: cfg.cloudflareTunnelHostname } : {}),
+    credentialsPathConfigured: !!cfg.cloudflareTunnelCredentialsPath,
+    tunnelCount: tunnels.length,
+    tunnels,
+    ...(error ? { error } : {}),
+  }
+}
+
+async function startConfiguredCloudflareTunnel(): Promise<{
+  success: boolean
+  mode: "quick" | "named"
+  url?: string
+  error?: string
+}> {
+  const cfg = configStore.get()
+  const mode = cfg.cloudflareTunnelMode ?? "quick"
+
+  if (mode === "named") {
+    const tunnelId = cfg.cloudflareTunnelId?.trim()
+    const hostname = cfg.cloudflareTunnelHostname?.trim()
+
+    if (!tunnelId || !hostname) {
+      return {
+        success: false,
+        mode,
+        error: "Named tunnel requires cloudflareTunnelId and cloudflareTunnelHostname",
+      }
+    }
+
+    const result = await startNamedCloudflareTunnel({
+      tunnelId,
+      hostname,
+      credentialsPath: cfg.cloudflareTunnelCredentialsPath?.trim() || undefined,
+    })
+
+    return {
+      ...result,
+      mode,
+    }
+  }
+
+  const result = await startCloudflareTunnel()
+  return {
+    ...result,
+    mode,
+  }
+}
+
+function buildOperatorDiscordLogsResponse(count: number = 20): {
+  count: number
+  logs: Array<{ id: string; level: string; message: string; timestamp: number }>
+} {
+  const limit = clampOperatorCount(count, 20, 50)
+  const logs = discordService.getLogs()
+    .slice(-limit)
+    .map(({ id, level, message, timestamp }) => ({ id, level, message, timestamp }))
+
+  return {
+    count: logs.length,
+    logs,
+  }
+}
+
+function getToolResultText(result: MCPToolResult): string | undefined {
+  return result.content.find((entry) => entry.type === "text")?.text
+}
+
+function parseJsonRecord(value: string | undefined): Record<string, unknown> | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function getSanitizedWhatsAppOperatorDetails(parsed: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!parsed) {
+    return undefined
+  }
+
+  const details: Record<string, unknown> = {}
+
+  if (typeof parsed.status === "string") {
+    details.status = parsed.status
+  }
+  if (typeof parsed.connected === "boolean") {
+    details.connected = parsed.connected
+  }
+  if (typeof parsed.hasCredentials === "boolean") {
+    details.hasCredentials = parsed.hasCredentials
+  }
+  if (typeof parsed.lastError === "string") {
+    details.lastError = parsed.lastError
+  }
+
+  return Object.keys(details).length > 0 ? details : undefined
+}
+
+async function runOperatorWhatsAppAction(
+  toolName: "whatsapp_connect" | "whatsapp_logout",
+  action: string,
+  successMessage: string,
+): Promise<OperatorActionResponse> {
+  try {
+    const serverStatus = mcpService.getServerStatus()[WHATSAPP_SERVER_NAME]
+    if (!serverStatus?.connected) {
+      return {
+        success: false,
+        action,
+        message: "WhatsApp server is not running. Enable WhatsApp in settings first.",
+        error: "WhatsApp server is not running",
+      }
+    }
+
+    const result = await mcpService.executeToolCall(
+      { name: toolName, arguments: {} },
+      undefined,
+      true,
+    )
+
+    const text = getToolResultText(result)
+    if (result.isError) {
+      const message = text || `${action} failed`
+      return {
+        success: false,
+        action,
+        message,
+        error: message,
+      }
+    }
+
+    const parsed = parseJsonRecord(text)
+    const details = getSanitizedWhatsAppOperatorDetails(parsed)
+    const message = typeof parsed?.status === "string"
+      ? `WhatsApp ${parsed.status}`
+      : text || successMessage
+
+    return {
+      success: true,
+      action,
+      message,
+      ...(details ? { details } : {}),
+    }
+  } catch (error) {
+    const message = getErrorMessage(error)
+    return {
+      success: false,
+      action,
+      message,
+      error: message,
+    }
+  }
+}
+
+async function buildOperatorHealthSnapshot(): Promise<OperatorHealthSnapshot> {
+  const health = await diagnosticsService.performHealthCheck()
+
+  return {
+    checkedAt: Date.now(),
+    overall: health.overall,
+    checks: health.checks,
+  }
+}
+
+function buildOperatorRecentErrorsResponse(count: number = 10): OperatorRecentErrorsResponse {
+  const errors = diagnosticsService.getRecentErrors(clampOperatorCount(count, 10, 50))
+    .map(({ timestamp, level, component, message }) => ({
+      timestamp,
+      level,
+      component,
+      message,
+    }))
+
+  return {
+    count: errors.length,
+    errors,
+  }
+}
+
+function buildOperatorLogSummary(entries: Array<{ timestamp: number; level?: string }>): OperatorLogSummary {
+  const lastEntry = entries[entries.length - 1]
+  let errorCount = 0
+  let warningCount = 0
+  let infoCount = 0
+
+  for (const entry of entries) {
+    if (entry.level === "error") {
+      errorCount += 1
+    } else if (entry.level === "warn" || entry.level === "warning") {
+      warningCount += 1
+    } else if (entry.level === "info") {
+      infoCount += 1
+    }
+  }
+
+  const hasLevelCounts = errorCount > 0 || warningCount > 0 || infoCount > 0
+
+  return {
+    total: entries.length,
+    ...(lastEntry?.timestamp ? { lastTimestamp: lastEntry.timestamp } : {}),
+    ...(hasLevelCounts ? { errorCount, warningCount, infoCount } : {}),
+  }
+}
+
+async function buildOperatorWhatsAppIntegrationSummary(): Promise<OperatorWhatsAppIntegrationSummary> {
+  const cfg = configStore.get()
+  const serverStatus = mcpService.getServerStatus()[WHATSAPP_SERVER_NAME]
+  const summary: OperatorWhatsAppIntegrationSummary = {
+    enabled: !!cfg.whatsappEnabled,
+    available: !!serverStatus?.connected,
+    connected: false,
+    serverConfigured: !!cfg.mcpConfig?.mcpServers?.[WHATSAPP_SERVER_NAME],
+    serverConnected: !!serverStatus?.connected,
+    autoReplyEnabled: !!cfg.whatsappAutoReply,
+    logMessagesEnabled: !!cfg.whatsappLogMessages,
+    allowedSenderCount: cfg.whatsappAllowFrom?.length ?? 0,
+    ...(serverStatus?.error ? { lastError: serverStatus.error } : {}),
+    logs: buildOperatorLogSummary(mcpService.getServerLogs(WHATSAPP_SERVER_NAME)),
+  }
+
+  if (!serverStatus?.connected) {
+    return summary
+  }
+
+  try {
+    const statusResult = await mcpService.executeToolCall(
+      { name: "whatsapp_get_status", arguments: {} },
+      undefined,
+      true,
+    )
+
+    if (statusResult.isError) {
+      const lastError = statusResult.content.find((entry) => entry.type === "text")?.text
+
+      return {
+        ...summary,
+        ...(lastError ? { lastError } : {}),
+      }
+    }
+
+    const textPayload = statusResult.content.find((entry) => entry.type === "text")?.text
+    if (!textPayload) {
+      return summary
+    }
+
+    let parsed: {
+      connected?: boolean
+      hasCredentials?: boolean
+      lastError?: string
+    }
+
+    try {
+      parsed = JSON.parse(textPayload) as {
+        connected?: boolean
+        hasCredentials?: boolean
+        lastError?: string
+      }
+    } catch {
+      return summary
+    }
+
+    return {
+      ...summary,
+      connected: !!parsed.connected,
+      ...(typeof parsed.hasCredentials === "boolean" ? { hasCredentials: parsed.hasCredentials } : {}),
+      ...(parsed.lastError ? { lastError: parsed.lastError } : {}),
+    }
+  } catch (error) {
+    diagnosticsService.logWarning(
+      "remote-server",
+      `Failed to summarize WhatsApp integration status: ${getErrorMessage(error)}`,
+    )
+
+    return {
+      ...summary,
+      lastError: getErrorMessage(error),
+    }
+  }
+}
+
+async function buildOperatorIntegrationsSummary(): Promise<OperatorIntegrationsSummary> {
+  const cfg = configStore.get()
+  const pushTokens = cfg.pushNotificationTokens ?? []
+
+  return {
+    discord: buildOperatorDiscordIntegrationSummary(),
+    whatsapp: await buildOperatorWhatsAppIntegrationSummary(),
+    pushNotifications: {
+      enabled: pushTokens.length > 0,
+      tokenCount: pushTokens.length,
+      platforms: [...new Set(pushTokens.map((token) => token.platform))].sort(),
+    },
+  }
+}
+
+function buildOperatorUpdaterStatus(): OperatorUpdaterStatus {
+  return {
+    enabled: false,
+    mode: "manual",
+    currentVersion: app.getVersion(),
+    updateInfo: getUpdateInfo(),
+    manualReleasesUrl: MANUAL_RELEASES_URL,
+  }
+}
+
+async function buildOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus> {
+  const now = Date.now()
+  const recentErrors = diagnosticsService.getRecentErrors(100)
+
+  return {
+    timestamp: now,
+    remoteServer: buildOperatorRemoteServerStatus(),
+    health: await buildOperatorHealthSnapshot(),
+    tunnel: buildOperatorTunnelStatus(),
+    integrations: await buildOperatorIntegrationsSummary(),
+    updater: buildOperatorUpdaterStatus(),
+    recentErrors: {
+      total: recentErrors.length,
+      errorsInLastFiveMinutes: recentErrors.filter((entry) => now - entry.timestamp <= 5 * 60 * 1000).length,
+    },
+  }
+}
+
+function scheduleRemoteServerRestartFromOperator(): void {
+  setTimeout(() => {
+    void restartRemoteServer().catch((error) => {
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to restart remote server from operator action",
+        error,
+      )
+    })
+  }, 50)
+}
+
+function scheduleAppRestartFromOperator(): void {
+  setTimeout(() => {
+    try {
+      app.relaunch()
+      app.quit()
+    } catch (error) {
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to restart app from operator action",
+        error,
+      )
+    }
+  }, 100)
+}
+
 /**
  * Starts the remote server, forcing it to be enabled regardless of config.
  * Used by --qr mode to ensure the server starts even if remoteServerEnabled is false.
@@ -865,7 +1647,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   if (!cfg.remoteServerApiKey) {
     // Generate API key on first enable
-    const key = crypto.randomBytes(32).toString("hex")
+    const key = generateRemoteServerApiKey()
     configStore.save({ ...cfg, remoteServerApiKey: key })
   }
 
@@ -891,7 +1673,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     // This is needed because credentials: true doesn't work with literal "*"
     origin: corsOrigins.includes("*") ? true : corsOrigins,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Device-Id", "X-DotAgents-Device-Id"],
     credentials: true,
     maxAge: 86400, // Cache preflight for 24 hours
     preflight: true, // Enable preflight pass-through
@@ -914,7 +1696,359 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.addHook("onResponse", async (req, reply) => {
+    if (req.method !== "POST") {
+      return
+    }
+
+    const pathname = getOperatorAuditPath(req)
+    if (!pathname.startsWith("/v1/operator/")) {
+      return
+    }
+
+    const context = getOperatorAuditContext(req)
+    recordOperatorAuditEvent(req, {
+      action: context.action ?? buildOperatorAuditActionFromPath(pathname),
+      path: pathname,
+      success: context.success ?? reply.statusCode < 400,
+      details: context.details,
+      failureReason: context.failureReason ?? (reply.statusCode >= 400 ? `http-${reply.statusCode}` : undefined),
+    })
+  })
+
   // Routes
+  // ============================================
+  // Operator/Admin Endpoints
+  // ============================================
+  fastify.get("/v1/operator/status", async (_req, reply) => {
+    try {
+      return reply.send(await buildOperatorRuntimeStatus())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator runtime status", error)
+      return reply.code(500).send({ error: "Failed to build operator runtime status" })
+    }
+  })
+
+  fastify.get("/v1/operator/health", async (_req, reply) => {
+    try {
+      return reply.send(await buildOperatorHealthSnapshot())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator health snapshot", error)
+      return reply.code(500).send({ error: "Failed to build operator health snapshot" })
+    }
+  })
+
+  fastify.get("/v1/operator/errors", async (req, reply) => {
+    try {
+      const query = req.query as { count?: string | number }
+      return reply.send(buildOperatorRecentErrorsResponse(clampOperatorCount(query.count, 10, 50)))
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator recent errors", error)
+      return reply.code(500).send({ error: "Failed to build operator recent errors" })
+    }
+  })
+
+  fastify.get("/v1/operator/audit", async (req, reply) => {
+    try {
+      const query = req.query as { count?: string | number }
+      return reply.send(buildOperatorAuditResponse(clampOperatorCount(query.count, 20, 100)))
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator audit response", error)
+      return reply.code(500).send({ error: "Failed to build operator audit response" })
+    }
+  })
+
+  fastify.get("/v1/operator/remote-server", async (_req, reply) => {
+    return reply.send(buildOperatorRemoteServerStatus())
+  })
+
+  fastify.get("/v1/operator/tunnel", async (_req, reply) => {
+    return reply.send(buildOperatorTunnelStatus())
+  })
+
+  fastify.get("/v1/operator/tunnel/setup", async (_req, reply) => {
+    try {
+      return reply.send(await buildOperatorTunnelSetupSummary())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build tunnel setup summary", error)
+      return reply.code(500).send({ error: "Failed to build tunnel setup summary" })
+    }
+  })
+
+  fastify.get("/v1/operator/integrations", async (_req, reply) => {
+    try {
+      return reply.send(await buildOperatorIntegrationsSummary())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator integrations summary", error)
+      return reply.code(500).send({ error: "Failed to build operator integrations summary" })
+    }
+  })
+
+  fastify.get("/v1/operator/updater", async (_req, reply) => {
+    return reply.send(buildOperatorUpdaterStatus())
+  })
+
+  fastify.get("/v1/operator/discord", async (_req, reply) => {
+    return reply.send(buildOperatorDiscordIntegrationSummary())
+  })
+
+  fastify.get("/v1/operator/discord/logs", async (req, reply) => {
+    const query = req.query as { count?: string | number }
+    return reply.send(buildOperatorDiscordLogsResponse(clampOperatorCount(query.count, 20, 50)))
+  })
+
+  fastify.post("/v1/operator/discord/connect", async (req, reply) => {
+    const result = await discordService.start()
+    const response: OperatorActionResponse = result.success
+      ? {
+        success: true,
+        action: "discord-connect",
+        message: "Discord connection started",
+        details: {
+          connected: discordService.getStatus().connected,
+        },
+      }
+      : {
+        success: false,
+        action: "discord-connect",
+        message: result.error || "Failed to start Discord integration",
+        error: result.error || "Failed to start Discord integration",
+      }
+
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: response.success,
+      details: response.details,
+      failureReason: response.success ? undefined : response.error || response.message,
+    })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/discord/disconnect", async (req, reply) => {
+    const result = await discordService.stop()
+    const response: OperatorActionResponse = result.success
+      ? {
+        success: true,
+        action: "discord-disconnect",
+        message: "Discord integration stopped",
+      }
+      : {
+        success: false,
+        action: "discord-disconnect",
+        message: result.error || "Failed to stop Discord integration",
+        error: result.error || "Failed to stop Discord integration",
+      }
+
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: response.success,
+      failureReason: response.success ? undefined : response.error || response.message,
+    })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/discord/logs/clear", async (req, reply) => {
+    discordService.clearLogs()
+    setOperatorAuditContext(req, {
+      action: "discord-clear-logs",
+      success: true,
+    })
+    return reply.send({
+      success: true,
+      action: "discord-clear-logs",
+      message: "Discord logs cleared",
+    } satisfies OperatorActionResponse)
+  })
+
+  fastify.get("/v1/operator/whatsapp", async (_req, reply) => {
+    try {
+      return reply.send(await buildOperatorWhatsAppIntegrationSummary())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build WhatsApp operator summary", error)
+      return reply.code(500).send({ error: "Failed to build WhatsApp operator summary" })
+    }
+  })
+
+  fastify.post("/v1/operator/whatsapp/connect", async (req, reply) => {
+    const response = await runOperatorWhatsAppAction("whatsapp_connect", "whatsapp-connect", "WhatsApp connection initiated")
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: response.success,
+      details: response.details,
+      failureReason: response.success ? undefined : response.error || response.message,
+    })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/whatsapp/logout", async (req, reply) => {
+    const response = await runOperatorWhatsAppAction("whatsapp_logout", "whatsapp-logout", "WhatsApp logout completed")
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: response.success,
+      details: response.details,
+      failureReason: response.success ? undefined : response.error || response.message,
+    })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/tunnel/start", async (req, reply) => {
+    try {
+      const remoteServerStatus = getRemoteServerStatus()
+      if (!remoteServerStatus.running) {
+        setOperatorAuditContext(req, {
+          action: "tunnel-start",
+          success: false,
+          failureReason: "remote-server-not-running",
+        })
+        return reply.send({
+          success: false,
+          action: "tunnel-start",
+          message: "Remote server must be running before a tunnel can be started",
+          error: "Remote server is not running",
+        } satisfies OperatorActionResponse)
+      }
+
+      const result = await startConfiguredCloudflareTunnel()
+      const response: OperatorActionResponse = result.success
+        ? {
+          success: true,
+          action: "tunnel-start",
+          message: result.mode === "named" ? "Cloudflare named tunnel started" : "Cloudflare quick tunnel started",
+          details: {
+            mode: result.mode,
+            ...(result.url ? { url: result.url } : {}),
+          },
+        }
+        : {
+          success: false,
+          action: "tunnel-start",
+          message: result.error || "Failed to start Cloudflare tunnel",
+          error: result.error || "Failed to start Cloudflare tunnel",
+          details: {
+            mode: result.mode,
+          },
+        }
+
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        details: response.details,
+        failureReason: response.success ? undefined : response.error || response.message,
+      })
+      return reply.send(response)
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "tunnel-start",
+        success: false,
+        failureReason: "tunnel-start-route-error",
+      })
+      diagnosticsService.logError("remote-server", "Failed to start tunnel from operator route", error)
+      return reply.code(500).send({ error: "Failed to start tunnel" })
+    }
+  })
+
+  fastify.post("/v1/operator/tunnel/stop", async (req, reply) => {
+    try {
+      await stopCloudflareTunnel()
+      setOperatorAuditContext(req, {
+        action: "tunnel-stop",
+        success: true,
+      })
+      return reply.send({
+        success: true,
+        action: "tunnel-stop",
+        message: "Cloudflare tunnel stopped",
+      } satisfies OperatorActionResponse)
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "tunnel-stop",
+        success: false,
+        failureReason: "tunnel-stop-route-error",
+      })
+      diagnosticsService.logError("remote-server", "Failed to stop tunnel from operator route", error)
+      return reply.code(500).send({ error: "Failed to stop tunnel" })
+    }
+  })
+
+  fastify.post("/v1/operator/actions/restart-remote-server", async (req, reply) => {
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "restart-remote-server",
+      message: "Remote server restart scheduled",
+      scheduled: true,
+      details: {
+        wasRunning: getRemoteServerStatus().running,
+      },
+    }
+
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: true,
+      details: response.details,
+    })
+    scheduleRemoteServerRestartFromOperator()
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/actions/restart-app", async (req, reply) => {
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "restart-app",
+      message: "Application restart scheduled",
+      scheduled: true,
+      details: {
+        currentVersion: app.getVersion(),
+      },
+    }
+
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: true,
+      details: response.details,
+    })
+    scheduleAppRestartFromOperator()
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/access/rotate-api-key", async (req, reply) => {
+    try {
+      const cfg = configStore.get()
+      const apiKey = generateRemoteServerApiKey()
+      configStore.save({ ...cfg, remoteServerApiKey: apiKey })
+
+      const response: OperatorApiKeyRotationResponse = {
+        success: true,
+        action: "rotate-api-key",
+        message: "Remote server API key rotated",
+        scheduled: true,
+        restartScheduled: true,
+        apiKey,
+      }
+
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: true,
+        details: {
+          restartScheduled: true,
+        },
+      })
+
+      scheduleTaskAfterReply(reply, "restart remote server after API key rotation", async () => {
+        await restartRemoteServer()
+      })
+
+      return reply.send(response)
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "rotate-api-key",
+        success: false,
+        failureReason: "rotate-api-key-route-error",
+      })
+      diagnosticsService.logError("remote-server", "Failed to rotate remote server API key", error)
+      return reply.code(500).send({ error: "Failed to rotate remote server API key" })
+    }
+  })
+
   fastify.post("/v1/chat/completions", async (req, reply) => {
     try {
       const body = req.body as any
@@ -1330,6 +2464,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
         mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? true,
         mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
+        // Remote Server
+        remoteServerEnabled: cfg.remoteServerEnabled ?? false,
+        remoteServerPort: cfg.remoteServerPort ?? 3210,
+        remoteServerBindAddress: cfg.remoteServerBindAddress ?? "127.0.0.1",
+        remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey),
+        remoteServerLogLevel: cfg.remoteServerLogLevel ?? "info",
+        remoteServerCorsOrigins: cfg.remoteServerCorsOrigins ?? ["*"],
+        remoteServerAutoShowPanel: cfg.remoteServerAutoShowPanel ?? false,
+        remoteServerTerminalQrEnabled: cfg.remoteServerTerminalQrEnabled ?? false,
+        // Cloudflare Tunnel
+        cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? "quick",
+        cloudflareTunnelAutoStart: cfg.cloudflareTunnelAutoStart ?? false,
+        cloudflareTunnelId: cfg.cloudflareTunnelId ?? "",
+        cloudflareTunnelName: cfg.cloudflareTunnelName ?? "",
+        cloudflareTunnelCredentialsPath: cfg.cloudflareTunnelCredentialsPath ?? "",
+        cloudflareTunnelHostname: cfg.cloudflareTunnelHostname ?? "",
         // WhatsApp (extended)
         whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
         whatsappAutoReply: cfg.whatsappAutoReply ?? false,
@@ -1381,8 +2531,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   // PATCH /v1/settings - Update settings
   fastify.patch("/v1/settings", async (req, reply) => {
+    let attemptedSensitiveSettingsKeys: string[] = []
+
     try {
       const body = req.body as any
+      attemptedSensitiveSettingsKeys = body && typeof body === "object"
+        ? getSensitiveOperatorSettingsKeys(body as Record<string, unknown>)
+        : []
       const cfg = configStore.get()
       const updates: Partial<typeof cfg> = {}
 
@@ -1498,6 +2653,53 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.mcpParallelToolExecution === "boolean") {
         updates.mcpParallelToolExecution = body.mcpParallelToolExecution
       }
+      // Remote Server
+      if (typeof body.remoteServerEnabled === "boolean") {
+        updates.remoteServerEnabled = body.remoteServerEnabled
+      }
+      if (typeof body.remoteServerPort === "number" && Number.isInteger(body.remoteServerPort) && body.remoteServerPort >= 1 && body.remoteServerPort <= 65535) {
+        updates.remoteServerPort = body.remoteServerPort
+      }
+      if (typeof body.remoteServerBindAddress === "string" && ["127.0.0.1", "0.0.0.0"].includes(body.remoteServerBindAddress)) {
+        updates.remoteServerBindAddress = body.remoteServerBindAddress as "127.0.0.1" | "0.0.0.0"
+      }
+      if (typeof body.remoteServerApiKey === "string" && body.remoteServerApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.remoteServerApiKey = body.remoteServerApiKey.trim()
+      }
+      if (typeof body.remoteServerLogLevel === "string" && ["error", "info", "debug"].includes(body.remoteServerLogLevel)) {
+        updates.remoteServerLogLevel = body.remoteServerLogLevel as "error" | "info" | "debug"
+      }
+      if (Array.isArray(body.remoteServerCorsOrigins)) {
+        updates.remoteServerCorsOrigins = body.remoteServerCorsOrigins
+          .filter((value: unknown) => typeof value === "string")
+          .map((value: string) => value.trim())
+          .filter(Boolean)
+      }
+      if (typeof body.remoteServerAutoShowPanel === "boolean") {
+        updates.remoteServerAutoShowPanel = body.remoteServerAutoShowPanel
+      }
+      if (typeof body.remoteServerTerminalQrEnabled === "boolean") {
+        updates.remoteServerTerminalQrEnabled = body.remoteServerTerminalQrEnabled
+      }
+      // Cloudflare Tunnel
+      if (typeof body.cloudflareTunnelMode === "string" && ["quick", "named"].includes(body.cloudflareTunnelMode)) {
+        updates.cloudflareTunnelMode = body.cloudflareTunnelMode as "quick" | "named"
+      }
+      if (typeof body.cloudflareTunnelAutoStart === "boolean") {
+        updates.cloudflareTunnelAutoStart = body.cloudflareTunnelAutoStart
+      }
+      if (typeof body.cloudflareTunnelId === "string") {
+        updates.cloudflareTunnelId = body.cloudflareTunnelId.trim()
+      }
+      if (typeof body.cloudflareTunnelName === "string") {
+        updates.cloudflareTunnelName = body.cloudflareTunnelName.trim()
+      }
+      if (typeof body.cloudflareTunnelCredentialsPath === "string") {
+        updates.cloudflareTunnelCredentialsPath = body.cloudflareTunnelCredentialsPath.trim()
+      }
+      if (typeof body.cloudflareTunnelHostname === "string") {
+        updates.cloudflareTunnelHostname = body.cloudflareTunnelHostname.trim()
+      }
       // WhatsApp (extended)
       if (Array.isArray(body.whatsappAllowFrom)) {
         updates.whatsappAllowFrom = body.whatsappAllowFrom.filter((n: unknown) => typeof n === "string")
@@ -1611,10 +2813,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       if (Object.keys(updates).length === 0) {
+        if (attemptedSensitiveSettingsKeys.length > 0) {
+          recordOperatorAuditEvent(req, {
+            action: "settings-sensitive-update",
+            path: "/v1/settings",
+            success: false,
+            details: { attempted: attemptedSensitiveSettingsKeys },
+            failureReason: "no-valid-settings-to-update",
+          })
+        }
         return reply.code(400).send({ error: "No valid settings to update" })
       }
 
       const nextConfig = { ...cfg, ...updates }
+      const remoteServerLifecycleAction = getRemoteServerLifecycleAction(cfg, nextConfig)
+      const sensitiveUpdatedKeys = Object.keys(updates).filter((key) => SENSITIVE_OPERATOR_SETTINGS_KEYS.has(key))
       configStore.save(nextConfig)
       diagnosticsService.logInfo("remote-server", `Updated settings: ${Object.keys(updates).join(", ")}`)
 
@@ -1637,11 +2850,35 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         }
       }
 
+      scheduleRemoteServerLifecycleActionAfterReply(reply, remoteServerLifecycleAction)
+
+      if (sensitiveUpdatedKeys.length > 0) {
+        recordOperatorAuditEvent(req, {
+          action: "settings-sensitive-update",
+          path: "/v1/settings",
+          success: true,
+          details: {
+            updated: sensitiveUpdatedKeys,
+            ...(remoteServerLifecycleAction !== "noop" ? { remoteServerLifecycleAction } : {}),
+            ...(discordLifecycleAction !== "noop" ? { discordLifecycleAction } : {}),
+          },
+        })
+      }
+
       return reply.send({
         success: true,
         updated: Object.keys(updates),
       })
     } catch (error: any) {
+      if (attemptedSensitiveSettingsKeys.length > 0) {
+        recordOperatorAuditEvent(req, {
+          action: "settings-sensitive-update",
+          path: "/v1/settings",
+          success: false,
+          details: { attempted: attemptedSensitiveSettingsKeys },
+          failureReason: "settings-update-error",
+        })
+      }
       diagnosticsService.logError("remote-server", "Failed to update settings", error)
       return reply.code(500).send({ error: error?.message || "Failed to update settings" })
     }

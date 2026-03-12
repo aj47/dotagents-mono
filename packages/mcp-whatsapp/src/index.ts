@@ -60,6 +60,497 @@ function normalizeChatId(chatId: string): string {
   return chatId.replace(/@.*$/, "").replace(/[^0-9]/g, "")
 }
 
+type OperatorCommandMethod = "GET" | "POST"
+
+interface ParsedOperatorCommand {
+  key:
+    | "help"
+    | "status"
+    | "health"
+    | "errors"
+    | "audit"
+    | "tunnel-status"
+    | "tunnel-start"
+    | "tunnel-stop"
+    | "discord-status"
+    | "discord-connect"
+    | "discord-disconnect"
+    | "whatsapp-status"
+    | "whatsapp-connect"
+    | "whatsapp-logout"
+    | "restart-server"
+    | "restart-app"
+  label: string
+  method?: OperatorCommandMethod
+  path?: string
+  query?: Record<string, string>
+}
+
+const OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+function formatOperatorTimestamp(value: unknown): string | null {
+  return typeof value === "number" && Number.isFinite(value)
+    ? new Date(value).toISOString()
+    : null
+}
+
+function formatOperatorScalar(value: unknown): string | null {
+  if (typeof value === "boolean") return value ? "yes" : "no"
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : null
+  if (typeof value === "string") {
+    if (!value.trim()) return null
+    if (/bearer\s+/i.test(value)) return "[redacted]"
+    return value
+  }
+  return null
+}
+
+function getOperatorBoolean(value: unknown): boolean {
+  return value === true
+}
+
+function getOperatorString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined
+}
+
+function getOperatorNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function formatOperatorDetailLines(details: unknown, options: { skipKeys?: string[] } = {}): string[] {
+  if (!isRecord(details)) return []
+
+  const skipKeys = new Set(options.skipKeys ?? [])
+  const lines: string[] = []
+  for (const [key, value] of Object.entries(details)) {
+    if (skipKeys.has(key) || OPERATOR_DETAIL_REDACTION_PATTERN.test(key)) continue
+    const formatted = formatOperatorScalar(value)
+    if (!formatted) continue
+    lines.push(`- ${key}: ${formatted}`)
+  }
+  return lines
+}
+
+function getOperatorHelpText(channel: string): string {
+  return [
+    `Operator commands for ${channel}:`,
+    "- /ops help",
+    "- /ops status",
+    "- /ops health",
+    "- /ops errors [count]",
+    "- /ops audit [count]",
+    "- /ops tunnel | tunnel start | tunnel stop",
+    "- /ops discord status | connect | disconnect",
+    "- /ops whatsapp status | connect | logout",
+    "- /ops restart-server",
+    "- /ops restart-app",
+  ].join("\n")
+}
+
+function parseOperatorCountToken(token: string | undefined): number | null {
+  if (!token) return null
+  const count = Number.parseInt(token, 10)
+  return Number.isInteger(count) && count > 0 ? count : Number.NaN
+}
+
+function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
+  const normalizedPrompt = prompt.trim()
+  if (!/^\/ops(?:\s|$)/i.test(normalizedPrompt)) return null
+
+  const body = normalizedPrompt.replace(/^\/ops\b/i, "").trim()
+  if (!body || body.toLowerCase() === "help") {
+    return { key: "help", label: "/ops help" }
+  }
+
+  const parts = body.split(/\s+/)
+  const [first = "", second = ""] = parts.map((part) => part.toLowerCase())
+
+  if (first === "status" && parts.length === 1) {
+    return { key: "status", label: "/ops status", method: "GET", path: "status" }
+  }
+  if (first === "health" && parts.length === 1) {
+    return { key: "health", label: "/ops health", method: "GET", path: "health" }
+  }
+  if (first === "errors" && parts.length <= 2) {
+    const count = parseOperatorCountToken(second)
+    if (Number.isNaN(count)) return { key: "help", label: "/ops help" }
+    return {
+      key: "errors",
+      label: second ? `/ops errors ${second}` : "/ops errors",
+      method: "GET",
+      path: "errors",
+      ...(count ? { query: { count: String(count) } } : {}),
+    }
+  }
+  if (first === "audit" && parts.length <= 2) {
+    const count = parseOperatorCountToken(second)
+    if (Number.isNaN(count)) return { key: "help", label: "/ops help" }
+    return {
+      key: "audit",
+      label: second ? `/ops audit ${second}` : "/ops audit",
+      method: "GET",
+      path: "audit",
+      ...(count ? { query: { count: String(count) } } : {}),
+    }
+  }
+  if (first === "tunnel") {
+    if (parts.length === 1 || (parts.length === 2 && second === "status")) {
+      return { key: "tunnel-status", label: "/ops tunnel", method: "GET", path: "tunnel" }
+    }
+    if (parts.length === 2 && second === "start") {
+      return { key: "tunnel-start", label: "/ops tunnel start", method: "POST", path: "tunnel/start" }
+    }
+    if (parts.length === 2 && second === "stop") {
+      return { key: "tunnel-stop", label: "/ops tunnel stop", method: "POST", path: "tunnel/stop" }
+    }
+  }
+  if (first === "discord") {
+    if (parts.length === 1 || (parts.length === 2 && second === "status")) {
+      return { key: "discord-status", label: "/ops discord status", method: "GET", path: "discord" }
+    }
+    if (parts.length === 2 && second === "connect") {
+      return { key: "discord-connect", label: "/ops discord connect", method: "POST", path: "discord/connect" }
+    }
+    if (parts.length === 2 && second === "disconnect") {
+      return { key: "discord-disconnect", label: "/ops discord disconnect", method: "POST", path: "discord/disconnect" }
+    }
+  }
+  if (first === "whatsapp") {
+    if (parts.length === 1 || (parts.length === 2 && second === "status")) {
+      return { key: "whatsapp-status", label: "/ops whatsapp status", method: "GET", path: "whatsapp" }
+    }
+    if (parts.length === 2 && second === "connect") {
+      return { key: "whatsapp-connect", label: "/ops whatsapp connect", method: "POST", path: "whatsapp/connect" }
+    }
+    if (parts.length === 2 && second === "logout") {
+      return { key: "whatsapp-logout", label: "/ops whatsapp logout", method: "POST", path: "whatsapp/logout" }
+    }
+  }
+  if (first === "restart-server" && parts.length === 1) {
+    return {
+      key: "restart-server",
+      label: "/ops restart-server",
+      method: "POST",
+      path: "actions/restart-remote-server",
+    }
+  }
+  if (first === "restart-app" && parts.length === 1) {
+    return {
+      key: "restart-app",
+      label: "/ops restart-app",
+      method: "POST",
+      path: "actions/restart-app",
+    }
+  }
+
+  return { key: "help", label: "/ops help" }
+}
+
+function formatOperatorActionResponse(payload: unknown): string {
+  if (!isRecord(payload)) return "Operator action completed."
+
+  const details = isRecord(payload.details) ? payload.details : undefined
+  const status = getOperatorString(details?.status)
+  const lines = [
+    status === "qr_required"
+      ? "WhatsApp needs authentication in the desktop app. Open the app to continue linking the account."
+      : getOperatorString(payload.message) || "Operator action completed.",
+  ]
+
+  if (typeof payload.success === "boolean") {
+    lines.push(`- success: ${payload.success ? "yes" : "no"}`)
+  }
+  if (payload.scheduled === true) {
+    lines.push("- scheduled: yes")
+  }
+  if (typeof payload.error === "string" && payload.error && payload.error !== payload.message) {
+    lines.push(`- error: ${payload.error}`)
+  }
+
+  lines.push(...formatOperatorDetailLines(details, { skipKeys: ["status"] }))
+  return lines.join("\n")
+}
+
+function formatOperatorPayload(command: ParsedOperatorCommand, payload: unknown): string {
+  if (!isRecord(payload)) {
+    return typeof payload === "string" && payload ? payload : "Operator response was empty."
+  }
+
+  if (typeof payload.error === "string" && payload.error) {
+    return `Operator request failed: ${payload.error}`
+  }
+
+  if (command.key === "status") {
+    const remoteServer = isRecord(payload.remoteServer) ? payload.remoteServer : undefined
+    const health = isRecord(payload.health) ? payload.health : undefined
+    const tunnel = isRecord(payload.tunnel) ? payload.tunnel : undefined
+    const integrations = isRecord(payload.integrations) ? payload.integrations : undefined
+    const discord = isRecord(integrations?.discord) ? integrations.discord : undefined
+    const whatsapp = isRecord(integrations?.whatsapp) ? integrations.whatsapp : undefined
+    const recentErrors = isRecord(payload.recentErrors) ? payload.recentErrors : undefined
+    const remoteServerRunning = getOperatorBoolean(remoteServer?.running)
+    const remoteServerBind = getOperatorString(remoteServer?.bind) || "127.0.0.1"
+    const remoteServerPort = getOperatorNumber(remoteServer?.port)
+    const healthOverall = getOperatorString(health?.overall) || "unknown"
+    const tunnelRunning = getOperatorBoolean(tunnel?.running)
+    const tunnelStarting = getOperatorBoolean(tunnel?.starting)
+    const tunnelMode = getOperatorString(tunnel?.mode)
+    const tunnelUrl = getOperatorString(tunnel?.url)
+    const discordConnected = getOperatorBoolean(discord?.connected)
+    const discordConnecting = getOperatorBoolean(discord?.connecting)
+    const discordEnabled = getOperatorBoolean(discord?.enabled)
+    const whatsappConnected = getOperatorBoolean(whatsapp?.connected)
+    const whatsappEnabled = getOperatorBoolean(whatsapp?.enabled)
+    const whatsappAutoReply = getOperatorBoolean(whatsapp?.autoReplyEnabled)
+    const recentErrorTotal = getOperatorNumber(recentErrors?.total) || 0
+    const recentErrorWindow = getOperatorNumber(recentErrors?.errorsInLastFiveMinutes) || 0
+
+    return [
+      "Operator status",
+      remoteServer
+        ? `- remote server: ${remoteServerRunning ? "running" : "stopped"} on ${remoteServerBind}:${remoteServerPort ?? "unknown"}`
+        : "- remote server: unavailable",
+      health ? `- health: ${healthOverall}` : "- health: unavailable",
+      tunnel
+        ? `- tunnel: ${tunnelRunning ? "running" : tunnelStarting ? "starting" : "stopped"}${tunnelMode ? ` (${tunnelMode})` : ""}${tunnelUrl ? ` ${tunnelUrl}` : ""}`
+        : "- tunnel: unavailable",
+      discord
+        ? `- discord: ${discordConnected ? "connected" : discordConnecting ? "connecting" : discordEnabled ? "enabled" : "disabled"}`
+        : "- discord: unavailable",
+      whatsapp
+        ? `- whatsapp: ${whatsappConnected ? "connected" : whatsappEnabled ? "enabled" : "disabled"} (auto-reply ${whatsappAutoReply ? "on" : "off"})`
+        : "- whatsapp: unavailable",
+      recentErrors
+        ? `- recent errors: ${recentErrorTotal} total, ${recentErrorWindow} in the last 5m`
+        : "- recent errors: unavailable",
+    ].join("\n")
+  }
+
+  if (command.key === "health") {
+    const checks = isRecord(payload.checks) ? payload.checks : {}
+    const lines = [
+      `Health snapshot: ${getOperatorString(payload.overall) || "unknown"}`,
+    ]
+
+    for (const [name, entry] of Object.entries(checks)) {
+      if (!isRecord(entry)) continue
+      const status = getOperatorString(entry.status) || "unknown"
+      const message = getOperatorString(entry.message) || ""
+      lines.push(`- ${name}: ${status}${message ? ` — ${message}` : ""}`)
+    }
+
+    return lines.join("\n")
+  }
+
+  if (command.key === "errors") {
+    const errors = Array.isArray(payload.errors) ? payload.errors : []
+    const lines = [`Recent errors (${errors.length})`]
+
+    if (errors.length === 0) {
+      lines.push("- No recent errors reported.")
+      return lines.join("\n")
+    }
+
+    for (const entry of errors) {
+      if (!isRecord(entry)) continue
+      const timestamp = formatOperatorTimestamp(entry.timestamp)
+      const level = getOperatorString(entry.level) || "error"
+      const component = getOperatorString(entry.component) || "unknown"
+      const message = getOperatorString(entry.message) || "Unknown error"
+      lines.push(`- ${timestamp || "unknown time"} [${level}] ${component}: ${message}`)
+    }
+
+    return lines.join("\n")
+  }
+
+  if (command.key === "audit") {
+    const entries = Array.isArray(payload.entries) ? payload.entries : []
+    const lines = [`Recent operator audit entries (${entries.length})`]
+
+    if (entries.length === 0) {
+      lines.push("- No audit entries reported.")
+      return lines.join("\n")
+    }
+
+    for (const entry of entries) {
+      if (!isRecord(entry)) continue
+      const timestamp = formatOperatorTimestamp(entry.timestamp)
+      const action = getOperatorString(entry.action) || "unknown"
+      const path = getOperatorString(entry.path) || "unknown"
+      const success = typeof entry.success === "boolean" ? (entry.success ? "success" : "failure") : "unknown"
+      const failureReason = getOperatorString(entry.failureReason)
+      lines.push(`- ${timestamp || "unknown time"} ${success}: ${action} via ${path}${failureReason ? ` (${failureReason})` : ""}`)
+    }
+
+    return lines.join("\n")
+  }
+
+  if (command.key === "tunnel-status") {
+    const running = getOperatorBoolean(payload.running)
+    const starting = getOperatorBoolean(payload.starting)
+    const mode = getOperatorString(payload.mode)
+    const url = getOperatorString(payload.url)
+    const error = getOperatorString(payload.error)
+    const lines = [
+      `Tunnel: ${running ? "running" : starting ? "starting" : "stopped"}${mode ? ` (${mode})` : ""}`,
+    ]
+    if (url) lines.push(`- url: ${url}`)
+    if (error) lines.push(`- error: ${error}`)
+    return lines.join("\n")
+  }
+
+  if (command.key === "discord-status") {
+    const connected = getOperatorBoolean(payload.connected)
+    const connecting = getOperatorBoolean(payload.connecting)
+    const enabled = getOperatorBoolean(payload.enabled)
+    const available = getOperatorBoolean(payload.available)
+    const tokenConfigured = payload.tokenConfigured
+    const defaultProfileName = getOperatorString(payload.defaultProfileName)
+    const botUsername = getOperatorString(payload.botUsername)
+    const lastError = getOperatorString(payload.lastError)
+    const lines = [
+      `Discord: ${connected ? "connected" : connecting ? "connecting" : enabled ? "enabled" : "disabled"}`,
+      `- available: ${available ? "yes" : "no"}`,
+    ]
+    if (typeof tokenConfigured === "boolean") lines.push(`- token configured: ${tokenConfigured ? "yes" : "no"}`)
+    if (defaultProfileName) lines.push(`- default profile: ${defaultProfileName}`)
+    if (botUsername) lines.push(`- bot: ${botUsername}`)
+    if (lastError) lines.push(`- last error: ${lastError}`)
+    if (isRecord(payload.logs)) lines.push(...formatOperatorDetailLines(payload.logs))
+    return lines.join("\n")
+  }
+
+  if (command.key === "whatsapp-status") {
+    const connected = getOperatorBoolean(payload.connected)
+    const enabled = getOperatorBoolean(payload.enabled)
+    const serverConnected = getOperatorBoolean(payload.serverConnected)
+    const autoReplyEnabled = getOperatorBoolean(payload.autoReplyEnabled)
+    const logMessagesEnabled = getOperatorBoolean(payload.logMessagesEnabled)
+    const allowedSenderCount = getOperatorNumber(payload.allowedSenderCount) || 0
+    const hasCredentials = payload.hasCredentials
+    const lastError = getOperatorString(payload.lastError)
+    const lines = [
+      `WhatsApp: ${connected ? "connected" : enabled ? "enabled" : "disabled"}`,
+      `- server connected: ${serverConnected ? "yes" : "no"}`,
+      `- auto-reply: ${autoReplyEnabled ? "on" : "off"}`,
+      `- log messages: ${logMessagesEnabled ? "on" : "off"}`,
+      `- allowed senders: ${allowedSenderCount}`,
+    ]
+    if (typeof hasCredentials === "boolean") lines.push(`- credentials present: ${hasCredentials ? "yes" : "no"}`)
+    if (lastError) lines.push(`- last error: ${lastError}`)
+    if (isRecord(payload.logs)) lines.push(...formatOperatorDetailLines(payload.logs))
+    return lines.join("\n")
+  }
+
+  return formatOperatorActionResponse(payload)
+}
+
+async function readOperatorPayload(response: Response): Promise<unknown> {
+  const text = await response.text()
+  if (!text) return undefined
+
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return text
+  }
+}
+
+async function executeWhatsAppOperatorCommand(command: ParsedOperatorCommand): Promise<string> {
+  if (command.key === "help") {
+    return getOperatorHelpText("WhatsApp")
+  }
+
+  if (!config.callbackUrl) {
+    return "Operator API is unavailable because the WhatsApp callback URL is not configured."
+  }
+  if (!config.callbackApiKey) {
+    return "Operator API is unavailable because the WhatsApp callback API key is not configured."
+  }
+
+  let operatorBaseUrl: URL
+  try {
+    operatorBaseUrl = new URL("/v1/operator/", config.callbackUrl)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return `Operator API is unavailable because the callback URL is invalid. (${errorMessage})`
+  }
+
+  const url = new URL(command.path || "status", operatorBaseUrl)
+  for (const [key, value] of Object.entries(command.query ?? {})) {
+    url.searchParams.set(key, value)
+  }
+
+  try {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    const response = await Promise.race([
+      fetch(url.toString(), {
+        method: command.method,
+        headers: {
+          Authorization: `Bearer ${config.callbackApiKey}`,
+        },
+      }),
+      new Promise<Response>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Request timed out after 5000ms")), 5000)
+      }),
+    ]).finally(() => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    })
+    const payload = await readOperatorPayload(response)
+
+    if (!response.ok) {
+      const errorMessage = isRecord(payload) && typeof payload.error === "string"
+        ? payload.error
+        : typeof payload === "string" && payload
+          ? payload
+          : `HTTP ${response.status}`
+      const authHint = response.status === 401 ? " Check the callback API key." : ""
+      return `Operator API request failed (${response.status}): ${errorMessage}.${authHint}`
+    }
+
+    return formatOperatorPayload(command, payload)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return `Operator API is unavailable at ${operatorBaseUrl.origin}. Make sure the remote server is reachable from the configured callback URL. (${errorMessage})`
+  }
+}
+
+async function maybeHandleWhatsAppOperatorCommand(message: WhatsAppMessage): Promise<boolean> {
+  const command = parseOperatorCommand(message.text || "")
+  if (!command) return false
+
+  const replyTarget = message.chatId || message.from
+  console.error(`[MCP-WhatsApp] Handling operator command from ${replyTarget}: ${command.label}`)
+
+  try {
+    const responseText = await executeWhatsAppOperatorCommand(command)
+    await whatsapp.sendMessage({
+      to: replyTarget,
+      text: responseText,
+    })
+    console.error(`[MCP-WhatsApp] Completed operator command for ${replyTarget}: ${command.label}`)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error(`[MCP-WhatsApp] Operator command failed for ${replyTarget}: ${errorMessage}`)
+    try {
+      await whatsapp.sendMessage({
+        to: replyTarget,
+        text: `Operator command failed: ${errorMessage}`,
+      })
+    } catch (sendError) {
+      console.error("[MCP-WhatsApp] Failed to send operator error reply:", sendError)
+    }
+  }
+
+  return true
+}
+
 // Track users who have requested a new session via /new command
 // Key: normalized chatId (numeric only), Value: true if new session requested
 const newSessionRequested: Set<string> = new Set()
@@ -315,6 +806,10 @@ whatsapp.on("message", async (message: WhatsAppMessage) => {
   console.error(`[MCP-WhatsApp] Expected: "/new" (char codes: [47,110,101,119])`)
   console.error(`[MCP-WhatsApp] Match check: "${lower}" === "/new" ? ${lower === "/new"}`)
   console.error(`[MCP-WhatsApp] Chat ID: ${rawChatId} (normalized: ${chatId})`)
+
+  if (await maybeHandleWhatsAppOperatorCommand(message)) {
+    return
+  }
 
   // Handle /new command - start a new session on next message
   // Also check for common variations
