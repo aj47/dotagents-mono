@@ -1273,6 +1273,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           baseUrl: p.baseUrl,
           isBuiltIn: p.isBuiltIn ?? false,
         })),
+        predefinedPrompts: (cfg.predefinedPrompts || []).map(prompt => ({
+          id: prompt.id,
+          name: prompt.name,
+          content: prompt.content,
+          createdAt: prompt.createdAt,
+          updatedAt: prompt.updatedAt,
+        })),
         // Feature toggles
         transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
         mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? false,
