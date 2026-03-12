@@ -44,6 +44,14 @@ export interface ModelsResponse {
   models: ModelInfo[];
 }
 
+export interface PredefinedPromptSummary {
+  id: string;
+  name: string;
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Settings {
   // MCP Tools Model Configuration
   mcpToolsProviderId: 'openai' | 'groq' | 'gemini';
@@ -52,6 +60,7 @@ export interface Settings {
   mcpToolsGeminiModel?: string;
   currentModelPresetId?: string;
   availablePresets?: Array<{ id: string; name: string; baseUrl: string; isBuiltIn: boolean }>;
+  predefinedPrompts?: PredefinedPromptSummary[];
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;

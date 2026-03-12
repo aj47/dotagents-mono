@@ -52,6 +52,7 @@ import {
   isToolOnlyMessage,
   normalizeAgentConversationState,
   type AgentConversationState,
+  type PredefinedPromptSummary,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -146,6 +147,68 @@ const buildMessageWithPendingImages = (text: string, images: PendingImageAttachm
 
   return [trimmed, imageMarkdown].filter(Boolean).join('\n\n');
 };
+
+type QuickStartShortcut = {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  source: 'command' | 'saved-prompt' | 'starter-pack';
+};
+
+type QuickStartSection = {
+  id: string;
+  title: string;
+  subtitle: string;
+  items: QuickStartShortcut[];
+};
+
+const STARTER_PACK_SHORTCUTS: QuickStartShortcut[] = [
+  {
+    id: 'starter-plan-task',
+    title: 'Plan this task',
+    description: 'Break work down into clear implementation steps.',
+    content: 'Help me plan this task. Give me a concise step-by-step implementation plan, edge cases to watch, and the smallest safe first step.',
+    source: 'starter-pack',
+  },
+  {
+    id: 'starter-debug-issue',
+    title: 'Debug an issue',
+    description: 'Triage a bug and suggest the most likely root causes.',
+    content: 'Help me debug this issue. Ask for the minimum missing context, identify the likely causes, and suggest the fastest way to verify the fix.',
+    source: 'starter-pack',
+  },
+  {
+    id: 'starter-summarize',
+    title: 'Summarize and next steps',
+    description: 'Turn raw notes into a concise summary plus actions.',
+    content: 'Summarize this clearly, then give me the next 3 concrete actions to take.',
+    source: 'starter-pack',
+  },
+  {
+    id: 'starter-polish-writing',
+    title: 'Polish this draft',
+    description: 'Rewrite rough text into a stronger final version.',
+    content: 'Rewrite this into a polished version that is clear, concise, and confident. Keep the meaning but improve the structure and wording.',
+    source: 'starter-pack',
+  },
+  {
+    id: 'starter-research-brief',
+    title: 'Research brief',
+    description: 'Get a focused overview with tradeoffs and recommendations.',
+    content: 'Create a quick research brief on this topic with key options, tradeoffs, and a practical recommendation.',
+    source: 'starter-pack',
+  },
+  {
+    id: 'starter-daily-review',
+    title: 'Daily review',
+    description: 'Reflect on progress and choose the next best move.',
+    content: 'Help me review what happened today, extract the key lessons, and decide the highest-leverage next step for tomorrow.',
+    source: 'starter-pack',
+  },
+];
+
+const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
 
 const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
 
@@ -396,7 +459,15 @@ export default function ChatScreen({ route, navigation }: any) {
   const currentSession = sessionStore.getCurrentSession();
   const isCurrentSessionPinned = !!currentSession?.isPinned;
   const handsFree = !!config.handsFree;
-	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
+  const settingsClient = useMemo(() => {
+    if (!config.baseUrl || !config.apiKey) {
+      return null;
+    }
+    return new SettingsApiClient(config.baseUrl, config.apiKey);
+  }, [config.apiKey, config.baseUrl]);
+  const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
+  const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
   const handsFreeDebugEnabled = config.handsFreeDebug === true;
@@ -578,6 +649,17 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo('');
     sessionStore.createNewSession();
   }, [sessionStore]);
+
+  const handleInsertQuickStartPrompt = useCallback((content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+
+    setInput((currentValue) => {
+      const existing = currentValue.trim();
+      return existing.length > 0 ? `${existing}\n\n${trimmed}` : trimmed;
+    });
+    inputRef.current?.focus?.();
+  }, []);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -1117,6 +1199,38 @@ export default function ChatScreen({ route, navigation }: any) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!settingsClient || !isFocused) {
+      if (!settingsClient) {
+        setPredefinedPrompts([]);
+        setIsLoadingQuickStartPrompts(false);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingQuickStartPrompts(true);
+
+    settingsClient.getSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
+        setPredefinedPrompts(nextPrompts);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPredefinedPrompts([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoadingQuickStartPrompts(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFocused, settingsClient]);
+
   // Reset auto-scroll when session changes
   useEffect(() => {
     setShouldAutoScroll(true);
@@ -1191,7 +1305,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
         pendingLazyLoadSessionIdRef.current = stubSessionId;
-        const client = new SettingsApiClient(config.baseUrl, config.apiKey);
+        const client = settingsClient || new SettingsApiClient(config.baseUrl, config.apiKey);
         sessionStore.loadSessionMessages(stubSessionId, client)
           .then((result) => {
             if (!result) return;
@@ -1259,7 +1373,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } else {
       setMessages([]);
     }
-  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey]);
+  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -2320,10 +2434,98 @@ export default function ChatScreen({ route, navigation }: any) {
 	  sttPreview,
 	});
 
+  const commandQuickStarts = useMemo(
+    () => predefinedPrompts
+      .filter(isSlashCommandPrompt)
+      .slice(0, 4)
+      .map((prompt) => ({
+        id: prompt.id,
+        title: prompt.name,
+        description: 'Slash-style saved prompt from your desktop workspace.',
+        content: prompt.content,
+        source: 'command' as const,
+      })),
+    [predefinedPrompts]
+  );
+
+  const savedPromptQuickStarts = useMemo(
+    () => predefinedPrompts
+      .filter((prompt) => !isSlashCommandPrompt(prompt))
+      .slice(0, 4)
+      .map((prompt) => ({
+        id: prompt.id,
+        title: prompt.name,
+        description: 'Reusable saved prompt synced from desktop.',
+        content: prompt.content,
+        source: 'saved-prompt' as const,
+      })),
+    [predefinedPrompts]
+  );
+
+  const starterPackQuickStarts = useMemo(
+    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
+    [commandQuickStarts.length, savedPromptQuickStarts.length]
+  );
+
+  const quickStartSections = useMemo<QuickStartSection[]>(() => {
+    const sections: QuickStartSection[] = [];
+
+    if (commandQuickStarts.length > 0) {
+      sections.push({
+        id: 'commands',
+        title: 'Custom Commands',
+        subtitle: 'Slash-named saved prompts from desktop show up here.',
+        items: commandQuickStarts,
+      });
+    }
+
+    if (savedPromptQuickStarts.length > 0) {
+      sections.push({
+        id: 'saved-prompts',
+        title: 'Saved Prompts',
+        subtitle: 'Reusable prompts from your desktop setup.',
+        items: savedPromptQuickStarts,
+      });
+    }
+
+    sections.push({
+      id: 'starter-packs',
+      title: 'Starter Packs',
+      subtitle: commandQuickStarts.length === 0
+        ? 'Use these while you build out custom commands and saved prompts.'
+        : 'Built-in launchers for common workflows.',
+      items: starterPackQuickStarts,
+    });
+
+    return sections;
+  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
+
+  const quickStartCategoryPills = useMemo(
+    () => [
+      {
+        id: 'commands-pill',
+        label: 'Custom Commands',
+        value: commandQuickStarts.length > 0 ? `${commandQuickStarts.length} ready` : 'Add slash prompts on desktop',
+      },
+      {
+        id: 'prompts-pill',
+        label: 'Saved Prompts',
+        value: savedPromptQuickStarts.length > 0 ? `${savedPromptQuickStarts.length} synced` : 'Shows desktop prompts here',
+      },
+      {
+        id: 'starter-pill',
+        label: 'Starter Packs',
+        value: `${starterPackQuickStarts.length} tap-to-insert`,
+      },
+    ],
+    [commandQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
+  );
+
+  const quickStartFooterText = isLoadingQuickStartPrompts
+    ? 'Refreshing saved prompts from desktop…'
+    : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
+
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
-  const openQrScanner = useCallback(() => {
-    navigation.navigate('ConnectionSettings', { openScanner: true });
-  }, [navigation]);
 
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
@@ -2524,19 +2726,51 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           {!sessionStore.isLoadingMessages && messages.length === 0 && (
             <View style={styles.chatHomeCard}>
-              <Text style={styles.chatHomeTitle}>Start a chat</Text>
+              <Text style={styles.chatHomeEyebrow}>Quick start</Text>
+              <Text style={styles.chatHomeTitle}>Custom commands, saved prompts, and starter packs</Text>
               <Text style={styles.chatHomeSubtitle}>
-                Type a message, hold the mic, or scan your desktop QR code to pair this mobile app.
+                Launch something useful right away, then edit it before sending if you want.
               </Text>
-              <TouchableOpacity
-                style={styles.chatHomeScanButton}
-                onPress={openQrScanner}
-                accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Scan QR Code')}
-                accessibilityHint="Opens the QR scanner so you can pair this mobile app with your desktop."
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chatHomeCategoryRow}
               >
-                <Text style={styles.chatHomeScanButtonText}>Scan QR Code</Text>
-              </TouchableOpacity>
+                {quickStartCategoryPills.map((pill) => (
+                  <View key={pill.id} style={styles.chatHomeCategoryPill}>
+                    <Text style={styles.chatHomeCategoryLabel}>{pill.label}</Text>
+                    <Text style={styles.chatHomeCategoryValue}>{pill.value}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {quickStartSections.map((section) => (
+                <View key={section.id} style={styles.chatHomeSection}>
+                  <Text style={styles.chatHomeSectionTitle}>{section.title}</Text>
+                  <Text style={styles.chatHomeSectionSubtitle}>{section.subtitle}</Text>
+                  <View style={styles.chatHomeShortcutGrid}>
+                    {section.items.map((item) => (
+                      <Pressable
+                        key={item.id}
+                        style={({ pressed }) => [
+                          styles.chatHomeShortcutCard,
+                          pressed && styles.chatHomeShortcutCardPressed,
+                        ]}
+                        onPress={() => handleInsertQuickStartPrompt(item.content)}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`${section.title}: ${item.title}`)}
+                        accessibilityHint="Inserts this launcher text into the composer."
+                      >
+                        <Text style={styles.chatHomeShortcutTitle} numberOfLines={1}>{item.title}</Text>
+                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ))}
+
+              <Text style={styles.chatHomeFootnote}>{quickStartFooterText}</Text>
             </View>
           )}
           {messages.map((m, i) => {
@@ -3414,6 +3648,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: theme.colors.card,
       gap: spacing.md,
     },
+    chatHomeEyebrow: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+    },
     chatHomeTitle: {
       ...theme.typography.h2,
     },
@@ -3421,19 +3662,76 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
     },
-    chatHomeScanButton: {
-      alignSelf: 'flex-start',
-      minHeight: 44,
+    chatHomeCategoryRow: {
+      gap: spacing.sm,
+      paddingRight: spacing.xs,
+    },
+    chatHomeCategoryPill: {
+      minWidth: 140,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      gap: 4,
     },
-    chatHomeScanButtonText: {
-      color: theme.colors.primaryForeground,
+    chatHomeCategoryLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
       fontWeight: '600',
+    },
+    chatHomeCategoryValue: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatHomeSection: {
+      gap: spacing.sm,
+    },
+    chatHomeSectionTitle: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatHomeSectionSubtitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+    },
+    chatHomeShortcutGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    chatHomeShortcutCard: {
+      minHeight: 88,
+      minWidth: '47%',
+      flexGrow: 1,
+      flexBasis: '47%',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      gap: spacing.xs,
+    },
+    chatHomeShortcutCardPressed: {
+      opacity: 0.88,
+      transform: [{ scale: 0.99 }],
+    },
+    chatHomeShortcutTitle: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatHomeShortcutDescription: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+    },
+    chatHomeFootnote: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
     },
     input: {
       ...theme.input,

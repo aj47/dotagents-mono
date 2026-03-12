@@ -70,8 +70,18 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /<View style=\{m\.role === 'assistant' \? styles\.assistantMessageRow : undefined\}>[\s\S]*?speakMessage\(i, visibleMessageContent\)/);
 });
 
-test('adds a visible Scan QR Code action to the empty mobile chat home state', () => {
+test('replaces the empty mobile chat home state with quick-start launchers', () => {
   assert.match(screenSource, /!sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
-  assert.match(screenSource, /navigation\.navigate\('ConnectionSettings', \{ openScanner: true \}\)/);
-  assert.match(screenSource, /<Text style=\{styles\.chatHomeScanButtonText\}>Scan QR Code<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.chatHomeEyebrow\}>Quick start<\/Text>/);
+  assert.match(screenSource, /Custom commands, saved prompts, and starter packs/);
+  assert.match(screenSource, /quickStartCategoryPills/);
+  assert.match(screenSource, /<Text style=\{styles\.chatHomeSectionTitle\}>\{section\.title\}<\/Text>/);
+  assert.match(screenSource, /handleInsertQuickStartPrompt\(item\.content\)/);
+  assert.doesNotMatch(screenSource, /chatHomeScanButtonText/);
+});
+
+test('loads saved prompts from the settings API for the mobile quick-start launcher', () => {
+  assert.match(screenSource, /settingsClient\.getSettings\(\)/);
+  assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
+  assert.match(screenSource, /isSlashCommandPrompt/);
 });
