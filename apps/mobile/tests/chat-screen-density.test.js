@@ -38,6 +38,8 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
   assert.match(screenSource, /looksLikeToolPayloadContent\(message\.content\)/);
+  assert.match(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = \/\^\(\?:using tool:\|tool result:\|input:\|output:\)\/i;/);
+  assert.doesNotMatch(screenSource, /const looksLikeToolPayloadContent = \(content\?: string\): boolean => \{[\s\S]*?JSON\.parse\(trimmedContent\)/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ historyMsg\.content/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ msg\.content/);
 });

@@ -291,16 +291,7 @@ const looksLikeToolPayloadContent = (content?: string): boolean => {
     return true;
   }
 
-  if (!trimmedContent.startsWith('{') && !trimmedContent.startsWith('[')) {
-    return false;
-  }
-
-  try {
-    const parsed = JSON.parse(trimmedContent);
-    return typeof parsed === 'object' && parsed !== null;
-  } catch {
-    return false;
-  }
+  return false;
 };
 
 const getVisibleMessageContent = (message: ChatMessage): string => {
