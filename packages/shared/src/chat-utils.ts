@@ -484,22 +484,32 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
 
-  // Build markdown for images (matching desktop behavior)
   const imagesMd = images
-    .filter(
-      (img): img is { mimeType: string; data: string; altText?: string } =>
-        typeof img === 'object' &&
-        img !== null &&
-        typeof img.mimeType === 'string' &&
-        typeof img.data === 'string',
-    )
-    .map((img) => {
-      const alt = typeof img.altText === 'string' ? img.altText : 'image';
-      return `![${alt}](data:${img.mimeType};base64,${img.data})`;
+    .map((img, index) => {
+      if (!img || typeof img !== 'object') return '';
+
+      const image = img as Record<string, unknown>;
+      const alt = typeof image.alt === 'string' && image.alt.trim().length > 0
+        ? image.alt.trim()
+        : typeof image.altText === 'string' && image.altText.trim().length > 0
+          ? image.altText.trim()
+          : `Image ${index + 1}`;
+
+      const url = typeof image.url === 'string' ? image.url.trim() : '';
+      const dataUrl = typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
+      const path = typeof image.path === 'string' ? image.path.trim() : '';
+      const mimeType = typeof image.mimeType === 'string' ? image.mimeType.trim() : '';
+      const data = typeof image.data === 'string' ? image.data.trim() : '';
+      const legacyDataUrl = mimeType && data ? `data:${mimeType};base64,${data}` : '';
+      const uri = url || dataUrl || legacyDataUrl || path;
+
+      if (!uri) return '';
+      return `![${alt}](${uri})`;
     })
+    .filter(Boolean)
     .join('\n\n');
 
-  const combined = [text, imagesMd].filter(Boolean).join('\n\n');
+  const combined = [text, imagesMd].filter(Boolean).join('\n\n').trim();
   return combined || null;
 }
 

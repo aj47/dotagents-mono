@@ -19,6 +19,7 @@ import { BUILTIN_SERVER_NAME, MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } fr
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
+import { extractRespondToUserContentFromArgs } from "./respond-to-user-utils"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -182,33 +183,6 @@ function formatAcpBlockAsAssistantMessage(block: ACPContentBlock): string | unde
   }
 
   return undefined
-}
-
-function extractRespondToUserContentFromArgs(args: unknown): string | undefined {
-  if (!args || typeof args !== "object") return undefined
-
-  const parsedArgs = args as Record<string, unknown>
-  const text = typeof parsedArgs.text === "string" ? parsedArgs.text.trim() : ""
-  const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : []
-
-  const imageMarkdown = images
-    .map((image, index) => {
-      if (!image || typeof image !== "object") return ""
-      const parsedImage = image as Record<string, unknown>
-      const alt = typeof parsedImage.alt === "string" && parsedImage.alt.trim().length > 0
-        ? parsedImage.alt.trim()
-        : `Image ${index + 1}`
-      const path = typeof parsedImage.path === "string" ? parsedImage.path.trim() : ""
-      const dataUrl = typeof parsedImage.dataUrl === "string" ? parsedImage.dataUrl.trim() : ""
-      const uri = dataUrl || path
-      if (!uri) return ""
-      return `![${alt}](${uri})`
-    })
-    .filter(Boolean)
-    .join("\n\n")
-
-  const combined = [text, imageMarkdown].filter(Boolean).join("\n\n").trim()
-  return combined.length > 0 ? combined : undefined
 }
 
 function normalizeAcpToolName(name: string | undefined): string | undefined {

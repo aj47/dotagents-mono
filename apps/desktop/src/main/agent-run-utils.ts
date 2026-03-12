@@ -1,4 +1,5 @@
 import type { SessionProfileSnapshot } from "../shared/types"
+import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
 export const AGENT_STOP_NOTE =
@@ -12,6 +13,10 @@ export interface AgentIterationLimits {
 interface ConversationMessageLike {
   role: string
   content?: string | null
+  toolCalls?: Array<{
+    name?: string
+    arguments?: unknown
+  }>
 }
 
 type ProfileContextSource = {
@@ -109,7 +114,12 @@ export function getPreferredDelegationOutput(
   output: string | undefined,
   conversation?: ConversationMessageLike[],
 ): string {
+  const explicitUserResponse = resolveLatestUserFacingResponse({
+    conversationHistory: conversation,
+  })
+
   return (
+    explicitUserResponse ??
     getLatestAssistantMessageContent(conversation) ??
     (typeof output === "string" ? output : "")
   )
