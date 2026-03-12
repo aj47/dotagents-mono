@@ -18,6 +18,9 @@ import {
   Loader2,
   Volume2,
   XCircle,
+  Activity,
+  Moon,
+  CheckCircle2,
 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
@@ -31,6 +34,10 @@ import { ttsManager } from "@renderer/lib/tts-manager"
 import { removeTTSKey } from "@renderer/lib/tts-tracking"
 import { isMissingApiKeyErrorMessage } from "@shared/api-key-error-utils"
 import { toast } from "sonner"
+import {
+  getAgentConversationStateLabel,
+  normalizeAgentConversationState,
+} from "@dotagents/shared"
 
 const MIN_HEIGHT = 120
 const MAX_HEIGHT = 4000 // Allow tiles to fill large displays - effectively no practical limit
@@ -255,12 +262,28 @@ export function SessionTile({
   }, [progress?.pendingToolApproval?.approvalId])
 
   const isActive = session.status === "active"
-  const isComplete = session.status === "completed"
   const hasError = session.status === "error"
   const isStopped = session.status === "stopped"
   const isSnoozed = session.isSnoozed
   const hasPendingApproval = !!progress?.pendingToolApproval
   const hasQueuedMessages = queuedMessages.length > 0
+  const conversationState = progress?.conversationState
+    ? normalizeAgentConversationState(progress.conversationState, progress.isComplete ? "complete" : "running")
+    : hasPendingApproval
+      ? "needs_input"
+      : hasError || isStopped
+        ? "blocked"
+        : isActive
+          ? "running"
+          : "complete"
+  const statusLabel = getAgentConversationStateLabel(conversationState)
+  const statusBadgeClass = conversationState === "complete"
+    ? "text-green-700 border-green-500 bg-green-50 dark:text-green-300 dark:border-green-700 dark:bg-green-950/30"
+    : conversationState === "needs_input"
+      ? "text-amber-700 border-amber-500 bg-amber-50 dark:text-amber-300 dark:border-amber-700 dark:bg-amber-950/30"
+      : conversationState === "blocked"
+        ? "text-red-700 border-red-500 bg-red-50 dark:text-red-300 dark:border-red-700 dark:bg-red-950/30"
+        : "text-blue-700 border-blue-500 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30"
 
   // Toggle collapse state for the session tile
   // Note: stopPropagation() is intentional here - when users click the header to
@@ -322,27 +345,22 @@ export function SessionTile({
 
   // Get status color dot
   const getStatusIndicator = () => {
-    const dotColor = hasPendingApproval
-      ? "bg-amber-500"
-      : isActive
-        ? "bg-blue-500"
-        : isSnoozed
-          ? "bg-gray-400"
-          : isComplete
-            ? "bg-green-500"
-            : (hasError || isStopped)
-              ? "bg-red-500"
-              : "bg-gray-400"
-    const shouldPulse = hasPendingApproval || isActive
-    return (
-      <span
-        className={cn(
-          "inline-block h-2 w-2 shrink-0 rounded-full",
-          dotColor,
-          shouldPulse && "animate-pulse",
-        )}
-      />
-    )
+    if (conversationState === "needs_input") {
+      return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
+    }
+    if (conversationState === "running") {
+      return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
+    }
+    if (isSnoozed) {
+      return <Moon className="h-4 w-4 text-muted-foreground" />
+    }
+    if (conversationState === "complete") {
+      return <CheckCircle2 className="h-4 w-4 text-green-500" />
+    }
+    if (conversationState === "blocked") {
+      return <XCircle className="h-4 w-4 text-red-500" />
+    }
+    return <Activity className="h-4 w-4 text-muted-foreground" />
   }
 
   // Get title - prefer conversationTitle, fall back to progress data
@@ -454,6 +472,9 @@ export function SessionTile({
           <span className="flex-1 truncate font-medium text-sm">
             {getTitle()}
           </span>
+          <Badge variant="outline" className={cn("text-xs", statusBadgeClass)}>
+            {statusLabel}
+          </Badge>
           {/* Collapse indicator chevron */}
           {isCollapsed ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground" />}
         </div>

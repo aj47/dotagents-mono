@@ -20,6 +20,7 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
 import { extractRespondToUserContentFromArgs } from "./respond-to-user-utils"
+import { type AgentConversationState } from "@dotagents/shared"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -488,6 +489,7 @@ export async function processTranscriptWithACPAgent(
     streamingContent?: { text: string; isStreaming: boolean }
   ) => {
     const { userResponse, userResponseHistory } = deriveAcpUserResponseState(conversationHistory)
+    const conversationState: AgentConversationState = isComplete ? "complete" : "running"
     const update: AgentProgressUpdate = {
       sessionId,
       runId,
@@ -496,6 +498,7 @@ export async function processTranscriptWithACPAgent(
       maxIterations: 1,
       steps,
       isComplete,
+      conversationState,
       finalContent: finalContent ?? (isComplete ? userResponse : undefined),
       streamingContent,
       conversationHistory,

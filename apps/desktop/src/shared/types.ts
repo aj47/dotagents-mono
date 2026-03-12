@@ -1,7 +1,7 @@
 import type { CHAT_PROVIDER_ID, STT_PROVIDER_ID, TTS_PROVIDER_ID, OPENAI_COMPATIBLE_PRESET_ID } from "."
-import type { ToolCall, ToolResult } from '@dotagents/shared'
+import type { ToolCall, ToolResult, AgentConversationState } from '@dotagents/shared'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse } from '@dotagents/shared'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState } from '@dotagents/shared'
 
 export type RecordingHistoryItem = {
   id: string
@@ -217,6 +217,7 @@ export interface AgentProgressUpdate {
   maxIterations: number
   steps: AgentProgressStep[]
   isComplete: boolean
+  conversationState?: AgentConversationState
   isSnoozed?: boolean
   finalContent?: string
   /**

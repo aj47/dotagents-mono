@@ -2,7 +2,8 @@ import type {
   ToolCall,
   ToolResult,
   ConversationHistoryMessage,
-  ChatApiResponse
+  ChatApiResponse,
+  AgentConversationState,
 } from '@dotagents/shared';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
 import { Platform } from 'react-native';
@@ -48,6 +49,7 @@ export interface AgentProgressUpdate {
   maxIterations: number;
   steps: AgentProgressStep[];
   isComplete: boolean;
+  conversationState?: AgentConversationState;
   finalContent?: string;
   /**
    * User-facing response set via respond_to_user tool.

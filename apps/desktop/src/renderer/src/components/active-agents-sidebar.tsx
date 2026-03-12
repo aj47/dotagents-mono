@@ -19,6 +19,10 @@ import {
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
 import { useNavigate } from "react-router-dom"
+import {
+  getAgentConversationStateLabel,
+  normalizeAgentConversationState,
+} from "@dotagents/shared"
 
 interface AgentSession {
   id: string
@@ -442,6 +446,19 @@ export function ActiveAgentsSidebar({
             const sessionProgress = agentProgressById.get(session.id)
             const hasPendingApproval =
               !isPast && !!sessionProgress?.pendingToolApproval
+            const conversationState = sessionProgress?.conversationState
+              ? normalizeAgentConversationState(
+                  sessionProgress.conversationState,
+                  sessionProgress.isComplete ? "complete" : "running",
+                )
+              : hasPendingApproval
+                ? "needs_input"
+                : session.status === "error" || session.status === "stopped"
+                  ? "blocked"
+                  : session.status === "active"
+                    ? "running"
+                    : "complete"
+            const stateLabel = getAgentConversationStateLabel(conversationState)
             // Use store's isSnoozed for active sessions (matches main view), backend for past
             const isSnoozed = isPast
               ? false
@@ -480,6 +497,9 @@ export function ActiveAgentsSidebar({
                   <p className="flex-1 truncate">
                     {session.conversationTitle || "Untitled session"}
                   </p>
+                  <span className="shrink-0 rounded border border-border/60 px-1 py-0 text-[10px] uppercase tracking-wide">
+                    {stateLabel}
+                  </span>
                   {session.conversationId && (
                     <button
                       type="button"
@@ -510,6 +530,10 @@ export function ActiveAgentsSidebar({
             // Status colors: amber for pending approval, blue for active, gray for snoozed
             const statusDotColor = hasPendingApproval
               ? "bg-amber-500"
+              : conversationState === "blocked"
+                ? "bg-red-500"
+                : conversationState === "complete"
+                  ? "bg-green-500"
               : isSnoozed
                 ? "bg-muted-foreground"
                 : "bg-blue-500"
@@ -567,6 +591,9 @@ export function ActiveAgentsSidebar({
                       {agentName}
                     </span>
                   )}
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {stateLabel}
+                  </span>
                 </div>
                 {session.conversationId && (
                   <button

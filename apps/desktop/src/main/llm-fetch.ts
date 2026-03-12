@@ -25,7 +25,9 @@ import type { LLMToolCallResponse, MCPTool } from "./mcp-service"
 import { diagnosticsService } from "./diagnostics"
 import { isDebugLLM, logLLM } from "./debug"
 import { getErrorMessage, normalizeError } from "./error-utils"
+import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
+import type { AgentConversationState } from "@dotagents/shared"
 import {
   createLLMGeneration,
   endLLMGeneration,
@@ -236,6 +238,7 @@ export type StreamingCallback = (chunk: string, accumulated: string) => void
 
 export type CompletionVerification = {
   isComplete: boolean
+  conversationState?: AgentConversationState
   confidence?: number
   missingItems?: string[]
   reason?: string
@@ -1264,15 +1267,17 @@ export async function verifyCompletionWithFetch(
         const text = result.text?.trim() || ""
         const jsonObject = extractJsonObject(text)
 
-        if (jsonObject && typeof jsonObject.isComplete === "boolean") {
+        if (jsonObject && (typeof jsonObject.isComplete === "boolean" || typeof jsonObject.conversationState === "string")) {
+          const normalizedVerification = normalizeVerificationResultForCompletion(jsonObject)
+
           // End Langfuse generation with success
           if (generationId) {
             endLLMGeneration(generationId, {
-              output: JSON.stringify(jsonObject),
+              output: JSON.stringify(normalizedVerification),
               usage: buildTokenUsage(result.usage),
             })
           }
-          return jsonObject as CompletionVerification
+          return normalizedVerification as CompletionVerification
         }
 
         // End Langfuse generation with parse failure
@@ -1286,7 +1291,11 @@ export async function verifyCompletionWithFetch(
         }
 
         // Conservative default
-        return { isComplete: false, reason: "Failed to parse verification response" }
+        return {
+          isComplete: false,
+          conversationState: "running",
+          reason: "Failed to parse verification response",
+        }
       } catch (error) {
         diagnosticsService.logError("llm-fetch", "Verification call failed", error)
         return {

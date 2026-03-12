@@ -52,12 +52,14 @@ import {
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 import {
-  isDeliverableResponseContent,
-  looksLikeToolCallPlaceholderContent,
   normalizeMissingItemsList,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
 } from "./llm-continuation-guards"
+import {
+  normalizeAgentConversationState,
+  type AgentConversationState,
+} from "@dotagents/shared"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -92,6 +94,43 @@ function cleanErrorMessage(errorText: string): string {
   }
 
   return cleaned
+}
+
+function resolveProgressConversationState(update: Pick<AgentProgressUpdate, "conversationState" | "isComplete" | "pendingToolApproval" | "finalContent">): AgentConversationState {
+  const isKillSwitchCompletion =
+    update.isComplete &&
+    typeof update.finalContent === "string" &&
+    update.finalContent.includes("emergency kill switch")
+
+  if (update.conversationState) {
+    return normalizeAgentConversationState(
+      update.conversationState,
+      update.isComplete ? "complete" : "running",
+    )
+  }
+
+  if (update.pendingToolApproval) {
+    return "needs_input"
+  }
+
+  if (isKillSwitchCompletion) {
+    return "blocked"
+  }
+
+  return update.isComplete ? "complete" : "running"
+}
+
+function getVerificationOutcomeDescription(state: AgentConversationState): string {
+  switch (state) {
+    case "complete":
+      return "Verification passed"
+    case "needs_input":
+      return "Verification passed - waiting for user input"
+    case "blocked":
+      return "Verification passed - conversation is blocked"
+    default:
+      return "Verification failed - continue iteration"
+  }
 }
 
 /**
@@ -560,6 +599,7 @@ export async function processTranscriptWithAgentMode(
       update.isComplete &&
       typeof update.finalContent === "string" &&
       update.finalContent.includes("emergency kill switch")
+    const conversationState = resolveProgressConversationState(update)
     const userResponseForUpdate =
       update.userResponse ??
       normalizedStoredUserResponse ??
@@ -588,6 +628,7 @@ export async function processTranscriptWithAgentMode(
       ...(shouldEmitUserResponse ? { userResponse: userResponseForUpdate } : {}),
       // Include response history if there are past responses
       ...(shouldEmitUserResponse && responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
+      conversationState,
       sessionId: currentSessionId,
       runId: effectiveRunId,
       conversationId: currentConversationId,
@@ -1189,6 +1230,10 @@ export async function processTranscriptWithAgentMode(
     const recent = conversationHistory.slice(-maxItems)
     const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = []
     const coerceMessageContent = (value: unknown): string => typeof value === "string" ? value : ""
+    const latestUserFacingResponse = resolveLatestUserFacingResponse({
+      storedResponse: getSessionUserResponse(currentSessionId),
+      conversationHistory: conversationHistory as any,
+    })
 
     // Track the last assistant content added to avoid duplicates
     let lastAddedAssistantContent: string | null = null
@@ -1196,29 +1241,41 @@ export async function processTranscriptWithAgentMode(
     messages.push({
       role: "system",
       content:
-        `You are a completion verifier. Determine if the user's original request has been FULLY DELIVERED to the user.
+        `You are a strict conversation-state verifier for an agent run.
 
-FIRST, CHECK THESE BLOCKERS (if ANY are true, mark INCOMPLETE):
-- The agent stated intent to do more work (e.g., "Let me...", "I'll...", "Now I'll...", "I'm going to...")
-- The agent's response is a status update rather than a deliverable (e.g., "I've extracted the data" without presenting results)
-- The user asked for information/analysis that was NOT directly provided in the agent's response
-- Tool results exist but the agent hasn't synthesized/presented them to the user
-- The response is empty or just acknowledges the request
+Classify the CURRENT state of the conversation using exactly one value:
+- running: the agent still owes more work before the current run can stop.
+- complete: the user already has the requested deliverable.
+- needs_input: the assistant has reached a valid stopping point because it is explicitly waiting on user clarification, approval, credentials, or another user reply.
+- blocked: the assistant has reached a valid stopping point because it clearly explained an external blocker, failure, or environment constraint that prevents further progress right now.
 
-ONLY IF NO BLOCKERS, mark COMPLETE if:
-1. The agent directly answered the user's question or fulfilled their request
-2. The agent explained why the request is impossible and cannot proceed
-3. The agent is asking for clarification needed to proceed
-4. The agent explicitly confirmed completion ("Done", "Here's your summary", "Task complete")
+Rules:
+- Judge based on what the user-facing assistant response actually delivers, not on tool success alone.
+- If tools found information but the assistant did not present or synthesize it for the user, return running.
+- If the assistant mainly says what it plans to do next, return running.
+- If the assistant asks the user for something needed next, return needs_input.
+- If the assistant clearly says it cannot proceed because of a blocker outside its control, return blocked.
+- If the user already has the final answer, requested artifact, or requested summary, return complete.
+- Empty, vague, or purely procedural replies should return running.
 
-IMPORTANT - Do NOT mark complete just because:
-- Tools executed successfully (results must be PRESENTED to user)
-- Data was gathered (it must be SUMMARIZED/DELIVERED)
-- The agent made progress (the FINAL deliverable must exist)
+Return ONLY JSON with this schema:
+{
+  "conversationState": "running" | "complete" | "needs_input" | "blocked",
+  "isComplete": boolean,
+  "confidence": number,
+  "missingItems": string[],
+  "reason": string
+}
 
-Return ONLY JSON per schema.`,
+Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`,
     })
     messages.push({ role: "user", content: `Original request:\n${sanitizeMessageContentForDisplay(transcript)}` })
+    if (latestUserFacingResponse?.trim()) {
+      messages.push({
+        role: "user",
+        content: `Latest explicit user-facing response from the agent:\n${sanitizeMessageContentForDisplay(latestUserFacingResponse)}`,
+      })
+    }
     for (const entry of recent) {
       const rawContent = coerceMessageContent(entry.content)
       if (entry.role === "tool") {
@@ -1256,9 +1313,9 @@ Return ONLY JSON per schema.`,
     }
 
     // Build the JSON request with optional verification attempt note (combined into single message)
-    let jsonRequestContent = "Return a JSON object with fields: isComplete (boolean), confidence (0..1), missingItems (string[]), reason (string). No extra commentary."
+    let jsonRequestContent = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete."
     if (currentVerificationFailCount > 0) {
-      jsonRequestContent += `\n\nNote: This is verification attempt #${currentVerificationFailCount + 1}. Do NOT lower the bar for completion. If any requested work still remains, return isComplete=false and list the missingItems. Only mark complete when the user already has the final deliverable, a necessary clarification question, or a clear blocker that prevents any further progress.`
+      jsonRequestContent += `\n\nNote: This is verification attempt #${currentVerificationFailCount + 1}. Do NOT lower the bar. If any requested work still remains, return conversationState=running and list the missingItems. Only use complete, needs_input, or blocked when the current run can legitimately stop now.`
     }
     messages.push({ role: "user", content: jsonRequestContent })
 
@@ -1296,6 +1353,8 @@ Return ONLY JSON per schema.`,
     skipPostVerifySummary: boolean
     /** Whether completion was forced due verification limit */
     forcedByLimit: boolean
+    /** Conversation state returned by verifier or fallback */
+    conversationState: AgentConversationState
     /** Optional details about missing deliverables when forced incomplete */
     incompleteDetails?: IncompleteTaskDetails
   }
@@ -1325,7 +1384,6 @@ Return ONLY JSON per schema.`,
     } = options
 
     const retries = Math.max(0, config.mcpVerifyRetryCount ?? 1)
-    const skipPostVerifySummary = false
 
     const maybeNudgeToolUsage = (newFailCount: number) => {
       if (!nudgeForToolUsage || newFailCount < 2) return
@@ -1346,46 +1404,7 @@ Return ONLY JSON per schema.`,
       }
     }
 
-    // Gate 1: response must be a deliverable, not a status update or placeholder.
-    if (!isDeliverableResponseContent(finalContent)) {
-      const newFailCount = currentFailCount + 1
-      if (newFailCount >= VERIFICATION_FAIL_LIMIT) {
-        verifyStep.status = "error"
-        verifyStep.description = "Verification budget exhausted - ending as incomplete"
-        return {
-          shouldContinue: false,
-          isComplete: false,
-          newFailCount,
-          skipPostVerifySummary: true,
-          forcedByLimit: true,
-          incompleteDetails: {
-            reason: "No final deliverable was produced.",
-          },
-        }
-      }
-
-      verifyStep.status = "error"
-      verifyStep.description = "Response is not a final deliverable"
-      const preview = finalContent.trim()
-      const clipped = preview.length > 180 ? `${preview.substring(0, 177)}...` : preview
-      conversationHistory.push({
-        role: "user",
-        content: clipped
-          ? `Your last response was not a final deliverable: "${clipped}". Provide final results or clearly state what's blocked.`
-          : "Your last response was empty or non-deliverable. Provide final results or clearly state what's blocked.",
-        timestamp: Date.now(),
-      })
-      maybeNudgeToolUsage(newFailCount)
-      return {
-        shouldContinue: true,
-        isComplete: false,
-        newFailCount,
-        skipPostVerifySummary,
-        forcedByLimit: false,
-      }
-    }
-
-    // Gate 2: run verifier with bounded retries.
+    // Run verifier with bounded retries.
     let verification: any = null
     let verified = false
     for (let i = 0; i <= retries; i++) {
@@ -1393,26 +1412,34 @@ Return ONLY JSON per schema.`,
         buildVerificationMessages(finalContent, currentFailCount),
         config.mcpToolsProviderId,
         currentSessionId,
-      ), finalContent)
+      ))
       if (verification?.isComplete === true) {
         verified = true
         break
       }
     }
 
+    const conversationState = normalizeAgentConversationState(
+      verification?.conversationState,
+      verified ? "complete" : "running",
+    )
+    const skipPostVerifySummary =
+      conversationState === "needs_input" || conversationState === "blocked"
+
     if (verified) {
       verifyStep.status = "completed"
-      verifyStep.description = "Verification passed"
+      verifyStep.description = getVerificationOutcomeDescription(conversationState)
       return {
         shouldContinue: false,
         isComplete: true,
         newFailCount: 0,
         skipPostVerifySummary,
         forcedByLimit: false,
+        conversationState,
       }
     }
 
-    // Gate 3: verification failed; either continue with nudge or force incomplete.
+    // Verification failed; either continue with nudge or force incomplete.
     const newFailCount = currentFailCount + 1
     const missingItems = normalizeMissingItemsList(verification?.missingItems)
     const verificationReason =
@@ -1429,6 +1456,7 @@ Return ONLY JSON per schema.`,
         newFailCount,
         skipPostVerifySummary: true,
         forcedByLimit: true,
+        conversationState: "blocked",
         incompleteDetails: {
           reason: verificationReason || "Completion criteria were not met before verification retry limit.",
           missingItems,
@@ -1437,7 +1465,7 @@ Return ONLY JSON per schema.`,
     }
 
     verifyStep.status = "error"
-    verifyStep.description = "Verification failed - continue iteration"
+    verifyStep.description = getVerificationOutcomeDescription(conversationState)
     const missing = missingItems
       .map((s: string) => `- ${s}`)
       .join("\n")
@@ -1454,6 +1482,7 @@ Return ONLY JSON per schema.`,
       newFailCount,
       skipPostVerifySummary,
       forcedByLimit: false,
+      conversationState,
     }
   }
 
@@ -1714,6 +1743,7 @@ Return ONLY JSON per schema.`,
             maxIterations,
             steps: progressSteps.slice(-3),
             isComplete: true,
+            conversationState: "blocked",
             finalContent: emptyResponseFinalContent,
             conversationHistory: formatConversationForProgress(conversationHistory),
           })
@@ -1791,6 +1821,7 @@ Return ONLY JSON per schema.`,
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: true,
+          conversationState: "blocked",
           finalContent: emptyResponseFinalContent,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })
@@ -1902,8 +1933,8 @@ Return ONLY JSON per schema.`,
       // Use a low threshold (2 chars) to avoid rejecting legitimate short answers like "Yes." or "42"
       // while still filtering truly empty/whitespace-only responses.
       const hasSubstantiveResponse = hasToolResultsInCurrentTurn
-        ? isDeliverableResponseContent(contentText)
-        : isDeliverableResponseContent(contentText, 2)
+        ? trimmedContent.length >= 1
+        : trimmedContent.length >= 2
 
       // Unified completion candidate handling:
       // Any substantive response is either:
@@ -1920,6 +1951,7 @@ Return ONLY JSON per schema.`,
             maxIterations,
             steps: progressSteps.slice(-3),
             isComplete: true,
+            conversationState: "complete",
             finalContent,
             conversationHistory: formatConversationForProgress(conversationHistory),
           })
@@ -1967,9 +1999,10 @@ Return ONLY JSON per schema.`,
         const noToolsCalledYet = !conversationHistory.some((e) => e.role === "tool")
         let skipPostVerifySummary =
           (config.mcpFinalSummaryEnabled === false) ||
-          (noToolsCalledYet && isDeliverableResponseContent(finalContent))
+          (noToolsCalledYet && finalContent.trim().length > 0)
         let completionForcedByVerificationLimit = false
         let completionForcedIncompleteDetails: IncompleteTaskDetails | undefined
+        let finalConversationState: AgentConversationState = "complete"
 
         if (config.mcpVerifyCompletionEnabled) {
           const verifyStep = createProgressStep(
@@ -1999,6 +2032,7 @@ Return ONLY JSON per schema.`,
           verificationFailCount = result.newFailCount
           completionForcedByVerificationLimit = result.forcedByLimit
           completionForcedIncompleteDetails = result.incompleteDetails
+          finalConversationState = result.conversationState
           if (result.skipPostVerifySummary) {
             skipPostVerifySummary = true
           }
@@ -2060,6 +2094,7 @@ Return ONLY JSON per schema.`,
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: true,
+          conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
           finalContent,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })
@@ -2089,6 +2124,7 @@ Return ONLY JSON per schema.`,
                 maxIterations,
                 steps: progressSteps.slice(-3),
                 isComplete: true,
+                conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
                 finalContent,
                 conversationHistory: formatConversationForProgress(conversationHistory),
               })
@@ -2103,7 +2139,7 @@ Return ONLY JSON per schema.`,
         break
       }
 
-      // Nudge path for non-deliverable/no-progress responses.
+      // Nudge path for no-progress responses.
       if (config.mcpVerifyCompletionEnabled && (noOpCount >= 2 || (hasToolsAvailable && noOpCount >= 1))) {
         if (totalNudgeCount >= MAX_NUDGES) {
           finalContent = buildIncompleteTaskFallback(contentText)
@@ -2119,7 +2155,7 @@ Return ONLY JSON per schema.`,
           break
         }
 
-        if (trimmedContent.length > 0 && !looksLikeToolCallPlaceholderContent(contentText)) {
+        if (trimmedContent.length > 0) {
           addMessage("assistant", contentText)
         }
 
@@ -2142,6 +2178,7 @@ Return ONLY JSON per schema.`,
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: true,
+          conversationState: "blocked",
           finalContent,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })
@@ -2748,6 +2785,7 @@ Return ONLY JSON per schema.`,
 	      let skipPostVerifySummary2 = config.mcpFinalSummaryEnabled === false
 	      let completionForcedByVerificationLimit2 = false
 	      let completionForcedIncompleteDetails2: IncompleteTaskDetails | undefined
+		      let finalConversationState2: AgentConversationState = "complete"
 
 	      if (config.mcpVerifyCompletionEnabled) {
 	        const verifyStep = createProgressStep(
@@ -2773,6 +2811,7 @@ Return ONLY JSON per schema.`,
 	        verificationFailCount = result.newFailCount
 	        completionForcedByVerificationLimit2 = result.forcedByLimit
 	        completionForcedIncompleteDetails2 = result.incompleteDetails
+		        finalConversationState2 = result.conversationState
 	        if (result.skipPostVerifySummary) {
 	          skipPostVerifySummary2 = true
 	        }
@@ -2854,6 +2893,7 @@ Return ONLY JSON per schema.`,
         maxIterations,
         steps: progressSteps.slice(-3),
         isComplete: true,
+	        conversationState: completionForcedByVerificationLimit2 ? "blocked" : finalConversationState2,
         finalContent,
         conversationHistory: formatConversationForProgress(conversationHistory),
       })
@@ -2921,6 +2961,7 @@ Return ONLY JSON per schema.`,
       maxIterations,
       steps: progressSteps.slice(-3),
       isComplete: true,
+      conversationState: "blocked",
       finalContent,
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
