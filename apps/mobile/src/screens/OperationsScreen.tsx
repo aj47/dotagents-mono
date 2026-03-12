@@ -1163,9 +1163,33 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.panelTitle}>Updater</Text>
               <Text style={styles.detailText}>Mode: {status.updater.mode}</Text>
               <Text style={styles.detailText}>Current version: {status.updater.currentVersion || '—'}</Text>
+              <Text style={styles.detailText}>Update available: {status.updater.updateAvailable === undefined ? 'Unknown' : status.updater.updateAvailable ? 'Yes' : 'No'}</Text>
+              <Text style={styles.detailText}>Last checked: {formatTimestamp(status.updater.lastCheckedAt)}</Text>
+              {status.updater.latestRelease ? (
+                <>
+                  <Text style={styles.detailText}>Latest release: {status.updater.latestRelease.tagName}</Text>
+                  <Text style={styles.detailText}>Published: {status.updater.latestRelease.publishedAt || '—'}</Text>
+                  <Text style={styles.detailText}>Assets: {status.updater.latestRelease.assetCount ?? 0}</Text>
+                  <Text style={styles.detailText}>Release URL: {status.updater.latestRelease.url}</Text>
+                </>
+              ) : null}
+              {status.updater.lastCheckError ? <Text style={styles.warningText}>Last check error: {status.updater.lastCheckError}</Text> : null}
               {status.updater.manualReleasesUrl ? (
                 <Text style={styles.detailText}>Manual releases: {status.updater.manualReleasesUrl}</Text>
               ) : null}
+              <View style={styles.actionGrid}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                  onPress={() => void runAction('check-latest-release', () => settingsClient.checkOperatorUpdater())}
+                  disabled={pendingAction !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Check latest release')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'check-latest-release' ? 'Checking latest release…' : 'Check latest release'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 

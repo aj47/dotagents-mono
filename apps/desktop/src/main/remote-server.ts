@@ -50,7 +50,7 @@ import {
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
 } from "./acp-session-state"
-import { MANUAL_RELEASES_URL, getUpdateInfo } from "./updater"
+import { MANUAL_RELEASES_URL, checkForUpdatesAndDownload, getUpdateInfo } from "./updater"
 import { WINDOWS } from "./window"
 import type {
   OperatorActionResponse,
@@ -1570,12 +1570,32 @@ async function buildOperatorIntegrationsSummary(): Promise<OperatorIntegrationsS
 }
 
 function buildOperatorUpdaterStatus(): OperatorUpdaterStatus {
+  const updateInfo = getUpdateInfo() as {
+    currentVersion?: string
+    updateAvailable?: boolean
+    latestRelease?: { tagName?: string; name?: string; publishedAt?: string; url?: string; assets?: unknown[] }
+    lastCheckedAt?: number
+    error?: string
+  } | null
+
   return {
     enabled: false,
     mode: "manual",
     currentVersion: app.getVersion(),
-    updateInfo: getUpdateInfo(),
+    updateInfo,
     manualReleasesUrl: MANUAL_RELEASES_URL,
+    updateAvailable: updateInfo?.updateAvailable,
+    lastCheckedAt: updateInfo?.lastCheckedAt,
+    lastCheckError: updateInfo?.error,
+    latestRelease: updateInfo?.latestRelease?.tagName && updateInfo.latestRelease.url
+      ? {
+        tagName: updateInfo.latestRelease.tagName,
+        name: updateInfo.latestRelease.name,
+        publishedAt: updateInfo.latestRelease.publishedAt,
+        url: updateInfo.latestRelease.url,
+        assetCount: Array.isArray(updateInfo.latestRelease.assets) ? updateInfo.latestRelease.assets.length : 0,
+      }
+      : undefined,
   }
 }
 
@@ -1799,6 +1819,47 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   fastify.get("/v1/operator/updater", async (_req, reply) => {
     return reply.send(buildOperatorUpdaterStatus())
+  })
+
+  fastify.post("/v1/operator/updater/check", async (req, reply) => {
+    const result = await checkForUpdatesAndDownload()
+    const updateInfo = result.updateInfo as {
+      error?: string
+      updateAvailable?: boolean
+      latestRelease?: { tagName?: string; url?: string }
+      lastCheckedAt?: number
+      currentVersion?: string
+    } | null
+
+    const response: OperatorActionResponse = updateInfo?.error
+      ? {
+        success: false,
+        action: "updater-check",
+        message: `Update check failed: ${updateInfo.error}`,
+        error: updateInfo.error,
+        details: {
+          currentVersion: updateInfo.currentVersion,
+          checkedAt: updateInfo.lastCheckedAt,
+          releaseUrl: MANUAL_RELEASES_URL,
+        },
+      }
+      : {
+        success: true,
+        action: "updater-check",
+        message: updateInfo?.updateAvailable
+          ? `Update available: ${updateInfo.latestRelease?.tagName || "latest release found"}`
+          : "No newer release found.",
+        details: {
+          currentVersion: updateInfo?.currentVersion,
+          checkedAt: updateInfo?.lastCheckedAt,
+          updateAvailable: updateInfo?.updateAvailable ?? false,
+          latestReleaseTag: updateInfo?.latestRelease?.tagName,
+          releaseUrl: updateInfo?.latestRelease?.url || MANUAL_RELEASES_URL,
+        },
+      }
+
+    recordOperatorAuditEvent(req, response)
+    return reply.send(response)
   })
 
   fastify.get("/v1/operator/discord", async (_req, reply) => {

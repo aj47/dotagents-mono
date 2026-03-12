@@ -346,6 +346,12 @@ export class SettingsApiClient {
     return this.request<OperatorUpdaterStatus>('/operator/updater');
   }
 
+  async checkOperatorUpdater(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/check', {
+      method: 'POST',
+    });
+  }
+
   async getOperatorDiscord(): Promise<OperatorDiscordIntegrationSummary> {
     return this.request<OperatorDiscordIntegrationSummary>('/operator/discord');
   }

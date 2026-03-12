@@ -141,6 +141,16 @@ export interface OperatorUpdaterStatus {
   currentVersion?: string;
   updateInfo?: unknown;
   manualReleasesUrl?: string;
+  updateAvailable?: boolean;
+  lastCheckedAt?: number;
+  lastCheckError?: string;
+  latestRelease?: {
+    tagName: string;
+    name?: string;
+    publishedAt?: string;
+    url: string;
+    assetCount?: number;
+  };
 }
 
 export interface OperatorRuntimeStatus {

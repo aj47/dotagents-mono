@@ -39,7 +39,10 @@ test('includes tunnel, Discord, and WhatsApp operator controls and summaries', (
 test('surfaces recent operator audit entries and rotates the API key using the saved mobile config', () => {
   assert.match(operationsSource, /Recent operator audit/);
   assert.match(operationsSource, /Rotate API key/);
+  assert.match(operationsSource, /Check latest release/);
+  assert.match(operationsSource, /Latest release:/);
   assert.match(operationsSource, /settingsClient\.rotateOperatorApiKey\(\)/);
+  assert.match(operationsSource, /settingsClient\.checkOperatorUpdater\(\)/);
   assert.match(operationsSource, /setConfig\(nextConfig\)/);
   assert.match(operationsSource, /saveConfig\(nextConfig\)/);
 });
