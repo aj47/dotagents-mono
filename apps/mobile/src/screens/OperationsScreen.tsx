@@ -19,6 +19,7 @@ import {
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
+import { getDeviceIdentity } from '../lib/deviceIdentity';
 import {
   ExtendedSettingsApiClient,
   OperatorAuditEntry,
@@ -42,6 +43,7 @@ const ACTION_REFRESH_DELAY_MS = 1200;
 
 type RemoteAccessDrafts = {
   remoteServerPort: string;
+  remoteServerOperatorAllowDeviceIds: string;
   cloudflareTunnelId: string;
   cloudflareTunnelHostname: string;
   cloudflareTunnelCredentialsPath: string;
@@ -107,6 +109,7 @@ function formatAuditDetails(details?: Record<string, unknown>): string | null {
 function buildDrafts(settings: Settings | null): RemoteAccessDrafts {
   return {
     remoteServerPort: String(settings?.remoteServerPort ?? 3210),
+    remoteServerOperatorAllowDeviceIds: (settings?.remoteServerOperatorAllowDeviceIds ?? []).join(', '),
     cloudflareTunnelId: settings?.cloudflareTunnelId ?? '',
     cloudflareTunnelHostname: settings?.cloudflareTunnelHostname ?? '',
     cloudflareTunnelCredentialsPath: settings?.cloudflareTunnelCredentialsPath ?? '',
@@ -147,6 +150,7 @@ export default function OperationsScreen({ navigation }: any) {
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingSetting, setPendingSetting] = useState<string | null>(null);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
 
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
@@ -275,6 +279,26 @@ export default function OperationsScreen({ navigation }: any) {
   useEffect(() => {
     setDrafts(buildDrafts(settings));
   }, [settings]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void getDeviceIdentity()
+      .then((identity) => {
+        if (!cancelled) {
+          setCurrentDeviceId(identity.deviceId);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCurrentDeviceId(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const confirmAction = useCallback((
     title: string,
@@ -468,6 +492,8 @@ export default function OperationsScreen({ navigation }: any) {
   const discord = discordSummary ?? status?.integrations.discord ?? null;
   const whatsApp = whatsAppSummary ?? status?.integrations.whatsapp ?? null;
   const tunnelStatus = status?.tunnel ?? null;
+  const trustedDeviceIds = settings?.remoteServerOperatorAllowDeviceIds ?? [];
+  const currentDeviceTrusted = currentDeviceId ? trustedDeviceIds.includes(currentDeviceId) : false;
 
   return (
     <ScrollView
@@ -702,6 +728,51 @@ export default function OperationsScreen({ navigation }: any) {
                 })}
               </View>
               <Text style={styles.helperText}>Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.</Text>
+
+              <Text style={styles.subsectionTitle}>Trusted operator devices</Text>
+              <Text style={styles.helperText}>If this list is empty, any authenticated client can use operator/admin routes. Once set, non-loopback operator access requires a matching stable device ID.</Text>
+              <Text style={styles.detailText}>Current device ID: {currentDeviceId ?? 'Loading…'}</Text>
+              <Text style={styles.label}>Trusted Device IDs</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.remoteServerOperatorAllowDeviceIds}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { remoteServerOperatorAllowDeviceIds: parseCommaSeparatedList(drafts.remoteServerOperatorAllowDeviceIds) },
+                  'trusted operator devices',
+                  'Trusted operator device allowlist updated.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="device-id-1, device-id-2"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Trusted operator device IDs')}
+              />
+              <View style={styles.actionGrid}>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.secondaryActionButton,
+                    (controlsDisabled || !currentDeviceId || currentDeviceTrusted) && styles.actionButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    if (!currentDeviceId) return;
+                    const nextIds = [...new Set([...(settings?.remoteServerOperatorAllowDeviceIds ?? []), currentDeviceId])];
+                    setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: nextIds.join(', ') }));
+                    void applySettingsUpdate(
+                      { remoteServerOperatorAllowDeviceIds: nextIds },
+                      'trusted operator devices',
+                      'This mobile device is now trusted for operator access.',
+                    );
+                  }}
+                  disabled={controlsDisabled || !currentDeviceId || currentDeviceTrusted}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Trust this device for operator access')}
+                >
+                  <Text style={styles.secondaryActionText}>{currentDeviceTrusted ? 'This device is trusted' : 'Trust this device'}</Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>

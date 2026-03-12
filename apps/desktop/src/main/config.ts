@@ -294,6 +294,7 @@ const getConfig = (): LoadedConfig => {
 	    remoteServerBindAddress: "127.0.0.1",
 	    remoteServerLogLevel: "info",
 	    remoteServerCorsOrigins: ["*"],
+		    remoteServerOperatorAllowDeviceIds: [],
 	    remoteServerAutoShowPanel: false, // Don't auto-show panel by default for remote sessions
 
     // WhatsApp Integration defaults

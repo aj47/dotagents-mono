@@ -281,6 +281,7 @@ export interface Settings {
   remoteServerApiKey?: string;
   remoteServerLogLevel?: 'error' | 'info' | 'debug';
   remoteServerCorsOrigins?: string[];
+  remoteServerOperatorAllowDeviceIds?: string[];
   remoteServerAutoShowPanel?: boolean;
   remoteServerTerminalQrEnabled?: boolean;
 
@@ -392,6 +393,7 @@ export interface SettingsUpdate {
   remoteServerApiKey?: string;
   remoteServerLogLevel?: 'error' | 'info' | 'debug';
   remoteServerCorsOrigins?: string[];
+  remoteServerOperatorAllowDeviceIds?: string[];
   remoteServerAutoShowPanel?: boolean;
   remoteServerTerminalQrEnabled?: boolean;
 

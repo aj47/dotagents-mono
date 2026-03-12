@@ -1461,6 +1461,7 @@ export type Config = {
 	  remoteServerApiKey?: string
 	  remoteServerLogLevel?: "error" | "info" | "debug"
 	  remoteServerCorsOrigins?: string[]
+		  remoteServerOperatorAllowDeviceIds?: string[]
 	  remoteServerAutoShowPanel?: boolean // Auto-show floating panel when receiving remote messages
 	  remoteServerTerminalQrEnabled?: boolean // Print QR code to terminal for mobile app pairing (auto-enabled in headless mode)
 

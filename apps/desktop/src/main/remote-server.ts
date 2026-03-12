@@ -90,6 +90,7 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "remoteServerApiKey",
   "remoteServerLogLevel",
   "remoteServerCorsOrigins",
+  "remoteServerOperatorAllowDeviceIds",
   "remoteServerAutoShowPanel",
   "remoteServerTerminalQrEnabled",
   "cloudflareTunnelMode",
@@ -484,6 +485,29 @@ function getOperatorAuditSource(request: FastifyRequest): OperatorAuditEntry["so
   }
 
   return Object.keys(source).length > 0 ? source : undefined
+}
+
+function isLoopbackIp(ip: string | undefined): boolean {
+  if (!ip) return false
+  return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1"
+}
+
+function isProtectedOperatorAccessPath(pathname: string): boolean {
+  return pathname === "/v1/settings"
+    || pathname === "/v1/emergency-stop"
+    || pathname.startsWith("/v1/operator/")
+}
+
+function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {
+  appendOperatorAuditEntry({
+    timestamp: Date.now(),
+    action: "device-access-denied",
+    path: getOperatorAuditPath(request),
+    success: false,
+    ...(getOperatorAuditDeviceId(request) ? { deviceId: getOperatorAuditDeviceId(request) } : {}),
+    ...(getOperatorAuditSource(request) ? { source: getOperatorAuditSource(request) } : {}),
+    failureReason: sanitizeOperatorAuditText(failureReason, 120),
+  })
 }
 
 function isOperatorAuditEntry(value: unknown): value is OperatorAuditEntry {
@@ -1813,6 +1837,24 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       reply.code(401).send({ error: "Unauthorized" })
       return
     }
+
+    const pathname = getOperatorAuditPath(req)
+    const trustedDeviceIds = sanitizeStringList(current.remoteServerOperatorAllowDeviceIds ?? [])
+    if (trustedDeviceIds.length === 0 || !isProtectedOperatorAccessPath(pathname) || isLoopbackIp(req.ip)) {
+      return
+    }
+
+    const deviceId = getOperatorAuditDeviceId(req)
+    if (!deviceId) {
+      recordRejectedOperatorDeviceAttempt(req, "Missing trusted device ID")
+      reply.code(403).send({ error: "Trusted device ID required for operator access" })
+      return
+    }
+
+    if (!trustedDeviceIds.includes(deviceId)) {
+      recordRejectedOperatorDeviceAttempt(req, "Device is not allowed for operator access")
+      reply.code(403).send({ error: "Device not allowed for operator access" })
+    }
   })
 
   fastify.addHook("onResponse", async (req, reply) => {
@@ -2740,6 +2782,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey),
         remoteServerLogLevel: cfg.remoteServerLogLevel ?? "info",
         remoteServerCorsOrigins: cfg.remoteServerCorsOrigins ?? ["*"],
+        remoteServerOperatorAllowDeviceIds: cfg.remoteServerOperatorAllowDeviceIds ?? [],
         remoteServerAutoShowPanel: cfg.remoteServerAutoShowPanel ?? false,
         remoteServerTerminalQrEnabled: cfg.remoteServerTerminalQrEnabled ?? false,
         // Cloudflare Tunnel
@@ -2947,6 +2990,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           .filter((value: unknown) => typeof value === "string")
           .map((value: string) => value.trim())
           .filter(Boolean)
+      }
+      if (Array.isArray(body.remoteServerOperatorAllowDeviceIds)) {
+        updates.remoteServerOperatorAllowDeviceIds = sanitizeStringList(body.remoteServerOperatorAllowDeviceIds)
       }
       if (typeof body.remoteServerAutoShowPanel === "boolean") {
         updates.remoteServerAutoShowPanel = body.remoteServerAutoShowPanel
