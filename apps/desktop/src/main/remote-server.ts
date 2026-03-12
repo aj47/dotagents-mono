@@ -121,6 +121,8 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "langfuseBaseUrl",
 ])
 const operatorAuditLog: OperatorAuditEntry[] = []
+const operatorAuditLogPath = path.join(app.getPath("userData"), "operator-audit-log.jsonl")
+let operatorAuditLogLoaded = false
 
 function sanitizeStringList(values: unknown[]): string[] {
   return [...new Set(
@@ -484,11 +486,76 @@ function getOperatorAuditSource(request: FastifyRequest): OperatorAuditEntry["so
   return Object.keys(source).length > 0 ? source : undefined
 }
 
+function isOperatorAuditEntry(value: unknown): value is OperatorAuditEntry {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+
+  const entry = value as Record<string, unknown>
+  return typeof entry.timestamp === "number"
+    && typeof entry.action === "string"
+    && typeof entry.path === "string"
+    && typeof entry.success === "boolean"
+}
+
+function writeOperatorAuditLogToDisk(): void {
+  try {
+    fs.mkdirSync(path.dirname(operatorAuditLogPath), { recursive: true })
+    const payload = operatorAuditLog.map((entry) => JSON.stringify(entry)).join("\n")
+    fs.writeFileSync(operatorAuditLogPath, payload ? `${payload}\n` : "", "utf8")
+  } catch (error) {
+    diagnosticsService.logError("remote-server", "Failed to write operator audit log", error)
+  }
+}
+
+function ensureOperatorAuditLogLoaded(): void {
+  if (operatorAuditLogLoaded) return
+  operatorAuditLogLoaded = true
+
+  try {
+    if (!fs.existsSync(operatorAuditLogPath)) return
+
+    const raw = fs.readFileSync(operatorAuditLogPath, "utf8")
+    if (!raw.trim()) return
+
+    const parsedEntries = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        try {
+          return JSON.parse(line) as unknown
+        } catch {
+          return null
+        }
+      })
+      .filter((entry): entry is OperatorAuditEntry => isOperatorAuditEntry(entry))
+      .slice(-OPERATOR_AUDIT_LOG_LIMIT)
+
+    operatorAuditLog.splice(0, operatorAuditLog.length, ...parsedEntries)
+  } catch (error) {
+    diagnosticsService.logError("remote-server", "Failed to load operator audit log", error)
+  }
+}
+
 function appendOperatorAuditEntry(entry: OperatorAuditEntry): void {
+  ensureOperatorAuditLogLoaded()
   operatorAuditLog.push(entry)
+  let shouldRewrite = false
 
   if (operatorAuditLog.length > OPERATOR_AUDIT_LOG_LIMIT) {
     operatorAuditLog.splice(0, operatorAuditLog.length - OPERATOR_AUDIT_LOG_LIMIT)
+    shouldRewrite = true
+  }
+
+  if (shouldRewrite) {
+    writeOperatorAuditLogToDisk()
+    return
+  }
+
+  try {
+    fs.mkdirSync(path.dirname(operatorAuditLogPath), { recursive: true })
+    fs.appendFileSync(operatorAuditLogPath, `${JSON.stringify(entry)}\n`, "utf8")
+  } catch (error) {
+    diagnosticsService.logError("remote-server", "Failed to append operator audit entry", error)
   }
 }
 
@@ -519,6 +586,7 @@ function recordOperatorAuditEvent(
 }
 
 function buildOperatorAuditResponse(count: number = 20): OperatorAuditResponse {
+  ensureOperatorAuditLogLoaded()
   const limit = clampOperatorCount(count, 20, 100)
   const entries = [...operatorAuditLog].slice(-limit).reverse()
 
