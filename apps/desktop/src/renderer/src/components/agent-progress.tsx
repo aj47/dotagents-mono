@@ -227,6 +227,7 @@ type CompactMessageProps = {
 // Compact message component for space efficiency
 const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
+  const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [ttsError, setTtsError] = useState<string | null>(null)
   const [isCopied, setIsCopied] = useState(false)
@@ -321,6 +322,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       }
 
       setAudioData(result.audio)
+      setAudioMimeType(result.mimeType)
       return result.audio
     } catch (error) {
       console.error("[TTS UI] Failed to generate TTS audio:", error)
@@ -366,6 +368,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     if (prevTtsSourceRef.current !== ttsSource) {
       prevTtsSourceRef.current = ttsSource
       setAudioData(null)
+      setAudioMimeType(null)
     }
   }, [ttsSource])
 
@@ -584,6 +587,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             <div className="mt-2 min-w-0 space-y-1">
               <AudioPlayer
                 audioData={audioData || undefined}
+                audioMimeType={audioMimeType || undefined}
                 text={ttsSource}
                 onGenerateAudio={generateAudio}
                 isGenerating={isGeneratingAudio}
@@ -2228,6 +2232,8 @@ const PastResponseItem: React.FC<{
   index: number
   sessionId?: string
 }> = ({ response, index, sessionId }) => {
+  const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
+  const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const configQuery = useConfigQuery()
   const shouldShowTTSButton = configQuery.data?.ttsEnabled
@@ -2235,8 +2241,15 @@ const PastResponseItem: React.FC<{
 
   const generatePastAudio = async (): Promise<ArrayBuffer> => {
     const result = await tipcClient.generateSpeech({ text: ttsResponseText })
+    setAudioData(result.audio)
+    setAudioMimeType(result.mimeType)
     return result.audio
   }
+
+  useEffect(() => {
+    setAudioData(null)
+    setAudioMimeType(null)
+  }, [ttsResponseText])
 
   const preview = response.length > 80 ? response.slice(0, 80) + "…" : response
 
@@ -2268,6 +2281,8 @@ const PastResponseItem: React.FC<{
           {shouldShowTTSButton && (
             <div className="mt-1.5 min-w-0">
               <AudioPlayer
+                audioData={audioData || undefined}
+                audioMimeType={audioMimeType || undefined}
                 text={ttsResponseText}
                 onGenerateAudio={generatePastAudio}
                 compact={true}
@@ -2275,6 +2290,238 @@ const PastResponseItem: React.FC<{
               />
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Individual TTS button for a single response in the history panel
+const ResponseTTSButton: React.FC<{ text: string }> = ({ text }) => {
+  const [state, setState] = useState<"idle" | "generating" | "playing">("idle")
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioUrlRef = useRef<string | null>(null)
+  const configQuery = useConfigQuery()
+  const ttsSource = sanitizeMessageContentForSpeech(text)
+  const latestTtsSourceRef = useRef(ttsSource)
+  latestTtsSourceRef.current = ttsSource
+  const ttsGenerationIdRef = useRef(0)
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return undefined
+    const unregisterAudio = ttsManager.registerAudio(audio)
+    const unregisterCb = ttsManager.registerStopCallback(() => {
+      audio.pause()
+      audio.currentTime = 0
+      setState((s) => (s === "playing" ? "idle" : s))
+    }, audio)
+    const onEnded = () => setState("idle")
+    const onPlay = () => setState("playing")
+    const onPause = () => setState((s) => (s === "playing" ? "idle" : s))
+    audio.addEventListener("ended", onEnded)
+    audio.addEventListener("play", onPlay)
+    audio.addEventListener("pause", onPause)
+    return () => { unregisterAudio(); unregisterCb(); audio.removeEventListener("ended", onEnded); audio.removeEventListener("play", onPlay); audio.removeEventListener("pause", onPause) }
+  }, [])
+
+  // Cleanup URL on unmount and invalidate any in-flight generations
+  useEffect(() => () => {
+    ttsGenerationIdRef.current += 1
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+  }, [])
+
+  if (!configQuery.data?.ttsEnabled) return null
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (state === "generating") {
+      return
+    }
+
+    if (state === "playing") {
+      audio.pause()
+      audio.currentTime = 0
+      return
+    }
+
+    // If already has audio loaded, just play
+    if (audioUrlRef.current) {
+      try {
+        audio.src = audioUrlRef.current
+        await ttsManager.playExclusive(audio, { source: "response-history", autoPlay: false, textPreview: ttsSource.slice(0, 80) })
+      } catch {
+        setState("idle")
+      }
+      return
+    }
+
+    const generationId = ++ttsGenerationIdRef.current
+    const generationSource = ttsSource
+    setState("generating")
+    try {
+      const result = await tipcClient.generateSpeech({ text: generationSource })
+
+      if (
+        ttsGenerationIdRef.current !== generationId ||
+        latestTtsSourceRef.current !== generationSource
+      ) {
+        return
+      }
+
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+      const blob = new Blob([result.audio], { type: result.mimeType || "audio/wav" })
+      audioUrlRef.current = URL.createObjectURL(blob)
+      audio.src = audioUrlRef.current
+      await ttsManager.playExclusive(audio, { source: "response-history", autoPlay: false, textPreview: generationSource.slice(0, 80) })
+    } catch {
+      if (
+        ttsGenerationIdRef.current === generationId &&
+        latestTtsSourceRef.current === generationSource
+      ) {
+        setState("idle")
+      }
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={state === "generating"}
+        className={cn(
+          "shrink-0 rounded p-0.5 transition-colors hover:bg-green-200/50 disabled:cursor-default disabled:opacity-70 dark:hover:bg-green-800/50",
+          state === "playing" && "text-green-600 dark:text-green-400",
+        )}
+        title={state === "generating" ? "Generating…" : state === "playing" ? "Stop" : "Listen"}
+      >
+        {state === "generating" ? (
+          <Loader2 className="h-3 w-3 animate-spin text-green-600 dark:text-green-400" />
+        ) : state === "playing" ? (
+          <Volume2 className="h-3 w-3 animate-pulse" />
+        ) : (
+          <Volume2 className="h-3 w-3 text-green-600/60 dark:text-green-400/50" />
+        )}
+      </button>
+      <audio ref={audioRef} />
+    </>
+  )
+}
+
+// Response History Panel - sticky panel showing all respond_to_user responses
+// 3 display states: collapsed (header only) → expanded (max 200px) → full (fills conversation height)
+type ResponsePanelState = "collapsed" | "expanded" | "full"
+
+const ResponseHistoryPanel: React.FC<{
+  currentResponse: string
+  pastResponses?: string[]
+}> = ({ currentResponse, pastResponses }) => {
+  const [displayState, setDisplayState] = useState<ResponsePanelState>("expanded")
+
+  const responseEntries = useMemo(() => {
+    const fingerprint = (response: string) => `${response.slice(0, 64).replace(/\W/g, "")}-${response.length}`
+    const entries: Array<{ key: string; text: string; isCurrent: boolean; responseNumber?: number }> = []
+
+    if (currentResponse) {
+      entries.push({
+        key: `current-${fingerprint(currentResponse)}`,
+        text: currentResponse,
+        isCurrent: true,
+      })
+    }
+
+    if (pastResponses) {
+      ;[...pastResponses].reverse().forEach((response, idx) => {
+        const originalIndex = pastResponses.length - 1 - idx
+        entries.push({
+          key: `past-${originalIndex}-${fingerprint(response)}`,
+          text: response,
+          isCurrent: false,
+          responseNumber: originalIndex + 1,
+        })
+      })
+    }
+
+    return entries
+  }, [currentResponse, pastResponses])
+
+  const cycleState = useCallback(() => {
+    setDisplayState(prev => {
+      if (prev === "collapsed") return "expanded"
+      if (prev === "expanded") return "full"
+      return "collapsed"
+    })
+  }, [])
+
+  if (responseEntries.length === 0) return null
+
+  const stateLabel = displayState === "collapsed" ? "Expand" : displayState === "expanded" ? "Full height" : "Collapse"
+
+  return (
+    <div className={cn(
+      displayState === "full"
+        ? "absolute inset-0 z-20 flex flex-col bg-green-50 dark:bg-green-950"
+        : "flex-shrink-0 border-t bg-green-50/50 dark:bg-green-950/30",
+    )}>
+      {/* Header */}
+      <button
+        type="button"
+        onClick={cycleState}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left transition-colors hover:bg-green-100/50 dark:hover:bg-green-900/30 flex-shrink-0"
+        title={stateLabel}
+      >
+        <MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+        <span className="text-xs font-medium text-green-800 dark:text-green-200">
+          Agent Responses
+        </span>
+        <Badge variant="secondary" className="ml-0.5 h-4 shrink-0 px-1 py-0 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
+          {responseEntries.length}
+        </Badge>
+        <div className="flex-1" />
+        {displayState === "collapsed" ? (
+          <ChevronUp className="h-3 w-3 text-green-600 dark:text-green-400" />
+        ) : displayState === "expanded" ? (
+          <Maximize2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+        ) : (
+          <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-400" />
+        )}
+      </button>
+      {/* Response list */}
+      {displayState !== "collapsed" && (
+        <div className={cn(
+          "overflow-y-auto scrollbar-hide-until-hover",
+          displayState === "expanded" && "max-h-[200px]",
+          displayState === "full" && "flex-1 min-h-0",
+        )}>
+          {responseEntries.map(({ key, text, isCurrent, responseNumber }) => {
+            return (
+            <div
+              key={key}
+              className={cn(
+                "px-3 py-2 text-xs text-green-900 dark:text-green-100",
+                !isCurrent && "border-t border-green-200/40 dark:border-green-800/40",
+                isCurrent && "bg-green-100/30 dark:bg-green-900/20",
+              )}
+            >
+              <div className="flex items-start gap-1">
+                <div className="min-w-0 flex-1">
+                  {!isCurrent && responseNumber !== undefined && (
+                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-green-600/60 dark:text-green-400/50">
+                      Response {responseNumber}
+                    </div>
+                  )}
+                  <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                    <MarkdownRenderer content={text} />
+                  </div>
+                </div>
+                <ResponseTTSButton text={text} />
+              </div>
+            </div>
+          )})}
         </div>
       )}
     </div>
@@ -2302,6 +2549,7 @@ const MidTurnUserResponseBubble: React.FC<{
   onToggleExpand,
 }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
+  const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [ttsError, setTtsError] = useState<string | null>(null)
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
@@ -2338,6 +2586,7 @@ const MidTurnUserResponseBubble: React.FC<{
       }
 
       setAudioData(result.audio)
+      setAudioMimeType(result.mimeType)
       return result.audio
     } catch (error) {
       console.error("[TTS MidTurn] Failed to generate TTS audio:", error)
@@ -2368,6 +2617,11 @@ const MidTurnUserResponseBubble: React.FC<{
       }
     }
   }
+
+  useEffect(() => {
+    setAudioData(null)
+    setAudioMimeType(null)
+  }, [ttsSource])
 
   // Auto-play TTS for mid-turn userResponse (only in overlay variant to prevent double-play)
   useEffect(() => {
@@ -2438,7 +2692,7 @@ const MidTurnUserResponseBubble: React.FC<{
       {/* Header */}
       <div
         className={cn(
-          "flex min-w-0 flex-wrap items-start gap-2 cursor-pointer bg-green-100/50 px-3 py-2 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40",
+          "flex min-w-0 flex-wrap items-center gap-1.5 cursor-pointer bg-green-100/50 px-2.5 py-1.5 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40",
           isExpanded && "border-b border-green-200 dark:border-green-800",
         )}
         onClick={onToggleExpand}
@@ -2449,16 +2703,11 @@ const MidTurnUserResponseBubble: React.FC<{
           <ChevronRight className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
         )}
         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
-        <div className="min-w-0 flex-1 space-y-1 text-left">
-          <div className="text-xs font-medium text-green-800 dark:text-green-200 truncate">
-            {agentLabel}
-          </div>
+        <div className="min-w-0 flex-1 text-left">
           <div
             className={cn(
-              "min-w-0 text-xs text-green-700/80 dark:text-green-300/70",
-              isExpanded
-                ? "font-medium"
-                : "line-clamp-2 break-words [overflow-wrap:anywhere]"
+              "min-w-0 text-xs text-green-800 dark:text-green-200",
+              isExpanded ? "font-medium" : "line-clamp-2 break-words [overflow-wrap:anywhere]",
             )}
           >
             {isExpanded ? "Latest response" : collapsedPreview}
@@ -2500,6 +2749,7 @@ const MidTurnUserResponseBubble: React.FC<{
         <div className={cn("min-w-0 px-3", isExpanded ? "pb-2" : "hidden")}>
           <AudioPlayer
             audioData={audioData || undefined}
+            audioMimeType={audioMimeType || undefined}
             text={ttsSource}
             onGenerateAudio={generateAudio}
             isGenerating={isGeneratingAudio}
@@ -3000,6 +3250,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         : undefined),
     [fallbackRespondToUserResponses, progress.userResponseHistory],
   )
+  const hasResponseHistoryEntries = !!(effectiveUserResponse || effectiveUserResponseHistory?.length)
   const primaryAgentLabel = useMemo(
     () => acpSessionInfo?.agentTitle ?? acpSessionInfo?.agentName ?? profileName ?? "Agent",
     [acpSessionInfo?.agentName, acpSessionInfo?.agentTitle, profileName],
@@ -3440,25 +3691,24 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       >
         {/* Tile Header - clickable to toggle collapse */}
         <div
-          className="flex flex-wrap items-start gap-2 px-3 py-2 border-b bg-muted/30 flex-shrink-0 cursor-pointer"
+          className={cn(
+            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 cursor-pointer",
+            isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2",
+          )}
           onClick={handleToggleCollapse}
         >
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <div className="shrink-0 pt-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <div className="shrink-0">
               {getStatusIndicator()}
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate font-medium text-sm">
-                {getTitle()}
+            {profileName && !isCollapsed && (
+              <span className="shrink-0 text-[10px] text-primary/60 truncate max-w-[60px]" title={profileName}>
+                {profileName}
               </span>
-              {/* Agent name indicator in header */}
-              {profileName && (
-                <span className="flex items-center gap-1 text-[10px] text-primary/70">
-                  <Bot className="h-2.5 w-2.5 shrink-0" />
-                  <span className="truncate">{profileName}</span>
-                </span>
-              )}
-            </div>
+            )}
+            <span className={cn("truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
+              {getTitle()}
+            </span>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
             {hasPendingApproval && (
@@ -3576,11 +3826,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
 
             {/* Message Stream (Chat Tab) */}
-            <div className={cn("relative flex-1 min-h-0", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto scrollbar-hide-until-hover"
+                className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover"
               >
                 {visibleDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">
@@ -3640,19 +3890,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       } else if (item.kind === "streaming") {
                         return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
                       } else if (item.kind === "mid_turn_response") {
-                        return (
-                          <MidTurnUserResponseBubble
-                            key={itemKey}
-                            userResponse={item.data.userResponse}
-                            pastResponses={item.data.pastResponses}
-                            sessionId={progress.sessionId}
-                            agentLabel={primaryAgentLabel}
-                            variant="tile"
-                            isComplete={isComplete}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                          />
-                        )
+                        // Skip inline rendering — responses are shown in the ResponseHistoryPanel above
+                        return null
                       } else if (item.kind === "delegation") {
                         const delegationExpanded = expandedItems[itemKey] ?? false
                         return (
@@ -3682,6 +3921,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   </div>
                 )}
               </div>
+              {/* Response History Panel - sticky at bottom of conversation */}
+              {hasResponseHistoryEntries && (
+                <ResponseHistoryPanel
+                  currentResponse={effectiveUserResponse ?? ""}
+                  pastResponses={effectiveUserResponseHistory}
+                />
+              )}
             </div>
 
             {/* Tool Approval - Fixed position outside scroll area */}
@@ -3706,76 +3952,76 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with status info */}
-            <div className="px-3 py-2 border-t bg-muted/20 text-xs text-muted-foreground flex-shrink-0">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                  {/* ACP Session info for tile variant */}
-                  {acpSessionInfo && (
-                    <ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />
-                  )}
-                  {/* Model info - only show for non-ACP sessions */}
-                  {!isComplete && modelInfo && !acpSessionInfo && (
-                    <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
-                      {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
-                    </span>
-                  )}
-                  {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-                    <div
-                      className="flex shrink-0 items-center gap-1"
-                      title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
-                    >
-                      <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full transition-all duration-300 ease-out rounded-full",
-                            contextInfo.estTokens / contextInfo.maxTokens > 0.9
-                              ? "bg-red-500"
-                              : contextInfo.estTokens / contextInfo.maxTokens > 0.7
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
-                          )}
-                          style={{
-                            width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
-                          }}
-                        />
+            {/* Footer with status info — only show when active, omit when complete to save space */}
+            {!isComplete && (
+              <div className={cn(
+                "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
+                "px-3 py-1.5 text-xs",
+              )}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                    {acpSessionInfo && (
+                      <ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />
+                    )}
+                    {modelInfo && !acpSessionInfo && (
+                      <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+                        {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
+                      </span>
+                    )}
+                    {contextInfo && contextInfo.maxTokens > 0 && (
+                      <div
+                        className="flex shrink-0 items-center gap-1"
+                        title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
+                      >
+                        <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full transition-all duration-300 ease-out rounded-full",
+                              contextInfo.estTokens / contextInfo.maxTokens > 0.9
+                                ? "bg-red-500"
+                                : contextInfo.estTokens / contextInfo.maxTokens > 0.7
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                            )}
+                            style={{
+                              width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-                {!isComplete && (
+                    )}
+                  </div>
                   <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
-                )}
-                {isComplete && (
-                  <span className="shrink-0 whitespace-nowrap">{wasStopped ? "Stopped" : hasErrors ? "Failed" : "Complete"}</span>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 
-        {/* Message Queue Panel - shows queued messages in tile */}
-        {hasQueuedMessages && progress.conversationId && (
-          <div className="px-3 py-2 border-t flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        {/* Message Queue Panel - hidden when collapsed */}
+        {!isCollapsed && hasQueuedMessages && progress.conversationId && (
+          <div className="px-3 py-1.5 border-t flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <MessageQueuePanel
               conversationId={progress.conversationId}
               messages={queuedMessages}
-              compact={isCollapsed}
+              compact={false}
               isPaused={isQueuePaused}
             />
           </div>
         )}
 
-        {/* Follow-up input - always visible for quick continuation */}
-        <TileFollowUpInput
-          conversationId={progress.conversationId}
-          sessionId={progress.sessionId}
-          isSessionActive={!isComplete}
-          isInitializingSession={isFollowUpInputInitializing}
-          agentName={profileName}
-          className="flex-shrink-0"
-          onMessageSent={onFollowUpSent}
-        />
+        {/* Follow-up input - hidden when collapsed for compact view */}
+        {!isCollapsed && (
+          <TileFollowUpInput
+            conversationId={progress.conversationId}
+            sessionId={progress.sessionId}
+            isSessionActive={!isComplete}
+            isInitializingSession={isFollowUpInputInitializing}
+            agentName={profileName}
+            className="flex-shrink-0"
+            onMessageSent={onFollowUpSent}
+          />
+        )}
 
         {/* Kill Switch Confirmation Dialog */}
         {showKillConfirmation && (
@@ -3956,7 +4202,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="h-full min-h-0 overflow-y-auto"
+          className="flex-1 min-h-0 overflow-y-auto"
         >
           {visibleDisplayItems.length > 0 ? (
             <div className="space-y-1 p-2">
@@ -4031,19 +4277,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "mid_turn_response") {
-                  return (
-                    <MidTurnUserResponseBubble
-                      key={itemKey}
-                      userResponse={item.data.userResponse}
-                      pastResponses={item.data.pastResponses}
-                      sessionId={progress.sessionId}
-                      agentLabel={primaryAgentLabel}
-                      variant={variant}
-                      isComplete={isComplete}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                    />
-                  )
+                  // Skip inline rendering — responses are shown in the ResponseHistoryPanel above
+                  return null
                 } else if (item.kind === "delegation") {
                   const delegationExpanded = expandedItems[itemKey] ?? false
                   return (
@@ -4074,6 +4309,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             </div>
           )}
         </div>
+        {/* Response History Panel - sticky at bottom of conversation */}
+        {hasResponseHistoryEntries && (
+          <ResponseHistoryPanel
+            currentResponse={effectiveUserResponse ?? ""}
+            pastResponses={effectiveUserResponseHistory}
+          />
+        )}
       </div>
 
       {/* Tool Approval - Fixed position outside scroll area for overlay variant */}

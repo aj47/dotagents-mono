@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, createContext, useContext, useCallback } from "react"
+import React, { useRef, useState, useEffect, useLayoutEffect, createContext, useContext, useCallback } from "react"
 import { cn } from "@renderer/lib/utils"
 import { GripVertical } from "lucide-react"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
@@ -151,17 +151,24 @@ function calculateTileWidth(containerWidth: number, gap: number, layoutMode: Til
   if (containerWidth <= 0) {
     return TILE_DIMENSIONS.width.default
   }
+
+  // Leave a tiny amount of slack in multi-column modes. Exact-fit widths can
+  // wrap unpredictably at certain viewport/sidebar combinations due to
+  // subpixel rounding during layout/animation.
+  const MULTI_COLUMN_SAFETY_PX = 2
+
   switch (layoutMode) {
     case "1x1":
-      // Full width
-      return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, containerWidth))
+      // Full width — use container width directly (no max clamp so ultrawide displays work)
+      return Math.max(TILE_DIMENSIONS.width.min, containerWidth)
     case "2x2":
-      // Half width (same as 1x2 — 2 columns)
-      return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, Math.floor((containerWidth - gap) / 2)))
     case "1x2":
-    default:
-      // Half width — 2 columns
-      return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, Math.floor((containerWidth - gap) / 2)))
+    default: {
+      // Half width — 2 columns, with a small safety buffer to avoid exact-fit
+      // wrapping when the sidebar is open and available width lands on a tight boundary.
+      const halfWidth = Math.floor((containerWidth - gap - MULTI_COLUMN_SAFETY_PX) / 2)
+      return Math.max(TILE_DIMENSIONS.width.min, halfWidth)
+    }
   }
 }
 
@@ -215,8 +222,11 @@ export function SessionTileWrapper({
     storageKey: "session-tile",
   })
 
-  // Reset tile size when resetKey changes (user clicked layout cycle button)
-  useEffect(() => {
+  // Use useLayoutEffect (runs before browser paint) to update tile size when
+  // layout mode or resetKey changes. Regular useEffect caused a one-frame stale
+  // render where tiles kept their old (e.g. 1x1 full-width) size before the
+  // effect corrected them, breaking flex-wrap two-column layout.
+  useLayoutEffect(() => {
     if (resetKey !== lastResetKeyRef.current && containerWidth > 0) {
       lastResetKeyRef.current = resetKey
       setSize({
@@ -226,8 +236,7 @@ export function SessionTileWrapper({
     }
   }, [resetKey, containerWidth, containerHeight, gap, layoutMode, setSize])
 
-  // Update tile size when layout mode changes
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (layoutMode !== lastLayoutModeRef.current && containerWidth > 0) {
       lastLayoutModeRef.current = layoutMode
       setSize({

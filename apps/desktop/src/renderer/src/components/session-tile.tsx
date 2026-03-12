@@ -101,6 +101,7 @@ export function SessionTile({
 
   // TTS state
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
+  const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [ttsError, setTtsError] = useState<string | null>(null)
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
@@ -173,6 +174,7 @@ export function SessionTile({
     if (prevTtsSourceRef.current !== lastAssistantContent) {
       prevTtsSourceRef.current = lastAssistantContent
       setAudioData(null)
+      setAudioMimeType(null)
       setTtsError(null)
     }
   }, [lastAssistantContent])
@@ -196,6 +198,7 @@ export function SessionTile({
       }
 
       setAudioData(result.audio)
+      setAudioMimeType(result.mimeType)
       return result.audio
     } catch (error) {
       console.error("[SessionTile TTS] Failed to generate audio:", error)
@@ -376,8 +379,8 @@ export function SessionTile({
       role: m.role as "user" | "assistant" | "tool"
     }))
 
-    // If there's a session error message, integrate it into the messages
-    if (session.errorMessage) {
+    // If the session is currently errored, integrate the error message into the transcript.
+    if (session.status === "error" && session.errorMessage) {
       // Use session.startTime as fallback to ensure stable timestamp for React key generation
       // (Date.now() would create non-deterministic keys on each render)
       const errorEntry: DisplayMessage = {
@@ -604,6 +607,7 @@ export function SessionTile({
                       <div className="mt-2 min-w-0 space-y-1">
                         <AudioPlayer
                           audioData={audioData || undefined}
+                          audioMimeType={audioMimeType || undefined}
                           text={lastAssistantContent}
                           onGenerateAudio={generateAudio}
                           isGenerating={isGeneratingAudio}

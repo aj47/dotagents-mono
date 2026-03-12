@@ -7,6 +7,7 @@ import { ttsManager } from "@renderer/lib/tts-manager"
 
 interface AudioPlayerProps {
   audioData?: ArrayBuffer
+  audioMimeType?: string
   text: string
   onGenerateAudio?: () => Promise<ArrayBuffer>
   className?: string
@@ -20,6 +21,7 @@ interface AudioPlayerProps {
 
 export function AudioPlayer({
   audioData,
+  audioMimeType,
   text,
   onGenerateAudio,
   className,
@@ -46,7 +48,7 @@ export function AudioPlayer({
         URL.revokeObjectURL(audioUrlRef.current)
       }
 
-      const blob = new Blob([audioData], { type: "audio/wav" })
+      const blob = new Blob([audioData], { type: audioMimeType || "audio/wav" })
       audioUrlRef.current = URL.createObjectURL(blob)
       setHasAudio(true)
       setHasAutoPlayed(false)
@@ -64,7 +66,7 @@ export function AudioPlayer({
         URL.revokeObjectURL(audioUrlRef.current)
       }
     }
-  }, [audioData])
+  }, [audioData, audioMimeType])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -265,41 +267,31 @@ export function AudioPlayer({
     return (
       <div
         className={cn(
-          "flex min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5",
+          "inline-flex items-center",
           className
         )}
       >
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
+          type="button"
           onClick={handlePlayPause}
           disabled={isGenerating}
-          className="mt-0.5 h-8 w-8 shrink-0 p-0"
+          className={cn(
+            "shrink-0 rounded p-1 transition-colors hover:bg-muted",
+            isPlaying && "text-primary",
+          )}
           title={playPauseLabel}
           aria-label={playPauseLabel}
         >
           {isGenerating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : isPlaying ? (
-            <Pause className="h-4 w-4" />
+            <Pause className="h-3.5 w-3.5" />
+          ) : hasAudio ? (
+            <Play className="h-3.5 w-3.5" />
           ) : (
-            <Play className="h-4 w-4" />
+            <Volume2 className="h-3.5 w-3.5" />
           )}
-        </Button>
-        <div className="min-w-0 flex-1 space-y-0.5 text-left">
-          <div className="text-xs font-medium leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
-            {compactStatusLabel}
-          </div>
-          <div
-            className={cn(
-              "min-w-0 text-[11px] leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]",
-              hasAudio && duration > 0 && "font-mono tabular-nums"
-            )}
-            aria-live="polite"
-          >
-            {compactStatusDetail}
-          </div>
-        </div>
+        </button>
         <audio ref={audioRef} />
       </div>
     )

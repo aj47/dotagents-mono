@@ -2299,15 +2299,6 @@ export default function ChatScreen({ route, navigation }: any) {
       keyboardVerticalOffset={headerHeight}
     >
       <View style={{ flex: 1 }}>
-        {/* Respond-to-user history panel (Issue #26) */}
-        {respondToUserHistory.length > 0 && (
-          <ResponseHistoryPanel
-            responses={respondToUserHistory}
-            ttsRate={config.ttsRate ?? 1.0}
-            ttsPitch={config.ttsPitch ?? 1.0}
-            ttsVoiceId={config.ttsVoiceId}
-          />
-        )}
         <ScrollView
           ref={scrollViewRef}
           style={{ flex: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: theme.colors.background }}
@@ -2615,6 +2606,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	            </View>
 	          )}
         </ScrollView>
+        {/* Respond-to-user history panel - sticky at bottom of conversation */}
+        {respondToUserHistory.length > 0 && (
+          <ResponseHistoryPanel
+            responses={respondToUserHistory}
+            ttsRate={config.ttsRate ?? 1.0}
+            ttsPitch={config.ttsPitch ?? 1.0}
+            ttsVoiceId={config.ttsVoiceId}
+          />
+        )}
         {/* Scroll to bottom button - appears when user scrolls up */}
         {!shouldAutoScroll && (
           <TouchableOpacity

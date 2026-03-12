@@ -268,13 +268,8 @@ export function TileFollowUpInput({
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Agent indicator - shows which agent is handling this session */}
-      {agentName && (
-        <div className="flex items-center gap-1 text-[10px] text-primary/70">
-          <Bot className="h-2.5 w-2.5 shrink-0" />
-          <span className="truncate" title={`Agent: ${agentName}`}>{agentName}</span>
-        </div>
-      )}
+      {/* Agent indicator - removed to save space, agent name is in header */}
+      {/* agentName was here but is no longer needed */}
 
       {imageAttachments.length > 0 && (
         <div className="flex w-full gap-1.5 overflow-x-auto pb-1">

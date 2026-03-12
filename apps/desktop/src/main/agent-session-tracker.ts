@@ -303,6 +303,14 @@ class AgentSessionTracker {
   }
 
   /**
+   * Find a completed session by ID.
+   * Returns the session if found in completed sessions, undefined otherwise.
+   */
+  findCompletedSession(sessionId: string): AgentSession | undefined {
+    return this.completedSessions.find(session => session.id === sessionId)
+  }
+
+  /**
    * Find a session by conversationId (active or completed)
    * Returns the session ID if found, undefined otherwise
    */

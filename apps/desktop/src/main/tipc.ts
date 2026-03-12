@@ -1132,12 +1132,39 @@ export const router = {
   stopAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
-        
+
       // Stop the session in the state manager (aborts LLM requests, kills processes)
       agentSessionStateManager.stopSession(input.sessionId)
 
       // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
       toolApprovalManager.cancelSessionApprovals(input.sessionId)
+
+      // Abort client-side tracking of ACP runs spawned by this session.
+      // This stops our polling/streaming but does NOT cancel the server-side run.
+      // Prevents completed remote runs from writing back to the dead session (zombie prevention).
+      try {
+        const { acpClientService } = await import("./acp")
+        const cancelledAcpRuns = acpClientService.cancelRunsByParentSession(input.sessionId)
+        if (cancelledAcpRuns > 0) {
+          logLLM(`[stopAgentSession] Cancelled ${cancelledAcpRuns} ACP run(s) for session ${input.sessionId}`)
+        }
+      } catch (error) {
+        logApp("[stopAgentSession] Error cancelling ACP runs:", error)
+      }
+
+      // Cancel any internal sub-sessions spawned by this session
+      try {
+        const { getChildSubSessions, cancelSubSession } = await import("./acp/internal-agent")
+        const childSessions = getChildSubSessions(input.sessionId)
+        for (const child of childSessions) {
+          if (child.status === "running") {
+            cancelSubSession(child.id)
+            logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
+          }
+        }
+      } catch (error) {
+        logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
+      }
 
       // Pause the message queue for this conversation to prevent processing the next queued message
       // The user can resume the queue later if they want to continue
@@ -3139,23 +3166,25 @@ export const router = {
       }
 
       try {
-        let audioBuffer: ArrayBuffer
+        let ttsResult: TTSGenerationResult
 
 
 
         if (providerId === "openai") {
-          audioBuffer = await generateOpenAITTS(processedText, input, config)
+          ttsResult = await generateOpenAITTS(processedText, input, config)
         } else if (providerId === "groq") {
-          audioBuffer = await generateGroqTTS(processedText, input, config)
+          ttsResult = await generateGroqTTS(processedText, input, config)
         } else if (providerId === "gemini") {
-          audioBuffer = await generateGeminiTTS(processedText, input, config)
+          ttsResult = await generateGeminiTTS(processedText, input, config)
         } else if (providerId === "kitten") {
           const { synthesize } = await import('./kitten-tts')
           const voiceId = config.kittenVoiceId ?? 0 // Default to Voice 2 - Male
           const result = await synthesize(processedText, voiceId, input.speed)
           const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          // Convert Buffer to ArrayBuffer
-          audioBuffer = new Uint8Array(wavBuffer).buffer
+          ttsResult = {
+            audio: new Uint8Array(wavBuffer).buffer,
+            mimeType: "audio/wav",
+          }
         } else if (providerId === "supertonic") {
           const { synthesize } = await import('./supertonic-tts')
           const voice = config.supertonicVoice ?? "M1"
@@ -3164,7 +3193,10 @@ export const router = {
           const steps = config.supertonicSteps ?? 5
           const result = await synthesize(processedText, voice, lang, speed, steps)
           const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          audioBuffer = new Uint8Array(wavBuffer).buffer
+          ttsResult = {
+            audio: new Uint8Array(wavBuffer).buffer,
+            mimeType: "audio/wav",
+          }
         } else {
           throw new Error(`Unsupported TTS provider: ${providerId}`)
         }
@@ -3172,7 +3204,8 @@ export const router = {
 
 
         return {
-          audio: audioBuffer,
+          audio: ttsResult.audio,
+          mimeType: ttsResult.mimeType,
           processedText,
           provider: providerId,
         }
@@ -4955,11 +4988,34 @@ export const router = {
 
 // TTS Provider Implementation Functions
 
+type TTSGenerationResult = {
+  audio: ArrayBuffer
+  mimeType: string
+}
+
+function getOpenAITTSMimeType(responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"): string {
+  switch (responseFormat) {
+    case "mp3":
+      return "audio/mpeg"
+    case "opus":
+      return "audio/opus"
+    case "aac":
+      return "audio/aac"
+    case "flac":
+      return "audio/flac"
+    case "pcm":
+      return "audio/L16"
+    case "wav":
+    default:
+      return "audio/wav"
+  }
+}
+
 async function generateOpenAITTS(
   text: string,
   input: { voice?: string; model?: string; speed?: number },
   config: Config
-): Promise<ArrayBuffer> {
+): Promise<TTSGenerationResult> {
   const model = input.model || config.openaiTtsModel || "gpt-4o-mini-tts"
   const voice = input.voice || config.openaiTtsVoice || "alloy"
   const speed = input.speed || config.openaiTtsSpeed || 1.0
@@ -5002,14 +5058,17 @@ async function generateOpenAITTS(
 
   const audioBuffer = await response.arrayBuffer()
 
-  return audioBuffer
+  return {
+    audio: audioBuffer,
+    mimeType: getOpenAITTSMimeType(responseFormat),
+  }
 }
 
 async function generateGroqTTS(
   text: string,
   input: { voice?: string; model?: string },
   config: Config
-): Promise<ArrayBuffer> {
+): Promise<TTSGenerationResult> {
   const model = input.model || config.groqTtsModel || "canopylabs/orpheus-v1-english"
   // Choose default voice based on model - Arabic model should use Arabic voice
   const defaultVoice = model === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy"
@@ -5061,14 +5120,17 @@ async function generateGroqTTS(
 
   const audioBuffer = await response.arrayBuffer()
 
-  return audioBuffer
+  return {
+    audio: audioBuffer,
+    mimeType: "audio/wav",
+  }
 }
 
 async function generateGeminiTTS(
   text: string,
   input: { voice?: string; model?: string },
   config: Config
-): Promise<ArrayBuffer> {
+): Promise<TTSGenerationResult> {
   const model = input.model || config.geminiTtsModel || "gemini-2.5-flash-preview-tts"
   const voice = input.voice || config.geminiTtsVoice || "Kore"
 
@@ -5118,7 +5180,8 @@ async function generateGeminiTTS(
 
 
 
-  const audioData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+  const inlineAudioData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData
+  const audioData = inlineAudioData?.data
 
   if (!audioData) {
     throw new Error("No audio data received from Gemini TTS API")
@@ -5133,7 +5196,10 @@ async function generateGeminiTTS(
 
 
 
-  return bytes.buffer
+  return {
+    audio: bytes.buffer,
+    mimeType: inlineAudioData?.mimeType || "audio/L16",
+  }
 }
 
 export type Router = typeof router

@@ -1042,6 +1042,18 @@ export function Component() {
           )}
 
           {configQuery.data.ttsEnabled && (
+            <div className="px-3 py-1.5">
+              <button
+                type="button"
+                onClick={() => navigate("/settings/models")}
+                className="text-xs text-primary hover:underline"
+              >
+                Configure TTS voice &amp; model →
+              </button>
+            </div>
+          )}
+
+          {configQuery.data.ttsEnabled && (
             <>
               <Control label={<ControlLabel label="Text Preprocessing" tooltip="Enable preprocessing to make text more speech-friendly by removing code blocks, URLs, and converting markdown" />} className="px-3">
                 <Switch

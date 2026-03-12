@@ -4,7 +4,7 @@ export const TILE_DIMENSIONS = {
   width: {
     default: 320,
     min: 200,
-    max: 1200,
+    max: 4000, // Allow tiles to fill large/ultrawide displays - effectively no practical limit
   },
   height: {
     default: 300,

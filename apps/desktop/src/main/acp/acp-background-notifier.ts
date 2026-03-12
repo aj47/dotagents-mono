@@ -209,6 +209,15 @@ export class ACPBackgroundNotifier {
       return
     }
 
+    // Check if the session was explicitly stopped by the user — don't revive zombie sessions
+    const completedSession = agentSessionTracker.findCompletedSession(state.parentSessionId)
+    if (completedSession?.status === 'stopped') {
+      logApp(
+        `[ACPBackgroundNotifier] Skipping parent resume for ${state.runId}; parent session ${state.parentSessionId} was explicitly stopped by user`
+      )
+      return
+    }
+
     const conversationId = agentSessionTracker.getConversationIdForSession(state.parentSessionId)
     if (!conversationId) {
       logApp(

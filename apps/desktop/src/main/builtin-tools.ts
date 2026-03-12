@@ -678,6 +678,16 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    // Guard: don't store the response if the session was already stopped/cancelled.
+    // This prevents zombie sessions from reappearing after the user stops them.
+    const activeSession = agentSessionTracker.getSession(context.sessionId)
+    if (!activeSession) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Session is no longer active (was stopped or completed)" }) }],
+        isError: true,
+      }
+    }
+
     setSessionUserResponse(context.sessionId, responseContent)
 
     return {
