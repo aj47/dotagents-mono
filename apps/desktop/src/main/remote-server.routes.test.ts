@@ -52,6 +52,21 @@ describe("remote-server route registration", () => {
     expect(source).toContain("processTranscriptWithACPAgent")
   })
 
+  it("exposes Discord settings in the remote settings GET/PATCH routes", () => {
+    const source = getRemoteServerSource()
+    const settingsGetSection = getSection(source, 'fastify.get("/v1/settings"', '// PATCH /v1/settings - Update settings')
+    const settingsPatchSection = getSection(source, 'fastify.patch("/v1/settings"', '// Conversation Recovery Endpoints (for mobile app)')
+
+    expect(settingsGetSection).toContain("discordEnabled")
+    expect(settingsGetSection).toContain("discordBotToken: getMaskedDiscordBotToken(cfg)")
+    expect(settingsGetSection).toContain("discordDefaultProfileId")
+
+    expect(settingsPatchSection).toContain("body.discordEnabled")
+    expect(settingsPatchSection).toContain("body.discordBotToken !== DISCORD_SECRET_MASK")
+    expect(settingsPatchSection).toContain("updates.discordAllowUserIds")
+    expect(settingsPatchSection).toContain("getDiscordLifecycleAction(cfg, nextConfig)")
+  })
+
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
     const listInjectedMcpToolsSection = getSection(source, "const listInjectedMcpTools = async", "const callInjectedMcpTool = async")

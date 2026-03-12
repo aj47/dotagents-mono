@@ -10,7 +10,14 @@ import path from "path"
 import QRCode from "qrcode"
 import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
+import {
+  DISCORD_SECRET_MASK,
+  getDiscordLifecycleAction,
+  getDiscordResolvedDefaultProfileId,
+  getMaskedDiscordBotToken,
+} from "./discord-config"
 import { diagnosticsService } from "./diagnostics"
+import { discordService } from "./discord-service"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
@@ -1296,6 +1303,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? false,
         ttsEnabled: cfg.ttsEnabled ?? true,
         whatsappEnabled: cfg.whatsappEnabled ?? false,
+        discordEnabled: cfg.discordEnabled ?? false,
         // Agent settings
         mcpMaxIterations: cfg.mcpMaxIterations ?? 10,
         // Streamer Mode
@@ -1326,6 +1334,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
         whatsappAutoReply: cfg.whatsappAutoReply ?? false,
         whatsappLogMessages: cfg.whatsappLogMessages ?? false,
+        // Discord (extended)
+        discordBotToken: getMaskedDiscordBotToken(cfg),
+        discordDmEnabled: cfg.discordDmEnabled ?? true,
+        discordRequireMention: cfg.discordRequireMention ?? true,
+        discordAllowUserIds: cfg.discordAllowUserIds ?? [],
+        discordAllowGuildIds: cfg.discordAllowGuildIds ?? [],
+        discordAllowChannelIds: cfg.discordAllowChannelIds ?? [],
+        discordDefaultProfileId: getDiscordResolvedDefaultProfileId(cfg).profileId ?? "",
+        discordLogMessages: cfg.discordLogMessages ?? false,
         // Langfuse
         langfuseEnabled: cfg.langfuseEnabled ?? false,
         langfusePublicKey: cfg.langfusePublicKey ?? "",
@@ -1381,6 +1398,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.whatsappEnabled === "boolean") {
         updates.whatsappEnabled = body.whatsappEnabled
+      }
+      if (typeof body.discordEnabled === "boolean") {
+        updates.discordEnabled = body.discordEnabled
       }
       if (typeof body.mcpMaxIterations === "number" && body.mcpMaxIterations >= 1 && body.mcpMaxIterations <= 100) {
         // Coerce to integer to avoid surprising iteration counts with floats
@@ -1488,6 +1508,31 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.whatsappLogMessages === "boolean") {
         updates.whatsappLogMessages = body.whatsappLogMessages
       }
+      // Discord (extended)
+      if (typeof body.discordBotToken === "string" && body.discordBotToken !== DISCORD_SECRET_MASK) {
+        updates.discordBotToken = body.discordBotToken
+      }
+      if (typeof body.discordDmEnabled === "boolean") {
+        updates.discordDmEnabled = body.discordDmEnabled
+      }
+      if (typeof body.discordRequireMention === "boolean") {
+        updates.discordRequireMention = body.discordRequireMention
+      }
+      if (Array.isArray(body.discordAllowUserIds)) {
+        updates.discordAllowUserIds = body.discordAllowUserIds.filter((value: unknown) => typeof value === "string")
+      }
+      if (Array.isArray(body.discordAllowGuildIds)) {
+        updates.discordAllowGuildIds = body.discordAllowGuildIds.filter((value: unknown) => typeof value === "string")
+      }
+      if (Array.isArray(body.discordAllowChannelIds)) {
+        updates.discordAllowChannelIds = body.discordAllowChannelIds.filter((value: unknown) => typeof value === "string")
+      }
+      if (typeof body.discordDefaultProfileId === "string") {
+        updates.discordDefaultProfileId = body.discordDefaultProfileId
+      }
+      if (typeof body.discordLogMessages === "boolean") {
+        updates.discordLogMessages = body.discordLogMessages
+      }
       // Langfuse
       if (typeof body.langfuseEnabled === "boolean") {
         updates.langfuseEnabled = body.langfuseEnabled
@@ -1569,8 +1614,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "No valid settings to update" })
       }
 
-      configStore.save({ ...cfg, ...updates })
+      const nextConfig = { ...cfg, ...updates }
+      configStore.save(nextConfig)
       diagnosticsService.logInfo("remote-server", `Updated settings: ${Object.keys(updates).join(", ")}`)
+
+      const discordLifecycleAction = getDiscordLifecycleAction(cfg, nextConfig)
+      if (discordLifecycleAction === "start") {
+        await discordService.start()
+      } else if (discordLifecycleAction === "restart") {
+        await discordService.restart()
+      } else if (discordLifecycleAction === "stop") {
+        await discordService.stop()
+      }
 
       // Trigger WhatsApp MCP server lifecycle if whatsappEnabled changed
       if (updates.whatsappEnabled !== undefined) {

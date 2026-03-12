@@ -70,6 +70,7 @@ import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppr
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
+import { getDiscordLifecycleAction } from "./discord-config"
 import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -2516,15 +2517,12 @@ export const router = {
       }
 
       try {
-        const prevDiscordEnabled = !!(prev as any)?.discordEnabled
-        const nextDiscordEnabled = !!(merged as any)?.discordEnabled
-        const discordTokenChanged = (prev as any)?.discordBotToken !== (merged as any)?.discordBotToken
-
-        if (nextDiscordEnabled) {
-          if (!prevDiscordEnabled || discordTokenChanged) {
-            await discordService.restart()
-          }
-        } else if (prevDiscordEnabled) {
+        const discordLifecycleAction = getDiscordLifecycleAction(prev, merged)
+        if (discordLifecycleAction === "start") {
+          await discordService.start()
+        } else if (discordLifecycleAction === "restart") {
+          await discordService.restart()
+        } else if (discordLifecycleAction === "stop") {
           await discordService.stop()
         }
       } catch (_e) {

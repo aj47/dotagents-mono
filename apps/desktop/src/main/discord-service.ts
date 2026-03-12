@@ -4,6 +4,10 @@ import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
 import { runAgent } from "./remote-server"
 import {
+  getDiscordResolvedDefaultProfileId,
+  getDiscordResolvedToken,
+} from "./discord-config"
+import {
   getDiscordConversationId,
   getDiscordMessageRejectionReason,
   splitDiscordMessageContent,
@@ -23,6 +27,11 @@ export interface DiscordStatus {
   enabled: boolean
   connected: boolean
   connecting: boolean
+  tokenConfigured?: boolean
+  tokenSource?: "config" | "env"
+  defaultProfileId?: string
+  defaultProfileName?: string
+  defaultProfileSource?: "config" | "env"
   botId?: string
   botUsername?: string
   lastError?: string
@@ -63,9 +72,20 @@ class DiscordService {
 
   getStatus(): DiscordStatus {
     const cfg = configStore.get()
+    const token = getDiscordResolvedToken(cfg)
+    const defaultProfile = getDiscordResolvedDefaultProfileId(cfg)
+    const profile = defaultProfile.profileId
+      ? agentProfileService.getById(defaultProfile.profileId)
+      : undefined
+
     return {
       ...this.status,
       enabled: !!cfg.discordEnabled,
+      tokenConfigured: !!token.token,
+      tokenSource: token.source,
+      defaultProfileId: defaultProfile.profileId,
+      defaultProfileName: profile?.displayName,
+      defaultProfileSource: defaultProfile.source,
     }
   }
 
@@ -85,7 +105,7 @@ class DiscordService {
     }
 
     const cfg = configStore.get()
-    const token = cfg.discordBotToken?.trim()
+    const token = getDiscordResolvedToken(cfg).token
     if (!cfg.discordEnabled) {
       const error = "Discord integration is disabled"
       this.setStatus({ enabled: false, connected: false, connecting: false, lastError: error })
@@ -211,7 +231,7 @@ class DiscordService {
       return
     }
 
-    const profileId = cfg.discordDefaultProfileId?.trim()
+    const profileId = getDiscordResolvedDefaultProfileId(cfg).profileId
     if (!profileId) {
       await this.sendChunks(message, "Discord integration is enabled, but no default agent profile is configured yet.")
       this.addLog("warn", "Rejected Discord message because no default profile is configured")

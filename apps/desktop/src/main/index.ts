@@ -72,6 +72,16 @@ const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
 
+async function startDiscordIfConfigured(context: "headless" | "desktop"): Promise<void> {
+  const cfg = configStore.get()
+  if (!cfg.discordEnabled) return
+
+  const result = await discordService.start()
+  if (!result.success) {
+    logApp(`Discord integration failed to start (${context}): ${result.error || "Unknown error"}`)
+  }
+}
+
 function openPendingHubBundleInstall(): boolean {
   if (!pendingHubBundleHandoffPath) return false
   if (!isAccessibilityGranted()) {
@@ -262,6 +272,7 @@ app.whenReady().then(async () => {
       loopService.stopAllLoops()
       await acpService.shutdown().catch(() => {})
       await mcpService.cleanup().catch(() => {})
+      await discordService.stop().catch(() => {})
       await stopRemoteServer().catch(() => {})
       process.exit(exitCode)
     }
@@ -313,6 +324,8 @@ app.whenReady().then(async () => {
         return
       }
       logApp("Remote server started on 0.0.0.0 (headless)")
+
+      await startDiscordIfConfigured("headless")
 
       // Start headless CLI
       const { startHeadlessCLI } = await import("./headless-cli")
@@ -542,12 +555,7 @@ app.whenReady().then(async () => {
 	  } catch (_e) {}
 
 		  try {
-		    const cfg = configStore.get()
-		    if (cfg.discordEnabled) {
-		      discordService.start().catch((err) =>
-		        logApp(`Discord integration failed to start: ${err instanceof Error ? err.message : String(err)}`),
-		      )
-		    }
+		    void startDiscordIfConfigured("desktop")
 		  } catch (_e) {}
 
 
