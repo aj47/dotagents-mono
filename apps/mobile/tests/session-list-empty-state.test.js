@@ -20,3 +20,11 @@ test('keeps the empty-state primary action wide and centered for narrow mobile l
   assert.match(screenSource, /emptyStateButton:\s*\{[\s\S]*?width:\s*'100%' as const,[\s\S]*?maxWidth:\s*280,/);
   assert.match(screenSource, /emptyStateButtonText:\s*\{[\s\S]*?textAlign:\s*'center',/);
 });
+
+test('shows connection guidance instead of the chat list when the mobile app is disconnected', () => {
+  assert.match(screenSource, /const isConnected = connectionInfo\.state === 'connected';/);
+  assert.match(screenSource, /if \(!isConnected\) \{/);
+  assert.match(screenSource, /<Text style=\{styles\.disconnectedTitle\}>\{disconnectedTitle\}<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.emptyStateButtonText\}>Scan QR Code<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.disconnectedSecondaryButtonText\}>Connection Settings<\/Text>/);
+});

@@ -1217,7 +1217,14 @@ export default function SettingsScreen({ navigation }: any) {
         {/* Go to Chats button */}
         <TouchableOpacity
           style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
-          onPress={() => navigation.navigate('Sessions')}
+          onPress={() => {
+            if (navigation.canGoBack?.()) {
+              navigation.goBack();
+              return;
+            }
+
+            navigation.navigate('Sessions');
+          }}
           disabled={!(config.baseUrl && config.apiKey)}
           accessibilityRole="button"
           accessibilityLabel="Go to Chats"

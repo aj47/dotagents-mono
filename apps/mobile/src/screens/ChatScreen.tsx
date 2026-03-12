@@ -2202,6 +2202,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	});
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+  const openQrScanner = useCallback(() => {
+    navigation.navigate('ConnectionSettings', { openScanner: true });
+  }, [navigation]);
 
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
@@ -2388,6 +2391,23 @@ export default function ChatScreen({ route, navigation }: any) {
                 style={{ width: 32, height: 32 }}
                 resizeMode="contain"
               />
+            </View>
+          )}
+          {!sessionStore.isLoadingMessages && messages.length === 0 && (
+            <View style={styles.chatHomeCard}>
+              <Text style={styles.chatHomeTitle}>Start a chat</Text>
+              <Text style={styles.chatHomeSubtitle}>
+                Type a message, hold the mic, or scan your desktop QR code to pair this mobile app.
+              </Text>
+              <TouchableOpacity
+                style={styles.chatHomeScanButton}
+                onPress={openQrScanner}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Scan QR Code')}
+                accessibilityHint="Opens the QR scanner so you can pair this mobile app with your desktop."
+              >
+                <Text style={styles.chatHomeScanButtonText}>Scan QR Code</Text>
+              </TouchableOpacity>
             </View>
           )}
           {messages.map((m, i) => {
@@ -3206,6 +3226,37 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: spacing.xs,
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
+    },
+    chatHomeCard: {
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.md,
+      padding: spacing.lg,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      gap: spacing.md,
+    },
+    chatHomeTitle: {
+      ...theme.typography.h2,
+    },
+    chatHomeSubtitle: {
+      ...theme.typography.body,
+      color: theme.colors.mutedForeground,
+    },
+    chatHomeScanButton: {
+      alignSelf: 'flex-start',
+      minHeight: 44,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chatHomeScanButtonText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     input: {
       ...theme.input,

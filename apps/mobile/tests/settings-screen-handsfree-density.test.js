@@ -19,7 +19,8 @@ test('exposes wake and sleep phrase fields for handsfree tuning', () => {
   assert.match(settingsSource, />Sleep phrase<\/Text>/);
   assert.match(settingsSource, /placeholder='go to sleep'/);
   assert.match(settingsSource, />Send after silence<\/Text>/);
-  assert.match(settingsSource, /Wait this long without new speech before sending a hands-free message\./);
+  assert.match(settingsSource, /Wait this many milliseconds without new speech before sending a hands-free message\./);
+  assert.match(settingsSource, /Current: \{Math\.round\(\(draft\.handsFreeMessageDebounceMs \?\? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS\) \/ 10\) \/ 100\}s\./);
 });
 
 test('keeps internal voice diagnostics behind explicit settings toggles', () => {

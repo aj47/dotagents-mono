@@ -35,3 +35,8 @@ test('surfaces a clear error when QR scanning cannot get camera permission', () 
   assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{connectionError\}<\/Text>/);
   assert.match(screenSource, /accessibilityLabel="Scan QR Code"/);
 });
+
+test('supports opening the QR scanner immediately from navigation params', () => {
+  assert.match(screenSource, /route\?\.params\?\.openScanner/);
+  assert.match(screenSource, /void handleScanQR\(\)/);
+});

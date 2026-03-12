@@ -55,3 +55,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /assistantMessageRow:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'flex-start'/);
   assert.match(screenSource, /<View style=\{m\.role === 'assistant' \? styles\.assistantMessageRow : undefined\}>[\s\S]*?speakMessage\(i, visibleMessageContent\)/);
 });
+
+test('adds a visible Scan QR Code action to the empty mobile chat home state', () => {
+  assert.match(screenSource, /!sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
+  assert.match(screenSource, /navigation\.navigate\('ConnectionSettings', \{ openScanner: true \}\)/);
+  assert.match(screenSource, /<Text style=\{styles\.chatHomeScanButtonText\}>Scan QR Code<\/Text>/);
+});

@@ -356,7 +356,7 @@ function Navigation() {
                   onReady={() => { isNavigationReady.current = true; }}
                 >
                   <Stack.Navigator
-                    initialRouteName="Settings"
+                    initialRouteName="Sessions"
                     screenOptions={({ route }) => ({
                       headerTitleStyle: { ...theme.typography.h2 },
                       headerStyle: { backgroundColor: theme.colors.card },
@@ -383,7 +383,7 @@ function Navigation() {
                     <Stack.Screen
                       name="Settings"
                       component={SettingsScreen}
-                      options={{ title: 'DotAgents' }}
+                      options={{ title: 'DotAgents', presentation: 'modal' }}
                     />
                     <Stack.Screen
                       name="ConnectionSettings"

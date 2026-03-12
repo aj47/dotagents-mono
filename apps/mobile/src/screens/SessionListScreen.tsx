@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
+import { useConfigContext } from '../store/config';
 import { useSessionContext, SessionStore } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -25,8 +26,9 @@ export default function SessionListScreen({ navigation }: Props) {
   const { theme, isDark } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const { config } = useConfigContext();
   const connectionManager = useConnectionManager();
-  const { connectionInfo } = useTunnelConnection();
+  const { connectionInfo, isInitialized } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
 
@@ -589,6 +591,19 @@ export default function SessionListScreen({ navigation }: Props) {
     };
   }, [rfCleanupSubs]);
 
+  const handleOpenSettings = useCallback(() => {
+    navigation.navigate('Settings');
+  }, [navigation]);
+
+  const handleOpenConnectionSettings = useCallback((openScanner = false) => {
+    if (openScanner) {
+      navigation.navigate('ConnectionSettings', { openScanner: true });
+      return;
+    }
+
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
@@ -627,7 +642,7 @@ export default function SessionListScreen({ navigation }: Props) {
             compact
           />
           <TouchableOpacity
-            onPress={() => navigation.navigate('Settings')}
+            onPress={handleOpenSettings}
             style={styles.headerSettingsButton}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel('Open settings')}
@@ -638,13 +653,15 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleOpenSettings]);
   const insets = useSafeAreaInsets();
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
+  const isConnected = connectionInfo.state === 'connected';
+  const hasConfiguredConnection = Boolean(config.baseUrl && config.apiKey);
 
-  if (!sessionStore.ready) {
+  if (!sessionStore.ready || !isInitialized) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <Image
@@ -751,6 +768,22 @@ export default function SessionListScreen({ navigation }: Props) {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const disconnectedTitle = connectionInfo.state === 'connecting' || connectionInfo.state === 'reconnecting'
+    ? 'Connecting to your desktop'
+    : connectionInfo.state === 'failed'
+      ? 'Reconnect to DotAgents'
+      : hasConfiguredConnection
+        ? 'Reconnect to your chats'
+        : 'Connect DotAgents to get started';
+
+  const disconnectedSubtitle = connectionInfo.state === 'connecting' || connectionInfo.state === 'reconnecting'
+    ? 'We are pairing with your desktop. Your conversation history will appear here as soon as the connection is ready.'
+    : connectionInfo.state === 'failed'
+      ? 'Open connection settings or scan a fresh QR code to restore syncing and get back into your conversations.'
+      : hasConfiguredConnection
+        ? 'Your mobile app is set up, but it is not currently connected. Reconnect to load your recent conversations.'
+        : 'Scan the QR code from the desktop app to pair this device and bring your conversations into mobile.';
+
   // Build a set of stub session IDs for display purposes
   const stubSessionIds = useMemo(() => {
     const ids = new Set<string>();
@@ -810,6 +843,44 @@ export default function SessionListScreen({ navigation }: Props) {
     </View>
   );
 
+  const DisconnectedState = () => (
+    <View style={styles.disconnectedState}>
+      <View style={styles.disconnectedCard}>
+        <View style={styles.disconnectedStatusRow}>
+          <ConnectionStatusIndicator
+            state={connectionInfo.state}
+            retryCount={connectionInfo.retryCount}
+          />
+        </View>
+        <Text style={styles.disconnectedTitle}>{disconnectedTitle}</Text>
+        <Text style={styles.disconnectedSubtitle}>{disconnectedSubtitle}</Text>
+        {!!config.baseUrl && (
+          <Text style={styles.disconnectedMeta} numberOfLines={2}>
+            {config.baseUrl}
+          </Text>
+        )}
+        <TouchableOpacity
+          style={[styles.newButton, styles.sessionActionTouchTarget, styles.disconnectedPrimaryButton]}
+          onPress={() => handleOpenConnectionSettings(true)}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Scan QR Code')}
+          accessibilityHint="Opens the QR scanner to pair this mobile app with your desktop."
+        >
+          <Text style={styles.emptyStateButtonText}>Scan QR Code</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.disconnectedSecondaryButton, styles.sessionActionTouchTarget]}
+          onPress={() => handleOpenConnectionSettings(false)}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Connection Settings')}
+          accessibilityHint="Opens connection settings and pairing details."
+        >
+          <Text style={styles.disconnectedSecondaryButtonText}>Connection Settings</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const rfHintText = rfStatus === 'listening'
     ? 'Release to send...'
     : rfStatus === 'sending'
@@ -825,6 +896,14 @@ export default function SessionListScreen({ navigation }: Props) {
               : rfStatus === 'error'
                 ? 'Rapid Fire failed. Try again.'
                 : 'Hold to talk (Rapid Fire)';
+
+  if (!isConnected) {
+    return (
+      <View style={[styles.container, styles.disconnectedContainer, { paddingBottom: insets.bottom }] }>
+        <DisconnectedState />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -987,6 +1066,53 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     list: {
       padding: spacing.md,
+    },
+    disconnectedContainer: {
+      justifyContent: 'center',
+      padding: spacing.md,
+    },
+    disconnectedState: {
+      width: '100%' as const,
+      alignItems: 'center',
+    },
+    disconnectedCard: {
+      width: '100%' as const,
+      maxWidth: 420,
+      backgroundColor: theme.colors.card,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.xl,
+      gap: spacing.md,
+    },
+    disconnectedStatusRow: {
+      alignItems: 'flex-start',
+    },
+    disconnectedTitle: {
+      ...theme.typography.h2,
+    },
+    disconnectedSubtitle: {
+      ...theme.typography.body,
+      color: theme.colors.mutedForeground,
+    },
+    disconnectedMeta: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+    },
+    disconnectedPrimaryButton: {
+      width: '100%' as const,
+    },
+    disconnectedSecondaryButton: {
+      width: '100%' as const,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+    },
+    disconnectedSecondaryButtonText: {
+      color: theme.colors.foreground,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     emptyList: {
       flex: 1,

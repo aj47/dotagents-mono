@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfig, saveConfig, useConfigContext } from '../store/config';
@@ -37,7 +37,7 @@ function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?:
   return null;
 }
 
-export default function ConnectionSettingsScreen({ navigation }: any) {
+export default function ConnectionSettingsScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
@@ -49,6 +49,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const { connect: tunnelConnect, disconnect: tunnelDisconnect } = useTunnelConnection();
+  const autoOpenScannerHandledRef = useRef(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -152,7 +153,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
     navigation.goBack();
   };
 
-  const handleScanQR = async () => {
+  const handleScanQR = useCallback(async () => {
     setConnectionError(null);
 
     const qrPermissionError = await resolveQrScannerActivation({
@@ -168,7 +169,21 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
     setScanned(false);
     setShowScanner(true);
-  };
+  }, [permission?.granted, requestPermission]);
+
+  useEffect(() => {
+    if (!route?.params?.openScanner) {
+      autoOpenScannerHandledRef.current = false;
+      return;
+    }
+
+    if (autoOpenScannerHandledRef.current) {
+      return;
+    }
+
+    autoOpenScannerHandledRef.current = true;
+    void handleScanQR();
+  }, [handleScanQR, route?.params?.openScanner]);
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
