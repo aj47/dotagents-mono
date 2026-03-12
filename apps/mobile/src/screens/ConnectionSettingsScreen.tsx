@@ -183,7 +183,8 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
 
     autoOpenScannerHandledRef.current = true;
     void handleScanQR();
-  }, [handleScanQR, route?.params?.openScanner]);
+    navigation.setParams({ openScanner: undefined });
+  }, [handleScanQR, navigation, route?.params?.openScanner]);
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;

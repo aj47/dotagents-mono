@@ -39,4 +39,5 @@ test('surfaces a clear error when QR scanning cannot get camera permission', () 
 test('supports opening the QR scanner immediately from navigation params', () => {
   assert.match(screenSource, /route\?\.params\?\.openScanner/);
   assert.match(screenSource, /void handleScanQR\(\)/);
+  assert.match(screenSource, /navigation\.setParams\(\{ openScanner: undefined \}\)/);
 });
