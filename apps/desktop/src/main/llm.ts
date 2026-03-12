@@ -36,6 +36,7 @@ import {
   getSessionUserResponse,
   getSessionUserResponseHistory,
 } from "./session-user-response-store"
+import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
@@ -541,10 +542,10 @@ export async function processTranscriptWithAgentMode(
     const conversationTitle = session?.conversationTitle
     const profileName = session?.profileSnapshot?.profileName
     const storedUserResponse = getSessionUserResponse(currentSessionId)
-    const normalizedStoredUserResponse =
-      typeof storedUserResponse === "string" && storedUserResponse.trim().length > 0
-        ? storedUserResponse
-        : undefined
+    const normalizedStoredUserResponse = resolveLatestUserFacingResponse({
+      storedResponse: storedUserResponse,
+      conversationHistory: update.conversationHistory as any,
+    })
     const isKillSwitchCompletion =
       update.isComplete &&
       typeof update.finalContent === "string" &&
@@ -2063,7 +2064,10 @@ Return ONLY JSON per schema.`,
         }
 
         // Skip post-verify summary if respond_to_user already provided a response (#1084)
-        const existingUserResponse1 = getSessionUserResponse(currentSessionId)
+        const existingUserResponse1 = resolveLatestUserFacingResponse({
+          storedResponse: getSessionUserResponse(currentSessionId),
+          conversationHistory: conversationHistory as any,
+        })
         if (existingUserResponse1?.trim().length) {
           finalContent = existingUserResponse1
           if (finalContent.trim().length > 0) {
@@ -2214,7 +2218,11 @@ Return ONLY JSON per schema.`,
         // spin until maxIterations. The noOpCount threshold (2) matches the one
         // used in the !hasToolCalls path so both branches converge consistently.
         if (noOpCount >= 2) {
-          const storedResponse = getSessionUserResponse(currentSessionId)
+          const storedResponse = resolveLatestUserFacingResponse({
+            storedResponse: getSessionUserResponse(currentSessionId),
+            plannedToolCalls: toolCallsArray,
+            conversationHistory: conversationHistory as any,
+          })
           if (storedResponse?.trim().length) {
             // Already have a user-facing response — skip tool execution and break
             finalContent = storedResponse
@@ -2658,7 +2666,10 @@ Return ONLY JSON per schema.`,
       const hasMinimalContent = lastAssistantContent.trim().length < 50
 
       // Skip summary generation if respond_to_user already provided a response (#1084)
-      const existingUserResponse = getSessionUserResponse(currentSessionId)
+      const existingUserResponse = resolveLatestUserFacingResponse({
+        storedResponse: getSessionUserResponse(currentSessionId),
+        conversationHistory: conversationHistory as any,
+      })
       let respondToUserAlreadyInHistory = false
       if (existingUserResponse?.trim().length) {
         finalContent = existingUserResponse
@@ -2834,7 +2845,10 @@ Return ONLY JSON per schema.`,
         // Skip when forced incomplete - the fallback message below will be the only assistant message
         // Skip summary generation if respond_to_user already provided a response (#1084)
         // Also skip if respond_to_user response was already added to history above
-        const existingUserResponse2 = getSessionUserResponse(currentSessionId)
+        const existingUserResponse2 = resolveLatestUserFacingResponse({
+          storedResponse: getSessionUserResponse(currentSessionId),
+          conversationHistory: conversationHistory as any,
+        })
         if (existingUserResponse2?.trim().length && !respondToUserAlreadyInHistory) {
           finalContent = existingUserResponse2
           if (finalContent.trim().length > 0) {

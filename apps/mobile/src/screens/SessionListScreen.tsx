@@ -597,6 +597,10 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('Settings');
   }, [navigation]);
 
+  const handleOpenSplitView = useCallback(() => {
+    navigation.navigate('SplitChat');
+  }, [navigation]);
+
   const handleOpenConnectionSettings = useCallback((openScanner = false) => {
     if (openScanner) {
       navigation.navigate('ConnectionSettings', { openScanner: true });
@@ -644,6 +648,15 @@ export default function SessionListScreen({ navigation }: Props) {
             compact
           />
           <TouchableOpacity
+            onPress={handleOpenSplitView}
+            style={styles.headerSettingsButton}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Open split view')}
+            accessibilityHint="Opens two chats at once for comparison"
+          >
+            <Text style={{ fontSize: 17, color: theme.colors.foreground }}>◫</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={handleOpenSettings}
             style={styles.headerSettingsButton}
             accessibilityRole="button"
@@ -655,7 +668,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleOpenSettings]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleOpenSettings, handleOpenSplitView]);
   const insets = useSafeAreaInsets();
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
@@ -760,7 +773,7 @@ export default function SessionListScreen({ navigation }: Props) {
     const date = new Date(timestamp);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
