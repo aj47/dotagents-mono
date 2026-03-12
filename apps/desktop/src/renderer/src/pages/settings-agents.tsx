@@ -40,6 +40,7 @@ type ConnectionType = AgentProfileConnectionType
 
 interface EditingAgent {
   id?: string
+  presetKey?: AgentPresetKey
   displayName: string
   description: string
   systemPrompt: string
@@ -58,19 +59,83 @@ interface EditingAgent {
   avatarDataUrl?: string | null
 }
 
+type AgentPresetKey = "auggie" | "claude-code" | "codex" | "opencode"
+
+interface AgentPresetDefinition extends Partial<EditingAgent> {
+  displayName: string
+  description: string
+  docsUrl?: string
+  installCommand?: string
+  authHint?: string
+  cwdHint?: string
+  verifyArgs?: string[]
+}
+
+interface ExternalAgentCommandVerificationResult {
+  ok: boolean
+  resolvedCommand?: string
+  details?: string
+  error?: string
+  warnings?: string[]
+}
+
 type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
 
-const AGENT_PRESETS: Record<string, Partial<EditingAgent>> = {
+const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   auggie: {
     displayName: "Auggie (Augment Code)",
     description: "Augment Code's AI coding assistant with native ACP support",
     connectionType: "acp", connectionCommand: "auggie", connectionArgs: "--acp", enabled: true,
+    docsUrl: "https://www.augmentcode.com/",
+    cwdHint: "Point the working directory at the repo you want Auggie to operate in.",
+    verifyArgs: ["--help"],
   },
   "claude-code": {
     displayName: "Claude Code",
     description: "Anthropic's Claude for coding tasks via ACP adapter",
     connectionType: "acp", connectionCommand: "claude-code-acp", connectionArgs: "", enabled: true,
+    docsUrl: "https://github.com/zed-industries/claude-code-acp",
+    installCommand: "npm install -g @zed-industries/claude-code-acp",
+    authHint: "Sign in to Claude Code in your terminal before verifying if this is your first run.",
+    cwdHint: "Use your repo root so Claude Code inherits the right project context.",
+    verifyArgs: ["--help"],
   },
+  codex: {
+    displayName: "Codex",
+    description: "OpenAI Codex via the official ACP adapter",
+    connectionType: "acp", connectionCommand: "codex-acp", connectionArgs: "", enabled: true,
+    docsUrl: "https://github.com/zed-industries/codex-acp",
+    installCommand: "npm install -g @zed-industries/codex-acp",
+    authHint: "Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying.",
+    cwdHint: "Set the working directory to the project Codex should inspect and edit.",
+    verifyArgs: ["--help"],
+  },
+  opencode: {
+    displayName: "OpenCode",
+    description: "OpenCode's native ACP server for terminal-first agent workflows",
+    connectionType: "acp", connectionCommand: "opencode", connectionArgs: "acp", enabled: true,
+    docsUrl: "https://opencode.ai/docs/acp/",
+    installCommand: "npm install -g opencode-ai",
+    authHint: "OpenCode stores provider auth after you run opencode and complete /connect in the TUI.",
+    cwdHint: "Use your workspace root so opencode acp can load the right project and config.",
+    verifyArgs: ["--help"],
+  },
+}
+
+function detectPresetKey(agent?: Partial<EditingAgent> | null): AgentPresetKey | undefined {
+  if (!agent) return undefined
+  const args = (agent.connectionArgs || "").trim()
+
+  if (agent.connectionType === "acp" && agent.connectionCommand === "auggie" && args === "--acp") return "auggie"
+  if (agent.connectionType === "acp" && agent.connectionCommand === "claude-code-acp") return "claude-code"
+  if (agent.connectionType === "acp" && agent.connectionCommand === "codex-acp") return "codex"
+  if (agent.connectionType === "acp" && agent.connectionCommand === "opencode" && args === "acp") return "opencode"
+
+  return undefined
+}
+
+function buildCommandPreview(command?: string, args?: string): string {
+  return [command?.trim(), args?.trim()].filter(Boolean).join(" ")
 }
 
 function emptyAgent(): EditingAgent {
@@ -130,6 +195,8 @@ export function SettingsAgents() {
   const [prefilledImportFilePath, setPrefilledImportFilePath] = useState<string | null>(null)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
+  const [commandVerification, setCommandVerification] = useState<ExternalAgentCommandVerificationResult | null>(null)
+  const [isVerifyingCommand, setIsVerifyingCommand] = useState(false)
 
   useEffect(() => {
     loadAgents()
@@ -150,6 +217,10 @@ export function SettingsAgents() {
     nextParams.delete("installBundle")
     setSearchParams(nextParams, { replace: true })
   }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    setCommandVerification(null)
+  }, [editing?.presetKey, editing?.connectionType, editing?.connectionCommand, editing?.connectionArgs, editing?.connectionCwd])
 
   // Handle URL-driven navigation: ?edit=<agentId> opens edit, ?view=list returns to list
   useEffect(() => {
@@ -190,16 +261,23 @@ export function SettingsAgents() {
     try { const s = await tipcClient.getSkills(); setSkills(s) } catch {}
   }
 
-  const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()) }
+  const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()); setCommandVerification(null) }
+
+  const applyPreset = (presetKey: AgentPresetKey) => {
+    const preset = AGENT_PRESETS[presetKey]
+    setEditing({ ...emptyAgent(), ...preset, presetKey })
+    setCommandVerification(null)
+  }
 
   const handleEdit = (agent: AgentProfile) => {
     setIsCreating(false)
+    const connectionArgs = agent.connection.args?.join(" ")
     setEditing({
       id: agent.id, displayName: agent.displayName,
       description: agent.description ?? "", systemPrompt: agent.systemPrompt ?? "",
       guidelines: agent.guidelines ?? "", connectionType: agent.connection.type,
       connectionCommand: agent.connection.command,
-      connectionArgs: agent.connection.args?.join(" "),
+      connectionArgs,
       connectionBaseUrl: agent.connection.baseUrl,
       connectionCwd: agent.connection.cwd,
       enabled: agent.enabled, autoSpawn: agent.autoSpawn,
@@ -208,11 +286,24 @@ export function SettingsAgents() {
       skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined,
       properties: agent.properties ? { ...agent.properties } : {},
       avatarDataUrl: agent.avatarDataUrl ?? null,
+      presetKey: detectPresetKey({
+        connectionType: agent.connection.type,
+        connectionCommand: agent.connection.command,
+        connectionArgs,
+      }),
     })
   }
 
   const handleSave = async () => {
     if (!editing) return
+    if ((editing.connectionType === "acp" || editing.connectionType === "stdio") && !editing.connectionCommand?.trim()) {
+      toast.error("Add a command for ACP or stdio agents before saving.")
+      return
+    }
+    if (editing.connectionType === "remote" && !editing.connectionBaseUrl?.trim()) {
+      toast.error("Add a base URL before saving a remote agent.")
+      return
+    }
     const connection: AgentProfileConnection = {
       type: editing.connectionType, command: editing.connectionCommand,
       args: editing.connectionArgs?.split(" ").filter(Boolean),
@@ -235,7 +326,7 @@ export function SettingsAgents() {
     }
     if (isCreating) await tipcClient.createAgentProfile({ profile: data })
     else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
-    setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); loadAgents()
+    setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); setCommandVerification(null); loadAgents()
     // Invalidate sidebar query so it reflects changes immediately
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
   }
@@ -246,7 +337,7 @@ export function SettingsAgents() {
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
   }
 
-  const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue("") }
+  const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); setCommandVerification(null) }
 
   // Derived tool data
   const builtinTools = allTools.filter(t => t.serverName === "dotagents-internal")
@@ -447,6 +538,33 @@ export function SettingsAgents() {
     }
   }
 
+  const selectedPresetKey = editing ? editing.presetKey || detectPresetKey(editing) : undefined
+  const selectedPreset = selectedPresetKey ? AGENT_PRESETS[selectedPresetKey] : undefined
+
+  const handleVerifyExternalAgent = async () => {
+    if (!editing || (editing.connectionType !== "acp" && editing.connectionType !== "stdio")) return
+
+    setIsVerifyingCommand(true)
+    try {
+      const result = await tipcClient.verifyExternalAgentCommand({
+        command: editing.connectionCommand || "",
+        args: editing.connectionArgs?.split(" ").filter(Boolean),
+        cwd: editing.connectionCwd || undefined,
+        probeArgs: selectedPreset?.verifyArgs,
+      })
+      setCommandVerification(result)
+
+      if (result.ok) toast.success(result.details || "External agent command looks ready.")
+      else toast.error(result.error || "External agent verification failed.")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setCommandVerification({ ok: false, error: message })
+      toast.error(message)
+    } finally {
+      setIsVerifyingCommand(false)
+    }
+  }
+
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       {!editing && (
@@ -555,6 +673,7 @@ export function SettingsAgents() {
   function renderEditForm() {
     if (!editing) return null
     const isInternal = editing.connectionType === "internal"
+    const externalCommandPreview = buildCommandPreview(editing.connectionCommand, editing.connectionArgs)
 
     return (
       <Card className="max-w-5xl">
@@ -605,8 +724,8 @@ export function SettingsAgents() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(AGENT_PRESETS).map(([key, preset]) => (
-                      <Button key={key} variant="outline" size="sm" className="h-8 px-2.5 text-xs"
-                        onClick={() => setEditing({ ...emptyAgent(), ...preset })}
+                      <Button key={key} type="button" variant="outline" size="sm" className="h-8 px-2.5 text-xs"
+                        onClick={() => applyPreset(key as AgentPresetKey)}
                       >{preset.displayName}</Button>
                     ))}
                   </div>
@@ -685,6 +804,72 @@ export function SettingsAgents() {
                   <div className="space-y-2">
                     <Label htmlFor="cwd">Working Directory (optional)</Label>
                     <Input id="cwd" value={editing.connectionCwd ?? ""} onChange={e => setEditing({ ...editing, connectionCwd: e.target.value })} placeholder="e.g., /path/to/project or leave empty" />
+                  </div>
+                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Label>{selectedPreset ? `${selectedPreset.displayName} Setup` : "External Agent Setup"}</Label>
+                          {selectedPresetKey && <Badge variant="secondary" className="text-[10px] uppercase">Preset</Badge>}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {selectedPreset?.description || "Verify that DotAgents can resolve your command and working directory before saving."}
+                        </p>
+                      </div>
+                      {selectedPreset?.docsUrl && (
+                        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" onClick={() => window.open(selectedPreset.docsUrl, "_blank")}>Open docs<ExternalLink className="h-3.5 w-3.5" /></Button>
+                      )}
+                    </div>
+
+                    {(selectedPreset?.installCommand || selectedPreset?.authHint || selectedPreset?.cwdHint) && (
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {selectedPreset?.installCommand && (
+                          <div className="space-y-1 rounded-md border bg-background/80 px-2.5 py-2">
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Install</p>
+                            <p className="font-mono text-[11px] leading-relaxed">{selectedPreset.installCommand}</p>
+                          </div>
+                        )}
+                        {selectedPreset?.authHint && (
+                          <div className="space-y-1 rounded-md border bg-background/80 px-2.5 py-2">
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Auth</p>
+                            <p className="text-[11px] leading-relaxed text-muted-foreground">{selectedPreset.authHint}</p>
+                          </div>
+                        )}
+                        {selectedPreset?.cwdHint && (
+                          <div className="space-y-1 rounded-md border bg-background/80 px-2.5 py-2">
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Working Directory</p>
+                            <p className="text-[11px] leading-relaxed text-muted-foreground">{selectedPreset.cwdHint}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs" disabled={isVerifyingCommand} onClick={handleVerifyExternalAgent}>
+                        <RefreshCw className={`h-3.5 w-3.5 ${isVerifyingCommand ? "animate-spin" : ""}`} />Verify Setup
+                      </Button>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedPreset?.verifyArgs?.length
+                          ? `Runs ${buildCommandPreview(editing.connectionCommand, `${editing.connectionArgs || ""} ${selectedPreset.verifyArgs.join(" ")}`)} to confirm the command is runnable.`
+                          : "Checks the command path and working directory before you save."}
+                      </p>
+                    </div>
+
+                    {commandVerification && (
+                      <div className={`space-y-1 rounded-md border px-2.5 py-2 text-[11px] ${commandVerification.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5"}`}>
+                        <p className="font-medium">{commandVerification.ok ? "Verification passed" : "Verification needs attention"}</p>
+                        <p className="text-muted-foreground">{commandVerification.details || commandVerification.error}</p>
+                        {commandVerification.resolvedCommand && (
+                          <p className="font-mono text-[10px] text-muted-foreground">Resolved command: {commandVerification.resolvedCommand}</p>
+                        )}
+                        {externalCommandPreview && (
+                          <p className="font-mono text-[10px] text-muted-foreground">Configured command: {externalCommandPreview}</p>
+                        )}
+                        {commandVerification.warnings?.map((warning, index) => (
+                          <p key={`${warning}-${index}`} className="text-[10px] text-muted-foreground">{warning}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

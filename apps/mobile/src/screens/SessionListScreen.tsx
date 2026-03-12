@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, useWindowDimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
 import { useTheme } from '../ui/ThemeProvider';
@@ -13,7 +13,8 @@ import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SessionListItem, isStubSession } from '../types/session';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
+import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -31,6 +32,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const { connectionInfo, isInitialized } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -660,6 +662,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const sessions = sessionStore.getSessionList();
   const isConnected = connectionInfo.state === 'connected';
   const hasConfiguredConnection = Boolean(config.baseUrl && config.apiKey);
+  const hasActiveSearch = searchQuery.trim().length > 0;
 
   if (!sessionStore.ready || !isInitialized) {
     return (
@@ -793,10 +796,19 @@ export default function SessionListScreen({ navigation }: Props) {
     return ids;
   }, [sessionStore.sessions]);
 
-  const renderSession = ({ item }: { item: SessionListItem }) => {
+  const filteredSessions = useMemo(
+    () => filterSessionSearchResults(sessionStore.sessions, searchQuery),
+    [sessionStore.sessions, searchQuery],
+  );
+
+  const searchHelperText = stubSessionIds.size > 0
+    ? 'Searches titles, previews, and loaded message text. Desktop chats without downloaded messages match cached preview until opened.'
+    : 'Searches titles, previews, and loaded message text.';
+
+  const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
-    const sessionPreviewText = item.preview || 'No messages yet';
+    const sessionPreviewText = (item.searchPreview ?? item.preview) || 'No messages yet';
     const sessionMetaLabel = `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`;
 
     return (
@@ -881,6 +893,26 @@ export default function SessionListScreen({ navigation }: Props) {
     </View>
   );
 
+  const SearchEmptyState = () => (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyStateTextGroup}>
+        <Text style={styles.emptyTitle}>No matching chats</Text>
+        <Text style={styles.emptySubtitle}>
+          Try a different keyword or clear search. {searchHelperText}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+        onPress={() => setSearchQuery('')}
+        accessibilityRole="button"
+        accessibilityLabel={createButtonAccessibilityLabel('Clear chat search')}
+        accessibilityHint="Clears the current chat search query."
+      >
+        <Text style={styles.emptyStateButtonText}>Clear search</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const rfHintText = rfStatus === 'listening'
     ? 'Release to send...'
     : rfStatus === 'sending'
@@ -939,12 +971,46 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       </View>
 
+      <View style={styles.searchSection}>
+        <View style={styles.searchInputRow}>
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder='Search chats...'
+            placeholderTextColor={theme.colors.mutedForeground}
+            accessibilityLabel={createTextInputAccessibilityLabel('Chat search')}
+            accessibilityHint="Search chat titles, previews, and loaded message text."
+            autoCapitalize='none'
+            autoCorrect={false}
+            returnKeyType='search'
+          />
+          {hasActiveSearch && (
+            <TouchableOpacity
+              style={styles.searchClearButton}
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Clear chat search')}
+              accessibilityHint="Clears the current chat search query."
+            >
+              <Text style={styles.searchClearButtonText}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={styles.searchHelperText}>
+          {hasActiveSearch
+            ? `${filteredSessions.length} of ${sessions.length} chats · ${searchHelperText}`
+            : searchHelperText}
+        </Text>
+      </View>
+
       <FlatList
-        data={sessions}
+        data={filteredSessions}
         renderItem={renderSession}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={sessions.length === 0 ? styles.emptyList : styles.list}
-        ListEmptyComponent={EmptyState}
+        contentContainerStyle={filteredSessions.length === 0 ? styles.emptyList : styles.list}
+        ListEmptyComponent={hasActiveSearch ? SearchEmptyState : EmptyState}
+        keyboardShouldPersistTaps="handled"
       />
 
       {/* Rapid Fire hold-to-speak button */}
@@ -1063,6 +1129,38 @@ function createStyles(theme: Theme, screenHeight: number) {
         horizontalMargin: 0,
       }),
       marginLeft: spacing.xs,
+    },
+    searchSection: {
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.xs,
+      gap: spacing.xs,
+    },
+    searchInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    searchInput: {
+      ...theme.input,
+      flex: 1,
+    },
+    searchClearButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+    },
+    searchClearButtonText: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    searchHelperText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      paddingHorizontal: 2,
     },
     list: {
       padding: spacing.md,

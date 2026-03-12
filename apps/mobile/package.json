@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "test": "pnpm run test:node && pnpm run test:vitest",
     "test:node": "node --test \"tests/*.js\"",
-    "test:vitest": "vitest run src/lib/accessibility.test.ts src/lib/voice/phraseMatcher.test.ts src/lib/voice/useHandsFreeController.test.ts src/lib/voice/useSpeechRecognizer.test.ts src/store/config.test.ts src/screens/agent-edit-connection-utils.test.ts src/screens/connection-settings-qr.test.ts"
+    "test:vitest": "vitest run src/lib/accessibility.test.ts src/lib/voice/phraseMatcher.test.ts src/lib/voice/useHandsFreeController.test.ts src/lib/voice/useSpeechRecognizer.test.ts src/store/config.test.ts src/screens/agent-edit-connection-utils.test.ts src/screens/connection-settings-qr.test.ts src/screens/session-list-search.test.ts"
   },
   "dependencies": {
     "@dotagents/shared": "workspace:^",
