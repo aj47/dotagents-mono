@@ -15,6 +15,12 @@ describe("respond-to-user-utils", () => {
     })).toBe("Done\n\n![Preview](/tmp/result.png)")
   })
 
+  it("extracts image markdown from respond_to_user images[].url", () => {
+    expect(extractRespondToUserContentFromArgs({
+      images: [{ alt: "Preview", url: "https://example.com/result.png" }],
+    })).toBe("![Preview](https://example.com/result.png)")
+  })
+
   it("returns the latest respond_to_user content from tool calls", () => {
     expect(getLatestRespondToUserContentFromToolCalls([
       { name: "web_search", arguments: { query: "ignore" } },
