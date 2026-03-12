@@ -3,10 +3,6 @@ import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate } from "@shared/types"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import {
-  Activity,
-  CheckCircle2,
-  XCircle,
-  Moon,
   X,
   Minimize2,
   Maximize2,
@@ -21,9 +17,9 @@ import {
   Check,
   Loader2,
   Volume2,
+  XCircle,
 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
-import { Badge } from "@renderer/components/ui/badge"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useMessageQueue, useIsQueuePaused } from "@renderer/stores"
@@ -324,24 +320,29 @@ export function SessionTile({
     document.addEventListener("mouseup", handleMouseUp)
   }, [tileHeight])
 
-  // Get status icon and color
+  // Get status color dot
   const getStatusIndicator = () => {
-    if (hasPendingApproval) {
-      return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
-    }
-    if (isActive) {
-      return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
-    }
-    if (isSnoozed) {
-      return <Moon className="h-4 w-4 text-muted-foreground" />
-    }
-    if (isComplete) {
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />
-    }
-    if (hasError || isStopped) {
-      return <XCircle className="h-4 w-4 text-red-500" />
-    }
-    return <Activity className="h-4 w-4 text-muted-foreground" />
+    const dotColor = hasPendingApproval
+      ? "bg-amber-500"
+      : isActive
+        ? "bg-blue-500"
+        : isSnoozed
+          ? "bg-gray-400"
+          : isComplete
+            ? "bg-green-500"
+            : (hasError || isStopped)
+              ? "bg-red-500"
+              : "bg-gray-400"
+    const shouldPulse = hasPendingApproval || isActive
+    return (
+      <span
+        className={cn(
+          "inline-block h-2 w-2 shrink-0 rounded-full",
+          dotColor,
+          shouldPulse && "animate-pulse",
+        )}
+      />
+    )
   }
 
   // Get title - prefer conversationTitle, fall back to progress data
@@ -453,11 +454,6 @@ export function SessionTile({
           <span className="flex-1 truncate font-medium text-sm">
             {getTitle()}
           </span>
-          {hasPendingApproval && (
-            <Badge variant="outline" className="text-amber-600 border-amber-500 text-xs">
-              Approval
-            </Badge>
-          )}
           {/* Collapse indicator chevron */}
           {isCollapsed ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground" />}
         </div>
@@ -713,14 +709,6 @@ export function SessionTile({
               <span className="text-[10px] truncate max-w-[100px]" title={`${progress.modelInfo.provider}: ${progress.modelInfo.model}`}>
                 {progress.modelInfo.provider}/{progress.modelInfo.model.split('/').pop()?.substring(0, 15)}
               </span>
-            )}
-            {progress?.acpSessionInfo?.agentTitle && (
-              <>
-                <span className="text-muted-foreground/50">•</span>
-                <span className="text-[10px] truncate max-w-[80px] text-blue-500/70" title={`Agent: ${progress.acpSessionInfo.agentTitle}`}>
-                  {progress.acpSessionInfo.agentTitle}
-                </span>
-              </>
             )}
             {session.currentIteration && session.maxIterations && (
               <span>

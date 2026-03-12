@@ -3631,19 +3631,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const getStatusIndicator = () => {
     const hasPendingApproval = !!progress.pendingToolApproval
     const isSnoozed = progress.isSnoozed
-    if (hasPendingApproval) {
-      return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
-    }
-    if (!isComplete) {
-      return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
-    }
-    if (isSnoozed) {
-      return <Moon className="h-4 w-4 text-muted-foreground" />
-    }
-    if (hasErrors || wasStopped) {
-      return <XCircle className="h-4 w-4 text-red-500" />
-    }
-    return <Check className="h-4 w-4 text-green-500" />
+    const dotColor = hasPendingApproval
+      ? "bg-amber-500"
+      : !isComplete
+        ? "bg-blue-500"
+        : isSnoozed
+          ? "bg-gray-400"
+          : (hasErrors || wasStopped)
+            ? "bg-red-500"
+            : "bg-green-500"
+    const shouldPulse = hasPendingApproval || !isComplete
+    return (
+      <span
+        className={cn(
+          "inline-block h-2 w-2 shrink-0 rounded-full",
+          dotColor,
+          shouldPulse && "animate-pulse",
+        )}
+      />
+    )
   }
 
   // Get title for tile variant
@@ -3711,21 +3717,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <div className="shrink-0">
               {getStatusIndicator()}
             </div>
-            {profileName && !isCollapsed && (
-              <span className="shrink-0 text-[10px] text-primary/60 truncate max-w-[60px]" title={profileName}>
-                {profileName}
-              </span>
-            )}
             <span className={cn("truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
               {getTitle()}
             </span>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-            {hasPendingApproval && (
-              <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
-                Approval
-              </Badge>
-            )}
             {/* Collapse/Expand toggle */}
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
@@ -3970,13 +3966,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               )}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                    {acpSessionInfo && (
-                      <ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />
-                    )}
-                    {modelInfo && !acpSessionInfo && (
-                      <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
-                        {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
+                    {profileName && (
+                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]" title={`Agent: ${profileName}`}>
+                        {profileName}
                       </span>
+                    )}
+                    {modelInfo && (
+                      <>
+                        {profileName && <span className="text-muted-foreground/50">•</span>}
+                        <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+                          {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
+                        </span>
+                      </>
                     )}
                     {contextInfo && contextInfo.maxTokens > 0 && (
                       <div
@@ -4085,22 +4086,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           )}
         </div>
         <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          {/* Profile/agent name - more prominent with icon */}
+          {/* Profile/agent name */}
           {profileName && (
-            <span className="flex items-center gap-1 text-[10px] text-primary/70" title={`Agent: ${profileName}`}>
-              <Bot className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate max-w-[80px]">{profileName}</span>
+            <span className="text-[10px] text-primary/70 truncate max-w-[80px]" title={`Agent: ${profileName}`}>
+              {profileName}
             </span>
           )}
-          {/* ACP Session info (agent and model from ACP) */}
-          {acpSessionInfo && (
-            <ACPSessionBadge info={acpSessionInfo} />
-          )}
-          {/* Model and provider info - only show for non-ACP sessions */}
-          {!isComplete && modelInfo && !acpSessionInfo && (
-            <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
-              {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 20)}
-            </span>
+          {/* Model and provider info */}
+          {!isComplete && modelInfo && (
+            <>
+              {profileName && <span className="text-muted-foreground/50">•</span>}
+              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+                {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 20)}
+              </span>
+            </>
           )}
           {/* Context fill indicator */}
           {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (

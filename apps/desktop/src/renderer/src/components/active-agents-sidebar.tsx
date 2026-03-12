@@ -8,8 +8,6 @@ import {
   Minimize2,
   Maximize2,
   Clock,
-  Archive,
-  Bot,
   Pin,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
@@ -470,11 +468,14 @@ export function ActiveAgentsSidebar({
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  {/* Archive or pinned icon for past agents */}
+                  {/* Status dot or pinned icon for past agents */}
                   {isPinned ? (
                     <Pin className="h-3 w-3 shrink-0 fill-current text-foreground" />
                   ) : (
-                    <Archive className="h-3 w-3 shrink-0 opacity-50" />
+                    <span className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      session.status === "error" ? "bg-red-500" : "bg-green-500",
+                    )} />
                   )}
                   <p className="flex-1 truncate">
                     {session.conversationTitle || "Untitled session"}
@@ -560,11 +561,10 @@ export function ActiveAgentsSidebar({
                   {/* Agent name indicator */}
                   {agentName && (
                     <span
-                      className="flex items-center gap-0.5 text-[10px] text-primary/60 truncate"
+                      className="text-[10px] text-primary/60 truncate"
                       title={`Agent: ${agentName}`}
                     >
-                      <Bot className="h-2.5 w-2.5 shrink-0" />
-                      <span className="truncate">{agentName}</span>
+                      {agentName}
                     </span>
                   )}
                 </div>
