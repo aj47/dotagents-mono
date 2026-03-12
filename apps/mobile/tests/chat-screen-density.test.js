@@ -14,6 +14,10 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(screenSource, /\{currentAgentLabel\} ▼/);
 });
 
+test('removes the redundant Chat title from the mobile conversation header', () => {
+  assert.doesNotMatch(screenSource, />Chat<\/Text>/);
+});
+
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {
   assert.doesNotMatch(screenSource, /styles\.agentSelectorRow/);
   assert.doesNotMatch(screenSource, /🤖 Agent/);
@@ -28,4 +32,15 @@ test('keeps the live voice overlay compact by grouping status and transcript int
 test('caps live transcript height so the recording overlay is less likely to cover the chat surface', () => {
   assert.match(screenSource, /<Text style=\{styles\.overlayTranscript\} numberOfLines=\{3\}>/);
   assert.match(screenSource, /overlayTranscript:\s*\{[\s\S]*?marginTop:\s*4,[\s\S]*?lineHeight:\s*16,[\s\S]*?opacity:\s*0\.92,/);
+});
+
+test('derives visible assistant content from respond_to_user output and suppresses raw tool payloads', () => {
+  assert.match(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
+  assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
+  assert.match(screenSource, /looksLikeToolPayloadContent\(message\.content\)/);
+});
+
+test('keeps the TTS control inline with assistant message text instead of on a detached row', () => {
+  assert.match(screenSource, /assistantMessageRow:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'flex-start'/);
+  assert.match(screenSource, /<View style=\{m\.role === 'assistant' \? styles\.assistantMessageRow : undefined\}>[\s\S]*?speakMessage\(i, visibleMessageContent\)/);
 });
