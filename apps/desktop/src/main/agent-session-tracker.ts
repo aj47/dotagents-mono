@@ -358,6 +358,7 @@ class AgentSessionTracker {
     session.status = "active"
     session.isSnoozed = startSnoozed
     delete session.endTime
+    delete session.errorMessage
     this.sessions.set(sessionId, session)
 
     logApp(`[AgentSessionTracker] Revived session: ${sessionId}, snoozed: ${startSnoozed}`)
