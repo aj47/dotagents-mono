@@ -4,6 +4,7 @@ import { normalizeAgentConversationState, type AgentConversationState } from "@d
 const TOOL_CALL_PLACEHOLDER_REGEX = /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i
 const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]*\}|\[[\s\S]*\])\s*$/i
 const PROGRESS_UPDATE_REGEX = /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|working on it|still working on it)\b/i
+const NON_PROGRESS_SIGNOFF_REGEX = /(?:^|[.!?]\s+)(?:let me know if you need(?: anything else| more help| anything more)?|feel free to reach out if you need anything else)\b/i
 const OPTIONAL_INPUT_SIGNAL_REGEX = /\b(if you want|if you'd like|if you’d like|do you want me to|want me to|quick preference|before i do it|which style|which tone)\b/i
 const OPTIONAL_APPROVAL_REASON_REGEX = /\b(approval|preference|style|tone)\b/i
 const UNDELIVERED_PRIMARY_WORK_REGEX = /\b(no pr was created|did not (?:push|open|create|submit) (?:a |the )?pr|not approved yet|fastest path to pr now|next i'?ll create|before i do it|i can do those final steps now|i can do the final steps now|i can make this agent|ready to create|prepared to create)\b/i
@@ -125,6 +126,7 @@ export function normalizeVerificationResultForCompletion(
 function isProgressUpdateResponse(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
+  if (NON_PROGRESS_SIGNOFF_REGEX.test(trimmed)) return false
   return PROGRESS_UPDATE_REGEX.test(trimmed)
 }
 
