@@ -25,3 +25,10 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /actionButton:\s*\{[\s\S]*?alignSelf:\s*'flex-start',[\s\S]*?minHeight:\s*28,[\s\S]*?paddingHorizontal:\s*8,[\s\S]*?paddingVertical:\s*4,[\s\S]*?borderRadius:\s*999,/);
   assert.match(source, /hitSlop=\{\{ top: 8, bottom: 8, left: 8, right: 8 \}\}/);
 });
+
+test('mobile queue panel exposes an explicit send-next action for queued drafts', () => {
+  assert.match(source, /onProcessNext\?: \(\) => void;/);
+  assert.match(source, /canProcessNext\?: boolean;/);
+  assert.match(source, /accessibilityLabel="Send next queued message"/);
+  assert.match(source, /<Text style=\{styles\.processButtonText\}>Send Next<\/Text>/);
+});

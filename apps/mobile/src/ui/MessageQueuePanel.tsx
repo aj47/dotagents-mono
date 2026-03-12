@@ -24,7 +24,9 @@ interface MessageQueuePanelProps {
   onRemove: (messageId: string) => void;
   onUpdate: (messageId: string, text: string) => void;
   onRetry: (messageId: string) => void;
+  onProcessNext?: () => void;
   onClear: () => void;
+  canProcessNext?: boolean;
   compact?: boolean;
 }
 
@@ -329,7 +331,9 @@ export function MessageQueuePanel({
   onRemove,
   onUpdate,
   onRetry,
+  onProcessNext,
   onClear,
+  canProcessNext = false,
   compact = false,
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
@@ -383,6 +387,15 @@ export function MessageQueuePanel({
         ? theme.colors.mutedForeground
         : theme.colors.foreground,
     },
+    processButton: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    processButtonText: {
+      fontSize: 12,
+      color: canProcessNext ? theme.colors.primary : theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
     list: {
       maxHeight: 200,
     },
@@ -411,6 +424,11 @@ export function MessageQueuePanel({
         <Text style={styles.compactText}>
           {messages.length} queued message{messages.length > 1 ? 's' : ''}
         </Text>
+        {canProcessNext && onProcessNext && (
+          <TouchableOpacity onPress={onProcessNext} accessibilityLabel="Send next queued message">
+            <Ionicons name="play" size={14} color={theme.colors.primary} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           onPress={onClear}
           disabled={hasProcessingMessage}
@@ -435,6 +453,16 @@ export function MessageQueuePanel({
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {canProcessNext && onProcessNext && !isListCollapsed && (
+            <TouchableOpacity
+              style={styles.processButton}
+              onPress={onProcessNext}
+              accessibilityRole="button"
+              accessibilityLabel="Send next queued message"
+            >
+              <Text style={styles.processButtonText}>Send Next</Text>
+            </TouchableOpacity>
+          )}
           {!isListCollapsed && (
             <TouchableOpacity
               style={styles.clearButton}

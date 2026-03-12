@@ -2177,6 +2177,19 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   };
 
+  const handleProcessNextQueuedMessage = useCallback(() => {
+    if (responding) return;
+
+    const nextMessage = messageQueue.peek(currentConversationId);
+    if (!nextMessage) return;
+
+    console.log('[ChatScreen] Processing queue while idle, next message:', nextMessage.id);
+    messageQueue.markProcessing(currentConversationId, nextMessage.id);
+    setTimeout(() => {
+      processQueuedMessage(nextMessage);
+    }, 100);
+  }, [currentConversationId, messageQueue, processQueuedMessage, responding]);
+
 	// Keep sendRef in sync with the latest send() implementation for speech callbacks.
 	// IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
 	// We intentionally assign during render (not useEffect) so it is available immediately.
@@ -2208,6 +2221,16 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!composedMessage.trim()) return;
     void send(composedMessage, { fromComposer: true });
   }, [input, pendingImages, send]);
+
+  const queueComposerInput = useCallback(() => {
+    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+    if (!composedMessage.trim()) return;
+
+    messageQueue.enqueue(currentConversationId, composedMessage);
+    setInput('');
+    setPendingImages([]);
+    setDebugInfo('Message queued. Use Send Next when you are ready.');
+  }, [currentConversationId, input, messageQueue, pendingImages]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -2754,16 +2777,11 @@ export default function ChatScreen({ route, navigation }: any) {
                 messageQueue.resetToPending(currentConversationId, messageId);
                 // If not already processing, trigger queue processing
                 if (!responding) {
-                  const nextMessage = messageQueue.peek(currentConversationId);
-                  if (nextMessage) {
-                    console.log('[ChatScreen] onRetry: Processing queue while idle, next message:', nextMessage.id);
-                    messageQueue.markProcessing(currentConversationId, nextMessage.id);
-                    setTimeout(() => {
-                      processQueuedMessage(nextMessage);
-                    }, 100);
-                  }
+                  handleProcessNextQueuedMessage();
                 }
               }}
+              onProcessNext={handleProcessNextQueuedMessage}
+              canProcessNext={!responding && queuedMessages.some((message) => message.status === 'pending')}
               onClear={() => messageQueue.clearQueue(currentConversationId)}
             />
           </View>
@@ -2944,6 +2962,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
+          {handsFree && (
+            <View style={styles.handsFreeStatusRow}>
+              <HandsFreeStatusChip
+                phase={handsFreeController.state.phase}
+                label={handsFreeController.statusLabel}
+                subtitle={handsFreeStatusSubtitle}
+              />
+            </View>
+          )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
@@ -2982,13 +3009,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	                <Text style={styles.ttsToggleText}>✏️</Text>
 	              </TouchableOpacity>
 	            )}
-		            {handsFree && (
-		              <HandsFreeStatusChip
-		                phase={handsFreeController.state.phase}
-		                label={handsFreeController.statusLabel}
-		                subtitle={handsFreeStatusSubtitle}
-		              />
-		            )}
             <TextInput
 	              ref={inputRef}
               style={styles.input}
@@ -3017,6 +3037,20 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {voiceInputLiveRegionAnnouncement}
 	              </Text>
 	            )}
+            {handsFree && messageQueueEnabled && (
+              <TouchableOpacity
+                style={[styles.queueButton, !composerHasContent && styles.sendButtonDisabled]}
+                onPress={queueComposerInput}
+                activeOpacity={0.7}
+                disabled={!composerHasContent}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Queue message')}
+                accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
+                accessibilityState={{ disabled: !composerHasContent }}
+              >
+                <Text style={styles.queueButtonText}>Queue</Text>
+              </TouchableOpacity>
+            )}
 	            <TouchableOpacity
 	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
@@ -3207,6 +3241,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
     },
+    handsFreeStatusRow: {
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.xs,
+    },
     input: {
       ...theme.input,
       flex: 1,
@@ -3275,8 +3313,25 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    queueButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      minHeight: 44,
+      minWidth: 64,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     sendButtonDisabled: {
       opacity: 0.5,
+    },
+    queueButtonText: {
+      color: theme.colors.foreground,
+      fontWeight: '600',
+      fontSize: 13,
     },
     sendButtonText: {
       color: theme.colors.primaryForeground,

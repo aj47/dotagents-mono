@@ -14,9 +14,15 @@ test('exposes the chat composer send control as an accessible button', () => {
   assert.match(screenSource, /accessibilityState=\{\{ disabled: !composerHasContent \}\}/);
 });
 
+test('exposes the handsfree queue control as an accessible button', () => {
+  assert.match(screenSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Queue message'\)\}/);
+  assert.match(screenSource, /accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately\."/);
+});
+
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*64,/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',/);
+  assert.match(screenSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*64,/);
 });
 
 test('keeps the chat composer accessory controls at a mobile-friendly touch target size', () => {
