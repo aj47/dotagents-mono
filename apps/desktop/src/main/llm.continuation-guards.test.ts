@@ -32,6 +32,72 @@ describe("continuation guard helpers", () => {
     }))
   })
 
+  it("downgrades optional approval after unfinished PR work from needs_input to running", () => {
+    expect(normalizeVerificationResultForCompletion(
+      {
+        conversationState: "needs_input",
+        isComplete: true,
+        reason: "The assistant is waiting on user approval.",
+        missingItems: ["User approval to proceed with the final QA rerun/push/open-PR steps"],
+      },
+      {
+        verificationMessages: [
+          { role: "system", content: "Verifier" },
+          { role: "user", content: "Original request:\nCan you run the loop and submit a PR with screenshots?" },
+          { role: "assistant", content: "I ran the checks, but no PR was created yet because QA approval was not reached. If you want, I can do those final steps now." },
+          { role: "user", content: "Return JSON only." },
+        ],
+      },
+    )).toEqual(expect.objectContaining({
+      conversationState: "running",
+      isComplete: false,
+    }))
+  })
+
+  it("keeps explicit ask-first approvals as needs_input", () => {
+    expect(normalizeVerificationResultForCompletion(
+      {
+        conversationState: "needs_input",
+        isComplete: true,
+        reason: "The assistant is waiting on user approval.",
+        missingItems: ["User approval to merge the PR"],
+      },
+      {
+        verificationMessages: [
+          { role: "system", content: "Verifier" },
+          { role: "user", content: "Original request:\nUpdate the PR and ask me before you merge it." },
+          { role: "assistant", content: "The PR is updated and ready. Do you want me to merge it now?" },
+          { role: "user", content: "Return JSON only." },
+        ],
+      },
+    )).toEqual(expect.objectContaining({
+      conversationState: "needs_input",
+      isComplete: true,
+    }))
+  })
+
+  it("downgrades optional style preference before creating requested agents to running", () => {
+    expect(normalizeVerificationResultForCompletion(
+      {
+        conversationState: "needs_input",
+        isComplete: true,
+        reason: "The assistant is waiting on a style preference.",
+        missingItems: ["User preference on agent style/tone before creating the agent profiles"],
+      },
+      {
+        verificationMessages: [
+          { role: "system", content: "Verifier" },
+          { role: "user", content: "Original request:\nGather context, then create two agents for this workflow." },
+          { role: "assistant", content: "I gathered the context. If you want, next I'll create both profiles. Quick preference before I do it: strict/accountability-heavy or collaborative/coaching?" },
+          { role: "user", content: "Return JSON only." },
+        ],
+      },
+    )).toEqual(expect.objectContaining({
+      conversationState: "running",
+      isComplete: false,
+    }))
+  })
+
   it("prefers stored respond_to_user content at iteration limit", () => {
     expect(resolveIterationLimitFinalContent({
       finalContent: "",

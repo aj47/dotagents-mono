@@ -56,6 +56,7 @@ import {
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
 } from "./llm-continuation-guards"
+import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import {
   normalizeAgentConversationState,
   type AgentConversationState,
@@ -1223,100 +1224,17 @@ export async function processTranscriptWithAgentMode(
 
   // Build compact verification messages (schema-first verifier)
   const buildVerificationMessages = (finalAssistantText: string, currentVerificationFailCount: number = 0) => {
-    const maxItems = Math.max(1, config.mcpVerifyContextMaxItems || 20)
-    const recent = conversationHistory.slice(-maxItems)
-    const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = []
-    const coerceMessageContent = (value: unknown): string => typeof value === "string" ? value : ""
-    const latestUserFacingResponse = resolveLatestUserFacingResponse({
+    return buildVerificationMessagesFromAgentState({
+      version: 1,
+      id: `session-${currentSessionId}`,
+      mode: "agent_state",
+      transcript,
+      finalAssistantText,
       storedResponse: getSessionUserResponse(currentSessionId),
+      verificationFailCount: currentVerificationFailCount,
+      verifyContextMaxItems: config.mcpVerifyContextMaxItems || 20,
       conversationHistory: conversationHistory as any,
     })
-
-    // Track the last assistant content added to avoid duplicates
-    let lastAddedAssistantContent: string | null = null
-
-    messages.push({
-      role: "system",
-      content:
-        `You are a strict conversation-state verifier for an agent run.
-
-Classify the CURRENT state of the conversation using exactly one value:
-- running: the agent still owes more work before the current run can stop.
-- complete: the user already has the requested deliverable.
-- needs_input: the assistant has reached a valid stopping point because it is explicitly waiting on user clarification, approval, credentials, or another user reply.
-- blocked: the assistant has reached a valid stopping point because it clearly explained an external blocker, failure, or environment constraint that prevents further progress right now.
-
-Rules:
-- Judge based on what the user-facing assistant response actually delivers, not on tool success alone.
-- If tools found information but the assistant did not present or synthesize it for the user, return running.
-- If the assistant mainly says what it plans to do next, return running.
-- If the assistant asks the user for something needed next, return needs_input.
-- If the assistant clearly says it cannot proceed because of a blocker outside its control, return blocked.
-- If the user already has the final answer, requested artifact, or requested summary, return complete.
-- Empty, vague, or purely procedural replies should return running.
-
-Return ONLY JSON with this schema:
-{
-  "conversationState": "running" | "complete" | "needs_input" | "blocked",
-  "isComplete": boolean,
-  "confidence": number,
-  "missingItems": string[],
-  "reason": string
-}
-
-Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`,
-    })
-    messages.push({ role: "user", content: `Original request:\n${sanitizeMessageContentForDisplay(transcript)}` })
-    if (latestUserFacingResponse?.trim()) {
-      messages.push({
-        role: "user",
-        content: `Latest explicit user-facing response from the agent:\n${sanitizeMessageContentForDisplay(latestUserFacingResponse)}`,
-      })
-    }
-    for (const entry of recent) {
-      const rawContent = coerceMessageContent(entry.content)
-      if (entry.role === "tool") {
-        const text = sanitizeMessageContentForDisplay(rawContent.trim())
-        // Tool results already contain tool name prefix (format: [toolName] content...)
-        // Pass through directly without adding redundant wrapper
-        messages.push({ role: "user", content: text || "[No tool output]" })
-      } else if (entry.role === "user") {
-        // Skip empty user messages
-        const text = sanitizeMessageContentForDisplay(rawContent.trim())
-        if (text) {
-          messages.push({ role: "user", content: text })
-        }
-      } else {
-        // Ensure non-empty content for assistant messages (Anthropic API requirement)
-        let content = sanitizeMessageContentForDisplay(rawContent)
-        if (entry.role === "assistant" && !content.trim()) {
-          if (entry.toolCalls && entry.toolCalls.length > 0) {
-            const toolNames = entry.toolCalls.map(tc => tc.name).join(", ")
-            content = `[Calling tools: ${toolNames}]`
-          } else {
-            content = "[Processing...]"
-          }
-        }
-        messages.push({ role: entry.role, content })
-        if (entry.role === "assistant") {
-          lastAddedAssistantContent = content
-        }
-      }
-    }
-    // Only add finalAssistantText if it's different from the last assistant message added
-    const sanitizedFinalAssistantText = sanitizeMessageContentForDisplay(finalAssistantText || "")
-    if (sanitizedFinalAssistantText.trim() && sanitizedFinalAssistantText.trim() !== lastAddedAssistantContent?.trim()) {
-      messages.push({ role: "assistant", content: sanitizedFinalAssistantText })
-    }
-
-    // Build the JSON request with optional verification attempt note (combined into single message)
-    let jsonRequestContent = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete."
-    if (currentVerificationFailCount > 0) {
-      jsonRequestContent += `\n\nNote: This is verification attempt #${currentVerificationFailCount + 1}. Do NOT lower the bar. If any requested work still remains, return conversationState=running and list the missingItems. Only use complete, needs_input, or blocked when the current run can legitimately stop now.`
-    }
-    messages.push({ role: "user", content: jsonRequestContent })
-
-    return messages
   }
 
   // Derive loop safety budgets from the configured iteration budget so we don't
@@ -1405,11 +1323,12 @@ Set isComplete=false only when conversationState=running. Set isComplete=true fo
     let verification: any = null
     let verified = false
     for (let i = 0; i <= retries; i++) {
+      const verificationMessages = buildVerificationMessages(finalContent, currentFailCount)
       verification = normalizeVerificationResultForCompletion(await verifyCompletionWithFetch(
-        buildVerificationMessages(finalContent, currentFailCount),
+        verificationMessages,
         config.mcpToolsProviderId,
         currentSessionId,
-      ))
+      ), { verificationMessages })
       if (verification?.isComplete === true) {
         verified = true
         break
