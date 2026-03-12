@@ -56,6 +56,7 @@ import {
   downloadLatestReleaseAsset,
   getUpdateInfo,
   openManualReleasesPage,
+  openDownloadedReleaseAsset,
   revealDownloadedReleaseAsset,
 } from "./updater"
 import { WINDOWS } from "./window"
@@ -1927,6 +1928,33 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const response: OperatorActionResponse = {
         success: false,
         action: "updater-reveal-download",
+        message,
+        error: message,
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    }
+  })
+
+  fastify.post("/v1/operator/updater/open-download", async (req, reply) => {
+    try {
+      const downloadedAsset = await openDownloadedReleaseAsset()
+      const response: OperatorActionResponse = {
+        success: true,
+        action: "updater-open-download",
+        message: `Opened ${downloadedAsset.name} on the desktop machine.`,
+        details: {
+          fileName: downloadedAsset.name,
+          filePath: downloadedAsset.filePath,
+        },
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const response: OperatorActionResponse = {
+        success: false,
+        action: "updater-open-download",
         message,
         error: message,
       }

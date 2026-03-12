@@ -79,6 +79,7 @@ describe('SettingsApiClient operator endpoints', () => {
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-check', message: 'No newer release found.' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-download-latest', message: 'downloaded' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-reveal-download', message: 'revealed' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-open-download', message: 'opened installer' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-open-releases', message: 'opened' }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -93,6 +94,7 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.checkOperatorUpdater();
     await client.downloadOperatorUpdateAsset();
     await client.revealOperatorUpdateAsset();
+    await client.openOperatorUpdateAsset();
     await client.openOperatorReleasesPage();
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
@@ -105,6 +107,7 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/updater/check',
       'https://example.com/v1/operator/updater/download-latest',
       'https://example.com/v1/operator/updater/reveal-download',
+      'https://example.com/v1/operator/updater/open-download',
       'https://example.com/v1/operator/updater/open-releases',
     ]);
 
@@ -116,6 +119,7 @@ describe('SettingsApiClient operator endpoints', () => {
     expect(fetchMock.mock.calls[7]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[8]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[9]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[10]?.[1]?.method).toBe('POST');
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

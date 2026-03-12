@@ -364,6 +364,12 @@ export class SettingsApiClient {
     });
   }
 
+  async openOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/open-download', {
+      method: 'POST',
+    });
+  }
+
   async openOperatorReleasesPage(): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>('/operator/updater/open-releases', {
       method: 'POST',

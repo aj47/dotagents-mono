@@ -1238,6 +1238,27 @@ export default function OperationsScreen({ navigation }: any) {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.secondaryActionButton,
+                    (pendingAction !== null || !status.updater.lastDownloadedFileName) && styles.actionButtonDisabled,
+                  ]}
+                  onPress={() => confirmAction(
+                    'Open Downloaded Installer',
+                    'Open the downloaded installer on the desktop machine now? This may launch the installer UI on that machine.',
+                    'Open Installer',
+                    false,
+                    () => runAction('open-downloaded-installer', () => settingsClient.openOperatorUpdateAsset()),
+                  )}
+                  disabled={pendingAction !== null || !status.updater.lastDownloadedFileName}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Open downloaded installer')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'open-downloaded-installer' ? 'Opening installer…' : 'Open downloaded installer'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                   onPress={() => void runAction('open-release-page', () => settingsClient.openOperatorReleasesPage())}
                   disabled={pendingAction !== null}

@@ -296,6 +296,20 @@ export async function revealDownloadedReleaseAsset() {
   return downloadedAsset
 }
 
+export async function openDownloadedReleaseAsset() {
+  const downloadedAsset = cachedUpdateInfo.lastDownloadedAsset
+  if (!downloadedAsset?.filePath) {
+    throw new Error("No downloaded release asset is available to open yet")
+  }
+
+  const error = await shell.openPath(downloadedAsset.filePath)
+  if (error) {
+    throw new Error(error)
+  }
+
+  return downloadedAsset
+}
+
 export async function openManualReleasesPage() {
   const url = cachedUpdateInfo.latestRelease?.url || MANUAL_RELEASES_URL
   await shell.openExternal(url)
