@@ -30,10 +30,38 @@ vi.mock("./agents-files/safe-file", () => ({
 describe("config persistence", () => {
   beforeEach(() => {
     process.env.APP_ID = "dotagents-test"
+    delete process.env.DOTAGENTS_DATA_DIR
+    delete process.env.DOTAGENTS_GLOBAL_AGENTS_DIR
+    delete process.env.DOTAGENTS_WORKSPACE_AGENTS_DIR
     vi.resetModules()
     vi.clearAllMocks()
     mockWriteAgentsLayerFromConfig.mockReset()
     mockSafeWriteJsonFileSync.mockReset()
+  })
+
+  it("uses DOTAGENTS_DATA_DIR when provided", async () => {
+    process.env.DOTAGENTS_DATA_DIR = "/tmp/custom-dotagents-data"
+
+    const { dataFolder, configPath } = await import("./config")
+
+    expect(dataFolder).toBe("/tmp/custom-dotagents-data")
+    expect(configPath).toBe("/tmp/custom-dotagents-data/config.json")
+  })
+
+  it("uses DOTAGENTS_GLOBAL_AGENTS_DIR when provided", async () => {
+    process.env.DOTAGENTS_GLOBAL_AGENTS_DIR = "/tmp/custom-global-agents"
+
+    const { globalAgentsFolder } = await import("./config")
+
+    expect(globalAgentsFolder).toBe("/tmp/custom-global-agents")
+  })
+
+  it("uses DOTAGENTS_WORKSPACE_AGENTS_DIR when provided", async () => {
+    process.env.DOTAGENTS_WORKSPACE_AGENTS_DIR = "/tmp/custom-workspace-agents"
+
+    const { resolveWorkspaceAgentsFolder } = await import("./config")
+
+    expect(resolveWorkspaceAgentsFolder()).toBe("/tmp/custom-workspace-agents")
   })
 
   it("falls back to the legacy config file when writing .agents files fails", async () => {
