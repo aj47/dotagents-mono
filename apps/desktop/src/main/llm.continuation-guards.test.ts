@@ -172,4 +172,16 @@ describe("continuation guard helpers", () => {
   it("rejects tool placeholders as non-deliverable content", () => {
     expect(isDeliverableResponseContent("[Calling tools: read_file]")).toBe(false)
   })
+
+  it("treats common sign-offs as deliverable content", () => {
+    expect(isDeliverableResponseContent("Done — let me know if you need anything else.")).toBe(true)
+    expect(resolveIterationLimitFinalContent({
+      finalContent: "Done — let me know if you need anything else.",
+      conversationHistory: [{ role: "assistant", content: "Let me check one more thing." }],
+      hasRecentErrors: false,
+    })).toEqual({
+      content: "Done — let me know if you need anything else.",
+      usedExplicitUserResponse: false,
+    })
+  })
 })
