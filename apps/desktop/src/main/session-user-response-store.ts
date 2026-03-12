@@ -55,3 +55,28 @@ export function clearSessionUserResponse(sessionId: string): void {
   })
 }
 
+/**
+ * Archive the current response into history instead of deleting it.
+ * Used on session revival so the previous run's respond_to_user content
+ * is preserved in the history list while the "current" slot is freed
+ * for the new run's responses.
+ */
+export function archiveSessionUserResponse(sessionId: string): void {
+  const currentResponse = sessionUserResponse.get(sessionId)
+  if (!currentResponse) {
+    logApp("[session-user-response-store] archive (no-op, nothing stored)", { sessionId })
+    return
+  }
+
+  const history = sessionUserResponseHistory.get(sessionId) || []
+  history.push(currentResponse)
+  sessionUserResponseHistory.set(sessionId, history)
+  sessionUserResponse.delete(sessionId)
+
+  logApp("[session-user-response-store] archive", {
+    sessionId,
+    archivedLength: currentResponse.length,
+    historyLength: history.length,
+  })
+}
+

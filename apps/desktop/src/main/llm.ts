@@ -32,7 +32,7 @@ import {
 } from "./summarization-service"
 import { memoryService } from "./memory-service"
 import {
-  clearSessionUserResponse,
+  archiveSessionUserResponse,
   getSessionUserResponse,
   getSessionUserResponseHistory,
 } from "./session-user-response-store"
@@ -458,8 +458,11 @@ export async function processTranscriptWithAgentMode(
   const currentConversationId = conversationId
   const currentSessionId =
     sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  // Clear any stale user response from prior runs that may have reused this session ID.
-  clearSessionUserResponse(currentSessionId)
+  // On revival (session already has a stored response from the previous run),
+  // archive it into the history so the UI can still display it. For brand-new
+  // sessions the archive is a no-op — it already clears the current response
+  // slot while preserving history.
+  archiveSessionUserResponse(currentSessionId)
   // Number of messages in the conversation history that predate this agent session.
   // Used by the UI to show only this session's messages while still saving full history.
   // When continuing a conversation, we set this to 0 so the UI shows the full history.
