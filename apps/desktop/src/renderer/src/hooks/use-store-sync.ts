@@ -167,11 +167,11 @@ export function useStoreSync() {
   }, [setPinnedSessionIds])
 
   useEffect(() => {
-    if (!pinnedSessionIdsHydratedRef.current) return
+    if (!pinnedSessionIdsHydratedRef.current) return undefined
 
     const nextPinnedSessionIds = Array.from(pinnedSessionIds)
     if (areStringArraysEqual(nextPinnedSessionIds, lastPersistedPinnedSessionIdsRef.current)) {
-      return
+      return undefined
     }
 
     let cancelled = false

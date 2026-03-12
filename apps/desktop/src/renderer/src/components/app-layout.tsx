@@ -6,7 +6,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
-import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
+import { HomeSettingsDialog } from "@renderer/components/home-settings-dialog"
 
 import { PastSessionsDialog } from "@renderer/components/past-sessions-dialog"
 import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
@@ -24,14 +24,8 @@ import {
   VolumeX,
   OctagonX,
   Loader2,
-  Plug2,
+  Settings2,
 } from "lucide-react"
-
-type NavLinkItem = {
-  text: string
-  href: string
-  icon: string | React.ComponentType<{ className?: string }>
-}
 
 interface AgentSession {
   id: string
@@ -47,8 +41,8 @@ interface AgentSessionsResponse {
 export const Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
     useSidebar()
@@ -78,7 +72,6 @@ export const Component = () => {
     return unlisten
   }, [isCollapsed, refetchSessionData])
 
-  const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
   const collapsedActiveSessions = sessionData?.activeSessions ?? []
   const collapsedPreviewSessions = useMemo(
@@ -152,113 +145,11 @@ export const Component = () => {
     [navigate, setFocusedSessionId, setScrollToSessionId],
   )
 
-  const settingsNavLinks: NavLinkItem[] = [
-    {
-      text: "General",
-      href: "/settings",
-      icon: "i-mingcute-settings-3-line",
-    },
-    {
-      text: "Models",
-      href: "/settings/models",
-      icon: "i-mingcute-brain-line",
-    },
-    {
-      text: "Providers",
-      href: "/settings/providers",
-      icon: Plug2,
-    },
-    {
-      text: "Memories",
-      href: "/memories",
-      icon: "i-mingcute-book-2-line",
-    },
-
-    {
-      text: "Capabilities",
-      href: "/settings/capabilities",
-      icon: "i-mingcute-tool-line",
-    },
-    // Only show WhatsApp settings when enabled
-    ...(whatsappEnabled
-      ? [
-          {
-            text: "WhatsApp",
-            href: "/settings/whatsapp",
-            icon: "i-mingcute-message-4-line",
-          },
-        ]
-      : []),
-    {
-      text: "Repeat Tasks",
-      href: "/settings/repeat-tasks",
-      icon: "i-mingcute-refresh-3-line",
-    },
-  ]
-
-  // Route aliases that should highlight the same nav item
-  // Maps route paths to their primary nav link href
-  const routeAliases: Record<string, string> = {
-    "/settings/general": "/settings",
-    "/settings/mcp-tools": "/settings/capabilities",
-    "/settings/skills": "/settings/capabilities",
-    "/settings/remote-server": "/settings",
-    "/settings/loops": "/settings/repeat-tasks",
-    "/settings/agents": "/settings/agents",
-  }
-
-  const isAgentsActive =
-    location.pathname === "/settings/agents" ||
-    location.pathname.startsWith("/settings/agents")
-
-  // Check if current path matches the nav link (including aliases)
-  const isNavLinkActive = (linkHref: string): boolean => {
-    const currentPath = location.pathname
-    // Exact match
-    if (currentPath === linkHref) return true
-    // Check if current path is an alias that maps to this link
-    const aliasTarget = routeAliases[currentPath]
-    return aliasTarget === linkHref
-  }
-
   useEffect(() => {
     return rendererHandlers.navigate.listen((url) => {
       navigate(url)
     })
-  }, [])
-
-  const renderNavLink = (link: NavLinkItem) => {
-    const isActive = isNavLinkActive(link.href)
-    const icon = typeof link.icon === "string"
-      ? <span className={cn(link.icon, "h-4 w-4 shrink-0")}></span>
-      : <link.icon className="h-4 w-4 shrink-0" />
-
-    return (
-      <NavLink
-        key={link.text}
-        to={link.href}
-        role="button"
-        draggable={false}
-        title={isCollapsed ? link.text : undefined}
-        aria-label={isCollapsed ? link.text : undefined}
-        aria-current={isActive ? "page" : undefined}
-        className={() => {
-          return cn(
-            "flex h-7 items-center rounded-md px-2 font-medium transition-all duration-200",
-            isCollapsed ? "justify-center" : "gap-2",
-            isActive
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-          )
-        }}
-      >
-        {icon}
-        {!isCollapsed && (
-          <span className="truncate font-medium">{link.text}</span>
-        )}
-      </NavLink>
-    )
-  }
+  }, [navigate])
 
   const sidebarWidth = isCollapsed ? SIDEBAR_DIMENSIONS.width.collapsed : width
 
@@ -272,6 +163,10 @@ export const Component = () => {
 
   return (
     <>
+      <HomeSettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
+      />
       <PastSessionsDialog
         open={pastSessionsDialogOpen}
         onOpenChange={setPastSessionsDialogOpen}
@@ -328,6 +223,18 @@ export const Component = () => {
 
                 <button
                   type="button"
+                  onClick={() => setSettingsDialogOpen(true)}
+                  className={cn(
+                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors",
+                  )}
+                  title="Open settings"
+                  aria-label="Open settings"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleEmergencyStopAll}
                   disabled={isEmergencyStopping}
                   className="text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
@@ -360,7 +267,7 @@ export const Component = () => {
             </button>
           </header>
 
-          {/* Scrollable area: Settings + Sessions scroll together */}
+          {/* Scrollable area: sessions remain primary while settings stay behind the cog modal */}
           {isCollapsed ? (
             /* Collapsed: Sessions quick actions first, then settings shortcuts */
             <div className="mt-2 px-1">
@@ -413,6 +320,22 @@ export const Component = () => {
 
                 <button
                   type="button"
+                  onClick={() => setSettingsDialogOpen(true)}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    settingsDialogOpen
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Open settings"
+                  aria-label="Open settings"
+                  aria-pressed={settingsDialogOpen || undefined}
+                >
+                  <Settings2 className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setPastSessionsDialogOpen(true)}
                   className={cn(
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
@@ -450,21 +373,6 @@ export const Component = () => {
                       </span>
                     )}
                   </div>
-                </NavLink>
-
-                <NavLink
-                  to="/settings/agents?view=list"
-                  className={cn(
-                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
-                    isAgentsActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                  )}
-                  title="Agents"
-                  aria-label="Agents"
-                  aria-current={isAgentsActive ? "page" : undefined}
-                >
-                  <span className="i-mingcute-group-line h-4 w-4"></span>
                 </NavLink>
 
                 {collapsedPreviewSessions.map((session) => {
@@ -527,73 +435,14 @@ export const Component = () => {
                   </button>
                 )}
               </div>
-
-              {/* Settings Section - collapsed quick navigation */}
-              <div className="mt-2 grid gap-1">
-                {settingsNavLinks.map((link) => {
-                  const isActive = isNavLinkActive(link.href)
-                  const icon = typeof link.icon === "string"
-                    ? <span className={cn(link.icon, "h-4 w-4")}></span>
-                    : <link.icon className="h-4 w-4" />
-
-                  return (
-                    <NavLink
-                      key={link.text}
-                      to={link.href}
-                      className={cn(
-                        "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
-                        isActive
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                      )}
-                      title={link.text}
-                      aria-label={link.text}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      {icon}
-                    </NavLink>
-                  )
-                })}
-              </div>
             </div>
           ) : (
-            /* Expanded: Settings and Sessions share one scrollable container */
+            /* Expanded: keep the sidebar focused on live sessions; settings move behind the cog modal */
             <div className="scrollbar-none mt-2 min-h-0 flex-1 overflow-y-auto">
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
                 onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)}
               />
-
-              {/* Agents Section - capability management */}
-              <AgentCapabilitiesSidebar />
-
-              {/* Settings Section - Collapsible, collapsed by default */}
-              <div className="px-2">
-                <button
-                  onClick={() => setSettingsExpanded(!settingsExpanded)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200",
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "transition-transform duration-200",
-                      settingsExpanded
-                        ? "i-mingcute-down-line"
-                        : "i-mingcute-right-line",
-                    )}
-                  ></span>
-                  <span className="i-mingcute-settings-3-line"></span>
-                  <span className="truncate">Settings</span>
-                </button>
-
-                {settingsExpanded && (
-                  <div className="mt-1 grid gap-0.5 text-sm">
-                    {settingsNavLinks.map(renderNavLink)}
-                  </div>
-                )}
-              </div>
 
               {/* Logo/version pushed down by menu content, scrolls naturally */}
               <div className="flex flex-col items-center pb-4 pt-2 space-y-2">
@@ -640,6 +489,7 @@ export const Component = () => {
             <Outlet
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+                    onOpenSettingsDialog: () => setSettingsDialogOpen(true),
                 sidebarWidth,
               }}
             />

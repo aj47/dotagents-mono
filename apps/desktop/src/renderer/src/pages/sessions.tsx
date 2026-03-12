@@ -6,7 +6,7 @@ import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { SessionGrid, SessionTileWrapper, type TileLayoutMode } from "@renderer/components/session-grid"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
+import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2, Pin, QrCode, Settings2, Link2, CircleDot } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
@@ -20,9 +20,11 @@ import { useConfigQuery } from "@renderer/lib/query-client"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
+import { ConnectionPairingDialog } from "@renderer/components/connection-pairing-dialog"
 
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
+  onOpenSettingsDialog: () => void
   sidebarWidth: number
 }
 
@@ -142,17 +144,22 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
   )
 })
 
-function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionClick, onOpenPastSessionsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
+function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionClick, onOpenPastSessionsDialog, onOpenPairingDialog, onOpenSettingsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent, isConnected, isConnectionEnabled, isConnectionRunning }: {
   onTextClick: () => void
   onVoiceClick: () => void
   onSelectPrompt: (content: string) => void
   onPastSessionClick: (conversationId: string) => void
   onOpenPastSessionsDialog: () => void
+  onOpenPairingDialog: () => void
+  onOpenSettingsDialog: () => void
   textInputShortcut: string
   voiceInputShortcut: string
   dictationShortcut: string
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
+  isConnected: boolean
+  isConnectionEnabled: boolean
+  isConnectionRunning: boolean
 }) {
   const conversationHistoryQuery = useConversationHistoryQuery()
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
@@ -178,6 +185,11 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
   return (
     <div className="flex w-full flex-col items-center px-5 py-6 text-center sm:px-6">
+      <div className="mb-4 flex w-full max-w-md justify-end">
+        <Button variant="ghost" size="icon" onClick={onOpenSettingsDialog} aria-label="Open settings">
+          <Settings2 className="h-4 w-4" />
+        </Button>
+      </div>
       <div className="mb-3 rounded-full bg-muted/70 p-2.5">
         <MessageCircle className="h-5 w-5 text-muted-foreground" />
       </div>
@@ -199,6 +211,10 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
           <Button variant="secondary" onClick={onVoiceClick} className="gap-2">
             <Mic className="h-4 w-4" />
             Start with Voice
+          </Button>
+          <Button variant="outline" onClick={onOpenPairingDialog} className="gap-2">
+            <QrCode className="h-4 w-4" />
+            Scan QR Code
           </Button>
           <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} buttonSize="sm" />
         </div>
@@ -226,13 +242,13 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
         </div>
       </div>
 
-      {/* Recent past sessions */}
-      {recentSessions.length > 0 && (
+      {/* Connected users should return to history quickly; disconnected users should see pairing guidance instead. */}
+      {isConnected ? (
         <div className="mt-6 w-full max-w-md text-left">
           <div className="flex items-center justify-between mb-2 px-1">
             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
-              Recent Sessions
+              Conversation History
             </h4>
             {totalCount > RECENT_SESSIONS_LIMIT && (
               <button
@@ -243,45 +259,84 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
               </button>
             )}
           </div>
-          <div className="space-y-0.5">
-            {recentSessions.map((session) => {
-              const isPinned = pinnedSessionIds.has(session.id)
+          {recentSessions.length > 0 ? (
+            <div className="space-y-0.5">
+              {recentSessions.map((session) => {
+                const isPinned = pinnedSessionIds.has(session.id)
 
-              return (
-                <div
-                  key={session.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onPastSessionClick(session.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      onPastSessionClick(session.id)
-                    }
-                  }}
-                  className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate flex-1">{session.title}</span>
-                  <div className="ml-auto flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => handleTogglePinnedSession(session.id, e)}
-                      onKeyDown={stopSessionRowKeyPropagation}
-                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                      title={isPinned ? "Unpin session" : "Pin session"}
-                      aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
-                      aria-pressed={isPinned}
-                    >
-                      <Pin className={isPinned ? "h-3.5 w-3.5 fill-current text-foreground" : "h-3.5 w-3.5"} />
-                    </button>
-                    <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-                      {formatTimestamp(session.updatedAt)}
-                    </span>
+                return (
+                  <div
+                    key={session.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onPastSessionClick(session.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        onPastSessionClick(session.id)
+                      }
+                    }}
+                    className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate flex-1">{session.title}</span>
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleTogglePinnedSession(session.id, e)}
+                        onKeyDown={stopSessionRowKeyPropagation}
+                        className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        title={isPinned ? "Unpin session" : "Pin session"}
+                        aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
+                        aria-pressed={isPinned}
+                      >
+                        <Pin className={isPinned ? "h-3.5 w-3.5 fill-current text-foreground" : "h-3.5 w-3.5"} />
+                      </button>
+                      <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+                        {formatTimestamp(session.updatedAt)}
+                      </span>
+                    </div>
                   </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
+              You’re connected. Start a chat and your conversation history will show up here for quick re-entry.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-6 w-full max-w-md text-left">
+          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-background/80 p-2">
+                <Link2 className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-sm font-medium">Connection Info</h4>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                    <CircleDot className="h-3 w-3" />
+                    {isConnectionRunning ? "Pairing not finished" : isConnectionEnabled ? "Starting up" : "Disconnected"}
+                  </span>
                 </div>
-              )
-            })}
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {isConnectionEnabled
+                    ? "Open the QR flow to finish pairing and bring your existing conversations back to the home screen."
+                    : "Enable the remote server, generate a QR code, and pair a client before the home screen switches over to conversation history."}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button variant="outline" onClick={onOpenPairingDialog} className="gap-2">
+                    <QrCode className="h-4 w-4" />
+                    Scan QR Code
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Use the cog for deeper settings.
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -291,7 +346,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
 export function Component() {
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
-  const { onOpenPastSessionsDialog, sidebarWidth } = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
+  const { onOpenPastSessionsDialog, onOpenSettingsDialog, sidebarWidth } = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
@@ -303,6 +358,14 @@ export function Component() {
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
   const voiceInputShortcut = getMcpToolsShortcutDisplay(configQuery.data?.mcpToolsShortcut, configQuery.data?.customMcpToolsShortcut)
   const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
+  const [pairingDialogOpen, setPairingDialogOpen] = useState(false)
+
+  const remoteServerStatusQuery = useQuery({
+    queryKey: ["remote-server-status"],
+    queryFn: () => tipcClient.getRemoteServerStatus(),
+    refetchInterval: 2000,
+    enabled: configQuery.data?.remoteServerEnabled ?? false,
+  })
 
   const [sessionOrder, setSessionOrder] = useState<string[]>([])
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null)
@@ -769,6 +832,10 @@ export function Component() {
     return allProgressEntries.filter(([_, progress]) => progress?.isComplete).length
   }, [allProgressEntries])
 
+  const isConnectionEnabled = configQuery.data?.remoteServerEnabled ?? false
+  const isConnectionRunning = isConnectionEnabled && (remoteServerStatusQuery.data?.running ?? false)
+  const isConnected = isConnectionRunning && !!configQuery.data?.remoteServerApiKey
+
   const showPendingLoadingTile =
     !!pendingConversationId &&
     !pendingProgress &&
@@ -781,6 +848,11 @@ export function Component() {
 
   return (
     <div className="group/tile flex h-full flex-col">
+      <ConnectionPairingDialog
+        open={pairingDialogOpen}
+        onOpenChange={setPairingDialogOpen}
+      />
+
       {/* Header with start buttons - outside the scroll area so its height is excluded
           when SessionGrid measures the parent to size tiles. */}
       {hasSessions && (
@@ -817,6 +889,26 @@ export function Component() {
                 <span className="hidden md:inline">Past Sessions</span>
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPairingDialogOpen(true)}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              title="Scan QR Code"
+            >
+              <QrCode className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline">Scan QR Code</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpenSettingsDialog ?? (() => {})}
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              title="Open settings"
+              aria-label="Open settings"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
             {/* Cycle tile layout mode button */}
             <Button
               variant="ghost"
@@ -860,11 +952,16 @@ export function Component() {
             onSelectPrompt={handleSelectPrompt}
             onPastSessionClick={handleContinueConversation}
             onOpenPastSessionsDialog={onOpenPastSessionsDialog ?? (() => {})}
+            onOpenPairingDialog={() => setPairingDialogOpen(true)}
+            onOpenSettingsDialog={onOpenSettingsDialog ?? (() => {})}
             textInputShortcut={textInputShortcut}
             voiceInputShortcut={voiceInputShortcut}
             dictationShortcut={dictationShortcut}
             selectedAgentId={selectedAgentId}
             onSelectAgent={setSelectedAgentId}
+            isConnected={isConnected}
+            isConnectionEnabled={isConnectionEnabled}
+            isConnectionRunning={isConnectionRunning}
           />
         ) : (
           /* Active sessions - grid view */

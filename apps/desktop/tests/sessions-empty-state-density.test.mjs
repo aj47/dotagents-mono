@@ -19,6 +19,7 @@ test('desktop sessions empty state trims decorative chrome and keeps the selecto
 
 test('desktop sessions empty state keeps secondary controls and recent sessions tighter', () => {
   assert.match(sessionsSource, /<PredefinedPromptsMenu onSelectPrompt=\{onSelectPrompt\} buttonSize="sm" \/>/)
+  assert.match(sessionsSource, /Scan QR Code/)
   assert.match(sessionsSource, /flex flex-wrap items-center justify-center gap-2\.5 text-xs text-muted-foreground/)
   assert.match(sessionsSource, /mt-6 w-full max-w-md text-left/)
 })
@@ -28,4 +29,11 @@ test('desktop sessions empty state recent list supports pinning and pinned-first
   assert.match(sessionsSource, /sortedRecentSessions\.slice\(0, RECENT_SESSIONS_LIMIT\)/)
   assert.match(sessionsSource, /aria-label=\{`\$\{isPinned \? "Unpin" : "Pin"\} \$\{session\.title\}`\}/)
   assert.match(sessionsSource, /onKeyDown=\{stopSessionRowKeyPropagation\}/)
+})
+
+test('desktop sessions home switches between conversation history and connection guidance', () => {
+  assert.match(sessionsSource, /Conversation History/)
+  assert.match(sessionsSource, /Connection Info/)
+  assert.match(sessionsSource, /Use the cog for deeper settings\./)
+  assert.match(sessionsSource, /<ConnectionPairingDialog/)
 })
