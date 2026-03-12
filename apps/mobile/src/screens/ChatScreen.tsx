@@ -2525,6 +2525,97 @@ export default function ChatScreen({ route, navigation }: any) {
     ? 'Refreshing saved prompts from desktop…'
     : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
 
+  const commandQuickStarts = useMemo(
+    () => predefinedPrompts
+      .filter(isSlashCommandPrompt)
+      .slice(0, 4)
+      .map((prompt) => ({
+        id: prompt.id,
+        title: prompt.name,
+        description: 'Slash-style saved prompt from your desktop workspace.',
+        content: prompt.content,
+        source: 'command' as const,
+      })),
+    [predefinedPrompts]
+  );
+
+  const savedPromptQuickStarts = useMemo(
+    () => predefinedPrompts
+      .filter((prompt) => !isSlashCommandPrompt(prompt))
+      .slice(0, 4)
+      .map((prompt) => ({
+        id: prompt.id,
+        title: prompt.name,
+        description: 'Reusable saved prompt synced from desktop.',
+        content: prompt.content,
+        source: 'saved-prompt' as const,
+      })),
+    [predefinedPrompts]
+  );
+
+  const starterPackQuickStarts = useMemo(
+    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
+    [commandQuickStarts.length, savedPromptQuickStarts.length]
+  );
+
+  const quickStartSections = useMemo<QuickStartSection[]>(() => {
+    const sections: QuickStartSection[] = [];
+
+    if (commandQuickStarts.length > 0) {
+      sections.push({
+        id: 'commands',
+        title: 'Custom Commands',
+        subtitle: 'Slash-named saved prompts from desktop show up here.',
+        items: commandQuickStarts,
+      });
+    }
+
+    if (savedPromptQuickStarts.length > 0) {
+      sections.push({
+        id: 'saved-prompts',
+        title: 'Saved Prompts',
+        subtitle: 'Reusable prompts from your desktop setup.',
+        items: savedPromptQuickStarts,
+      });
+    }
+
+    sections.push({
+      id: 'starter-packs',
+      title: 'Starter Packs',
+      subtitle: commandQuickStarts.length === 0
+        ? 'Use these while you build out custom commands and saved prompts.'
+        : 'Built-in launchers for common workflows.',
+      items: starterPackQuickStarts,
+    });
+
+    return sections;
+  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
+
+  const quickStartCategoryPills = useMemo(
+    () => [
+      {
+        id: 'commands-pill',
+        label: 'Custom Commands',
+        value: commandQuickStarts.length > 0 ? `${commandQuickStarts.length} ready` : 'Add slash prompts on desktop',
+      },
+      {
+        id: 'prompts-pill',
+        label: 'Saved Prompts',
+        value: savedPromptQuickStarts.length > 0 ? `${savedPromptQuickStarts.length} synced` : 'Shows desktop prompts here',
+      },
+      {
+        id: 'starter-pill',
+        label: 'Starter Packs',
+        value: `${starterPackQuickStarts.length} tap-to-insert`,
+      },
+    ],
+    [commandQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
+  );
+
+  const quickStartFooterText = isLoadingQuickStartPrompts
+    ? 'Refreshing saved prompts from desktop…'
+    : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
+
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
   const sendComposerInput = useCallback(() => {
