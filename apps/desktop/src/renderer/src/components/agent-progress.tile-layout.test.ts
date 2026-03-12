@@ -10,15 +10,16 @@ const sessionTileSource = readFileSync(new URL("./session-tile.tsx", import.meta
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
     expect(agentProgressSource).toContain(
-      'className="flex flex-wrap items-start gap-2 px-3 py-2 border-b bg-muted/30 flex-shrink-0 cursor-pointer"'
+      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 cursor-pointer"'
     )
-    expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-start gap-2"')
+    expect(agentProgressSource).toContain('isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2"')
+    expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-1.5"')
     expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
   })
 
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
-    expect(agentProgressSource).toContain('className="flex flex-wrap items-center justify-between gap-2"')
-    expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"')
+    expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
+    expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
     expect(agentProgressSource).toContain('<ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
@@ -119,12 +120,12 @@ describe("agent progress tile layout", () => {
       'className="min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30"'
     )
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 flex-wrap items-start gap-2 cursor-pointer bg-green-100/50 px-3 py-2 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40"'
+      '"flex min-w-0 flex-wrap items-center gap-1.5 cursor-pointer bg-green-100/50 px-2.5 py-1.5 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40"'
     )
     expect(agentProgressSource).toContain(
       '<MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />'
     )
-    expect(agentProgressSource).toContain('className="min-w-0 flex-1 space-y-1 text-left"')
+    expect(agentProgressSource).toContain('className="min-w-0 flex-1 text-left"')
     expect(agentProgressSource).toContain(
       '"line-clamp-2 break-words [overflow-wrap:anywhere]"'
     )
@@ -197,9 +198,9 @@ describe("agent progress tile layout", () => {
   it("keeps shared audio player and compact TTS errors readable under width pressure", () => {
     expect(audioPlayerSource).toContain('const compactStatusText = hasAudio')
     expect(audioPlayerSource).toContain(
-      '"flex min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5"'
+      '"inline-flex items-center"'
     )
-    expect(audioPlayerSource).toContain('className="h-8 w-8 shrink-0 p-0"')
+    expect(audioPlayerSource).toContain('className="h-10 w-10 shrink-0 p-0"')
     expect(audioPlayerSource).toContain(
       'className={cn("min-w-0 max-w-full space-y-2 rounded-lg bg-muted/50 p-3", className)}'
     )
@@ -216,5 +217,18 @@ describe("agent progress tile layout", () => {
     expect(sessionTileSource).toContain(
       'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
     )
+  })
+
+  it("uses shared conversation-state labels and badges across agent progress surfaces", () => {
+    expect(agentProgressSource).toContain('getAgentConversationStateLabel')
+    expect(agentProgressSource).toContain('normalizeAgentConversationState(progress.conversationState, isComplete ? "complete" : "running")')
+    expect(agentProgressSource).toContain('conversationState === "needs_input"')
+    expect(agentProgressSource).toContain('conversationState === "blocked"')
+    expect(agentProgressSource).toContain('className={cn("shrink-0 text-xs", conversationStateBadgeClass)}')
+    expect(agentProgressSource).toContain('className={cn("text-xs px-1.5 py-0.5", conversationStateBadgeClass)}')
+    expect(sessionTileSource).toContain('const statusLabel = getAgentConversationStateLabel(conversationState)')
+    expect(sessionTileSource).toContain('conversationState === "needs_input"')
+    expect(sessionTileSource).toContain('conversationState === "blocked"')
+    expect(sessionTileSource).toContain('className={cn("text-xs", statusBadgeClass)}')
   })
 })

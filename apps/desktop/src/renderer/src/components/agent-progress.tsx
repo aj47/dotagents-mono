@@ -18,7 +18,11 @@ import { TileFollowUpInput } from "./tile-follow-up-input"
 import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
-import { getToolResultsSummary } from "@dotagents/shared"
+import {
+  getAgentConversationStateLabel,
+  getToolResultsSummary,
+  normalizeAgentConversationState,
+} from "@dotagents/shared"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
@@ -3626,21 +3630,37 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const hasErrors = steps.some(
     (step) => step.status === "error" || step.toolResult?.error,
   )
+  const conversationState = progress.conversationState
+    ? normalizeAgentConversationState(progress.conversationState, isComplete ? "complete" : "running")
+    : progress.pendingToolApproval
+      ? "needs_input"
+      : hasErrors || wasStopped
+        ? "blocked"
+        : isComplete
+          ? "complete"
+          : "running"
+  const conversationStateLabel = getAgentConversationStateLabel(conversationState)
+  const conversationStateBadgeClass = conversationState === "complete"
+    ? "border-green-500 text-green-700 dark:border-green-700 dark:text-green-300"
+    : conversationState === "needs_input"
+      ? "border-amber-500 text-amber-700 dark:border-amber-700 dark:text-amber-300"
+      : conversationState === "blocked"
+        ? "border-red-500 text-red-700 dark:border-red-700 dark:text-red-300"
+        : "border-blue-500 text-blue-700 dark:border-blue-700 dark:text-blue-300"
 
   // Get status indicator for tile variant
   const getStatusIndicator = () => {
-    const hasPendingApproval = !!progress.pendingToolApproval
     const isSnoozed = progress.isSnoozed
-    if (hasPendingApproval) {
+    if (conversationState === "needs_input") {
       return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
     }
-    if (!isComplete) {
+    if (conversationState === "running") {
       return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
     }
     if (isSnoozed) {
       return <Moon className="h-4 w-4 text-muted-foreground" />
     }
-    if (hasErrors || wasStopped) {
+    if (conversationState === "blocked") {
       return <XCircle className="h-4 w-4 text-red-500" />
     }
     return <Check className="h-4 w-4 text-green-500" />
@@ -3721,11 +3741,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             </span>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-            {hasPendingApproval && (
-              <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
-                Approval
-              </Badge>
-            )}
+            <Badge variant="outline" className={cn("shrink-0 text-xs", conversationStateBadgeClass)}>
+              {conversationStateLabel}
+            </Badge>
             {/* Collapse/Expand toggle */}
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
@@ -4069,15 +4087,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       {/* Unified Header */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 backdrop-blur-sm overflow-hidden">
         <div className="flex items-center gap-2 shrink-0">
-          <span className={cn(
-            "text-xs font-medium",
-            wasStopped && "text-red-600 dark:text-red-400"
-          )}>
-            {isComplete ?
-              (wasStopped ? "Stopped" : hasErrors ? "Failed" : "Complete") :
-              "Processing"
-            }
-          </span>
+          <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5", conversationStateBadgeClass)}>
+            {conversationStateLabel}
+          </Badge>
           {wasStopped && (
             <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
               Terminated

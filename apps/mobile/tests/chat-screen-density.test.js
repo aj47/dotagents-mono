@@ -14,6 +14,14 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(screenSource, /\{currentAgentLabel\} ▼/);
 });
 
+test('shows a conversation-state chip in the mobile chat header while preserving the compact header actions row', () => {
+  assert.match(screenSource, /const headerConversationLabel = headerConversationState\s*\?\s*getAgentConversationStateLabel\(headerConversationState\)/);
+  assert.match(screenSource, /\{headerConversationLabel && headerConversationChipStyle && \(/);
+  assert.match(screenSource, /headerConversationState === 'running' && \(/);
+  assert.match(screenSource, /styles\.headerConversationChip/);
+  assert.match(screenSource, /styles\.headerConversationChipText/);
+});
+
 test('removes the redundant Chat title from the mobile conversation header', () => {
   assert.doesNotMatch(screenSource, />Chat<\/Text>/);
 });

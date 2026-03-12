@@ -46,9 +46,12 @@ import {
   shouldCollapseMessage,
   formatToolArguments,
   getToolResultsSummary,
+  getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
   RESPOND_TO_USER_TOOL,
   isToolOnlyMessage,
+  normalizeAgentConversationState,
+  type AgentConversationState,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -164,6 +167,17 @@ const sanitizeMessagesForModel = (messages: ChatMessage[]): ChatMessage[] =>
       content: sanitizedContent,
     };
   });
+
+const resolveConversationStateFromProgress = (update: AgentProgressUpdate): AgentConversationState => {
+  if (update.conversationState) {
+    return normalizeAgentConversationState(update.conversationState, update.isComplete ? 'complete' : 'running');
+  }
+  const hasPendingApproval = update.steps.some((step) => step.type === 'pending_approval');
+  if (hasPendingApproval) {
+    return 'needs_input';
+  }
+  return update.isComplete ? 'complete' : 'running';
+};
 
 type RespondToUserHistorySourceMessage = {
   role: 'user' | 'assistant' | 'tool';
@@ -424,6 +438,7 @@ export default function ChatScreen({ route, navigation }: any) {
   };
 
   const [responding, setResponding] = useState(false);
+  const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
 
@@ -462,6 +477,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // is deleted/cleared while ChatScreen remains mounted (PR review fix #15)
       setConnectionState(null);
       setResponding(false);
+      setConversationState(null);
       return;
     }
 
@@ -476,6 +492,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Check if there's an active request for this session
     const isActive = connectionManager.isConnectionActive(currentSessionId);
     setResponding(isActive);
+    setConversationState(isActive ? 'running' : null);
 
     // Ensure connection exists for subscription
     connectionManager.getOrCreateConnection(currentSessionId);
@@ -556,6 +573,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // an old request is still in-flight (its callbacks will be ignored
     // via the session/request guards)
     setResponding(false);
+    setConversationState(null);
     setConnectionState(null);
     setDebugInfo('');
     sessionStore.createNewSession();
@@ -566,6 +584,40 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!currentSessionId) return;
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
+
+  const headerConversationState = conversationState ?? (responding ? 'running' : null);
+  const headerConversationLabel = headerConversationState
+    ? getAgentConversationStateLabel(headerConversationState)
+    : null;
+  const headerConversationChipStyle = useMemo(() => {
+    if (!headerConversationState) return null;
+    if (headerConversationState === 'complete') {
+      return {
+        backgroundColor: hexToRgba(theme.colors.success, 0.12),
+        borderColor: hexToRgba(theme.colors.success, 0.35),
+        textColor: theme.colors.success,
+      };
+    }
+    if (headerConversationState === 'needs_input') {
+      return {
+        backgroundColor: 'rgba(245, 158, 11, 0.12)',
+        borderColor: 'rgba(245, 158, 11, 0.35)',
+        textColor: '#d97706',
+      };
+    }
+    if (headerConversationState === 'blocked') {
+      return {
+        backgroundColor: hexToRgba(theme.colors.danger, 0.12),
+        borderColor: hexToRgba(theme.colors.danger, 0.35),
+        textColor: theme.colors.danger,
+      };
+    }
+    return {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+      borderColor: hexToRgba(theme.colors.primary, 0.35),
+      textColor: theme.colors.primary,
+    };
+  }, [headerConversationState, theme.colors.danger, theme.colors.primary, theme.colors.success]);
 
   useLayoutEffect(() => {
     navigation?.setOptions?.({
@@ -628,13 +680,31 @@ export default function ChatScreen({ route, navigation }: any) {
             retryCount={connectionInfo.retryCount}
             compact
           />
-          {responding && (
-            <View style={styles.headerActionButton}>
-              <Image
-                source={isDark ? darkSpinner : lightSpinner}
-                style={{ width: 28, height: 28 }}
-                resizeMode="contain"
-              />
+          {headerConversationLabel && headerConversationChipStyle && (
+            <View
+              style={[
+                styles.headerConversationChip,
+                {
+                  backgroundColor: headerConversationChipStyle.backgroundColor,
+                  borderColor: headerConversationChipStyle.borderColor,
+                },
+              ]}
+            >
+              {headerConversationState === 'running' && (
+                <Image
+                  source={isDark ? darkSpinner : lightSpinner}
+                  style={{ width: 14, height: 14 }}
+                  resizeMode="contain"
+                />
+              )}
+              <Text
+                style={[
+                  styles.headerConversationChipText,
+                  { color: headerConversationChipStyle.textColor },
+                ]}
+              >
+                {headerConversationLabel}
+              </Text>
             </View>
           )}
           <TouchableOpacity
@@ -701,7 +771,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -1565,6 +1635,7 @@ export default function ChatScreen({ route, navigation }: any) {
     progressMessagesRef.current = [];
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
+    setConversationState('running');
 	    if (handsFree) {
 	      handsFreeController.onRequestStarted();
 	    }
@@ -1603,6 +1674,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     try {
       let streamingText = '';
+      let latestConversationState: AgentConversationState = 'running';
       // Track userResponse from progress updates for TTS
       // This is set via the respond_to_user tool and takes priority over finalText
       let lastUserResponse: string | undefined;
@@ -1626,6 +1698,8 @@ export default function ChatScreen({ route, navigation }: any) {
           console.log('[ChatScreen] Request superseded within same session, skipping onProgress update');
           return;
         }
+	        latestConversationState = resolveConversationStateFromProgress(update);
+	        setConversationState(latestConversationState);
         // Capture userResponse from progress updates for TTS and history panel
         if (update.userResponse || update.spokenContent) {
           const responseText = update.userResponse || update.spokenContent;
@@ -1700,6 +1774,9 @@ export default function ChatScreen({ route, navigation }: any) {
       // Guard: skip UI updates if session has changed, BUT still persist to the original session
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
       const sessionChanged = currentSessionIdRef.current !== requestSessionId;
+	      if (!sessionChanged) {
+	        setConversationState(latestConversationState === 'running' ? 'complete' : latestConversationState);
+	      }
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
@@ -1899,6 +1976,7 @@ export default function ChatScreen({ route, navigation }: any) {
         });
         return;
       }
+	      setConversationState('blocked');
 
       const recoveryState = connectionState;
       let errorMessage = e.message;
@@ -2022,6 +2100,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const messageCountBeforeTurn = currentMessages.length;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setResponding(true);
+    setConversationState('running');
 	    if (handsFree) {
 	      handsFreeController.onRequestStarted();
 	    }
@@ -2036,6 +2115,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     try {
       let streamingText = '';
+      let latestConversationState: AgentConversationState = 'running';
       // Track userResponse from progress updates for TTS
       let lastUserResponse: string | undefined;
       // Track if we've already played TTS mid-turn to avoid double playback
@@ -2044,6 +2124,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
+        latestConversationState = resolveConversationStateFromProgress(update);
+        setConversationState(latestConversationState);
         // Capture userResponse from progress updates for TTS and history panel
         if (update.userResponse || update.spokenContent) {
           const responseText = update.userResponse || update.spokenContent;
@@ -2111,6 +2193,7 @@ export default function ChatScreen({ route, navigation }: any) {
         messageQueue.markFailed(currentConversationId, queuedMsg.id, 'Request superseded');
         return;
       }
+      setConversationState(latestConversationState === 'running' ? 'complete' : latestConversationState);
 
       if (response.conversationId) {
         await sessionStore.setServerConversationId(response.conversationId);
@@ -2172,6 +2255,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } catch (e: any) {
       console.error('[ChatScreen] Queued message error:', e);
       messageQueue.markFailed(currentConversationId, queuedMsg.id, e.message || 'Unknown error');
+      setConversationState('blocked');
       setMessages((m) => [...m, { role: 'assistant', content: `Error: ${e.message}` }]);
 	      if (handsFree) {
 	        handsFreeController.onRequestCompleted();
@@ -3164,6 +3248,20 @@ function createStyles(theme: Theme, screenHeight: number) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 2,
+    },
+    headerConversationChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginHorizontal: 4,
+    },
+    headerConversationChipText: {
+      ...theme.typography.caption,
+      fontWeight: '700',
     },
     headerActionButton,
     headerEdgeActionButton,
