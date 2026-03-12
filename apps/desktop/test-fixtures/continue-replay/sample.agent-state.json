@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "sample-needs-input-from-langfuse",
+  "mode": "agent_state",
+  "description": "Example fixture shape for a traced continue case copied from Langfuse.",
+  "source": {
+    "url": "https://your-langfuse-host.example/project/replace-me"
+  },
+  "transcript": "Update the PR and ask me before merging it.",
+  "storedResponse": "I updated the PR and it is ready. Do you want me to merge it now?",
+  "finalAssistantText": "I updated the PR and it is ready. Do you want me to merge it now?",
+  "verificationFailCount": 0,
+  "verifyContextMaxItems": 20,
+  "conversationHistory": [
+    {
+      "role": "user",
+      "content": "Update the PR and ask me before merging it."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "toolCalls": [
+        {
+          "name": "respond_to_user",
+          "arguments": {
+            "text": "I updated the PR and it is ready. Do you want me to merge it now?"
+          }
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "conversationState": "needs_input",
+    "isComplete": true
+  }
+}

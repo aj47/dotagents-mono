@@ -4,6 +4,10 @@ import { normalizeAgentConversationState, type AgentConversationState } from "@d
 const TOOL_CALL_PLACEHOLDER_REGEX = /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i
 const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]*\}|\[[\s\S]*\])\s*$/i
 const PROGRESS_UPDATE_REGEX = /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|working on it|still working on it)\b/i
+const OPTIONAL_INPUT_SIGNAL_REGEX = /\b(if you want|if you'd like|if you’d like|do you want me to|want me to|quick preference|before i do it|which style|which tone)\b/i
+const OPTIONAL_APPROVAL_REASON_REGEX = /\b(approval|preference|style|tone)\b/i
+const UNDELIVERED_PRIMARY_WORK_REGEX = /\b(no pr was created|did not (?:push|open|create|submit) (?:a |the )?pr|not approved yet|fastest path to pr now|next i'?ll create|before i do it|i can do those final steps now|i can do the final steps now|i can make this agent|ready to create|prepared to create)\b/i
+const EXPLICIT_ASK_FIRST_REGEX = /\b(ask me first|ask before|check with me first|get my approval first|before you (?:merge|open|submit|push|create))\b/i
 
 type ConversationHistoryLike = Array<{
   role?: string
@@ -14,6 +18,61 @@ type ConversationHistoryLike = Array<{
   }>
 }>
 
+type VerificationMessageLike = {
+  role?: string
+  content?: string
+}
+
+function extractOriginalRequest(messages?: VerificationMessageLike[]): string {
+  const originalRequestMessage = messages?.find((message) => message.role === "user" && typeof message.content === "string")?.content || ""
+  return originalRequestMessage.replace(/^Original request:\s*/i, "").trim()
+}
+
+function extractLatestVerifierResponse(messages?: VerificationMessageLike[]): string {
+  const assistantMessage = messages
+    ?.slice()
+    .reverse()
+    .find((message) => message.role === "assistant" && isIterationLimitDeliverableContent(message.content))
+
+  if (assistantMessage?.content?.trim()) {
+    return assistantMessage.content.trim()
+  }
+
+  const explicitUserFacingResponse = messages
+    ?.slice()
+    .reverse()
+    .find((message) => message.role === "user" && typeof message.content === "string" && /^Latest explicit user-facing response from the agent:/i.test(message.content))
+    ?.content
+
+  return explicitUserFacingResponse?.replace(/^Latest explicit user-facing response from the agent:\s*/i, "").trim() || ""
+}
+
+function shouldDowngradeNeedsInputToRunning(
+  verification: any,
+  verificationMessages?: VerificationMessageLike[],
+): boolean {
+  const originalRequest = extractOriginalRequest(verificationMessages)
+  if (originalRequest && EXPLICIT_ASK_FIRST_REGEX.test(originalRequest)) {
+    return false
+  }
+
+  const latestResponse = extractLatestVerifierResponse(verificationMessages)
+  if (!latestResponse) {
+    return false
+  }
+
+  const needsInputReasonText = [
+    typeof verification?.reason === "string" ? verification.reason : "",
+    ...normalizeMissingItemsList(verification?.missingItems),
+  ].join(" ")
+
+  const signalsOptionalInput = OPTIONAL_INPUT_SIGNAL_REGEX.test(latestResponse)
+    || OPTIONAL_APPROVAL_REASON_REGEX.test(needsInputReasonText)
+  const showsPrimaryWorkStillUndelivered = UNDELIVERED_PRIMARY_WORK_REGEX.test(latestResponse)
+
+  return signalsOptionalInput && showsPrimaryWorkStillUndelivered
+}
+
 export function normalizeMissingItemsList(items?: string[]): string[] {
   return Array.isArray(items)
     ? items
@@ -22,23 +81,38 @@ export function normalizeMissingItemsList(items?: string[]): string[] {
     : []
 }
 
-export function normalizeVerificationResultForCompletion(verification: any) {
+export function normalizeVerificationResultForCompletion(
+  verification: any,
+  options?: { verificationMessages?: VerificationMessageLike[] },
+) {
   const missingItems = normalizeMissingItemsList(verification?.missingItems)
 
   const fallbackState: AgentConversationState = verification?.isComplete === true
     ? "complete"
     : "running"
-  const conversationState = normalizeAgentConversationState(
+  let conversationState = normalizeAgentConversationState(
     verification?.conversationState,
     fallbackState,
   )
+  let reason = typeof verification?.reason === "string" ? verification.reason.trim() : undefined
+
+  if (
+    conversationState === "needs_input"
+    && shouldDowngradeNeedsInputToRunning(verification, options?.verificationMessages)
+  ) {
+    conversationState = "running"
+    reason = [
+      reason,
+      "Normalized to running because the assistant still owes the main requested artifact and is only asking an optional approval or preference question.",
+    ].filter(Boolean).join(" ")
+  }
 
   return {
     ...verification,
     isComplete: conversationState !== "running",
     conversationState,
     missingItems,
-    reason: typeof verification?.reason === "string" ? verification.reason.trim() : undefined,
+    reason,
   }
 }
 

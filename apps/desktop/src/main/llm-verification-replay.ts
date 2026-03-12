@@ -1,0 +1,179 @@
+import type { AgentConversationState } from "@dotagents/shared"
+import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
+import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
+
+type ToolCallLike = {
+  name?: string
+  arguments?: unknown
+}
+
+type ReplayConversationHistoryEntry = {
+  role: "user" | "assistant" | "tool"
+  content: string
+  toolCalls?: ToolCallLike[]
+  toolResults?: unknown[]
+}
+
+export type VerificationMessage = {
+  role: "user" | "assistant" | "system"
+  content: string
+}
+
+type ReplayExpectedResult = {
+  conversationState?: AgentConversationState
+  isComplete?: boolean
+}
+
+type ReplaySourceInfo = {
+  langfuseTraceId?: string
+  generationId?: string
+  url?: string
+}
+
+type ReplayBaseFixture = {
+  version: 1
+  id: string
+  description?: string
+  source?: ReplaySourceInfo
+  expected?: ReplayExpectedResult
+}
+
+export type ExactVerifierMessagesReplayFixture = ReplayBaseFixture & {
+  mode: "exact_verifier_messages"
+  messages: VerificationMessage[]
+}
+
+export type AgentStateReplayFixture = ReplayBaseFixture & {
+  mode: "agent_state"
+  transcript: string
+  finalAssistantText?: string
+  storedResponse?: string
+  plannedToolCalls?: ToolCallLike[]
+  verificationFailCount?: number
+  verifyContextMaxItems?: number
+  conversationHistory: ReplayConversationHistoryEntry[]
+}
+
+export type ContinueReplayFixture = ExactVerifierMessagesReplayFixture | AgentStateReplayFixture
+
+export const VERIFICATION_SYSTEM_PROMPT = `You are a strict conversation-state verifier for an agent run.
+
+Classify the CURRENT state of the conversation using exactly one value:
+- running: the agent still owes more work before the current run can stop.
+- complete: the user already has the requested deliverable.
+- needs_input: the assistant has reached a valid stopping point because it is explicitly waiting on user clarification, approval, credentials, or another user reply.
+- blocked: the assistant has reached a valid stopping point because it clearly explained an external blocker, failure, or environment constraint that prevents further progress right now.
+
+Rules:
+- Judge based on what the user-facing assistant response actually delivers, not on tool success alone.
+- If tools found information but the assistant did not present or synthesize it for the user, return running.
+- If the assistant mainly says what it plans to do next, return running.
+- If the assistant asks the user for something needed next, return needs_input.
+- Use needs_input only when the requested work is at a legitimate stopping point and the missing user input is truly required before any remaining primary work can continue.
+- If the assistant asks an optional preference, optional approval, or “if you want, I can do the final steps now” follow-up after failing to deliver the main requested artifact, return running.
+- If the assistant reports that a requested artifact was not created yet (for example no PR was opened yet, no agent/profile was created yet, no file was produced yet) and then asks whether to continue, return running unless the user had explicitly asked the assistant to stop and ask first.
+- If the assistant only gathered context, prepared, or summarized next steps but did not create the main requested artifact, return running even if it asks a style/preference question.
+- If the assistant clearly says it cannot proceed because of a blocker outside its control, return blocked.
+- If the user already has the final answer, requested artifact, or requested summary, return complete.
+- Empty, vague, or purely procedural replies should return running.
+
+Return ONLY JSON with this schema:
+{
+  "conversationState": "running" | "complete" | "needs_input" | "blocked",
+  "isComplete": boolean,
+  "confidence": number,
+  "missingItems": string[],
+  "reason": string
+}
+
+Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
+
+export function buildVerificationMessagesFromAgentState(
+  fixture: AgentStateReplayFixture,
+): VerificationMessage[] {
+  const maxItems = Math.max(1, fixture.verifyContextMaxItems ?? 20)
+  const recent = fixture.conversationHistory.slice(-maxItems)
+  const latestUserFacingResponse = resolveLatestUserFacingResponse({
+    storedResponse: fixture.storedResponse,
+    plannedToolCalls: fixture.plannedToolCalls,
+    conversationHistory: fixture.conversationHistory,
+  })
+
+  const messages: VerificationMessage[] = [
+    { role: "system", content: VERIFICATION_SYSTEM_PROMPT },
+    { role: "user", content: `Original request:\n${sanitizeMessageContentForDisplay(fixture.transcript)}` },
+  ]
+
+  if (latestUserFacingResponse?.trim()) {
+    messages.push({
+      role: "user",
+      content: `Latest explicit user-facing response from the agent:\n${sanitizeMessageContentForDisplay(latestUserFacingResponse)}`,
+    })
+  }
+
+  let lastAddedAssistantContent: string | null = null
+  for (const entry of recent) {
+    const rawContent = typeof entry.content === "string" ? entry.content : ""
+    if (entry.role === "tool") {
+      const text = sanitizeMessageContentForDisplay(rawContent.trim())
+      messages.push({ role: "user", content: text || "[No tool output]" })
+      continue
+    }
+
+    if (entry.role === "user") {
+      const text = sanitizeMessageContentForDisplay(rawContent.trim())
+      if (text) messages.push({ role: "user", content: text })
+      continue
+    }
+
+    let content = sanitizeMessageContentForDisplay(rawContent)
+    if (!content.trim()) {
+      content = entry.toolCalls?.length
+        ? `[Calling tools: ${entry.toolCalls.map((toolCall) => toolCall.name).join(", ")}]`
+        : "[Processing...]"
+    }
+    messages.push({ role: "assistant", content })
+    lastAddedAssistantContent = content
+  }
+
+  const sanitizedFinalAssistantText = sanitizeMessageContentForDisplay(fixture.finalAssistantText || "")
+  if (sanitizedFinalAssistantText.trim() && sanitizedFinalAssistantText.trim() !== lastAddedAssistantContent?.trim()) {
+    messages.push({ role: "assistant", content: sanitizedFinalAssistantText })
+  }
+
+  let jsonRequestContent = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
+  if ((fixture.verificationFailCount ?? 0) > 0) {
+    jsonRequestContent += `\n\nNote: This is verification attempt #${(fixture.verificationFailCount ?? 0) + 1}. Do NOT lower the bar. If any requested work still remains, return conversationState=running and list the missingItems. Only use complete, needs_input, or blocked when the current run can legitimately stop now.`
+  }
+  messages.push({ role: "user", content: jsonRequestContent })
+  return messages
+}
+
+export function resolveContinueReplayMessages(fixture: ContinueReplayFixture): VerificationMessage[] {
+  return fixture.mode === "exact_verifier_messages"
+    ? fixture.messages
+    : buildVerificationMessagesFromAgentState(fixture)
+}
+
+export function parseContinueReplayFixture(raw: unknown, source = "fixture"): ContinueReplayFixture {
+  if (!raw || typeof raw !== "object") throw new Error(`${source} must be an object`)
+  const fixture = raw as Record<string, unknown>
+  if (fixture.version !== 1) throw new Error(`${source} must declare version: 1`)
+  if (typeof fixture.id !== "string" || !fixture.id.trim()) throw new Error(`${source} must include a non-empty id`)
+  if (fixture.mode !== "exact_verifier_messages" && fixture.mode !== "agent_state") {
+    throw new Error(`${source} mode must be exact_verifier_messages or agent_state`)
+  }
+
+  if (fixture.mode === "exact_verifier_messages") {
+    if (!Array.isArray(fixture.messages) || fixture.messages.length === 0) {
+      throw new Error(`${source} exact_verifier_messages fixture must include a non-empty messages array`)
+    }
+    return fixture as ExactVerifierMessagesReplayFixture
+  }
+
+  if (typeof fixture.transcript !== "string") throw new Error(`${source} agent_state fixture must include transcript`)
+  if (!Array.isArray(fixture.conversationHistory)) {
+    throw new Error(`${source} agent_state fixture must include conversationHistory array`)
+  }
+  return fixture as AgentStateReplayFixture
+}
