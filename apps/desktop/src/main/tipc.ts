@@ -4025,6 +4025,13 @@ export const router = {
     return acpService.getAgents()
   }),
 
+  verifyExternalAgentCommand: t.procedure
+    .input<{ command: string; args?: string[]; cwd?: string; probeArgs?: string[] }>()
+    .action(async ({ input }) => {
+      const { verifyExternalAgentCommand } = await import("./command-verification-service")
+      return verifyExternalAgentCommand(input)
+    }),
+
   spawnAcpAgent: t.procedure
     .input<{ agentName: string; workingDirectory?: string }>()
     .action(async ({ input }) => {

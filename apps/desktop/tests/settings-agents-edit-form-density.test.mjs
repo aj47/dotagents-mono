@@ -30,10 +30,14 @@ test('desktop settings agents keep quick setup presets in a compact wrap-safe pa
   assert.match(renderEditFormBlock, /Start with a preset, or configure manually below\./)
   assert.match(renderEditFormBlock, /<div className="flex flex-wrap gap-1\.5">/)
   assert.match(renderEditFormBlock, /className="h-8 px-2\.5 text-xs"/)
+  assert.match(renderEditFormBlock, /Object\.entries\(AGENT_PRESETS\)\.map/)
+  assert.match(renderEditFormBlock, /applyPreset\(key as AgentPresetKey\)/)
 })
 
 test('desktop settings agents keep advanced helper and connection toggles wrap-safe on narrower widths', () => {
   assert.ok(renderEditFormBlock, 'expected to find the desktop settings agents edit form block')
   assert.match(renderEditFormBlock, /<div className="flex flex-wrap items-start justify-between gap-2">/)
   assert.match(renderEditFormBlock, /<div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">/)
+  assert.match(renderEditFormBlock, /Verify Setup/)
+  assert.match(renderEditFormBlock, /Open docs/)
 })
