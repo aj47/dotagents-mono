@@ -16,6 +16,8 @@ describe("channel-native operator commands", () => {
     expect(discordSource).toContain("Operator access denied for this Discord user/channel")
     expect(discordSource).toContain("new URL(\"/v1/operator/\", `http://127.0.0.1:${port}`)")
     expect(discordSource).toContain("Authorization: `Bearer ${apiKey}`")
+    expect(discordSource).toContain('path: "updater/check"')
+    expect(discordSource).toContain('path: "updater/download-latest"')
     expect(discordSource).toContain('path: "actions/restart-remote-server"')
     expect(discordSource).toContain('path: "actions/restart-app"')
 
@@ -33,6 +35,8 @@ describe("channel-native operator commands", () => {
     expect(whatsappSource).toContain("Operator access denied for this WhatsApp sender/chat")
     expect(whatsappSource).toContain('new URL("/v1/operator/", config.callbackUrl)')
     expect(whatsappSource).toContain("Authorization: `Bearer ${config.callbackApiKey}`")
+    expect(whatsappSource).toContain('path: "updater/check"')
+    expect(whatsappSource).toContain('path: "updater/download-latest"')
     expect(whatsappSource).toContain("OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i")
     expect(whatsappSource).toContain("WhatsApp needs authentication in the desktop app")
 

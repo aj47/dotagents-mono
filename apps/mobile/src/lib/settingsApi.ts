@@ -352,6 +352,12 @@ export class SettingsApiClient {
     });
   }
 
+  async downloadOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/download-latest', {
+      method: 'POST',
+    });
+  }
+
   async getOperatorDiscord(): Promise<OperatorDiscordIntegrationSummary> {
     return this.request<OperatorDiscordIntegrationSummary>('/operator/discord');
   }

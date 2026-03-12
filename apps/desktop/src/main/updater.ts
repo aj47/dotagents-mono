@@ -1,3 +1,5 @@
+import fs from "fs"
+import path from "path"
 import { app, dialog, type MenuItem } from "electron"
 
 export const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
@@ -8,6 +10,12 @@ const UPDATE_CHECK_CACHE_MS = 10 * 60 * 1000
 interface ManualReleaseAssetInfo {
   name: string
   downloadUrl: string
+}
+
+interface ManualDownloadedAssetInfo {
+  name: string
+  filePath: string
+  downloadedAt: number
 }
 
 interface ManualLatestReleaseInfo {
@@ -23,8 +31,10 @@ interface ManualUpdateInfo {
   currentVersion: string
   updateAvailable?: boolean
   latestRelease?: ManualLatestReleaseInfo
+  preferredAsset?: ManualReleaseAssetInfo
   lastCheckedAt?: number
   error?: string
+  lastDownloadedAsset?: ManualDownloadedAssetInfo
 }
 
 let cachedUpdateInfo: ManualUpdateInfo = {
@@ -43,6 +53,67 @@ function normalizeVersion(value: string | undefined): string {
 function hasNewerRelease(currentVersion: string, releaseTag: string | undefined): boolean {
   if (!releaseTag) return false
   return normalizeVersion(currentVersion) !== normalizeVersion(releaseTag)
+}
+
+function scoreReleaseAsset(asset: ManualReleaseAssetInfo): number {
+  const name = asset.name.toLowerCase()
+  let score = 0
+
+  if (process.platform === "darwin") {
+    if (name.includes("mac") || name.includes("darwin") || name.includes("osx")) score += 100
+    if (process.arch === "arm64") {
+      if (name.includes("arm64") || name.includes("aarch64") || name.includes("apple-silicon")) score += 30
+      if (name.includes("x64") || name.includes("amd64")) score -= 20
+    } else if (name.includes("x64") || name.includes("amd64")) {
+      score += 30
+    }
+    if (name.endsWith(".dmg")) score += 40
+    else if (name.endsWith(".zip")) score += 25
+    else if (name.endsWith(".pkg")) score += 20
+  } else if (process.platform === "win32") {
+    if (name.includes("win") || name.includes("windows")) score += 100
+    if (process.arch === "arm64") {
+      if (name.includes("arm64")) score += 30
+    } else if (name.includes("x64") || name.includes("amd64")) {
+      score += 30
+    }
+    if (name.endsWith(".exe")) score += 40
+    else if (name.endsWith(".msi")) score += 35
+    else if (name.endsWith(".zip")) score += 15
+  } else {
+    if (name.includes("linux") || name.includes("appimage") || name.includes("deb") || name.includes("rpm")) score += 100
+    if (process.arch === "arm64") {
+      if (name.includes("arm64") || name.includes("aarch64")) score += 30
+      if (name.includes("x64") || name.includes("amd64")) score -= 20
+    } else if (name.includes("x64") || name.includes("amd64")) {
+      score += 30
+    }
+    if (name.endsWith(".appimage")) score += 40
+    else if (name.endsWith(".deb")) score += 35
+    else if (name.endsWith(".rpm")) score += 30
+    else if (name.endsWith(".tar.gz") || name.endsWith(".tgz")) score += 20
+  }
+
+  return score
+}
+
+function getPreferredReleaseAsset(assets: ManualReleaseAssetInfo[] | undefined): ManualReleaseAssetInfo | undefined {
+  if (!assets || assets.length === 0) return undefined
+  return [...assets].sort((left, right) => scoreReleaseAsset(right) - scoreReleaseAsset(left))[0]
+}
+
+function buildDownloadTargetPath(fileName: string): string {
+  const downloadsDir = app.getPath("downloads") || app.getPath("temp")
+  fs.mkdirSync(downloadsDir, { recursive: true })
+
+  const parsed = path.parse(fileName)
+  let candidate = path.join(downloadsDir, fileName)
+  let suffix = 1
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(downloadsDir, `${parsed.name}-${suffix}${parsed.ext}`)
+    suffix += 1
+  }
+  return candidate
 }
 
 async function fetchLatestReleaseInfo(force: boolean = false): Promise<ManualUpdateInfo> {
@@ -97,8 +168,10 @@ async function fetchLatestReleaseInfo(force: boolean = false): Promise<ManualUpd
       mode: "manual",
       currentVersion,
       latestRelease,
+      preferredAsset: getPreferredReleaseAsset(latestRelease?.assets),
       updateAvailable: hasNewerRelease(currentVersion, latestRelease?.tagName),
       lastCheckedAt: Date.now(),
+      lastDownloadedAsset: cachedUpdateInfo.lastDownloadedAsset,
     }
     return cachedUpdateInfo
   } catch (error) {
@@ -107,11 +180,13 @@ async function fetchLatestReleaseInfo(force: boolean = false): Promise<ManualUpd
       mode: "manual",
       currentVersion,
       latestRelease: cachedUpdateInfo.latestRelease,
+      preferredAsset: cachedUpdateInfo.preferredAsset,
       updateAvailable: cachedUpdateInfo.latestRelease
         ? hasNewerRelease(currentVersion, cachedUpdateInfo.latestRelease.tagName)
         : undefined,
       lastCheckedAt: Date.now(),
       error: message,
+      lastDownloadedAsset: cachedUpdateInfo.lastDownloadedAsset,
     }
     return cachedUpdateInfo
   } finally {
@@ -166,6 +241,49 @@ export function quitAndInstall() {
 
 export async function downloadUpdate() {
   return fetchLatestReleaseInfo(true)
+}
+
+export async function downloadLatestReleaseAsset() {
+  const updateInfo = await fetchLatestReleaseInfo(true)
+  const asset = updateInfo.preferredAsset
+
+  if (!asset) {
+    throw new Error("No matching release asset is available for this platform yet")
+  }
+
+  const response = await fetch(asset.downloadUrl, {
+    headers: {
+      "User-Agent": "DotAgents-Desktop-Updater",
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Release asset download failed with HTTP ${response.status}`)
+  }
+
+  const fileBuffer = Buffer.from(await response.arrayBuffer())
+  if (fileBuffer.byteLength === 0) {
+    throw new Error("Release asset download returned an empty response")
+  }
+
+  const filePath = buildDownloadTargetPath(asset.name)
+  fs.writeFileSync(filePath, fileBuffer)
+
+  const downloadedAsset: ManualDownloadedAssetInfo = {
+    name: asset.name,
+    filePath,
+    downloadedAt: Date.now(),
+  }
+
+  cachedUpdateInfo = {
+    ...updateInfo,
+    lastDownloadedAsset: downloadedAsset,
+  }
+
+  return {
+    updateInfo: cachedUpdateInfo,
+    downloadedAsset,
+  }
 }
 
 export function cancelDownloadUpdate() {

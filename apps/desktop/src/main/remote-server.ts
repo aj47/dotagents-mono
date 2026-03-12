@@ -50,7 +50,7 @@ import {
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
 } from "./acp-session-state"
-import { MANUAL_RELEASES_URL, checkForUpdatesAndDownload, getUpdateInfo } from "./updater"
+import { MANUAL_RELEASES_URL, checkForUpdatesAndDownload, downloadLatestReleaseAsset, getUpdateInfo } from "./updater"
 import { WINDOWS } from "./window"
 import type {
   OperatorActionResponse,
@@ -1574,8 +1574,10 @@ function buildOperatorUpdaterStatus(): OperatorUpdaterStatus {
     currentVersion?: string
     updateAvailable?: boolean
     latestRelease?: { tagName?: string; name?: string; publishedAt?: string; url?: string; assets?: unknown[] }
+    preferredAsset?: { name?: string; downloadUrl?: string }
     lastCheckedAt?: number
     error?: string
+    lastDownloadedAsset?: { name?: string; downloadedAt?: number }
   } | null
 
   return {
@@ -1596,6 +1598,14 @@ function buildOperatorUpdaterStatus(): OperatorUpdaterStatus {
         assetCount: Array.isArray(updateInfo.latestRelease.assets) ? updateInfo.latestRelease.assets.length : 0,
       }
       : undefined,
+    preferredAsset: updateInfo?.preferredAsset?.name && updateInfo.preferredAsset.downloadUrl
+      ? {
+        name: updateInfo.preferredAsset.name,
+        downloadUrl: updateInfo.preferredAsset.downloadUrl,
+      }
+      : undefined,
+    lastDownloadedAt: updateInfo?.lastDownloadedAsset?.downloadedAt,
+    lastDownloadedFileName: updateInfo?.lastDownloadedAsset?.name,
   }
 }
 
@@ -1860,6 +1870,35 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
     recordOperatorAuditEvent(req, response)
     return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/updater/download-latest", async (req, reply) => {
+    try {
+      const result = await downloadLatestReleaseAsset()
+      const response: OperatorActionResponse = {
+        success: true,
+        action: "updater-download-latest",
+        message: `Downloaded ${result.downloadedAsset.name} to ${result.downloadedAsset.filePath}`,
+        details: {
+          fileName: result.downloadedAsset.name,
+          filePath: result.downloadedAsset.filePath,
+          downloadedAt: result.downloadedAsset.downloadedAt,
+          releaseTag: result.updateInfo.latestRelease?.tagName,
+        },
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const response: OperatorActionResponse = {
+        success: false,
+        action: "updater-download-latest",
+        message,
+        error: message,
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    }
   })
 
   fastify.get("/v1/operator/discord", async (_req, reply) => {

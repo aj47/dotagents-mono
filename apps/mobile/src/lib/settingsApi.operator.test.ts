@@ -76,7 +76,8 @@ describe('SettingsApiClient operator endpoints', () => {
         restartScheduled: true,
         apiKey: 'rotated-secret',
       }))
-      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-check', message: 'No newer release found.' }));
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-check', message: 'No newer release found.' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-download-latest', message: 'downloaded' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
@@ -88,6 +89,7 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.emergencyStop();
     await client.rotateOperatorApiKey();
     await client.checkOperatorUpdater();
+    await client.downloadOperatorUpdateAsset();
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       'https://example.com/v1/operator/errors?count=12',
@@ -97,6 +99,7 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/emergency-stop',
       'https://example.com/v1/operator/access/rotate-api-key',
       'https://example.com/v1/operator/updater/check',
+      'https://example.com/v1/operator/updater/download-latest',
     ]);
 
     expect(fetchMock.mock.calls[2]?.[1]?.method).toBe('POST');
@@ -104,6 +107,7 @@ describe('SettingsApiClient operator endpoints', () => {
     expect(fetchMock.mock.calls[4]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[5]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[6]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[7]?.[1]?.method).toBe('POST');
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

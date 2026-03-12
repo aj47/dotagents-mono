@@ -1173,6 +1173,18 @@ export default function OperationsScreen({ navigation }: any) {
                   <Text style={styles.detailText}>Release URL: {status.updater.latestRelease.url}</Text>
                 </>
               ) : null}
+              {status.updater.preferredAsset ? (
+                <>
+                  <Text style={styles.detailText}>Recommended asset: {status.updater.preferredAsset.name}</Text>
+                  <Text style={styles.detailText}>Asset URL: {status.updater.preferredAsset.downloadUrl}</Text>
+                </>
+              ) : null}
+              {status.updater.lastDownloadedFileName ? (
+                <>
+                  <Text style={styles.detailText}>Last downloaded file: {status.updater.lastDownloadedFileName}</Text>
+                  <Text style={styles.detailText}>Downloaded at: {formatTimestamp(status.updater.lastDownloadedAt)}</Text>
+                </>
+              ) : null}
               {status.updater.lastCheckError ? <Text style={styles.warningText}>Last check error: {status.updater.lastCheckError}</Text> : null}
               {status.updater.manualReleasesUrl ? (
                 <Text style={styles.detailText}>Manual releases: {status.updater.manualReleasesUrl}</Text>
@@ -1187,6 +1199,27 @@ export default function OperationsScreen({ navigation }: any) {
                 >
                   <Text style={styles.secondaryActionText}>
                     {pendingAction === 'check-latest-release' ? 'Checking latest release…' : 'Check latest release'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.secondaryActionButton,
+                    (pendingAction !== null || !status.updater.preferredAsset) && styles.actionButtonDisabled,
+                  ]}
+                  onPress={() => confirmAction(
+                    'Download Latest Installer',
+                    'Download the recommended release asset onto the desktop machine now? This does not install it automatically.',
+                    'Download',
+                    false,
+                    () => runAction('download-latest-release', () => settingsClient.downloadOperatorUpdateAsset()),
+                  )}
+                  disabled={pendingAction !== null || !status.updater.preferredAsset}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Download latest installer')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'download-latest-release' ? 'Downloading installer…' : 'Download latest installer'}
                   </Text>
                 </TouchableOpacity>
               </View>

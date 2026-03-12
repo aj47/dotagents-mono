@@ -151,6 +151,12 @@ export interface OperatorUpdaterStatus {
     url: string;
     assetCount?: number;
   };
+  preferredAsset?: {
+    name: string;
+    downloadUrl: string;
+  };
+  lastDownloadedAt?: number;
+  lastDownloadedFileName?: string;
 }
 
 export interface OperatorRuntimeStatus {
