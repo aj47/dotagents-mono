@@ -256,6 +256,77 @@ const getCollapsedMessagePreview = (content: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
+
+const getRespondToUserContentFromMessage = (message: ChatMessage): string | null => {
+  if (message.role !== 'assistant' || !message.toolCalls?.length) {
+    return null;
+  }
+
+  for (const call of message.toolCalls) {
+    if (call.name !== RESPOND_TO_USER_TOOL) {
+      continue;
+    }
+
+    const extractedContent = extractRespondToUserContentFromArgs(call.arguments);
+    if (extractedContent) {
+      return extractedContent;
+    }
+  }
+
+  return null;
+};
+
+const looksLikeToolPayloadContent = (content?: string): boolean => {
+  const trimmedContent = content?.trim();
+  if (!trimmedContent) {
+    return false;
+  }
+
+  if (/<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(trimmedContent)) {
+    return true;
+  }
+
+  if (TOOL_PAYLOAD_PREFIX_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
+  return false;
+};
+
+const getVisibleMessageContent = (message: ChatMessage): string => {
+  if (message.role !== 'assistant') {
+    return message.content || '';
+  }
+
+  const respondToUserContent = getRespondToUserContentFromMessage(message);
+  if (respondToUserContent) {
+    return respondToUserContent;
+  }
+
+  const hasToolMetadata =
+    (message.toolCalls?.length ?? 0) > 0 ||
+    (message.toolResults?.length ?? 0) > 0;
+
+  if (isToolOnlyMessage(message)) {
+    return '';
+  }
+
+  if (hasToolMetadata && looksLikeToolPayloadContent(message.content)) {
+    return '';
+  }
+
+  return message.content || '';
+};
+
+const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
+  const hasToolMetadata =
+    (message.toolCalls?.length ?? 0) > 0 ||
+    (message.toolResults?.length ?? 0) > 0;
+
+  return hasToolMetadata && getVisibleMessageContent(message).trim().length === 0;
+};
+
 const applyUserResponseToMessages = (
   messages: ChatMessage[],
   userResponse?: string
@@ -275,7 +346,14 @@ const applyUserResponseToMessages = (
     const hasToolMetadata =
       (msg.toolCalls && msg.toolCalls.length > 0) ||
       (msg.toolResults && msg.toolResults.length > 0);
-    if (hasToolMetadata) {
+    const shouldReplaceToolContent =
+      hasToolMetadata && (
+        isToolOnlyMessage(msg) ||
+        looksLikeToolPayloadContent(msg.content) ||
+        !!getRespondToUserContentFromMessage(msg)
+      );
+
+    if (hasToolMetadata && !shouldReplaceToolContent) {
       continue;
     }
 
@@ -485,13 +563,12 @@ export default function ChatScreen({ route, navigation }: any) {
     navigation?.setOptions?.({
       headerTitle: () => (
         <TouchableOpacity
-          style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+          style={{ alignItems: 'center', justifyContent: 'center' }}
           onPress={() => setAgentSelectorVisible(true)}
           accessibilityRole="button"
           accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
           accessibilityHint="Opens agent selection menu"
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chat</Text>
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -499,7 +576,6 @@ export default function ChatScreen({ route, navigation }: any) {
             paddingHorizontal: 8,
             paddingVertical: 2,
             borderRadius: 10,
-            marginTop: 2,
           }}>
             <Text style={{
               fontSize: 11,
@@ -1165,9 +1241,10 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
-  // - Tool call messages (those with toolCalls/toolResults) are ALWAYS collapsed by default
-  // - Only the final assistant message is expanded, AND only when not streaming (agent complete)
-  // - During streaming, tool calls stay collapsed to avoid showing raw JSON
+  // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
+  // - Messages with tool metadata and visible user-facing content can still expand normally
+  // - Only the final assistant message auto-expands, and only when not streaming (agent complete)
+  // - Tool-only messages stay collapsed during streaming to avoid showing raw payload text
   // - Users can still manually expand any collapsed message
   useEffect(() => {
     const lastAssistantIndex = messages.reduce((lastIdx, m, i) =>
@@ -1178,9 +1255,9 @@ export default function ChatScreen({ route, navigation }: any) {
         const updated = { ...prev };
         const lastMsg = messages[lastAssistantIndex];
 
-        // Collapse ALL assistant messages with tool calls/results by default
+        // Collapse tool-only assistant messages by default when they have no visible user-facing content
         messages.forEach((m, i) => {
-          if (m.role === 'assistant' && isToolOnlyMessage(m)) {
+          if (m.role === 'assistant' && shouldTreatMessageAsToolOnly(m)) {
             // Only set to false if not explicitly toggled by user
             // (We check if the index exists in prev - if so, preserve user choice)
             if (!(i in prev)) {
@@ -1193,7 +1270,7 @@ export default function ChatScreen({ route, navigation }: any) {
         // 1. Agent is not currently streaming/responding
         // 2. The message is NOT a tool-only message (has real content for user)
         const isComplete = !responding;
-        const isFinalToolOnly = isToolOnlyMessage(lastMsg);
+        const isFinalToolOnly = shouldTreatMessageAsToolOnly(lastMsg);
 
         if (isComplete && !isFinalToolOnly) {
           // Expand final message only if it has user-facing content
@@ -1269,7 +1346,6 @@ export default function ChatScreen({ route, navigation }: any) {
             const lastMessage = messages[messages.length - 1];
             if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
               const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-              const hasContent = historyMsg.content && historyMsg.content.trim().length > 0;
 
               if (hasToolResults) {
                 // Merge toolResults into the existing assistant message
@@ -1277,11 +1353,6 @@ export default function ChatScreen({ route, navigation }: any) {
                   ...(lastMessage.toolResults || []),
                   ...(historyMsg.toolResults || []),
                 ];
-                // Also preserve any content from the tool message (e.g., error messages)
-                if (hasContent) {
-                  lastMessage.content = (lastMessage.content || '') +
-                    (lastMessage.content ? '\n' : '') + historyMsg.content;
-                }
                 // Skip adding this as a separate message only when we merged results
                 continue;
               }
@@ -1661,7 +1732,6 @@ export default function ChatScreen({ route, navigation }: any) {
             const lastMessage = newMessages[newMessages.length - 1];
             if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
               const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-              const hasContent = historyMsg.content && historyMsg.content.trim().length > 0;
 
               if (hasToolResults) {
                 // Merge toolResults into the existing assistant message
@@ -1669,11 +1739,6 @@ export default function ChatScreen({ route, navigation }: any) {
                   ...(lastMessage.toolResults || []),
                   ...(historyMsg.toolResults || []),
                 ];
-                // Also preserve any content from the tool message (e.g., error messages)
-                if (hasContent) {
-                  lastMessage.content = (lastMessage.content || '') +
-                    (lastMessage.content ? '\n' : '') + historyMsg.content;
-                }
                 // Skip adding this as a separate message only when we merged results
                 continue;
               }
@@ -2326,10 +2391,26 @@ export default function ChatScreen({ route, navigation }: any) {
             </View>
           )}
           {messages.map((m, i) => {
-            const shouldCollapse = shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
+            const visibleMessageContent = getVisibleMessageContent(m);
+            const shouldCollapse = m.role === 'assistant'
+              ? shouldCollapseMessage(visibleMessageContent)
+              : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = expandedMessages[i] ?? false;
+            const hasToolMetadata =
+              (m.toolCalls?.length ?? 0) > 0 ||
+              (m.toolResults?.length ?? 0) > 0;
+            const shouldShowExpandedContent = visibleMessageContent.length > 0 && (isExpanded || !shouldCollapse);
+            const shouldShowCollapsedTextPreview =
+              visibleMessageContent.length > 0 &&
+              !isExpanded &&
+              shouldCollapse;
+            const canSpeakVisibleContent =
+              m.role === 'assistant' &&
+              visibleMessageContent.trim().length > 0 &&
+              config.ttsEnabled !== false &&
+              (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
 
             const toolCallCount = m.toolCalls?.length ?? 0;
             const toolResultCount = m.toolResults?.length ?? 0;
@@ -2386,21 +2467,57 @@ export default function ChatScreen({ route, navigation }: any) {
                   </View>
                 ) : (
                   <>
-                    {m.content ? (
-                      isExpanded || !shouldCollapse ? (
-                        <MarkdownRenderer content={m.content} />
-                      ) : (
-                        // Only show collapsed content preview if there are NO tool calls
-                        // Tool calls have their own compact summary row, so don't duplicate
-                        !((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0) && (
-                          <Text
-                            style={{ color: theme.colors.foreground, fontSize: 13, lineHeight: 18 }}
-                            numberOfLines={1}
+                    {shouldShowExpandedContent ? (
+                      <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
+                        <View style={m.role === 'assistant' ? styles.assistantMessageBody : undefined}>
+                          <MarkdownRenderer content={visibleMessageContent} />
+                        </View>
+                        {canSpeakVisibleContent && (
+                          <TouchableOpacity
+                            onPress={() => speakMessage(i, visibleMessageContent)}
+                            style={[
+                              styles.speakButton,
+                              speakingMessageIndex === i && styles.speakButtonActive,
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={speakingMessageIndex === i ? 'Stop reading' : 'Read aloud'}
                           >
-	                            {getCollapsedMessagePreview(m.content)}
-                          </Text>
-                        )
-                      )
+                            <Text style={[
+                              styles.speakButtonText,
+                              speakingMessageIndex === i && styles.speakButtonTextActive,
+                            ]}>
+                              {speakingMessageIndex === i ? '⏹' : '🔊'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ) : shouldShowCollapsedTextPreview ? (
+                      <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
+                        <Text
+                          style={styles.collapsedMessagePreview}
+                          numberOfLines={1}
+                        >
+                          {getCollapsedMessagePreview(visibleMessageContent)}
+                        </Text>
+                        {canSpeakVisibleContent && (
+                          <TouchableOpacity
+                            onPress={() => speakMessage(i, visibleMessageContent)}
+                            style={[
+                              styles.speakButton,
+                              speakingMessageIndex === i && styles.speakButtonActive,
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={speakingMessageIndex === i ? 'Stop reading' : 'Read aloud'}
+                          >
+                            <Text style={[
+                              styles.speakButtonText,
+                              speakingMessageIndex === i && styles.speakButtonTextActive,
+                            ]}>
+                              {speakingMessageIndex === i ? '⏹' : '🔊'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     ) : null}
 
                     {/* Unified Tool Execution Display - show when there are toolCalls OR toolResults */}
@@ -2558,26 +2675,6 @@ export default function ChatScreen({ route, navigation }: any) {
                       </>
                     )}
                   </>
-                )}
-
-                {/* Per-message Read Aloud button for assistant messages with content (#1078) */}
-                {m.role === 'assistant' && m.content && m.content.trim().length > 0 && config.ttsEnabled !== false && (
-                  <TouchableOpacity
-                    onPress={() => speakMessage(i, m.content!)}
-                    style={[
-                      styles.speakButton,
-                      speakingMessageIndex === i && styles.speakButtonActive,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={speakingMessageIndex === i ? 'Stop reading' : 'Read aloud'}
-                  >
-                    <Text style={[
-                      styles.speakButtonText,
-                      speakingMessageIndex === i && styles.speakButtonTextActive,
-                    ]}>
-                      {speakingMessageIndex === i ? '⏹' : '🔊'}
-                    </Text>
-                  </TouchableOpacity>
                 )}
               </View>
             );
@@ -2768,7 +2865,6 @@ export default function ChatScreen({ route, navigation }: any) {
                               const lastMessage = recoveredMessages[recoveredMessages.length - 1];
                               if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
                                 const hasToolResults = msg.toolResults && msg.toolResults.length > 0;
-                                const hasContent = msg.content && msg.content.trim().length > 0;
 
                                 if (hasToolResults) {
                                   // Merge toolResults into the existing assistant message
@@ -2776,11 +2872,6 @@ export default function ChatScreen({ route, navigation }: any) {
                                     ...(lastMessage.toolResults || []),
                                     ...(msg.toolResults || []),
                                   ];
-                                  // Also preserve any content from the tool message (e.g., error messages)
-                                  if (hasContent) {
-                                    lastMessage.content = (lastMessage.content || '') +
-                                      (lastMessage.content ? '\n' : '') + msg.content;
-                                  }
                                 }
                               }
                             }
@@ -3562,14 +3653,34 @@ function createStyles(theme: Theme, screenHeight: number) {
       padding: 3,
       borderRadius: radius.sm,
     },
+    assistantMessageRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.xs,
+      width: '100%',
+    },
+    assistantMessageBody: {
+      flex: 1,
+      minWidth: 0,
+    },
+    collapsedMessagePreview: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
+      flex: 1,
+      minWidth: 0,
+    },
     // Per-message TTS button styles (#1078)
     speakButton: {
       alignSelf: 'flex-start',
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 2,
-      marginTop: 4,
-      borderRadius: radius.sm,
+      width: 24,
+      height: 24,
+      marginTop: 1,
+      borderRadius: 12,
       backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.1),
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
     } as const,
     speakButtonActive: {
       backgroundColor: hexToRgba(theme.colors.primary, 0.15),

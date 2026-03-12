@@ -107,16 +107,11 @@ export default function SessionListScreen({ navigation }: Props) {
         const lastMessage = messages[messages.length - 1];
         if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
           const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-          const hasContent = historyMsg.content && historyMsg.content.trim().length > 0;
           if (hasToolResults) {
             lastMessage.toolResults = [
               ...(lastMessage.toolResults || []),
               ...(historyMsg.toolResults || []),
             ];
-            if (hasContent) {
-              lastMessage.content = (lastMessage.content || '') +
-                (lastMessage.content ? '\n' : '') + historyMsg.content;
-            }
             continue;
           }
         }
@@ -768,6 +763,8 @@ export default function SessionListScreen({ navigation }: Props) {
   const renderSession = ({ item }: { item: SessionListItem }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
+    const sessionPreviewText = item.preview || 'No messages yet';
+    const sessionMetaLabel = `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`;
 
     return (
       <TouchableOpacity
@@ -785,12 +782,9 @@ export default function SessionListScreen({ navigation }: Props) {
           </View>
           <Text style={styles.sessionDate}>{formatDate(item.updatedAt)}</Text>
         </View>
-        <Text style={styles.sessionPreview} numberOfLines={2}>
-          {item.preview || 'No messages yet'}
-        </Text>
-        <Text style={styles.sessionMeta}>
-          {item.messageCount} message{item.messageCount !== 1 ? 's' : ''}
-          {isStub ? ' · from desktop' : ''}
+        <Text style={styles.sessionPreview} numberOfLines={1}>
+          <Text style={styles.sessionPreviewMeta}>{sessionMetaLabel}</Text>
+          {` · ${sessionPreviewText}`}
         </Text>
       </TouchableOpacity>
     );
@@ -1014,7 +1008,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 4,
+      marginBottom: 2,
     },
     sessionTitleRow: {
       flexDirection: 'row',
@@ -1036,11 +1030,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionPreview: {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
-      marginBottom: 4,
     },
-    sessionMeta: {
-      ...theme.typography.caption,
+    sessionPreviewMeta: {
+      ...theme.typography.body,
       color: theme.colors.mutedForeground,
+      fontWeight: '500',
     },
     emptyState: {
       alignItems: 'center',
