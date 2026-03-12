@@ -55,9 +55,18 @@ export function SessionActionDialog({
   const [recording, setRecording] = useState(false)
   const [visualizerData, setVisualizerData] = useState<number[]>(INITIAL_VISUALIZER_DATA)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const isMountedRef = useRef(false)
   const recorderRef = useRef<Recorder | null>(null)
   const shouldSubmitVoiceRef = useRef(false)
   const isClosedRef = useRef(false)
+
+  const canUpdateDialogState = () => isMountedRef.current && !isClosedRef.current
+
+  const canHandleRecorderCallback = (recorder: Recorder, allowPendingSubmit: boolean = false) => {
+    if (!canUpdateDialogState()) return false
+    if (recorderRef.current === recorder) return true
+    return allowPendingSubmit && shouldSubmitVoiceRef.current
+  }
 
   const closeDialog = () => {
     isClosedRef.current = true
@@ -103,6 +112,8 @@ export function SessionActionDialog({
   }
 
   const startVoiceRecording = async () => {
+    if (!canUpdateDialogState()) return
+
     stopRecorder()
     shouldSubmitVoiceRef.current = false
     setStatusMessage(null)
@@ -112,23 +123,27 @@ export function SessionActionDialog({
     recorderRef.current = recorder
 
     recorder.on("visualizer-data", (rms) => {
+      if (!canHandleRecorderCallback(recorder)) return
       setVisualizerData((prev) => [...prev.slice(-(VISUALIZER_BAR_COUNT - 1)), rms])
     })
 
     recorder.on("record-end", (blob, duration) => {
       void (async () => {
+        if (!canHandleRecorderCallback(recorder, true)) return
+
         setRecording(false)
         setVisualizerData(INITIAL_VISUALIZER_DATA)
 
-        if (!shouldSubmitVoiceRef.current || isClosedRef.current) {
+        if (!shouldSubmitVoiceRef.current) {
           return
         }
 
         if (blob.size === 0 || duration < 100) {
+          if (!canHandleRecorderCallback(recorder, true)) return
           setIsSubmitting(false)
           setStatusMessage("Recording too short — try again.")
           toast.error("Recording too short — try again.")
-          if (!isClosedRef.current) {
+          if (canUpdateDialogState()) {
             await startVoiceRecording()
           }
           return
@@ -136,6 +151,7 @@ export function SessionActionDialog({
 
         try {
           playSound("end_record")
+          if (!canHandleRecorderCallback(recorder, true)) return
           setStatusMessage("Starting session…")
           const config = await tipcClient.getConfig()
           const pcmRecording = config?.sttProviderId === "parakeet"
@@ -153,31 +169,44 @@ export function SessionActionDialog({
 
           await invalidateConversationQueries(conversationId)
           onSubmitted?.()
-          closeDialog()
+          if (canUpdateDialogState()) {
+            closeDialog()
+          }
         } catch (error) {
+          if (!canUpdateDialogState()) return
           setStatusMessage(getErrorMessage(error, "Failed to start voice session."))
           toast.error(getErrorMessage(error, "Failed to start voice session."))
-          if (!isClosedRef.current) {
-            await startVoiceRecording()
-          }
+          await startVoiceRecording()
         } finally {
-          setIsSubmitting(false)
+          if (canUpdateDialogState()) {
+            setIsSubmitting(false)
+          }
         }
       })()
     })
 
     try {
+      if (!canUpdateDialogState()) return
       setRecording(true)
       await recorder.startRecording()
     } catch (error) {
-      setRecording(false)
       stopRecorder()
+      if (!canUpdateDialogState()) return
+      setRecording(false)
       const message = getErrorMessage(error, "Failed to access the microphone.")
       setStatusMessage(message)
       toast.error(message)
       closeDialog()
     }
   }
+
+  useEffect(() => {
+    isMountedRef.current = true
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     isClosedRef.current = !open
@@ -195,7 +224,6 @@ export function SessionActionDialog({
 
     return () => {
       shouldSubmitVoiceRef.current = false
-      setRecording(false)
       stopRecorder()
     }
   }, [open, mode])
