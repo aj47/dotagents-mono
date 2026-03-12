@@ -7,6 +7,9 @@ const PROGRESS_UPDATE_REGEX = /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to
 const OPTIONAL_INPUT_SIGNAL_REGEX = /\b(if you want|if you'd like|if you’d like|do you want me to|want me to|quick preference|before i do it|which style|which tone)\b/i
 const OPTIONAL_APPROVAL_REASON_REGEX = /\b(approval|preference|style|tone)\b/i
 const UNDELIVERED_PRIMARY_WORK_REGEX = /\b(no pr was created|did not (?:push|open|create|submit) (?:a |the )?pr|not approved yet|fastest path to pr now|next i'?ll create|before i do it|i can do those final steps now|i can do the final steps now|i can make this agent|ready to create|prepared to create)\b/i
+const PARTIAL_ANALYSIS_SIGNAL_REGEX = /\b(mid-analysis|laid out the (?:three )?recovery options|recovery options)\b/i
+const STRATEGY_REQUEST_SIGNAL_REGEX = /\b(which approach to take|what do you want to do|hard reset|selective revert|cherry-pick|clean commit hash|last clean commit hash)\b/i
+const STRATEGY_REQUEST_REASON_REGEX = /\b(strategy|approach|commit hash|baseline commit|recovery)\b/i
 const EXPLICIT_ASK_FIRST_REGEX = /\b(ask me first|ask before|check with me first|get my approval first|before you (?:merge|open|submit|push|create))\b/i
 
 type ConversationHistoryLike = Array<{
@@ -32,7 +35,7 @@ function extractLatestVerifierResponse(messages?: VerificationMessageLike[]): st
   const assistantMessage = messages
     ?.slice()
     .reverse()
-    .find((message) => message.role === "assistant" && isIterationLimitDeliverableContent(message.content))
+    .find((message) => message.role === "assistant" && isDeliverableResponseContent(message.content))
 
   if (assistantMessage?.content?.trim()) {
     return assistantMessage.content.trim()
@@ -69,8 +72,11 @@ function shouldDowngradeNeedsInputToRunning(
   const signalsOptionalInput = OPTIONAL_INPUT_SIGNAL_REGEX.test(latestResponse)
     || OPTIONAL_APPROVAL_REASON_REGEX.test(needsInputReasonText)
   const showsPrimaryWorkStillUndelivered = UNDELIVERED_PRIMARY_WORK_REGEX.test(latestResponse)
+  const signalsPrematureStrategyHandoff = PARTIAL_ANALYSIS_SIGNAL_REGEX.test(latestResponse)
+    && STRATEGY_REQUEST_SIGNAL_REGEX.test(latestResponse)
+    && STRATEGY_REQUEST_REASON_REGEX.test(needsInputReasonText)
 
-  return signalsOptionalInput && showsPrimaryWorkStillUndelivered
+  return (signalsOptionalInput && showsPrimaryWorkStillUndelivered) || signalsPrematureStrategyHandoff
 }
 
 export function normalizeMissingItemsList(items?: string[]): string[] {
@@ -103,7 +109,7 @@ export function normalizeVerificationResultForCompletion(
     conversationState = "running"
     reason = [
       reason,
-      "Normalized to running because the assistant still owes the main requested artifact and is only asking an optional approval or preference question.",
+      "Normalized to running because the assistant still owes the main requested artifact and is only asking an optional approval/preference question or prematurely handing strategy choice back to the user.",
     ].filter(Boolean).join(" ")
   }
 
@@ -116,12 +122,18 @@ export function normalizeVerificationResultForCompletion(
   }
 }
 
-function isIterationLimitDeliverableContent(content?: string): boolean {
+function isProgressUpdateResponse(content?: string): boolean {
+  const trimmed = typeof content === "string" ? content.trim() : ""
+  if (!trimmed) return false
+  return PROGRESS_UPDATE_REGEX.test(trimmed)
+}
+
+export function isDeliverableResponseContent(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
   if (TOOL_CALL_PLACEHOLDER_REGEX.test(trimmed)) return false
   if (RAW_TOOL_TRANSCRIPT_REGEX.test(trimmed)) return false
-  if (PROGRESS_UPDATE_REGEX.test(trimmed)) return false
+  if (isProgressUpdateResponse(trimmed)) return false
   return true
 }
 
@@ -152,7 +164,7 @@ export function resolveIterationLimitFinalContent({
   }
 
   const normalizedFinalContent = typeof finalContent === "string" ? finalContent.trim() : ""
-  if (isIterationLimitDeliverableContent(normalizedFinalContent)) {
+  if (isDeliverableResponseContent(normalizedFinalContent)) {
     return {
       content: normalizedFinalContent,
       usedExplicitUserResponse: false,
@@ -167,7 +179,7 @@ export function resolveIterationLimitFinalContent({
   const normalizedLastAssistantContent = typeof lastAssistantMessage?.content === "string"
     ? lastAssistantMessage.content.trim()
     : ""
-  if (isIterationLimitDeliverableContent(normalizedLastAssistantContent)) {
+  if (isDeliverableResponseContent(normalizedLastAssistantContent)) {
     return {
       content: normalizedLastAssistantContent,
       usedExplicitUserResponse: false,
