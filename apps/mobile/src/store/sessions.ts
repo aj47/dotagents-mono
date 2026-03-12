@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem } from '../types/session';
+import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';
@@ -20,6 +20,7 @@ export interface SessionStore {
   setCurrentSession: (id: string | null) => void;
   deleteSession: (id: string) => Promise<void>;
   clearAllSessions: () => Promise<void>;
+  toggleSessionPinned: (id: string) => Promise<void>;
 
   // Message management
   addMessage: (role: 'user' | 'assistant', content: string, toolCalls?: any[], toolResults?: any[]) => Promise<void>;
@@ -248,14 +249,34 @@ export function useSessions(): SessionStore {
     }
   }, [queueSave]);
 
+  const toggleSessionPinned = useCallback(async (id: string) => {
+    const sessionsToSave = sessionsRef.current.map((session) => {
+      if (session.id !== id) return session;
+      return {
+        ...session,
+        isPinned: !session.isPinned,
+      };
+    });
+
+    sessionsRef.current = sessionsToSave;
+    setSessions(sessionsToSave);
+
+    queueSave(async () => {
+      await saveSessions(sessionsToSave);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      saveQueueRef.current = saveQueueRef.current.then(resolve).catch(reject);
+    });
+  }, [queueSave]);
+
   const getCurrentSession = useCallback((): Session | null => {
     if (!currentSessionId) return null;
     return sessions.find(s => s.id === currentSessionId) || null;
   }, [sessions, currentSessionId]);
 
   const getSessionList = useCallback((): SessionListItem[] => {
-    // Sort sessions by updatedAt in descending order (most recently active first)
-    const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+    const sortedSessions = sortSessionsByPinnedFirst(sessions);
     return sortedSessions.map(sessionToListItem);
   }, [sessions]);
 
@@ -531,7 +552,10 @@ export function useSessions(): SessionStore {
             mergedSessions.push(current);
           } else if (synced) {
             // Session wasn't modified during sync, use synced version
-            mergedSessions.push(synced);
+            mergedSessions.push({
+              ...synced,
+              isPinned: current.isPinned,
+            });
           } else {
             // Session exists in current but not in synced (e.g., newly created during sync)
             mergedSessions.push(current);
@@ -636,6 +660,7 @@ export function useSessions(): SessionStore {
     setCurrentSession,
     deleteSession,
     clearAllSessions,
+    toggleSessionPinned,
     addMessage,
     getCurrentSession,
     getSessionList,

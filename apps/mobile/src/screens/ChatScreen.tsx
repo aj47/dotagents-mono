@@ -379,6 +379,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
+  const currentSession = sessionStore.getCurrentSession();
+  const isCurrentSessionPinned = !!currentSession?.isPinned;
   const handsFree = !!config.handsFree;
 	  const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
@@ -559,6 +561,12 @@ export default function ChatScreen({ route, navigation }: any) {
     sessionStore.createNewSession();
   }, [sessionStore]);
 
+  const handleToggleCurrentSessionPinned = useCallback(() => {
+    const currentSessionId = sessionStore.currentSessionId;
+    if (!currentSessionId) return;
+    void sessionStore.toggleSessionPinned(currentSessionId);
+  }, [sessionStore]);
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
@@ -597,6 +605,19 @@ export default function ChatScreen({ route, navigation }: any) {
             style={styles.headerEdgeActionButton}
           >
             <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleToggleCurrentSessionPinned}
+            accessibilityRole="button"
+            accessibilityLabel={isCurrentSessionPinned ? 'Unpin current chat' : 'Pin current chat'}
+            accessibilityHint={isCurrentSessionPinned
+              ? 'Removes this chat from the pinned chats list.'
+              : 'Keeps this chat at the top of the chats list.'}
+            style={[styles.headerPinButton, isCurrentSessionPinned && styles.headerPinButtonActive]}
+          >
+            <Text style={[styles.headerPinButtonText, isCurrentSessionPinned && styles.headerPinButtonTextActive]}>
+              {isCurrentSessionPinned ? 'Pinned' : 'Pin'}
+            </Text>
           </TouchableOpacity>
         </View>
       ),
@@ -680,7 +701,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -3091,6 +3112,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerActionButton,
     headerEdgeActionButton,
+    headerPinButton: {
+      ...createMinimumTouchTargetStyle({ horizontalPadding: 10, verticalPadding: 8 }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    headerPinButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '18',
+    },
+    headerPinButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    headerPinButtonTextActive: {
+      color: theme.colors.primary,
+    },
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {
       paddingLeft: spacing.xs,

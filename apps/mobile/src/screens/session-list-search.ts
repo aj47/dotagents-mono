@@ -1,6 +1,6 @@
 import { sanitizeSessionText } from '@dotagents/shared';
 
-import { sessionToListItem, type Session, type SessionListItem } from '../types/session';
+import { sessionToListItem, sortSessionsByPinnedFirst, type Session, type SessionListItem } from '../types/session';
 
 export type SessionSearchResult = SessionListItem & {
   matchedField?: 'title' | 'preview' | 'message';
@@ -59,7 +59,7 @@ function findSearchMatch(session: Session, normalizedQuery: string): Omit<Sessio
 
 export function filterSessionSearchResults(sessions: Session[], searchQuery: string): SessionSearchResult[] {
   const normalizedQuery = normalizeSearchValue(searchQuery);
-  const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+  const sortedSessions = sortSessionsByPinnedFirst(sessions);
 
   if (!normalizedQuery) {
     return sortedSessions.map(sessionToListItem);

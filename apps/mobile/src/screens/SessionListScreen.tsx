@@ -591,6 +591,16 @@ export default function SessionListScreen({ navigation }: Props) {
     };
   }, [rfCleanupSubs]);
 
+  const insets = useSafeAreaInsets();
+  const sessionStore = useSessionContext();
+  sessionStoreRef.current = sessionStore;
+  const hasActiveSearch = searchQuery.trim().length > 0;
+
+  const handleCreateSession = useCallback(() => {
+    sessionStore.createNewSession();
+    navigation.navigate('Chat');
+  }, [navigation, sessionStore]);
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
@@ -629,6 +639,15 @@ export default function SessionListScreen({ navigation }: Props) {
             compact
           />
           <TouchableOpacity
+            onPress={handleCreateSession}
+            style={styles.headerNewChatButton}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('New chat')}
+            accessibilityHint="Creates and opens a new chat."
+          >
+            <Text style={styles.headerNewChatButtonText}>+ New Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => navigation.navigate('Settings')}
             style={styles.headerSettingsButton}
             accessibilityRole="button"
@@ -640,12 +659,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible]);
-  const insets = useSafeAreaInsets();
-  const sessionStore = useSessionContext();
-  sessionStoreRef.current = sessionStore;
-  const sessions = sessionStore.getSessionList();
-  const hasActiveSearch = searchQuery.trim().length > 0;
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleCreateSession]);
 
   if (!sessionStore.ready) {
     return (
@@ -659,11 +673,6 @@ export default function SessionListScreen({ navigation }: Props) {
       </View>
     );
   }
-
-  const handleCreateSession = () => {
-    sessionStore.createNewSession();
-    navigation.navigate('Chat');
-  };
 
   const handleSelectSession = async (sessionId: string) => {
     const selectedSession = sessionStore.sessions.find(s => s.id === sessionId) || null;
@@ -716,28 +725,9 @@ export default function SessionListScreen({ navigation }: Props) {
     }
   };
 
-  const handleClearAll = () => {
-    const doClear = () => {
-      // Clean up all connections (fixes #608)
-      connectionManager.manager.cleanupAll();
-      sessionStore.clearAllSessions();
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete all sessions? This cannot be undone.')) {
-        doClear();
-      }
-    } else {
-      Alert.alert(
-        'Clear All Sessions',
-        'Are you sure you want to delete all sessions? This cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete All', style: 'destructive', onPress: doClear },
-        ]
-      );
-    }
-  };
+  const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
+    await sessionStore.toggleSessionPinned(sessionId);
+  }, [sessionStore]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -768,10 +758,6 @@ export default function SessionListScreen({ navigation }: Props) {
     [sessionStore.sessions, searchQuery],
   );
 
-  const searchHelperText = stubSessionIds.size > 0
-    ? 'Searches titles, previews, and loaded message text. Desktop chats without downloaded messages match cached preview until opened.'
-    : 'Searches titles, previews, and loaded message text.';
-
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
@@ -779,12 +765,16 @@ export default function SessionListScreen({ navigation }: Props) {
     const sessionMetaLabel = `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`;
 
     return (
-      <TouchableOpacity
-        style={[styles.sessionItem, isActive && styles.sessionItemActive]}
+      <Pressable
+        style={({ pressed }) => [
+          styles.sessionItem,
+          isActive && styles.sessionItemActive,
+          pressed && styles.sessionItemPressed,
+        ]}
         onPress={() => handleSelectSession(item.id)}
         onLongPress={() => handleDeleteSession(item)}
         accessibilityRole="button"
-        accessibilityLabel={`${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
+        accessibilityLabel={`${item.isPinned ? 'Pinned, ' : ''}${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
       >
         <View style={styles.sessionHeader}>
           <View style={styles.sessionTitleRow}>
@@ -792,13 +782,31 @@ export default function SessionListScreen({ navigation }: Props) {
               {item.title}
             </Text>
           </View>
-          <Text style={styles.sessionDate}>{formatDate(item.updatedAt)}</Text>
+          <View style={styles.sessionHeaderMeta}>
+            <Text style={styles.sessionDate}>{formatDate(item.updatedAt)}</Text>
+            <Pressable
+              style={[styles.sessionPinButton, item.isPinned && styles.sessionPinButtonActive]}
+              onPress={(event: GestureResponderEvent) => {
+                event.stopPropagation();
+                void handleToggleSessionPinned(item.id);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel(item.isPinned ? `Unpin ${item.title}` : `Pin ${item.title}`)}
+              accessibilityHint={item.isPinned
+                ? 'Removes this chat from the pinned chats section.'
+                : 'Keeps this chat at the top of the chats list.'}
+            >
+              <Text style={[styles.sessionPinButtonText, item.isPinned && styles.sessionPinButtonTextActive]}>
+                {item.isPinned ? 'Pinned' : 'Pin'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
         <Text style={styles.sessionPreview} numberOfLines={1}>
           <Text style={styles.sessionPreviewMeta}>{sessionMetaLabel}</Text>
           {` · ${sessionPreviewText}`}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -827,7 +835,7 @@ export default function SessionListScreen({ navigation }: Props) {
       <View style={styles.emptyStateTextGroup}>
         <Text style={styles.emptyTitle}>No matching chats</Text>
         <Text style={styles.emptySubtitle}>
-          Try a different keyword or clear search. {searchHelperText}
+          Try a different keyword or clear search.
         </Text>
       </View>
       <TouchableOpacity
@@ -860,38 +868,6 @@ export default function SessionListScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.newButton, styles.sessionActionTouchTarget]}
-          onPress={handleCreateSession}
-          accessibilityRole="button"
-          accessibilityLabel={createButtonAccessibilityLabel('New chat')}
-          accessibilityHint="Creates and opens a new chat."
-        >
-          <Text style={styles.newButtonText}>+ New Chat</Text>
-        </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {sessionStore.isSyncing && (
-            <Image
-              source={isDark ? darkSpinner : lightSpinner}
-              style={{ width: 16, height: 16, marginRight: 8 }}
-              resizeMode="contain"
-            />
-          )}
-          {sessions.length > 0 && (
-            <TouchableOpacity
-              style={[styles.clearButton, styles.sessionActionTouchTarget]}
-              onPress={handleClearAll}
-              accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
-              accessibilityHint="Deletes all chat sessions."
-            >
-              <Text style={styles.clearButtonText}>Clear All</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
       <View style={styles.searchSection}>
         <View style={styles.searchInputRow}>
           <TextInput
@@ -918,11 +894,6 @@ export default function SessionListScreen({ navigation }: Props) {
             </TouchableOpacity>
           )}
         </View>
-        <Text style={styles.searchHelperText}>
-          {hasActiveSearch
-            ? `${filteredSessions.length} of ${sessions.length} chats · ${searchHelperText}`
-            : searchHelperText}
-        </Text>
       </View>
 
       <FlatList
@@ -1013,17 +984,24 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
       marginTop: spacing.md,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: spacing.md,
-      borderBottomWidth: theme.hairline,
-      borderBottomColor: theme.colors.border,
-    },
     newButton: {
       backgroundColor: theme.colors.primary,
       borderRadius: radius.lg,
+    },
+    headerNewChatButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      backgroundColor: theme.colors.primary,
+      borderRadius: radius.lg,
+      marginLeft: spacing.xs,
+    },
+    headerNewChatButtonText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 12,
+      fontWeight: '600',
     },
     sessionActionTouchTarget: {
       ...createMinimumTouchTargetStyle({
@@ -1035,13 +1013,6 @@ function createStyles(theme: Theme, screenHeight: number) {
     newButtonText: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
-    },
-    clearButton: {
-      borderRadius: radius.lg,
-    },
-    clearButtonText: {
-      color: theme.colors.destructive,
-      fontSize: 14,
     },
     headerSettingsButton: {
       ...createMinimumTouchTargetStyle({
@@ -1078,11 +1049,6 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primary,
       fontWeight: '600',
     },
-    searchHelperText: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      paddingHorizontal: 2,
-    },
     list: {
       padding: spacing.md,
     },
@@ -1103,6 +1069,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.primary,
       borderWidth: 2,
     },
+    sessionItemPressed: {
+      opacity: 0.92,
+    },
     sessionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -1115,11 +1084,40 @@ function createStyles(theme: Theme, screenHeight: number) {
       minWidth: 0,
       marginRight: 8,
     },
+    sessionHeaderMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginLeft: spacing.sm,
+    },
     sessionTitle: {
       ...theme.typography.body,
       fontWeight: '600',
       flex: 1,
       minWidth: 0,
+    },
+    sessionPinButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.xs,
+        verticalPadding: 4,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    sessionPinButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '12',
+    },
+    sessionPinButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    sessionPinButtonTextActive: {
+      color: theme.colors.primary,
     },
     sessionDate: {
       ...theme.typography.caption,

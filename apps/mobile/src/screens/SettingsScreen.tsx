@@ -7,6 +7,8 @@ import {
   saveConfig,
   useConfigContext,
 } from '../store/config';
+import { useSessionContext } from '../store/sessions';
+import { useConnectionManager } from '../store/connectionManager';
 import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
@@ -176,6 +178,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [isSavingAllSettings, setIsSavingAllSettings] = useState(false);
   const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null);
   const { setCurrentProfile: setProfileContext } = useProfile();
+  const sessionStore = useSessionContext();
+  const connectionManager = useConnectionManager();
 
   // Push notification state
   const {
@@ -682,7 +686,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const confirmDestructiveAction = useCallback(
-    (title: string, message: string, onConfirm: () => Promise<void> | void) => {
+    (title: string, message: string, onConfirm: () => Promise<void> | void, confirmLabel: string = 'Delete') => {
       if (Platform.OS === 'web') {
         const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
         if (!confirmFn) {
@@ -697,7 +701,7 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert(title, message, [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: confirmLabel,
           style: 'destructive',
           onPress: () => {
             void onConfirm();
@@ -707,6 +711,18 @@ export default function SettingsScreen({ navigation }: any) {
     },
     []
   );
+
+  const handleClearAllChats = useCallback(() => {
+    confirmDestructiveAction(
+      'Clear All Chats',
+      'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
+      async () => {
+        connectionManager.manager.cleanupAll();
+        await sessionStore.clearAllSessions();
+      },
+      'Delete All'
+    );
+  }, [confirmDestructiveAction, connectionManager, sessionStore]);
 
   // Handle memory delete
   const handleMemoryDelete = async (memoryId: string) => {
@@ -1224,6 +1240,36 @@ export default function SettingsScreen({ navigation }: any) {
         >
           <Text style={styles.primaryButtonText}>Go to Chats</Text>
         </TouchableOpacity>
+
+        <Text style={styles.sectionTitle}>Chats</Text>
+        <View style={styles.serverRow}>
+          <View style={styles.serverInfo}>
+            <Text style={styles.serverName}>Clear all chats</Text>
+            <Text style={styles.serverMeta}>
+              Delete every chat saved in this mobile app, including pinned chats.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.dangerActionButton,
+              sessionStore.sessions.length === 0 && styles.dangerActionButtonDisabled,
+            ]}
+            onPress={handleClearAllChats}
+            disabled={sessionStore.sessions.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
+            accessibilityHint="Deletes every chat saved in this mobile app after confirmation."
+          >
+            <Text
+              style={[
+                styles.dangerActionButtonText,
+                sessionStore.sessions.length === 0 && styles.dangerActionButtonTextDisabled,
+              ]}
+            >
+              Clear All
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.themeSelector}>
@@ -3114,6 +3160,26 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primaryForeground,
       fontSize: 16,
       fontWeight: '600',
+    },
+    dangerActionButton: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.destructive,
+      backgroundColor: theme.colors.destructive + '10',
+    },
+    dangerActionButtonDisabled: {
+      opacity: 0.5,
+    },
+    dangerActionButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.destructive,
+      textAlign: 'center',
+    },
+    dangerActionButtonTextDisabled: {
+      color: theme.colors.mutedForeground,
     },
     saveBar: {
       borderTopWidth: 1,

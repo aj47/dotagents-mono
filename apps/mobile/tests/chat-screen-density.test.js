@@ -18,6 +18,12 @@ test('removes the redundant Chat title from the mobile conversation header', () 
   assert.doesNotMatch(screenSource, />Chat<\/Text>/);
 });
 
+test('keeps pinning available from the individual chat view header', () => {
+  assert.match(screenSource, /isCurrentSessionPinned \? 'Unpin current chat' : 'Pin current chat'/);
+  assert.match(screenSource, /styles\.headerPinButton/);
+  assert.match(screenSource, /\{isCurrentSessionPinned \? 'Pinned' : 'Pin'\}/);
+});
+
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {
   assert.doesNotMatch(screenSource, /styles\.agentSelectorRow/);
   assert.doesNotMatch(screenSource, /🤖 Agent/);

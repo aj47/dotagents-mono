@@ -27,6 +27,7 @@ export interface Session {
   title: string;
   createdAt: number;
   updatedAt: number;
+  isPinned?: boolean;
   messages: SessionChatMessage[];
   /** Server-side conversation ID for continuing conversations on the DotAgents server */
   serverConversationId?: string;
@@ -48,9 +49,21 @@ export interface SessionListItem {
   title: string;
   createdAt: number;
   updatedAt: number;
+  isPinned?: boolean;
   messageCount: number;
   lastMessage: string;
   preview: string;
+}
+
+export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 'isPinned'>>(sessions: T[]): T[] {
+  return [...sessions].sort((a, b) => {
+    const pinOrder = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+    if (pinOrder !== 0) {
+      return pinOrder;
+    }
+
+    return b.updatedAt - a.updatedAt;
+  });
 }
 
 /**
@@ -118,6 +131,7 @@ export function sessionToListItem(session: Session): SessionListItem {
       title: session.title,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
+      isPinned: session.isPinned,
       messageCount: session.serverMetadata.messageCount,
       lastMessage: session.serverMetadata.lastMessage,
       preview: session.serverMetadata.preview,
@@ -132,6 +146,7 @@ export function sessionToListItem(session: Session): SessionListItem {
     title: session.title,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
+    isPinned: session.isPinned,
     messageCount: session.messages.length,
     lastMessage: preview.substring(0, 100),
     preview: preview.substring(0, 200),

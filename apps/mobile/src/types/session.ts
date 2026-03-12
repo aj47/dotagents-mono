@@ -11,6 +11,7 @@ export {
   generateSessionTitle,
   createSession,
   sessionToListItem,
+  sortSessionsByPinnedFirst,
   isStubSession,
 } from '@dotagents/shared';
 

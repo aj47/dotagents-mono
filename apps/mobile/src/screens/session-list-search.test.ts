@@ -10,6 +10,7 @@ function createSession(overrides: Partial<Session>): Session {
     title: overrides.title ?? 'Untitled',
     createdAt: overrides.createdAt ?? 1,
     updatedAt: overrides.updatedAt ?? 1,
+    isPinned: overrides.isPinned,
     messages: overrides.messages ?? [],
     serverConversationId: overrides.serverConversationId,
     metadata: overrides.metadata,
@@ -25,6 +26,15 @@ describe('filterSessionSearchResults', () => {
     ], '   ');
 
     expect(results.map((item) => item.id)).toEqual(['newer', 'older']);
+  });
+
+  it('keeps pinned chats above newer unpinned matches', () => {
+    const results = filterSessionSearchResults([
+      createSession({ id: 'fresh-unpinned', title: 'Project follow-up', updatedAt: 50 }),
+      createSession({ id: 'older-pinned', title: 'Pinned project notes', updatedAt: 10, isPinned: true }),
+    ], 'project');
+
+    expect(results.map((item) => item.id)).toEqual(['older-pinned', 'fresh-unpinned']);
   });
 
   it('matches loaded message text and surfaces a contextual snippet when the preview does not match', () => {

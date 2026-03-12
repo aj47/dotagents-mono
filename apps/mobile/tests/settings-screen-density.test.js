@@ -32,3 +32,9 @@ test('keeps a global save button visible on mobile settings so typed changes are
   assert.match(settingsSource, /flushAllSettingsSaves/);
   assert.match(settingsSource, /saveBar:/);
 });
+
+test('moves clear all chats into mobile settings', () => {
+  assert.match(settingsSource, /<Text style=\{styles\.sectionTitle\}>Chats<\/Text>/);
+  assert.match(settingsSource, /Clear all chats/);
+  assert.match(settingsSource, /Delete every chat saved in this mobile app, including pinned chats\./);
+});

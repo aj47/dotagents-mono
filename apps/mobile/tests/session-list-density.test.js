@@ -26,3 +26,15 @@ test('keeps the session title row shrinkable for narrow mobile widths', () => {
   assert.match(screenSource, /sessionTitleRow:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:\s*8,/);
   assert.match(screenSource, /sessionTitle:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,/);
 });
+
+test('moves new chat into the navigation header and removes the old inline action row', () => {
+  assert.match(screenSource, /style=\{styles\.headerNewChatButton\}/);
+  assert.match(screenSource, />\+ New Chat<\/Text>/);
+  assert.doesNotMatch(screenSource, /styles\.clearButton/);
+});
+
+test('keeps pin controls in chat rows and removes the helper copy under search', () => {
+  assert.match(screenSource, /item\.isPinned \? 'Pinned' : 'Pin'/);
+  assert.match(screenSource, /styles\.sessionPinButton/);
+  assert.doesNotMatch(screenSource, /styles\.searchHelperText/);
+});
