@@ -41,11 +41,15 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /Rotate API key/);
   assert.match(operationsSource, /Check latest release/);
   assert.match(operationsSource, /Download latest installer/);
+  assert.match(operationsSource, /Reveal downloaded installer/);
+  assert.match(operationsSource, /Open release page/);
   assert.match(operationsSource, /Latest release:/);
   assert.match(operationsSource, /Recommended asset:/);
   assert.match(operationsSource, /settingsClient\.rotateOperatorApiKey\(\)/);
   assert.match(operationsSource, /settingsClient\.checkOperatorUpdater\(\)/);
   assert.match(operationsSource, /settingsClient\.downloadOperatorUpdateAsset\(\)/);
+  assert.match(operationsSource, /settingsClient\.revealOperatorUpdateAsset\(\)/);
+  assert.match(operationsSource, /settingsClient\.openOperatorReleasesPage\(\)/);
   assert.match(operationsSource, /setConfig\(nextConfig\)/);
   assert.match(operationsSource, /saveConfig\(nextConfig\)/);
 });

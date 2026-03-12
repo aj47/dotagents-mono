@@ -50,7 +50,14 @@ import {
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
 } from "./acp-session-state"
-import { MANUAL_RELEASES_URL, checkForUpdatesAndDownload, downloadLatestReleaseAsset, getUpdateInfo } from "./updater"
+import {
+  MANUAL_RELEASES_URL,
+  checkForUpdatesAndDownload,
+  downloadLatestReleaseAsset,
+  getUpdateInfo,
+  openManualReleasesPage,
+  revealDownloadedReleaseAsset,
+} from "./updater"
 import { WINDOWS } from "./window"
 import type {
   OperatorActionResponse,
@@ -1893,6 +1900,59 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const response: OperatorActionResponse = {
         success: false,
         action: "updater-download-latest",
+        message,
+        error: message,
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    }
+  })
+
+  fastify.post("/v1/operator/updater/reveal-download", async (req, reply) => {
+    try {
+      const downloadedAsset = await revealDownloadedReleaseAsset()
+      const response: OperatorActionResponse = {
+        success: true,
+        action: "updater-reveal-download",
+        message: `Revealed ${downloadedAsset.name} in the desktop file manager.`,
+        details: {
+          fileName: downloadedAsset.name,
+          filePath: downloadedAsset.filePath,
+        },
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const response: OperatorActionResponse = {
+        success: false,
+        action: "updater-reveal-download",
+        message,
+        error: message,
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    }
+  })
+
+  fastify.post("/v1/operator/updater/open-releases", async (req, reply) => {
+    try {
+      const result = await openManualReleasesPage()
+      const response: OperatorActionResponse = {
+        success: true,
+        action: "updater-open-releases",
+        message: `Opened releases page: ${result.url}`,
+        details: {
+          url: result.url,
+        },
+      }
+      recordOperatorAuditEvent(req, response)
+      return reply.send(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const response: OperatorActionResponse = {
+        success: false,
+        action: "updater-open-releases",
         message,
         error: message,
       }

@@ -59,6 +59,8 @@ interface ParsedOperatorCommand {
     | "updater-status"
     | "updater-check"
     | "updater-download"
+    | "updater-reveal"
+    | "updater-open-releases"
     | "restart-server"
     | "restart-app"
   label: string
@@ -124,7 +126,7 @@ function getOperatorHelpText(channel: string): string {
     "- /ops health",
     "- /ops errors [count]",
     "- /ops audit [count]",
-    "- /ops updater | updater check | updater download",
+    "- /ops updater | updater check | updater download | updater reveal | updater releases",
     "- /ops tunnel | tunnel start | tunnel stop",
     "- /ops discord status | connect | disconnect",
     "- /ops whatsapp status | connect | logout",
@@ -222,6 +224,12 @@ function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
     }
     if (parts.length === 2 && (second === "download" || second === "install")) {
       return { key: "updater-download", label: `/ops updater ${second}`, method: "POST", path: "updater/download-latest" }
+    }
+    if (parts.length === 2 && second === "reveal") {
+      return { key: "updater-reveal", label: "/ops updater reveal", method: "POST", path: "updater/reveal-download" }
+    }
+    if (parts.length === 2 && (second === "releases" || second === "open")) {
+      return { key: "updater-open-releases", label: `/ops updater ${second}`, method: "POST", path: "updater/open-releases" }
     }
   }
   if (first === "tunnel") {

@@ -18,6 +18,8 @@ describe("channel-native operator commands", () => {
     expect(discordSource).toContain("Authorization: `Bearer ${apiKey}`")
     expect(discordSource).toContain('path: "updater/check"')
     expect(discordSource).toContain('path: "updater/download-latest"')
+    expect(discordSource).toContain('path: "updater/reveal-download"')
+    expect(discordSource).toContain('path: "updater/open-releases"')
     expect(discordSource).toContain('path: "actions/restart-remote-server"')
     expect(discordSource).toContain('path: "actions/restart-app"')
 
@@ -37,6 +39,8 @@ describe("channel-native operator commands", () => {
     expect(whatsappSource).toContain("Authorization: `Bearer ${config.callbackApiKey}`")
     expect(whatsappSource).toContain('path: "updater/check"')
     expect(whatsappSource).toContain('path: "updater/download-latest"')
+    expect(whatsappSource).toContain('path: "updater/reveal-download"')
+    expect(whatsappSource).toContain('path: "updater/open-releases"')
     expect(whatsappSource).toContain("OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i")
     expect(whatsappSource).toContain("WhatsApp needs authentication in the desktop app")
 

@@ -358,6 +358,18 @@ export class SettingsApiClient {
     });
   }
 
+  async revealOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/reveal-download', {
+      method: 'POST',
+    });
+  }
+
+  async openOperatorReleasesPage(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/open-releases', {
+      method: 'POST',
+    });
+  }
+
   async getOperatorDiscord(): Promise<OperatorDiscordIntegrationSummary> {
     return this.request<OperatorDiscordIntegrationSummary>('/operator/discord');
   }

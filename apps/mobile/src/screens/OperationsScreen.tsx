@@ -1222,6 +1222,32 @@ export default function OperationsScreen({ navigation }: any) {
                     {pendingAction === 'download-latest-release' ? 'Downloading installer…' : 'Download latest installer'}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.secondaryActionButton,
+                    (pendingAction !== null || !status.updater.lastDownloadedFileName) && styles.actionButtonDisabled,
+                  ]}
+                  onPress={() => void runAction('reveal-downloaded-installer', () => settingsClient.revealOperatorUpdateAsset())}
+                  disabled={pendingAction !== null || !status.updater.lastDownloadedFileName}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Reveal downloaded installer')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'reveal-downloaded-installer' ? 'Revealing installer…' : 'Reveal downloaded installer'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                  onPress={() => void runAction('open-release-page', () => settingsClient.openOperatorReleasesPage())}
+                  disabled={pendingAction !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Open release page')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'open-release-page' ? 'Opening release page…' : 'Open release page'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}

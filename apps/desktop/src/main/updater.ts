@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { app, dialog, type MenuItem } from "electron"
+import { app, dialog, shell, type MenuItem } from "electron"
 
 export const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
 const GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/aj47/dotagents-mono/releases/latest"
@@ -284,6 +284,22 @@ export async function downloadLatestReleaseAsset() {
     updateInfo: cachedUpdateInfo,
     downloadedAsset,
   }
+}
+
+export async function revealDownloadedReleaseAsset() {
+  const downloadedAsset = cachedUpdateInfo.lastDownloadedAsset
+  if (!downloadedAsset?.filePath) {
+    throw new Error("No downloaded release asset is available to reveal yet")
+  }
+
+  shell.showItemInFolder(downloadedAsset.filePath)
+  return downloadedAsset
+}
+
+export async function openManualReleasesPage() {
+  const url = cachedUpdateInfo.latestRelease?.url || MANUAL_RELEASES_URL
+  await shell.openExternal(url)
+  return { url }
 }
 
 export function cancelDownloadUpdate() {
