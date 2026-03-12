@@ -10,7 +10,9 @@ const settingsSource = fs.readFileSync(
 );
 
 test('keeps the settings modal in the navigation stack with the DotAgents header title', () => {
-  assert.match(appSource, /name="Settings"[\s\S]*?options=\{\{ title: 'DotAgents', presentation: 'modal' \}\}/);
+  assert.match(appSource, /name="Settings"[\s\S]*?options=\{\(\{ navigation \}\) => \(\{/);
+  assert.match(appSource, /title: 'DotAgents'/);
+  assert.match(appSource, /presentation: 'modal'/);
 });
 
 test('avoids a duplicate in-content Settings title on the root settings screen', () => {
