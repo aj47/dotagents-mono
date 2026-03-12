@@ -1241,9 +1241,10 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
-  // - Tool call messages (those with toolCalls/toolResults) are ALWAYS collapsed by default
-  // - Only the final assistant message is expanded, AND only when not streaming (agent complete)
-  // - During streaming, tool calls stay collapsed to avoid showing raw JSON
+  // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
+  // - Messages with tool metadata and visible user-facing content can still expand normally
+  // - Only the final assistant message auto-expands, and only when not streaming (agent complete)
+  // - Tool-only messages stay collapsed during streaming to avoid showing raw payload text
   // - Users can still manually expand any collapsed message
   useEffect(() => {
     const lastAssistantIndex = messages.reduce((lastIdx, m, i) =>
@@ -1254,7 +1255,7 @@ export default function ChatScreen({ route, navigation }: any) {
         const updated = { ...prev };
         const lastMsg = messages[lastAssistantIndex];
 
-        // Collapse ALL assistant messages with tool calls/results by default
+        // Collapse tool-only assistant messages by default when they have no visible user-facing content
         messages.forEach((m, i) => {
           if (m.role === 'assistant' && shouldTreatMessageAsToolOnly(m)) {
             // Only set to false if not explicitly toggled by user
