@@ -49,6 +49,15 @@ interface AgentProgressProps {
   onExpand?: () => void
   /** For tile variant: whether this tile is in expanded/full view mode */
   isExpanded?: boolean
+  /** For tile variant: open the in-app voice continuation modal */
+  onVoiceContinue?: (options: {
+    conversationId?: string
+    sessionId?: string
+    fromTile: boolean
+    continueConversationTitle?: string
+    agentName?: string
+    onSubmitted?: () => void
+  }) => void
 }
 
 // Enhanced conversation message component
@@ -2811,6 +2820,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   isFollowUpInputInitializing,
   onExpand,
   isExpanded,
+  onVoiceContinue,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
@@ -4018,8 +4028,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             isSessionActive={!isComplete}
             isInitializingSession={isFollowUpInputInitializing}
             agentName={profileName}
+            conversationTitle={progress.conversationTitle}
             className="flex-shrink-0"
             onMessageSent={onFollowUpSent}
+            onVoiceContinue={onVoiceContinue}
           />
         )}
 
