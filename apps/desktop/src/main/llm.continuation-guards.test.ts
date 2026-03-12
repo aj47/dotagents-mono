@@ -54,4 +54,26 @@ describe("continuation guard helpers", () => {
       usedExplicitUserResponse: false,
     })
   })
+
+  it("ignores raw tool transcript final content and prefers a real assistant summary", () => {
+    expect(resolveIterationLimitFinalContent({
+      finalContent: '[execute_command] {"command":"pwd"}',
+      conversationHistory: [{ role: "assistant", content: "I confirmed the working directory." }],
+      hasRecentErrors: false,
+    })).toEqual({
+      content: "I confirmed the working directory.",
+      usedExplicitUserResponse: false,
+    })
+  })
+
+  it("does not surface progress-update text when iteration limit is reached", () => {
+    expect(resolveIterationLimitFinalContent({
+      finalContent: "Let me check one more thing.",
+      conversationHistory: [{ role: "assistant", content: "I'll verify the final step." }],
+      hasRecentErrors: false,
+    })).toEqual({
+      content: "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.",
+      usedExplicitUserResponse: false,
+    })
+  })
 })

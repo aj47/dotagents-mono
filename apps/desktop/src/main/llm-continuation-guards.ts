@@ -1,6 +1,10 @@
 import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 import { normalizeAgentConversationState, type AgentConversationState } from "@dotagents/shared"
 
+const TOOL_CALL_PLACEHOLDER_REGEX = /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i
+const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]*\}|\[[\s\S]*\])\s*$/i
+const PROGRESS_UPDATE_REGEX = /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|working on it|still working on it)\b/i
+
 type ConversationHistoryLike = Array<{
   role?: string
   content?: string
@@ -38,6 +42,15 @@ export function normalizeVerificationResultForCompletion(verification: any) {
   }
 }
 
+function isIterationLimitDeliverableContent(content?: string): boolean {
+  const trimmed = typeof content === "string" ? content.trim() : ""
+  if (!trimmed) return false
+  if (TOOL_CALL_PLACEHOLDER_REGEX.test(trimmed)) return false
+  if (RAW_TOOL_TRANSCRIPT_REGEX.test(trimmed)) return false
+  if (PROGRESS_UPDATE_REGEX.test(trimmed)) return false
+  return true
+}
+
 export function resolveIterationLimitFinalContent({
   finalContent,
   storedResponse,
@@ -65,7 +78,7 @@ export function resolveIterationLimitFinalContent({
   }
 
   const normalizedFinalContent = typeof finalContent === "string" ? finalContent.trim() : ""
-  if (normalizedFinalContent.length > 0) {
+  if (isIterationLimitDeliverableContent(normalizedFinalContent)) {
     return {
       content: normalizedFinalContent,
       usedExplicitUserResponse: false,
@@ -77,9 +90,12 @@ export function resolveIterationLimitFinalContent({
     .reverse()
     .find((msg) => msg.role === "assistant" && typeof msg.content === "string" && msg.content.trim().length > 0)
 
-  if (lastAssistantMessage?.content) {
+  const normalizedLastAssistantContent = typeof lastAssistantMessage?.content === "string"
+    ? lastAssistantMessage.content.trim()
+    : ""
+  if (isIterationLimitDeliverableContent(normalizedLastAssistantContent)) {
     return {
-      content: lastAssistantMessage.content,
+      content: normalizedLastAssistantContent,
       usedExplicitUserResponse: false,
     }
   }
