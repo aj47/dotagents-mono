@@ -92,8 +92,25 @@ function main(): void {
     console.warn("[dev-with-sherpa] Parakeet local STT may not work correctly.")
   }
 
+  // Auto-enable CDP debug ports when any debug flag is passed
+  const userArgs = process.argv.slice(2)
+  const debugFlags = ["-d", "--debug", "--debug-all", "-da", "-dl", "--debug-llm", "-dt", "--debug-tools", "-dui", "--debug-ui", "-dapp", "--debug-app", "-dk", "--debug-keybinds", "-dmcp", "--debug-mcp", "-dacp", "--debug-acp"]
+  const hasDebugFlag = userArgs.some(arg => debugFlags.includes(arg))
+
+  if (hasDebugFlag) {
+    if (!env.REMOTE_DEBUGGING_PORT) {
+      env.REMOTE_DEBUGGING_PORT = "9333"
+      console.log("[dev-with-sherpa] Debug mode: auto-setting REMOTE_DEBUGGING_PORT=9333")
+    }
+    if (!env.ELECTRON_EXTRA_LAUNCH_ARGS?.includes("--inspect")) {
+      const existing = env.ELECTRON_EXTRA_LAUNCH_ARGS || ""
+      env.ELECTRON_EXTRA_LAUNCH_ARGS = existing ? `${existing} --inspect=9339` : "--inspect=9339"
+      console.log("[dev-with-sherpa] Debug mode: auto-setting --inspect=9339")
+    }
+  }
+
   // Forward all arguments after our script to electron-vite
-  const args = ["electron-vite", "dev", "--watch", "--", ...process.argv.slice(2)]
+  const args = ["electron-vite", "dev", "--watch", "--", ...userArgs]
 
   console.log(`[dev-with-sherpa] Running: npx ${args.join(" ")}`)
 
