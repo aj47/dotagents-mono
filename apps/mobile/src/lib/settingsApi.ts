@@ -44,6 +44,8 @@ export type {
   OperatorIntegrationsSummary,
   OperatorUpdaterStatus,
   OperatorRuntimeStatus,
+  OperatorSystemMetrics,
+  OperatorSessionsSummary,
   OperatorActionResponse,
   OperatorAuditEntry,
   OperatorAuditResponse,

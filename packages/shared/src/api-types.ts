@@ -159,6 +159,38 @@ export interface OperatorUpdaterStatus {
   lastDownloadedFileName?: string;
 }
 
+export interface OperatorSystemMetrics {
+  platform: string;
+  arch: string;
+  nodeVersion: string;
+  electronVersion?: string;
+  appVersion?: string;
+  uptimeSeconds: number;
+  processUptimeSeconds: number;
+  memoryUsage: {
+    heapUsedMB: number;
+    heapTotalMB: number;
+    rssMB: number;
+  };
+  cpuCount: number;
+  totalMemoryMB: number;
+  freeMemoryMB: number;
+  hostname: string;
+}
+
+export interface OperatorSessionsSummary {
+  activeSessions: number;
+  recentSessions: number;
+  activeSessionDetails: Array<{
+    id: string;
+    title?: string;
+    status: string;
+    startTime: number;
+    currentIteration?: number;
+    maxIterations?: number;
+  }>;
+}
+
 export interface OperatorRuntimeStatus {
   timestamp: number;
   remoteServer: OperatorRemoteServerStatus;
@@ -166,6 +198,8 @@ export interface OperatorRuntimeStatus {
   tunnel: OperatorTunnelStatus;
   integrations: OperatorIntegrationsSummary;
   updater: OperatorUpdaterStatus;
+  system: OperatorSystemMetrics;
+  sessions: OperatorSessionsSummary;
   recentErrors: {
     total: number;
     errorsInLastFiveMinutes: number;

@@ -71,6 +71,8 @@ import type {
   OperatorRecentErrorsResponse,
   OperatorRemoteServerStatus,
   OperatorRuntimeStatus,
+  OperatorSessionsSummary,
+  OperatorSystemMetrics,
   OperatorTunnelStatus,
   OperatorUpdaterStatus,
   OperatorWhatsAppIntegrationSummary,
@@ -1709,6 +1711,46 @@ function buildOperatorUpdaterStatus(): OperatorUpdaterStatus {
   }
 }
 
+function buildOperatorSystemMetrics(): OperatorSystemMetrics {
+  const mem = process.memoryUsage()
+  return {
+    platform: os.platform(),
+    arch: os.arch(),
+    nodeVersion: process.version,
+    electronVersion: process.versions.electron,
+    appVersion: app.getVersion(),
+    uptimeSeconds: Math.floor(os.uptime()),
+    processUptimeSeconds: Math.floor(process.uptime()),
+    memoryUsage: {
+      heapUsedMB: Math.round(mem.heapUsed / 1048576 * 100) / 100,
+      heapTotalMB: Math.round(mem.heapTotal / 1048576 * 100) / 100,
+      rssMB: Math.round(mem.rss / 1048576 * 100) / 100,
+    },
+    cpuCount: os.cpus().length,
+    totalMemoryMB: Math.round(os.totalmem() / 1048576),
+    freeMemoryMB: Math.round(os.freemem() / 1048576),
+    hostname: os.hostname(),
+  }
+}
+
+function buildOperatorSessionsSummary(): OperatorSessionsSummary {
+  const activeSessions = agentSessionTracker.getActiveSessions()
+  const recentSessions = agentSessionTracker.getRecentSessions(10)
+
+  return {
+    activeSessions: activeSessions.length,
+    recentSessions: recentSessions.length,
+    activeSessionDetails: activeSessions.map((s) => ({
+      id: s.id,
+      title: s.conversationTitle,
+      status: s.status,
+      startTime: s.startTime,
+      currentIteration: s.currentIteration,
+      maxIterations: s.maxIterations,
+    })),
+  }
+}
+
 async function buildOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus> {
   const now = Date.now()
   const recentErrors = diagnosticsService.getRecentErrors(100)
@@ -1720,6 +1762,8 @@ async function buildOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus> {
     tunnel: buildOperatorTunnelStatus(),
     integrations: await buildOperatorIntegrationsSummary(),
     updater: buildOperatorUpdaterStatus(),
+    system: buildOperatorSystemMetrics(),
+    sessions: buildOperatorSessionsSummary(),
     recentErrors: {
       total: recentErrors.length,
       errorsInLastFiveMinutes: recentErrors.filter((entry) => now - entry.timestamp <= 5 * 60 * 1000).length,

@@ -154,6 +154,14 @@ describe("remote-server route registration", () => {
     expect(operatorSection).toContain("scheduleRemoteServerRestartFromOperator()")
     expect(operatorSection).toContain("scheduleAppRestartFromOperator()")
     expect(operatorSection).toContain("scheduleTaskAfterReply(reply, \"restart remote server after API key rotation\"")
+    // System metrics and sessions builders
+    expect(source).toContain("function buildOperatorSystemMetrics()")
+    expect(source).toContain("os.platform()")
+    expect(source).toContain("process.memoryUsage()")
+    expect(source).toContain("os.hostname()")
+    expect(source).toContain("function buildOperatorSessionsSummary()")
+    expect(source).toContain("agentSessionTracker.getActiveSessions()")
+    expect(source).toContain("agentSessionTracker.getRecentSessions(")
   })
 
   it("audits sensitive settings updates without persisting secrets", () => {

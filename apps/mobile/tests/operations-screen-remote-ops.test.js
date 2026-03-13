@@ -59,3 +59,22 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /setConfig\(nextConfig\)/);
   assert.match(operationsSource, /saveConfig\(nextConfig\)/);
 });
+
+test('displays system metrics and agent sessions from operator status', () => {
+  assert.match(operationsSource, /status\.system\.hostname/);
+  assert.match(operationsSource, /status\.system\.platform/);
+  assert.match(operationsSource, /status\.system\.memoryUsage\.rssMB/);
+  assert.match(operationsSource, /status\.system\.processUptimeSeconds/);
+  assert.match(operationsSource, /formatDuration/);
+  assert.match(operationsSource, /Agent sessions/);
+  assert.match(operationsSource, /status\.sessions\.activeSessions/);
+  assert.match(operationsSource, /status\.sessions\.activeSessionDetails/);
+  assert.match(operationsSource, /No active agent sessions/);
+});
+
+test('auto-refreshes operator data periodically', () => {
+  assert.match(operationsSource, /AUTO_REFRESH_INTERVAL_MS/);
+  assert.match(operationsSource, /setInterval/);
+  assert.match(operationsSource, /clearInterval/);
+  assert.match(operationsSource, /autoRefreshRef/);
+});

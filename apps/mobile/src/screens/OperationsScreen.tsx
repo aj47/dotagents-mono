@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -40,6 +40,7 @@ const RECENT_ERROR_COUNT = 8;
 const RECENT_AUDIT_ENTRY_COUNT = 10;
 const DISCORD_LOG_PREVIEW_COUNT = 6;
 const ACTION_REFRESH_DELAY_MS = 1200;
+const AUTO_REFRESH_INTERVAL_MS = 30_000;
 
 type RemoteAccessDrafts = {
   remoteServerPort: string;
@@ -60,6 +61,14 @@ function getErrorMessage(error: unknown): string {
 function formatTimestamp(timestamp?: number): string {
   if (!timestamp) return '—';
   return new Date(timestamp).toLocaleString();
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 function formatYesNo(value?: boolean): string {
@@ -275,6 +284,23 @@ export default function OperationsScreen({ navigation }: any) {
     });
     return unsubscribe;
   }, [loadOperatorData, navigation]);
+
+  // Auto-refresh heartbeat — silently polls every 30 s while the screen is mounted
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!settingsClient) {
+      return;
+    }
+    autoRefreshRef.current = setInterval(() => {
+      void loadOperatorData(true);
+    }, AUTO_REFRESH_INTERVAL_MS);
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+        autoRefreshRef.current = null;
+      }
+    };
+  }, [loadOperatorData, settingsClient]);
 
   useEffect(() => {
     setDrafts(buildDrafts(settings));
@@ -544,6 +570,41 @@ export default function OperationsScreen({ navigation }: any) {
             {error && <Text style={styles.warningText}>{error}</Text>}
             {pendingSetting && <Text style={styles.mutedText}>Saving {pendingSetting}…</Text>}
           </View>
+
+          {status?.system && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>System</Text>
+              <Text style={styles.detailText}>
+                {status.system.hostname} • {status.system.platform}/{status.system.arch}
+              </Text>
+              <Text style={styles.detailText}>
+                App {status.system.appVersion ?? '?'} • Electron {status.system.electronVersion ?? '?'} • Node {status.system.nodeVersion}
+              </Text>
+              <Text style={styles.detailText}>
+                Memory: {status.system.memoryUsage.rssMB} MB RSS • {status.system.freeMemoryMB}/{status.system.totalMemoryMB} MB free • {status.system.cpuCount} CPUs
+              </Text>
+              <Text style={styles.mutedText}>
+                Process uptime: {formatDuration(status.system.processUptimeSeconds)} • System uptime: {formatDuration(status.system.uptimeSeconds)}
+              </Text>
+            </View>
+          )}
+
+          {status?.sessions && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Agent sessions</Text>
+              <Text style={styles.detailText}>
+                Active: {status.sessions.activeSessions} • Recent: {status.sessions.recentSessions}
+              </Text>
+              {status.sessions.activeSessionDetails.map((s) => (
+                <Text key={s.id} style={styles.detailText}>
+                  • {s.title ?? s.id} — {s.status} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'}) since {formatTimestamp(s.startTime)}
+                </Text>
+              ))}
+              {status.sessions.activeSessions === 0 && (
+                <Text style={styles.mutedText}>No active agent sessions</Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Actions</Text>
