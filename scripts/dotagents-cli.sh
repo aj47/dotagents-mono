@@ -537,135 +537,48 @@ while true; do
         && echo -e "${G}✓ DMs disabled${R}" \
         || echo -e "${RED}✗ Failed${R}" ;;
 
-    /discord\ dm\ allow\ *)
-      ID="${INPUT#/discord dm allow }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord dm allow <user-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          const list=new Set(c.discordDmAllowUserIds||[]);
-          list.add('$ID');
-          c.discordDmAllowUserIds=[...list];
-          c.discordDmEnabled=true;
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ User $ID added to DM allowlist (DMs auto-enabled)${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ dm\ deny\ *)
-      ID="${INPUT#/discord dm deny }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord dm deny <user-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          c.discordDmAllowUserIds=(c.discordDmAllowUserIds||[]).filter(id=>id!=='$ID');
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ User $ID removed from DM allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-
-    /discord\ allow\ user\ *)
-      ID="${INPUT#/discord allow user }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow user <user-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          const list=new Set(c.discordAllowUserIds||[]);list.add('$ID');
-          c.discordAllowUserIds=[...list];
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ User $ID added to allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ allow\ role\ *)
-      ID="${INPUT#/discord allow role }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow role <role-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          const list=new Set(c.discordAllowRoleIds||[]);list.add('$ID');
-          c.discordAllowRoleIds=[...list];
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ Role $ID added to allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ allow\ channel\ *)
-      ID="${INPUT#/discord allow channel }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow channel <channel-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          const list=new Set(c.discordAllowChannelIds||[]);list.add('$ID');
-          c.discordAllowChannelIds=[...list];
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ Channel $ID added to allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ allow\ guild\ *)
-      ID="${INPUT#/discord allow guild }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow guild <guild-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          const list=new Set(c.discordAllowGuildIds||[]);list.add('$ID');
-          c.discordAllowGuildIds=[...list];
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ Guild $ID added to allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-
-    /discord\ deny\ user\ *)
-      ID="${INPUT#/discord deny user }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny user <user-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          c.discordAllowUserIds=(c.discordAllowUserIds||[]).filter(id=>id!=='$ID');
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ User $ID removed from allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ deny\ role\ *)
-      ID="${INPUT#/discord deny role }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny role <role-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          c.discordAllowRoleIds=(c.discordAllowRoleIds||[]).filter(id=>id!=='$ID');
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ Role $ID removed from allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ deny\ channel\ *)
-      ID="${INPUT#/discord deny channel }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny channel <channel-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          c.discordAllowChannelIds=(c.discordAllowChannelIds||[]).filter(id=>id!=='$ID');
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ Channel $ID removed from allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
-    /discord\ deny\ guild\ *)
-      ID="${INPUT#/discord deny guild }"; ID="${ID## }"
-      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny guild <guild-id>${R}"; else
-        node -e "
-          const fs=require('fs'),f='$CONFIG_FILE';
-          const c=JSON.parse(fs.readFileSync(f,'utf8'));
-          c.discordAllowGuildIds=(c.discordAllowGuildIds||[]).filter(id=>id!=='$ID');
-          fs.writeFileSync(f,JSON.stringify(c,null,2));
-        " 2>/dev/null
-        echo -e "${G}✓ Guild $ID removed from allowlist${R}"
-        echo -e "${D}  Restart service to apply: /restart${R}"
-      fi ;;
+    /discord\ dm\ allow\ *|/discord\ dm\ deny\ *|/discord\ allow\ *|/discord\ deny\ *)
+      # Unified allow/deny handler — uses PATCH API so changes apply immediately
+      node -e "
+        const http=require('http');
+        const input=process.argv[1], apiKey=process.argv[2], port=parseInt(process.argv[3]);
+        const parts=input.split(/\s+/);
+        let action,scope,id;
+        if(parts[1]==='dm'){action=parts[2];scope='dm';id=parts[3]}
+        else{action=parts[1];scope=parts[2];id=parts[3]}
+        if(!id){console.log('\x1b[33mUsage: '+input.replace(id||'','')+'<id>\x1b[0m');process.exit(0)}
+        const fieldMap={dm:'discordDmAllowUserIds',user:'discordAllowUserIds',role:'discordAllowRoleIds',
+          channel:'discordAllowChannelIds',guild:'discordAllowGuildIds'};
+        const field=fieldMap[scope];
+        if(!field){console.log('\x1b[31mUnknown scope: '+scope+'\x1b[0m');process.exit(1)}
+        const h={'Authorization':'Bearer '+apiKey};
+        http.get({hostname:'127.0.0.1',port,path:'/v1/settings',headers:h},res=>{
+          let body='';res.on('data',d=>body+=d);res.on('end',()=>{
+            let cfg={};try{cfg=JSON.parse(body)}catch{}
+            let list=cfg[field]||[];
+            if(action==='allow') list=[...new Set([...list,id])];
+            else list=list.filter(x=>x!==id);
+            const patch={[field]:list};
+            if(scope==='dm'&&action==='allow') patch.discordDmEnabled=true;
+            const data=JSON.stringify(patch);
+            const req=http.request({hostname:'127.0.0.1',port,path:'/v1/settings',method:'PATCH',
+              headers:{...h,'Content-Type':'application/json','Content-Length':Buffer.byteLength(data)}},pres=>{
+              let pb='';pres.on('data',d=>pb+=d);pres.on('end',()=>{
+                const label=scope==='dm'?'DM allowlist':scope+' allowlist';
+                if(pres.statusCode<300){
+                  if(action==='allow'){
+                    console.log('\x1b[32m✓ '+id+' added to '+label+'\x1b[0m');
+                    if(scope==='dm') console.log('\x1b[32m  DMs auto-enabled\x1b[0m');
+                  } else console.log('\x1b[32m✓ '+id+' removed from '+label+'\x1b[0m');
+                  console.log('\x1b[2m  Applied immediately (no restart needed)\x1b[0m');
+                } else console.log('\x1b[31m✗ Failed ('+pres.statusCode+')\x1b[0m');
+              });
+            });
+            req.on('error',e=>console.log('\x1b[31m✗ '+e.message+'\x1b[0m'));
+            req.write(data);req.end();
+          });
+        }).on('error',e=>console.log('\x1b[31m✗ '+e.message+'\x1b[0m'));
+      " "$INPUT" "$API_KEY" "$PORT" 2>/dev/null ;;
 
     /profiles)
       api_get /v1/profiles | node_print "
