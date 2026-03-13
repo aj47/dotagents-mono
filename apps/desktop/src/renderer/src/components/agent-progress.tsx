@@ -3910,8 +3910,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       } else if (item.kind === "streaming") {
                         return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
                       } else if (item.kind === "mid_turn_response") {
-                        // Skip inline rendering — responses are shown in the ResponseHistoryPanel above
-                        return null
+                        return (
+                          <MidTurnUserResponseBubble
+                            key={itemKey}
+                            userResponse={item.data.userResponse}
+                            pastResponses={item.data.pastResponses}
+                            sessionId={progress.sessionId}
+                            agentLabel={primaryAgentLabel}
+                            variant="tile"
+                            isComplete={isComplete}
+                            isExpanded={expandedItems[itemKey] ?? true}
+                            onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? true)}
+                          />
+                        )
                       } else if (item.kind === "delegation") {
                         const delegationExpanded = expandedItems[itemKey] ?? false
                         return (
@@ -3941,13 +3952,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   </div>
                 )}
               </div>
-              {/* Response History Panel - sticky at bottom of conversation */}
-              {hasResponseHistoryEntries && (
-                <ResponseHistoryPanel
-                  currentResponse={effectiveUserResponse ?? ""}
-                  pastResponses={effectiveUserResponseHistory}
-                />
-              )}
             </div>
 
             {/* Tool Approval - Fixed position outside scroll area */}
@@ -4293,8 +4297,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "mid_turn_response") {
-                  // Skip inline rendering — responses are shown in the ResponseHistoryPanel above
-                  return null
+                  return (
+                    <MidTurnUserResponseBubble
+                      key={itemKey}
+                      userResponse={item.data.userResponse}
+                      pastResponses={item.data.pastResponses}
+                      sessionId={progress.sessionId}
+                      agentLabel={primaryAgentLabel}
+                      variant="overlay"
+                      isComplete={isComplete}
+                      isExpanded={expandedItems[itemKey] ?? true}
+                      onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? true)}
+                    />
+                  )
                 } else if (item.kind === "delegation") {
                   const delegationExpanded = expandedItems[itemKey] ?? false
                   return (
@@ -4325,13 +4340,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             </div>
           )}
         </div>
-        {/* Response History Panel - sticky at bottom of conversation */}
-        {hasResponseHistoryEntries && (
-          <ResponseHistoryPanel
-            currentResponse={effectiveUserResponse ?? ""}
-            pastResponses={effectiveUserResponseHistory}
-          />
-        )}
       </div>
 
       {/* Tool Approval - Fixed position outside scroll area for overlay variant */}
