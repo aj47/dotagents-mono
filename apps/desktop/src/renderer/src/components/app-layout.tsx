@@ -7,6 +7,7 @@ import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
 import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
+import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
 
 import { PastSessionsDialog } from "@renderer/components/past-sessions-dialog"
 import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
@@ -559,6 +560,11 @@ export const Component = () => {
           ) : (
             /* Expanded: Settings and Sessions share one scrollable container */
             <div className="scrollbar-none mt-2 min-h-0 flex-1 overflow-y-auto">
+              {/* Sandbox slot indicator */}
+              <div className="px-2 mt-1">
+                <SandboxSlotIndicator />
+              </div>
+
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
                 onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)}

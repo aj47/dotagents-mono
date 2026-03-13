@@ -4812,6 +4812,123 @@ export const router = {
       return result
     }),
 
+  // ============================================================================
+  // Sandbox Slots (Issue #141: bundle sandbox/profile slots)
+  // ============================================================================
+  getSandboxState: t.procedure.action(async () => {
+    const { globalAgentsFolder } = await import("./config")
+    const { getSandboxState } = await import("./sandbox-service")
+    return getSandboxState(globalAgentsFolder)
+  }),
+  saveBaseline: t.procedure.action(async () => {
+    const { globalAgentsFolder } = await import("./config")
+    const { saveBaseline } = await import("./sandbox-service")
+    return saveBaseline(globalAgentsFolder)
+  }),
+  saveCurrentAsSlot: t.procedure
+    .input<{ name: string; sourceBundleName?: string }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder } = await import("./config")
+      const { saveCurrentAsSlot } = await import("./sandbox-service")
+      return saveCurrentAsSlot(globalAgentsFolder, input.name, {
+        sourceBundleName: input.sourceBundleName,
+      })
+    }),
+  switchToSlot: t.procedure
+    .input<{ name: string }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder } = await import("./config")
+      const { switchToSlot } = await import("./sandbox-service")
+      const result = switchToSlot(globalAgentsFolder, input.name)
+      if (result.success) {
+        await refreshRuntimeAfterBundleImport()
+      }
+      return result
+    }),
+  restoreBaseline: t.procedure.action(async () => {
+    const { globalAgentsFolder } = await import("./config")
+    const { restoreBaseline } = await import("./sandbox-service")
+    const result = restoreBaseline(globalAgentsFolder)
+    if (result.success) {
+      await refreshRuntimeAfterBundleImport()
+    }
+    return result
+  }),
+  deleteSlot: t.procedure
+    .input<{ name: string }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder } = await import("./config")
+      const { deleteSlot } = await import("./sandbox-service")
+      return deleteSlot(globalAgentsFolder, input.name)
+    }),
+  renameSlot: t.procedure
+    .input<{ oldName: string; newName: string }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder } = await import("./config")
+      const { renameSlot } = await import("./sandbox-service")
+      return renameSlot(globalAgentsFolder, input.oldName, input.newName)
+    }),
+  importBundleToSandbox: t.procedure
+    .input<{
+      filePath: string
+      slotName: string
+      conflictStrategy: "skip" | "overwrite" | "rename"
+      components?: {
+        agentProfiles?: boolean
+        mcpServers?: boolean
+        skills?: boolean
+        repeatTasks?: boolean
+        memories?: boolean
+      }
+    }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder } = await import("./config")
+      const { createSlotFromCurrentState, switchToSlot } = await import("./sandbox-service")
+      const { importBundle, previewBundle } = await import("./bundle-service")
+
+      // Get bundle name for the slot metadata
+      const bundle = previewBundle(input.filePath)
+      const sourceBundleName = bundle?.manifest.name
+
+      // Reject reserved slot names to prevent overwriting the baseline
+      const { sanitizeSlotName } = await import("./sandbox-service")
+      if (sanitizeSlotName(input.slotName) === "default") {
+        return { success: false, errors: ["Cannot import a bundle into the reserved \"default\" baseline slot"] }
+      }
+
+      // Save baseline if needed, then create the new slot from current state
+      const slotResult = createSlotFromCurrentState(
+        globalAgentsFolder,
+        input.slotName,
+        { sourceBundleName }
+      )
+      if (!slotResult.success) {
+        return { success: false, errors: [slotResult.error || "Failed to create sandbox slot"] }
+      }
+
+      // Switch to the new slot
+      const switchResult = switchToSlot(globalAgentsFolder, input.slotName)
+      if (!switchResult.success) {
+        return { success: false, errors: [switchResult.error || "Failed to switch to sandbox slot"] }
+      }
+
+      // Import the bundle into the now-active slot
+      const importResult = await importBundle(input.filePath, globalAgentsFolder, {
+        conflictStrategy: input.conflictStrategy,
+        components: input.components,
+      })
+
+      // Re-save the slot with the imported bundle state
+      const { saveCurrentAsSlot } = await import("./sandbox-service")
+      const saveResult = saveCurrentAsSlot(globalAgentsFolder, input.slotName, { sourceBundleName })
+      if (!saveResult.success) {
+        return { success: false, errors: [saveResult.error || "Failed to save sandbox slot after import"] }
+      }
+
+      await refreshRuntimeAfterBundleImport()
+      return importResult
+    }),
+
   // Memory service handlers
   getAllMemories: t.procedure
     .action(async () => {

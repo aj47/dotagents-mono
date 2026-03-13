@@ -31,6 +31,7 @@ import { ModelSelector } from "@renderer/components/model-selector"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { BundleExportDialog } from "@renderer/components/bundle-export-dialog"
 import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
+import { SandboxSlotSwitcher } from "@renderer/components/sandbox-slot-switcher"
 import {
   AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill,
@@ -582,6 +583,11 @@ export function SettingsAgents() {
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
           <Button size="sm" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
+        </div>
+      )}
+      {!editing && (
+        <div className="mb-4">
+          <SandboxSlotSwitcher />
         </div>
       )}
       {editing ? renderEditForm() : renderAgentList()}
