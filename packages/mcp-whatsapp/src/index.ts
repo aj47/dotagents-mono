@@ -93,6 +93,7 @@ interface ParsedOperatorCommand {
     | "sessions"
     | "conversations"
     | "run-agent"
+    | "logs"
     | "restart-server"
     | "restart-app"
   label: string
@@ -171,6 +172,7 @@ function getOperatorHelpText(channel: string): string {
     "- /ops sessions",
     "- /ops conversations [count]",
     "- /ops run <prompt>",
+    "- /ops logs [count] [error|warning|info]",
     "- /ops updater | updater check | updater download | updater reveal | updater open | updater releases",
     "- /ops tunnel | tunnel start | tunnel stop",
     "- /ops discord status | connect | disconnect",
@@ -231,6 +233,23 @@ function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
   }
   if (first === "health" && parts.length === 1) {
     return { key: "health", label: "/ops health", method: "GET", path: "health" }
+  }
+  if (first === "logs" && parts.length <= 3) {
+    const validLevels = new Set(["error", "warning", "info"])
+    const countToken = second && !validLevels.has(second) ? second : parts[2]
+    const levelToken = second && validLevels.has(second) ? second : (parts[2] && validLevels.has(parts[2]) ? parts[2] : undefined)
+    const count = countToken ? parseOperatorCountToken(countToken) : 0
+    if (Number.isNaN(count)) return { key: "help", label: "/ops help" }
+    const queryParams: Record<string, string> = {}
+    if (count) queryParams.count = String(count)
+    if (levelToken) queryParams.level = levelToken
+    return {
+      key: "logs",
+      label: `/ops logs${countToken ? ` ${countToken}` : ""}${levelToken ? ` ${levelToken}` : ""}`,
+      method: "GET",
+      path: "logs",
+      ...(Object.keys(queryParams).length > 0 ? { query: queryParams } : {}),
+    }
   }
   if (first === "errors" && parts.length <= 2) {
     const count = parseOperatorCountToken(second)
@@ -480,6 +499,25 @@ function formatOperatorPayload(command: ParsedOperatorCommand, payload: unknown)
       const updated = formatOperatorTimestamp(entry.updatedAt)
       const preview = getOperatorString(entry.preview) || ""
       lines.push(`- ${title} (${msgs} msgs, ${updated || "unknown"})${preview ? ` — ${preview.slice(0, 80)}` : ""}`)
+    }
+    return lines.join("\n")
+  }
+
+  if (command.key === "logs") {
+    const logs = Array.isArray(payload.logs) ? payload.logs : []
+    const levelFilter = getOperatorString(payload.level)
+    const lines = [`Recent logs (${logs.length})${levelFilter ? ` [${levelFilter}]` : ""}`]
+    if (logs.length === 0) {
+      lines.push("- No log entries found.")
+      return lines.join("\n")
+    }
+    for (const entry of logs) {
+      if (!isRecord(entry)) continue
+      const timestamp = formatOperatorTimestamp(entry.timestamp)
+      const level = getOperatorString(entry.level) || "?"
+      const component = getOperatorString(entry.component) || "?"
+      const message = getOperatorString(entry.message) || ""
+      lines.push(`- ${timestamp || "?"} [${level}] ${component}: ${message.slice(0, 120)}`)
     }
     return lines.join("\n")
   }

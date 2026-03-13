@@ -1968,6 +1968,32 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/logs", async (req, reply) => {
+    try {
+      const query = req.query as { count?: string | number; level?: string }
+      const count = clampOperatorCount(query.count, 20, 100)
+      const validLevels = new Set(["error", "warning", "info"])
+      const level = typeof query.level === "string" && validLevels.has(query.level)
+        ? (query.level as "error" | "warning" | "info")
+        : undefined
+      const allEntries = diagnosticsService.getRecentErrors(count)
+      const filtered = level ? allEntries.filter((e) => e.level === level) : allEntries
+      return reply.send({
+        count: filtered.length,
+        level,
+        logs: filtered.map(({ timestamp, level: lvl, component, message }) => ({
+          timestamp,
+          level: lvl,
+          component,
+          message,
+        })),
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator logs", error)
+      return reply.code(500).send({ error: "Failed to build operator logs" })
+    }
+  })
+
   fastify.get("/v1/operator/audit", async (req, reply) => {
     try {
       const query = req.query as { count?: string | number }

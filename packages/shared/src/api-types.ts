@@ -87,6 +87,12 @@ export interface OperatorRecentErrorsResponse {
   errors: OperatorRecentError[];
 }
 
+export interface OperatorLogsResponse {
+  count: number;
+  level?: 'error' | 'warning' | 'info';
+  logs: OperatorRecentError[];
+}
+
 export interface OperatorConversationItem {
   id: string;
   title: string;
