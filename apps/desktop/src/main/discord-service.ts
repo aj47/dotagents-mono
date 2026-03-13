@@ -893,6 +893,11 @@ class DiscordService {
           botUsername: client.user?.username,
           lastError: undefined,
         })
+        // Set online presence
+        client.user?.setPresence({
+          status: "online",
+          activities: [{ name: "Ready to help", type: discord.ActivityType.Custom }],
+        })
         this.addLog("info", `Connected as ${client.user?.username || "unknown bot"}`)
       })
 
@@ -1019,6 +1024,21 @@ class DiscordService {
         const promptSummary = shouldLogMessages ? `: ${prompt}` : ` (${prompt.length} chars)`
         this.addLog("info", `Processing Discord message for ${conversationId}${promptSummary}`)
 
+        // Show typing indicator while processing (refreshes every 8s since Discord expires it at 10s)
+        let typingInterval: ReturnType<typeof setInterval> | undefined
+        try {
+          if ("sendTyping" in message.channel && typeof message.channel.sendTyping === "function") {
+            await message.channel.sendTyping()
+            typingInterval = setInterval(() => {
+              if ("sendTyping" in message.channel && typeof message.channel.sendTyping === "function") {
+                message.channel.sendTyping().catch(() => {})
+              }
+            }, 8000)
+          }
+        } catch {
+          // Typing indicator is best-effort
+        }
+
         try {
           const result = await runAgent({
             prompt,
@@ -1032,6 +1052,8 @@ class DiscordService {
           const errorMessage = error instanceof Error ? error.message : String(error)
           this.addLog("error", `Discord reply failed for ${conversationId}: ${errorMessage}`)
           await this.sendChunks(message, `I hit an error while processing that message: ${errorMessage}`)
+        } finally {
+          if (typingInterval) clearInterval(typingInterval)
         }
       })
       .finally(() => {
