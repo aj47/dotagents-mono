@@ -311,7 +311,7 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
                   </h3>
                 ),
                 p: ({ children }) => (
-                  <p className="mb-3 leading-relaxed text-foreground">
+                  <p className="mb-1.5 leading-normal text-foreground">
                     {children}
                   </p>
                 ),
