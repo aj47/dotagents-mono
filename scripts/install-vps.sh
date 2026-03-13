@@ -76,14 +76,21 @@ check_os() {
 # ── System Dependencies ──────────────────────────────────────
 install_system_deps() {
   info "Installing system dependencies..."
+  export DEBIAN_FRONTEND=noninteractive
   if command -v apt-get &>/dev/null; then
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq \
+    sudo -E apt-get update -qq
+    sudo -E apt-get install -y -qq \
+      git curl build-essential pkg-config \
+      libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
+      xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
+      libasound2t64 libgbm1 xvfb \
+      2>&1 | tail -5 || \
+    sudo -E apt-get install -y -qq \
       git curl build-essential pkg-config \
       libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
       xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
       libasound2 libgbm1 xvfb \
-      2>/dev/null
+      2>&1 | tail -5
   elif command -v dnf &>/dev/null; then
     sudo dnf install -y -q \
       git curl gcc gcc-c++ make pkg-config \
