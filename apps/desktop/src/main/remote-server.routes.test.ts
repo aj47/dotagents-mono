@@ -173,6 +173,10 @@ describe("remote-server route registration", () => {
     // Logs endpoint
     expect(source).toContain("/v1/operator/logs")
     expect(source).toContain("query.level")
+    // MCP operator endpoints
+    expect(source).toContain("/v1/operator/mcp")
+    expect(source).toContain("/v1/operator/actions/mcp-restart")
+    expect(source).toContain("mcpService.restartServer(")
   })
 
   it("audits sensitive settings updates without persisting secrets", () => {

@@ -85,3 +85,10 @@ test('displays recent conversations from operator API', () => {
   assert.match(operationsSource, /Recent conversations/);
   assert.match(operationsSource, /conversations\.map/);
 });
+
+test('displays MCP servers from operator API', () => {
+  assert.match(operationsSource, /getOperatorMCP/);
+  assert.match(operationsSource, /setMcpServers/);
+  assert.match(operationsSource, /MCP servers/);
+  assert.match(operationsSource, /mcpServers\.map/);
+});

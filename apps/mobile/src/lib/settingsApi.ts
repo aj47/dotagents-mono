@@ -49,6 +49,8 @@ export type {
   OperatorConversationItem,
   OperatorConversationsResponse,
   OperatorLogsResponse,
+  OperatorMCPStatusResponse,
+  OperatorMCPServerSummary,
   OperatorActionResponse,
   OperatorAuditEntry,
   OperatorAuditResponse,
@@ -106,6 +108,7 @@ import type {
   OperatorApiKeyRotationResponse,
   OperatorConversationsResponse,
   OperatorLogsResponse,
+  OperatorMCPStatusResponse,
 } from '@dotagents/shared';
 
 const DEVICE_ID_HEADER = 'x-dotagents-device-id';
@@ -325,6 +328,18 @@ export class SettingsApiClient {
   async getOperatorAudit(count: number = 20): Promise<OperatorAuditResponse> {
     const query = `?count=${encodeURIComponent(String(count))}`;
     return this.request<OperatorAuditResponse>(`/operator/audit${query}`);
+  }
+
+  async getOperatorMCP(): Promise<OperatorMCPStatusResponse> {
+    return this.request<OperatorMCPStatusResponse>('/operator/mcp');
+  }
+
+  async restartMCPServer(server: string): Promise<{ success: boolean; error?: string }> {
+    return this.request<{ success: boolean; error?: string }>('/operator/actions/mcp-restart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
   }
 
   async getOperatorConversations(count: number = 10): Promise<OperatorConversationsResponse> {

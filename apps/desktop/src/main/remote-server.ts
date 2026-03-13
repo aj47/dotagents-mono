@@ -2783,6 +2783,70 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // GET /v1/operator/mcp - Operator-level MCP summary
+  fastify.get("/v1/operator/mcp", async (_req, reply) => {
+    try {
+      const serverStatus = mcpService.getServerStatus()
+      const servers = Object.entries(serverStatus)
+        .filter(([name]) => name !== "dotagents-internal")
+        .map(([name, status]) => ({
+          name,
+          connected: status.connected,
+          toolCount: status.toolCount,
+          enabled: (status.runtimeEnabled ?? true) && !status.configDisabled,
+          error: status.error,
+        }))
+      return reply.send({
+        totalServers: servers.length,
+        connectedServers: servers.filter((s) => s.connected).length,
+        totalTools: servers.reduce((sum, s) => sum + s.toolCount, 0),
+        servers,
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator MCP status", error)
+      return reply.code(500).send({ error: "Failed to build operator MCP status" })
+    }
+  })
+
+  // POST /v1/operator/actions/mcp-restart - Restart an MCP server
+  fastify.post("/v1/operator/actions/mcp-restart", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      setOperatorAuditContext(req, {
+        action: "mcp-restart",
+        success: true,
+        details: { server: serverName },
+      })
+
+      diagnosticsService.logInfo("remote-server", `Operator MCP restart: ${serverName}`)
+      const result = await mcpService.restartServer(serverName)
+      if (!result.success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-restart",
+          success: false,
+          failureReason: result.error || "restart-failed",
+        })
+        return reply.code(400).send({ error: result.error || "Restart failed" })
+      }
+
+      return reply.send({ success: true, action: "mcp-restart", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-restart",
+        success: false,
+        failureReason: "mcp-restart-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP restart failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP restart failed: ${errorMessage}` })
+    }
+  })
+
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get("/v1/mcp/servers", async (_req, reply) => {
     try {

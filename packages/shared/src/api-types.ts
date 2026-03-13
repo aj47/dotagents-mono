@@ -93,6 +93,21 @@ export interface OperatorLogsResponse {
   logs: OperatorRecentError[];
 }
 
+export interface OperatorMCPServerSummary {
+  name: string;
+  connected: boolean;
+  toolCount: number;
+  enabled: boolean;
+  error?: string;
+}
+
+export interface OperatorMCPStatusResponse {
+  totalServers: number;
+  connectedServers: number;
+  totalTools: number;
+  servers: OperatorMCPServerSummary[];
+}
+
 export interface OperatorConversationItem {
   id: string;
   title: string;

@@ -26,6 +26,7 @@ import {
   OperatorConversationItem,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
+  OperatorMCPServerSummary,
   OperatorRecentError,
   OperatorRuntimeStatus,
   OperatorTunnelSetupSummary,
@@ -154,6 +155,7 @@ export default function OperationsScreen({ navigation }: any) {
   const [recentErrors, setRecentErrors] = useState<OperatorRecentError[]>([]);
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
   const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
+  const [mcpServers, setMcpServers] = useState<OperatorMCPServerSummary[]>([]);
   const [drafts, setDrafts] = useState<RemoteAccessDrafts>(buildDrafts(null));
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -181,6 +183,7 @@ export default function OperationsScreen({ navigation }: any) {
       setRecentErrors([]);
       setAuditEntries([]);
       setConversations([]);
+      setMcpServers([]);
       setDrafts(buildDrafts(null));
       setError(null);
       setIsLoading(false);
@@ -204,6 +207,7 @@ export default function OperationsScreen({ navigation }: any) {
       whatsAppResult,
       auditResult,
       conversationsResult,
+      mcpResult,
     ] = await Promise.allSettled([
       settingsClient.getOperatorStatus(),
       settingsClient.getOperatorErrors(RECENT_ERROR_COUNT),
@@ -214,6 +218,7 @@ export default function OperationsScreen({ navigation }: any) {
       settingsClient.getOperatorWhatsApp(),
       settingsClient.getOperatorAudit(RECENT_AUDIT_ENTRY_COUNT),
       settingsClient.getOperatorConversations(10),
+      settingsClient.getOperatorMCP(),
     ]);
 
     const issues: string[] = [];
@@ -278,6 +283,12 @@ export default function OperationsScreen({ navigation }: any) {
       setConversations(conversationsResult.value.conversations);
     } else {
       setConversations([]);
+    }
+
+    if (mcpResult.status === 'fulfilled') {
+      setMcpServers(mcpResult.value.servers);
+    } else {
+      setMcpServers([]);
     }
 
     setError(issues.length > 0 ? issues.join(' • ') : null);
@@ -614,6 +625,20 @@ export default function OperationsScreen({ navigation }: any) {
               {status.sessions.activeSessions === 0 && (
                 <Text style={styles.mutedText}>No active agent sessions</Text>
               )}
+            </View>
+          )}
+
+          {mcpServers.length > 0 && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>MCP servers</Text>
+              <Text style={styles.detailText}>
+                {mcpServers.filter((s) => s.connected).length}/{mcpServers.length} connected • {mcpServers.reduce((sum, s) => sum + s.toolCount, 0)} tools
+              </Text>
+              {mcpServers.map((s) => (
+                <Text key={s.name} style={styles.detailText}>
+                  {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? ' (disabled)' : ''}{s.error ? ` — ${s.error}` : ''}
+                </Text>
+              ))}
             </View>
           )}
 

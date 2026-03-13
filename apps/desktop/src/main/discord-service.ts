@@ -67,6 +67,8 @@ interface ParsedOperatorCommand {
     | "conversations"
     | "run-agent"
     | "logs"
+    | "mcp"
+    | "mcp-restart"
     | "restart-server"
     | "restart-app"
   label: string
@@ -146,6 +148,7 @@ function getOperatorHelpText(channel: string): string {
     "- /ops conversations [count]",
     "- /ops run <prompt>",
     "- /ops logs [count] [error|warning|info]",
+    "- /ops mcp | mcp restart <server>",
     "- /ops updater | updater check | updater download | updater reveal | updater open | updater releases",
     "- /ops tunnel | tunnel start | tunnel stop",
     "- /ops discord status | connect | disconnect",
@@ -236,6 +239,19 @@ function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
       method: "POST",
       path: "actions/run-agent",
       body: { prompt: agentPrompt },
+    }
+  }
+  if (first === "mcp" && parts.length === 1) {
+    return { key: "mcp", label: "/ops mcp", method: "GET", path: "mcp" }
+  }
+  if (first === "mcp" && second === "restart" && parts.length === 3) {
+    const serverName = parts[2]
+    return {
+      key: "mcp-restart",
+      label: `/ops mcp restart ${serverName}`,
+      method: "POST",
+      path: "actions/mcp-restart",
+      body: { server: serverName },
     }
   }
   if (first === "health" && parts.length === 1) {
@@ -509,6 +525,35 @@ function formatOperatorPayload(command: ParsedOperatorCommand, payload: unknown)
       lines.push(`- ${title} (${msgs} msgs, ${updated || "unknown"})${preview ? ` — ${preview.slice(0, 80)}` : ""}`)
     }
     return lines.join("\n")
+  }
+
+  if (command.key === "mcp") {
+    const servers = Array.isArray(payload.servers) ? payload.servers : []
+    const total = getOperatorNumber(payload.totalServers) || 0
+    const connected = getOperatorNumber(payload.connectedServers) || 0
+    const totalTools = getOperatorNumber(payload.totalTools) || 0
+    const lines = [`MCP servers: ${connected}/${total} connected, ${totalTools} tools`]
+    for (const entry of servers) {
+      if (!isRecord(entry)) continue
+      const name = getOperatorString(entry.name) || "?"
+      const isConnected = entry.connected === true
+      const tools = getOperatorNumber(entry.toolCount) || 0
+      const enabled = entry.enabled !== false
+      const error = getOperatorString(entry.error)
+      const statusEmoji = isConnected ? "✓" : enabled ? "✗" : "○"
+      lines.push(`${statusEmoji} ${name}: ${tools} tools${!enabled ? " (disabled)" : ""}${error ? ` — ${error}` : ""}`)
+    }
+    return lines.join("\n")
+  }
+
+  if (command.key === "mcp-restart") {
+    const success = payload.success === true
+    const server = getOperatorString(payload.server) || "?"
+    if (!success) {
+      const errorMsg = getOperatorString(payload.error) || "Unknown error"
+      return `MCP restart failed for ${server}: ${errorMsg}`
+    }
+    return `MCP server "${server}" restarted successfully.`
   }
 
   if (command.key === "logs") {
