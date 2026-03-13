@@ -37,7 +37,8 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
-import { SettingsApiClient } from '../lib/settingsApi';
+import { SettingsApiClient, ExtendedSettingsApiClient } from '../lib/settingsApi';
+import type { Skill } from '../lib/settingsApi';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
@@ -153,7 +154,7 @@ type QuickStartShortcut = {
   title: string;
   description: string;
   content: string;
-  source: 'command' | 'saved-prompt' | 'starter-pack';
+  source: 'command' | 'saved-prompt' | 'starter-pack' | 'skill';
 };
 
 type QuickStartSection = {
@@ -463,9 +464,10 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!config.baseUrl || !config.apiKey) {
       return null;
     }
-    return new SettingsApiClient(config.baseUrl, config.apiKey);
+    return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
   const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
@@ -1203,6 +1205,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!settingsClient || !isFocused) {
       if (!settingsClient) {
         setPredefinedPrompts([]);
+        setSkills([]);
         setIsLoadingQuickStartPrompts(false);
       }
       return;
@@ -1211,15 +1214,20 @@ export default function ChatScreen({ route, navigation }: any) {
     let cancelled = false;
     setIsLoadingQuickStartPrompts(true);
 
-    settingsClient.getSettings()
-      .then((settings) => {
+    Promise.all([
+      settingsClient.getSettings(),
+      settingsClient.getSkills().catch(() => ({ skills: [] })),
+    ])
+      .then(([settings, skillsResponse]) => {
         if (cancelled) return;
         const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
         setPredefinedPrompts(nextPrompts);
+        setSkills(skillsResponse.skills || []);
       })
       .catch(() => {
         if (cancelled) return;
         setPredefinedPrompts([]);
+        setSkills([]);
       })
       .finally(() => {
         if (cancelled) return;
@@ -2462,9 +2470,23 @@ export default function ChatScreen({ route, navigation }: any) {
     [predefinedPrompts]
   );
 
+  const skillsQuickStarts = useMemo(
+    () => skills
+      .filter((skill) => skill.enabled && skill.enabledForProfile)
+      .slice(0, 4)
+      .map((skill) => ({
+        id: `skill-${skill.id}`,
+        title: skill.name,
+        description: skill.description || 'A skill from your .agents setup.',
+        content: `/${skill.id}`,
+        source: 'skill' as const,
+      })),
+    [skills]
+  );
+
   const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
+    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 || skillsQuickStarts.length > 0 ? 4 : 6),
+    [commandQuickStarts.length, savedPromptQuickStarts.length, skillsQuickStarts.length]
   );
 
   const quickStartSections = useMemo<QuickStartSection[]>(() => {
@@ -2476,6 +2498,15 @@ export default function ChatScreen({ route, navigation }: any) {
         title: 'Custom Commands',
         subtitle: 'Slash-named saved prompts from desktop show up here.',
         items: commandQuickStarts,
+      });
+    }
+
+    if (skillsQuickStarts.length > 0) {
+      sections.push({
+        id: 'skills',
+        title: 'Agent Skills',
+        subtitle: 'Skills enabled in your .agents directory.',
+        items: skillsQuickStarts,
       });
     }
 
@@ -2491,14 +2522,14 @@ export default function ChatScreen({ route, navigation }: any) {
     sections.push({
       id: 'starter-packs',
       title: 'Starter Packs',
-      subtitle: commandQuickStarts.length === 0
-        ? 'Use these while you build out custom commands and saved prompts.'
+      subtitle: commandQuickStarts.length === 0 && skillsQuickStarts.length === 0
+        ? 'Use these while you build out custom commands and skills.'
         : 'Built-in launchers for common workflows.',
       items: starterPackQuickStarts,
     });
 
     return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
+  }, [commandQuickStarts, skillsQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
 
   const quickStartCategoryPills = useMemo(
     () => [
@@ -2506,6 +2537,11 @@ export default function ChatScreen({ route, navigation }: any) {
         id: 'commands-pill',
         label: 'Custom Commands',
         value: commandQuickStarts.length > 0 ? `${commandQuickStarts.length} ready` : 'Add slash prompts on desktop',
+      },
+      {
+        id: 'skills-pill',
+        label: 'Agent Skills',
+        value: skillsQuickStarts.length > 0 ? `${skillsQuickStarts.length} active` : 'Enable skills in .agents',
       },
       {
         id: 'prompts-pill',
@@ -2518,102 +2554,11 @@ export default function ChatScreen({ route, navigation }: any) {
         value: `${starterPackQuickStarts.length} tap-to-insert`,
       },
     ],
-    [commandQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
+    [commandQuickStarts.length, skillsQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
   );
 
   const quickStartFooterText = isLoadingQuickStartPrompts
-    ? 'Refreshing saved prompts from desktop…'
-    : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
-
-  const commandQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter(isSlashCommandPrompt)
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        description: 'Slash-style saved prompt from your desktop workspace.',
-        content: prompt.content,
-        source: 'command' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const savedPromptQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter((prompt) => !isSlashCommandPrompt(prompt))
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        description: 'Reusable saved prompt synced from desktop.',
-        content: prompt.content,
-        source: 'saved-prompt' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
-  );
-
-  const quickStartSections = useMemo<QuickStartSection[]>(() => {
-    const sections: QuickStartSection[] = [];
-
-    if (commandQuickStarts.length > 0) {
-      sections.push({
-        id: 'commands',
-        title: 'Custom Commands',
-        subtitle: 'Slash-named saved prompts from desktop show up here.',
-        items: commandQuickStarts,
-      });
-    }
-
-    if (savedPromptQuickStarts.length > 0) {
-      sections.push({
-        id: 'saved-prompts',
-        title: 'Saved Prompts',
-        subtitle: 'Reusable prompts from your desktop setup.',
-        items: savedPromptQuickStarts,
-      });
-    }
-
-    sections.push({
-      id: 'starter-packs',
-      title: 'Starter Packs',
-      subtitle: commandQuickStarts.length === 0
-        ? 'Use these while you build out custom commands and saved prompts.'
-        : 'Built-in launchers for common workflows.',
-      items: starterPackQuickStarts,
-    });
-
-    return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
-
-  const quickStartCategoryPills = useMemo(
-    () => [
-      {
-        id: 'commands-pill',
-        label: 'Custom Commands',
-        value: commandQuickStarts.length > 0 ? `${commandQuickStarts.length} ready` : 'Add slash prompts on desktop',
-      },
-      {
-        id: 'prompts-pill',
-        label: 'Saved Prompts',
-        value: savedPromptQuickStarts.length > 0 ? `${savedPromptQuickStarts.length} synced` : 'Shows desktop prompts here',
-      },
-      {
-        id: 'starter-pill',
-        label: 'Starter Packs',
-        value: `${starterPackQuickStarts.length} tap-to-insert`,
-      },
-    ],
-    [commandQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
-  );
-
-  const quickStartFooterText = isLoadingQuickStartPrompts
-    ? 'Refreshing saved prompts from desktop…'
+    ? 'Refreshing commands and skills from desktop…'
     : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
