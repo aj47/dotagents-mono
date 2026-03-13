@@ -1880,18 +1880,18 @@ export async function processTranscriptWithAgentMode(
         }
 
         if (hasCompletionSignalTool) {
-          // Safety: also fall through when noOpCount exceeds the nudge threshold
-          // (noOpCount >= 2), so we don't churn until maxIterations when the model
-          // keeps returning substantive text but never calls mark_work_complete.
+          // When tools have already been executed in this session and the agent is
+          // giving a substantive text summary, skip the completion-hint loop and go
+          // straight to verification. The work is done -- nudging for mark_work_complete
+          // just wastes iterations and risks the nudge/fallback path producing a
+          // generic "couldn't complete" error for tasks that are already finished.
           const noOpThresholdReached = noOpCount >= 2
-          if (completionSignalHintCount < MAX_COMPLETION_SIGNAL_HINTS && !noOpThresholdReached) {
-            // In tool-driven tasks, substantive text without explicit completion is usually
-            // a progress/status update. Keep iterating and reserve verifier calls for explicit
-            // completion signals from mark_work_complete.
+          if (completionSignalHintCount < MAX_COMPLETION_SIGNAL_HINTS && !noOpThresholdReached && !toolsExecutedInSession) {
+            // No tools executed yet: substantive text is likely a progress/status update.
+            // Keep iterating and reserve verifier calls for explicit completion signals.
             if (trimmedContent.length > 0) {
               addMessage("assistant", contentText)
             }
-            // Internal completion nudge: include in LLM context, but do NOT persist to disk.
             addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
             completionSignalHintCount++
             // Do NOT reset noOpCount here. Substantive text without tool calls or explicit
@@ -1902,12 +1902,11 @@ export async function processTranscriptWithAgentMode(
             continue
           }
 
-          // Hints exhausted (or noOpCount threshold reached) and model still hasn't
-          // called mark_work_complete. Intentionally fall through to the verification/
-          // fallback path below so we don't spin until maxIterations with no new
-          // guidance. This is a safety valve — the fallback path will treat the
-          // substantive text as a completion candidate and run verification, which
-          // may either continue the loop or finalize.
+          // Fall through to the verification/fallback path when:
+          // - tools were already executed (agent is summarizing completed work), or
+          // - hints exhausted / noOp threshold reached without mark_work_complete.
+          // The fallback path will treat the substantive text as a completion candidate
+          // and run verification, which may either continue the loop or finalize.
         }
 
         // Fallback/verification path: reached when either (a) the completion signal
