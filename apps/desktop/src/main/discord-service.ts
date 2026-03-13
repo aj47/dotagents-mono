@@ -62,6 +62,8 @@ interface ParsedOperatorCommand {
     | "updater-reveal"
     | "updater-open-download"
     | "updater-open-releases"
+    | "system"
+    | "sessions"
     | "restart-server"
     | "restart-app"
   label: string
@@ -80,6 +82,14 @@ function formatOperatorTimestamp(value: unknown): string | null {
   return typeof value === "number" && Number.isFinite(value)
     ? new Date(value).toISOString()
     : null
+}
+
+function formatOperatorDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
 function formatOperatorScalar(value: unknown): string | null {
@@ -127,6 +137,8 @@ function getOperatorHelpText(channel: string): string {
     "- /ops health",
     "- /ops errors [count]",
     "- /ops audit [count]",
+    "- /ops system",
+    "- /ops sessions",
     "- /ops updater | updater check | updater download | updater reveal | updater open | updater releases",
     "- /ops tunnel | tunnel start | tunnel stop",
     "- /ops discord status | connect | disconnect",
@@ -190,6 +202,12 @@ function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
 
   if (first === "status" && parts.length === 1) {
     return { key: "status", label: "/ops status", method: "GET", path: "status" }
+  }
+  if (first === "system" && parts.length === 1) {
+    return { key: "system", label: "/ops system", method: "GET", path: "status" }
+  }
+  if (first === "sessions" && parts.length === 1) {
+    return { key: "sessions", label: "/ops sessions", method: "GET", path: "status" }
   }
   if (first === "health" && parts.length === 1) {
     return { key: "health", label: "/ops health", method: "GET", path: "health" }
@@ -383,6 +401,49 @@ function formatOperatorPayload(command: ParsedOperatorCommand, payload: unknown)
       lines.push(`- ${name}: ${status}${message ? ` — ${message}` : ""}`)
     }
 
+    return lines.join("\n")
+  }
+
+  if (command.key === "system") {
+    const system = isRecord(payload.system) ? payload.system : undefined
+    if (!system) return "System metrics unavailable."
+    const mem = isRecord(system.memoryUsage) ? system.memoryUsage : undefined
+    const lines = [
+      `System: ${getOperatorString(system.hostname) || "unknown"}`,
+      `- platform: ${getOperatorString(system.platform) || "?"}/${getOperatorString(system.arch) || "?"}`,
+      `- app: ${getOperatorString(system.appVersion) || "?"} • electron: ${getOperatorString(system.electronVersion) || "?"} • node: ${getOperatorString(system.nodeVersion) || "?"}`,
+    ]
+    if (mem) {
+      lines.push(`- memory: ${getOperatorNumber(mem.rssMB) || 0} MB RSS, ${getOperatorNumber(system.freeMemoryMB) || 0}/${getOperatorNumber(system.totalMemoryMB) || 0} MB free`)
+    }
+    lines.push(`- cpus: ${getOperatorNumber(system.cpuCount) || 0}`)
+    const processUptime = getOperatorNumber(system.processUptimeSeconds) || 0
+    const systemUptime = getOperatorNumber(system.uptimeSeconds) || 0
+    lines.push(`- process uptime: ${formatOperatorDuration(processUptime)} • system uptime: ${formatOperatorDuration(systemUptime)}`)
+    return lines.join("\n")
+  }
+
+  if (command.key === "sessions") {
+    const sessions = isRecord(payload.sessions) ? payload.sessions : undefined
+    if (!sessions) return "Sessions info unavailable."
+    const active = getOperatorNumber(sessions.activeSessions) || 0
+    const recent = getOperatorNumber(sessions.recentSessions) || 0
+    const details = Array.isArray(sessions.activeSessionDetails) ? sessions.activeSessionDetails : []
+    const lines = [
+      `Agent sessions: ${active} active, ${recent} recent`,
+    ]
+    if (details.length === 0) {
+      lines.push("- No active agent sessions")
+    }
+    for (const entry of details) {
+      if (!isRecord(entry)) continue
+      const title = getOperatorString(entry.title) || getOperatorString(entry.id) || "unknown"
+      const status = getOperatorString(entry.status) || "?"
+      const iter = getOperatorNumber(entry.currentIteration) || 0
+      const maxIter = getOperatorNumber(entry.maxIterations) || "?"
+      const started = formatOperatorTimestamp(entry.startTime)
+      lines.push(`- ${title}: ${status} (${iter}/${maxIter}) since ${started || "unknown"}`)
+    }
     return lines.join("\n")
   }
 
