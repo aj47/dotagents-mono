@@ -5,7 +5,8 @@
 # If the daemon is already running, attaches an interactive REPL
 # that talks to it via the local API. Otherwise starts fresh.
 # ═══════════════════════════════════════════════════════════════
-set -euo pipefail
+set -uo pipefail
+# NOTE: no `set -e` — a REPL must not exit on command failures
 
 INSTALL_DIR="__INSTALL_DIR__"
 CONFIG_DIR="$HOME/.config/app.dotagents"
@@ -27,6 +28,14 @@ api_get() {
 api_post() {
   local path="$1"; shift
   curl -sf -X POST \
+    -H "Authorization: Bearer $API_KEY" \
+    -H "Content-Type: application/json" \
+    "$@" "http://127.0.0.1:$PORT$path" 2>/dev/null
+}
+
+api_patch() {
+  local path="$1"; shift
+  curl -sf -X PATCH \
     -H "Authorization: Bearer $API_KEY" \
     -H "Content-Type: application/json" \
     "$@" "http://127.0.0.1:$PORT$path" 2>/dev/null
@@ -187,12 +196,12 @@ while true; do
         else if(!d.connected) console.log('\n\x1b[2m  Hint: /discord connect\x1b[0m');
       " || echo -e "${RED}Failed to fetch Discord status${R}" ;;
     "/discord enable")
-      api_post /v1/settings -d '{"discordEnabled":true}' > /dev/null
+      api_patch /v1/settings -d '{"discordEnabled":true}' > /dev/null
       echo -e "${G}✓ Discord enabled${R}"
       echo -e "${D}  Hint: /discord connect${R}" ;;
     "/discord disable")
       api_post /v1/operator/discord/disconnect > /dev/null 2>&1 || true
-      api_post /v1/settings -d '{"discordEnabled":false}' > /dev/null
+      api_patch /v1/settings -d '{"discordEnabled":false}' > /dev/null
       echo -e "${Y}Discord disabled${R}" ;;
     "/discord connect")
       echo -e "${D}Connecting...${R}"
@@ -211,17 +220,18 @@ while true; do
       if [[ -z "$TOKEN" ]]; then
         echo -e "${Y}Usage: /discord token <bot-token>${R}"
       else
-        api_post /v1/settings -d "{\"discordBotToken\":\"$TOKEN\"}" > /dev/null
-        echo -e "${G}✓ Discord bot token saved${R}"
-        echo -e "${D}  Next: /discord enable → /discord connect${R}"
+        api_patch /v1/settings -d "{\"discordBotToken\":\"$TOKEN\"}" > /dev/null \
+          && echo -e "${G}✓ Discord bot token saved${R}" \
+          && echo -e "${D}  Next: /discord enable → /discord connect${R}" \
+          || echo -e "${RED}✗ Failed to save token${R}"
       fi ;;
     /discord\ profile\ *)
       PROF="${INPUT#/discord profile }"
       if [[ "$PROF" == "clear" ]]; then
-        api_post /v1/settings -d '{"discordDefaultProfileId":""}' > /dev/null
+        api_patch /v1/settings -d '{"discordDefaultProfileId":""}' > /dev/null
         echo -e "${G}✓ Default profile cleared${R}"
       else
-        api_post /v1/settings -d "{\"discordDefaultProfileId\":\"$PROF\"}" > /dev/null
+        api_patch /v1/settings -d "{\"discordDefaultProfileId\":\"$PROF\"}" > /dev/null
         echo -e "${G}✓ Default profile set to: $PROF${R}"
       fi ;;
     "/discord logs"*)
@@ -275,8 +285,9 @@ while true; do
       if [[ -z "$KEY" || "$KEY" == "$VAL" ]]; then
         echo -e "${Y}Usage: /config set <key> <value>${R}"
       else
-        api_post /v1/settings -d "{\"$KEY\":\"$VAL\"}" > /dev/null
-        echo -e "${G}✓ $KEY updated${R}"
+        api_patch /v1/settings -d "{\"$KEY\":\"$VAL\"}" > /dev/null \
+          && echo -e "${G}✓ $KEY updated${R}" \
+          || echo -e "${RED}✗ Failed to update $KEY${R}"
       fi ;;
     /logs)
       api_get "/v1/operator/errors?count=10" | node_print "
