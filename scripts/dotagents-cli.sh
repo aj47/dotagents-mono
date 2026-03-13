@@ -487,7 +487,7 @@ while true; do
         api_patch /v1/settings -d "{\"discordDefaultProfileId\":\"$PROF\"}" > /dev/null
         echo -e "${G}✓ Default profile set to: $PROF${R}"
       fi ;;
-    "/discord logs"*)
+    /discord\ logs*)
       COUNT="${INPUT#/discord logs}"; COUNT="${COUNT## }"; COUNT="${COUNT:-10}"
       api_get "/v1/operator/discord/logs?count=$COUNT" | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
@@ -722,10 +722,25 @@ while true; do
       " || echo -e "${RED}Failed${R}" ;;
     /restart)
       echo -e "${Y}Restarting service...${R}"
-      api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || true
-      echo -e "${D}Reconnecting in 5s...${R}"; sleep 5
-      if is_running; then echo -e "${G}✓ Service is back${R}"
-      else echo -e "${RED}Service not responding yet.${R}"; fi ;;
+      sudo systemctl restart dotagents 2>/dev/null || api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || true
+      echo -ne "${D}Waiting for service"
+      local attempts=0
+      while [[ $attempts -lt 12 ]]; do
+        sleep 2
+        echo -ne "."
+        if is_running; then
+          # Re-read API key in case config changed
+          API_KEY="$(get_config_val remoteServerApiKey)"
+          echo ""
+          echo -e "${G}✓ Service is back${R}"
+          break
+        fi
+        attempts=$((attempts + 1))
+      done
+      if [[ $attempts -ge 12 ]]; then
+        echo ""
+        echo -e "${RED}Service not responding after 24s. Check: sudo journalctl -u dotagents -f${R}"
+      fi ;;
     /*)
       echo -e "${Y}Unknown command.${R} Type ${C}/help${R} for options." ;;
     *)
