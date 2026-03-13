@@ -263,6 +263,13 @@ setup_systemd() {
     cargo_path="$HOME/.cargo/bin:"
   fi
 
+  # Create a wrapper script so xvfb-run doesn't consume electron flags
+  cat > "$INSTALL_DIR/start-headless.sh" <<WRAPPER
+#!/bin/bash
+exec $electron_bin --no-sandbox $app_main --headless
+WRAPPER
+  chmod +x "$INSTALL_DIR/start-headless.sh"
+
   sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" > /dev/null <<EOF
 [Unit]
 Description=DotAgents AI Agent (Headless)
@@ -276,10 +283,9 @@ WorkingDirectory=$INSTALL_DIR/apps/desktop
 Environment=HOME=$HOME
 Environment=DISPLAY=
 Environment=DOTAGENTS_TERMINAL_MODE=1
-Environment=ELECTRON_RUN_AS_NODE=0
 Environment=NODE_ENV=production
 Environment=PATH=${cargo_path}/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/xvfb-run --auto-servernum --server-args="-screen 0 1x1x8" $electron_bin --no-sandbox $app_main --headless
+ExecStart=/usr/bin/xvfb-run --auto-servernum $INSTALL_DIR/start-headless.sh
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

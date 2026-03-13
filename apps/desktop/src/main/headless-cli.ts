@@ -492,6 +492,23 @@ ${colors.dim}Type /help for available commands.${colors.reset}
 
   console.log()
 
+  // If stdin is not a TTY (e.g. running as a systemd service), skip the
+  // interactive REPL and keep the process alive via the remote server / Discord.
+  const isTTY = process.stdin.isTTY
+  if (!isTTY) {
+    printColored(colors.dim, "No interactive terminal detected — running in daemon mode.")
+    printColored(colors.dim, "Use the remote API or Discord to interact with the agent.")
+
+    // Keep the process alive — SIGTERM/SIGINT will trigger shutdown
+    process.on("SIGTERM", async () => {
+      await requestShutdown("Received SIGTERM, shutting down...")
+    })
+    process.on("SIGINT", async () => {
+      await requestShutdown("Received SIGINT, shutting down...")
+    })
+    return
+  }
+
   rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
