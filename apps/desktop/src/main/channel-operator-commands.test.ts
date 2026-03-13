@@ -23,9 +23,10 @@ describe("channel-native operator commands", () => {
     expect(discordSource).toContain('path: "updater/open-releases"')
     expect(discordSource).toContain('path: "actions/restart-remote-server"')
     expect(discordSource).toContain('path: "actions/restart-app"')
-    // System and sessions commands
+    // System, sessions, and conversations commands
     expect(discordSource).toContain('key: "system"')
     expect(discordSource).toContain('key: "sessions"')
+    expect(discordSource).toContain('key: "conversations"')
     expect(discordSource).toContain("formatOperatorDuration")
 
     expect(
@@ -49,9 +50,10 @@ describe("channel-native operator commands", () => {
     expect(whatsappSource).toContain('path: "updater/open-releases"')
     expect(whatsappSource).toContain("OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i")
     expect(whatsappSource).toContain("WhatsApp needs authentication in the desktop app")
-    // System and sessions commands
+    // System, sessions, and conversations commands
     expect(whatsappSource).toContain('key: "system"')
     expect(whatsappSource).toContain('key: "sessions"')
+    expect(whatsappSource).toContain('key: "conversations"')
     expect(whatsappSource).toContain("formatOperatorDuration")
 
     expect(

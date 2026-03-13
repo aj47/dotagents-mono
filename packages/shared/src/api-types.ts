@@ -87,6 +87,20 @@ export interface OperatorRecentErrorsResponse {
   errors: OperatorRecentError[];
 }
 
+export interface OperatorConversationItem {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+  preview: string;
+}
+
+export interface OperatorConversationsResponse {
+  count: number;
+  conversations: OperatorConversationItem[];
+}
+
 export interface OperatorLogSummary {
   total: number;
   lastTimestamp?: number;

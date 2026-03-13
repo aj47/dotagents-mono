@@ -162,6 +162,10 @@ describe("remote-server route registration", () => {
     expect(source).toContain("function buildOperatorSessionsSummary()")
     expect(source).toContain("agentSessionTracker.getActiveSessions()")
     expect(source).toContain("agentSessionTracker.getRecentSessions(")
+    // Conversations endpoint
+    expect(source).toContain("function buildOperatorConversationsResponse(")
+    expect(source).toContain("conversationService.getConversationHistory()")
+    expect(source).toContain("/v1/operator/conversations")
   })
 
   it("audits sensitive settings updates without persisting secrets", () => {

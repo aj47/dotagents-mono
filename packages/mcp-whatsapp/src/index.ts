@@ -91,6 +91,7 @@ interface ParsedOperatorCommand {
     | "updater-open-releases"
     | "system"
     | "sessions"
+    | "conversations"
     | "restart-server"
     | "restart-app"
   label: string
@@ -166,6 +167,7 @@ function getOperatorHelpText(channel: string): string {
     "- /ops audit [count]",
     "- /ops system",
     "- /ops sessions",
+    "- /ops conversations [count]",
     "- /ops updater | updater check | updater download | updater reveal | updater open | updater releases",
     "- /ops tunnel | tunnel start | tunnel stop",
     "- /ops discord status | connect | disconnect",
@@ -201,6 +203,17 @@ function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
   }
   if (first === "sessions" && parts.length === 1) {
     return { key: "sessions", label: "/ops sessions", method: "GET", path: "status" }
+  }
+  if (first === "conversations" && parts.length <= 2) {
+    const count = parseOperatorCountToken(second)
+    if (Number.isNaN(count)) return { key: "help", label: "/ops help" }
+    return {
+      key: "conversations",
+      label: second ? `/ops conversations ${second}` : "/ops conversations",
+      method: "GET",
+      path: "conversations",
+      ...(count ? { query: { count: String(count) } } : {}),
+    }
   }
   if (first === "health" && parts.length === 1) {
     return { key: "health", label: "/ops health", method: "GET", path: "health" }
@@ -435,6 +448,24 @@ function formatOperatorPayload(command: ParsedOperatorCommand, payload: unknown)
       const maxIter = getOperatorNumber(entry.maxIterations) || "?"
       const started = formatOperatorTimestamp(entry.startTime)
       lines.push(`- ${title}: ${status} (${iter}/${maxIter}) since ${started || "unknown"}`)
+    }
+    return lines.join("\n")
+  }
+
+  if (command.key === "conversations") {
+    const conversations = Array.isArray(payload.conversations) ? payload.conversations : []
+    const lines = [`Recent conversations (${conversations.length})`]
+    if (conversations.length === 0) {
+      lines.push("- No conversations found.")
+      return lines.join("\n")
+    }
+    for (const entry of conversations) {
+      if (!isRecord(entry)) continue
+      const title = getOperatorString(entry.title) || "Untitled"
+      const msgs = getOperatorNumber(entry.messageCount) || 0
+      const updated = formatOperatorTimestamp(entry.updatedAt)
+      const preview = getOperatorString(entry.preview) || ""
+      lines.push(`- ${title} (${msgs} msgs, ${updated || "unknown"})${preview ? ` — ${preview.slice(0, 80)}` : ""}`)
     }
     return lines.join("\n")
   }

@@ -46,6 +46,8 @@ export type {
   OperatorRuntimeStatus,
   OperatorSystemMetrics,
   OperatorSessionsSummary,
+  OperatorConversationItem,
+  OperatorConversationsResponse,
   OperatorActionResponse,
   OperatorAuditEntry,
   OperatorAuditResponse,
@@ -101,6 +103,7 @@ import type {
   OperatorActionResponse,
   OperatorAuditResponse,
   OperatorApiKeyRotationResponse,
+  OperatorConversationsResponse,
 } from '@dotagents/shared';
 
 const DEVICE_ID_HEADER = 'x-dotagents-device-id';
@@ -314,6 +317,11 @@ export class SettingsApiClient {
   async getOperatorAudit(count: number = 20): Promise<OperatorAuditResponse> {
     const query = `?count=${encodeURIComponent(String(count))}`;
     return this.request<OperatorAuditResponse>(`/operator/audit${query}`);
+  }
+
+  async getOperatorConversations(count: number = 10): Promise<OperatorConversationsResponse> {
+    const query = `?count=${encodeURIComponent(String(count))}`;
+    return this.request<OperatorConversationsResponse>(`/operator/conversations${query}`);
   }
 
   async getOperatorRemoteServer(): Promise<OperatorRemoteServerStatus> {

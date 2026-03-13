@@ -23,6 +23,7 @@ import { getDeviceIdentity } from '../lib/deviceIdentity';
 import {
   ExtendedSettingsApiClient,
   OperatorAuditEntry,
+  OperatorConversationItem,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
   OperatorRecentError,
@@ -152,6 +153,7 @@ export default function OperationsScreen({ navigation }: any) {
   const [whatsAppSummary, setWhatsAppSummary] = useState<OperatorWhatsAppIntegrationSummary | null>(null);
   const [recentErrors, setRecentErrors] = useState<OperatorRecentError[]>([]);
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
+  const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
   const [drafts, setDrafts] = useState<RemoteAccessDrafts>(buildDrafts(null));
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -178,6 +180,7 @@ export default function OperationsScreen({ navigation }: any) {
       setWhatsAppSummary(null);
       setRecentErrors([]);
       setAuditEntries([]);
+      setConversations([]);
       setDrafts(buildDrafts(null));
       setError(null);
       setIsLoading(false);
@@ -200,6 +203,7 @@ export default function OperationsScreen({ navigation }: any) {
       discordLogsResult,
       whatsAppResult,
       auditResult,
+      conversationsResult,
     ] = await Promise.allSettled([
       settingsClient.getOperatorStatus(),
       settingsClient.getOperatorErrors(RECENT_ERROR_COUNT),
@@ -209,6 +213,7 @@ export default function OperationsScreen({ navigation }: any) {
       settingsClient.getOperatorDiscordLogs(DISCORD_LOG_PREVIEW_COUNT),
       settingsClient.getOperatorWhatsApp(),
       settingsClient.getOperatorAudit(RECENT_AUDIT_ENTRY_COUNT),
+      settingsClient.getOperatorConversations(10),
     ]);
 
     const issues: string[] = [];
@@ -267,6 +272,12 @@ export default function OperationsScreen({ navigation }: any) {
     } else {
       setAuditEntries([]);
       issues.push(getErrorMessage(auditResult.reason));
+    }
+
+    if (conversationsResult.status === 'fulfilled') {
+      setConversations(conversationsResult.value.conversations);
+    } else {
+      setConversations([]);
     }
 
     setError(issues.length > 0 ? issues.join(' • ') : null);
@@ -603,6 +614,22 @@ export default function OperationsScreen({ navigation }: any) {
               {status.sessions.activeSessions === 0 && (
                 <Text style={styles.mutedText}>No active agent sessions</Text>
               )}
+            </View>
+          )}
+
+          {conversations.length > 0 && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Recent conversations</Text>
+              {conversations.map((c) => (
+                <View key={c.id} style={{ marginBottom: 6 }}>
+                  <Text style={styles.detailText}>
+                    {c.title || 'Untitled'} ({c.messageCount} msgs)
+                  </Text>
+                  <Text style={styles.mutedText}>
+                    {formatTimestamp(c.updatedAt)}{c.preview ? ` — ${c.preview.slice(0, 80)}` : ''}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
 

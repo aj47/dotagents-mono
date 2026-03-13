@@ -78,3 +78,10 @@ test('auto-refreshes operator data periodically', () => {
   assert.match(operationsSource, /clearInterval/);
   assert.match(operationsSource, /autoRefreshRef/);
 });
+
+test('displays recent conversations from operator API', () => {
+  assert.match(operationsSource, /getOperatorConversations/);
+  assert.match(operationsSource, /setConversations/);
+  assert.match(operationsSource, /Recent conversations/);
+  assert.match(operationsSource, /conversations\.map/);
+});

@@ -68,6 +68,7 @@ import type {
   OperatorHealthSnapshot,
   OperatorIntegrationsSummary,
   OperatorLogSummary,
+  OperatorConversationsResponse,
   OperatorRecentErrorsResponse,
   OperatorRemoteServerStatus,
   OperatorRuntimeStatus,
@@ -1555,6 +1556,20 @@ function buildOperatorRecentErrorsResponse(count: number = 10): OperatorRecentEr
   }
 }
 
+async function buildOperatorConversationsResponse(count: number = 10): Promise<OperatorConversationsResponse> {
+  const history = await conversationService.getConversationHistory()
+  const clamped = clampOperatorCount(count, 10, 50)
+  const items = history.slice(0, clamped).map(({ id, title, createdAt, updatedAt, messageCount, preview }) => ({
+    id,
+    title,
+    createdAt,
+    updatedAt,
+    messageCount,
+    preview: preview.length > 200 ? preview.slice(0, 200) + "…" : preview,
+  }))
+  return { count: items.length, conversations: items }
+}
+
 function buildOperatorLogSummary(entries: Array<{ timestamp: number; level?: string }>): OperatorLogSummary {
   const lastEntry = entries[entries.length - 1]
   let errorCount = 0
@@ -1960,6 +1975,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error) {
       diagnosticsService.logError("remote-server", "Failed to build operator audit response", error)
       return reply.code(500).send({ error: "Failed to build operator audit response" })
+    }
+  })
+
+  fastify.get("/v1/operator/conversations", async (req, reply) => {
+    try {
+      const query = req.query as { count?: string | number }
+      return reply.send(await buildOperatorConversationsResponse(clampOperatorCount(query.count, 10, 50)))
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator conversations response", error)
+      return reply.code(500).send({ error: "Failed to build operator conversations response" })
     }
   })
 
