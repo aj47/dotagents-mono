@@ -3336,6 +3336,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     }
 
+    // Build a set of all respond_to_user content strings so we can suppress
+    // duplicate plain assistant messages the backend appends to conversationHistory.
+    const respondToUserContents = new Set<string>()
+    if (effectiveUserResponse) respondToUserContents.add(effectiveUserResponse.trim())
+    if (effectiveUserResponseHistory) {
+      for (const r of effectiveUserResponseHistory) respondToUserContents.add(r.trim())
+    }
+
     const items: DisplayItem[] = []
     const roleCounters: Record<'user' | 'assistant' | 'tool', number> = { user: 0, assistant: 0, tool: 0 }
 
@@ -3388,6 +3396,17 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           data: { timestamp: message.timestamp, calls: [], results: message.toolResults },
         })
       } else {
+        // Skip plain assistant messages that duplicate respond_to_user content.
+        // The backend appends these to conversationHistory on completion but
+        // the same content is already shown in the MidTurnUserResponseBubble.
+        if (
+          message.role === "assistant" &&
+          !message.toolCalls?.length &&
+          respondToUserContents.size > 0 &&
+          respondToUserContents.has(message.content.trim())
+        ) {
+          continue
+        }
         const roleIndex = ++roleCounters[message.role]
         items.push({ kind: "message", id: `msg-${message.role}-${roleIndex}`, data: message })
       }
