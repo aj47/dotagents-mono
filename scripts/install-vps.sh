@@ -270,6 +270,17 @@ exec $electron_bin --no-sandbox $app_main --headless
 WRAPPER
   chmod +x "$INSTALL_DIR/start-headless.sh"
 
+  # Install global CLI command
+  sudo tee /usr/local/bin/dotagents > /dev/null <<'CLIMD'
+#!/bin/bash
+# DotAgents CLI — interactive headless mode
+INSTALL_DIR="INSTALL_DIR_PLACEHOLDER"
+exec xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh"
+CLIMD
+  sudo sed -i "s|INSTALL_DIR_PLACEHOLDER|$INSTALL_DIR|" /usr/local/bin/dotagents
+  sudo chmod +x /usr/local/bin/dotagents
+  ok "Installed global command: dotagents"
+
   sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" > /dev/null <<EOF
 [Unit]
 Description=DotAgents AI Agent (Headless)
@@ -327,7 +338,7 @@ print_summary() {
   echo -e "  ${BOLD}Service:${NC}        sudo systemctl status ${SERVICE_NAME}"
   echo -e "  ${BOLD}Logs:${NC}           sudo journalctl -u ${SERVICE_NAME} -f"
   echo -e "  ${BOLD}Restart:${NC}        sudo systemctl restart ${SERVICE_NAME}"
-  echo -e "  ${BOLD}CLI mode:${NC}       cd $INSTALL_DIR/apps/desktop && xvfb-run npx electron --no-sandbox out/main/index.js --headless"
+  echo -e "  ${BOLD}CLI mode:${NC}       dotagents"
   echo -e "  ${BOLD}Config:${NC}         $CONFIG_FILE"
   echo ""
   if grep -q '"discordEnabled": true' "$CONFIG_FILE" 2>/dev/null; then
