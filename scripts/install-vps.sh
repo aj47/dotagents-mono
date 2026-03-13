@@ -5,11 +5,12 @@
 # ═══════════════════════════════════════════════════════════════
 # Detect interactive mode BEFORE set -e.
 # When piped through curl, stdin is the script. Try to reopen from /dev/tty.
+# On headless SSH, /dev/tty exists but cannot be opened — test with a real read.
 INTERACTIVE=false
 if [[ -t 0 ]]; then
   INTERACTIVE=true
-elif [[ -w /dev/tty ]] 2>/dev/null; then
-  exec 0</dev/tty
+elif (echo test < /dev/tty) 2>/dev/null; then
+  exec < /dev/tty
   INTERACTIVE=true
 fi
 
