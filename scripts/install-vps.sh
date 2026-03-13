@@ -3,19 +3,17 @@
 # DotAgents VPS Install Script
 # One-line install: curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/issue-108-discord-integration/scripts/install-vps.sh | bash
 # ═══════════════════════════════════════════════════════════════
-set -euo pipefail
-
-# When piped through curl, stdin is the script itself.
-# Reopen stdin from /dev/tty so interactive prompts work.
-# If /dev/tty is unavailable (e.g. non-interactive SSH), fall back to env vars.
-INTERACTIVE=true
-if [[ ! -t 0 ]]; then
-  if [[ -e /dev/tty ]]; then
-    exec < /dev/tty
-  else
-    INTERACTIVE=false
-  fi
+# Detect interactive mode BEFORE set -e.
+# When piped through curl, stdin is the script. Try to reopen from /dev/tty.
+INTERACTIVE=false
+if [[ -t 0 ]]; then
+  INTERACTIVE=true
+elif (exec 0</dev/tty) 2>/dev/null; then
+  exec 0</dev/tty
+  INTERACTIVE=true
 fi
+
+set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
