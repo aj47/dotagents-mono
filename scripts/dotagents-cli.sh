@@ -200,18 +200,18 @@ while true; do
       echo -e "${G}✓ Discord enabled${R}"
       echo -e "${D}  Hint: /discord connect${R}" ;;
     "/discord disable")
-      api_post /v1/operator/discord/disconnect > /dev/null 2>&1 || true
+      api_post /v1/operator/discord/disconnect -d '{}' > /dev/null 2>&1 || true
       api_patch /v1/settings -d '{"discordEnabled":false}' > /dev/null
       echo -e "${Y}Discord disabled${R}" ;;
     "/discord connect")
       echo -e "${D}Connecting...${R}"
-      api_post /v1/operator/discord/connect | node_print "
+      api_post /v1/operator/discord/connect -d '{}' | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
         if(d.success) console.log('\x1b[32m✓ '+d.message+'\x1b[0m');
         else console.log('\x1b[31m✗ '+(d.error||d.message||'Failed')+'\x1b[0m');
       " || echo -e "${RED}Failed to connect${R}" ;;
     "/discord disconnect")
-      api_post /v1/operator/discord/disconnect | node_print "
+      api_post /v1/operator/discord/disconnect -d '{}' | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
         console.log(d.success?'\x1b[32m✓ Disconnected':'\x1b[31m✗ '+(d.error||'Failed'));
       " || echo -e "${RED}Failed${R}" ;;
@@ -269,7 +269,7 @@ while true; do
       " || echo -e "${RED}Failed${R}" ;;
     /stop)
       echo -e "${Y}Sending emergency stop...${R}"
-      api_post /v1/emergency-stop | node_print "
+      api_post /v1/emergency-stop -d '{}' | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(d.message||'Stopped');
       " || echo -e "${RED}Failed${R}" ;;
     /new)
@@ -301,7 +301,7 @@ while true; do
       " || echo -e "${RED}Failed${R}" ;;
     /restart)
       echo -e "${Y}Restarting service...${R}"
-      api_post /v1/operator/actions/restart-app > /dev/null 2>&1 || true
+      api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || true
       echo -e "${D}Reconnecting in 5s...${R}"; sleep 5
       if is_running; then echo -e "${G}✓ Service is back${R}"
       else echo -e "${RED}Service not responding yet.${R}"; fi ;;
