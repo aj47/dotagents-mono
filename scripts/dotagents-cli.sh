@@ -318,7 +318,11 @@ run_setup() {
   if [[ -n "$discord_token" ]]; then
     config_set_raw "discordBotToken" "\"$discord_token\""
     config_set_raw "discordEnabled" "true"
+    config_set_raw "discordRequireMention" "true"
+    config_set_raw "discordDmEnabled" "false"
     echo -e "  ${G}✓ Discord configured & enabled${R}"
+    echo -e "  ${D}  • Requires @mention in servers (safe default)${R}"
+    echo -e "  ${D}  • DMs disabled (enable with: /config set discordDmEnabled true)${R}"
     echo ""
     echo -e "  ${D}Don't forget to invite your bot to a server:${R}"
     echo -e "  ${D}${C}https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=2048&scope=bot${R}"
