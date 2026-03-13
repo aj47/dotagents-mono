@@ -59,7 +59,7 @@ fi
 
 # ── Tab completion ────────────────────────────────────────────
 COMMANDS=(
-  "/help" "/quit" "/exit" "/status" "/stop" "/new"
+  "/help" "/quit" "/exit" "/status" "/stop" "/new" "/setup"
   "/profiles" "/conversations" "/logs"
   "/discord" "/discord status" "/discord enable" "/discord disable"
   "/discord token" "/discord profile" "/discord logs" "/discord connect" "/discord disconnect"
@@ -108,9 +108,22 @@ if [[ -n "$STATUS" ]]; then
 fi
 
 echo ""
-echo -e "  ${D}Type ${C}/help${D} for commands, or just type a message to chat.${R}"
-echo -e "  ${D}Tab completion available for all commands.${R}"
-echo ""
+
+# Auto-detect missing config and offer setup
+NEEDS_SETUP=false
+CUR_API_KEY="$(get_config_val openaiApiKey)"
+if [[ -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ]]; then
+  NEEDS_SETUP=true
+fi
+
+if [[ "$NEEDS_SETUP" == "true" ]]; then
+  echo -e "  ${Y}⚠ No API key configured.${R} Let's set things up."
+  run_setup
+else
+  echo -e "  ${D}Type ${C}/help${D} for commands, or just type a message to chat.${R}"
+  echo -e "  ${D}Tab completion available. Run ${C}/setup${D} to reconfigure.${R}"
+  echo ""
+fi
 
 CONVERSATION_ID=""
 
@@ -135,6 +148,7 @@ $(echo -e "${B}Discord${R}")
   $(echo -e "${C}/discord logs [n]${R}")  Show recent Discord logs
 
 $(echo -e "${B}System${R}")
+  $(echo -e "${C}/setup${R}")             Run onboarding wizard
   $(echo -e "${C}/status${R}")            Full service status
   $(echo -e "${C}/health${R}")            Quick health check
   $(echo -e "${C}/profiles${R}")          List agent profiles
@@ -145,6 +159,184 @@ $(echo -e "${B}System${R}")
   $(echo -e "${C}/quit${R}")              Exit CLI (service keeps running)
 
 HELP
+}
+
+# Write a key/value to config.json (handles API keys and other sensitive values
+# that PATCH /v1/settings intentionally blocks)
+config_set_raw() {
+  local key="$1" value="$2"
+  node -e "
+    const fs=require('fs');
+    const f='$CONFIG_FILE';
+    let c={};
+    try{c=JSON.parse(fs.readFileSync(f,'utf8'))}catch{}
+    c['$key']=$value;
+    fs.mkdirSync(require('path').dirname(f),{recursive:true});
+    fs.writeFileSync(f,JSON.stringify(c,null,2));
+  " 2>/dev/null
+}
+
+# Prompt with default value shown
+ask_val() {
+  local prompt="$1" default="$2" current="$3"
+  local display_current=""
+  if [[ -n "$current" ]]; then
+    # Mask API keys
+    if [[ "$current" == sk-* || ${#current} -gt 30 ]]; then
+      display_current="${current:0:8}...${current: -4}"
+    else
+      display_current="$current"
+    fi
+  fi
+  if [[ -n "$display_current" ]]; then
+    echo -en "  ${C}?${R} ${prompt} ${D}[current: ${display_current}]${R}: "
+  elif [[ -n "$default" ]]; then
+    echo -en "  ${C}?${R} ${prompt} ${D}[${default}]${R}: "
+  else
+    echo -en "  ${C}?${R} ${prompt}: "
+  fi
+  local val
+  read -r val
+  if [[ -z "$val" ]]; then
+    if [[ -n "$current" ]]; then echo "$current"
+    else echo "$default"; fi
+  else
+    echo "$val"
+  fi
+}
+
+# Test if an API key works
+test_api_key() {
+  local key="$1" base_url="$2" model="$3"
+  local url="${base_url:-https://api.openai.com/v1}/chat/completions"
+  local response
+  response=$(curl -sf --max-time 10 \
+    -H "Authorization: Bearer $key" \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"$model\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":5}" \
+    "$url" 2>&1)
+  local rc=$?
+  if [[ $rc -eq 0 ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+run_setup() {
+  echo ""
+  echo -e "${B}${C}╭───────────────────────────────────────────────────╮${R}"
+  echo -e "${B}${C}│${R}  ${B}⚡ DotAgents Setup Wizard${R}                        ${B}${C}│${R}"
+  echo -e "${B}${C}╰───────────────────────────────────────────────────╯${R}"
+  echo ""
+
+  # Read current config
+  local cur_key cur_base cur_model cur_provider cur_discord
+  cur_key="$(get_config_val openaiApiKey)"
+  cur_base="$(get_config_val openaiBaseUrl)"
+  cur_model="$(get_config_val mcpToolsOpenaiModel)"
+  cur_provider="$(get_config_val mcpToolsProviderId)"
+  cur_discord="$(get_config_val discordBotToken)"
+
+  # ── Step 1: LLM Provider ──
+  echo -e "  ${B}Step 1/3 — LLM Configuration${R}"
+  echo -e "  ${D}Powers the AI agent. Works with OpenAI, Groq, Gemini, or any compatible API.${R}"
+  echo ""
+
+  local api_key base_url model
+  api_key="$(ask_val "API key" "" "$cur_key")"
+
+  if [[ -z "$api_key" ]]; then
+    echo -e "  ${RED}✗ API key is required${R}"
+    return
+  fi
+
+  base_url="$(ask_val "API base URL (blank for OpenAI)" "" "$cur_base")"
+  model="$(ask_val "Model name" "gpt-4.1-mini" "$cur_model")"
+  model="${model:-gpt-4.1-mini}"
+
+  # Auto-detect provider from base URL
+  local provider="openai"
+  if [[ "$base_url" == *"groq"* ]]; then provider="groq"
+  elif [[ "$base_url" == *"gemini"* || "$base_url" == *"google"* ]]; then provider="gemini"
+  fi
+
+  echo ""
+  echo -ne "  ${D}Testing API key...${R} "
+  if test_api_key "$api_key" "$base_url" "$model"; then
+    echo -e "${G}✓ Working!${R}"
+  else
+    echo -e "${Y}⚠ Could not verify (may still work — check model name and base URL)${R}"
+  fi
+
+  # Save LLM config
+  config_set_raw "openaiApiKey" "\"$api_key\""
+  [[ -n "$base_url" ]] && config_set_raw "openaiBaseUrl" "\"$base_url\""
+  config_set_raw "mcpToolsProviderId" "\"$provider\""
+  config_set_raw "mcpToolsOpenaiModel" "\"$model\""
+  config_set_raw "transcriptPostProcessingOpenaiModel" "\"$model\""
+  echo -e "  ${G}✓ LLM configuration saved${R}"
+
+  # ── Step 2: Discord ──
+  echo ""
+  echo -e "  ${B}Step 2/3 — Discord Bot ${D}(optional)${R}"
+  echo -e "  ${D}Connect a Discord bot to chat with the agent from Discord.${R}"
+  echo -e "  ${D}Create one at: ${C}https://discord.com/developers/applications${R}"
+  echo -e "  ${D}Required: ${B}Message Content Intent${D} enabled in Bot settings.${R}"
+  echo ""
+
+  local discord_token
+  discord_token="$(ask_val "Discord bot token (blank to skip)" "" "$cur_discord")"
+
+  if [[ -n "$discord_token" ]]; then
+    config_set_raw "discordBotToken" "\"$discord_token\""
+    config_set_raw "discordEnabled" "true"
+    echo -e "  ${G}✓ Discord configured & enabled${R}"
+    echo ""
+    echo -e "  ${D}Don't forget to invite your bot to a server:${R}"
+    echo -e "  ${D}${C}https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=2048&scope=bot${R}"
+  else
+    echo -e "  ${D}Skipped. You can set this later with: /discord token <token>${R}"
+  fi
+
+  # ── Step 3: Restart ──
+  echo ""
+  echo -e "  ${B}Step 3/3 — Apply Changes${R}"
+  echo ""
+  echo -en "  ${C}?${R} Restart service to apply? ${D}[Y/n]${R}: "
+  local restart_answer
+  read -r restart_answer
+  restart_answer="${restart_answer:-y}"
+
+  if [[ "$restart_answer" =~ ^[Yy] ]]; then
+    echo -e "  ${D}Restarting...${R}"
+    sudo systemctl restart dotagents 2>/dev/null || true
+    sleep 5
+    # Re-read config for new API key
+    API_KEY="$(get_config_val remoteServerApiKey)"
+    if is_running; then
+      echo -e "  ${G}✓ Service restarted successfully${R}"
+      # Reconnect Discord if configured
+      if [[ -n "$discord_token" ]]; then
+        sleep 2
+        api_post /v1/operator/discord/connect -d '{}' > /dev/null 2>&1 || true
+        echo -e "  ${G}✓ Discord bot connecting...${R}"
+      fi
+    else
+      echo -e "  ${RED}✗ Service didn't start. Check: sudo journalctl -u dotagents -f${R}"
+    fi
+  else
+    echo -e "  ${D}Skipped. Run: sudo systemctl restart dotagents${R}"
+  fi
+
+  echo ""
+  echo -e "${B}${C}╭───────────────────────────────────────────────────╮${R}"
+  echo -e "${B}${C}│${R}  ${G}✓ Setup complete!${R}                                ${B}${C}│${R}"
+  echo -e "${B}${C}╰───────────────────────────────────────────────────╯${R}"
+  echo ""
+  echo -e "  ${D}Try chatting: just type a message below${R}"
+  echo -e "  ${D}Check status: /status${R}"
+  echo ""
 }
 
 
@@ -164,6 +356,8 @@ while true; do
       echo -e "${D}Bye! (service still running)${R}"; break ;;
     /help|/h)
       print_help ;;
+    /setup)
+      run_setup ;;
     /status)
       api_get /v1/operator/status | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
