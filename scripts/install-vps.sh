@@ -7,8 +7,14 @@ set -euo pipefail
 
 # When piped through curl, stdin is the script itself.
 # Reopen stdin from /dev/tty so interactive prompts work.
+# If /dev/tty is unavailable (e.g. non-interactive SSH), fall back to env vars.
+INTERACTIVE=true
 if [[ ! -t 0 ]]; then
-  exec < /dev/tty
+  if [[ -e /dev/tty ]]; then
+    exec < /dev/tty
+  else
+    INTERACTIVE=false
+  fi
 fi
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -26,7 +32,21 @@ info()  { echo -e "${CYAN}▸${NC} $*"; }
 ok()    { echo -e "${GREEN}✓${NC} $*"; }
 warn()  { echo -e "${YELLOW}⚠${NC} $*"; }
 fail()  { echo -e "${RED}✗${NC} $*"; exit 1; }
-ask()   { local v; read -rp "$(echo -e "${CYAN}?${NC} $1: ")" v; echo "$v"; }
+ask() {
+  local prompt="$1" env_var="${2:-}" default="${3:-}"
+  # If env var is set, use it
+  if [[ -n "$env_var" && -n "${!env_var:-}" ]]; then
+    echo "${!env_var}"
+    return
+  fi
+  # If non-interactive, use default
+  if [[ "$INTERACTIVE" != "true" ]]; then
+    echo "$default"
+    return
+  fi
+  local v; read -rp "$(echo -e "${CYAN}?${NC} ${prompt}: ")" v
+  echo "${v:-$default}"
+}
 
 banner() {
   echo ""
@@ -165,30 +185,32 @@ run_onboarding() {
 
   mkdir -p "$CONFIG_DIR"
 
-  # LLM API Key
-  echo -e "${DIM}  DotAgents needs an LLM API key to power the AI agent.${NC}"
-  echo -e "${DIM}  Supported: OpenAI, Groq, Google Gemini${NC}"
-  echo ""
-  local api_key; api_key="$(ask "OpenAI-compatible API key")"
-  local base_url; base_url="$(ask "API base URL [leave empty for OpenAI default]")"
-  local model; model="$(ask "Model name [default: gpt-4.1-mini]")"
-  model="${model:-gpt-4.1-mini}"
+  # Non-interactive mode: use env vars
+  # DOTAGENTS_API_KEY, DOTAGENTS_API_BASE_URL, DOTAGENTS_MODEL,
+  # DOTAGENTS_DISCORD_TOKEN, DOTAGENTS_PORT
+  if [[ "$INTERACTIVE" == "true" ]]; then
+    echo -e "${DIM}  DotAgents needs an LLM API key to power the AI agent.${NC}"
+    echo -e "${DIM}  Supported: OpenAI, Groq, Google Gemini${NC}"
+    echo ""
+  fi
+  local api_key; api_key="$(ask "OpenAI-compatible API key" DOTAGENTS_API_KEY "")"
+  local base_url; base_url="$(ask "API base URL [leave empty for OpenAI default]" DOTAGENTS_API_BASE_URL "")"
+  local model; model="$(ask "Model name [default: gpt-4.1-mini]" DOTAGENTS_MODEL "gpt-4.1-mini")"
 
-  # Discord Bot Token
-  echo ""
-  echo -e "${DIM}  To connect Discord, create a bot at https://discord.com/developers/applications${NC}"
-  echo -e "${DIM}  Enable: MESSAGE CONTENT INTENT, SERVER MEMBERS INTENT${NC}"
-  echo -e "${DIM}  Bot permissions: Send Messages, Read Message History, View Channels${NC}"
-  echo ""
-  local discord_token; discord_token="$(ask "Discord bot token [leave empty to skip]")"
+  if [[ "$INTERACTIVE" == "true" ]]; then
+    echo ""
+    echo -e "${DIM}  To connect Discord, create a bot at https://discord.com/developers/applications${NC}"
+    echo -e "${DIM}  Enable: MESSAGE CONTENT INTENT, SERVER MEMBERS INTENT${NC}"
+    echo -e "${DIM}  Bot permissions: Send Messages, Read Message History, View Channels${NC}"
+    echo ""
+  fi
+  local discord_token; discord_token="$(ask "Discord bot token [leave empty to skip]" DOTAGENTS_DISCORD_TOKEN "")"
 
   # Remote Server API Key
   local remote_api_key
-  remote_api_key="$(openssl rand -hex 32 2>/dev/null || head -c 64 /dev/urandom | xxd -p | tr -d '\n' | head -c 64)"
+  remote_api_key="${DOTAGENTS_REMOTE_API_KEY:-$(openssl rand -hex 32 2>/dev/null || head -c 64 /dev/urandom | xxd -p | tr -d '\n' | head -c 64)}"
 
-  # Remote Server Port
-  local port; port="$(ask "Remote server port [default: 3210]")"
-  port="${port:-3210}"
+  local port; port="$(ask "Remote server port [default: 3210]" DOTAGENTS_PORT "3210")"
 
   # Build config JSON using a node one-liner for proper escaping
   local config_json
