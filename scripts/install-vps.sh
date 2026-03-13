@@ -8,7 +8,7 @@
 INTERACTIVE=false
 if [[ -t 0 ]]; then
   INTERACTIVE=true
-elif (exec 0</dev/tty) 2>/dev/null; then
+elif [[ -w /dev/tty ]] 2>/dev/null; then
   exec 0</dev/tty
   INTERACTIVE=true
 fi
