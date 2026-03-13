@@ -279,7 +279,7 @@ Environment=DOTAGENTS_TERMINAL_MODE=1
 Environment=ELECTRON_RUN_AS_NODE=0
 Environment=NODE_ENV=production
 Environment=PATH=${cargo_path}/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/xvfb-run --auto-servernum --server-args="-screen 0 1x1x8" $electron_bin $app_main --headless --no-sandbox
+ExecStart=/usr/bin/xvfb-run --auto-servernum --server-args="-screen 0 1x1x8" $electron_bin --no-sandbox $app_main --headless
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -321,7 +321,7 @@ print_summary() {
   echo -e "  ${BOLD}Service:${NC}        sudo systemctl status ${SERVICE_NAME}"
   echo -e "  ${BOLD}Logs:${NC}           sudo journalctl -u ${SERVICE_NAME} -f"
   echo -e "  ${BOLD}Restart:${NC}        sudo systemctl restart ${SERVICE_NAME}"
-  echo -e "  ${BOLD}CLI mode:${NC}       cd $INSTALL_DIR/apps/desktop && xvfb-run npx electron out/main/index.js --headless --no-sandbox"
+  echo -e "  ${BOLD}CLI mode:${NC}       cd $INSTALL_DIR/apps/desktop && xvfb-run npx electron --no-sandbox out/main/index.js --headless"
   echo -e "  ${BOLD}Config:${NC}         $CONFIG_FILE"
   echo ""
   if grep -q '"discordEnabled": true' "$CONFIG_FILE" 2>/dev/null; then
