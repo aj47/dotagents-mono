@@ -724,7 +724,7 @@ while true; do
       echo -e "${Y}Restarting service...${R}"
       sudo systemctl restart dotagents 2>/dev/null || api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || true
       echo -ne "${D}Waiting for service"
-      local attempts=0
+      attempts=0
       while [[ $attempts -lt 12 ]]; do
         sleep 2
         echo -ne "."
