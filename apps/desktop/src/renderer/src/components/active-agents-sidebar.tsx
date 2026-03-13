@@ -20,7 +20,6 @@ import {
 } from "@renderer/lib/sidebar-sessions"
 import { useNavigate } from "react-router-dom"
 import {
-  getAgentConversationStateLabel,
   normalizeAgentConversationState,
 } from "@dotagents/shared"
 
@@ -458,7 +457,6 @@ export function ActiveAgentsSidebar({
                   : session.status === "active"
                     ? "running"
                     : "complete"
-            const stateLabel = getAgentConversationStateLabel(conversationState)
             // Use store's isSnoozed for active sessions (matches main view), backend for past
             const isSnoozed = isPast
               ? false
@@ -485,21 +483,14 @@ export function ActiveAgentsSidebar({
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  {/* Status dot or pinned icon for past agents */}
-                  {isPinned ? (
-                    <Pin className="h-3 w-3 shrink-0 fill-current text-foreground" />
-                  ) : (
-                    <span className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      session.status === "error" ? "bg-red-500" : "bg-green-500",
-                    )} />
-                  )}
+                  {/* Status dot */}
+                  <span className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    session.status === "error" ? "bg-red-500" : "bg-green-500",
+                  )} />
                   <p className="flex-1 truncate">
                     {session.conversationTitle || "Untitled session"}
                   </p>
-                  <span className="shrink-0 rounded border border-border/60 px-1 py-0 text-[10px] uppercase tracking-wide">
-                    {stateLabel}
-                  </span>
                   {session.conversationId && (
                     <button
                       type="button"
@@ -511,9 +502,7 @@ export function ActiveAgentsSidebar({
                       }}
                       className={cn(
                         "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                        isPinned
-                          ? "opacity-100"
-                          : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                        "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
                       )}
                       title={isPinned ? "Unpin session" : "Pin session"}
                       aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
@@ -555,18 +544,14 @@ export function ActiveAgentsSidebar({
                       : "hover:bg-accent/50",
                 )}
               >
-                {/* Status dot or pinned icon */}
-                {isActivePinned ? (
-                  <Pin className="h-3 w-3 shrink-0 fill-current text-foreground" />
-                ) : (
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      statusDotColor,
-                      !isSnoozed && !hasPendingApproval && "animate-pulse",
-                    )}
-                  />
-                )}
+                {/* Status dot */}
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    statusDotColor,
+                    !isSnoozed && !hasPendingApproval && "animate-pulse",
+                  )}
+                />
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <p
                     className={cn(
@@ -591,9 +576,6 @@ export function ActiveAgentsSidebar({
                       {agentName}
                     </span>
                   )}
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {stateLabel}
-                  </span>
                 </div>
                 {session.conversationId && (
                   <button
@@ -606,9 +588,7 @@ export function ActiveAgentsSidebar({
                     }}
                     className={cn(
                       "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                      isActivePinned
-                        ? "opacity-100"
-                        : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                      "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
                     )}
                     title={isActivePinned ? "Unpin session" : "Pin session"}
                     aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}

@@ -22,7 +22,6 @@ import {
   Moon,
   CheckCircle2,
 } from "lucide-react"
-import { Badge } from "@renderer/components/ui/badge"
 import { Button } from "@renderer/components/ui/button"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
@@ -36,7 +35,6 @@ import { removeTTSKey } from "@renderer/lib/tts-tracking"
 import { isMissingApiKeyErrorMessage } from "@shared/api-key-error-utils"
 import { toast } from "sonner"
 import {
-  getAgentConversationStateLabel,
   normalizeAgentConversationState,
 } from "@dotagents/shared"
 
@@ -277,14 +275,7 @@ export function SessionTile({
         : isActive
           ? "running"
           : "complete"
-  const statusLabel = getAgentConversationStateLabel(conversationState)
-  const statusBadgeClass = conversationState === "complete"
-    ? "text-green-700 border-green-500 bg-green-50 dark:text-green-300 dark:border-green-700 dark:bg-green-950/30"
-    : conversationState === "needs_input"
-      ? "text-amber-700 border-amber-500 bg-amber-50 dark:text-amber-300 dark:border-amber-700 dark:bg-amber-950/30"
-      : conversationState === "blocked"
-        ? "text-red-700 border-red-500 bg-red-50 dark:text-red-300 dark:border-red-700 dark:bg-red-950/30"
-        : "text-blue-700 border-blue-500 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30"
+
 
   // Toggle collapse state for the session tile
   // Note: stopPropagation() is intentional here - when users click the header to
@@ -473,9 +464,6 @@ export function SessionTile({
           <span className="flex-1 truncate font-medium text-sm">
             {getTitle()}
           </span>
-          <Badge variant="outline" className={cn("text-xs", statusBadgeClass)}>
-            {statusLabel}
-          </Badge>
           {/* Collapse indicator chevron */}
           {isCollapsed ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground" />}
         </div>

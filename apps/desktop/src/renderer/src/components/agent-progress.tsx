@@ -3736,9 +3736,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             </span>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-            <Badge variant="outline" className={cn("shrink-0 text-xs", conversationStateBadgeClass)}>
-              {conversationStateLabel}
-            </Badge>
             {/* Collapse/Expand toggle */}
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
@@ -4087,9 +4084,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       {/* Unified Header */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 backdrop-blur-sm overflow-hidden">
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5", conversationStateBadgeClass)}>
-            {conversationStateLabel}
-          </Badge>
           {wasStopped && (
             <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
               Terminated
