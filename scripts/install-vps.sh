@@ -271,13 +271,8 @@ WRAPPER
   chmod +x "$INSTALL_DIR/start-headless.sh"
 
   # Install global CLI command
-  sudo tee /usr/local/bin/dotagents > /dev/null <<'CLIMD'
-#!/bin/bash
-# DotAgents CLI — interactive headless mode
-INSTALL_DIR="INSTALL_DIR_PLACEHOLDER"
-exec xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh"
-CLIMD
-  sudo sed -i "s|INSTALL_DIR_PLACEHOLDER|$INSTALL_DIR|" /usr/local/bin/dotagents
+  sudo cp "$INSTALL_DIR/scripts/dotagents-cli.sh" /usr/local/bin/dotagents
+  sudo sed -i "s|__INSTALL_DIR__|$INSTALL_DIR|" /usr/local/bin/dotagents
   sudo chmod +x /usr/local/bin/dotagents
   ok "Installed global command: dotagents"
 
