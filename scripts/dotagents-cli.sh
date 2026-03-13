@@ -253,12 +253,55 @@ run_setup() {
     echo -e "${Y}⚠ Could not verify (may still work — check model name and base URL)${R}"
   fi
 
-  # Save LLM config
-  config_set_raw "openaiApiKey" "\"$api_key\""
-  [[ -n "$base_url" ]] && config_set_raw "openaiBaseUrl" "\"$base_url\""
-  config_set_raw "mcpToolsProviderId" "\"$provider\""
-  config_set_raw "mcpToolsOpenaiModel" "\"$model\""
-  config_set_raw "transcriptPostProcessingOpenaiModel" "\"$model\""
+  # Save LLM config — must write to the model preset system, not just legacy fields.
+  # syncPresetToLegacyFields() overwrites openaiApiKey from the active preset on every startup.
+  node -e "
+    const fs=require('fs'), path=require('path');
+    const f='$CONFIG_FILE';
+    let c={};
+    try{c=JSON.parse(fs.readFileSync(f,'utf8'))}catch{}
+
+    const apiKey=$(printf '%s' "$api_key" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+    const baseUrl=$(printf '%s' "$base_url" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+    const model=$(printf '%s' "$model" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+
+    // Detect which built-in preset matches the base URL
+    const presets = {
+      'https://api.openai.com/v1': 'builtin-openai',
+      'https://openrouter.ai/api/v1': 'builtin-openrouter',
+      'https://api.together.xyz/v1': 'builtin-together',
+      'https://api.cerebras.ai/v1': 'builtin-cerebras',
+      'https://api.perplexity.ai': 'builtin-perplexity',
+    };
+    const presetId = presets[baseUrl] || (baseUrl ? 'builtin-openai' : 'builtin-openai');
+
+    // Save as a model preset override
+    const savedPresets = c.modelPresets || [];
+    const existingIdx = savedPresets.findIndex(p => p.id === presetId);
+    const presetData = {
+      id: presetId,
+      apiKey: apiKey,
+      baseUrl: baseUrl || undefined,
+      mcpToolsModel: model,
+      transcriptProcessingModel: model,
+      isBuiltIn: true,
+    };
+    if (existingIdx >= 0) savedPresets[existingIdx] = { ...savedPresets[existingIdx], ...presetData };
+    else savedPresets.push(presetData);
+
+    c.modelPresets = savedPresets;
+    c.currentModelPresetId = presetId;
+
+    // Also set legacy fields (used by some code paths)
+    c.openaiApiKey = apiKey;
+    c.openaiBaseUrl = baseUrl;
+    c.mcpToolsProviderId = '$provider';
+    c.mcpToolsOpenaiModel = model;
+    c.transcriptPostProcessingOpenaiModel = model;
+
+    fs.mkdirSync(path.dirname(f),{recursive:true});
+    fs.writeFileSync(f, JSON.stringify(c, null, 2));
+  " 2>/dev/null
   echo -e "  ${G}✓ LLM configuration saved${R}"
 
   # ── Step 2: Discord ──
