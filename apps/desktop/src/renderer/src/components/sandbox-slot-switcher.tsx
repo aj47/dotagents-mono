@@ -426,6 +426,8 @@ export function SandboxSlotIndicator() {
   const queryClient = useQueryClient()
   const [restoring, setRestoring] = useState(false)
 
+  const hasBaseline = state?.slots?.some((s) => s.isDefault) ?? false
+
   if (!state?.activeSlot || state.activeSlot === "default") return null
 
   const handleRestore = async () => {
@@ -455,9 +457,9 @@ export function SandboxSlotIndicator() {
       <button
         type="button"
         onClick={handleRestore}
-        disabled={restoring}
-        className="ml-auto shrink-0 rounded p-0.5 text-amber-600 hover:bg-amber-200 dark:text-amber-400 dark:hover:bg-amber-900"
-        title="Restore baseline"
+        disabled={restoring || !hasBaseline}
+        className="ml-auto shrink-0 rounded p-0.5 text-amber-600 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed dark:text-amber-400 dark:hover:bg-amber-900"
+        title={hasBaseline ? "Restore baseline" : "No baseline saved yet"}
       >
         {restoring ? (
           <Loader2 className="h-3 w-3 animate-spin" />

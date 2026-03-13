@@ -249,6 +249,13 @@ describe("sandbox-service", () => {
       expect(result.error).toContain("default baseline")
     })
 
+    it("refuses to rename a slot to 'default'", () => {
+      saveCurrentAsSlot(agentsDir, "my-slot")
+      const result = renameSlot(agentsDir, "my-slot", "default")
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("reserved")
+    })
+
     it("updates active slot reference when renaming the active slot", () => {
       saveBaseline(agentsDir)
       saveCurrentAsSlot(agentsDir, "my-slot")

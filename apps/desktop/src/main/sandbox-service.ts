@@ -334,8 +334,10 @@ export function saveBaseline(agentsDir: string): SaveSlotResult {
 }
 
 /**
- * Switch to a named slot. Saves the current state into the currently-active
- * slot (or "default" if none), then restores the target slot.
+ * Switch to a named slot. If there is an explicitly active slot, auto-saves
+ * the current state into it first. Then restores the target slot.
+ * If no slot is currently active (i.e. the user is in an untracked state),
+ * the auto-save is skipped to avoid overwriting the baseline.
  */
 export function switchToSlot(agentsDir: string, targetSlotName: string): SwitchSlotResult {
   try {
@@ -468,7 +470,10 @@ export function createSlotFromCurrentState(
   // Ensure baseline is saved
   const state = getSandboxState(agentsDir)
   if (!state.slots.some((s) => s.isDefault)) {
-    saveBaseline(agentsDir)
+    const baselineResult = saveBaseline(agentsDir)
+    if (!baselineResult.success) {
+      return { success: false, error: `Failed to save baseline before creating slot: ${baselineResult.error}` }
+    }
   }
 
   return saveCurrentAsSlot(agentsDir, slotName, options)
@@ -488,6 +493,10 @@ export function renameSlot(
 
     if (sanitizedOld === DEFAULT_SLOT_NAME) {
       return { success: false, error: "Cannot rename the default baseline slot" }
+    }
+
+    if (sanitizedNew === DEFAULT_SLOT_NAME) {
+      return { success: false, error: "Cannot rename a slot to \"default\" — this name is reserved for the baseline" }
     }
 
     const oldDir = getSlotDir(agentsDir, sanitizedOld)
