@@ -80,7 +80,7 @@ const SNAPSHOT_ITEMS = [
 ]
 
 // Directories that should not be included in snapshots
-const EXCLUDED_DIRS = new Set([SANDBOXES_DIR, ".backups"])
+const EXCLUDED_DIRS = new Set([SANDBOXES_DIR, ".backups", ".restore-staging"])
 
 // ============================================================================
 // Helpers
@@ -126,7 +126,9 @@ function writeJsonFileSync(filePath: string, data: unknown): void {
 
 function copyDirRecursiveSync(src: string, dest: string): void {
   if (!fs.existsSync(src)) return
-  const stats = fs.statSync(src)
+  // Use lstatSync to avoid following symlinks — prevents traversing outside .agents
+  const stats = fs.lstatSync(src)
+  if (stats.isSymbolicLink()) return // skip symlinks for safety
   if (stats.isFile()) {
     fs.mkdirSync(path.dirname(dest), { recursive: true })
     fs.copyFileSync(src, dest)
@@ -189,14 +191,36 @@ function snapshotAgentsDirToSlot(agentsDir: string, slotDir: string): void {
 
 /**
  * Restore a slot's snapshot back into the .agents directory.
- * Removes existing config items first, then copies from slot.
+ * Uses a staging approach for failure-atomicity: copies slot contents to
+ * a temp directory first, then swaps into the live .agents dir. If the
+ * copy fails mid-way, the live config is left intact.
  */
 function restoreSlotToAgentsDir(slotDir: string, agentsDir: string): void {
-  // Remove current config items (only the ones we snapshot)
+  // Stage: copy slot snapshot into a temp directory first so that a
+  // mid-copy failure leaves the live .agents dir untouched.
+  const stagingDir = path.join(agentsDir, ".restore-staging")
+  try {
+    removeDirRecursiveSync(stagingDir)
+    fs.mkdirSync(stagingDir, { recursive: true })
+
+    for (const item of SNAPSHOT_ITEMS) {
+      const src = path.join(slotDir, item)
+      const dest = path.join(stagingDir, item)
+      if (fs.existsSync(src)) {
+        copyDirRecursiveSync(src, dest)
+      }
+    }
+  } catch (error) {
+    // Staging failed — clean up and re-throw so the live dir stays intact
+    removeDirRecursiveSync(stagingDir)
+    throw error
+  }
+
+  // Swap: remove live config items, then move staged items into place
   for (const item of SNAPSHOT_ITEMS) {
     const target = path.join(agentsDir, item)
     if (fs.existsSync(target)) {
-      const stats = fs.statSync(target)
+      const stats = fs.lstatSync(target)
       if (stats.isDirectory()) {
         removeDirRecursiveSync(target)
       } else {
@@ -205,14 +229,15 @@ function restoreSlotToAgentsDir(slotDir: string, agentsDir: string): void {
     }
   }
 
-  // Copy slot snapshot into .agents
   for (const item of SNAPSHOT_ITEMS) {
-    const src = path.join(slotDir, item)
+    const staged = path.join(stagingDir, item)
     const dest = path.join(agentsDir, item)
-    if (fs.existsSync(src)) {
-      copyDirRecursiveSync(src, dest)
+    if (fs.existsSync(staged)) {
+      fs.renameSync(staged, dest)
     }
   }
+
+  removeDirRecursiveSync(stagingDir)
 }
 
 // ============================================================================

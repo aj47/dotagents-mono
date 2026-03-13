@@ -117,11 +117,26 @@ export function SandboxSlotSwitcher() {
 
   const handleCreateSlot = async () => {
     if (!newSlotName.trim()) return
+
+    // Reject names that would sanitize to "default" (reserved for baseline)
+    const sanitized = newSlotName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\-_ ]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      || "slot"
+    if (sanitized === "default") {
+      toast.error("\"default\" is reserved for the baseline slot. Please choose a different name.")
+      return
+    }
+
     setSaving(true)
     try {
       const result = await tipcClient.saveCurrentAsSlot({ name: newSlotName.trim() })
       if (result.success) {
-        toast.success(`Slot "${newSlotName.trim()}" created`)
+        toast.success(`Slot "${result.slot?.name ?? newSlotName.trim()}" created`)
         setShowNewSlotDialog(false)
         setNewSlotName("")
         invalidate()
