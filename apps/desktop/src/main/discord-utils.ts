@@ -9,6 +9,10 @@ export interface DiscordMessageGateInput {
   allowUserIds?: string[]
   allowGuildIds?: string[]
   allowChannelIds?: string[]
+  allowRoleIds?: string[]
+  dmAllowUserIds?: string[]
+  /** Role IDs the message author has in the current guild */
+  authorRoleIds?: string[]
 }
 
 function normalizeIds(values: string[] | undefined): string[] {
@@ -58,10 +62,16 @@ export function getDiscordMessageRejectionReason(input: DiscordMessageGateInput)
   const allowUserIds = normalizeIds(input.allowUserIds)
   const allowGuildIds = normalizeIds(input.allowGuildIds)
   const allowChannelIds = normalizeIds(input.allowChannelIds)
+  const allowRoleIds = normalizeIds(input.allowRoleIds)
+  const dmAllowUserIds = normalizeIds(input.dmAllowUserIds)
 
   if (input.isDirectMessage) {
     if (!input.dmEnabled) {
       return "direct messages are disabled"
+    }
+    // DM user allowlist — when set, only these users can DM the bot
+    if (dmAllowUserIds.length > 0 && !dmAllowUserIds.includes(input.authorId)) {
+      return "user not in DM allowlist"
     }
   } else {
     if (input.requireMention && !input.mentioned) {
@@ -69,6 +79,13 @@ export function getDiscordMessageRejectionReason(input: DiscordMessageGateInput)
     }
     if (allowGuildIds.length > 0 && (!input.guildId || !allowGuildIds.includes(input.guildId))) {
       return "guild not allowlisted"
+    }
+    // Role-based filtering — if role allowlist is set, user must have at least one matching role
+    if (allowRoleIds.length > 0) {
+      const authorRoles = normalizeIds(input.authorRoleIds)
+      if (!authorRoles.some((roleId) => allowRoleIds.includes(roleId))) {
+        return "user does not have an allowlisted role"
+      }
     }
   }
 

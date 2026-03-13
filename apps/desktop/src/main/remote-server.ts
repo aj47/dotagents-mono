@@ -3251,6 +3251,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (Array.isArray(body.discordAllowChannelIds)) {
         updates.discordAllowChannelIds = sanitizeStringList(body.discordAllowChannelIds)
       }
+      if (Array.isArray(body.discordAllowRoleIds)) {
+        updates.discordAllowRoleIds = sanitizeStringList(body.discordAllowRoleIds)
+      }
+      if (Array.isArray(body.discordDmAllowUserIds)) {
+        updates.discordDmAllowUserIds = sanitizeStringList(body.discordDmAllowUserIds)
+      }
       if (Array.isArray(body.discordOperatorAllowUserIds)) {
         updates.discordOperatorAllowUserIds = sanitizeStringList(body.discordOperatorAllowUserIds)
       }
@@ -3259,6 +3265,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (Array.isArray(body.discordOperatorAllowChannelIds)) {
         updates.discordOperatorAllowChannelIds = sanitizeStringList(body.discordOperatorAllowChannelIds)
+      }
+      if (Array.isArray(body.discordOperatorAllowRoleIds)) {
+        updates.discordOperatorAllowRoleIds = sanitizeStringList(body.discordOperatorAllowRoleIds)
       }
       if (typeof body.discordDefaultProfileId === "string") {
         updates.discordDefaultProfileId = body.discordDefaultProfileId

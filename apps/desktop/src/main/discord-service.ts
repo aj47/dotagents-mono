@@ -169,16 +169,43 @@ function getDiscordOperatorAccessRejectionReason(
   const allowUserIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowUserIds)
   const allowGuildIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowGuildIds)
   const allowChannelIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowChannelIds)
+  const allowRoleIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowRoleIds)
 
-  if (allowUserIds.length === 0 && allowGuildIds.length === 0 && allowChannelIds.length === 0) {
+  if (allowUserIds.length === 0 && allowGuildIds.length === 0 && allowChannelIds.length === 0 && allowRoleIds.length === 0) {
     return null
   }
 
-  if (allowUserIds.length > 0 && !allowUserIds.includes(message.author.id)) {
-    return "user is not in the Discord operator allowlist"
+  // Check if user has an allowed role (role match grants access regardless of user/channel allowlists)
+  if (allowRoleIds.length > 0 && message.member) {
+    const memberRoleIds = Array.from(message.member.roles.cache.keys())
+    if (memberRoleIds.some((roleId) => allowRoleIds.includes(roleId))) {
+      return null // Role match grants operator access
+    }
   }
 
-  if (allowGuildIds.length > 0 && (!message.guildId || !allowGuildIds.includes(message.guildId))) {
+  if (allowUserIds.length > 0 && allowUserIds.includes(message.author.id)) {
+    return null // User match grants operator access
+  }
+
+  if (allowGuildIds.length > 0 && message.guildId && allowGuildIds.includes(message.guildId)) {
+    // Guild match — still check channel if channel allowlist is set
+    const operatorChannelId = message.channel.isThread()
+      ? (message.channel.parentId || message.channel.id)
+      : message.channel.id
+    if (allowChannelIds.length > 0 && !allowChannelIds.includes(operatorChannelId)) {
+      return "channel is not in the Discord operator allowlist"
+    }
+    return null
+  }
+
+  // No match found
+  if (allowRoleIds.length > 0) {
+    return "user does not have an operator-allowlisted role"
+  }
+  if (allowUserIds.length > 0) {
+    return "user is not in the Discord operator allowlist"
+  }
+  if (allowGuildIds.length > 0) {
     return "guild is not in the Discord operator allowlist"
   }
 
@@ -925,6 +952,13 @@ class DiscordService {
     if (!cfg.discordEnabled) return
 
     const isDirectMessage = !message.inGuild()
+
+    // Fetch the author's role IDs from the guild member (if in a guild)
+    let authorRoleIds: string[] | undefined
+    if (!isDirectMessage && message.member) {
+      authorRoleIds = Array.from(message.member.roles.cache.keys())
+    }
+
     const rejectionReason = getDiscordMessageRejectionReason({
       authorId: message.author.id,
       channelId: message.channel.id,
@@ -936,6 +970,9 @@ class DiscordService {
       allowUserIds: cfg.discordAllowUserIds,
       allowGuildIds: cfg.discordAllowGuildIds,
       allowChannelIds: cfg.discordAllowChannelIds,
+      allowRoleIds: cfg.discordAllowRoleIds,
+      dmAllowUserIds: cfg.discordDmAllowUserIds,
+      authorRoleIds,
     })
 
     if (rejectionReason) {

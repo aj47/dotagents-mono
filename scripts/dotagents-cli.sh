@@ -63,6 +63,10 @@ COMMANDS=(
   "/profiles" "/conversations" "/logs"
   "/discord" "/discord status" "/discord enable" "/discord disable"
   "/discord token" "/discord profile" "/discord logs" "/discord connect" "/discord disconnect"
+  "/discord access" "/discord dm" "/discord dm on" "/discord dm off"
+  "/discord dm allow" "/discord dm deny" "/discord allow user" "/discord allow role"
+  "/discord allow channel" "/discord allow guild" "/discord deny user" "/discord deny role"
+  "/discord deny channel" "/discord deny guild"
   "/config" "/config set" "/config get"
   "/restart" "/health"
 )
@@ -122,14 +126,28 @@ $(echo -e "${B}Chat${R}")
   $(echo -e "${C}/stop${R}")              Emergency stop running agent
 
 $(echo -e "${B}Discord${R}")
-  $(echo -e "${C}/discord${R}")           Show Discord status
-  $(echo -e "${C}/discord enable${R}")    Enable Discord bot
-  $(echo -e "${C}/discord disable${R}")   Disable Discord bot
-  $(echo -e "${C}/discord connect${R}")   Connect the bot
-  $(echo -e "${C}/discord disconnect${R}")Disconnect the bot
-  $(echo -e "${C}/discord token <t>${R}") Set bot token
+  $(echo -e "${C}/discord${R}")            Show Discord status
+  $(echo -e "${C}/discord enable${R}")     Enable Discord bot
+  $(echo -e "${C}/discord disable${R}")    Disable Discord bot
+  $(echo -e "${C}/discord connect${R}")    Connect the bot
+  $(echo -e "${C}/discord disconnect${R}") Disconnect the bot
+  $(echo -e "${C}/discord token <t>${R}")  Set bot token
   $(echo -e "${C}/discord profile <id>${R}") Set default profile
-  $(echo -e "${C}/discord logs [n]${R}")  Show recent Discord logs
+  $(echo -e "${C}/discord logs [n]${R}")   Show recent Discord logs
+
+$(echo -e "${B}Discord Access Control${R}")
+  $(echo -e "${C}/discord access${R}")           Show current access rules
+  $(echo -e "${C}/discord dm on|off${R}")         Enable/disable DMs
+  $(echo -e "${C}/discord dm allow <uid>${R}")    Add user to DM allowlist
+  $(echo -e "${C}/discord dm deny <uid>${R}")     Remove user from DM allowlist
+  $(echo -e "${C}/discord allow user <uid>${R}")  Allow a user
+  $(echo -e "${C}/discord allow role <rid>${R}")  Allow a Discord role
+  $(echo -e "${C}/discord allow channel <cid>${R}") Allow a channel
+  $(echo -e "${C}/discord allow guild <gid>${R}") Allow a server
+  $(echo -e "${C}/discord deny user <uid>${R}")   Remove user from allowlist
+  $(echo -e "${C}/discord deny role <rid>${R}")   Remove role from allowlist
+  $(echo -e "${C}/discord deny channel <cid>${R}") Remove channel
+  $(echo -e "${C}/discord deny guild <gid>${R}")  Remove server
 
 $(echo -e "${B}System${R}")
   $(echo -e "${C}/setup${R}")             Run onboarding wizard
@@ -481,6 +499,174 @@ while true; do
           console.log(c+ts+' '+l.message+'\x1b[0m');
         });
       " || echo -e "${RED}Failed${R}" ;;
+
+    # ── Discord Access Control ────────────────────────────────
+    "/discord access")
+      api_get /v1/operator/discord | node_print "
+        const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
+        const s=d.settings||d;
+        const show=(label,arr)=>{
+          if(!arr||!arr.length) return;
+          console.log('  '+label+': '+arr.join(', '));
+        };
+        console.log('\x1b[1mAccess Control\x1b[0m');
+        console.log('  DMs:             '+(s.dmEnabled?'\x1b[32menabled':'\x1b[31mdisabled')+'\x1b[0m');
+        console.log('  Require mention: '+(s.requireMention!==false?'\x1b[32myes':'\x1b[33mno')+'\x1b[0m');
+        show('User allowlist   ',s.allowUserIds||s.discordAllowUserIds);
+        show('Role allowlist   ',s.allowRoleIds||s.discordAllowRoleIds);
+        show('Guild allowlist  ',s.allowGuildIds||s.discordAllowGuildIds);
+        show('Channel allowlist',s.allowChannelIds||s.discordAllowChannelIds);
+        show('DM user allowlist',s.dmAllowUserIds||s.discordDmAllowUserIds);
+        console.log('\x1b[1mOperator Access\x1b[0m');
+        show('Operator users   ',s.operatorAllowUserIds||s.discordOperatorAllowUserIds);
+        show('Operator roles   ',s.operatorAllowRoleIds||s.discordOperatorAllowRoleIds);
+        show('Operator guilds  ',s.operatorAllowGuildIds||s.discordOperatorAllowGuildIds);
+        show('Operator channels',s.operatorAllowChannelIds||s.discordOperatorAllowChannelIds);
+        if(!(s.allowUserIds||s.discordAllowUserIds||[]).length &&
+           !(s.allowRoleIds||s.discordAllowRoleIds||[]).length &&
+           !(s.allowGuildIds||s.discordAllowGuildIds||[]).length)
+          console.log('\n\x1b[2m  No restrictions — all users can interact (when mentioned).\x1b[0m');
+      " || echo -e "${RED}Failed${R}" ;;
+
+    "/discord dm on")
+      api_patch /v1/settings -d '{"discordDmEnabled":true}' > /dev/null \
+        && echo -e "${G}✓ DMs enabled${R}" \
+        || echo -e "${RED}✗ Failed${R}" ;;
+    "/discord dm off")
+      api_patch /v1/settings -d '{"discordDmEnabled":false}' > /dev/null \
+        && echo -e "${G}✓ DMs disabled${R}" \
+        || echo -e "${RED}✗ Failed${R}" ;;
+
+    /discord\ dm\ allow\ *)
+      ID="${INPUT#/discord dm allow }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord dm allow <user-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          const list=new Set(c.discordDmAllowUserIds||[]);
+          list.add('$ID');
+          c.discordDmAllowUserIds=[...list];
+          c.discordDmEnabled=true;
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ User $ID added to DM allowlist (DMs auto-enabled)${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ dm\ deny\ *)
+      ID="${INPUT#/discord dm deny }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord dm deny <user-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          c.discordDmAllowUserIds=(c.discordDmAllowUserIds||[]).filter(id=>id!=='$ID');
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ User $ID removed from DM allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+
+    /discord\ allow\ user\ *)
+      ID="${INPUT#/discord allow user }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow user <user-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          const list=new Set(c.discordAllowUserIds||[]);list.add('$ID');
+          c.discordAllowUserIds=[...list];
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ User $ID added to allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ allow\ role\ *)
+      ID="${INPUT#/discord allow role }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow role <role-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          const list=new Set(c.discordAllowRoleIds||[]);list.add('$ID');
+          c.discordAllowRoleIds=[...list];
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ Role $ID added to allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ allow\ channel\ *)
+      ID="${INPUT#/discord allow channel }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow channel <channel-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          const list=new Set(c.discordAllowChannelIds||[]);list.add('$ID');
+          c.discordAllowChannelIds=[...list];
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ Channel $ID added to allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ allow\ guild\ *)
+      ID="${INPUT#/discord allow guild }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord allow guild <guild-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          const list=new Set(c.discordAllowGuildIds||[]);list.add('$ID');
+          c.discordAllowGuildIds=[...list];
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ Guild $ID added to allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+
+    /discord\ deny\ user\ *)
+      ID="${INPUT#/discord deny user }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny user <user-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          c.discordAllowUserIds=(c.discordAllowUserIds||[]).filter(id=>id!=='$ID');
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ User $ID removed from allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ deny\ role\ *)
+      ID="${INPUT#/discord deny role }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny role <role-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          c.discordAllowRoleIds=(c.discordAllowRoleIds||[]).filter(id=>id!=='$ID');
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ Role $ID removed from allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ deny\ channel\ *)
+      ID="${INPUT#/discord deny channel }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny channel <channel-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          c.discordAllowChannelIds=(c.discordAllowChannelIds||[]).filter(id=>id!=='$ID');
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ Channel $ID removed from allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+    /discord\ deny\ guild\ *)
+      ID="${INPUT#/discord deny guild }"; ID="${ID## }"
+      if [[ -z "$ID" ]]; then echo -e "${Y}Usage: /discord deny guild <guild-id>${R}"; else
+        node -e "
+          const fs=require('fs'),f='$CONFIG_FILE';
+          const c=JSON.parse(fs.readFileSync(f,'utf8'));
+          c.discordAllowGuildIds=(c.discordAllowGuildIds||[]).filter(id=>id!=='$ID');
+          fs.writeFileSync(f,JSON.stringify(c,null,2));
+        " 2>/dev/null
+        echo -e "${G}✓ Guild $ID removed from allowlist${R}"
+        echo -e "${D}  Restart service to apply: /restart${R}"
+      fi ;;
+
     /profiles)
       api_get /v1/profiles | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
