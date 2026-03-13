@@ -179,6 +179,7 @@ const getConfig = (): LoadedConfig => {
     maxConversationsToKeep: 100,
     autoSaveConversations: true,
     pinnedSessionIds: [],
+    archivedSessionIds: [],
     // Settings hotkey defaults
     settingsHotkeyEnabled: true,
     settingsHotkey: "ctrl-shift-s",

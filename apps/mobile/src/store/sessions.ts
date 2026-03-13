@@ -21,6 +21,7 @@ export interface SessionStore {
   deleteSession: (id: string) => Promise<void>;
   clearAllSessions: () => Promise<void>;
   toggleSessionPinned: (id: string) => Promise<void>;
+  toggleSessionArchived: (id: string) => Promise<void>;
 
   // Message management
   addMessage: (role: 'user' | 'assistant', content: string, toolCalls?: any[], toolResults?: any[]) => Promise<void>;
@@ -255,6 +256,27 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         isPinned: !session.isPinned,
+      };
+    });
+
+    sessionsRef.current = sessionsToSave;
+    setSessions(sessionsToSave);
+
+    queueSave(async () => {
+      await saveSessions(sessionsToSave);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      saveQueueRef.current = saveQueueRef.current.then(resolve).catch(reject);
+    });
+  }, [queueSave]);
+
+  const toggleSessionArchived = useCallback(async (id: string) => {
+    const sessionsToSave = sessionsRef.current.map((session) => {
+      if (session.id !== id) return session;
+      return {
+        ...session,
+        isArchived: !session.isArchived,
       };
     });
 
@@ -661,6 +683,7 @@ export function useSessions(): SessionStore {
     deleteSession,
     clearAllSessions,
     toggleSessionPinned,
+    toggleSessionArchived,
     addMessage,
     getCurrentSession,
     getSessionList,

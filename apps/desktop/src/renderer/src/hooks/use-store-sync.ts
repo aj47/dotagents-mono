@@ -25,11 +25,17 @@ export function useStoreSync() {
   const updateMessageQueue = useAgentStore((s) => s.updateMessageQueue)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const setPinnedSessionIds = useAgentStore((s) => s.setPinnedSessionIds)
+  const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
+  const setArchivedSessionIds = useAgentStore((s) => s.setArchivedSessionIds)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
   const initialPinnedSessionIdsRef = useRef(Array.from(pinnedSessionIds))
   const pinnedSessionIdsHydratedRef = useRef(false)
   const pinnedSessionIdsChangedBeforeHydrationRef = useRef(false)
   const lastPersistedPinnedSessionIdsRef = useRef<string[]>([])
+  const initialArchivedSessionIdsRef = useRef(Array.from(archivedSessionIds))
+  const archivedSessionIdsHydratedRef = useRef(false)
+  const archivedSessionIdsChangedBeforeHydrationRef = useRef(false)
+  const lastPersistedArchivedSessionIdsRef = useRef<string[]>([])
 
   useEffect(() => {
     const unlisten = rendererHandlers.agentProgressUpdate.listen(
@@ -197,6 +203,87 @@ export function useStoreSync() {
       cancelled = true
     }
   }, [pinnedSessionIds])
+
+  // Archived session IDs: hydration guard
+  useEffect(() => {
+    if (archivedSessionIdsHydratedRef.current) return
+
+    const currentArchivedSessionIds = Array.from(archivedSessionIds)
+    if (!areStringArraysEqual(currentArchivedSessionIds, initialArchivedSessionIdsRef.current)) {
+      archivedSessionIdsChangedBeforeHydrationRef.current = true
+    }
+  }, [archivedSessionIds])
+
+  // Archived session IDs: hydrate from config
+  useEffect(() => {
+    let cancelled = false
+
+    queryClient.fetchQuery<{ archivedSessionIds?: string[] }>({
+      queryKey: ['config'],
+      queryFn: async () => tipcClient.getConfig(),
+    }).then((config) => {
+      if (cancelled) return
+
+      const nextArchivedSessionIds = Array.isArray(config?.archivedSessionIds)
+        ? config.archivedSessionIds.filter((id): id is string => typeof id === 'string')
+        : []
+
+      lastPersistedArchivedSessionIdsRef.current = nextArchivedSessionIds
+      archivedSessionIdsHydratedRef.current = true
+
+      if (archivedSessionIdsChangedBeforeHydrationRef.current) {
+        setArchivedSessionIds(Array.from(useAgentStore.getState().archivedSessionIds))
+        return
+      }
+
+      setArchivedSessionIds(nextArchivedSessionIds)
+    }).catch(() => {
+      if (cancelled) return
+
+      archivedSessionIdsHydratedRef.current = true
+
+      if (archivedSessionIdsChangedBeforeHydrationRef.current) {
+        setArchivedSessionIds(Array.from(useAgentStore.getState().archivedSessionIds))
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [setArchivedSessionIds])
+
+  // Archived session IDs: persist changes
+  useEffect(() => {
+    if (!archivedSessionIdsHydratedRef.current) return undefined
+
+    const nextArchivedSessionIds = Array.from(archivedSessionIds)
+    if (areStringArraysEqual(nextArchivedSessionIds, lastPersistedArchivedSessionIdsRef.current)) {
+      return undefined
+    }
+
+    let cancelled = false
+
+    tipcClient.saveConfig({
+      config: {
+        archivedSessionIds: nextArchivedSessionIds,
+      },
+    }).then(() => {
+      if (cancelled) return
+
+      lastPersistedArchivedSessionIdsRef.current = nextArchivedSessionIds
+      queryClient.setQueryData(['config'], (previousConfig: Record<string, unknown> | undefined) => ({
+        ...(previousConfig ?? {}),
+        archivedSessionIds: nextArchivedSessionIds,
+      }))
+    }).catch((error) => {
+      if (cancelled) return
+      reportConfigSaveError(error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [archivedSessionIds])
 
   // Listen for conversation history changes from remote server (mobile sync)
   // This ensures the sidebar refreshes when conversations are created/updated remotely

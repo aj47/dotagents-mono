@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import {
+  Archive,
   ChevronDown,
   ChevronRight,
   X,
@@ -82,6 +83,8 @@ export function ActiveAgentsSidebar({
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const togglePinSession = useAgentStore((s) => s.togglePinSession)
+  const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
+  const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
   const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
   const navigate = useNavigate()
 
@@ -178,7 +181,10 @@ export function ActiveAgentsSidebar({
     const dedupedPastSessions = filterPastSessionsAgainstActiveSessions<SidebarSession>(
       allPastSessions,
       orderedActiveSessions,
-    )
+    ).filter((item) => {
+      const cid = item.session.conversationId
+      return !cid || !archivedSessionIds.has(cid)
+    })
 
     // Ensure pinned past sessions always appear, even if beyond the visible count.
     // Split into pinned (always shown) and unpinned (paginated).
@@ -204,7 +210,7 @@ export function ActiveAgentsSidebar({
       // "Has more" is based on unpinned sessions only since pinned are always shown
       hasMorePastSessions: unpinnedPast.length > unpinnedSliceCount,
     }
-  }, [activeSessions, allPastSessions, displayedPastSessionCount, pinnedSessionIds])
+  }, [activeSessions, allPastSessions, displayedPastSessionCount, pinnedSessionIds, archivedSessionIds])
 
   const hasAnySessions = sidebarSessions.length > 0
 
@@ -464,7 +470,6 @@ export function ActiveAgentsSidebar({
 
             if (isPast) {
               const isPinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
-              // Past agent row — archive icon with pin action
               return (
                 <div
                   key={key}
@@ -483,7 +488,6 @@ export function ActiveAgentsSidebar({
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  {/* Status dot */}
                   <span className={cn(
                     "h-1.5 w-1.5 shrink-0 rounded-full",
                     session.status === "error" ? "bg-red-500" : "bg-green-500",
@@ -492,24 +496,43 @@ export function ActiveAgentsSidebar({
                     {session.conversationTitle || "Untitled session"}
                   </p>
                   {session.conversationId && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (session.conversationId) {
-                          togglePinSession(session.conversationId)
-                        }
-                      }}
-                      className={cn(
-                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                        "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
-                      )}
-                      title={isPinned ? "Unpin session" : "Pin session"}
-                      aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                      aria-pressed={isPinned}
-                    >
-                      <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (session.conversationId) {
+                            toggleArchiveSession(session.conversationId)
+                          }
+                        }}
+                        className={cn(
+                          "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                        )}
+                        title="Archive session"
+                        aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
+                      >
+                        <Archive className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (session.conversationId) {
+                            togglePinSession(session.conversationId)
+                          }
+                        }}
+                        className={cn(
+                          "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                        )}
+                        title={isPinned ? "Unpin session" : "Pin session"}
+                        aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
+                        aria-pressed={isPinned}
+                      >
+                        <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
+                      </button>
+                    </>
                   )}
                 </div>
               )
@@ -578,24 +601,43 @@ export function ActiveAgentsSidebar({
                   )}
                 </div>
                 {session.conversationId && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (session.conversationId) {
-                        togglePinSession(session.conversationId)
-                      }
-                    }}
-                    className={cn(
-                      "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                      "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
-                    )}
-                    title={isActivePinned ? "Unpin session" : "Pin session"}
-                    aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                    aria-pressed={isActivePinned}
-                  >
-                    <Pin className={cn("h-3 w-3", isActivePinned && "fill-current text-foreground")} />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (session.conversationId) {
+                          toggleArchiveSession(session.conversationId)
+                        }
+                      }}
+                      className={cn(
+                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                        "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                      )}
+                      title="Archive session"
+                      aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
+                    >
+                      <Archive className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (session.conversationId) {
+                          togglePinSession(session.conversationId)
+                        }
+                      }}
+                      className={cn(
+                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                        "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                      )}
+                      title={isActivePinned ? "Unpin session" : "Pin session"}
+                      aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
+                      aria-pressed={isActivePinned}
+                    >
+                      <Pin className={cn("h-3 w-3", isActivePinned && "fill-current text-foreground")} />
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}

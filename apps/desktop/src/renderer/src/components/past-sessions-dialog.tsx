@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import dayjs from "dayjs"
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Pin, Search, Trash2 } from "lucide-react"
+import { AlertTriangle, Archive, CheckCircle2, Clock, Loader2, Pin, Search, Trash2 } from "lucide-react"
 
 import { cn } from "@renderer/lib/utils"
 import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
@@ -51,6 +51,8 @@ export function PastSessionsDialog({
   const deleteAllConversationsMutation = useDeleteAllConversationsMutation()
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
   const togglePinSession = useAgentStore((state) => state.togglePinSession)
+  const archivedSessionIds = useAgentStore((state) => state.archivedSessionIds)
+  const toggleArchiveSession = useAgentStore((state) => state.toggleArchiveSession)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [pastSessionsCount, setPastSessionsCount] = useState(
@@ -211,6 +213,7 @@ export function PastSessionsDialog({
               <>
                 {visiblePastSessions.map((session) => {
                   const isPinned = pinnedSessionIds.has(session.id)
+                  const isSessionArchived = archivedSessionIds.has(session.id)
 
                   return (
                     <div
@@ -252,6 +255,20 @@ export function PastSessionsDialog({
                                 aria-pressed={isPinned}
                               >
                                 <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current text-foreground")} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleArchiveSession(session.id)
+                                }}
+                                onKeyDown={stopSessionRowKeyPropagation}
+                                className="rounded p-0.5 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                title={isSessionArchived ? "Unarchive session" : "Archive session"}
+                                aria-label={`${isSessionArchived ? "Unarchive" : "Archive"} ${session.title}`}
+                                aria-pressed={isSessionArchived}
+                              >
+                                <Archive className={cn("h-3.5 w-3.5", isSessionArchived && "fill-current text-foreground")} />
                               </button>
                               <button
                                 type="button"

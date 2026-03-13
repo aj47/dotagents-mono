@@ -33,6 +33,7 @@ interface AgentState {
   filter: SessionFilter
   sortBy: SessionSortBy
   pinnedSessionIds: Set<string>
+  archivedSessionIds: Set<string>
 
   updateSessionProgress: (update: AgentProgressUpdate) => void
   clearAllProgress: () => void
@@ -57,6 +58,9 @@ interface AgentState {
   setPinnedSessionIds: (sessionIds: Iterable<string>) => void
   togglePinSession: (sessionId: string) => void
   isPinned: (sessionId: string) => boolean
+  setArchivedSessionIds: (sessionIds: Iterable<string>) => void
+  toggleArchiveSession: (sessionId: string) => void
+  isArchived: (sessionId: string) => boolean
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -70,6 +74,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   filter: 'all' as SessionFilter,
   sortBy: 'recent' as SessionSortBy,
   pinnedSessionIds: new Set<string>(),
+  archivedSessionIds: new Set<string>(),
 
   updateSessionProgress: (incomingUpdate: AgentProgressUpdate) => {
     const update = sanitizeAgentProgressUpdateForDisplay(incomingUpdate)
@@ -461,6 +466,26 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   isPinned: (sessionId: string) => {
     return get().pinnedSessionIds.has(sessionId)
+  },
+
+  setArchivedSessionIds: (sessionIds: Iterable<string>) => {
+    set({ archivedSessionIds: new Set(sessionIds) })
+  },
+
+  toggleArchiveSession: (sessionId: string) => {
+    set((state) => {
+      const newArchived = new Set(state.archivedSessionIds)
+      if (newArchived.has(sessionId)) {
+        newArchived.delete(sessionId)
+      } else {
+        newArchived.add(sessionId)
+      }
+      return { archivedSessionIds: newArchived }
+    })
+  },
+
+  isArchived: (sessionId: string) => {
+    return get().archivedSessionIds.has(sessionId)
   },
 }))
 

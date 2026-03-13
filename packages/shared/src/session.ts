@@ -28,6 +28,7 @@ export interface Session {
   createdAt: number;
   updatedAt: number;
   isPinned?: boolean;
+  isArchived?: boolean;
   messages: SessionChatMessage[];
   /** Server-side conversation ID for continuing conversations on the DotAgents server */
   serverConversationId?: string;
@@ -50,6 +51,7 @@ export interface SessionListItem {
   createdAt: number;
   updatedAt: number;
   isPinned?: boolean;
+  isArchived?: boolean;
   messageCount: number;
   lastMessage: string;
   preview: string;
@@ -132,6 +134,7 @@ export function sessionToListItem(session: Session): SessionListItem {
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       isPinned: session.isPinned,
+      isArchived: session.isArchived,
       messageCount: session.serverMetadata.messageCount,
       lastMessage: session.serverMetadata.lastMessage,
       preview: session.serverMetadata.preview,
@@ -147,6 +150,7 @@ export function sessionToListItem(session: Session): SessionListItem {
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
     isPinned: session.isPinned,
+    isArchived: session.isArchived,
     messageCount: session.messages.length,
     lastMessage: preview.substring(0, 100),
     preview: preview.substring(0, 200),

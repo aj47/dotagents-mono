@@ -80,8 +80,9 @@ function createDeferred<T>() {
 }
 
 const flushPromises = async () => {
-  await Promise.resolve()
-  await Promise.resolve()
+  for (let i = 0; i < 5; i++) {
+    await Promise.resolve()
+  }
 }
 
 describe('useStoreSync pinned session persistence', () => {
@@ -215,6 +216,10 @@ function createAgentStoreState() {
     pinnedSessionIds: new Set<string>(),
     setPinnedSessionIds: vi.fn((sessionIds: Iterable<string>) => {
       state.pinnedSessionIds = new Set(sessionIds)
+    }),
+    archivedSessionIds: new Set<string>(),
+    setArchivedSessionIds: vi.fn((sessionIds: Iterable<string>) => {
+      state.archivedSessionIds = new Set(sessionIds)
     }),
   }
 

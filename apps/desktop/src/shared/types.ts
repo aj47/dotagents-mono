@@ -1385,6 +1385,7 @@ export type Config = {
 
   // Session History Configuration
   pinnedSessionIds?: string[]
+  archivedSessionIds?: string[]
 
   // Provider Section Collapse Configuration
   providerSectionCollapsedOpenai?: boolean

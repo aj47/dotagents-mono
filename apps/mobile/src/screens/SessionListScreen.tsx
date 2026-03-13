@@ -731,9 +731,8 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('Chat');
   };
 
-  const handleDeleteSession = (session: SessionListItem) => {
+  const handleDeleteSession = useCallback((session: SessionListItem) => {
     const doDelete = () => {
-      // Clean up connection for this session (fixes #608)
       connectionManager.removeConnection(session.id);
       sessionStore.deleteSession(session.id);
     };
@@ -752,11 +751,41 @@ export default function SessionListScreen({ navigation }: Props) {
         ]
       );
     }
-  };
+  }, [connectionManager, sessionStore]);
 
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
     await sessionStore.toggleSessionPinned(sessionId);
   }, [sessionStore]);
+
+  const handleToggleSessionArchived = useCallback(async (sessionId: string) => {
+    await sessionStore.toggleSessionArchived(sessionId);
+  }, [sessionStore]);
+
+  const handleSessionLongPress = useCallback((session: SessionListItem) => {
+    const isPinned = session.isPinned;
+    const isArchived = session.isArchived;
+    const pinLabel = isPinned ? 'Unpin' : 'Pin';
+    const archiveLabel = isArchived ? 'Unarchive' : 'Archive';
+
+    if (Platform.OS === 'web') {
+      // On web, fall back to a simple confirm for delete
+      const action = window.prompt(`Choose action for "${session.title}":\n1. ${pinLabel}\n2. ${archiveLabel}\n3. Delete\n\nEnter 1, 2, or 3:`);
+      if (action === '1') void handleToggleSessionPinned(session.id);
+      else if (action === '2') void handleToggleSessionArchived(session.id);
+      else if (action === '3') handleDeleteSession(session);
+    } else {
+      Alert.alert(
+        session.title,
+        undefined,
+        [
+          { text: pinLabel, onPress: () => void handleToggleSessionPinned(session.id) },
+          { text: archiveLabel, onPress: () => void handleToggleSessionArchived(session.id) },
+          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteSession(session) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  }, [handleToggleSessionPinned, handleToggleSessionArchived, handleDeleteSession]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -798,10 +827,11 @@ export default function SessionListScreen({ navigation }: Props) {
     return ids;
   }, [sessionStore.sessions]);
 
-  const filteredSessions = useMemo(
-    () => filterSessionSearchResults(sessionStore.sessions, searchQuery),
-    [sessionStore.sessions, searchQuery],
-  );
+  const filteredSessions = useMemo(() => {
+    const results = filterSessionSearchResults(sessionStore.sessions, searchQuery);
+    if (searchQuery.trim()) return results;
+    return results.filter((s) => !s.isArchived);
+  }, [sessionStore.sessions, searchQuery]);
 
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
@@ -817,9 +847,9 @@ export default function SessionListScreen({ navigation }: Props) {
           pressed && styles.sessionItemPressed,
         ]}
         onPress={() => handleSelectSession(item.id)}
-        onLongPress={() => handleDeleteSession(item)}
+        onLongPress={() => handleSessionLongPress(item)}
         accessibilityRole="button"
-        accessibilityLabel={`${item.isPinned ? 'Pinned, ' : ''}${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
+        accessibilityLabel={`${item.isPinned ? 'Pinned, ' : ''}${item.isArchived ? 'Archived, ' : ''}${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
       >
         <View style={styles.sessionHeader}>
           <View style={styles.sessionTitleRow}>
