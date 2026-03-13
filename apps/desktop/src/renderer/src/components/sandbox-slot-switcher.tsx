@@ -170,7 +170,7 @@ export function SandboxSlotSwitcher() {
     try {
       const result = await tipcClient.renameSlot({ oldName, newName: renameValue.trim() })
       if (result.success) {
-        toast.success(`Slot renamed to "${renameValue.trim()}"`)
+        toast.success(`Slot renamed to "${result.slot?.name ?? renameValue.trim()}"`)
         setRenamingSlot(null)
         setRenameValue("")
         invalidate()

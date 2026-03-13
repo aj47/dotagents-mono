@@ -98,7 +98,7 @@ function getActiveSlotFilePath(agentsDir: string): string {
   return path.join(getSandboxesDir(agentsDir), ACTIVE_SLOT_FILE)
 }
 
-function sanitizeSlotName(name: string): string {
+export function sanitizeSlotName(name: string): string {
   return name
     .toLowerCase()
     .trim()
@@ -369,12 +369,22 @@ export function switchToSlot(agentsDir: string, targetSlotName: string): SwitchS
     const sanitized = sanitizeSlotName(targetSlotName)
     const targetSlotDir = getSlotDir(agentsDir, sanitized)
 
-    if (!fs.existsSync(targetSlotDir)) {
+    // Use lstatSync to ensure the slot dir is a real directory, not a symlink
+    // that could point outside ~/.agents/.sandboxes
+    let targetStats: fs.Stats | null = null
+    try {
+      targetStats = fs.lstatSync(targetSlotDir)
+    } catch {
+      // lstatSync throws if path doesn't exist
+    }
+    if (!targetStats || !targetStats.isDirectory()) {
       return {
         success: false,
         previousSlot: readActiveSlotName(agentsDir),
         activeSlot: readActiveSlotName(agentsDir),
-        error: `Slot "${sanitized}" does not exist`,
+        error: targetStats?.isSymbolicLink()
+          ? `Slot "${sanitized}" is a symlink and cannot be used`
+          : `Slot "${sanitized}" does not exist`,
       }
     }
 

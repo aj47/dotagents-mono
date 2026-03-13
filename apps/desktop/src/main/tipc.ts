@@ -4890,6 +4890,12 @@ export const router = {
       const bundle = previewBundle(input.filePath)
       const sourceBundleName = bundle?.manifest.name
 
+      // Reject reserved slot names to prevent overwriting the baseline
+      const { sanitizeSlotName } = await import("./sandbox-service")
+      if (sanitizeSlotName(input.slotName) === "default") {
+        return { success: false, errors: ["Cannot import a bundle into the reserved \"default\" baseline slot"] }
+      }
+
       // Save baseline if needed, then create the new slot from current state
       const slotResult = createSlotFromCurrentState(
         globalAgentsFolder,
