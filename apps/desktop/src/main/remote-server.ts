@@ -2390,6 +2390,47 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return reply.send(response)
   })
 
+  fastify.post("/v1/operator/actions/run-agent", async (req, reply) => {
+    try {
+      const body = req.body as { prompt?: string; conversationId?: string; profileId?: string } | null
+      const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : ""
+      if (!prompt) {
+        return reply.code(400).send({ error: "Missing prompt" })
+      }
+
+      setOperatorAuditContext(req, {
+        action: "run-agent",
+        success: true,
+        details: { promptLength: prompt.length, conversationId: body?.conversationId },
+      })
+
+      diagnosticsService.logInfo("remote-server", `Operator run-agent: ${prompt.length} chars${body?.conversationId ? ` (conversation ${body.conversationId})` : ""}`)
+
+      const result = await runAgent({
+        prompt,
+        conversationId: body?.conversationId,
+        profileId: body?.profileId,
+      })
+
+      return reply.send({
+        success: true,
+        action: "run-agent",
+        conversationId: result.conversationId,
+        content: result.content,
+        messageCount: result.conversationHistory.length,
+      })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "run-agent",
+        success: false,
+        failureReason: "run-agent-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator run-agent failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `Agent execution failed: ${errorMessage}` })
+    }
+  })
+
   fastify.post("/v1/operator/access/rotate-api-key", async (req, reply) => {
     try {
       const cfg = configStore.get()

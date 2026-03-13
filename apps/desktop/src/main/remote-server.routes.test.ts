@@ -166,6 +166,10 @@ describe("remote-server route registration", () => {
     expect(source).toContain("function buildOperatorConversationsResponse(")
     expect(source).toContain("conversationService.getConversationHistory()")
     expect(source).toContain("/v1/operator/conversations")
+    // Run-agent endpoint
+    expect(source).toContain("/v1/operator/actions/run-agent")
+    expect(source).toContain("runAgent({")
+    expect(source).toContain("Missing prompt")
   })
 
   it("audits sensitive settings updates without persisting secrets", () => {

@@ -27,7 +27,11 @@ describe("channel-native operator commands", () => {
     expect(discordSource).toContain('key: "system"')
     expect(discordSource).toContain('key: "sessions"')
     expect(discordSource).toContain('key: "conversations"')
+    expect(discordSource).toContain('key: "run-agent"')
     expect(discordSource).toContain("formatOperatorDuration")
+    // Body support for POST commands
+    expect(discordSource).toContain("command.body")
+    expect(discordSource).toContain("Content-Type")
 
     expect(
       discordSource.indexOf("await this.maybeHandleOperatorCommand(message, prompt)"),
@@ -54,7 +58,9 @@ describe("channel-native operator commands", () => {
     expect(whatsappSource).toContain('key: "system"')
     expect(whatsappSource).toContain('key: "sessions"')
     expect(whatsappSource).toContain('key: "conversations"')
+    expect(whatsappSource).toContain('key: "run-agent"')
     expect(whatsappSource).toContain("formatOperatorDuration")
+    expect(whatsappSource).toContain("command.body")
 
     expect(
       whatsappSource.indexOf("await maybeHandleWhatsAppOperatorCommand(message)"),

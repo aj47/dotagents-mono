@@ -92,12 +92,14 @@ interface ParsedOperatorCommand {
     | "system"
     | "sessions"
     | "conversations"
+    | "run-agent"
     | "restart-server"
     | "restart-app"
   label: string
   method?: OperatorCommandMethod
   path?: string
   query?: Record<string, string>
+  body?: Record<string, unknown>
 }
 
 const OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i
@@ -168,6 +170,7 @@ function getOperatorHelpText(channel: string): string {
     "- /ops system",
     "- /ops sessions",
     "- /ops conversations [count]",
+    "- /ops run <prompt>",
     "- /ops updater | updater check | updater download | updater reveal | updater open | updater releases",
     "- /ops tunnel | tunnel start | tunnel stop",
     "- /ops discord status | connect | disconnect",
@@ -213,6 +216,17 @@ function parseOperatorCommand(prompt: string): ParsedOperatorCommand | null {
       method: "GET",
       path: "conversations",
       ...(count ? { query: { count: String(count) } } : {}),
+    }
+  }
+  if (first === "run" && parts.length >= 2) {
+    const agentPrompt = body.replace(/^run\s+/i, "").trim()
+    if (!agentPrompt) return { key: "help", label: "/ops help" }
+    return {
+      key: "run-agent",
+      label: `/ops run (${agentPrompt.length} chars)`,
+      method: "POST",
+      path: "actions/run-agent",
+      body: { prompt: agentPrompt },
     }
   }
   if (first === "health" && parts.length === 1) {
@@ -470,6 +484,22 @@ function formatOperatorPayload(command: ParsedOperatorCommand, payload: unknown)
     return lines.join("\n")
   }
 
+  if (command.key === "run-agent") {
+    const success = payload.success === true
+    const content = getOperatorString(payload.content) || ""
+    const conversationId = getOperatorString(payload.conversationId) || "unknown"
+    const messageCount = getOperatorNumber(payload.messageCount) || 0
+    if (!success) {
+      const errorMsg = getOperatorString(payload.error) || "Unknown error"
+      return `Agent run failed: ${errorMsg}`
+    }
+    const preview = content.length > 500 ? content.slice(0, 500) + "…" : content
+    return [
+      `Agent completed (${messageCount} messages, conversation ${conversationId})`,
+      preview,
+    ].join("\n")
+  }
+
   if (command.key === "errors") {
     const errors = Array.isArray(payload.errors) ? payload.errors : []
     const lines = [`Recent errors (${errors.length})`]
@@ -610,16 +640,22 @@ async function executeWhatsAppOperatorCommand(command: ParsedOperatorCommand): P
   }
 
   try {
+    const timeoutMs = command.key === "run-agent" ? 120_000 : 5000
     let timeoutId: ReturnType<typeof setTimeout> | undefined
+    const fetchOptions: RequestInit = {
+      method: command.method,
+      headers: {
+        Authorization: `Bearer ${config.callbackApiKey}`,
+        ...(command.body ? { "Content-Type": "application/json" } : {}),
+      },
+    }
+    if (command.body) {
+      fetchOptions.body = JSON.stringify(command.body)
+    }
     const response = await Promise.race([
-      fetch(url.toString(), {
-        method: command.method,
-        headers: {
-          Authorization: `Bearer ${config.callbackApiKey}`,
-        },
-      }),
+      fetch(url.toString(), fetchOptions),
       new Promise<Response>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Request timed out after 5000ms")), 5000)
+        timeoutId = setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs}ms`)), timeoutMs)
       }),
     ]).finally(() => {
       if (timeoutId) {
