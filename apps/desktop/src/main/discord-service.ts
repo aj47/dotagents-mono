@@ -953,17 +953,18 @@ class DiscordService {
       return
     }
 
-    const profileId = getDiscordResolvedDefaultProfileId(cfg).profileId
-    if (!profileId) {
-      await this.sendChunks(message, "Discord integration is enabled, but no default agent profile is configured yet.")
-      this.addLog("warn", "Rejected Discord message because no default profile is configured")
-      return
+    let profileId = getDiscordResolvedDefaultProfileId(cfg).profileId
+    let profile = profileId ? agentProfileService.getById(profileId) : undefined
+
+    // Fall back to the current/default agent profile when none is explicitly configured
+    if (!profile) {
+      profile = agentProfileService.getCurrentProfile()
+      profileId = profile?.id
     }
 
-    const profile = agentProfileService.getById(profileId)
-    if (!profile) {
-      await this.sendChunks(message, "The configured Discord default profile could not be found. Please update Discord settings.")
-      this.addLog("warn", `Rejected Discord message because profile ${profileId} was not found`)
+    if (!profile || !profileId) {
+      await this.sendChunks(message, "No agent profile is available. Please create one in settings.")
+      this.addLog("warn", "Rejected Discord message because no agent profile is available")
       return
     }
 
