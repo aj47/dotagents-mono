@@ -161,6 +161,7 @@ interface SessionTileWrapperProps {
   onDragEnd?: () => void
   isDragTarget?: boolean
   isDragging?: boolean
+  scrollRef?: React.Ref<HTMLDivElement>
 }
 
 export function SessionTileWrapper({
@@ -175,6 +176,7 @@ export function SessionTileWrapper({
   onDragEnd,
   isDragTarget,
   isDragging,
+  scrollRef,
 }: SessionTileWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { containerWidth, containerHeight, gap, resetKey, layoutMode } = useSessionGridContext()
@@ -292,9 +294,18 @@ export function SessionTileWrapper({
     onDragEnd?.()
   }
 
+  const mergedRef = useCallback((node: HTMLDivElement | null) => {
+    (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+    if (typeof scrollRef === "function") {
+      scrollRef(node)
+    } else if (scrollRef) {
+      (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+    }
+  }, [scrollRef])
+
   return (
     <div
-      ref={containerRef}
+      ref={mergedRef}
       className={cn(
         "relative flex-shrink-0 overflow-hidden transition-all duration-200",
         isResizing && "select-none",

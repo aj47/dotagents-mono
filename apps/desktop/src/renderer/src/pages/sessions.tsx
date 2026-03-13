@@ -67,6 +67,7 @@ type SessionAgentTileProps = {
     agentName?: string
     onSubmitted?: () => void
   }) => void
+  scrollRef?: React.Ref<HTMLDivElement>
 }
 
 const SessionAgentTile = React.memo(function SessionAgentTile({
@@ -83,6 +84,7 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
   onDragEnd,
   onMaximizeTile,
   onVoiceContinue,
+  scrollRef,
 }: SessionAgentTileProps) {
   const progress = useAgentSessionProgress(sessionId)
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
@@ -136,6 +138,7 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
       onDragEnd={onDragEnd}
       isDragTarget={isDragTarget}
       isDragging={isDragging}
+      scrollRef={scrollRef}
     >
       <AgentProgress
         progress={progress}
@@ -978,26 +981,23 @@ export function Component() {
                 const isCollapsed = collapsedSessions[sessionId] ?? false
                 const adjustedIndex = hasPendingTile ? index + 1 : index
                 return (
-                  <div
+                  <SessionAgentTile
                     key={sessionId}
-                    ref={(el) => { sessionRefs.current[sessionId] = el }}
-                  >
-                    <SessionAgentTile
-                      sessionId={sessionId}
-                      index={adjustedIndex}
-                      isCollapsed={isCollapsed}
-                      isDragTarget={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId}
-                      isDragging={draggedSessionId === sessionId}
-                      showTileMaximize={showTileMaximize}
-                      tileLayoutMode={tileLayoutMode}
-                      onCollapsedChange={handleCollapsedChange}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDragEnd={handleDragEnd}
-                      onMaximizeTile={handleMaximizeTile}
-                      onVoiceContinue={handleOpenVoiceContinuation}
-                    />
-                  </div>
+                    sessionId={sessionId}
+                    index={adjustedIndex}
+                    isCollapsed={isCollapsed}
+                    isDragTarget={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId}
+                    isDragging={draggedSessionId === sessionId}
+                    showTileMaximize={showTileMaximize}
+                    tileLayoutMode={tileLayoutMode}
+                    onCollapsedChange={handleCollapsedChange}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    onMaximizeTile={handleMaximizeTile}
+                    onVoiceContinue={handleOpenVoiceContinuation}
+                    scrollRef={(el) => { sessionRefs.current[sessionId] = el }}
+                  />
                 )
               })}
             </SessionGrid>
