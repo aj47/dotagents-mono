@@ -109,22 +109,6 @@ fi
 
 echo ""
 
-# Auto-detect missing config and offer setup
-NEEDS_SETUP=false
-CUR_API_KEY="$(get_config_val openaiApiKey)"
-if [[ -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ]]; then
-  NEEDS_SETUP=true
-fi
-
-if [[ "$NEEDS_SETUP" == "true" ]]; then
-  echo -e "  ${Y}⚠ No API key configured.${R} Let's set things up."
-  run_setup
-else
-  echo -e "  ${D}Type ${C}/help${D} for commands, or just type a message to chat.${R}"
-  echo -e "  ${D}Tab completion available. Run ${C}/setup${D} to reconfigure.${R}"
-  echo ""
-fi
-
 CONVERSATION_ID=""
 
 # ── Helpers ───────────────────────────────────────────────────
@@ -177,11 +161,11 @@ config_set_raw() {
 }
 
 # Prompt with default value shown
+# Prompts go to stderr so $() captures only the result
 ask_val() {
   local prompt="$1" default="$2" current="$3"
   local display_current=""
   if [[ -n "$current" ]]; then
-    # Mask API keys
     if [[ "$current" == sk-* || ${#current} -gt 30 ]]; then
       display_current="${current:0:8}...${current: -4}"
     else
@@ -189,11 +173,11 @@ ask_val() {
     fi
   fi
   if [[ -n "$display_current" ]]; then
-    echo -en "  ${C}?${R} ${prompt} ${D}[current: ${display_current}]${R}: "
+    echo -en "  ${C}?${R} ${prompt} ${D}[current: ${display_current}]${R}: " >&2
   elif [[ -n "$default" ]]; then
-    echo -en "  ${C}?${R} ${prompt} ${D}[${default}]${R}: "
+    echo -en "  ${C}?${R} ${prompt} ${D}[${default}]${R}: " >&2
   else
-    echo -en "  ${C}?${R} ${prompt}: "
+    echo -en "  ${C}?${R} ${prompt}: " >&2
   fi
   local val
   read -r val
@@ -339,6 +323,16 @@ run_setup() {
   echo ""
 }
 
+# ── Auto-setup on missing config ──────────────────────────────
+CUR_API_KEY="$(get_config_val openaiApiKey)"
+if [[ -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ]]; then
+  echo -e "  ${Y}⚠ No API key configured.${R} Let's set things up."
+  run_setup
+else
+  echo -e "  ${D}Type ${C}/help${D} for commands, or just type a message to chat.${R}"
+  echo -e "  ${D}Tab completion available. Run ${C}/setup${D} to reconfigure.${R}"
+  echo ""
+fi
 
 
 # ── REPL ──────────────────────────────────────────────────────
