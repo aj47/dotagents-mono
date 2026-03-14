@@ -3180,6 +3180,8 @@ export const router = {
           ttsResult = await generateGroqTTS(processedText, input, config)
         } else if (providerId === "gemini") {
           ttsResult = await generateGeminiTTS(processedText, input, config)
+        } else if (providerId === "smallest") {
+          ttsResult = await generateSmallestTTS(processedText, input, config)
         } else if (providerId === "kitten") {
           const { synthesize } = await import('./kitten-tts')
           const voiceId = config.kittenVoiceId ?? 0 // Default to Voice 2 - Male
@@ -5327,6 +5329,49 @@ async function generateGeminiTTS(
   return {
     audio: bytes.buffer,
     mimeType: inlineAudioData?.mimeType || "audio/L16",
+  }
+}
+
+
+async function generateSmallestTTS(
+  text: string,
+  input: { voice?: string; speed?: number },
+  config: Config
+): Promise<TTSGenerationResult> {
+  const voice = input.voice || config.smallestTtsVoice || "magnus"
+  const apiKey = config.smallestApiKey
+
+  if (!apiKey) {
+    throw new Error("Smallest AI API key is required for TTS. Add it in Settings > Providers.")
+  }
+
+  const requestBody = {
+    text,
+    voice_id: voice,
+    sample_rate: 24000,
+    output_format: "wav",
+    speed: input.speed || 1.0,
+  }
+
+  const response = await fetch("https://api.smallest.ai/waves/v1/lightning-v3.1/get_speech", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Smallest AI TTS API error: ${response.statusText} - ${errorText}`)
+  }
+
+  const audioBuffer = await response.arrayBuffer()
+
+  return {
+    audio: audioBuffer,
+    mimeType: "audio/wav",
   }
 }
 

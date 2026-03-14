@@ -1029,6 +1029,8 @@ export type Config = {
   groqSttPrompt?: string
 
   geminiApiKey?: string
+  smallestApiKey?: string
+  smallestTtsVoice?: string
   geminiBaseUrl?: string
 
   // Speech-to-Text Language Configuration
@@ -1162,6 +1164,7 @@ export type Config = {
   providerSectionCollapsedParakeet?: boolean
   providerSectionCollapsedKitten?: boolean
   providerSectionCollapsedSupertonic?: boolean
+  providerSectionCollapsedSmallest?: boolean
 
   // Panel Position Configuration
   panelPosition?:

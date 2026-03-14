@@ -39,6 +39,7 @@ export const TTS_PROVIDERS = [
   { label: "Gemini", value: "gemini" },
   { label: "Kitten (Local)", value: "kitten" },
   { label: "Supertonic (Local)", value: "supertonic" },
+  { label: "Smallest AI", value: "smallest" },
 ] as const;
 
 export type TTS_PROVIDER_ID = (typeof TTS_PROVIDERS)[number]["value"];
@@ -267,3 +268,13 @@ export const getTtsVoicesForProvider = (providerId: string, ttsModel?: string) =
   }
 };
 
+
+// Smallest AI TTS Voice Options (Lightning model)
+export const SMALLEST_AI_TTS_VOICES = [
+  { label: "Magnus", value: "magnus" },
+  { label: "Emily", value: "emily" },
+  { label: "Jasper", value: "jasper" },
+  { label: "Aria", value: "aria" },
+  { label: "Luna", value: "luna" },
+  { label: "Ethan", value: "ethan" },
+] as const;

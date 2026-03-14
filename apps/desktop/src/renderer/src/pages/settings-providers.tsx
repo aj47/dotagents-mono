@@ -708,7 +708,7 @@ export function Component() {
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
-    if (!configQuery.data) return { openai: [], groq: [], gemini: [], parakeet: [], kitten: [], supertonic: [] }
+    if (!configQuery.data) return { openai: [], groq: [], gemini: [], parakeet: [], kitten: [], supertonic: [], smallest: [] }
 
     const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acp"
     const stt = configQuery.data.sttProviderId || "openai"
@@ -743,6 +743,9 @@ export function Component() {
       supertonic: [
         ...(tts === "supertonic" ? [{ label: "TTS", icon: Volume2 }] : []),
       ],
+      smallest: [
+        ...(tts === "smallest" ? [{ label: "TTS", icon: Volume2 }] : []),
+      ],
     }
   }, [configQuery.data])
 
@@ -765,6 +768,7 @@ export function Component() {
   const isParakeetActive = activeProviders.parakeet.length > 0
   const isKittenActive = activeProviders.kitten.length > 0
   const isSupertonicActive = activeProviders.supertonic.length > 0
+  const isSmallestActive = activeProviders.smallest.length > 0
 
   if (!configQuery.data) return null
 
@@ -993,6 +997,66 @@ export function Component() {
             steps={configQuery.data.supertonicSteps ?? 5}
           />
         )}
+        {/* Smallest AI TTS Provider Section */}
+        {isSmallestActive && (
+          <div className={`rounded-lg border border-primary/30 bg-primary/5`}>
+            <button
+              type="button"
+              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => saveConfig({ providerSectionCollapsedSmallest: !(configQuery.data.providerSectionCollapsedSmallest ?? true) } as Partial<Config>)}
+              aria-expanded={!(configQuery.data.providerSectionCollapsedSmallest ?? true)}
+              aria-controls="smallest-provider-content"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {(configQuery.data.providerSectionCollapsedSmallest ?? true) ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                <Volume2 className="h-4 w-4" />
+                Smallest AI
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+              </span>
+              <div className="flex gap-1.5 flex-wrap justify-end">
+                {activeProviders.smallest.map((badge) => (
+                  <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+                ))}
+              </div>
+            </button>
+            {!(configQuery.data.providerSectionCollapsedSmallest ?? true) && (
+              <div id="smallest-provider-content" className="divide-y border-t">
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Cloud TTS via Smallest AI Lightning model. ~200ms latency, 80+ voices.
+                </p>
+                <div className="px-3 py-2">
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">API Key</label>
+                  <input
+                    type="password"
+                    className="w-full text-xs rounded border px-2 py-1 bg-background"
+                    placeholder="Enter Smallest AI API key"
+                    defaultValue={configQuery.data.smallestApiKey || ""}
+                    onBlur={(e) => saveConfig({ smallestApiKey: e.target.value } as Partial<Config>)}
+                  />
+                </div>
+                <div className="px-3 py-2">
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Voice</label>
+                  <select
+                    className="w-full text-xs rounded border px-2 py-1 bg-background"
+                    value={configQuery.data.smallestTtsVoice || "magnus"}
+                    onChange={(e) => saveConfig({ smallestTtsVoice: e.target.value } as Partial<Config>)}
+                  >
+                    <option value="magnus">Magnus</option>
+                    <option value="emily">Emily</option>
+                    <option value="jasper">Jasper</option>
+                    <option value="aria">Aria</option>
+                    <option value="luna">Luna</option>
+                    <option value="ethan">Ethan</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Inactive Groq Provider Section - shown at bottom when not selected */}
         {!isGroqActive && (
@@ -1117,6 +1181,60 @@ export function Component() {
             speed={configQuery.data.supertonicSpeed ?? 1.05}
             steps={configQuery.data.supertonicSteps ?? 5}
           />
+        )}
+
+        {/* Inactive Smallest AI Provider Section */}
+        {!isSmallestActive && (
+          <div className="rounded-lg border">
+            <button
+              type="button"
+              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => saveConfig({ providerSectionCollapsedSmallest: !(configQuery.data.providerSectionCollapsedSmallest ?? true) } as Partial<Config>)}
+              aria-expanded={!(configQuery.data.providerSectionCollapsedSmallest ?? true)}
+              aria-controls="smallest-provider-content-inactive"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {(configQuery.data.providerSectionCollapsedSmallest ?? true) ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                Smallest AI
+              </span>
+            </button>
+            {!(configQuery.data.providerSectionCollapsedSmallest ?? true) && (
+              <div id="smallest-provider-content-inactive" className="divide-y border-t">
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Not selected above. You can still configure it here.
+                </p>
+                <div className="px-3 py-2">
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">API Key</label>
+                  <input
+                    type="password"
+                    className="w-full text-xs rounded border px-2 py-1 bg-background"
+                    placeholder="Enter Smallest AI API key"
+                    defaultValue={configQuery.data.smallestApiKey || ""}
+                    onBlur={(e) => saveConfig({ smallestApiKey: e.target.value } as Partial<Config>)}
+                  />
+                </div>
+                <div className="px-3 py-2">
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Voice</label>
+                  <select
+                    className="w-full text-xs rounded border px-2 py-1 bg-background"
+                    value={configQuery.data.smallestTtsVoice || "magnus"}
+                    onChange={(e) => saveConfig({ smallestTtsVoice: e.target.value } as Partial<Config>)}
+                  >
+                    <option value="magnus">Magnus</option>
+                    <option value="emily">Emily</option>
+                    <option value="jasper">Jasper</option>
+                    <option value="aria">Aria</option>
+                    <option value="luna">Luna</option>
+                    <option value="ethan">Ethan</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
       </div>
