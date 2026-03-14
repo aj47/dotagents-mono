@@ -366,6 +366,21 @@ class AgentSessionTracker {
   }
 
   /**
+   * Remove a single completed session by ID.
+   * Returns true if the session was found and removed.
+   */
+  removeCompletedSession(sessionId: string): boolean {
+    const index = this.completedSessions.findIndex(s => s.id === sessionId)
+    if (index === -1) return false
+
+    this.completedSessions.splice(index, 1)
+    clearSessionUserResponse(sessionId)
+    logApp(`[AgentSessionTracker] Removed completed session: ${sessionId}`)
+    emitSessionUpdate()
+    return true
+  }
+
+  /**
    * Clear all sessions (for testing/debugging)
    */
   clearAllSessions(): void {
