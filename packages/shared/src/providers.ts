@@ -273,7 +273,7 @@ export const getTtsVoicesForProvider = (providerId: string, ttsModel?: string) =
 
 // Smallest AI TTS Voice Options (Lightning v3.1 model — English voices)
 export const SMALLEST_AI_TTS_VOICES = [
-  { label: "Emily (Female)", value: "sophia" },
+  { label: "Sophia (Female)", value: "sophia" },
   { label: "Sandra (Female)", value: "sandra" },
   { label: "Rachel (Female)", value: "rachel" },
   { label: "Olivia (Female)", value: "olivia" },
