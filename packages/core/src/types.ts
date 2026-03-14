@@ -9,6 +9,86 @@
 // Re-export shared types
 export type { ModelPreset } from '@dotagents/shared'
 
+// Import types used locally in this file
+import type { ToolCall, ToolResult } from '@dotagents/shared'
+export type { ToolCall, ToolResult } from '@dotagents/shared'
+
+// ============================================================================
+// Conversation Types
+// ============================================================================
+
+export interface ConversationMessage {
+  id: string
+  role: "user" | "assistant" | "tool"
+  content: string
+  timestamp: number
+  toolCalls?: ToolCall[]
+  toolResults?: ToolResult[]
+  /**
+   * When true, this message is a compaction summary that represents older messages
+   * in the active context window. The original raw messages may still be preserved
+   * in `Conversation.rawMessages`.
+   */
+  isSummary?: boolean
+  /**
+   * Number of messages that were summarized into this summary message.
+   * Only set when isSummary is true.
+   */
+  summarizedMessageCount?: number
+}
+
+export interface ConversationCompactionMetadata {
+  /**
+   * Whether the original raw message history is still preserved on disk.
+   */
+  rawHistoryPreserved: boolean
+  /**
+   * Number of raw messages preserved separately for compacted conversations.
+   * Omitted for legacy compacted sessions where the original history is unavailable.
+   */
+  storedRawMessageCount?: number
+  /**
+   * Total number of messages represented by the current conversation payload.
+   * For compacted conversations this includes summarized older messages plus active ones.
+   */
+  representedMessageCount: number
+  /**
+   * Timestamp of the most recent compaction pass that refreshed the active window.
+   */
+  compactedAt?: number
+  /**
+   * Marks conversations whose older raw history was previously discarded and cannot
+   * be fully recovered.
+   */
+  partialReason?: "legacy_summary_without_raw_messages"
+}
+
+export interface Conversation {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  messages: ConversationMessage[]
+  rawMessages?: ConversationMessage[]
+  compaction?: ConversationCompactionMetadata
+  metadata?: {
+    totalTokens?: number
+    model?: string
+    provider?: string
+    agentMode?: boolean
+  }
+}
+
+export interface ConversationHistoryItem {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  messageCount: number
+  lastMessage: string
+  preview: string
+}
+
 // ============================================================================
 // Config — an opaque record for config persistence logic.
 // Core modules (modular-config, config) treat Config as a bag of key-value pairs.

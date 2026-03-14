@@ -220,6 +220,58 @@ export {
 } from './agents-files/agent-profiles';
 export type { AgentProfileOrigin, LoadedAgentProfilesLayer, AgentProfileConfigJson } from './agents-files/agent-profiles';
 
+// Conversation types
+export type {
+  Conversation,
+  ConversationMessage,
+  ConversationHistoryItem,
+  ConversationCompactionMetadata,
+} from './types';
+
+// Conversation service
+export {
+  ConversationService,
+} from './conversation-service';
+export type { SummarizeContentFn } from './conversation-service';
+
+// Langfuse loader
+export {
+  Langfuse,
+  isInstalled as isLangfuseModuleInstalled,
+} from './langfuse-loader';
+export type {
+  LangfuseInstance,
+  LangfuseTraceClient,
+  LangfuseSpanClient,
+  LangfuseGenerationClient,
+} from './langfuse-loader';
+
+// Langfuse service
+export {
+  isLangfuseInstalled,
+  isLangfuseEnabled,
+  getLangfuse,
+  reinitializeLangfuse,
+  createAgentTrace,
+  getAgentTrace,
+  endAgentTrace,
+  createToolSpan,
+  endToolSpan,
+  createLLMGeneration,
+  endLLMGeneration,
+  flushLangfuse,
+  shutdownLangfuse,
+} from './langfuse-service';
+
+// Diagnostics service
+export {
+  DiagnosticsService,
+} from './diagnostics';
+export type {
+  DiagnosticInfo,
+  DiagnosticsMcpProvider,
+} from './diagnostics';
+
 // Testing utilities
 export {
   MockPathResolver,

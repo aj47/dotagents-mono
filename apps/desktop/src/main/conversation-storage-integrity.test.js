@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const serviceSource = fs.readFileSync(path.join(__dirname, 'conversation-service.ts'), 'utf8')
+// Service logic now lives in @dotagents/core — check both the core source and desktop shared types
+const coreServiceSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'packages', 'core', 'src', 'conversation-service.ts'), 'utf8')
+const serviceSource = coreServiceSource
 const typesSource = fs.readFileSync(path.join(__dirname, '..', 'shared', 'types.ts'), 'utf8')
 
 test('conversation types expose preserved raw-history and partial-compaction metadata', () => {
