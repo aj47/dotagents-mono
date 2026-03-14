@@ -3,7 +3,6 @@ import type {
   ToolResult,
   ConversationHistoryMessage,
   ChatApiResponse,
-  AgentConversationState,
 } from '@dotagents/shared';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
 import { Platform } from 'react-native';
@@ -40,47 +39,8 @@ export type ChatMessage = {
 export type ChatResponse = ChatApiResponse;
 
 export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagents/shared';
+export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared';
 export type { StreamingCheckpoint } from './connectionRecovery';
-
-export interface AgentProgressUpdate {
-  sessionId: string;
-  conversationId?: string;
-  currentIteration: number;
-  maxIterations: number;
-  steps: AgentProgressStep[];
-  isComplete: boolean;
-  conversationState?: AgentConversationState;
-  finalContent?: string;
-  /**
-   * User-facing response set via respond_to_user tool.
-   * On voice interfaces: spoken aloud via TTS
-   * On messaging channels (mobile, WhatsApp): sent as a message
-   * Consumers should fall back to finalContent if this is not set.
-   */
-  userResponse?: string;
-  /** @deprecated Use userResponse instead. Kept for backward compatibility with older backends. */
-  spokenContent?: string;
-  conversationHistory?: ConversationHistoryMessage[];
-  streamingContent?: {
-    text: string;
-    isStreaming: boolean;
-  };
-}
-
-export interface AgentProgressStep {
-  id: string;
-  type: 'thinking' | 'tool_call' | 'tool_result' | 'response' | 'error' | 'pending_approval' | 'completion';
-  title: string;
-  description?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'error';
-  timestamp: number;
-  content?: string;
-  llmContent?: string;
-  toolCall?: { name: string; arguments: any };
-  toolResult?: { success: boolean; content: string; error?: string };
-}
-
-export type OnProgressCallback = (update: AgentProgressUpdate) => void;
 
 
 

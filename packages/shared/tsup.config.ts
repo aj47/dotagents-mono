@@ -14,6 +14,7 @@ export default defineConfig({
     'connection-recovery': 'src/connection-recovery.ts',
     'api-types': 'src/api-types.ts',
     hub: 'src/hub.ts',
+    'agent-progress': 'src/agent-progress.ts',
   },
   format: ['cjs', 'esm'],
   dts: true,

@@ -16,3 +16,4 @@ export * from './connection-recovery';
 export * from './api-types';
 export * from './hub';
 export * from './conversation-state';
+export * from './agent-progress';

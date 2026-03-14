@@ -2,6 +2,7 @@ import type { CHAT_PROVIDER_ID, STT_PROVIDER_ID, TTS_PROVIDER_ID, OPENAI_COMPATI
 import type { ToolCall, ToolResult, AgentConversationState } from '@dotagents/shared'
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState } from '@dotagents/shared'
+export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'
 
 export type RecordingHistoryItem = {
   id: string
@@ -112,175 +113,7 @@ export interface ServerLogEntry {
   message: string
 }
 
-// Agent Mode Progress Tracking Types
-
-/**
- * A message in a sub-agent conversation
- */
-export interface ACPSubAgentMessage {
-  /** Role of the sender */
-  role: 'user' | 'assistant' | 'tool'
-  /** Message content */
-  content: string
-  /** Tool name if this is a tool call/result */
-  toolName?: string
-  /** Tool input (for tool calls) */
-  toolInput?: unknown
-  /** Timestamp */
-  timestamp: number
-}
-
-/**
- * Progress information for a delegated ACP sub-agent
- */
-export interface ACPDelegationProgress {
-  /** Unique identifier for this delegation run */
-  runId: string
-  /** Name of the ACP agent being delegated to */
-  agentName: string
-  /** How this delegated run is connected/executed */
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote'
-  /** The task that was delegated */
-  task: string
-  /** Current status of the delegation */
-  status: 'pending' | 'spawning' | 'running' | 'completed' | 'failed' | 'cancelled'
-  /** Optional progress message from the sub-agent */
-  progressMessage?: string
-  /** When the delegation started */
-  startTime: number
-  /** When the delegation ended (if complete) */
-  endTime?: number
-  /** Result summary (if completed) */
-  resultSummary?: string
-  /** Error message (if failed) */
-  error?: string
-  /** Session ID for local ACP/stdio delegated sessions */
-  acpSessionId?: string
-  /** Internal DotAgents sub-session ID for internal delegations */
-  subSessionId?: string
-  /** DotAgents conversation ID for internal/stateful delegated sessions */
-  conversationId?: string
-  /** Remote ACP run ID for externally-managed async delegations */
-  acpRunId?: string
-  /** Full conversation history from the sub-agent */
-  conversation?: ACPSubAgentMessage[]
-}
-
-/**
- * State of all active ACP delegations for a session
- */
-export interface ACPDelegationState {
-  /** Session ID of the parent agent */
-  parentSessionId: string
-  /** All delegations for this session */
-  delegations: ACPDelegationProgress[]
-  /** Number of active (non-completed) delegations */
-  activeCount: number
-}
-
-export interface AgentProgressStep {
-  id: string
-  type: "thinking" | "tool_call" | "tool_result" | "completion" | "tool_approval"
-  title: string
-  description?: string
-  status: "pending" | "in_progress" | "completed" | "error" | "awaiting_approval"
-  timestamp: number
-  llmContent?: string
-  toolCall?: ToolCall
-  toolResult?: ToolResult
-  approvalRequest?: {
-    approvalId: string
-    toolName: string
-    arguments: any
-  }
-  /** If this step is a delegation to a sub-agent */
-  delegation?: ACPDelegationProgress
-  executionStats?: {
-    durationMs?: number
-    totalTokens?: number
-    toolUseCount?: number
-    inputTokens?: number
-    outputTokens?: number
-    cacheHitTokens?: number
-  }
-  subagentId?: string
-}
-
-export interface AgentProgressUpdate {
-  sessionId: string
-  // Monotonic run counter for a reused session ID.
-  // Lets the renderer ignore stale updates from older runs.
-  runId?: number
-  conversationId?: string
-  conversationTitle?: string
-  currentIteration: number
-  maxIterations: number
-  steps: AgentProgressStep[]
-  isComplete: boolean
-  conversationState?: AgentConversationState
-  isSnoozed?: boolean
-  finalContent?: string
-  /**
-   * User-facing response set via respond_to_user tool.
-   * On voice interfaces: spoken aloud via TTS
-   * On messaging channels (mobile, WhatsApp): sent as a message
-   * Consumers should fall back to finalContent if this is not set.
-   */
-  userResponse?: string
-  /**
-   * History of past respond_to_user calls (excluding the current/latest one).
-   * Shown as collapsed items in the UI with TTS playback support.
-   */
-  userResponseHistory?: string[]
-  conversationHistory?: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: ToolCall[]
-    toolResults?: ToolResult[]
-    timestamp?: number
-  }>
-  sessionStartIndex?: number
-  pendingToolApproval?: {
-    approvalId: string
-    toolName: string
-    arguments: any
-  }
-  retryInfo?: {
-    isRetrying: boolean
-    attempt: number
-    maxAttempts?: number
-    delaySeconds: number
-    reason: string
-    startedAt: number
-  }
-  streamingContent?: {
-    text: string
-    isStreaming: boolean
-  }
-  contextInfo?: {
-    estTokens: number
-    maxTokens: number
-  }
-  modelInfo?: {
-    provider: string
-    model: string
-  }
-  /** Profile name associated with this session (from profile snapshot) */
-  profileName?: string
-  acpSessionInfo?: {
-    agentName?: string
-    agentTitle?: string
-    agentVersion?: string
-    currentModel?: string
-    currentMode?: string
-    availableModels?: Array<{ id: string; name: string; description?: string }>
-    availableModes?: Array<{ id: string; name: string; description?: string }>
-    configOptions?: ACPConfigOption[]
-  }
-  // Dual-model summarization data
-  stepSummaries?: AgentStepSummary[]
-  latestSummary?: AgentStepSummary
-}
+// Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
 
 // Dual-Model Agent Mode Configuration
 export interface DualModelConfig {
@@ -301,34 +134,7 @@ export interface DualModelConfig {
   autoSaveImportantFindings?: boolean
 }
 
-// Agent Step Summary (generated by weak model)
-export interface AgentStepSummary {
-  id: string
-  sessionId: string
-  stepNumber: number
-  timestamp: number
-
-  // Summary content - single line, ultra compact
-  actionSummary: string      // What the agent just did (single line)
-
-  /**
-   * Durable memory candidates extracted from this step.
-   * These should be reusable in future sessions (preferences, constraints, decisions, facts, insights),
-   * NOT step-by-step telemetry.
-   */
-  memoryCandidates?: string[]
-
-  // Metadata
-  importance: "low" | "medium" | "high" | "critical"
-  savedToMemory?: boolean
-  userNotes?: string
-  tags?: string[]
-
-  // Legacy fields (kept for backward compatibility)
-  keyFindings?: string[]
-  nextSteps?: string
-  decisionsMade?: string[]
-}
+// AgentStepSummary — re-exported from @dotagents/shared (see above)
 
 // Memory entry (saved from summaries)
 export interface AgentMemory {
@@ -1154,21 +960,7 @@ export interface EnhancedModelInfo extends ModelInfo {
 // ACP Agent Configuration Types
 export type ACPConnectionType = "stdio" | "remote" | "internal"
 
-export interface ACPConfigOptionValue {
-  value: string
-  name: string
-  description?: string
-}
-
-export interface ACPConfigOption {
-  id: string
-  name: string
-  description?: string
-  category?: string
-  type: string
-  currentValue: string
-  options: ACPConfigOptionValue[]
-}
+// ACPConfigOptionValue and ACPConfigOption — re-exported from @dotagents/shared (see above)
 
 export interface ACPAgentConfig {
   // Unique identifier for the agent

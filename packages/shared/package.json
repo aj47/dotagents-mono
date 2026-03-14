@@ -65,16 +65,23 @@
       "types": "./dist/hub.d.ts",
       "import": "./dist/hub.mjs",
       "require": "./dist/hub.js"
+    },
+    "./agent-progress": {
+      "types": "./dist/agent-progress.d.ts",
+      "import": "./dist/agent-progress.mjs",
+      "require": "./dist/agent-progress.js"
     }
   },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^1.6.0"
   },
   "files": [
     "dist",

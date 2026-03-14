@@ -372,7 +372,7 @@ class MemoryService {
       content: chosenContent,
       keyFindings,
       tags: mergedTags,
-      importance: summary.importance,
+      importance: summary.importance ?? "medium",
       userNotes,
     }
   }

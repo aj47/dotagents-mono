@@ -27,7 +27,7 @@ interface AgentSummaryViewProps {
 }
 
 // Importance badge component
-function ImportanceBadge({ importance }: { importance: AgentStepSummary["importance"] }) {
+function ImportanceBadge({ importance }: { importance: NonNullable<AgentStepSummary["importance"]> }) {
   const variants = {
     low: { className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300", icon: Info },
     medium: { className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300", icon: Info },
@@ -122,14 +122,14 @@ function SummaryCard({
               <span className="text-xs text-muted-foreground">
                 Step {summary.stepNumber}
               </span>
-              <ImportanceBadge importance={summary.importance} />
+              {summary.importance && <ImportanceBadge importance={summary.importance} />}
             </div>
 
             <p className="line-clamp-2 text-sm font-medium leading-snug">{summary.actionSummary}</p>
 
-            {!isExpanded && summary.keyFindings.length > 0 && (
+            {!isExpanded && (summary.keyFindings?.length ?? 0) > 0 && (
               <p className="mt-1 break-words text-xs text-muted-foreground">
-                {summary.keyFindings.length} key finding{summary.keyFindings.length > 1 ? "s" : ""}
+                {summary.keyFindings!.length} key finding{summary.keyFindings!.length > 1 ? "s" : ""}
               </p>
             )}
           </div>
@@ -169,14 +169,14 @@ function SummaryCard({
       {isExpanded && (
         <div className="ml-4 space-y-3 border-t border-border/80 pt-3 sm:ml-6">
           {/* Key Findings */}
-          {summary.keyFindings.length > 0 && (
+          {(summary.keyFindings?.length ?? 0) > 0 && (
             <div className="px-3">
               <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                 <Brain className="h-3 w-3" />
                 Key Findings
               </h4>
               <ul className="space-y-1">
-                {summary.keyFindings.map((finding, i) => (
+                {summary.keyFindings!.map((finding, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-2 text-sm text-foreground/90"
