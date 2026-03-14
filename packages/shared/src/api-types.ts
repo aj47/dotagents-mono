@@ -44,6 +44,239 @@ export interface ModelsResponse {
   models: ModelInfo[];
 }
 
+export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
+export type OperatorHealthOverall = 'healthy' | 'warning' | 'critical';
+
+export interface OperatorRemoteServerStatus {
+  running: boolean;
+  bind: string;
+  port: number;
+  url?: string;
+  connectableUrl?: string;
+  lastError?: string;
+}
+
+export interface OperatorTunnelStatus {
+  running: boolean;
+  starting: boolean;
+  mode: 'quick' | 'named' | null;
+  url?: string;
+  error?: string;
+}
+
+export interface OperatorHealthCheck {
+  status: OperatorHealthStatus;
+  message: string;
+}
+
+export interface OperatorHealthSnapshot {
+  checkedAt: number;
+  overall: OperatorHealthOverall;
+  checks: Record<string, OperatorHealthCheck>;
+}
+
+export interface OperatorRecentError {
+  timestamp: number;
+  level: 'error' | 'warning' | 'info';
+  component: string;
+  message: string;
+}
+
+export interface OperatorRecentErrorsResponse {
+  count: number;
+  errors: OperatorRecentError[];
+}
+
+export interface OperatorLogsResponse {
+  count: number;
+  level?: 'error' | 'warning' | 'info';
+  logs: OperatorRecentError[];
+}
+
+export interface OperatorMCPServerSummary {
+  name: string;
+  connected: boolean;
+  toolCount: number;
+  enabled: boolean;
+  error?: string;
+}
+
+export interface OperatorMCPStatusResponse {
+  totalServers: number;
+  connectedServers: number;
+  totalTools: number;
+  servers: OperatorMCPServerSummary[];
+}
+
+export interface OperatorConversationItem {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+  preview: string;
+}
+
+export interface OperatorConversationsResponse {
+  count: number;
+  conversations: OperatorConversationItem[];
+}
+
+export interface OperatorLogSummary {
+  total: number;
+  lastTimestamp?: number;
+  errorCount?: number;
+  warningCount?: number;
+  infoCount?: number;
+}
+
+export interface OperatorDiscordIntegrationSummary {
+  available: boolean;
+  enabled: boolean;
+  connected: boolean;
+  connecting: boolean;
+  tokenConfigured?: boolean;
+  defaultProfileId?: string;
+  defaultProfileName?: string;
+  botUsername?: string;
+  lastError?: string;
+  lastEventAt?: number;
+  logs: OperatorLogSummary;
+}
+
+export interface OperatorWhatsAppIntegrationSummary {
+  enabled: boolean;
+  available: boolean;
+  connected: boolean;
+  serverConfigured: boolean;
+  serverConnected: boolean;
+  autoReplyEnabled: boolean;
+  logMessagesEnabled: boolean;
+  allowedSenderCount: number;
+  hasCredentials?: boolean;
+  lastError?: string;
+  logs: OperatorLogSummary;
+}
+
+export interface OperatorPushNotificationsSummary {
+  enabled: boolean;
+  tokenCount: number;
+  platforms: string[];
+}
+
+export interface OperatorIntegrationsSummary {
+  discord: OperatorDiscordIntegrationSummary;
+  whatsapp: OperatorWhatsAppIntegrationSummary;
+  pushNotifications: OperatorPushNotificationsSummary;
+}
+
+export interface OperatorUpdaterStatus {
+  enabled: boolean;
+  mode: 'disabled' | 'manual' | 'auto';
+  currentVersion?: string;
+  updateInfo?: unknown;
+  manualReleasesUrl?: string;
+  updateAvailable?: boolean;
+  lastCheckedAt?: number;
+  lastCheckError?: string;
+  latestRelease?: {
+    tagName: string;
+    name?: string;
+    publishedAt?: string;
+    url: string;
+    assetCount?: number;
+  };
+  preferredAsset?: {
+    name: string;
+    downloadUrl: string;
+  };
+  lastDownloadedAt?: number;
+  lastDownloadedFileName?: string;
+}
+
+export interface OperatorSystemMetrics {
+  platform: string;
+  arch: string;
+  nodeVersion: string;
+  electronVersion?: string;
+  appVersion?: string;
+  uptimeSeconds: number;
+  processUptimeSeconds: number;
+  memoryUsage: {
+    heapUsedMB: number;
+    heapTotalMB: number;
+    rssMB: number;
+  };
+  cpuCount: number;
+  totalMemoryMB: number;
+  freeMemoryMB: number;
+  hostname: string;
+}
+
+export interface OperatorSessionsSummary {
+  activeSessions: number;
+  recentSessions: number;
+  activeSessionDetails: Array<{
+    id: string;
+    title?: string;
+    status: string;
+    startTime: number;
+    currentIteration?: number;
+    maxIterations?: number;
+  }>;
+}
+
+export interface OperatorRuntimeStatus {
+  timestamp: number;
+  remoteServer: OperatorRemoteServerStatus;
+  health: OperatorHealthSnapshot;
+  tunnel: OperatorTunnelStatus;
+  integrations: OperatorIntegrationsSummary;
+  updater: OperatorUpdaterStatus;
+  system: OperatorSystemMetrics;
+  sessions: OperatorSessionsSummary;
+  recentErrors: {
+    total: number;
+    errorsInLastFiveMinutes: number;
+  };
+}
+
+export interface OperatorActionResponse {
+  success: boolean;
+  action: string;
+  message: string;
+  scheduled?: boolean;
+  error?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface OperatorAuditSource {
+  ip?: string;
+  origin?: string;
+  userAgent?: string;
+}
+
+export interface OperatorAuditEntry {
+  timestamp: number;
+  action: string;
+  path: string;
+  success: boolean;
+  deviceId?: string;
+  source?: OperatorAuditSource;
+  details?: Record<string, unknown>;
+  failureReason?: string;
+}
+
+export interface OperatorAuditResponse {
+  count: number;
+  entries: OperatorAuditEntry[];
+}
+
+export interface OperatorApiKeyRotationResponse extends OperatorActionResponse {
+  apiKey: string;
+  restartScheduled: boolean;
+}
+
 export interface PredefinedPromptSummary {
   id: string;
   name: string;
@@ -110,11 +343,45 @@ export interface Settings {
   geminiTtsModel?: string;
   geminiTtsVoice?: string;
 
+  // Remote Server Configuration
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: 'error' | 'info' | 'debug';
+  remoteServerCorsOrigins?: string[];
+  remoteServerOperatorAllowDeviceIds?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
+
+  // Cloudflare Tunnel Configuration
+  cloudflareTunnelMode?: 'quick' | 'named';
+  cloudflareTunnelAutoStart?: boolean;
+  cloudflareTunnelId?: string;
+  cloudflareTunnelName?: string;
+  cloudflareTunnelCredentialsPath?: string;
+  cloudflareTunnelHostname?: string;
+
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
+  whatsappOperatorAllowFrom?: string[];
   whatsappAutoReply?: boolean;
   whatsappLogMessages?: boolean;
+
+  // Discord Integration
+  discordEnabled?: boolean;
+  discordBotToken?: string;
+  discordDmEnabled?: boolean;
+  discordRequireMention?: boolean;
+  discordAllowUserIds?: string[];
+  discordAllowGuildIds?: string[];
+  discordAllowChannelIds?: string[];
+  discordOperatorAllowUserIds?: string[];
+  discordOperatorAllowGuildIds?: string[];
+  discordOperatorAllowChannelIds?: string[];
+  discordDefaultProfileId?: string;
+  discordLogMessages?: boolean;
 
   // Langfuse Observability
   langfuseEnabled?: boolean;
@@ -188,11 +455,45 @@ export interface SettingsUpdate {
   geminiTtsModel?: string;
   geminiTtsVoice?: string;
 
+  // Remote Server Configuration
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: 'error' | 'info' | 'debug';
+  remoteServerCorsOrigins?: string[];
+  remoteServerOperatorAllowDeviceIds?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
+
+  // Cloudflare Tunnel Configuration
+  cloudflareTunnelMode?: 'quick' | 'named';
+  cloudflareTunnelAutoStart?: boolean;
+  cloudflareTunnelId?: string;
+  cloudflareTunnelName?: string;
+  cloudflareTunnelCredentialsPath?: string;
+  cloudflareTunnelHostname?: string;
+
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
+  whatsappOperatorAllowFrom?: string[];
   whatsappAutoReply?: boolean;
   whatsappLogMessages?: boolean;
+
+  // Discord Integration
+  discordEnabled?: boolean;
+  discordBotToken?: string;
+  discordDmEnabled?: boolean;
+  discordRequireMention?: boolean;
+  discordAllowUserIds?: string[];
+  discordAllowGuildIds?: string[];
+  discordAllowChannelIds?: string[];
+  discordOperatorAllowUserIds?: string[];
+  discordOperatorAllowGuildIds?: string[];
+  discordOperatorAllowChannelIds?: string[];
+  discordDefaultProfileId?: string;
+  discordLogMessages?: boolean;
 
   // Langfuse Observability
   langfuseEnabled?: boolean;

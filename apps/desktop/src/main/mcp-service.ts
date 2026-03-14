@@ -2966,6 +2966,9 @@ export class MCPService {
       if (config.whatsappAllowFrom && config.whatsappAllowFrom.length > 0) {
         environment.WHATSAPP_ALLOW_FROM = config.whatsappAllowFrom.join(",")
       }
+      if (config.whatsappOperatorAllowFrom && config.whatsappOperatorAllowFrom.length > 0) {
+        environment.WHATSAPP_OPERATOR_ALLOW_FROM = config.whatsappOperatorAllowFrom.join(",")
+      }
 
       // Inject auto-reply settings - only if remote server is enabled
       if (config.whatsappAutoReply && config.remoteServerEnabled && config.remoteServerApiKey) {

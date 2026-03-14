@@ -70,6 +70,8 @@ import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppr
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
+import { getDiscordLifecycleAction } from "./discord-config"
+import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
@@ -2514,6 +2516,19 @@ export const router = {
         // lifecycle is best-effort
       }
 
+      try {
+        const discordLifecycleAction = getDiscordLifecycleAction(prev, merged)
+        if (discordLifecycleAction === "start") {
+          await discordService.start()
+        } else if (discordLifecycleAction === "restart") {
+          await discordService.restart()
+        } else if (discordLifecycleAction === "stop") {
+          await discordService.stop()
+        }
+      } catch (_e) {
+        // lifecycle is best-effort
+      }
+
       // Manage WhatsApp MCP server auto-configuration
       // Note: The actual server path is determined at runtime in mcp-service.ts createTransport()
       // This ensures the correct internal bundled path is always used, regardless of what's in config
@@ -3110,6 +3125,28 @@ export const router = {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
+  }),
+
+  // Discord Integration
+  discordConnect: t.procedure.action(async () => {
+    return discordService.start()
+  }),
+
+  discordDisconnect: t.procedure.action(async () => {
+    return discordService.stop()
+  }),
+
+  discordGetStatus: t.procedure.action(async () => {
+    return discordService.getStatus()
+  }),
+
+  discordGetLogs: t.procedure.action(async () => {
+    return discordService.getLogs()
+  }),
+
+  discordClearLogs: t.procedure.action(async () => {
+    discordService.clearLogs()
+    return { success: true }
   }),
 
   // Text-to-Speech

@@ -1229,6 +1229,26 @@ export function Component() {
           </Control>
         </ControlGroup>
 
+        {/* Discord Integration */}
+        <ControlGroup
+          collapsible
+          defaultCollapsed
+          title="Discord Integration"
+          endDescription={(
+            <div className="break-words whitespace-normal">
+              Enable a Discord bot for DMs, mentions, and threads. {" "}
+              <a href="/settings/discord" className="underline">Configure Discord settings</a>.
+            </div>
+          )}
+        >
+          <Control label={<ControlLabel label="Enable Discord" tooltip="When enabled, DotAgents can receive Discord DMs and server mentions using your configured bot token" />} className="px-3">
+            <Switch
+              checked={configQuery.data?.discordEnabled ?? false}
+              onCheckedChange={(value) => saveConfig({ discordEnabled: value })}
+            />
+          </Control>
+        </ControlGroup>
+
         {/* Langfuse Observability */}
         <ControlGroup
           collapsible

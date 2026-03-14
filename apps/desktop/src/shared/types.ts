@@ -1463,6 +1463,7 @@ export type Config = {
 	  remoteServerApiKey?: string
 	  remoteServerLogLevel?: "error" | "info" | "debug"
 	  remoteServerCorsOrigins?: string[]
+		  remoteServerOperatorAllowDeviceIds?: string[]
 	  remoteServerAutoShowPanel?: boolean // Auto-show floating panel when receiving remote messages
 	  remoteServerTerminalQrEnabled?: boolean // Print QR code to terminal for mobile app pairing (auto-enabled in headless mode)
 
@@ -1480,8 +1481,26 @@ export type Config = {
   // WhatsApp Integration Configuration
   whatsappEnabled?: boolean
   whatsappAllowFrom?: string[]  // Phone numbers allowed to message (international format without +)
+  whatsappOperatorAllowFrom?: string[] // Phone numbers allowed to issue /ops commands
   whatsappAutoReply?: boolean   // Auto-reply to messages using agent
   whatsappLogMessages?: boolean // Log message content (privacy concern)
+
+  // Discord Integration Configuration
+  discordEnabled?: boolean
+  discordBotToken?: string
+  discordDmEnabled?: boolean
+  discordRequireMention?: boolean
+  discordAllowUserIds?: string[]
+  discordAllowGuildIds?: string[]
+  discordAllowChannelIds?: string[]
+  discordAllowRoleIds?: string[]
+  discordDmAllowUserIds?: string[]
+  discordOperatorAllowUserIds?: string[]
+  discordOperatorAllowGuildIds?: string[]
+  discordOperatorAllowChannelIds?: string[]
+  discordOperatorAllowRoleIds?: string[]
+  discordDefaultProfileId?: string
+  discordLogMessages?: boolean
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean

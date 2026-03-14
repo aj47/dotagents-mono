@@ -15,7 +15,12 @@ import {
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
 import { getErrorMessage, normalizeError } from "./error-utils"
 
-export const dataFolder = path.join(app.getPath("appData"), process.env.APP_ID)
+const dataFolderOverride = process.env.DOTAGENTS_DATA_DIR?.trim()
+const globalAgentsFolderOverride = process.env.DOTAGENTS_GLOBAL_AGENTS_DIR?.trim()
+
+export const dataFolder = dataFolderOverride
+  ? path.resolve(dataFolderOverride)
+  : path.join(app.getPath("appData"), process.env.APP_ID)
 
 export const recordingsFolder = path.join(dataFolder, "recordings")
 
@@ -25,7 +30,9 @@ export const configPath = path.join(dataFolder, "config.json")
 
 // Global agents folder: ~/.agents — the canonical, shareable location for all agent config.
 // Everything lives here so it's easy to version-control, share, or distribute as a profile pack.
-export const globalAgentsFolder = path.join(os.homedir(), ".agents")
+export const globalAgentsFolder = globalAgentsFolderOverride
+  ? path.resolve(globalAgentsFolderOverride)
+  : path.join(os.homedir(), ".agents")
 
 // Legacy location (app-data/.agents) — used only for one-time migration.
 const legacyAppDataAgentsFolder = path.join(dataFolder, ".agents")
@@ -78,6 +85,15 @@ function migrateGroqTtsConfig(config: Partial<Config>): Partial<Config> {
 
 export function resolveWorkspaceAgentsFolder(): string | null {
   const globalResolved = path.resolve(globalAgentsFolder)
+
+  const envWorkspaceAgentsDir = process.env.DOTAGENTS_WORKSPACE_AGENTS_DIR
+  if (envWorkspaceAgentsDir && envWorkspaceAgentsDir.trim()) {
+    const candidate = path.isAbsolute(envWorkspaceAgentsDir)
+      ? envWorkspaceAgentsDir
+      : path.resolve(process.cwd(), envWorkspaceAgentsDir)
+    if (path.resolve(candidate) === globalResolved) return null
+    return candidate
+  }
 
   const envWorkspaceRoot = process.env.DOTAGENTS_WORKSPACE_DIR
   if (envWorkspaceRoot && envWorkspaceRoot.trim()) {
@@ -295,13 +311,29 @@ const getConfig = (): LoadedConfig => {
 	    remoteServerBindAddress: "127.0.0.1",
 	    remoteServerLogLevel: "info",
 	    remoteServerCorsOrigins: ["*"],
+		    remoteServerOperatorAllowDeviceIds: [],
 	    remoteServerAutoShowPanel: false, // Don't auto-show panel by default for remote sessions
 
     // WhatsApp Integration defaults
     whatsappEnabled: false,
     whatsappAllowFrom: [],
+    whatsappOperatorAllowFrom: [],
     whatsappAutoReply: false,
     whatsappLogMessages: false,
+
+    // Discord Integration defaults
+    discordEnabled: false,
+    discordBotToken: "",
+    discordDmEnabled: true,
+    discordRequireMention: true,
+    discordAllowUserIds: [],
+    discordAllowGuildIds: [],
+    discordAllowChannelIds: [],
+    discordOperatorAllowUserIds: [],
+    discordOperatorAllowGuildIds: [],
+    discordOperatorAllowChannelIds: [],
+    discordDefaultProfileId: undefined,
+    discordLogMessages: false,
 
     // Streamer Mode - hides sensitive info for screen sharing
     streamerModeEnabled: false,
