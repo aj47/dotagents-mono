@@ -1,5 +1,6 @@
 import type { Client, Message } from "discord.js"
 import { configStore } from "./config"
+import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
 import { runAgent } from "./remote-server"
@@ -926,7 +927,7 @@ class DiscordService {
         partials: [discord.Partials.Channel],
       })
 
-      client.once("ready", () => {
+      client.once("ready", async () => {
         this.setStatus({
           connected: true,
           connecting: false,
@@ -940,6 +941,13 @@ class DiscordService {
           activities: [{ name: "Ready to help", type: discord.ActivityType.Custom }],
         })
         this.addLog("info", `Connected as ${client.user?.username || "unknown bot"}`)
+
+        // Register slash commands
+        try {
+          await this.registerSlashCommands(discord, client)
+        } catch (err) {
+          this.addLog("warn", `Failed to register slash commands: ${err instanceof Error ? err.message : String(err)}`)
+        }
       })
 
       client.on("error", (error) => {
@@ -954,6 +962,10 @@ class DiscordService {
 
       client.on("messageCreate", (message) => {
         void this.handleMessage(message)
+      })
+
+      client.on("interactionCreate", (interaction) => {
+        void this.handleSlashCommand(interaction)
       })
 
       await client.login(token)
@@ -1181,6 +1193,330 @@ class DiscordService {
     if (!("send" in message.channel) || typeof message.channel.send !== "function") return
     for (const chunk of chunks) {
       await message.channel.send({ content: chunk })
+    }
+  }
+
+  // ── Slash Commands ───────────────────────────────────────────
+
+  private async registerSlashCommands(discord: typeof import("discord.js"), client: Client) {
+    const { SlashCommandBuilder, REST, Routes } = discord
+
+    const commands = [
+      new SlashCommandBuilder()
+        .setName("status")
+        .setDescription("Show bot status, health, and integrations"),
+
+      new SlashCommandBuilder()
+        .setName("dm")
+        .setDescription("Manage DM access control")
+        .addSubcommand((sub) =>
+          sub.setName("on").setDescription("Enable DMs (with allowlist filtering)"),
+        )
+        .addSubcommand((sub) =>
+          sub.setName("off").setDescription("Disable all DMs"),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("allow")
+            .setDescription("Add a user to the DM allowlist")
+            .addUserOption((opt) => opt.setName("user").setDescription("User to allow").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("deny")
+            .setDescription("Remove a user from the DM allowlist")
+            .addUserOption((opt) => opt.setName("user").setDescription("User to remove").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub.setName("list").setDescription("Show the DM allowlist"),
+        ),
+
+      new SlashCommandBuilder()
+        .setName("access")
+        .setDescription("Manage bot access control")
+        .addSubcommand((sub) =>
+          sub.setName("show").setDescription("Show current access rules"),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("allow-user")
+            .setDescription("Add a user to the allowlist")
+            .addUserOption((opt) => opt.setName("user").setDescription("User to allow").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("deny-user")
+            .setDescription("Remove a user from the allowlist")
+            .addUserOption((opt) => opt.setName("user").setDescription("User to remove").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("allow-role")
+            .setDescription("Add a role to the allowlist")
+            .addRoleOption((opt) => opt.setName("role").setDescription("Role to allow").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("deny-role")
+            .setDescription("Remove a role from the allowlist")
+            .addRoleOption((opt) => opt.setName("role").setDescription("Role to remove").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("allow-channel")
+            .setDescription("Add a channel to the allowlist")
+            .addChannelOption((opt) => opt.setName("channel").setDescription("Channel to allow").setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("deny-channel")
+            .setDescription("Remove a channel from the allowlist")
+            .addChannelOption((opt) => opt.setName("channel").setDescription("Channel to remove").setRequired(true)),
+        ),
+
+      new SlashCommandBuilder()
+        .setName("mention")
+        .setDescription("Configure mention requirements")
+        .addSubcommand((sub) =>
+          sub.setName("on").setDescription("Require @mention or name mention to respond (default)"),
+        )
+        .addSubcommand((sub) =>
+          sub.setName("off").setDescription("Respond to all messages in allowed channels"),
+        ),
+
+      new SlashCommandBuilder()
+        .setName("logs")
+        .setDescription("Show recent bot logs")
+        .addIntegerOption((opt) =>
+          opt.setName("count").setDescription("Number of log entries (default: 10)").setMinValue(1).setMaxValue(50),
+        ),
+
+      new SlashCommandBuilder()
+        .setName("stop")
+        .setDescription("Emergency stop — cancel all running agent tasks"),
+    ]
+
+    const rest = new REST({ version: "10" }).setToken(client.token!)
+    await rest.put(Routes.applicationCommands(client.user!.id), {
+      body: commands.map((c) => c.toJSON()),
+    })
+    this.addLog("info", `Registered ${commands.length} slash commands`)
+  }
+
+  private isSlashCommandAuthorized(userId: string): boolean {
+    const cfg = configStore.get()
+    const dmAllowList = sanitizeDiscordAllowlist(cfg.discordDmAllowUserIds)
+    // If no DM allowlist is configured, no one can use slash commands (safety default)
+    if (dmAllowList.length === 0) return false
+    return dmAllowList.includes(userId)
+  }
+
+  private async handleSlashCommand(interaction: import("discord.js").Interaction) {
+    if (!interaction.isChatInputCommand()) return
+
+    // Auth check — only DM-allowlisted users can use slash commands
+    if (!this.isSlashCommandAuthorized(interaction.user.id)) {
+      await interaction.reply({ content: "⛔ You don't have permission to use bot commands.", ephemeral: true })
+      return
+    }
+
+    const { commandName } = interaction
+
+    try {
+      switch (commandName) {
+        case "status":
+          await this.handleStatusCommand(interaction)
+          break
+        case "dm":
+          await this.handleDmCommand(interaction)
+          break
+        case "access":
+          await this.handleAccessCommand(interaction)
+          break
+        case "mention":
+          await this.handleMentionCommand(interaction)
+          break
+        case "logs":
+          await this.handleLogsCommand(interaction)
+          break
+        case "stop":
+          await this.handleStopCommand(interaction)
+          break
+        default:
+          await interaction.reply({ content: "Unknown command.", ephemeral: true })
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      this.addLog("error", `Slash command /${commandName} failed: ${msg}`)
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: `❌ Error: ${msg}`, ephemeral: true }).catch(() => {})
+      } else {
+        await interaction.reply({ content: `❌ Error: ${msg}`, ephemeral: true }).catch(() => {})
+      }
+    }
+  }
+
+  private async handleStatusCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const cfg = configStore.get()
+    const status = this.getStatus()
+    const lines = [
+      `**Bot Status**`,
+      `• Connected: ${status.connected ? "✅ yes" : "❌ no"}${status.botUsername ? ` (${status.botUsername})` : ""}`,
+      `• DMs: ${cfg.discordDmEnabled ? "✅ enabled" : "❌ disabled"}`,
+      `• Require mention: ${cfg.discordRequireMention !== false ? "yes" : "no"}`,
+      `• DM allowlist: ${(cfg.discordDmAllowUserIds || []).length} users`,
+      `• User allowlist: ${(cfg.discordAllowUserIds || []).length} users`,
+      `• Role allowlist: ${(cfg.discordAllowRoleIds || []).length} roles`,
+      `• Channel allowlist: ${(cfg.discordAllowChannelIds || []).length} channels`,
+    ]
+    await interaction.reply({ content: lines.join("\n"), ephemeral: true })
+  }
+
+  private async handleDmCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const sub = interaction.options.getSubcommand()
+    const cfg = configStore.get()
+
+    switch (sub) {
+      case "on":
+        configStore.save({ ...configStore.get(), ...{ discordDmEnabled: true } })
+        await interaction.reply({ content: "✅ DMs enabled (filtered by allowlist)", ephemeral: true })
+        break
+      case "off":
+        configStore.save({ ...configStore.get(), ...{ discordDmEnabled: false } })
+        await interaction.reply({ content: "✅ DMs disabled", ephemeral: true })
+        break
+      case "allow": {
+        const user = interaction.options.getUser("user", true)
+        const list = new Set(cfg.discordDmAllowUserIds || [])
+        list.add(user.id)
+        configStore.save({ ...configStore.get(), ...{ discordDmAllowUserIds: [...list], discordDmEnabled: true } })
+        await interaction.reply({ content: `✅ <@${user.id}> added to DM allowlist`, ephemeral: true })
+        break
+      }
+      case "deny": {
+        const user = interaction.options.getUser("user", true)
+        const list = (cfg.discordDmAllowUserIds || []).filter((id) => id !== user.id)
+        configStore.save({ ...configStore.get(), ...{ discordDmAllowUserIds: list } })
+        await interaction.reply({ content: `✅ <@${user.id}> removed from DM allowlist`, ephemeral: true })
+        break
+      }
+      case "list": {
+        const ids = cfg.discordDmAllowUserIds || []
+        if (ids.length === 0) {
+          await interaction.reply({ content: "DM allowlist is empty — no one can DM the bot.", ephemeral: true })
+        } else {
+          const mentions = ids.map((id) => `• <@${id}>`).join("\n")
+          await interaction.reply({ content: `**DM Allowlist** (${ids.length} users)\n${mentions}`, ephemeral: true })
+        }
+        break
+      }
+    }
+  }
+
+  private async handleAccessCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const sub = interaction.options.getSubcommand()
+    const cfg = configStore.get()
+
+    const updateList = (field: keyof typeof cfg, id: string, action: "add" | "remove") => {
+      const current = (cfg[field] as string[] | undefined) || []
+      const updated = action === "add" ? [...new Set([...current, id])] : current.filter((x) => x !== id)
+      configStore.save({ ...configStore.get(), ...{ [field]: updated } as Partial<typeof cfg> })
+      return updated
+    }
+
+    switch (sub) {
+      case "show": {
+        const show = (label: string, ids?: string[]) => {
+          if (!ids || ids.length === 0) return ""
+          return `• ${label}: ${ids.length} entries\n`
+        }
+        const lines = [
+          "**Access Control**",
+          show("User allowlist", cfg.discordAllowUserIds),
+          show("Role allowlist", cfg.discordAllowRoleIds),
+          show("Channel allowlist", cfg.discordAllowChannelIds),
+          show("Guild allowlist", cfg.discordAllowGuildIds),
+          show("DM allowlist", cfg.discordDmAllowUserIds),
+        ].filter(Boolean)
+        if (lines.length === 1) lines.push("No restrictions — all users can interact (when mentioned).")
+        await interaction.reply({ content: lines.join("\n"), ephemeral: true })
+        break
+      }
+      case "allow-user": {
+        const user = interaction.options.getUser("user", true)
+        updateList("discordAllowUserIds", user.id, "add")
+        await interaction.reply({ content: `✅ <@${user.id}> added to user allowlist`, ephemeral: true })
+        break
+      }
+      case "deny-user": {
+        const user = interaction.options.getUser("user", true)
+        updateList("discordAllowUserIds", user.id, "remove")
+        await interaction.reply({ content: `✅ <@${user.id}> removed from user allowlist`, ephemeral: true })
+        break
+      }
+      case "allow-role": {
+        const role = interaction.options.getRole("role", true)
+        updateList("discordAllowRoleIds", role.id, "add")
+        await interaction.reply({ content: `✅ Role **${role.name}** added to allowlist`, ephemeral: true })
+        break
+      }
+      case "deny-role": {
+        const role = interaction.options.getRole("role", true)
+        updateList("discordAllowRoleIds", role.id, "remove")
+        await interaction.reply({ content: `✅ Role **${role.name}** removed from allowlist`, ephemeral: true })
+        break
+      }
+      case "allow-channel": {
+        const channel = interaction.options.getChannel("channel", true)
+        updateList("discordAllowChannelIds", channel.id, "add")
+        await interaction.reply({ content: `✅ <#${channel.id}> added to channel allowlist`, ephemeral: true })
+        break
+      }
+      case "deny-channel": {
+        const channel = interaction.options.getChannel("channel", true)
+        updateList("discordAllowChannelIds", channel.id, "remove")
+        await interaction.reply({ content: `✅ <#${channel.id}> removed from channel allowlist`, ephemeral: true })
+        break
+      }
+    }
+  }
+
+  private async handleMentionCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const sub = interaction.options.getSubcommand()
+    if (sub === "on") {
+      configStore.save({ ...configStore.get(), ...{ discordRequireMention: true } })
+      await interaction.reply({ content: "✅ Bot now requires @mention or name mention to respond", ephemeral: true })
+    } else {
+      configStore.save({ ...configStore.get(), ...{ discordRequireMention: false } })
+      await interaction.reply({ content: "⚠️ Bot will now respond to **all** messages in allowed channels", ephemeral: true })
+    }
+  }
+
+  private async handleLogsCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const count = interaction.options.getInteger("count") ?? 10
+    const logs = this.getLogs().slice(-count)
+    if (logs.length === 0) {
+      await interaction.reply({ content: "No logs.", ephemeral: true })
+      return
+    }
+    const lines = logs.map((l) => {
+      const ts = new Date(l.timestamp).toLocaleTimeString()
+      const icon = l.level === "error" ? "🔴" : l.level === "warn" ? "🟡" : "⚪"
+      return `${icon} \`${ts}\` ${l.message}`
+    })
+    // Discord has a 2000 char limit
+    let content = lines.join("\n")
+    if (content.length > 1900) content = content.substring(0, 1900) + "\n..."
+    await interaction.reply({ content, ephemeral: true })
+  }
+
+  private async handleStopCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    await interaction.deferReply({ ephemeral: true })
+    try {
+      await emergencyStopAll()
+      await interaction.editReply({ content: "✅ Emergency stop — all running tasks cancelled" })
+    } catch (err) {
+      await interaction.editReply({ content: `❌ Stop failed: ${err instanceof Error ? err.message : String(err)}` })
     }
   }
 }
