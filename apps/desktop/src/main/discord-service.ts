@@ -797,6 +797,45 @@ const PENDING_HISTORY_MAX = 50
 /** Max age of pending messages in ms (10 minutes) */
 const PENDING_HISTORY_TTL = 10 * 60 * 1000
 
+/** Sentinel the LLM can output to suppress a reply */
+const NO_REPLY_SENTINEL = "[NO_REPLY]"
+
+/**
+ * Instruction appended to the prompt when the bot was NOT directly @mentioned.
+ * Tells the LLM it may choose not to reply.
+ */
+const DISCORD_SMART_REPLY_INSTRUCTION = `
+
+IMPORTANT — REPLY POLICY (Discord group chat):
+You were NOT directly @mentioned in this message. You are observing a group conversation.
+You should ONLY reply if:
+• Someone clearly addressed you by name and asked a question or requested help
+• You have genuinely useful, specific information to contribute that hasn't been said
+• The conversation is directly about a topic you were previously asked to help with
+
+You should NOT reply if:
+• People are just chatting casually with each other
+• The conversation doesn't need your input
+• Someone mentioned your name in passing but isn't talking to you
+• Your response would just be agreeing, acknowledging, or restating what was said
+
+If you decide not to reply, respond with ONLY the text: ${NO_REPLY_SENTINEL}
+Do NOT explain why you're not replying. Just output ${NO_REPLY_SENTINEL} and nothing else.
+`
+
+/**
+ * Check if a response is a NO_REPLY sentinel (should be suppressed)
+ */
+function isNoReplyResponse(content: string): boolean {
+  const trimmed = content.trim()
+  return (
+    trimmed === NO_REPLY_SENTINEL ||
+    trimmed === "NO_REPLY" ||
+    trimmed === "[NO_REPLY]" ||
+    trimmed.startsWith(NO_REPLY_SENTINEL) && trimmed.length < NO_REPLY_SENTINEL.length + 10
+  )
+}
+
 class DiscordService {
   private client: Client | null = null
   private status: DiscordStatus = {
@@ -1090,7 +1129,15 @@ class DiscordService {
     // Consume any buffered channel context and prepend to the prompt
     const pendingMessages = !isDirectMessage ? this.consumePendingHistory(message.channel.id) : []
     const contextSuffix = this.formatPendingContext(pendingMessages)
-    const enrichedPrompt = contextSuffix ? `${prompt}${contextSuffix}` : prompt
+
+    // Determine if the bot should be allowed to skip replying.
+    // Direct @mentions and DMs always get a reply. Name mentions and
+    // non-mention mode get the smart reply instruction so the LLM can
+    // decide whether it has something useful to say.
+    const allowNoReply = !isDirectMessage && !atMentioned
+    const smartReplyInstruction = allowNoReply ? DISCORD_SMART_REPLY_INSTRUCTION : ""
+
+    const enrichedPrompt = `${prompt}${contextSuffix}${smartReplyInstruction}`
 
     const processingChain = (this.processingChains.get(conversationId) || Promise.resolve())
       .catch(() => undefined)
@@ -1122,6 +1169,13 @@ class DiscordService {
             profileId,
           })
           const responseText = result.content?.trim() || "Done."
+
+          // Suppress NO_REPLY responses — the LLM decided it has nothing useful to add
+          if (isNoReplyResponse(responseText)) {
+            this.addLog("info", `Suppressed reply for ${conversationId} (NO_REPLY)`)
+            return
+          }
+
           await this.sendChunks(message, responseText)
           this.addLog("info", `Replied to Discord conversation ${conversationId}`)
         } catch (error) {
