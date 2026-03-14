@@ -603,6 +603,12 @@ export async function runInternalSubSession(
       conversationId = agentProfile?.conversationId;
     }
 
+    // Fallback: if no conversationId from profile, inherit from parent session
+    // This ensures Langfuse traces for sub-sessions are grouped with their parent
+    if (!conversationId) {
+      conversationId = agentSessionTracker.getConversationIdForSession(parentSessionId);
+    }
+
     // Determine effective max iterations: explicit value > config unlimited > config max > default
     const cfg = configStore.get();
     const effectiveSubSessionMaxIterations = maxIterations

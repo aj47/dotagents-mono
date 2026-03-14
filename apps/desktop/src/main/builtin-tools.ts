@@ -878,6 +878,12 @@ const toolHandlers: Record<string, ToolHandler> = {
           tail
       }
 
+      // Detect shell escaping issues and add guidance
+      const hasShellEscapingIssue = /unexpected (EOF|end of file)|unterminated (string|quote)|syntax error near/i.test(stderr + errorMessage);
+      const hint = hasShellEscapingIssue
+        ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
+        : '';
+
       return {
         content: [
           {
@@ -887,7 +893,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               command,
               cwd: cwd || process.cwd(),
               skillName,
-              error: errorMessage,
+              error: errorMessage + hint,
               exitCode,
               stdout,
               stderr,

@@ -68,21 +68,24 @@ export const acpRouterToolDefinitions = [
   },
   {
     name: 'check_agent_status',
-    description: 'Check the status of a running delegated agent task',
+    description: 'Check the status of a running delegated agent task. If runId is omitted, checks the most recent delegated run (or filters by agentName if provided).',
     inputSchema: {
       type: 'object' as const,
       properties: {
         runId: {
           type: 'string',
-          description: 'The run ID returned from a previous delegate_to_agent call',
+          description: 'The run ID returned from a previous delegate_to_agent call. If omitted, the most recent run is checked.',
         },
         taskId: {
           type: 'string',
           description: 'Alternative name for runId (use either runId or taskId)',
         },
+        agentName: {
+          type: 'string',
+          description: 'Optional agent name to filter by when runId is not provided',
+        },
       },
-      // Neither runId nor taskId is strictly required in schema since caller can use either
-      // Runtime validation handles the case where neither is provided
+      // Neither runId nor taskId is strictly required - falls back to most recent run
       required: [],
     },
   },
