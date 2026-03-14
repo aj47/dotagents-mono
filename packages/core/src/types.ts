@@ -300,3 +300,60 @@ export type { AgentStepSummary } from '@dotagents/shared'
 // Agent Progress (re-export from shared)
 // ============================================================================
 export type { AgentProgressStep, AgentProgressUpdate } from '@dotagents/shared'
+
+// ============================================================================
+// Model Info Types
+// ============================================================================
+
+/**
+ * Basic model information returned from provider APIs (OpenAI, Groq, Gemini).
+ * This is the minimal structure for displaying and selecting models.
+ */
+export interface ModelInfo {
+  id: string
+  name: string
+  description?: string
+  context_length?: number
+  created?: number
+  /** Whether this model supports speech-to-text transcription */
+  supportsTranscription?: boolean
+}
+
+/**
+ * Enhanced model information combining basic ModelInfo with models.dev data.
+ * Used when we have additional metadata from the models.dev API.
+ * Backward compatible — all enhanced fields are optional.
+ */
+export interface EnhancedModelInfo extends ModelInfo {
+  /** Model family (e.g., "GPT-4", "Claude 3") */
+  family?: string
+
+  // Capability flags from models.dev
+  supportsAttachment?: boolean
+  supportsReasoning?: boolean
+  supportsToolCalls?: boolean
+  supportsStructuredOutput?: boolean
+  supportsTemperature?: boolean
+
+  // Metadata from models.dev
+  knowledge?: string
+  releaseDate?: string
+  lastUpdated?: string
+  openWeights?: boolean
+
+  // Pricing (USD per million tokens)
+  inputCost?: number
+  outputCost?: number
+  reasoningCost?: number
+  cacheReadCost?: number
+  cacheWriteCost?: number
+
+  // Limits
+  contextLimit?: number
+  inputLimit?: number
+  outputLimit?: number
+
+  // Modalities
+  inputModalities?: string[]
+  outputModalities?: string[]
+}

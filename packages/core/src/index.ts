@@ -452,6 +452,97 @@ export type {
   AgentStepSummary,
 } from './types';
 
+// Sandbox Service
+export {
+  getSandboxState,
+  saveCurrentAsSlot,
+  saveBaseline,
+  switchToSlot,
+  restoreBaseline,
+  deleteSlot,
+  createSlotFromCurrentState,
+  renameSlot,
+  sanitizeSlotName,
+} from './sandbox-service';
+export type {
+  SandboxSlot,
+  SandboxSlotManifest,
+  SandboxState,
+  SwitchSlotResult,
+  SaveSlotResult,
+  DeleteSlotResult,
+} from './sandbox-service';
+
+// Models.dev Service
+export {
+  fetchModelsDevData,
+  getModelFromModelsDevByProviderId,
+  findBestModelMatch,
+  refreshModelsDevCache,
+  initModelsDevService,
+} from './models-dev-service';
+export type {
+  ModelsDevCost,
+  ModelsDevLimit,
+  ModelsDevModalities,
+  ModelsDevModel,
+  ModelsDevProvider,
+  ModelsDevData,
+  ModelMatchResult,
+} from './models-dev-service';
+
+// Models Service
+export {
+  fetchAvailableModels,
+  clearModelsCache,
+  fetchModelsForPreset,
+  formatModelName,
+} from './models-service';
+export type {
+  ModelInfo,
+  EnhancedModelInfo,
+} from './types';
+
+// Memory Service
+export {
+  MemoryService,
+  memoryService,
+} from './memory-service';
+
+// Agent Profile Service
+export {
+  agentProfileService,
+  createSessionSnapshotFromProfile,
+  toolConfigToMcpServerConfig,
+  getAgentProfilesPath,
+  getAgentProfileConversationsPath,
+  setBuiltinToolNamesProvider,
+  setACPRegistry,
+} from './agent-profile-service';
+
+// Skills Service
+export {
+  skillsService,
+  setBundledSkillsPath,
+  initializeBundledSkills,
+} from './skills-service';
+
+// Loop Service
+export {
+  loopService,
+  setLoopRunner,
+  setLoopSessionTracker,
+  setLoopConversationService,
+} from './loop-service';
+export type {
+  LoopStatus,
+} from './loop-service';
+
+// Profile Service (Legacy)
+export {
+  setProfileBuiltinToolNamesProvider,
+} from './profile-service';
+
 // Testing utilities
 export {
   MockPathResolver,
