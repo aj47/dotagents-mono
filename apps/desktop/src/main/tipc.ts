@@ -1521,7 +1521,7 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
-      const voice = input.voice || config.smallestTtsVoice || "magnus"
+      const voice = input.voice || config.smallestTtsVoice || "sophia"
       const apiKey = config.smallestApiKey
       if (!apiKey) {
         throw new Error("Smallest AI API key is required. Add it in Settings > Providers.")
@@ -5375,7 +5375,7 @@ async function generateSmallestTTS(
   input: { voice?: string; speed?: number },
   config: Config
 ): Promise<TTSGenerationResult> {
-  const voice = input.voice || config.smallestTtsVoice || "magnus"
+  const voice = input.voice || config.smallestTtsVoice || "sophia"
   const apiKey = config.smallestApiKey
 
   if (!apiKey) {

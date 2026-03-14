@@ -251,7 +251,7 @@ const getConfig = (): LoadedConfig => {
     geminiTtsModel: "gemini-2.5-flash-preview-tts",
     geminiTtsVoice: "Kore",
     // Smallest AI TTS defaults
-    smallestTtsVoice: "magnus",
+    smallestTtsVoice: "sophia",
     // Supertonic TTS defaults
     supertonicVoice: "M1",
     supertonicLanguage: "en",

@@ -271,12 +271,22 @@ export const getTtsVoicesForProvider = (providerId: string, ttsModel?: string) =
 };
 
 
-// Smallest AI TTS Voice Options (Lightning model)
+// Smallest AI TTS Voice Options (Lightning v3.1 model — English voices)
 export const SMALLEST_AI_TTS_VOICES = [
-  { label: "Magnus", value: "magnus" },
-  { label: "Emily", value: "emily" },
-  { label: "Jasper", value: "jasper" },
-  { label: "Aria", value: "aria" },
-  { label: "Luna", value: "luna" },
-  { label: "Ethan", value: "ethan" },
+  { label: "Emily (Female)", value: "sophia" },
+  { label: "Sandra (Female)", value: "sandra" },
+  { label: "Rachel (Female)", value: "rachel" },
+  { label: "Olivia (Female)", value: "olivia" },
+  { label: "Jessica (Female)", value: "jessica" },
+  { label: "Lauren (Female)", value: "lauren" },
+  { label: "Vanessa (Female)", value: "vanessa" },
+  { label: "Robert (Male)", value: "robert" },
+  { label: "Magnus (Male)", value: "magnus" },
+  { label: "Daniel (Male)", value: "daniel" },
+  { label: "Ethan (Male)", value: "ethan" },
+  { label: "Johnny (Male)", value: "johnny" },
+  { label: "Alex (Male)", value: "alex" },
+  { label: "Kyle (Male)", value: "kyle" },
+  { label: "Jordan (Male)", value: "jordan" },
+  { label: "Edward (British Male)", value: "edward" },
 ] as const;

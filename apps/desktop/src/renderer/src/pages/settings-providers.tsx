@@ -15,6 +15,7 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
 import { Config } from "@shared/types"
+import { SMALLEST_AI_TTS_VOICES } from "@dotagents/shared"
 
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
@@ -734,12 +735,9 @@ function SmallestProviderSection({
               value={voice}
               onChange={(e) => onSaveConfig({ smallestTtsVoice: e.target.value } as Partial<Config>)}
             >
-              <option value="magnus">Magnus</option>
-              <option value="emily">Emily</option>
-              <option value="jasper">Jasper</option>
-              <option value="aria">Aria</option>
-              <option value="luna">Luna</option>
-              <option value="ethan">Ethan</option>
+              {SMALLEST_AI_TTS_VOICES.map((v) => (
+                <option key={v.value} value={v.value}>{v.label}</option>
+              ))}
             </select>
           </div>
           <Control

@@ -95,8 +95,9 @@ describe('Voice lists', () => {
     expect(femaleVoices).toHaveLength(5)
   })
 
-  it('SMALLEST_AI_TTS_VOICES has 6 voices', () => {
-    expect(SMALLEST_AI_TTS_VOICES).toHaveLength(6)
+  it('SMALLEST_AI_TTS_VOICES has 16 voices', () => {
+    expect(SMALLEST_AI_TTS_VOICES).toHaveLength(16)
+    expect(SMALLEST_AI_TTS_VOICES.map(v => v.value)).toContain('sophia')
     expect(SMALLEST_AI_TTS_VOICES.map(v => v.value)).toContain('magnus')
   })
 
