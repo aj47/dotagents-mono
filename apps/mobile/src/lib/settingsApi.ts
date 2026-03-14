@@ -71,14 +71,8 @@ import type {
   LoopsResponse,
 } from '@dotagents/shared';
 
-// Mobile-only type: ModelPreset with slightly different shape than shared
-// Keep this local for now as the shared Settings.availablePresets uses a different shape
-export interface ModelPreset {
-  id: string;
-  name: string;
-  baseUrl: string;
-  isBuiltIn: boolean;
-}
+// ModelPreset — re-exported from shared package (single source of truth)
+export type { ModelPreset } from '@dotagents/shared';
 
 export type MemoryImportance = 'low' | 'medium' | 'high' | 'critical';
 

@@ -9,6 +9,12 @@ export interface ModelPreset {
   baseUrl: string;
   apiKey?: string;
   isBuiltIn?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+  /** Model for dual-model summarization (weak model) */
+  summarizationModel?: string;
 }
 
 export const STT_PROVIDERS = [

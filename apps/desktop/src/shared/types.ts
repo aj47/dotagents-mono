@@ -160,23 +160,8 @@ export interface AgentMemory {
   userNotes?: string
 }
 
-// Message Queue Types
-export interface QueuedMessage {
-  id: string
-  conversationId: string
-  // Session that was active when this message was queued.
-  sessionId?: string
-  text: string
-  createdAt: number
-  status: "pending" | "processing" | "cancelled" | "failed"
-  errorMessage?: string
-  addedToHistory?: boolean
-}
-
-export interface MessageQueue {
-  conversationId: string
-  messages: QueuedMessage[]
-}
+// Message Queue Types — re-exported from shared package
+export type { QueuedMessage, MessageQueue } from '@dotagents/shared'
 
 // Conversation Types
 export interface ConversationMessage {
@@ -756,18 +741,9 @@ export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): AgentProfi
   }
 }
 
-export interface ModelPreset {
-  id: string
-  name: string
-  baseUrl: string
-  apiKey: string
-  isBuiltIn?: boolean
-  createdAt?: number
-  updatedAt?: number
-  mcpToolsModel?: string
-  transcriptProcessingModel?: string
-  summarizationModel?: string  // Model for dual-model summarization (weak model)
-}
+// ModelPreset — re-exported from shared package (superset of all platform definitions)
+import type { ModelPreset } from '@dotagents/shared'
+export type { ModelPreset } from '@dotagents/shared'
 
 // ============================================================================
 // Model Information Types

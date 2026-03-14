@@ -4,7 +4,7 @@
  * All provider constants, types, and helpers are now in the shared package.
  */
 
-import { ModelPreset } from "./types"
+import type { ModelPreset } from '@dotagents/shared'
 import { OPENAI_COMPATIBLE_PRESETS, DEFAULT_MODEL_PRESET_ID } from '@dotagents/shared'
 
 // Re-export all provider constants and types from shared package
@@ -30,18 +30,17 @@ export {
 } from '@dotagents/shared'
 
 export type {
+  ModelPreset,
   STT_PROVIDER_ID,
   CHAT_PROVIDER_ID,
   TTS_PROVIDER_ID,
   OPENAI_COMPATIBLE_PRESET_ID,
 } from '@dotagents/shared'
 
-// Desktop-specific implementations that use desktop's ModelPreset type (with required apiKey)
-// Note: The shared package's ModelPreset has optional apiKey, but desktop requires it
+// Desktop-specific overrides of shared helpers that ensure apiKey is always present (as empty string)
 
 /**
  * Get built-in presets as ModelPreset objects (without API keys)
- * Uses desktop's ModelPreset type which requires apiKey to be present (as empty string)
  */
 export const getBuiltInModelPresets = (): ModelPreset[] => {
   return OPENAI_COMPATIBLE_PRESETS.filter(p => p.value !== "custom").map(preset => ({

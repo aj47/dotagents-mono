@@ -1,12 +1,15 @@
-// Dependency-free constants for built-in tool names that may be referenced by both
-// main and renderer code.
+// Constants for built-in tool names that may be referenced by both main and renderer code.
+
+import { RESPOND_TO_USER_TOOL } from "@dotagents/shared"
+
+// Re-export RESPOND_TO_USER_TOOL from shared — single source of truth
+export { RESPOND_TO_USER_TOOL } from "@dotagents/shared"
 
 // The virtual server name for built-in tools (single source of truth; imported by main + renderer)
 // Built-in tools no longer use a prefix — they are registered as plain tool names.
 // This constant is kept for backward compatibility (e.g., UI grouping, reserved name checks).
 export const BUILTIN_SERVER_NAME = "dotagents-internal"
 
-export const RESPOND_TO_USER_TOOL = "respond_to_user"
 export const MARK_WORK_COMPLETE_TOOL = "mark_work_complete"
 
 // Internal completion nudge message: include in the LLM context, but hide from the progress UI.

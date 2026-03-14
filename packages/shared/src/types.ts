@@ -61,6 +61,8 @@ export interface ChatApiResponse {
 export interface QueuedMessage {
   id: string;
   conversationId: string;
+  /** Session that was active when this message was queued. */
+  sessionId?: string;
   text: string;
   createdAt: number;
   status: 'pending' | 'processing' | 'cancelled' | 'failed';
