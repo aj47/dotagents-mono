@@ -52,7 +52,7 @@ const config: Config = {
     image: 'img/dotagents-social-card.png',
     colorMode: {
       defaultMode: 'dark',
-      respectPrefersColorScheme: true,
+      respectPrefersColorScheme: false,
     },
     navbar: {
       title: 'DotAgents',
@@ -70,6 +70,11 @@ const config: Config = {
         {
           href: 'https://dotagents.app',
           label: 'Website',
+          position: 'left',
+        },
+        {
+          href: 'https://dotagentsprotocol.com',
+          label: 'Protocol',
           position: 'left',
         },
         {
@@ -135,6 +140,10 @@ const config: Config = {
             {
               label: 'Website',
               href: 'https://dotagents.app',
+            },
+            {
+              label: 'Protocol',
+              href: 'https://dotagentsprotocol.com',
             },
           ],
         },
