@@ -13,6 +13,7 @@ import {
   KITTEN_TTS_VOICES,
   SUPERTONIC_TTS_VOICES,
   SUPERTONIC_TTS_LANGUAGES,
+  SMALLEST_AI_TTS_VOICES,
   OPENAI_COMPATIBLE_PRESETS,
   DEFAULT_MODEL_PRESET_ID,
   getBuiltInModelPresets,
@@ -58,6 +59,7 @@ describe('TTS_PROVIDERS', () => {
     expect(values).toContain('gemini')
     expect(values).toContain('kitten')
     expect(values).toContain('supertonic')
+    expect(values).toContain('smallest')
   })
 })
 
@@ -91,6 +93,11 @@ describe('Voice lists', () => {
     const femaleVoices = SUPERTONIC_TTS_VOICES.filter(v => String(v.value).startsWith('F'))
     expect(maleVoices).toHaveLength(5)
     expect(femaleVoices).toHaveLength(5)
+  })
+
+  it('SMALLEST_AI_TTS_VOICES has 6 voices', () => {
+    expect(SMALLEST_AI_TTS_VOICES).toHaveLength(6)
+    expect(SMALLEST_AI_TTS_VOICES.map(v => v.value)).toContain('magnus')
   })
 
   it('SUPERTONIC_TTS_LANGUAGES includes expected languages', () => {
@@ -265,6 +272,10 @@ describe('getTtsVoicesForProvider', () => {
 
   it('returns Supertonic voices for "supertonic"', () => {
     expect(getTtsVoicesForProvider('supertonic')).toBe(SUPERTONIC_TTS_VOICES)
+  })
+
+  it('returns Smallest AI voices for "smallest"', () => {
+    expect(getTtsVoicesForProvider('smallest')).toBe(SMALLEST_AI_TTS_VOICES)
   })
 
   it('returns empty array for unknown provider', () => {

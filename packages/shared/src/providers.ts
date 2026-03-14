@@ -263,6 +263,8 @@ export const getTtsVoicesForProvider = (providerId: string, ttsModel?: string) =
       return GEMINI_TTS_VOICES;
     case 'supertonic':
       return SUPERTONIC_TTS_VOICES;
+    case 'smallest':
+      return SMALLEST_AI_TTS_VOICES;
     default:
       return [];
   }
