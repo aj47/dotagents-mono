@@ -1,0 +1,112 @@
+.heroBanner {
+  padding: 5rem 0 4rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 3rem 1.5rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* Quick Links Section */
+.quickLinks {
+  padding: 2rem 0;
+  background: rgba(124, 58, 237, 0.02);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+[data-theme='dark'] .quickLinks {
+  background: rgba(167, 139, 250, 0.03);
+  border-bottom-color: rgba(167, 139, 250, 0.08);
+}
+
+.quickLinksGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media screen and (max-width: 768px) {
+  .quickLinksGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .quickLinksGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.quickLink {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  color: inherit;
+}
+
+.quickLink:hover {
+  text-decoration: none;
+  color: inherit;
+  transform: translateY(-1px);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.12);
+}
+
+.quickLink strong {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.quickLink span {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* Features Section */
+.features {
+  padding: 3rem 0 4rem;
+}
+
+.featureCard {
+  display: block;
+  padding: 1.5rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.featureCard:hover {
+  text-decoration: none;
+  color: inherit;
+  transform: translateY(-3px);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12);
+}
+
+[data-theme='dark'] .featureCard {
+  border-color: rgba(167, 139, 250, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme='dark'] .featureCard:hover {
+  box-shadow: 0 8px 24px rgba(167, 139, 250, 0.08);
+}
