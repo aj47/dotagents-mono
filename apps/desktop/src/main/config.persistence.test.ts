@@ -1,8 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { Config } from "@shared/types"
-
-const mockWriteAgentsLayerFromConfig = vi.fn()
-const mockSafeWriteJsonFileSync = vi.fn()
 
 vi.mock("electron", () => ({
   app: {
@@ -11,141 +8,54 @@ vi.mock("electron", () => ({
   },
 }))
 
-vi.mock("./system-prompts-default", () => ({
-  DEFAULT_SYSTEM_PROMPT: "Default system prompt",
-}))
-
-vi.mock("./agents-files/modular-config", () => ({
-  findAgentsDirUpward: vi.fn(() => null),
-  getAgentsLayerPaths: vi.fn((agentsDir: string) => ({ agentsDir })),
-  loadMergedAgentsConfig: vi.fn(() => ({ merged: {}, hasAnyAgentsFiles: false })),
-  writeAgentsLayerFromConfig: mockWriteAgentsLayerFromConfig,
-}))
-
-vi.mock("./agents-files/safe-file", () => ({
-  safeReadJsonFileSync: vi.fn(() => ({})),
-  safeWriteJsonFileSync: mockSafeWriteJsonFileSync,
-}))
-
-describe("config persistence", () => {
-  beforeEach(() => {
+/**
+ * NOTE: The config persistence logic (persistConfigToDisk, trySaveConfig) has been
+ * extracted to @dotagents/core. Detailed unit tests for persistence behavior
+ * (fallback on failure, dual-write, etc.) are in packages/core/src/config.persistence.test.ts.
+ *
+ * This test verifies that the desktop re-export layer works correctly.
+ */
+describe("config desktop re-exports", () => {
+  it("re-exports persistConfigToDisk from @dotagents/core", async () => {
     process.env.APP_ID = "dotagents-test"
-    vi.resetModules()
-    vi.clearAllMocks()
-    mockWriteAgentsLayerFromConfig.mockReset()
-    mockSafeWriteJsonFileSync.mockReset()
+    const configModule = await import("./config")
+
+    expect(configModule.persistConfigToDisk).toBeDefined()
+    expect(typeof configModule.persistConfigToDisk).toBe("function")
   })
 
-  it("falls back to the legacy config file when writing .agents files fails", async () => {
-    mockWriteAgentsLayerFromConfig.mockImplementation(() => {
-      throw new Error("EACCES: permission denied")
-    })
+  it("re-exports trySaveConfig from @dotagents/core", async () => {
+    process.env.APP_ID = "dotagents-test"
+    const configModule = await import("./config")
 
-    const { persistConfigToDisk } = await import("./config")
-    mockWriteAgentsLayerFromConfig.mockClear()
-    mockSafeWriteJsonFileSync.mockClear()
-
-    const result = persistConfigToDisk({ launchAtLogin: true } as Config)
-
-    expect(result).toEqual({
-      savedToAgentsLayer: false,
-      savedToLegacyConfig: true,
-    })
-    expect(mockSafeWriteJsonFileSync).toHaveBeenCalledTimes(1)
+    expect(configModule.trySaveConfig).toBeDefined()
+    expect(typeof configModule.trySaveConfig).toBe("function")
   })
 
-  it("throws when every persistence target fails", async () => {
-    mockWriteAgentsLayerFromConfig.mockImplementation(() => {
-      throw new Error("EACCES: permission denied")
-    })
-    mockSafeWriteJsonFileSync.mockImplementation(() => {
-      throw new Error("ENOSPC: no space left on device")
-    })
+  it("provides backward-compatible path constants", async () => {
+    process.env.APP_ID = "dotagents-test"
+    const configModule = await import("./config")
 
-    const { persistConfigToDisk } = await import("./config")
-    mockWriteAgentsLayerFromConfig.mockClear()
-    mockSafeWriteJsonFileSync.mockClear()
+    expect(configModule.dataFolder).toBeDefined()
+    expect(typeof configModule.dataFolder).toBe("string")
+    expect(configModule.dataFolder).toContain("dotagents-test")
 
-    expect(() => persistConfigToDisk({ launchAtLogin: true } as Config)).toThrow(
-      /Failed to save settings to disk\. Could not write the \.agents config files \(EACCES: permission denied\) Could not write the legacy config file \(ENOSPC: no space left on device\)/,
-    )
+    expect(configModule.recordingsFolder).toContain("recordings")
+    expect(configModule.conversationsFolder).toContain("conversations")
+    expect(configModule.configPath).toContain("config.json")
   })
 
-  it("keeps the in-memory config unchanged when persistence fails everywhere", async () => {
+  it("provides configStore with get/save/reload methods", async () => {
+    process.env.APP_ID = "dotagents-test"
     const { configStore } = await import("./config")
-    const original = configStore.get()
 
-    mockWriteAgentsLayerFromConfig.mockClear()
-    mockSafeWriteJsonFileSync.mockClear()
-    mockWriteAgentsLayerFromConfig.mockImplementation(() => {
-      throw new Error("EACCES: permission denied")
-    })
-    mockSafeWriteJsonFileSync.mockImplementation(() => {
-      throw new Error("EROFS: read-only file system")
-    })
+    expect(configStore).toBeDefined()
+    expect(typeof configStore.get).toBe("function")
+    expect(typeof configStore.save).toBe("function")
+    expect(typeof configStore.reload).toBe("function")
 
-    expect(() =>
-      configStore.save({
-        ...original,
-        launchAtLogin: !(original.launchAtLogin ?? false),
-      } as Config),
-    ).toThrow(/Failed to save settings to disk/)
-
-    expect(configStore.get()).toEqual(original)
-  })
-
-  describe("trySaveConfig", () => {
-    it("returns null when persistence succeeds", async () => {
-      const { trySaveConfig } = await import("./config")
-      mockWriteAgentsLayerFromConfig.mockClear()
-      mockSafeWriteJsonFileSync.mockClear()
-
-      const result = trySaveConfig({ launchAtLogin: true } as Config)
-
-      expect(result).toBeNull()
-      expect(mockWriteAgentsLayerFromConfig).toHaveBeenCalledTimes(1)
-      expect(mockSafeWriteJsonFileSync).toHaveBeenCalledTimes(1)
-    })
-
-    it("returns an Error when every persistence target fails", async () => {
-      const { trySaveConfig } = await import("./config")
-      mockWriteAgentsLayerFromConfig.mockClear()
-      mockSafeWriteJsonFileSync.mockClear()
-      mockWriteAgentsLayerFromConfig.mockImplementation(() => {
-        throw new Error("EACCES: permission denied")
-      })
-      mockSafeWriteJsonFileSync.mockImplementation(() => {
-        throw new Error("ENOSPC: no space left on device")
-      })
-
-      const result = trySaveConfig({ launchAtLogin: true } as Config)
-
-      expect(result).toBeInstanceOf(Error)
-      expect(result?.message).toMatch(
-        /Failed to save settings to disk\. Could not write the \.agents config files \(EACCES: permission denied\) Could not write the legacy config file \(ENOSPC: no space left on device\)/,
-      )
-    })
-
-    it("leaves the in-memory config unchanged on failure", async () => {
-      const { configStore, trySaveConfig } = await import("./config")
-      const original = configStore.get()
-
-      mockWriteAgentsLayerFromConfig.mockClear()
-      mockSafeWriteJsonFileSync.mockClear()
-      mockWriteAgentsLayerFromConfig.mockImplementation(() => {
-        throw new Error("EACCES: permission denied")
-      })
-      mockSafeWriteJsonFileSync.mockImplementation(() => {
-        throw new Error("EROFS: read-only file system")
-      })
-
-      const result = trySaveConfig({
-        ...original,
-        launchAtLogin: !(original.launchAtLogin ?? false),
-      } as Config)
-
-      expect(result).toBeInstanceOf(Error)
-      expect(configStore.get()).toEqual(original)
-    })
+    const config = configStore.get()
+    expect(config).toBeDefined()
+    expect(typeof config).toBe("object")
   })
 })

@@ -19,6 +19,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.1
         version: 3.0.1(zod@3.25.76)
+      '@dotagents/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@dotagents/shared':
         specifier: workspace:^
         version: link:../../packages/shared
@@ -19345,7 +19348,7 @@ snapshots:
   metro-source-map@0.83.3:
     dependencies:
       '@babel/traverse': 7.28.5
-      '@babel/traverse--for-generate-function-map': '@babel/traverse@7.28.5'
+      '@babel/traverse--for-generate-function-map': '@babel/traverse@7.29.0'
       '@babel/types': 7.28.5
       flow-enums-runtime: 0.0.6
       invariant: 2.2.4
