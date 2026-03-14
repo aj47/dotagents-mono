@@ -3,6 +3,9 @@ import type {
   ToolResult,
   ConversationHistoryMessage,
   ChatApiResponse,
+  AgentProgressUpdate,
+  AgentProgressStep,
+  OnProgressCallback,
 } from '@dotagents/shared';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
 import { Platform } from 'react-native';
