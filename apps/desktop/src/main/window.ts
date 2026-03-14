@@ -218,6 +218,8 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
 
   // Hide floating panel when main window is focused (if setting is enabled)
   // But skip hiding if panel was intentionally opened alongside main window
+  // or if the cursor is over/near the panel (focus was a side-effect of clicking
+  // on the non-focusable panel window)
   win.on("focus", () => {
     const config = configStore.get()
     if (config.hidePanelWhenMainFocused !== false) {
@@ -229,6 +231,28 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
           logApp("[createMainWindow] Main window focused - skipping panel hide (panel opened with main)")
           return
         }
+
+        // Don't hide panel if cursor is over/near the panel.
+        // The panel is non-focusable, so clicking/dragging on it causes the OS
+        // to give focus to the main window behind it. Detect this by checking
+        // if the mouse is within the panel bounds (with a small margin for edges).
+        try {
+          const cursor = screen.getCursorScreenPoint()
+          const panelBounds = panel.getBounds()
+          const margin = 20 // px margin for drag handles / resize edges
+          if (
+            cursor.x >= panelBounds.x - margin &&
+            cursor.x <= panelBounds.x + panelBounds.width + margin &&
+            cursor.y >= panelBounds.y - margin &&
+            cursor.y <= panelBounds.y + panelBounds.height + margin
+          ) {
+            logApp("[createMainWindow] Main window focused - skipping panel hide (cursor near panel)")
+            return
+          }
+        } catch (e) {
+          logApp("[createMainWindow] Failed to check cursor position:", e)
+        }
+
         logApp("[createMainWindow] Main window focused - hiding floating panel")
         panelHiddenByMainFocus = true
         panel.hide()
