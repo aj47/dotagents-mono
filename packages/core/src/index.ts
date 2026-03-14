@@ -543,6 +543,102 @@ export {
   setProfileBuiltinToolNamesProvider,
 } from './profile-service';
 
+// MCP Utils
+export {
+  inferTransportType,
+  normalizeMcpServerConfig,
+  normalizeMcpConfig,
+} from './mcp-utils';
+
+// MCP Elicitation
+export {
+  requestElicitation,
+  resolveElicitation,
+  handleElicitationComplete,
+  cancelAllElicitations,
+  getPendingElicitationCount,
+  setElicitationUserInteraction,
+  setElicitationProgressEmitter,
+} from './mcp-elicitation';
+
+// MCP Sampling
+export {
+  requestSampling,
+  executeSampling,
+  resolveSampling,
+  cancelAllSamplingRequests,
+  setSamplingProgressEmitter,
+} from './mcp-sampling';
+
+// Builtin Tool Definitions
+export {
+  BUILTIN_SERVER_NAME,
+  builtinToolDefinitions,
+  getBuiltinToolNames,
+  setAcpRouterToolDefinitions,
+  getAcpRouterToolDefinitions,
+} from './builtin-tool-definitions';
+export type { BuiltinToolDefinition } from './builtin-tool-definitions';
+
+// Builtin Tools
+export {
+  builtinTools,
+  executeBuiltinTool,
+  isBuiltinTool,
+  setBuiltinToolsSessionTracker,
+  setBuiltinToolsMessageQueue,
+  setBuiltinToolsEmergencyStop,
+  setBuiltinToolsMcpService,
+  setBuiltinToolsACPRouter,
+} from './builtin-tools';
+export type {
+  BuiltinToolsSessionTracker,
+  BuiltinToolsMessageQueue,
+  EmergencyStopFn,
+  BuiltinToolsMcpService,
+  BuiltinToolsACPRouter,
+} from './builtin-tools';
+
+// MCP Service
+export {
+  MCPService,
+  mcpService,
+  WHATSAPP_SERVER_NAME,
+  WHATSAPP_DEFAULT_ENABLED_TOOLS,
+  getInternalWhatsAppServerPaths,
+  getInternalWhatsAppServerPath,
+  isInternalServer,
+  handleWhatsAppToggle,
+  setMCPServicePathResolver,
+  setMCPServiceUserInteraction,
+  setMCPServiceOAuthFactory,
+  setMCPServiceOAuthStorage,
+} from './mcp-service';
+export type {
+  MCPOAuthClient,
+  MCPOAuthStorage,
+} from './mcp-service';
+
+// MCP-related types
+export type {
+  MCPTransportType,
+  MCPConfig,
+  MCPServerConfig,
+  OAuthConfig,
+  ServerLogEntry,
+  ProfilesData,
+  ElicitationFormField,
+  ElicitationFormSchema,
+  ElicitationFormRequest,
+  ElicitationUrlRequest,
+  ElicitationRequest,
+  ElicitationResult,
+  SamplingMessageContent,
+  SamplingMessage,
+  SamplingRequest,
+  SamplingResult,
+} from './types';
+
 // Testing utilities
 export {
   MockPathResolver,

@@ -377,6 +377,9 @@ importers:
       '@dotagents/shared':
         specifier: workspace:*
         version: link:../shared
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.24.3
+        version: 1.25.1(hono@4.11.1)(zod@3.25.76)
       ai:
         specifier: ^6.0.3
         version: 6.0.3(zod@3.25.76)

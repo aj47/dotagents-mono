@@ -22,6 +22,7 @@
     "@dotagents/shared": "workspace:*",
     "@ai-sdk/google": "^3.0.1",
     "@ai-sdk/openai": "^3.0.1",
+    "@modelcontextprotocol/sdk": "^1.24.3",
     "ai": "^6.0.3",
     "openai": "^5.10.2",
     "zod": "^3.25.76"

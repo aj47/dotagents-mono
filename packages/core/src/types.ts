@@ -302,6 +302,150 @@ export type { AgentStepSummary } from '@dotagents/shared'
 export type { AgentProgressStep, AgentProgressUpdate } from '@dotagents/shared'
 
 // ============================================================================
+// MCP Server Configuration Types
+// ============================================================================
+
+export type MCPTransportType = "stdio" | "websocket" | "streamableHttp"
+
+export interface OAuthConfig {
+  clientId?: string
+  clientSecret?: string
+  authorizeUrl?: string
+  tokenUrl?: string
+  revocationUrl?: string
+  registrationUrl?: string
+  scope?: string
+  useDiscovery?: boolean
+  useDynamicRegistration?: boolean
+  redirectUri?: string
+  pendingAuth?: {
+    codeVerifier: string
+    state: string
+  }
+}
+
+export interface MCPServerConfig {
+  transport?: MCPTransportType
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  url?: string
+  headers?: Record<string, string>
+  oauth?: OAuthConfig
+  timeout?: number
+  disabled?: boolean
+}
+
+export interface MCPConfig {
+  mcpServers: Record<string, MCPServerConfig>
+}
+
+export interface ServerLogEntry {
+  timestamp: number
+  message: string
+}
+
+// ============================================================================
+// MCP Elicitation Types (Protocol 2025-11-25)
+// ============================================================================
+
+export interface ElicitationFormField {
+  type: "string" | "number" | "boolean" | "enum"
+  title?: string
+  description?: string
+  default?: string | number | boolean
+  minLength?: number
+  maxLength?: number
+  format?: "email" | "uri" | "date" | "date-time"
+  minimum?: number
+  maximum?: number
+  enum?: string[]
+  enumNames?: string[]
+}
+
+export interface ElicitationFormSchema {
+  type: "object"
+  properties: Record<string, ElicitationFormField>
+  required?: string[]
+}
+
+export interface ElicitationFormRequest {
+  mode: "form"
+  serverName: string
+  message: string
+  requestedSchema: ElicitationFormSchema
+  requestId: string
+}
+
+export interface ElicitationUrlRequest {
+  mode: "url"
+  serverName: string
+  message: string
+  url: string
+  elicitationId: string
+  requestId: string
+}
+
+export type ElicitationRequest = ElicitationFormRequest | ElicitationUrlRequest
+
+export interface ElicitationResult {
+  action: "accept" | "decline" | "cancel"
+  content?: Record<string, string | number | boolean | string[]>
+}
+
+// ============================================================================
+// MCP Sampling Types (Protocol 2025-11-25)
+// ============================================================================
+
+export interface SamplingMessageContent {
+  type: "text" | "image" | "audio"
+  text?: string
+  data?: string
+  mimeType?: string
+}
+
+export interface SamplingMessage {
+  role: "user" | "assistant"
+  content: SamplingMessageContent | SamplingMessageContent[]
+}
+
+export interface SamplingRequest {
+  serverName: string
+  requestId: string
+  messages: SamplingMessage[]
+  systemPrompt?: string
+  maxTokens: number
+  temperature?: number
+  modelPreferences?: {
+    hints?: Array<{ name?: string }>
+    costPriority?: number
+    speedPriority?: number
+    intelligencePriority?: number
+  }
+}
+
+export interface SamplingResult {
+  approved: boolean
+  model?: string
+  content?: SamplingMessageContent
+  stopReason?: string
+}
+
+// ============================================================================
+// ProfilesData (legacy profile storage)
+// ============================================================================
+
+export type ProfilesData = {
+  profiles: Array<{
+    id: string
+    name?: string
+    mcpServerConfig?: ProfileMcpServerConfig
+    [key: string]: unknown
+  }>
+  currentProfileId?: string
+}
+
+// ============================================================================
 // Model Info Types
 // ============================================================================
 

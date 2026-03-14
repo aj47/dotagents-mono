@@ -54,4 +54,11 @@ export interface PathResolver {
    * Electron equivalent: `app.getPath('logs')`
    */
   getLogsPath(): string;
+
+  /**
+   * Returns the path to the application root directory.
+   * Electron equivalent: `app.getAppPath()`
+   * CLI: the module's directory or process.cwd().
+   */
+  getAppPath?(): string;
 }
