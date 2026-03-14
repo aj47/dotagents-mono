@@ -63,6 +63,7 @@ COMMANDS=(
   "/profiles" "/conversations" "/logs"
   "/discord" "/discord status" "/discord enable" "/discord disable"
   "/discord token" "/discord profile" "/discord logs" "/discord connect" "/discord disconnect"
+  "/discord mention on" "/discord mention off"
   "/discord access" "/discord dm" "/discord dm on" "/discord dm off"
   "/discord dm allow" "/discord dm deny" "/discord allow user" "/discord allow role"
   "/discord allow channel" "/discord allow guild" "/discord deny user" "/discord deny role"
@@ -137,6 +138,8 @@ $(echo -e "${B}Discord${R}")
 
 $(echo -e "${B}Discord Access Control${R}")
   $(echo -e "${C}/discord access${R}")           Show current access rules
+  $(echo -e "${C}/discord mention on${R}")       Require @mention to respond (default)
+  $(echo -e "${C}/discord mention off${R}")      Respond to all messages in allowed channels
   $(echo -e "${C}/discord dm on|off${R}")         Enable/disable DMs
   $(echo -e "${C}/discord dm allow <uid>${R}")    Add user to DM allowlist
   $(echo -e "${C}/discord dm deny <uid>${R}")     Remove user from DM allowlist
@@ -535,6 +538,17 @@ while true; do
     "/discord dm off")
       api_patch /v1/settings -d '{"discordDmEnabled":false}' > /dev/null \
         && echo -e "${G}✓ DMs disabled${R}" \
+        || echo -e "${RED}✗ Failed${R}" ;;
+
+    "/discord mention on")
+      api_patch /v1/settings -d '{"discordRequireMention":true}' > /dev/null \
+        && echo -e "${G}✓ Bot now requires @mention to respond in channels${R}" \
+        && echo -e "${D}  Non-mentioned messages will still be recorded as context${R}" \
+        || echo -e "${RED}✗ Failed${R}" ;;
+    "/discord mention off")
+      api_patch /v1/settings -d '{"discordRequireMention":false}' > /dev/null \
+        && echo -e "${Y}⚠ Bot will now respond to ALL messages in allowed channels${R}" \
+        && echo -e "${D}  Consider using channel/role allowlists to limit scope${R}" \
         || echo -e "${RED}✗ Failed${R}" ;;
 
     /discord\ dm\ allow\ *|/discord\ dm\ deny\ *|/discord\ allow\ *|/discord\ deny\ *)

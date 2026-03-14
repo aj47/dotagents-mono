@@ -783,6 +783,18 @@ async function executeDiscordOperatorCommand(command: ParsedOperatorCommand): Pr
   }
 }
 
+interface PendingMessage {
+  authorName: string
+  authorId: string
+  content: string
+  timestamp: number
+}
+
+/** Max messages to buffer per channel before oldest are dropped */
+const PENDING_HISTORY_MAX = 50
+/** Max age of pending messages in ms (10 minutes) */
+const PENDING_HISTORY_TTL = 10 * 60 * 1000
+
 class DiscordService {
   private client: Client | null = null
   private status: DiscordStatus = {
@@ -795,6 +807,32 @@ class DiscordService {
   private readonly maxLogs = 200
   private startPromise: Promise<{ success: boolean; error?: string }> | null = null
   private readonly processingChains = new Map<string, Promise<void>>()
+  /** Buffered non-mentioned messages per channel, injected as context when bot IS mentioned */
+  private readonly pendingHistory = new Map<string, PendingMessage[]>()
+
+  private addPendingMessage(channelId: string, msg: PendingMessage) {
+    const list = this.pendingHistory.get(channelId) ?? []
+    list.push(msg)
+    // Trim to max size and TTL
+    const cutoff = Date.now() - PENDING_HISTORY_TTL
+    const trimmed = list.filter((m) => m.timestamp > cutoff).slice(-PENDING_HISTORY_MAX)
+    this.pendingHistory.set(channelId, trimmed)
+  }
+
+  private consumePendingHistory(channelId: string): PendingMessage[] {
+    const list = this.pendingHistory.get(channelId) ?? []
+    this.pendingHistory.delete(channelId)
+    const cutoff = Date.now() - PENDING_HISTORY_TTL
+    return list.filter((m) => m.timestamp > cutoff)
+  }
+
+  private formatPendingContext(messages: PendingMessage[]): string {
+    if (messages.length === 0) return ""
+    const lines = messages.map(
+      (m) => `[${m.authorName}]: ${m.content}`,
+    )
+    return `\n\n<recent_channel_context>\nRecent messages in this channel (for context — you were not mentioned in these):\n${lines.join("\n")}\n</recent_channel_context>`
+  }
 
   private addLog(level: DiscordLogLevel, message: string) {
     const entry = {
@@ -933,6 +971,7 @@ class DiscordService {
         this.client = null
       }
       this.processingChains.clear()
+      this.pendingHistory.clear()
       this.setStatus({ connected: false, connecting: false, botId: undefined, botUsername: undefined })
       this.addLog("info", "Discord integration stopped")
       return { success: true }
@@ -981,7 +1020,15 @@ class DiscordService {
     })
 
     if (rejectionReason) {
-      this.addLog("info", `Ignored Discord message from ${message.author.id}: ${rejectionReason}`)
+      // Buffer non-mentioned messages in group channels as context for when the bot IS mentioned
+      if (rejectionReason === "bot mention required" && !isDirectMessage) {
+        this.addPendingMessage(message.channel.id, {
+          authorName: message.member?.displayName || message.author.displayName || message.author.username,
+          authorId: message.author.id,
+          content: message.content.substring(0, 500), // Cap at 500 chars
+          timestamp: Date.now(),
+        })
+      }
       return
     }
 
@@ -1017,12 +1064,18 @@ class DiscordService {
       isDirectMessage,
     })
 
+    // Consume any buffered channel context and prepend to the prompt
+    const pendingMessages = !isDirectMessage ? this.consumePendingHistory(message.channel.id) : []
+    const contextSuffix = this.formatPendingContext(pendingMessages)
+    const enrichedPrompt = contextSuffix ? `${prompt}${contextSuffix}` : prompt
+
     const processingChain = (this.processingChains.get(conversationId) || Promise.resolve())
       .catch(() => undefined)
       .then(async () => {
         const shouldLogMessages = cfg.discordLogMessages ?? false
         const promptSummary = shouldLogMessages ? `: ${prompt}` : ` (${prompt.length} chars)`
-        this.addLog("info", `Processing Discord message for ${conversationId}${promptSummary}`)
+        const contextNote = pendingMessages.length > 0 ? ` (+${pendingMessages.length} context msgs)` : ""
+        this.addLog("info", `Processing Discord message for ${conversationId}${promptSummary}${contextNote}`)
 
         // Show typing indicator while processing (refreshes every 8s since Discord expires it at 10s)
         let typingInterval: ReturnType<typeof setInterval> | undefined
@@ -1041,7 +1094,7 @@ class DiscordService {
 
         try {
           const result = await runAgent({
-            prompt,
+            prompt: enrichedPrompt,
             conversationId,
             profileId,
           })
