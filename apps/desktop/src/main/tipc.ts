@@ -1514,6 +1514,43 @@ export const router = {
       }
     }),
 
+  synthesizeWithSmallest: t.procedure
+    .input<{
+      text: string
+      voice?: string
+    }>()
+    .action(async ({ input }) => {
+      const config = configStore.get()
+      const voice = input.voice || config.smallestTtsVoice || "magnus"
+      const apiKey = config.smallestApiKey
+      if (!apiKey) {
+        throw new Error("Smallest AI API key is required. Add it in Settings > Providers.")
+      }
+      const response = await fetch("https://api.smallest.ai/waves/v1/lightning-v3.1/get_speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: input.text,
+          voice_id: voice,
+          sample_rate: 24000,
+          output_format: "wav",
+          speed: 1.0,
+        }),
+      })
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Smallest AI API error: ${response.status} - ${errorText}`)
+      }
+      const audioBuffer = await response.arrayBuffer()
+      return {
+        audio: Buffer.from(audioBuffer).toString('base64'),
+        sampleRate: 24000,
+      }
+    }),
+
   createRecording: t.procedure
     .input<{
       recording: ArrayBuffer

@@ -661,26 +661,13 @@ function SmallestProviderSection({
     setIsTesting(true)
     setTestError(null)
     try {
-      const response = await fetch("https://api.smallest.ai/waves/v1/lightning-v3.1/get_speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: "Hello! This is a test of the Smallest AI text to speech voice.",
-          voice_id: voice,
-          sample_rate: 24000,
-          output_format: "wav",
-          speed: 1.0,
-        }),
-      })
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API error: ${response.status} - ${errorText}`)
-      }
-      const audioBuffer = await response.arrayBuffer()
-      const blob = new Blob([audioBuffer], { type: "audio/wav" })
+      const result = await window.electron.ipcRenderer.invoke("synthesizeWithSmallest", {
+        text: "Hello! This is a test of the Smallest AI text to speech voice.",
+        voice,
+      }) as { audio: string; sampleRate: number }
+      // Decode base64 WAV audio and play it
+      const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
+      const blob = new Blob([audioData], { type: "audio/wav" })
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       audio.onended = () => URL.revokeObjectURL(url)
