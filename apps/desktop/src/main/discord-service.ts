@@ -819,9 +819,11 @@ class DiscordService {
     this.pendingHistory.set(channelId, trimmed)
   }
 
+  /** Return pending messages since last mention, without deleting them (they age out via TTL) */
   private consumePendingHistory(channelId: string): PendingMessage[] {
     const list = this.pendingHistory.get(channelId) ?? []
-    this.pendingHistory.delete(channelId)
+    // Clear after consuming — the conversation history will carry forward from here
+    this.pendingHistory.set(channelId, [])
     const cutoff = Date.now() - PENDING_HISTORY_TTL
     return list.filter((m) => m.timestamp > cutoff)
   }
