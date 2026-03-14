@@ -10,6 +10,7 @@ import {
 import {
   getDiscordConversationId,
   getDiscordMessageRejectionReason,
+  isBotNameMentioned,
   splitDiscordMessageContent,
 } from "./discord-utils"
 
@@ -1005,12 +1006,20 @@ class DiscordService {
       authorRoleIds = Array.from(message.member.roles.cache.keys())
     }
 
+    const atMentioned = message.mentions.users.has(this.client.user.id)
+    const nameMentioned = !atMentioned && isBotNameMentioned(
+      message.content,
+      this.client.user.username,
+      this.client.user.displayName,
+    )
+
     const rejectionReason = getDiscordMessageRejectionReason({
       authorId: message.author.id,
       channelId: message.channel.id,
       guildId: message.guildId,
       isDirectMessage,
-      mentioned: message.mentions.users.has(this.client.user.id),
+      mentioned: atMentioned,
+      nameMentioned,
       requireMention: cfg.discordRequireMention ?? true,
       dmEnabled: cfg.discordDmEnabled ?? true,
       allowUserIds: cfg.discordAllowUserIds,
@@ -1149,9 +1158,21 @@ class DiscordService {
   }
 
   private stripBotMention(content: string): string {
+    let result = content
     const botId = this.client?.user?.id
-    if (!botId) return content.trim()
-    return content.replace(new RegExp(`<@!?${botId}>`, "g"), " ").replace(/\s+/g, " ").trim()
+    if (botId) {
+      result = result.replace(new RegExp(`<@!?${botId}>`, "g"), " ")
+    }
+    // Also strip the bot's username/display name when used as a casual mention
+    const botUsername = this.client?.user?.username
+    const botDisplayName = this.client?.user?.displayName
+    for (const name of [botUsername, botDisplayName]) {
+      if (name && name.length >= 2) {
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        result = result.replace(new RegExp(`\\b${escaped}\\b`, "gi"), " ")
+      }
+    }
+    return result.replace(/\s+/g, " ").trim()
   }
 
   private async sendChunks(message: Message<boolean>, content: string) {

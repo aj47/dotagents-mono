@@ -4,6 +4,7 @@ export interface DiscordMessageGateInput {
   guildId?: string | null
   isDirectMessage: boolean
   mentioned: boolean
+  nameMentioned: boolean
   requireMention: boolean
   dmEnabled: boolean
   allowUserIds?: string[]
@@ -13,6 +14,34 @@ export interface DiscordMessageGateInput {
   dmAllowUserIds?: string[]
   /** Role IDs the message author has in the current guild */
   authorRoleIds?: string[]
+}
+
+/**
+ * Check if the bot's name (or aliases) is mentioned in the message text,
+ * without requiring a Discord @tag.
+ */
+export function isBotNameMentioned(
+  content: string,
+  botUsername?: string,
+  botDisplayName?: string,
+): boolean {
+  if (!content) return false
+  const lower = content.toLowerCase()
+
+  const names: string[] = []
+  if (botUsername) names.push(botUsername.toLowerCase())
+  if (botDisplayName && botDisplayName.toLowerCase() !== botUsername?.toLowerCase()) {
+    names.push(botDisplayName.toLowerCase())
+  }
+
+  for (const name of names) {
+    if (name.length < 2) continue
+    // Match as a whole word (bounded by non-alphanumeric chars or start/end)
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, "i")
+    if (re.test(lower)) return true
+  }
+  return false
 }
 
 function normalizeIds(values: string[] | undefined): string[] {
@@ -74,7 +103,7 @@ export function getDiscordMessageRejectionReason(input: DiscordMessageGateInput)
       return "user not in DM allowlist"
     }
   } else {
-    if (input.requireMention && !input.mentioned) {
+    if (input.requireMention && !input.mentioned && !input.nameMentioned) {
       return "bot mention required"
     }
     if (allowGuildIds.length > 0 && (!input.guildId || !allowGuildIds.includes(input.guildId))) {
