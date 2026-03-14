@@ -266,11 +266,191 @@ export {
 // Diagnostics service
 export {
   DiagnosticsService,
+  diagnosticsService,
 } from './diagnostics';
 export type {
   DiagnosticInfo,
   DiagnosticsMcpProvider,
 } from './diagnostics';
+
+// AI SDK Provider
+export {
+  createLanguageModel,
+  getCurrentProviderId,
+  getCurrentModelName,
+  getTranscriptProviderId,
+} from './ai-sdk-provider';
+export type { ProviderType } from './ai-sdk-provider';
+
+// Structured Output
+export {
+  makeStructuredToolCall,
+  makeTextCompletion,
+} from './structured-output';
+
+// Summarization Service
+export {
+  isSummarizationEnabled,
+  shouldSummarizeStep,
+  summarizeAgentStep,
+  summarizationService,
+  parseSummaryResponse,
+} from './summarization-service';
+export type { SummarizationInput } from './summarization-service';
+
+// System Prompts
+export {
+  DEFAULT_SYSTEM_PROMPT,
+  getEffectiveSystemPrompt,
+  AGENT_MODE_ADDITIONS,
+  constructSystemPrompt,
+  constructMinimalSystemPrompt,
+} from './system-prompts';
+export type { SystemPromptAdditions } from './system-prompts';
+
+// Context Budget
+export {
+  shrinkMessagesForLLM,
+  estimateTokensFromMessages,
+  clearActualTokenUsage,
+  clearIterativeSummary,
+  recordActualTokenUsage,
+} from './context-budget';
+
+// LLM Fetch
+export {
+  makeLLMCallWithFetch,
+  makeTextCompletionWithFetch,
+  verifyCompletionWithFetch,
+  makeLLMCallWithStreamingAndTools,
+} from './llm-fetch';
+export type {
+  RetryProgressCallback,
+  StreamingCallback,
+} from './llm-fetch';
+
+// LLM Continuation Guards
+export {
+  isDeliverableResponseContent,
+  normalizeMissingItemsList,
+  normalizeVerificationResultForCompletion,
+  resolveIterationLimitFinalContent,
+} from './llm-continuation-guards';
+
+// LLM Verification Replay
+export {
+  VERIFICATION_SYSTEM_PROMPT,
+  VERIFICATION_JSON_REQUEST_BASE,
+  buildVerificationJsonRequest,
+  buildVerificationMessagesFromAgentState,
+  resolveContinueReplayMessages,
+  parseContinueReplayFixture,
+} from './llm-verification-replay';
+export type {
+  VerificationMessage,
+  ExactVerifierMessagesReplayFixture,
+  AgentStateReplayFixture,
+  ContinueReplayFixture,
+} from './llm-verification-replay';
+
+// LLM Tool Gating
+export {
+  filterNamedItemsToAllowedTools,
+} from './llm-tool-gating';
+export type { ToolLike } from './llm-tool-gating';
+
+// Agent Run Utils
+export {
+  DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
+  AGENT_STOP_NOTE,
+  resolveAgentIterationLimits,
+  appendAgentStopNote,
+  getLatestAssistantMessageContent,
+  buildProfileContext,
+  getPreferredDelegationOutput,
+} from './agent-run-utils';
+export type { AgentIterationLimits } from './agent-run-utils';
+
+// Respond to User Utils
+export {
+  extractRespondToUserContentFromArgs,
+  getLatestRespondToUserContentFromToolCalls,
+  getLatestRespondToUserContentFromConversationHistory,
+  resolveLatestUserFacingResponse,
+} from './respond-to-user-utils';
+
+// Session User Response Store
+export {
+  setSessionUserResponse,
+  getSessionUserResponse,
+  getSessionUserResponseHistory,
+  clearSessionUserResponse,
+  archiveSessionUserResponse,
+} from './session-user-response-store';
+
+// Main Agent Selection
+export {
+  resolveMainAcpAgentSelection,
+} from './main-agent-selection';
+export type { MainAcpAgentSelection } from './main-agent-selection';
+
+// Conversation History Utils
+export {
+  filterEphemeralMessages,
+  isEphemeralMessage,
+} from './conversation-history-utils';
+
+// TTS LLM Preprocessing
+export {
+  preprocessTextForTTSWithLLM,
+  isLLMPreprocessingAvailable,
+} from './tts-llm-preprocessing';
+
+// Command Verification Service
+export {
+  verifyExternalAgentCommand,
+  setCommandPathResolver,
+} from './command-verification-service';
+export type {
+  ExternalAgentCommandVerificationInput,
+  ExternalAgentCommandVerificationResult,
+  CommandPathResolver,
+} from './command-verification-service';
+
+// LLM Engine (main agent loop)
+export {
+  postProcessTranscript,
+  processTranscriptWithTools,
+  processTranscriptWithAgentMode,
+  MARK_WORK_COMPLETE_TOOL,
+  INTERNAL_COMPLETION_NUDGE_TEXT,
+  setLLMProgressEmitter,
+  setLLMMemoryService,
+  setLLMAgentSessionTracker,
+  setLLMConversationService,
+  setLLMSkillsService,
+  setLLMAgentProfileService,
+  setSystemPromptAdditionsFn,
+} from './llm';
+export type {
+  LLMMemoryService,
+  LLMAgentSessionTracker,
+  LLMSkillsService,
+  LLMAgentProfileService,
+} from './llm';
+
+// Additional types
+export type {
+  ACPConnectionType,
+  ACPAgentConfig,
+  MCPTool,
+  MCPToolCall,
+  MCPToolResult,
+  LLMToolCallResponse,
+  AgentProgressStep,
+  AgentProgressUpdate,
+  AgentStepSummary,
+} from './types';
 
 // Testing utilities
 export {

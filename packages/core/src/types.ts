@@ -234,3 +234,69 @@ export type AgentProfile = {
   createdAt: number
   updatedAt: number
 }
+
+// ============================================================================
+// ACP Agent Config (legacy)
+// ============================================================================
+
+export type ACPConnectionType = "stdio" | "remote" | "internal"
+
+export interface ACPAgentConfig {
+  name: string
+  displayName: string
+  description?: string
+  autoSpawn?: boolean
+  enabled?: boolean
+  isInternal?: boolean
+  connection: {
+    type: ACPConnectionType
+    command?: string
+    args?: string[]
+    env?: Record<string, string>
+    cwd?: string
+    baseUrl?: string
+  }
+}
+
+// ============================================================================
+// MCP Types (minimal shapes for LLM engine)
+// ============================================================================
+
+/**
+ * Minimal MCP tool type used by the LLM engine for tool calling.
+ * The full MCP service defines the complete type; this is the subset
+ * needed by llm-fetch, context-budget, system-prompts, etc.
+ */
+export interface MCPTool {
+  name: string
+  description: string
+  inputSchema?: Record<string, unknown>
+}
+
+export interface MCPToolCall {
+  name: string
+  arguments: Record<string, unknown>
+}
+
+export interface MCPToolResult {
+  content: Array<{
+    type: "text"
+    text: string
+  }>
+  isError?: boolean
+}
+
+export interface LLMToolCallResponse {
+  toolCalls?: MCPToolCall[]
+  content?: string
+}
+
+// ============================================================================
+// Agent Step Summary (re-export from shared)
+// ============================================================================
+export type { AgentStepSummary } from '@dotagents/shared'
+
+// ============================================================================
+// Agent Progress (re-export from shared)
+// ============================================================================
+export type { AgentProgressStep, AgentProgressUpdate } from '@dotagents/shared'

@@ -368,9 +368,24 @@ importers:
 
   packages/core:
     dependencies:
+      '@ai-sdk/google':
+        specifier: ^3.0.1
+        version: 3.0.1(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: ^3.0.1
+        version: 3.0.1(zod@3.25.76)
       '@dotagents/shared':
         specifier: workspace:*
         version: link:../shared
+      ai:
+        specifier: ^6.0.3
+        version: 6.0.3(zod@3.25.76)
+      openai:
+        specifier: ^5.10.2
+        version: 5.23.2(ws@8.18.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       tsup:
         specifier: ^8.0.0
@@ -10873,9 +10888,9 @@ snapshots:
 
   '@babel/helper-wrap-function@7.28.3':
     dependencies:
-      '@babel/template': 7.27.2
+      '@babel/template': 7.28.6
       '@babel/traverse': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/types': 7.29.0
     transitivePeerDependencies:
       - supports-color
 

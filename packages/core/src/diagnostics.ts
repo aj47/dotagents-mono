@@ -299,3 +299,10 @@ export class DiagnosticsService {
     return { overall, checks }
   }
 }
+
+/**
+ * Default singleton instance.
+ * Callers can import this directly for convenience; the MCP provider
+ * is set lazily at startup via `diagnosticsService.setMcpProvider(...)`.
+ */
+export const diagnosticsService = new DiagnosticsService()
