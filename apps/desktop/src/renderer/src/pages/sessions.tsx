@@ -471,8 +471,13 @@ export function Component() {
 
   // Handle route parameter for deep-linking to specific session
   // When navigating to /:id, focus the active session tile or create a new tile for past sessions
+  // Track the last handled route ID to avoid re-processing on agentProgressById changes.
+  // window.history.replaceState clears the browser URL but does NOT update React Router's
+  // useParams(), so without this guard the effect would re-fire on every progress update.
+  const handledRouteIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (routeHistoryItemId) {
+    if (routeHistoryItemId && routeHistoryItemId !== handledRouteIdRef.current) {
+      handledRouteIdRef.current = routeHistoryItemId
       // Check if this ID matches an active (non-complete) session - if so, focus it.
       // Completed sessions should reload from disk to ensure fresh data,
       // especially for sessions created remotely (e.g. from mobile) where
