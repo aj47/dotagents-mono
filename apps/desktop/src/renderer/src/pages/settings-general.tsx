@@ -31,6 +31,7 @@ import {
   formatKeyComboForDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
+import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const MCP_MAX_ITERATIONS_MIN = 1
@@ -69,6 +70,10 @@ export function Component() {
     () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
   )
   const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Defer audio device enumeration until the user expands the Audio Devices section
+  const [audioSectionOpen, setAudioSectionOpen] = useState(false)
+  const { inputDevices: audioInputDevices, outputDevices: audioOutputDevices } = useAudioDevices(audioSectionOpen)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -891,6 +896,58 @@ export function Component() {
                 />
               )}
             </div>
+          </Control>
+        </ControlGroup>
+
+        <ControlGroup collapsible defaultCollapsed title="Audio Devices" onOpenChange={setAudioSectionOpen}>
+          <Control label={<ControlLabel label="Microphone" tooltip="Select which microphone to use for speech recognition. 'System Default' uses your OS default input device." />} className="px-3">
+            <Select
+              value={configQuery.data.audioInputDeviceId || "default"}
+              onValueChange={(value) => {
+                saveConfig({
+                  audioInputDeviceId: value === "default" ? undefined : value,
+                })
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="System Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">System Default</SelectItem>
+                {audioInputDevices.map((device) => (
+                  device.deviceId !== "default" && (
+                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </SelectItem>
+                  )
+                ))}
+              </SelectContent>
+            </Select>
+          </Control>
+
+          <Control label={<ControlLabel label="Speaker" tooltip="Select which speaker/output device to use for text-to-speech audio playback. 'System Default' uses your OS default output device." />} className="px-3">
+            <Select
+              value={configQuery.data.audioOutputDeviceId || "default"}
+              onValueChange={(value) => {
+                saveConfig({
+                  audioOutputDeviceId: value === "default" ? undefined : value,
+                })
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="System Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">System Default</SelectItem>
+                {audioOutputDevices.map((device) => (
+                  device.deviceId !== "default" && (
+                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </SelectItem>
+                  )
+                ))}
+              </SelectContent>
+            </Select>
           </Control>
         </ControlGroup>
 

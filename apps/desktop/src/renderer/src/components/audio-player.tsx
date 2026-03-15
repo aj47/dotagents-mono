@@ -17,6 +17,8 @@ interface AudioPlayerProps {
   autoPlay?: boolean
   /** Called when play/pause state changes so parent can reflect it (e.g. header icon) */
   onPlayStateChange?: (playing: boolean) => void
+  /** Audio output device ID (from navigator.mediaDevices.enumerateDevices) */
+  audioOutputDeviceId?: string
 }
 
 export function AudioPlayer({
@@ -30,6 +32,7 @@ export function AudioPlayer({
   error = null,
   autoPlay = false,
   onPlayStateChange,
+  audioOutputDeviceId,
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -145,6 +148,18 @@ export function AudioPlayer({
       unregisterCallback()
     }
   }, [onPlayStateChange])
+
+  // Apply selected audio output device via setSinkId
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    // setSinkId is available in Chromium/Electron
+    if (typeof (audio as any).setSinkId === "function") {
+      (audio as any).setSinkId(audioOutputDeviceId || "").catch((err: unknown) => {
+        console.warn("[AudioPlayer] Failed to set audio output device:", err)
+      })
+    }
+  }, [audioOutputDeviceId])
 
   useEffect(() => {
     if (autoPlay && hasAudio && audioRef.current && !isPlaying && !hasAutoPlayed && !wasStopped) {

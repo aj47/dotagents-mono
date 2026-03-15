@@ -608,6 +608,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 compact={true}
                 autoPlay={isLast ? (configQuery.data?.ttsAutoPlay ?? true) : false}
                 onPlayStateChange={setIsTTSPlaying}
+                audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
               />
               {ttsError && (
                 <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
