@@ -71,6 +71,7 @@ export const ControlGroup = ({
   endDescription,
   collapsible = false,
   defaultCollapsed = false,
+  onOpenChange,
 }: {
   children: React.ReactNode
   className?: string
@@ -78,6 +79,7 @@ export const ControlGroup = ({
   endDescription?: React.ReactNode
   collapsible?: boolean
   defaultCollapsed?: boolean
+  onOpenChange?: (isOpen: boolean) => void
 }) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
@@ -88,7 +90,11 @@ export const ControlGroup = ({
           <button
             type="button"
             className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              const newCollapsed = !collapsed
+              setCollapsed(newCollapsed)
+              onOpenChange?.(!newCollapsed)
+            }}
             aria-expanded={!collapsed}
           >
             <span className="flex items-center gap-2 text-sm font-semibold">

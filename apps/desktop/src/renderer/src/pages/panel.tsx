@@ -2,7 +2,7 @@ import { AgentProgress } from "@renderer/components/agent-progress"
 import { AgentProcessingView } from "@renderer/components/agent-processing-view"
 import { MultiAgentProgressView } from "@renderer/components/multi-agent-progress-view"
 import { Recorder } from "@renderer/lib/recorder"
-import { playSound } from "@renderer/lib/sound"
+import { playSound, setSoundOutputDevice } from "@renderer/lib/sound"
 import { cn } from "@renderer/lib/utils"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -186,6 +186,17 @@ export function Component() {
   const isPreviewEnabled =
     (configQuery.data?.transcriptionPreviewEnabled ?? false) &&
     configQuery.data?.sttProviderId !== "parakeet"
+
+  // Keep a ref to the configured audio input device so effect callbacks can access it synchronously
+  const audioInputDeviceIdRef = useRef(configQuery.data?.audioInputDeviceId)
+  useEffect(() => {
+    audioInputDeviceIdRef.current = configQuery.data?.audioInputDeviceId
+  }, [configQuery.data?.audioInputDeviceId])
+
+  // Apply selected audio output device to sound effects (recording start/stop beeps)
+  useEffect(() => {
+    setSoundOutputDevice(configQuery.data?.audioOutputDeviceId)
+  }, [configQuery.data?.audioOutputDeviceId])
 
   const getSubmitShortcutText = useMemo(() => {
     const config = configQuery.data
@@ -646,7 +657,7 @@ export function Component() {
       setRecording(true)
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-      recorderRef.current?.startRecording()?.catch((err: unknown) => {
+      recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch((err: unknown) => {
         console.error('[panel] startRecording failed, resetting recording state:', err)
         setRecording(false)
         recordingRef.current = false
@@ -696,7 +707,7 @@ export function Component() {
         recordingRef.current = true
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         tipcClient.showPanelWindow({})
-        recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
+        recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch?.((err: unknown) => {
           console.error('[panel] startRecording failed, resetting recording state:', err)
           setRecording(false)
           recordingRef.current = false
@@ -837,7 +848,7 @@ export function Component() {
       setRecording(true)
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-      recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
+      recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch?.((err: unknown) => {
         console.error('[panel] startRecording failed, resetting recording state:', err)
         setRecording(false)
         recordingRef.current = false
@@ -892,7 +903,7 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         requestPanelMode("normal") // Ensure panel is normal size for recording
         tipcClient.showPanelWindow({})
-        recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
+        recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch?.((err: unknown) => {
           console.error('[panel] startRecording failed, resetting recording state:', err)
           setRecording(false)
           recordingRef.current = false

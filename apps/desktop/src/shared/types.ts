@@ -1093,6 +1093,10 @@ export type Config = {
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
 
+  // Audio Device Selection
+  audioInputDeviceId?: string   // Microphone device ID (from enumerateDevices)
+  audioOutputDeviceId?: string  // Speaker device ID (from enumerateDevices / setSinkId)
+
   // Text Input Configuration
   textInputEnabled?: boolean
   textInputShortcut?: "ctrl-t" | "ctrl-shift-t" | "alt-t" | "custom"

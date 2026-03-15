@@ -188,7 +188,8 @@ export function SessionActionDialog({
     try {
       if (!canUpdateDialogState()) return
       setRecording(true)
-      await recorder.startRecording()
+      const config = await tipcClient.getConfig()
+      await recorder.startRecording(config?.audioInputDeviceId)
     } catch (error) {
       stopRecorder()
       if (!canUpdateDialogState()) return

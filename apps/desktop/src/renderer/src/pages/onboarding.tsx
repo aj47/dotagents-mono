@@ -145,7 +145,8 @@ export function Component() {
     setTranscriptionError(null)
     setMicError(null)
     try {
-      await recorderRef.current?.startRecording()
+      const config = await tipcClient.getConfig()
+      await recorderRef.current?.startRecording(config?.audioInputDeviceId)
     } catch (error: any) {
       console.error("Failed to start recording:", error)
       const errorMessage = error?.message || String(error)
