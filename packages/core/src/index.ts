@@ -751,6 +751,27 @@ export type {
   InternalSubSession,
 } from './acp/index';
 
+// Agent Session Tracker (bridge layer)
+export {
+  AgentSessionTracker,
+  agentSessionTracker,
+  setAgentSessionTrackerProgressEmitter,
+} from './agent-session-tracker';
+export type { AgentSession } from './agent-session-tracker';
+
+// Emit Agent Progress (bridge layer — throttled emission)
+export {
+  emitAgentProgress,
+  setEmitAgentProgressEmitter,
+} from './emit-agent-progress';
+
+// Message Queue Service (bridge layer)
+export {
+  MessageQueueService,
+  messageQueueService,
+  setMessageQueueServiceProgressEmitter,
+} from './message-queue-service';
+
 // Testing utilities
 export {
   MockPathResolver,

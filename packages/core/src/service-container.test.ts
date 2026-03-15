@@ -256,8 +256,8 @@ describe('ServiceContainer', () => {
 
       const resolved = container.resolve<ProgressEmitter>(ServiceTokens.ProgressEmitter);
       resolved.emitAgentProgress({} as any);
-      resolved.emitSessionUpdate({ type: 'created', sessionId: 'test-123' });
-      resolved.emitQueueUpdate('conv-1', [{ id: 1 }]);
+      resolved.emitSessionUpdate({ activeSessions: [], recentSessions: [] });
+      resolved.emitQueueUpdate({ conversationId: 'conv-1', queue: [{ id: 1 }], isPaused: false });
       resolved.emitEvent('custom', { data: true });
 
       expect(mock.progressUpdates).toHaveLength(1);

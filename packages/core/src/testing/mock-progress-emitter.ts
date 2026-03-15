@@ -8,11 +8,10 @@ import type { ProgressEmitter } from '../interfaces/progress-emitter';
 export class MockProgressEmitter implements ProgressEmitter {
   readonly progressUpdates: AgentProgressUpdate[] = [];
   readonly sessionUpdates: Array<{
-    type: 'created' | 'updated' | 'deleted' | 'renamed';
-    sessionId: string;
-    [key: string]: unknown;
+    activeSessions: unknown[];
+    recentSessions: unknown[];
   }> = [];
-  readonly queueUpdates: Array<{ conversationId: string; queue: unknown[] }> = [];
+  readonly queueUpdates: Array<{ conversationId: string; queue: unknown[]; isPaused: boolean }> = [];
   readonly events: Array<{ channel: string; data: unknown }> = [];
 
   emitAgentProgress(update: AgentProgressUpdate): void {
@@ -20,15 +19,18 @@ export class MockProgressEmitter implements ProgressEmitter {
   }
 
   emitSessionUpdate(data: {
-    type: 'created' | 'updated' | 'deleted' | 'renamed';
-    sessionId: string;
-    [key: string]: unknown;
+    activeSessions: unknown[];
+    recentSessions: unknown[];
   }): void {
     this.sessionUpdates.push(data);
   }
 
-  emitQueueUpdate(conversationId: string, queue: unknown[]): void {
-    this.queueUpdates.push({ conversationId, queue });
+  emitQueueUpdate(data: {
+    conversationId: string;
+    queue: unknown[];
+    isPaused: boolean;
+  }): void {
+    this.queueUpdates.push(data);
   }
 
   emitEvent(channel: string, data: unknown): void {
