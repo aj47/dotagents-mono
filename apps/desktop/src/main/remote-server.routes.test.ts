@@ -4,8 +4,9 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 function getRemoteServerSource(): string {
+  // Read from @dotagents/core source — desktop's remote-server.ts is a thin re-export
   const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const remoteServerPath = path.join(testDir, "remote-server.ts")
+  const remoteServerPath = path.join(testDir, "../../../../packages/core/src/remote-server.ts")
   return readFileSync(remoteServerPath, "utf8")
 }
 

@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
-const builtinToolsSource = readFileSync(new URL("./builtin-tools.ts", import.meta.url), "utf8")
+// Read from @dotagents/core source — desktop's builtin-tools.ts is a thin re-export
+const builtinToolsSource = readFileSync(new URL("../../../../packages/core/src/builtin-tools.ts", import.meta.url), "utf8")
 
 function getSection(source: string, startMarker: string, endMarker: string): string {
   const startIndex = source.indexOf(startMarker)

@@ -1,3 +1,8 @@
+/**
+ * Tests for ACP main-agent processing (core)
+ * Migrated from desktop after core extraction.
+ */
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockGetAgentInstance = vi.fn()
@@ -33,6 +38,7 @@ vi.mock("./emit-agent-progress", () => ({
 }))
 
 vi.mock("./conversation-service", () => ({
+  ConversationService: class {},
   conversationService: {
     loadConversation: mockLoadConversation,
     addMessageToConversation: mockAddMessageToConversation,
@@ -44,10 +50,17 @@ vi.mock("./debug", () => ({
 }))
 
 describe("acp-main-agent", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules()
     vi.clearAllMocks()
     sessionUpdateHandler = undefined
+
+    // Wire the mock conversation service via the setter
+    const { setACPMainAgentConversationService } = await import("./acp-main-agent")
+    setACPMainAgentConversationService({
+      loadConversation: mockLoadConversation,
+      addMessageToConversation: mockAddMessageToConversation,
+    } as any)
 
     mockLoadConversation.mockResolvedValue(undefined)
     mockAddMessageToConversation.mockResolvedValue(undefined)

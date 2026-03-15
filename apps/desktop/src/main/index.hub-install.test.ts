@@ -43,6 +43,9 @@ async function loadIndexForHubInstall(argv: string[]) {
       isReady: vi.fn(() => true),
       setLoginItemSettings: vi.fn(),
       setActivationPolicy: vi.fn(),
+      getPath: vi.fn(() => "/tmp"),
+      getAppPath: vi.fn(() => "/tmp/app"),
+      isPackaged: false,
       dock: { show: vi.fn(), hide: vi.fn(), isVisible: vi.fn(() => true) },
       quit: vi.fn(),
     },
@@ -63,7 +66,7 @@ async function loadIndexForHubInstall(argv: string[]) {
     WINDOWS: new Map(),
   }))
   vi.doMock("./keyboard", () => ({ listenToKeyboardEvents: vi.fn() }))
-  vi.doMock("./tipc", () => ({ router: {} }))
+  vi.doMock("./tipc", () => ({ router: {}, runAgentLoopSession: vi.fn() }))
   vi.doMock("./serve", () => ({ registerServeProtocol: vi.fn(), registerServeSchema: vi.fn() }))
   vi.doMock("./menu", () => ({ createAppMenu: vi.fn(() => null) }))
   vi.doMock("./tray", () => ({ initTray: vi.fn() }))
@@ -112,6 +115,13 @@ async function loadIndexForHubInstall(argv: string[]) {
     downloadHubBundleToTempFile,
   }))
   vi.doMock("./updater", () => ({ init: vi.fn() }))
+  vi.doMock("./app-switcher", () => ({ ensureAppSwitcherPresence: vi.fn() }))
+  vi.doMock("./core-wiring", () => ({
+    finalizeProgressEmitterWiring: vi.fn(),
+    wireLoopRunner: vi.fn(),
+    wireACPBackgroundNotifierRunner: vi.fn(),
+    setSystemPromptAdditionsFn: vi.fn(),
+  }))
 
   await import("./index")
   await flushPromises()

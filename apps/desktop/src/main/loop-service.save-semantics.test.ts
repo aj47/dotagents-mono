@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
-const loopServiceSource = readFileSync(new URL("./loop-service.ts", import.meta.url), "utf8")
+// Read from @dotagents/core source — desktop's loop-service.ts is a thin re-export
+const loopServiceSource = readFileSync(new URL("../../../../packages/core/src/loop-service.ts", import.meta.url), "utf8")
 
 function getSection(source: string, startMarker: string, endMarker: string): string {
   const startIndex = source.indexOf(startMarker)

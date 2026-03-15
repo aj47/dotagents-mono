@@ -1,3 +1,7 @@
+/**
+ * MCPService Option B (builtin allowlist) tests — migrated from desktop to core.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 let currentConfig: any
@@ -13,13 +17,11 @@ const builtinTools = [
   { name: "dotagents-builtin:list_memories", description: "list", inputSchema: {} },
 ]
 
-vi.mock("electron", () => ({ app: { getPath: vi.fn(() => "/tmp"), getAppPath: vi.fn(() => "/tmp/app") }, dialog: { showMessageBox: vi.fn(async () => ({ response: 0 })) } }))
 vi.mock("./config", () => ({ dataFolder: "/tmp/dotagents-test", configStore: { get: () => currentConfig, save: mockConfigSave } }))
 vi.mock("./debug", () => ({ isDebugTools: () => false, logTools: vi.fn(), logMCP: vi.fn() }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
 vi.mock("./state", () => ({ state: {}, agentProcessManager: {} }))
 vi.mock("./oauth-client", () => ({ OAuthClient: class {} }))
-vi.mock("./oauth-storage", () => ({ oauthStorage: {} }))
 vi.mock("./mcp-elicitation", () => ({ requestElicitation: vi.fn(), handleElicitationComplete: vi.fn(), cancelAllElicitations: vi.fn() }))
 vi.mock("./mcp-sampling", () => ({ requestSampling: vi.fn(), cancelAllSamplingRequests: vi.fn() }))
 vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createToolSpan: vi.fn(), endToolSpan: vi.fn(), getAgentTrace: vi.fn(() => null) }))
@@ -124,4 +126,3 @@ describe("MCPService Option B (builtin allowlist)", () => {
     expect(mockExecuteBuiltinTool).toHaveBeenCalledTimes(1)
   })
 })
-
