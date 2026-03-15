@@ -128,6 +128,10 @@ export interface Settings {
   // Streamer Mode
   streamerModeEnabled?: boolean;
 
+  // Session History (pinned/archived conversation IDs)
+  pinnedSessionIds?: string[];
+  archivedSessionIds?: string[];
+
   // ACP Agents list (read-only, from GET only)
   acpAgents?: Array<{ name: string; displayName: string }>;
 }
@@ -205,6 +209,10 @@ export interface SettingsUpdate {
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
+
+  // Session History (pinned/archived conversation IDs)
+  pinnedSessionIds?: string[];
+  archivedSessionIds?: string[];
 }
 
 // Conversation Sync Types
