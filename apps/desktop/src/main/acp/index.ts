@@ -1,30 +1,60 @@
-/**
- * ACP (Agent Client Protocol) Module
- *
- * This module provides the infrastructure for delegating tasks to external AI agents
- * via the Agent Client Protocol (Zed ACP) for user-to-agent interaction.
- */
-
-// Re-export all types
-export * from './types'
-
-// Re-export named exports from each module
-export { acpRegistry, ACPRegistry, configToDefinition } from './acp-registry'
-export { acpClientService, ACPClientService } from './acp-client-service'
-export { acpProcessManager, ACPProcessManager } from './acp-process-manager'
-export { 
-  acpRouterToolDefinitions, 
-  toolNameAliases, 
-  resolveToolName, 
-  isRouterTool 
-} from './acp-router-tool-definitions'
+// Re-export from @dotagents/core — single source of truth
 export {
+  // Types
+  type ACPAgentDefinition,
+  type ACPAgentInstance,
+  type ACPMessagePart,
+  type ACPMessage,
+  type ACPRunRequest,
+  type ACPRunResult,
+  type ACPSubAgentState,
+  // Registry
+  acpRegistry,
+  ACPRegistry,
+  configToDefinition,
+  // Client Service
+  acpClientService,
+  ACPClientService,
+  // Process Manager
+  acpProcessManager,
+  ACPProcessManager,
+  // Router Tool Definitions
+  acpRouterToolDefinitions,
+  toolNameAliases,
+  resolveToolName,
+  isRouterTool,
+  // Router Tools
   executeACPRouterTool,
   isACPRouterTool,
   getDelegatedRunsForSession,
   getDelegatedRunDetails,
   getAllDelegationsForSession,
-  cleanupOldDelegatedRuns
-} from './acp-router-tools'
-export { acpSmartRouter, ACPSmartRouter } from './acp-smart-router'
-export { acpBackgroundNotifier, ACPBackgroundNotifier } from './acp-background-notifier'
+  cleanupOldDelegatedRuns,
+  setACPRouterToolsProgressEmitter,
+  // Smart Router
+  acpSmartRouter,
+  ACPSmartRouter,
+  // Background Notifier
+  acpBackgroundNotifier,
+  ACPBackgroundNotifier,
+  setACPBackgroundNotifierProgressEmitter,
+  setACPBackgroundNotifierNotificationService,
+  setACPBackgroundNotifierSessionTracker,
+  setACPBackgroundNotifierRunAgentLoopSession,
+  // Internal Agent
+  runInternalSubSession,
+  cancelSubSession,
+  getInternalAgentInfo,
+  getSessionDepth,
+  generateSubSessionId,
+  setInternalAgentProgressEmitter,
+  setInternalAgentSessionTracker,
+} from '@dotagents/core'
+export type {
+  ACPBackgroundNotifierSessionTracker,
+  RunAgentLoopSessionFn,
+  InternalAgentSessionTracker,
+  RunSubSessionOptions,
+  SubSessionResult,
+  InternalSubSession,
+} from '@dotagents/core'

@@ -639,6 +639,118 @@ export type {
   SamplingResult,
 } from './types';
 
+// ACP Session State
+export {
+  getSessionForConversation,
+  setSessionForConversation,
+  clearSessionForConversation,
+  clearAllSessions,
+  getAllSessions,
+  touchSession,
+  setAcpToAppSessionMapping,
+  setAcpToSpeakMcpSessionMapping,
+  setAcpClientSessionTokenMapping,
+  setPendingAcpClientSessionTokenMapping,
+  getAcpSessionForClientSessionToken,
+  getPendingAppSessionForClientSessionToken,
+  getAppSessionForAcpSession,
+  getSpeakMcpSessionForAcpSession,
+  getAppRunIdForAcpSession,
+  clearAcpClientSessionTokenMapping,
+  clearAcpToAppSessionMapping,
+  clearAcpToSpeakMcpSessionMapping,
+} from './acp-session-state';
+export type { ACPSessionInfo } from './acp-session-state';
+
+// ACP Service
+export {
+  acpService,
+  setACPServiceProgressEmitter,
+} from './acp-service';
+export type {
+  ACPContentBlock,
+  ACPToolCallStatus,
+  ACPToolCallUpdate,
+} from './acp-service';
+
+// ACP Main Agent
+export {
+  processTranscriptWithACPAgent,
+  setACPMainAgentProgressEmitter,
+  setACPMainAgentConversationService,
+} from './acp-main-agent';
+
+// ACP Module (subdirectory)
+export {
+  // Registry
+  acpRegistry,
+  ACPRegistry,
+  configToDefinition,
+  // Client Service
+  acpClientService,
+  ACPClientService,
+  // Process Manager
+  acpProcessManager,
+  ACPProcessManager,
+  // Router Tool Definitions
+  acpRouterToolDefinitions,
+  toolNameAliases,
+  resolveToolName,
+  isRouterTool,
+  // Router Tools
+  executeACPRouterTool,
+  isACPRouterTool,
+  getDelegatedRunsForSession,
+  getDelegatedRunDetails,
+  getAllDelegationsForSession,
+  cleanupOldDelegatedRuns,
+  setACPRouterToolsProgressEmitter,
+  getInternalAgentConfig,
+  handleListAvailableAgents,
+  handleDelegateToAgent,
+  handleCheckAgentStatus,
+  handleSpawnAgent,
+  handleStopAgent,
+  handleCancelAgentRun,
+  getCurrentSessionDepth,
+  // Smart Router
+  acpSmartRouter,
+  ACPSmartRouter,
+  // Background Notifier
+  acpBackgroundNotifier,
+  ACPBackgroundNotifier,
+  setACPBackgroundNotifierProgressEmitter,
+  setACPBackgroundNotifierNotificationService,
+  setACPBackgroundNotifierSessionTracker,
+  setACPBackgroundNotifierRunAgentLoopSession,
+  // Internal Agent
+  runInternalSubSession,
+  cancelSubSession,
+  getInternalAgentInfo,
+  getSessionDepth,
+  generateSubSessionId,
+  setInternalAgentProgressEmitter,
+  setInternalAgentSessionTracker,
+  getChildSubSessions,
+  getSubSession,
+  cleanupOldSubSessions,
+} from './acp/index';
+export type {
+  ACPAgentDefinition,
+  ACPAgentInstance,
+  ACPMessagePart,
+  ACPMessage,
+  ACPRunRequest,
+  ACPRunResult,
+  ACPSubAgentState,
+  ACPBackgroundNotifierSessionTracker,
+  RunAgentLoopSessionFn,
+  InternalAgentSessionTracker,
+  RunSubSessionOptions,
+  SubSessionResult,
+  InternalSubSession,
+} from './acp/index';
+
 // Testing utilities
 export {
   MockPathResolver,
