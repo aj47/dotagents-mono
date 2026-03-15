@@ -12,7 +12,7 @@ if (!container.has(ServiceTokens.PathResolver)) {
 
 // Backward-compatible module-level constants for existing desktop callers.
 // These use Electron's app.getPath() directly to be available at module load time.
-export const dataFolder = path.join(app.getPath("appData"), process.env.APP_ID!)
+export const dataFolder = path.join(app.getPath("appData"), process.env.APP_ID || "dotagents")
 export const recordingsFolder = path.join(dataFolder, "recordings")
 export const conversationsFolder = path.join(dataFolder, "conversations")
 export const configPath = path.join(dataFolder, "config.json")
