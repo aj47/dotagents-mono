@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "pnpm --filter @dotagents/desktop dev",
     "dev:mobile": "pnpm --filter @dotagents/mobile start",
-    "build": "pnpm --filter @dotagents/shared build && pnpm --filter @dotagents/desktop build",
+    "build": "pnpm --filter @dotagents/shared build && pnpm --filter @dotagents/core build && pnpm --filter @dotagents/cli build && pnpm --filter @dotagents/desktop build",
     "build:shared": "pnpm --filter @dotagents/shared build",
     "build:core": "pnpm --filter @dotagents/core build",
+    "build:cli": "pnpm --filter @dotagents/cli build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
