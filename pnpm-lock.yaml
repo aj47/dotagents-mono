@@ -7,6 +7,7 @@ settings:
 overrides:
   dotenv-expand: 11.0.6
   micromark-util-symbol: ^2.0.1
+  nan: ^2.25.0
 
 importers:
 
@@ -5241,9 +5242,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nan@https://codeload.github.com/oc-soft/npm-nan/tar.gz/aaad9ec1e7da805c363b4cf59ffc86961b7abc58:
-    resolution: {tarball: https://codeload.github.com/oc-soft/npm-nan/tar.gz/aaad9ec1e7da805c363b4cf59ffc86961b7abc58}
-    version: 2.20.0
+  nan@2.25.0:
+    resolution: {integrity: sha512-0M90Ag7Xn5KMLLZ7zliPWP3rT90P6PN+IzVFS0VqmnPktBk3700xUVv8Ikm9EUaUE5SDWdp/BIxdENzVznpm1g==}
 
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
@@ -7885,7 +7885,7 @@ snapshots:
   '@egoist/electron-panel-window@8.0.3':
     dependencies:
       bindings: 1.5.0
-      nan: https://codeload.github.com/oc-soft/npm-nan/tar.gz/aaad9ec1e7da805c363b4cf59ffc86961b7abc58
+      nan: 2.25.0
 
   '@egoist/tailwindcss-icons@1.9.0(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -13076,7 +13076,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nan@https://codeload.github.com/oc-soft/npm-nan/tar.gz/aaad9ec1e7da805c363b4cf59ffc86961b7abc58: {}
+  nan@2.25.0: {}
 
   nanoid@3.3.11: {}
 
