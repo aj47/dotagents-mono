@@ -8,6 +8,7 @@ import { McpManagementPanel } from './McpManagementPanel';
 import { SkillsPanel } from './SkillsPanel';
 import { MemoriesPanel } from './MemoriesPanel';
 import { LoopsPanel } from './LoopsPanel';
+import { VoicePanel } from './VoicePanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
@@ -17,6 +18,7 @@ import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useSkills } from '../hooks/useSkills';
 import { useMemories } from '../hooks/useMemories';
 import { useLoops } from '../hooks/useLoops';
+import { useVoice } from '../hooks/useVoice';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -59,6 +61,10 @@ export function App() {
   // Loops panel state
   const loopsHook = useLoops();
   const [showLoops, setShowLoops] = useState(false);
+
+  // Voice panel state
+  const voice = useVoice();
+  const [showVoice, setShowVoice] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -135,6 +141,7 @@ export function App() {
           setShowSkills(false);
           setShowMemories(false);
           setShowLoops(false);
+          setShowVoice(false);
           settings.open();
           break;
         }
@@ -147,6 +154,7 @@ export function App() {
           setShowSkills(false);
           setShowMemories(false);
           setShowLoops(false);
+          setShowVoice(false);
           setShowProfiles(true);
           break;
         }
@@ -159,6 +167,7 @@ export function App() {
           setShowSkills(false);
           setShowMemories(false);
           setShowLoops(false);
+          setShowVoice(false);
           setShowMcp(true);
           mcpManagement.refresh();
           break;
@@ -172,6 +181,7 @@ export function App() {
           setShowMcp(false);
           setShowMemories(false);
           setShowLoops(false);
+          setShowVoice(false);
           setShowSkills(true);
           skillsHook.reload();
           break;
@@ -185,6 +195,7 @@ export function App() {
           setShowMcp(false);
           setShowSkills(false);
           setShowLoops(false);
+          setShowVoice(false);
           setShowMemories(true);
           void memoriesHook.reload();
           break;
@@ -198,8 +209,22 @@ export function App() {
           setShowMcp(false);
           setShowSkills(false);
           setShowMemories(false);
+          setShowVoice(false);
           setShowLoops(true);
           loopsHook.reload();
+          break;
+        }
+
+        case 'voice': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowVoice(true);
           break;
         }
 
@@ -394,8 +419,33 @@ export function App() {
         />
       )}
 
+      {/* Voice panel overlay */}
+      {showVoice && (
+        <VoicePanel
+          voiceState={voice.state}
+          onStartRecording={voice.startRecording}
+          onStopRecording={voice.stopRecording}
+          onSpeak={voice.speak}
+          onStopPlayback={voice.stopPlayback}
+          onStartContinuousMode={voice.startContinuousMode}
+          onStopContinuousMode={voice.stopContinuousMode}
+          onClose={() => {
+            voice.stopContinuousMode();
+            setShowVoice(false);
+          }}
+          onSendTranscript={(text) => {
+            sendMessage(text);
+          }}
+          lastAssistantMessage={
+            messages
+              .filter((m: ChatMessage) => m.role === 'assistant')
+              .pop()?.content
+          }
+        />
+      )}
+
       {/* Chat interface (hidden when any panel is open) */}
-      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && (
+      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && (
         <ChatView
           messages={messages}
           status={status}
@@ -410,19 +460,21 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showSkills
-            ? 'Skills • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/g actions'
-            : showMemories
-              ? 'Memories • Escape to close • ↑/↓ navigate • c/e/d actions'
-              : showLoops
-                ? 'Repeat Tasks • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/t actions'
-                : showMcp
-                  ? 'MCP Servers • Escape to close • Tab switch view • a/r/d actions'
-                  : showProfiles
-                    ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
-                    : settings.isOpen
-                      ? 'Settings • Escape to close • Tab/←/→ to switch categories'
-                      : (
+          {showVoice
+            ? 'Voice • Enter record • s speak last • c continuous mode • x stop • Esc close'
+            : showSkills
+              ? 'Skills • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/g actions'
+              : showMemories
+                ? 'Memories • Escape to close • ↑/↓ navigate • c/e/d actions'
+                : showLoops
+                  ? 'Repeat Tasks • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/t actions'
+                  : showMcp
+                    ? 'MCP Servers • Escape to close • Tab switch view • a/r/d actions'
+                    : showProfiles
+                      ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
+                      : settings.isOpen
+                        ? 'Settings • Escape to close • Tab/←/→ to switch categories'
+                        : (
                       <>
                         {agentProfiles.activeProfile
                           ? `[${agentProfiles.activeProfile.displayName}] `

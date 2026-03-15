@@ -40,6 +40,11 @@ import {
 
   // Command verification
   setCommandPathResolver,
+
+  // TTS/STT PathResolver wiring
+  setKittenTTSPathResolver,
+  setSupertonicTTSPathResolver,
+  setParakeetSTTPathResolver,
 } from '@dotagents/core';
 
 /**
@@ -73,6 +78,11 @@ export function wireCoreDependencies(
   setBuiltinToolsEmergencyStop(emergencyStopAll);
   setBuiltinToolNamesProvider(getBuiltinToolNames);
   setProfileBuiltinToolNamesProvider(getBuiltinToolNames);
+
+  // --- TTS/STT PathResolver wiring ---
+  setKittenTTSPathResolver(pathResolver);
+  setSupertonicTTSPathResolver(pathResolver);
+  setParakeetSTTPathResolver(pathResolver);
 
   // --- Command verification ---
   setCommandPathResolver({

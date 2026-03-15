@@ -16,6 +16,9 @@ vi.mock('@dotagents/core', () => ({
   setElicitationUserInteraction: vi.fn(),
   setSamplingProgressEmitter: vi.fn(),
   setCommandPathResolver: vi.fn(),
+  setKittenTTSPathResolver: vi.fn(),
+  setSupertonicTTSPathResolver: vi.fn(),
+  setParakeetSTTPathResolver: vi.fn(),
   mcpService: {
     initialize: vi.fn().mockResolvedValue(undefined),
     getAvailableTools: vi.fn().mockReturnValue([]),
@@ -40,6 +43,9 @@ import {
   setElicitationUserInteraction,
   setSamplingProgressEmitter,
   setCommandPathResolver,
+  setKittenTTSPathResolver,
+  setSupertonicTTSPathResolver,
+  setParakeetSTTPathResolver,
   mcpService,
   getBuiltinToolNames,
   emergencyStopAll,
@@ -100,6 +106,18 @@ describe('core-wiring', () => {
       expect(setBuiltinToolsEmergencyStop).toHaveBeenCalledWith(emergencyStopAll);
       expect(setBuiltinToolNamesProvider).toHaveBeenCalledWith(getBuiltinToolNames);
       expect(setProfileBuiltinToolNamesProvider).toHaveBeenCalledWith(getBuiltinToolNames);
+    });
+
+    it('wires TTS/STT PathResolvers for voice services', () => {
+      const mockPath = {} as any;
+      const mockProgress = {} as any;
+      const mockUI = {} as any;
+
+      wireCoreDependencies(mockPath, mockProgress, mockUI);
+
+      expect(setKittenTTSPathResolver).toHaveBeenCalledWith(mockPath);
+      expect(setSupertonicTTSPathResolver).toHaveBeenCalledWith(mockPath);
+      expect(setParakeetSTTPathResolver).toHaveBeenCalledWith(mockPath);
     });
 
     it('wires command path resolver', () => {
