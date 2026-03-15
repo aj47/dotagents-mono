@@ -1344,6 +1344,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         acpAgents: agentProfileService.getAll()
           .filter(p => p.connection.type === 'acp' && p.enabled !== false)
           .map(p => ({ name: p.name, displayName: p.displayName })),
+        // Session History (pinned/archived conversation IDs)
+        pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds) ? cfg.pinnedSessionIds : [],
+        archivedSessionIds: Array.isArray(cfg.archivedSessionIds) ? cfg.archivedSessionIds : [],
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get settings", error)
@@ -1552,6 +1555,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.geminiTtsVoice === "string") {
         updates.geminiTtsVoice = body.geminiTtsVoice
+      }
+
+      // Session History (pinned/archived conversation IDs)
+      if (Array.isArray(body.pinnedSessionIds) && body.pinnedSessionIds.every((id: unknown) => typeof id === "string")) {
+        updates.pinnedSessionIds = body.pinnedSessionIds
+      }
+      if (Array.isArray(body.archivedSessionIds) && body.archivedSessionIds.every((id: unknown) => typeof id === "string")) {
+        updates.archivedSessionIds = body.archivedSessionIds
       }
 
       if (Object.keys(updates).length === 0) {

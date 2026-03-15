@@ -12,6 +12,7 @@ import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
+import { SettingsApiClient } from '../lib/settingsApi';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
 import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
@@ -753,13 +754,21 @@ export default function SessionListScreen({ navigation }: Props) {
     }
   }, [connectionManager, sessionStore]);
 
+  // Create a settings client for syncing pin/archive state to server
+  const settingsClient = useMemo(() => {
+    if (config.baseUrl && config.apiKey) {
+      return new SettingsApiClient(config.baseUrl, config.apiKey);
+    }
+    return undefined;
+  }, [config.baseUrl, config.apiKey]);
+
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
-    await sessionStore.toggleSessionPinned(sessionId);
-  }, [sessionStore]);
+    await sessionStore.toggleSessionPinned(sessionId, settingsClient);
+  }, [sessionStore, settingsClient]);
 
   const handleToggleSessionArchived = useCallback(async (sessionId: string) => {
-    await sessionStore.toggleSessionArchived(sessionId);
-  }, [sessionStore]);
+    await sessionStore.toggleSessionArchived(sessionId, settingsClient);
+  }, [sessionStore, settingsClient]);
 
   const handleSessionLongPress = useCallback((session: SessionListItem) => {
     const isPinned = session.isPinned;
