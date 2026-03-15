@@ -1345,8 +1345,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           .filter(p => p.connection.type === 'acp' && p.enabled !== false)
           .map(p => ({ name: p.name, displayName: p.displayName })),
         // Session History (pinned/archived conversation IDs)
-        pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds) ? cfg.pinnedSessionIds : [],
-        archivedSessionIds: Array.isArray(cfg.archivedSessionIds) ? cfg.archivedSessionIds : [],
+        pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds) ? cfg.pinnedSessionIds.filter((id: unknown): id is string => typeof id === 'string') : [],
+        archivedSessionIds: Array.isArray(cfg.archivedSessionIds) ? cfg.archivedSessionIds.filter((id: unknown): id is string => typeof id === 'string') : [],
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get settings", error)

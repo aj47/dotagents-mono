@@ -587,18 +587,19 @@ export function useSessions(): SessionStore {
         Array.isArray(serverSettings?.archivedSessionIds) ? serverSettings.archivedSessionIds : []
       );
 
+      // Determine if we need to update sessions
+      const hasConversationChanges = result.pulled > 0 || result.pushed > 0 || result.updated > 0;
+      const hasServerPinState = serverSettings !== null;
+
       // Helper: apply server pin/archive state to a session based on its serverConversationId
+      // Only apply when we actually received settings from the server
       const applyServerPinState = (session: Session): Session => {
-        if (!session.serverConversationId) return session;
+        if (!hasServerPinState || !session.serverConversationId) return session;
         const isPinned = serverPinnedIds.has(session.serverConversationId);
         const isArchived = serverArchivedIds.has(session.serverConversationId);
         if (session.isPinned === isPinned && session.isArchived === isArchived) return session;
         return { ...session, isPinned, isArchived };
       };
-
-      // Determine if we need to update sessions
-      const hasConversationChanges = result.pulled > 0 || result.pushed > 0 || result.updated > 0;
-      const hasServerPinState = serverSettings !== null;
 
       if (hasConversationChanges || hasServerPinState) {
         // Smart merge: preserve any local changes that occurred during sync
@@ -618,7 +619,7 @@ export function useSessions(): SessionStore {
 
           // If session was modified locally during sync (updatedAt changed since snapshot), keep current version
           if (snapshot && current.updatedAt > snapshot.updatedAt) {
-            mergedSessions.push(applyServerPinState(current));
+            mergedSessions.push(current);
           } else if (synced) {
             // Session wasn't modified during sync, use synced version
             // Apply server pin/archive state instead of preserving local isPinned
