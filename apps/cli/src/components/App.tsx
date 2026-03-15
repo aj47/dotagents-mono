@@ -9,6 +9,7 @@ import { SkillsPanel } from './SkillsPanel';
 import { MemoriesPanel } from './MemoriesPanel';
 import { LoopsPanel } from './LoopsPanel';
 import { VoicePanel } from './VoicePanel';
+import { HubPanel } from './HubPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
@@ -19,6 +20,7 @@ import { useSkills } from '../hooks/useSkills';
 import { useMemories } from '../hooks/useMemories';
 import { useLoops } from '../hooks/useLoops';
 import { useVoice } from '../hooks/useVoice';
+import { useHub } from '../hooks/useHub';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -65,6 +67,10 @@ export function App() {
   // Voice panel state
   const voice = useVoice();
   const [showVoice, setShowVoice] = useState(false);
+
+  // Hub panel state
+  const hub = useHub();
+  const [showHub, setShowHub] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -142,6 +148,7 @@ export function App() {
           setShowMemories(false);
           setShowLoops(false);
           setShowVoice(false);
+          setShowHub(false);
           settings.open();
           break;
         }
@@ -155,6 +162,7 @@ export function App() {
           setShowMemories(false);
           setShowLoops(false);
           setShowVoice(false);
+          setShowHub(false);
           setShowProfiles(true);
           break;
         }
@@ -168,6 +176,7 @@ export function App() {
           setShowMemories(false);
           setShowLoops(false);
           setShowVoice(false);
+          setShowHub(false);
           setShowMcp(true);
           mcpManagement.refresh();
           break;
@@ -182,6 +191,7 @@ export function App() {
           setShowMemories(false);
           setShowLoops(false);
           setShowVoice(false);
+          setShowHub(false);
           setShowSkills(true);
           skillsHook.reload();
           break;
@@ -196,6 +206,7 @@ export function App() {
           setShowSkills(false);
           setShowLoops(false);
           setShowVoice(false);
+          setShowHub(false);
           setShowMemories(true);
           void memoriesHook.reload();
           break;
@@ -210,6 +221,7 @@ export function App() {
           setShowSkills(false);
           setShowMemories(false);
           setShowVoice(false);
+          setShowHub(false);
           setShowLoops(true);
           loopsHook.reload();
           break;
@@ -224,7 +236,22 @@ export function App() {
           setShowSkills(false);
           setShowMemories(false);
           setShowLoops(false);
+          setShowHub(false);
           setShowVoice(true);
+          break;
+        }
+
+        case 'hub': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowVoice(false);
+          setShowHub(true);
           break;
         }
 
@@ -444,8 +471,40 @@ export function App() {
         />
       )}
 
+      {/* Hub panel overlay */}
+      {showHub && (
+        <HubPanel
+          catalog={hub.catalog}
+          onBrowseCatalog={hub.browseCatalog}
+          onInstallBundle={hub.installBundle}
+          installLoading={hub.installLoading}
+          installError={hub.installError}
+          installResult={hub.installResult}
+          importState={hub.importState}
+          onSetImportFilePath={hub.setImportFilePath}
+          onPreviewImport={hub.previewImport}
+          onExecuteImport={hub.executeImport}
+          onResetImport={hub.resetImport}
+          exportState={hub.exportState}
+          onLoadExportableItems={hub.loadExportableItems}
+          onSetExportName={hub.setExportName}
+          onSetExportDescription={hub.setExportDescription}
+          onSetExportPath={hub.setExportPath}
+          onExecuteExport={hub.executeExport}
+          onResetExport={hub.resetExport}
+          publishState={hub.publishState}
+          onSetPublishName={hub.setPublishName}
+          onSetPublishSummary={hub.setPublishSummary}
+          onSetPublishAuthorName={hub.setPublishAuthorName}
+          onSetPublishTags={hub.setPublishTags}
+          onExecutePublish={hub.executePublish}
+          onResetPublish={hub.resetPublish}
+          onClose={() => setShowHub(false)}
+        />
+      )}
+
       {/* Chat interface (hidden when any panel is open) */}
-      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && (
+      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && (
         <ChatView
           messages={messages}
           status={status}
@@ -460,7 +519,9 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showVoice
+          {showHub
+            ? 'Hub • ↑/↓ navigate • Enter select • Esc back/close'
+            : showVoice
             ? 'Voice • Enter record • s speak last • c continuous mode • x stop • Esc close'
             : showSkills
               ? 'Skills • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/g actions'
