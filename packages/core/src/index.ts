@@ -772,6 +772,178 @@ export {
   setMessageQueueServiceProgressEmitter,
 } from './message-queue-service';
 
+// Emergency Stop
+export {
+  emergencyStopAll,
+} from './emergency-stop';
+
+// Push Notification Service
+export {
+  sendPushNotification,
+  sendMessageNotification,
+  isPushEnabled,
+  clearBadgeCount,
+} from './push-notification-service';
+export type {
+  PushNotificationPayload,
+} from './push-notification-service';
+export type {
+  PushNotificationToken,
+  OAuthTokens,
+  OAuthServerMetadata,
+  OAuthClientMetadata,
+} from './types';
+
+// Cloudflare Tunnel
+export {
+  checkCloudflaredInstalled,
+  startCloudflareTunnel,
+  stopCloudflareTunnel,
+  getCloudflareTunnelStatus,
+  startNamedCloudflareTunnel,
+  listCloudflareTunnels,
+  checkCloudflaredLoggedIn,
+} from './cloudflare-tunnel';
+
+// Agent Profile Connection Sanitize
+export {
+  sanitizeAgentProfileConnection,
+  VALID_AGENT_PROFILE_CONNECTION_TYPES,
+} from './agent-profile-connection-sanitize';
+export type {
+  AgentProfileConnectionTypeValue,
+  AgentProfileConnectionDraft,
+  AgentProfileConnectionInput,
+} from './agent-profile-connection-sanitize';
+
+// Kitten TTS Service
+export {
+  synthesize as kittenSynthesize,
+  getAvailableVoices as getKittenVoices,
+  getKittenModelStatus,
+  downloadKittenModel,
+  disposeTts as disposeKittenTts,
+  setKittenTTSPathResolver,
+} from './kitten-tts';
+export type {
+  Voice as KittenVoice,
+  KittenModelStatus,
+  SynthesisResult as KittenSynthesisResult,
+} from './kitten-tts';
+
+// Supertonic TTS Service
+export {
+  synthesize as supertonicSynthesize,
+  getAvailableVoices as getSupertonicVoices,
+  getSupertonicModelStatus,
+  downloadSupertonicModel,
+  disposeTts as disposeSupertonicTts,
+  setSupertonicTTSPathResolver,
+} from './supertonic-tts';
+export type {
+  SupertonicModelStatus,
+  SupertonicSynthesisResult,
+} from './supertonic-tts';
+
+// Parakeet STT Service
+export {
+  isSherpaAvailable,
+  getSherpaLoadError,
+  isModelReady as isParakeetModelReady,
+  getModelStatus as getParakeetModelStatus,
+  downloadModel as downloadParakeetModel,
+  initializeRecognizer,
+  transcribe,
+  disposeRecognizer,
+  setParakeetSTTPathResolver,
+} from './parakeet-stt';
+export type {
+  ModelStatus as ParakeetModelStatus,
+} from './parakeet-stt';
+
+// OAuth Client
+export {
+  OAuthClient,
+  setOAuthClientUserInteraction,
+} from './oauth-client';
+export type {
+  OAuthAuthorizationRequest,
+  OAuthTokenRequest,
+  OAuthCallbackResult as OAuthClientCallbackResult,
+  OAuthCallbackHandler,
+} from './oauth-client';
+
+// OAuth Callback Server
+export {
+  OAuthCallbackServer,
+  getOAuthCallbackServer,
+  handleOAuthCallback,
+} from './oauth-callback-server';
+export type {
+  OAuthCallbackResult,
+} from './oauth-callback-server';
+
+// Bundle Service
+export {
+  exportBundle,
+  exportBundleFromLayers,
+  exportBundleToFile,
+  exportBundleToFileFromLayers,
+  importBundle,
+  importBundleFromDialog,
+  previewBundle,
+  previewBundleWithConflicts,
+  previewBundleFromDialog,
+  generatePublishPayload,
+  getBundleExportableItems,
+  getBundleExportableItemsFromLayers,
+  findHubBundleHandoffFilePath,
+  setBundleServiceUserInteraction,
+} from './bundle-service';
+export type {
+  DotAgentsBundle,
+  BundleManifest,
+  BundleAgentProfile,
+  BundleMCPServer,
+  BundleSkill,
+  BundleRepeatTask,
+  BundleMemory,
+  BundlePublicMetadata,
+  BundlePublicMetadataAuthor,
+  BundlePublicMetadataCompatibility,
+  BundleComponentSelection,
+  BundleItemSelectionOptions,
+  ExportBundleOptions,
+  ExportBundleResult,
+  ExportBundleToFileResult,
+  ExportableBundleItems,
+  ExportableBundleAgentProfile,
+  ExportableBundleMCPServer,
+  ExportableBundleSkill,
+  ExportableBundleRepeatTask,
+  ExportableBundleMemory,
+  ImportOptions,
+  ImportConflictStrategy,
+  ImportItemResult,
+  ImportBundleResult,
+  PreviewConflict,
+  BundlePreviewResult,
+  GeneratePublishPayloadOptions,
+} from './bundle-service';
+
+// Remote Server
+export {
+  startRemoteServer,
+  startRemoteServerForced,
+  stopRemoteServer,
+  restartRemoteServer,
+  getRemoteServerStatus,
+  getConnectableIp,
+  printQRCodeToTerminal,
+  setRemoteServerProgressEmitter,
+  setRemoteServerConversationService,
+} from './remote-server';
+
 // Testing utilities
 export {
   MockPathResolver,

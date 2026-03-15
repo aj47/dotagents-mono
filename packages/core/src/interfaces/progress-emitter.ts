@@ -37,4 +37,10 @@ export interface ProgressEmitter {
    * Useful for one-off notifications that don't fit the above categories.
    */
   emitEvent(channel: string, data: unknown): void;
+
+  /**
+   * Notify the UI that conversation history has changed (e.g., from remote server).
+   * Optional — only needed when remote server modifies conversations.
+   */
+  emitConversationHistoryChanged?(): void;
 }

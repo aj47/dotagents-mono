@@ -38,6 +38,14 @@ export class MockPathResolver implements PathResolver {
   getLogsPath(): string {
     return `${this.basePath}/logs`;
   }
+
+  isPackaged(): boolean {
+    return false;
+  }
+
+  getResourcesPath(): string | null {
+    return null;
+  }
 }
 
 /**

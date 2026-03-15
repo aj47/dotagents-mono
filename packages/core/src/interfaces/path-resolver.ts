@@ -61,4 +61,18 @@ export interface PathResolver {
    * CLI: the module's directory or process.cwd().
    */
   getAppPath?(): string;
+
+  /**
+   * Returns whether the application is running in a packaged/production mode.
+   * Electron equivalent: `app.isPackaged`
+   * CLI: typically false (always "unpackaged").
+   */
+  isPackaged?(): boolean;
+
+  /**
+   * Returns the path to bundled resources (e.g., native addons).
+   * Electron equivalent: `process.resourcesPath`
+   * CLI: null (no bundled resources).
+   */
+  getResourcesPath?(): string | null;
 }

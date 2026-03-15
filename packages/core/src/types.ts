@@ -322,6 +322,9 @@ export interface OAuthConfig {
     codeVerifier: string
     state: string
   }
+  serverMetadata?: OAuthServerMetadata
+  clientMetadata?: OAuthClientMetadata
+  tokens?: OAuthTokens
 }
 
 export interface MCPServerConfig {
@@ -500,4 +503,46 @@ export interface EnhancedModelInfo extends ModelInfo {
   // Modalities
   inputModalities?: string[]
   outputModalities?: string[]
+}
+
+// Push Notification Token (from mobile clients)
+export interface PushNotificationToken {
+  token: string
+  type: 'expo'
+  platform: 'ios' | 'android'
+  registeredAt: number
+  deviceId?: string
+  badgeCount?: number // Tracks unread notification count for this device
+}
+
+// OAuth Types
+export interface OAuthTokens {
+  access_token: string
+  token_type: string
+  expires_in?: number
+  refresh_token?: string
+  scope?: string
+  expires_at?: number
+}
+
+export interface OAuthServerMetadata {
+  issuer: string
+  authorization_endpoint: string
+  token_endpoint: string
+  registration_endpoint?: string
+  jwks_uri?: string
+  scopes_supported?: string[]
+  response_types_supported?: string[]
+  grant_types_supported?: string[]
+  token_endpoint_auth_methods_supported?: string[]
+  code_challenge_methods_supported?: string[]
+}
+
+export interface OAuthClientMetadata {
+  client_name: string
+  redirect_uris: string[]
+  grant_types: string[]
+  response_types: string[]
+  scope?: string
+  token_endpoint_auth_method?: string
 }
