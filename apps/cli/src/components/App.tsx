@@ -1,15 +1,18 @@
 import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useState } from 'react';
+import { ChatView } from './ChatView';
+import { useChat } from '../hooks/useChat';
 
 /**
  * Root App component for the DotAgents CLI.
  *
- * Renders the main TUI frame with a header, content area,
+ * Renders the main TUI frame with a header, the chat interface,
  * and a status bar at the bottom.
  */
 export function App() {
   const { width } = useTerminalDimensions();
   const [exiting, setExiting] = useState(false);
+  const { messages, status, error, sendMessage } = useChat();
 
   useKeyboard((key) => {
     if (key.ctrl && key.name === 'c') {
@@ -34,7 +37,7 @@ export function App() {
         border
         borderStyle="single"
         borderColor="#7aa2f7"
-        padding={1}
+        paddingX={1}
         width="100%"
       >
         <text fg="#7aa2f7">
@@ -43,22 +46,16 @@ export function App() {
         <text fg="#666"> — Your AI team, one command away</text>
       </box>
 
-      {/* Main content area */}
-      <box
-        flexGrow={1}
-        flexDirection="column"
-        border
-        borderStyle="single"
-        borderColor="#414868"
-        padding={1}
-        width="100%"
-      >
-        <text fg="#a9b1d6">Welcome to DotAgents CLI.</text>
-        <text fg="#565f89">Type a message to start chatting with your agent.</text>
-      </box>
+      {/* Chat interface */}
+      <ChatView
+        messages={messages}
+        status={status}
+        error={error}
+        onSendMessage={sendMessage}
+      />
 
       {/* Status bar */}
-      <box width="100%" padding={0}>
+      <box width="100%" paddingX={1}>
         <text fg="#565f89">Press Ctrl+C to exit</text>
       </box>
     </box>

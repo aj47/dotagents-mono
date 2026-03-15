@@ -323,6 +323,7 @@ export {
   makeLLMCallWithFetch,
   makeTextCompletionWithFetch,
   verifyCompletionWithFetch,
+  makeLLMCallWithStreaming,
   makeLLMCallWithStreamingAndTools,
 } from './llm-fetch';
 export type {
