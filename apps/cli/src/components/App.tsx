@@ -13,6 +13,7 @@ import { HubPanel } from './HubPanel';
 import { RemoteServerPanel } from './RemoteServerPanel';
 import { AcpPanel } from './AcpPanel';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
+import { SandboxPanel } from './SandboxPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
@@ -28,6 +29,7 @@ import { useRemoteServer } from '../hooks/useRemoteServer';
 import { useOAuth } from '../hooks/useOAuth';
 import { useAcp } from '../hooks/useAcp';
 import { useDiagnostics } from '../hooks/useDiagnostics';
+import { useSandbox } from '../hooks/useSandbox';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -91,6 +93,10 @@ export function App() {
   // Diagnostics panel state
   const diagnostics = useDiagnostics();
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+  // Sandbox panel state
+  const sandbox = useSandbox();
+  const [showSandbox, setShowSandbox] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -172,6 +178,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           settings.open();
           break;
         }
@@ -189,6 +196,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowProfiles(true);
           break;
         }
@@ -206,6 +214,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowMcp(true);
           mcpManagement.refresh();
           break;
@@ -224,6 +233,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowSkills(true);
           skillsHook.reload();
           break;
@@ -242,6 +252,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowMemories(true);
           void memoriesHook.reload();
           break;
@@ -260,6 +271,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowLoops(true);
           loopsHook.reload();
           break;
@@ -278,6 +290,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowVoice(true);
           break;
         }
@@ -296,6 +309,7 @@ export function App() {
           setShowServer(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           break;
         }
 
@@ -312,6 +326,7 @@ export function App() {
           setShowHub(false);
           setShowAcp(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowServer(true);
           remoteServer.refreshStatus();
           break;
@@ -330,6 +345,7 @@ export function App() {
           setShowHub(false);
           setShowServer(false);
           setShowDiagnostics(false);
+          setShowSandbox(false);
           setShowAcp(true);
           acp.refresh();
           break;
@@ -348,8 +364,28 @@ export function App() {
           setShowHub(false);
           setShowServer(false);
           setShowAcp(false);
+          setShowSandbox(false);
           setShowDiagnostics(true);
           diagnostics.refresh();
+          break;
+        }
+
+        case 'sandbox': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowVoice(false);
+          setShowHub(false);
+          setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
+          setShowSandbox(true);
+          sandbox.reload();
           break;
         }
 
@@ -651,8 +687,23 @@ export function App() {
         />
       )}
 
+      {/* Sandbox management panel overlay */}
+      {showSandbox && (
+        <SandboxPanel
+          state={sandbox.state}
+          error={sandbox.error}
+          statusMessage={sandbox.statusMessage}
+          onClose={() => setShowSandbox(false)}
+          onSaveSlot={sandbox.saveSlot}
+          onSwitchSlot={sandbox.switchSlot}
+          onDeleteSlot={sandbox.deleteSlot}
+          onImportBundle={sandbox.importBundleToSlot}
+          onReload={sandbox.reload}
+        />
+      )}
+
       {/* Chat interface (hidden when any panel is open) */}
-      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && !showServer && !showAcp && !showDiagnostics && (
+      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && !showServer && !showAcp && !showDiagnostics && !showSandbox && (
         <ChatView
           messages={messages}
           status={status}
@@ -667,7 +718,9 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showDiagnostics
+          {showSandbox
+            ? 'Sandbox • ↑/↓ navigate • Enter switch • s save • d delete • i import • r refresh • Esc close'
+            : showDiagnostics
             ? 'Diagnostics • Tab switch section • g report • Enter toggle/run • c clear • Esc close'
             : showAcp
             ? 'ACP Agents • ↑/↓ navigate • s start • x stop • a add • d delete • v delegations • Esc close'
