@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import type { ChatMessage } from '../types/chat';
+import type { ChatMessage, ToolCallInfo } from '../types/chat';
 
 /**
  * MessageBubble unit tests — validate display logic for user/assistant
- * messages, streaming indicators, and multiline content.
+ * messages, streaming indicators, tool calls inline, and multiline content.
  */
 
 import { MessageBubble } from './MessageBubble';
@@ -105,6 +105,83 @@ describe('MessageBubble', () => {
       const userColor = '#7dcfff';
       const assistantColor = '#9ece6a';
       expect(userColor).not.toBe(assistantColor);
+    });
+  });
+
+  describe('tool call integration', () => {
+    it('detects assistant messages with tool calls', () => {
+      const msg: ChatMessage = {
+        id: 'msg-7',
+        role: 'assistant',
+        content: 'Here are the results.',
+        timestamp: Date.now(),
+        toolCalls: [
+          {
+            id: 'tc-1',
+            toolName: 'search_files',
+            args: { pattern: '*.ts' },
+            status: 'completed',
+            result: 'Found 5 files',
+          },
+        ],
+      };
+      const isUser = msg.role === 'user';
+      const hasToolCalls = !isUser && msg.toolCalls && msg.toolCalls.length > 0;
+      expect(hasToolCalls).toBe(true);
+    });
+
+    it('user messages never show tool calls', () => {
+      const msg: ChatMessage = {
+        id: 'msg-8',
+        role: 'user',
+        content: 'Search for files',
+        timestamp: Date.now(),
+      };
+      const isUser = msg.role === 'user';
+      const hasToolCalls = !isUser && msg.toolCalls && msg.toolCalls.length > 0;
+      expect(hasToolCalls).toBeFalsy();
+    });
+
+    it('assistant messages without tool calls show no tools section', () => {
+      const msg: ChatMessage = {
+        id: 'msg-9',
+        role: 'assistant',
+        content: 'Just text response',
+        timestamp: Date.now(),
+      };
+      const isUser = msg.role === 'user';
+      const hasToolCalls = !isUser && msg.toolCalls && msg.toolCalls.length > 0;
+      expect(hasToolCalls).toBeFalsy();
+    });
+
+    it('handles multiple tool calls on a single message', () => {
+      const toolCalls: ToolCallInfo[] = [
+        { id: 'tc-1', toolName: 'read_file', args: { path: 'a.ts' }, status: 'completed' },
+        { id: 'tc-2', toolName: 'read_file', args: { path: 'b.ts' }, status: 'completed' },
+      ];
+      const msg: ChatMessage = {
+        id: 'msg-10',
+        role: 'assistant',
+        content: 'I read both files.',
+        timestamp: Date.now(),
+        toolCalls,
+      };
+      expect(msg.toolCalls).toHaveLength(2);
+    });
+
+    it('handles messages with tool calls but no text content', () => {
+      const msg: ChatMessage = {
+        id: 'msg-11',
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        toolCalls: [
+          { id: 'tc-1', toolName: 'execute', args: {}, status: 'running' },
+        ],
+      };
+      const displayContent = msg.content;
+      expect(displayContent.length).toBe(0);
+      expect(msg.toolCalls).toHaveLength(1);
     });
   });
 });

@@ -3,7 +3,7 @@ import {
   makeLLMCallWithStreaming,
 } from '@dotagents/core';
 import type { LLMToolCallResponse } from '@dotagents/core';
-import type { ChatMessage, ChatStatus } from '../types/chat';
+import type { ChatMessage, ChatStatus, ToolCallInfo, ToolApprovalInfo } from '../types/chat';
 
 /**
  * useChat — React hook that manages chat state and wires messages
@@ -13,7 +13,9 @@ import type { ChatMessage, ChatStatus } from '../types/chat';
  * - Message history (user + assistant)
  * - Empty message rejection
  * - Streaming token-by-token display
- * - Status transitions (idle → streaming → idle/error)
+ * - Tool call display (pending, running, completed, error)
+ * - Tool approval flow (awaiting_approval status with approve/deny callbacks)
+ * - Status transitions (idle → streaming → awaiting_approval → streaming → idle/error)
  * - Abort controller for cancellation
  */
 
@@ -22,24 +24,96 @@ function nextMsgId(): string {
   return `msg_${Date.now()}_${++_msgCounter}`;
 }
 
+let _toolCallCounter = 0;
+function nextToolCallId(): string {
+  return `tc_${Date.now()}_${++_toolCallCounter}`;
+}
+
 export interface UseChatReturn {
   messages: ChatMessage[];
   status: ChatStatus;
   error: string | undefined;
+  pendingApproval: ToolApprovalInfo | undefined;
   sendMessage: (content: string) => void;
+  approveToolCall: () => void;
+  denyToolCall: () => void;
 }
 
 export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<string | undefined>(undefined);
+  const [pendingApproval, setPendingApproval] = useState<ToolApprovalInfo | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
+  // Ref holding the resolve function for the current approval promise
+  const approvalResolveRef = useRef<((approved: boolean) => void) | null>(null);
+
+  /**
+   * Approve the currently pending tool call.
+   */
+  const approveToolCall = useCallback(() => {
+    if (approvalResolveRef.current) {
+      approvalResolveRef.current(true);
+      approvalResolveRef.current = null;
+    }
+    setPendingApproval(undefined);
+    setStatus('streaming');
+  }, []);
+
+  /**
+   * Deny the currently pending tool call.
+   */
+  const denyToolCall = useCallback(() => {
+    if (approvalResolveRef.current) {
+      approvalResolveRef.current(false);
+      approvalResolveRef.current = null;
+    }
+    setPendingApproval(undefined);
+    setStatus('streaming');
+  }, []);
+
+  /**
+   * Add a tool call entry to the latest assistant message.
+   */
+  const addToolCallToLastAssistant = useCallback(
+    (assistantMsgId: string, toolCall: ToolCallInfo) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall] }
+            : m,
+        ),
+      );
+    },
+    [],
+  );
+
+  /**
+   * Update an existing tool call on the latest assistant message.
+   */
+  const updateToolCall = useCallback(
+    (assistantMsgId: string, toolCallId: string, updates: Partial<ToolCallInfo>) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                toolCalls: (m.toolCalls ?? []).map((tc) =>
+                  tc.id === toolCallId ? { ...tc, ...updates } : tc,
+                ),
+              }
+            : m,
+        ),
+      );
+    },
+    [],
+  );
 
   const sendMessage = useCallback(
     (content: string) => {
       const trimmed = content.trim();
       if (trimmed.length === 0) return;
-      if (status === 'streaming') return;
+      if (status === 'streaming' || status === 'awaiting_approval') return;
 
       // Clear any previous error
       setError(undefined);
@@ -96,18 +170,42 @@ export function useChat(): UseChatReturn {
         abortController,
       )
         .then((result: LLMToolCallResponse) => {
-          // Mark streaming complete
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMsgId
-                ? {
-                    ...m,
-                    content: result.content ?? '',
-                    isStreaming: false,
-                  }
-                : m,
-            ),
-          );
+          // If the LLM returned tool calls, display them
+          if (result.toolCalls && result.toolCalls.length > 0) {
+            const toolCallInfos: ToolCallInfo[] = result.toolCalls.map((tc) => ({
+              id: nextToolCallId(),
+              toolName: tc.name,
+              args: tc.arguments,
+              status: 'completed' as const,
+              result: `Tool "${tc.name}" executed`,
+            }));
+
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      content: result.content ?? '',
+                      isStreaming: false,
+                      toolCalls: toolCallInfos,
+                    }
+                  : m,
+              ),
+            );
+          } else {
+            // Mark streaming complete
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      content: result.content ?? '',
+                      isStreaming: false,
+                    }
+                  : m,
+              ),
+            );
+          }
           setStatus('idle');
         })
         .catch((err: unknown) => {
@@ -145,5 +243,13 @@ export function useChat(): UseChatReturn {
     [messages, status],
   );
 
-  return { messages, status, error, sendMessage };
+  return {
+    messages,
+    status,
+    error,
+    pendingApproval,
+    sendMessage,
+    approveToolCall,
+    denyToolCall,
+  };
 }

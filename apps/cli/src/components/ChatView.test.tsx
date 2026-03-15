@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import type { ChatMessage, ChatStatus } from '../types/chat';
+import type { ChatMessage, ChatStatus, ToolApprovalInfo, ToolCallInfo } from '../types/chat';
 
 /**
  * ChatView unit tests — validate the view logic for message display,
- * status transitions, error handling, and input state.
+ * status transitions, error handling, tool display, approval prompt,
+ * and input state.
  */
 
 import { ChatView } from './ChatView';
@@ -11,8 +12,21 @@ import { ChatView } from './ChatView';
 /** Helper to compute status text matching ChatView's logic */
 function getStatusText(status: ChatStatus): string {
   if (status === 'streaming') return '● Streaming response...';
+  if (status === 'awaiting_approval') return '● Awaiting tool approval...';
   if (status === 'error') return '● Error occurred — you can retry';
   return '';
+}
+
+/** Helper to determine if input should be disabled */
+function isInputDisabled(status: ChatStatus): boolean {
+  return status === 'streaming' || status === 'awaiting_approval';
+}
+
+/** Helper to compute placeholder text matching ChatView's logic */
+function getPlaceholder(status: ChatStatus): string {
+  if (status === 'streaming') return 'Waiting for response...';
+  if (status === 'awaiting_approval') return 'Approve or deny the tool above...';
+  return 'Type a message...';
 }
 
 describe('ChatView', () => {
@@ -43,17 +57,22 @@ describe('ChatView', () => {
 
     it('disables input during streaming', () => {
       const status: ChatStatus = 'streaming';
-      expect(status === 'streaming').toBe(true);
+      expect(isInputDisabled(status)).toBe(true);
+    });
+
+    it('disables input during tool approval', () => {
+      const status: ChatStatus = 'awaiting_approval';
+      expect(isInputDisabled(status)).toBe(true);
     });
 
     it('enables input when idle', () => {
       const status: ChatStatus = 'idle';
-      expect(status).not.toBe('streaming');
+      expect(isInputDisabled(status)).toBe(false);
     });
 
     it('enables input after error', () => {
       const status: ChatStatus = 'error';
-      expect(status).not.toBe('streaming');
+      expect(isInputDisabled(status)).toBe(false);
     });
 
     it('provides error message for display', () => {
@@ -66,6 +85,10 @@ describe('ChatView', () => {
       expect(getStatusText('streaming')).toContain('Streaming');
     });
 
+    it('shows approval indicator text during awaiting_approval', () => {
+      expect(getStatusText('awaiting_approval')).toContain('Awaiting tool approval');
+    });
+
     it('shows error status text on error', () => {
       expect(getStatusText('error')).toContain('Error');
     });
@@ -75,19 +98,82 @@ describe('ChatView', () => {
     });
 
     it('uses correct placeholder during streaming', () => {
-      const isStreaming = true;
-      const placeholder = isStreaming
-        ? 'Waiting for response...'
-        : 'Type a message...';
-      expect(placeholder).toBe('Waiting for response...');
+      expect(getPlaceholder('streaming')).toBe('Waiting for response...');
+    });
+
+    it('uses approval placeholder during awaiting_approval', () => {
+      expect(getPlaceholder('awaiting_approval')).toBe('Approve or deny the tool above...');
     });
 
     it('uses default placeholder when idle', () => {
-      const isStreaming = false;
-      const placeholder = isStreaming
-        ? 'Waiting for response...'
-        : 'Type a message...';
-      expect(placeholder).toBe('Type a message...');
+      expect(getPlaceholder('idle')).toBe('Type a message...');
+    });
+  });
+
+  describe('tool call display integration', () => {
+    it('assistant message can have tool calls', () => {
+      const msg: ChatMessage = {
+        id: 'msg-1',
+        role: 'assistant',
+        content: 'I found the files.',
+        timestamp: Date.now(),
+        toolCalls: [
+          {
+            id: 'tc-1',
+            toolName: 'list_files',
+            args: { directory: '.' },
+            status: 'completed',
+            result: 'file1.ts, file2.ts',
+          },
+        ],
+      };
+      expect(msg.toolCalls).toHaveLength(1);
+      expect(msg.toolCalls![0].status).toBe('completed');
+    });
+
+    it('assistant message can have multiple tool calls', () => {
+      const toolCalls: ToolCallInfo[] = [
+        { id: 'tc-1', toolName: 'read_file', args: { path: 'a.ts' }, status: 'completed', result: 'contents' },
+        { id: 'tc-2', toolName: 'read_file', args: { path: 'b.ts' }, status: 'completed', result: 'contents' },
+        { id: 'tc-3', toolName: 'write_file', args: { path: 'c.ts' }, status: 'error', error: 'Permission denied' },
+      ];
+      expect(toolCalls).toHaveLength(3);
+      expect(toolCalls.filter((tc) => tc.status === 'completed')).toHaveLength(2);
+      expect(toolCalls.filter((tc) => tc.status === 'error')).toHaveLength(1);
+    });
+
+    it('user messages do not have tool calls', () => {
+      const msg: ChatMessage = {
+        id: 'msg-2',
+        role: 'user',
+        content: 'Hello',
+        timestamp: Date.now(),
+      };
+      const hasToolCalls = msg.role !== 'user' && msg.toolCalls && msg.toolCalls.length > 0;
+      expect(hasToolCalls).toBeFalsy();
+    });
+  });
+
+  describe('approval prompt visibility', () => {
+    function isApprovalVisible(status: ChatStatus): boolean {
+      return status === 'awaiting_approval';
+    }
+
+    it('shows approval prompt when status is awaiting_approval', () => {
+      const approval: ToolApprovalInfo = {
+        approvalId: 'a-1',
+        toolName: 'execute_command',
+        args: { command: 'ls' },
+      };
+      expect(isApprovalVisible('awaiting_approval') && !!approval).toBe(true);
+    });
+
+    it('hides approval prompt when status is streaming', () => {
+      expect(isApprovalVisible('streaming')).toBe(false);
+    });
+
+    it('hides approval prompt when status is idle', () => {
+      expect(isApprovalVisible('idle')).toBe(false);
     });
   });
 

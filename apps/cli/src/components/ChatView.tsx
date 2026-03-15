@@ -1,6 +1,7 @@
-import type { ChatMessage, ChatStatus } from '../types/chat';
+import type { ChatMessage, ChatStatus, ToolApprovalInfo } from '../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
+import { ToolApprovalPrompt } from './ToolApprovalPrompt';
 
 /**
  * ChatView — main chat interface component.
@@ -9,18 +10,33 @@ import { ChatInput } from './ChatInput';
  * a message input bar at the bottom. Handles:
  * - Empty state (welcome message)
  * - Message list rendering via MessageBubble
- * - Status bar (streaming/error indicators)
- * - Input disabling during streaming
+ * - Tool call display (in-progress, completed, error) inline with messages
+ * - Tool approval prompt with Y/N keybindings
+ * - Status bar (streaming/error/approval indicators)
+ * - Input disabling during streaming or approval
  */
 export interface ChatViewProps {
   messages: ChatMessage[];
   status: ChatStatus;
   error?: string;
+  pendingApproval?: ToolApprovalInfo;
   onSendMessage: (message: string) => void;
+  onApprove?: () => void;
+  onDeny?: () => void;
 }
 
-export function ChatView({ messages, status, error, onSendMessage }: ChatViewProps) {
+export function ChatView({
+  messages,
+  status,
+  error,
+  pendingApproval,
+  onSendMessage,
+  onApprove,
+  onDeny,
+}: ChatViewProps) {
   const isStreaming = status === 'streaming';
+  const isAwaitingApproval = status === 'awaiting_approval';
+  const inputDisabled = isStreaming || isAwaitingApproval;
   const hasMessages = messages.length > 0;
 
   return (
@@ -45,6 +61,17 @@ export function ChatView({ messages, status, error, onSendMessage }: ChatViewPro
         ))}
       </scrollbox>
 
+      {/* Tool approval prompt */}
+      {isAwaitingApproval && pendingApproval && onApprove && onDeny && (
+        <box width="100%" paddingX={1} paddingY={0}>
+          <ToolApprovalPrompt
+            approval={pendingApproval}
+            onApprove={onApprove}
+            onDeny={onDeny}
+          />
+        </box>
+      )}
+
       {/* Error display */}
       {error && (
         <box width="100%" paddingX={1}>
@@ -57,9 +84,11 @@ export function ChatView({ messages, status, error, onSendMessage }: ChatViewPro
         <text fg="#565f89">
           {isStreaming
             ? '● Streaming response...'
-            : status === 'error'
-              ? '● Error occurred — you can retry'
-              : ''}
+            : isAwaitingApproval
+              ? '● Awaiting tool approval...'
+              : status === 'error'
+                ? '● Error occurred — you can retry'
+                : ''}
         </text>
       </box>
 
@@ -68,16 +97,18 @@ export function ChatView({ messages, status, error, onSendMessage }: ChatViewPro
         width="100%"
         border
         borderStyle="single"
-        borderColor={isStreaming ? '#414868' : '#7aa2f7'}
+        borderColor={inputDisabled ? '#414868' : '#7aa2f7'}
         paddingX={1}
       >
         <ChatInput
           onSubmit={onSendMessage}
-          disabled={isStreaming}
+          disabled={inputDisabled}
           placeholder={
             isStreaming
               ? 'Waiting for response...'
-              : 'Type a message...'
+              : isAwaitingApproval
+                ? 'Approve or deny the tool above...'
+                : 'Type a message...'
           }
         />
       </box>

@@ -7,12 +7,21 @@ import { useChat } from '../hooks/useChat';
  * Root App component for the DotAgents CLI.
  *
  * Renders the main TUI frame with a header, the chat interface,
- * and a status bar at the bottom.
+ * and a status bar at the bottom. Wires tool approval callbacks
+ * from useChat into the ChatView approval prompt.
  */
 export function App() {
   const { width } = useTerminalDimensions();
   const [exiting, setExiting] = useState(false);
-  const { messages, status, error, sendMessage } = useChat();
+  const {
+    messages,
+    status,
+    error,
+    pendingApproval,
+    sendMessage,
+    approveToolCall,
+    denyToolCall,
+  } = useChat();
 
   useKeyboard((key) => {
     if (key.ctrl && key.name === 'c') {
@@ -51,7 +60,10 @@ export function App() {
         messages={messages}
         status={status}
         error={error}
+        pendingApproval={pendingApproval}
         onSendMessage={sendMessage}
+        onApprove={approveToolCall}
+        onDeny={denyToolCall}
       />
 
       {/* Status bar */}
