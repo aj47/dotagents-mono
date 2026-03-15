@@ -19,6 +19,8 @@ vi.mock('@dotagents/core', () => ({
   setKittenTTSPathResolver: vi.fn(),
   setSupertonicTTSPathResolver: vi.fn(),
   setParakeetSTTPathResolver: vi.fn(),
+  setRemoteServerProgressEmitter: vi.fn(),
+  setOAuthClientUserInteraction: vi.fn(),
   mcpService: {
     initialize: vi.fn().mockResolvedValue(undefined),
     getAvailableTools: vi.fn().mockReturnValue([]),
@@ -46,6 +48,8 @@ import {
   setKittenTTSPathResolver,
   setSupertonicTTSPathResolver,
   setParakeetSTTPathResolver,
+  setRemoteServerProgressEmitter,
+  setOAuthClientUserInteraction,
   mcpService,
   getBuiltinToolNames,
   emergencyStopAll,
@@ -132,6 +136,26 @@ describe('core-wiring', () => {
           resolveCommandPath: expect.any(Function),
         }),
       );
+    });
+
+    it('wires remote server ProgressEmitter', () => {
+      const mockPath = {} as any;
+      const mockProgress = {} as any;
+      const mockUI = {} as any;
+
+      wireCoreDependencies(mockPath, mockProgress, mockUI);
+
+      expect(setRemoteServerProgressEmitter).toHaveBeenCalledWith(mockProgress);
+    });
+
+    it('wires OAuth client UserInteraction', () => {
+      const mockPath = {} as any;
+      const mockProgress = {} as any;
+      const mockUI = {} as any;
+
+      wireCoreDependencies(mockPath, mockProgress, mockUI);
+
+      expect(setOAuthClientUserInteraction).toHaveBeenCalledWith(mockUI);
     });
   });
 

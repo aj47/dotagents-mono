@@ -45,6 +45,12 @@ import {
   setKittenTTSPathResolver,
   setSupertonicTTSPathResolver,
   setParakeetSTTPathResolver,
+
+  // Remote server wiring
+  setRemoteServerProgressEmitter,
+
+  // OAuth client wiring
+  setOAuthClientUserInteraction,
 } from '@dotagents/core';
 
 /**
@@ -83,6 +89,12 @@ export function wireCoreDependencies(
   setKittenTTSPathResolver(pathResolver);
   setSupertonicTTSPathResolver(pathResolver);
   setParakeetSTTPathResolver(pathResolver);
+
+  // --- Remote server wiring ---
+  setRemoteServerProgressEmitter(progressEmitter);
+
+  // --- OAuth client wiring ---
+  setOAuthClientUserInteraction(userInteraction);
 
   // --- Command verification ---
   setCommandPathResolver({

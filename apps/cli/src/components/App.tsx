@@ -10,6 +10,7 @@ import { MemoriesPanel } from './MemoriesPanel';
 import { LoopsPanel } from './LoopsPanel';
 import { VoicePanel } from './VoicePanel';
 import { HubPanel } from './HubPanel';
+import { RemoteServerPanel } from './RemoteServerPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
@@ -21,6 +22,8 @@ import { useMemories } from '../hooks/useMemories';
 import { useLoops } from '../hooks/useLoops';
 import { useVoice } from '../hooks/useVoice';
 import { useHub } from '../hooks/useHub';
+import { useRemoteServer } from '../hooks/useRemoteServer';
+import { useOAuth } from '../hooks/useOAuth';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -71,6 +74,11 @@ export function App() {
   // Hub panel state
   const hub = useHub();
   const [showHub, setShowHub] = useState(false);
+
+  // Remote server panel state
+  const remoteServer = useRemoteServer();
+  const oauth = useOAuth();
+  const [showServer, setShowServer] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -149,6 +157,7 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowServer(false);
           settings.open();
           break;
         }
@@ -163,6 +172,7 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowServer(false);
           setShowProfiles(true);
           break;
         }
@@ -177,6 +187,7 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowServer(false);
           setShowMcp(true);
           mcpManagement.refresh();
           break;
@@ -192,6 +203,7 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowServer(false);
           setShowSkills(true);
           skillsHook.reload();
           break;
@@ -207,6 +219,7 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowServer(false);
           setShowMemories(true);
           void memoriesHook.reload();
           break;
@@ -222,6 +235,7 @@ export function App() {
           setShowMemories(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowServer(false);
           setShowLoops(true);
           loopsHook.reload();
           break;
@@ -237,6 +251,7 @@ export function App() {
           setShowMemories(false);
           setShowLoops(false);
           setShowHub(false);
+          setShowServer(false);
           setShowVoice(true);
           break;
         }
@@ -252,6 +267,23 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(true);
+          setShowServer(false);
+          break;
+        }
+
+        case 'server': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowVoice(false);
+          setShowHub(false);
+          setShowServer(true);
+          remoteServer.refreshStatus();
           break;
         }
 
@@ -503,8 +535,26 @@ export function App() {
         />
       )}
 
+      {/* Remote server panel overlay */}
+      {showServer && (
+        <RemoteServerPanel
+          serverStatus={remoteServer.status}
+          loading={remoteServer.loading}
+          error={remoteServer.error}
+          onStartServer={remoteServer.startServer}
+          onStopServer={remoteServer.stopServer}
+          onShowQRCode={remoteServer.showQRCode}
+          onSetPort={remoteServer.setPort}
+          onSetBindAddress={remoteServer.setBindAddress}
+          oauthStatus={oauth.status}
+          oauthError={oauth.error}
+          onStartOAuth={async (url) => { await oauth.startOAuth(url); }}
+          onClose={() => setShowServer(false)}
+        />
+      )}
+
       {/* Chat interface (hidden when any panel is open) */}
-      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && (
+      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && !showServer && (
         <ChatView
           messages={messages}
           status={status}
@@ -519,7 +569,9 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showHub
+          {showServer
+            ? 'Server • ↑/↓ navigate • Enter select • Esc back/close'
+            : showHub
             ? 'Hub • ↑/↓ navigate • Enter select • Esc back/close'
             : showVoice
             ? 'Voice • Enter record • s speak last • c continuous mode • x stop • Esc close'
