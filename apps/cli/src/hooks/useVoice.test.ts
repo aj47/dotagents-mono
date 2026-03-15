@@ -494,11 +494,11 @@ describe('Authorization headers', () => {
 
     const config = {
       ttsProviderId: 'groq',
-      groqApiKey: 'gsk-xyz789',
+      groqApiKey: 'test-groq-key',
     } as any;
 
     await cloudSynthesize('hello', config);
     const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers.Authorization).toBe('Bearer gsk-xyz789');
+    expect(headers.Authorization).toBe('Bearer test-groq-key');
   });
 });

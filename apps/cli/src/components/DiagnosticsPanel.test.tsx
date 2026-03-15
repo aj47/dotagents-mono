@@ -251,7 +251,7 @@ describe('DiagnosticsPanel', () => {
         langfuseStatus: {
           installed: true,
           enabled: true,
-          publicKey: 'pk-lf-1234...',
+          publicKey: 'test-public-key',
           baseUrl: 'https://custom.langfuse.com',
         },
       });

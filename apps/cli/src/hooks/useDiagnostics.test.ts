@@ -138,7 +138,7 @@ describe('useDiagnostics', () => {
       mockIsLangfuseEnabled.mockReturnValue(true);
       mockConfigGet.mockReturnValue({
         langfuseEnabled: true,
-        langfusePublicKey: 'pk-lf-1234567890abcdef',
+        langfusePublicKey: 'test-langfuse-public-key',
         langfuseSecretKey: 'sk-lf-secret',
         langfuseBaseUrl: 'https://custom.langfuse.com',
         mcpConfig: { mcpServers: {} },
@@ -147,7 +147,7 @@ describe('useDiagnostics', () => {
       const result = useDiagnostics();
 
       expect(result.langfuseStatus.enabled).toBe(true);
-      expect(result.langfuseStatus.publicKey).toContain('pk-lf-12');
+      expect(result.langfuseStatus.publicKey).toContain('test-langfuse');
       expect(result.langfuseStatus.baseUrl).toBe('https://custom.langfuse.com');
     });
 

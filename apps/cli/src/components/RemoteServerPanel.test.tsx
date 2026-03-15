@@ -36,7 +36,7 @@ const mockRunningStatus = {
   bind: '0.0.0.0',
   port: 3210,
   lastError: undefined as string | undefined,
-  apiKey: 'abc123...xyz789',
+  apiKey: 'test-api-key',
 };
 
 // ============================================================================
@@ -116,7 +116,7 @@ describe('RemoteServerPanel', () => {
 
     it('should show API key (redacted) when running', () => {
       const props = createDefaultProps({ serverStatus: mockRunningStatus });
-      expect(props.serverStatus.apiKey).toBe('abc123...xyz789');
+      expect(props.serverStatus.apiKey).toBe('test-api-key');
     });
   });
 
