@@ -2,9 +2,11 @@ import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useState, useCallback } from 'react';
 import { ChatView } from './ChatView';
 import { ConversationListView } from './ConversationListView';
+import { SettingsPanel } from './SettingsPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
+import { useSettings } from '../hooks/useSettings';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -24,6 +26,9 @@ export function App() {
 
   // Initialize MCP service — loads servers from .agents config
   const mcp = useMcpService();
+
+  // Settings panel state
+  const settings = useSettings();
 
   const conversationManager = useConversationManager();
   const {
@@ -92,6 +97,13 @@ export function App() {
           break;
         }
 
+        case 'settings': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.open();
+          break;
+        }
+
         case 'help': {
           setSystemMessage(getHelpText());
           conversationManager.dismissConversationList();
@@ -105,7 +117,7 @@ export function App() {
         }
       }
     },
-    [sendMessage, setMessages, conversationManager],
+    [sendMessage, setMessages, conversationManager, settings],
   );
 
   useKeyboard((key) => {
@@ -177,34 +189,64 @@ export function App() {
       )}
 
       {/* Conversation list overlay */}
-      {conversationManager.showingConversationList && (
+      {conversationManager.showingConversationList && !settings.isOpen && (
         <ConversationListView
           conversations={conversationManager.conversations}
           currentConversationId={conversationManager.currentConversationId}
         />
       )}
 
-      {/* Chat interface */}
-      <ChatView
-        messages={messages}
-        status={status}
-        error={error}
-        pendingApproval={pendingApproval}
-        onSendMessage={handleInput}
-        onApprove={approveToolCall}
-        onDeny={denyToolCall}
-      />
+      {/* Settings panel overlay */}
+      {settings.isOpen && (
+        <SettingsPanel
+          activeCategory={settings.activeCategory}
+          onCategoryChange={settings.setActiveCategory}
+          onNextCategory={settings.nextCategory}
+          onPrevCategory={settings.prevCategory}
+          onClose={settings.close}
+          presets={settings.presets}
+          onSetApiKey={settings.setProviderApiKey}
+          onClearApiKey={settings.clearProviderApiKey}
+          currentPresetId={settings.currentPresetId}
+          onSelectPreset={settings.selectPreset}
+          ttsConfig={settings.ttsConfig}
+          onUpdateTts={settings.updateTtsConfig}
+          sttConfig={settings.sttConfig}
+          onUpdateStt={settings.updateSttConfig}
+          systemPrompt={settings.systemPrompt}
+          onSetSystemPrompt={settings.setSystemPrompt}
+        />
+      )}
+
+      {/* Chat interface (hidden when settings are open) */}
+      {!settings.isOpen && (
+        <ChatView
+          messages={messages}
+          status={status}
+          error={error}
+          pendingApproval={pendingApproval}
+          onSendMessage={handleInput}
+          onApprove={approveToolCall}
+          onDeny={denyToolCall}
+        />
+      )}
 
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {conversationManager.currentConversationId
-            ? `[${conversationManager.currentConversationId}] `
-            : ''}
-          {status === 'streaming'
-            ? 'Ctrl+C to cancel • '
-            : ''}
-          Press Ctrl+C or /quit to exit • /help for commands
+          {settings.isOpen
+            ? 'Settings • Escape to close • Tab/←/→ to switch categories'
+            : (
+              <>
+                {conversationManager.currentConversationId
+                  ? `[${conversationManager.currentConversationId}] `
+                  : ''}
+                {status === 'streaming'
+                  ? 'Ctrl+C to cancel • '
+                  : ''}
+                Press Ctrl+C or /quit to exit • /help for commands
+              </>
+            )}
         </text>
       </box>
     </box>
