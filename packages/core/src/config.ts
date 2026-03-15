@@ -190,7 +190,7 @@ const getConfig = (): LoadedConfig => {
     mcpAutoPasteEnabled: false,
     mcpAutoPasteDelay: 1000, // 1 second delay by default
     mcpMaxIterations: 10, // Default max iterations for agent mode
-    mcpUnlimitedIterations: false, // Default to limited iterations
+    mcpUnlimitedIterations: true, // Default to unlimited iterations
     textInputEnabled: true,
 
     // Text input: On Windows, use Ctrl+Shift+T to avoid browser new tab conflict

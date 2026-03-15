@@ -445,12 +445,12 @@ export function Component() {
 
           <Control label={<ControlLabel label="Unlimited Iterations" tooltip="Allow the agent to run indefinitely without an iteration limit. Use with caution as it may run for a long time." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpUnlimitedIterations ?? false}
+              checked={configQuery.data?.mcpUnlimitedIterations ?? true}
               onCheckedChange={(checked) => saveConfig({ mcpUnlimitedIterations: checked })}
             />
           </Control>
 
-          {!(configQuery.data?.mcpUnlimitedIterations) && (
+          {!(configQuery.data?.mcpUnlimitedIterations ?? true) && (
             <Control label={<ControlLabel label="Max Iterations" tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer." />} className="px-3">
               <Input
                 type="number"

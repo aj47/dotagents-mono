@@ -1306,7 +1306,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
         mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
         dualModelEnabled: cfg.dualModelEnabled ?? false,
-        mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? false,
+        mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? true,
         // Tool Execution
         mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
         mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? true,

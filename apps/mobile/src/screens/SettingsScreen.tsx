@@ -2141,7 +2141,7 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Unlimited Iterations</Text>
                   <Switch
-                    value={remoteSettings.mcpUnlimitedIterations ?? false}
+                    value={remoteSettings.mcpUnlimitedIterations ?? true}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpUnlimitedIterations', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                     thumbColor={remoteSettings.mcpUnlimitedIterations ? theme.colors.primaryForeground : theme.colors.background}

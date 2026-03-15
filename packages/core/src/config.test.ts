@@ -64,4 +64,18 @@ describe("config", () => {
       expect(typeof configModule.ConfigStore).toBe("function")
     })
   })
+
+  describe("mcpUnlimitedIterations default (regression)", () => {
+    // This setting MUST default to true. We have regressed this multiple times.
+    // If this test fails, it means someone changed the default back to false.
+    it("defaults to true so agents are not prematurely cut off", () => {
+      // Register mock PathResolver needed by ConfigStore
+      if (!container.has(ServiceTokens.PathResolver)) {
+        container.register(ServiceTokens.PathResolver, new MockPathResolver("/test/app"))
+      }
+      const store = configModule.getConfigStore()
+      const config = store.get()
+      expect(config.mcpUnlimitedIterations).toBe(true)
+    })
+  })
 })
