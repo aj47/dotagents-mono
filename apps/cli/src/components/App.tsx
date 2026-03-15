@@ -1,27 +1,102 @@
 import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ChatView } from './ChatView';
+import { ConversationListView } from './ConversationListView';
 import { useChat } from '../hooks/useChat';
+import { useConversationManager } from '../hooks/useConversationManager';
+import { parseInput, getHelpText } from '../utils/command-parser';
+import type { ChatMessage } from '../types/chat';
 
 /**
  * Root App component for the DotAgents CLI.
  *
  * Renders the main TUI frame with a header, the chat interface,
- * and a status bar at the bottom. Wires tool approval callbacks
- * from useChat into the ChatView approval prompt.
+ * and a status bar at the bottom. Integrates conversation management
+ * commands (/new, /list, /switch) with the chat interface.
  */
 export function App() {
   const { width } = useTerminalDimensions();
   const [exiting, setExiting] = useState(false);
+  const [systemMessage, setSystemMessage] = useState<string | null>(null);
+
+  const conversationManager = useConversationManager();
   const {
     messages,
     status,
     error,
     pendingApproval,
     sendMessage,
+    setMessages,
     approveToolCall,
     denyToolCall,
-  } = useChat();
+  } = useChat({ onMessageSaved: conversationManager.saveMessage });
+
+  /**
+   * Handle user input: either a slash command or a chat message.
+   */
+  const handleInput = useCallback(
+    async (input: string) => {
+      const parsed = parseInput(input);
+
+      if (parsed.type === 'message') {
+        // Dismiss conversation list if showing
+        conversationManager.dismissConversationList();
+        setSystemMessage(null);
+        sendMessage(parsed.content);
+        return;
+      }
+
+      // Handle commands
+      switch (parsed.name) {
+        case 'new': {
+          await conversationManager.createNewConversation();
+          setMessages([]);
+          setSystemMessage('✓ New conversation started.');
+          break;
+        }
+
+        case 'list':
+        case 'conversations': {
+          await conversationManager.listConversations();
+          setSystemMessage(null);
+          break;
+        }
+
+        case 'switch': {
+          if (parsed.args.length === 0) {
+            setSystemMessage('⚠ Usage: /switch <id> or /switch <number>');
+            break;
+          }
+          try {
+            const loadedMessages = await conversationManager.switchConversation(
+              parsed.args[0],
+            );
+            setMessages(loadedMessages);
+            setSystemMessage(
+              `✓ Switched to conversation: ${conversationManager.currentConversationTitle ?? conversationManager.currentConversationId}`,
+            );
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : 'Failed to switch conversation';
+            setSystemMessage(`⚠ ${errMsg}`);
+          }
+          break;
+        }
+
+        case 'help': {
+          setSystemMessage(getHelpText());
+          conversationManager.dismissConversationList();
+          break;
+        }
+
+        case 'quit': {
+          setExiting(true);
+          setTimeout(() => process.exit(0), 100);
+          break;
+        }
+      }
+    },
+    [sendMessage, setMessages, conversationManager],
+  );
 
   useKeyboard((key) => {
     if (key.ctrl && key.name === 'c') {
@@ -39,6 +114,11 @@ export function App() {
     );
   }
 
+  // Build title with current conversation info
+  const titleSuffix = conversationManager.currentConversationTitle
+    ? ` — ${conversationManager.currentConversationTitle}`
+    : ' — Your AI team, one command away';
+
   return (
     <box flexDirection="column" width={width} flexGrow={1}>
       {/* Header */}
@@ -52,8 +132,23 @@ export function App() {
         <text fg="#7aa2f7">
           <strong>DotAgents CLI</strong>
         </text>
-        <text fg="#666"> — Your AI team, one command away</text>
+        <text fg="#666">{titleSuffix}</text>
       </box>
+
+      {/* System message (command feedback) */}
+      {systemMessage && (
+        <box width="100%" paddingX={1}>
+          <text fg="#9ece6a">{systemMessage}</text>
+        </box>
+      )}
+
+      {/* Conversation list overlay */}
+      {conversationManager.showingConversationList && (
+        <ConversationListView
+          conversations={conversationManager.conversations}
+          currentConversationId={conversationManager.currentConversationId}
+        />
+      )}
 
       {/* Chat interface */}
       <ChatView
@@ -61,14 +156,19 @@ export function App() {
         status={status}
         error={error}
         pendingApproval={pendingApproval}
-        onSendMessage={sendMessage}
+        onSendMessage={handleInput}
         onApprove={approveToolCall}
         onDeny={denyToolCall}
       />
 
       {/* Status bar */}
       <box width="100%" paddingX={1}>
-        <text fg="#565f89">Press Ctrl+C to exit</text>
+        <text fg="#565f89">
+          {conversationManager.currentConversationId
+            ? `[${conversationManager.currentConversationId}] `
+            : ''}
+          Press Ctrl+C or /quit to exit • /help for commands
+        </text>
       </box>
     </box>
   );

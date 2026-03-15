@@ -17,6 +17,7 @@ import type { ChatMessage, ChatStatus, ToolCallInfo, ToolApprovalInfo } from '..
  * - Tool approval flow (awaiting_approval status with approve/deny callbacks)
  * - Status transitions (idle → streaming → awaiting_approval → streaming → idle/error)
  * - Abort controller for cancellation
+ * - Conversation persistence via onMessageSaved callback
  */
 
 let _msgCounter = 0;
@@ -29,17 +30,24 @@ function nextToolCallId(): string {
   return `tc_${Date.now()}_${++_toolCallCounter}`;
 }
 
+export interface UseChatOptions {
+  /** Callback invoked after a message is finalized, for persistence. */
+  onMessageSaved?: (content: string, role: 'user' | 'assistant') => Promise<void>;
+}
+
 export interface UseChatReturn {
   messages: ChatMessage[];
   status: ChatStatus;
   error: string | undefined;
   pendingApproval: ToolApprovalInfo | undefined;
   sendMessage: (content: string) => void;
+  /** Replace the message list (e.g., on conversation switch). */
+  setMessages: (messages: ChatMessage[]) => void;
   approveToolCall: () => void;
   denyToolCall: () => void;
 }
 
-export function useChat(): UseChatReturn {
+export function useChat(options?: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<string | undefined>(undefined);
@@ -139,6 +147,11 @@ export function useChat(): UseChatReturn {
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setStatus('streaming');
 
+      // Persist the user message
+      options?.onMessageSaved?.(trimmed, 'user').catch(() => {
+        // Best-effort persistence — don't block the chat flow
+      });
+
       // Build conversation messages for the LLM
       const conversationMessages = [
         ...messages.map((m) => ({
@@ -207,6 +220,14 @@ export function useChat(): UseChatReturn {
             );
           }
           setStatus('idle');
+
+          // Persist the assistant response
+          const assistantContent = result.content ?? '';
+          if (assistantContent) {
+            options?.onMessageSaved?.(assistantContent, 'assistant').catch(() => {
+              // Best-effort persistence
+            });
+          }
         })
         .catch((err: unknown) => {
           const errMsg =
@@ -243,12 +264,23 @@ export function useChat(): UseChatReturn {
     [messages, status],
   );
 
+  /**
+   * Replace the entire message list.
+   * Used when switching conversations to load saved history.
+   */
+  const replaceMessages = useCallback((newMessages: ChatMessage[]) => {
+    setMessages(newMessages);
+    setError(undefined);
+    setStatus('idle');
+  }, []);
+
   return {
     messages,
     status,
     error,
     pendingApproval,
     sendMessage,
+    setMessages: replaceMessages,
     approveToolCall,
     denyToolCall,
   };
