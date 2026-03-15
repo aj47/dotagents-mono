@@ -256,6 +256,7 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         isPinned: !session.isPinned,
+        updatedAt: new Date().toISOString(),
       };
     });
 
@@ -270,13 +271,22 @@ export function useSessions(): SessionStore {
       saveQueueRef.current = saveQueueRef.current.then(resolve).catch(reject);
     });
 
-    // Sync pinned state to server (best-effort)
+    // Sync pinned state to server (best-effort, merge with server state)
     if (client) {
       try {
-        const pinnedIds = sessionsToSave
-          .filter(s => s.isPinned && s.serverConversationId)
-          .map(s => s.serverConversationId!);
-        await client.updateSettings({ pinnedSessionIds: pinnedIds });
+        const toggledSession = sessionsToSave.find(s => s.id === id);
+        if (toggledSession?.serverConversationId) {
+          const serverSettings = await client.getSettings().catch(() => null);
+          const serverPinnedIds = new Set<string>(
+            Array.isArray(serverSettings?.pinnedSessionIds) ? serverSettings.pinnedSessionIds : []
+          );
+          if (toggledSession.isPinned) {
+            serverPinnedIds.add(toggledSession.serverConversationId);
+          } else {
+            serverPinnedIds.delete(toggledSession.serverConversationId);
+          }
+          await client.updateSettings({ pinnedSessionIds: [...serverPinnedIds] });
+        }
       } catch {
         // best-effort: local state is already updated
       }
@@ -289,6 +299,7 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         isArchived: !session.isArchived,
+        updatedAt: new Date().toISOString(),
       };
     });
 
@@ -303,13 +314,22 @@ export function useSessions(): SessionStore {
       saveQueueRef.current = saveQueueRef.current.then(resolve).catch(reject);
     });
 
-    // Sync archived state to server (best-effort)
+    // Sync archived state to server (best-effort, merge with server state)
     if (client) {
       try {
-        const archivedIds = sessionsToSave
-          .filter(s => s.isArchived && s.serverConversationId)
-          .map(s => s.serverConversationId!);
-        await client.updateSettings({ archivedSessionIds: archivedIds });
+        const toggledSession = sessionsToSave.find(s => s.id === id);
+        if (toggledSession?.serverConversationId) {
+          const serverSettings = await client.getSettings().catch(() => null);
+          const serverArchivedIds = new Set<string>(
+            Array.isArray(serverSettings?.archivedSessionIds) ? serverSettings.archivedSessionIds : []
+          );
+          if (toggledSession.isArchived) {
+            serverArchivedIds.add(toggledSession.serverConversationId);
+          } else {
+            serverArchivedIds.delete(toggledSession.serverConversationId);
+          }
+          await client.updateSettings({ archivedSessionIds: [...serverArchivedIds] });
+        }
       } catch {
         // best-effort: local state is already updated
       }
@@ -589,7 +609,8 @@ export function useSessions(): SessionStore {
 
       // Determine if we need to update sessions
       const hasConversationChanges = result.pulled > 0 || result.pushed > 0 || result.updated > 0;
-      const hasServerPinState = serverSettings !== null;
+      const hasServerPinState = serverSettings !== null &&
+        ('pinnedSessionIds' in serverSettings || 'archivedSessionIds' in serverSettings);
 
       // Helper: apply server pin/archive state to a session based on its serverConversationId
       // Only apply when we actually received settings from the server
