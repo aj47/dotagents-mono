@@ -11,6 +11,8 @@ import { LoopsPanel } from './LoopsPanel';
 import { VoicePanel } from './VoicePanel';
 import { HubPanel } from './HubPanel';
 import { RemoteServerPanel } from './RemoteServerPanel';
+import { AcpPanel } from './AcpPanel';
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
@@ -24,6 +26,8 @@ import { useVoice } from '../hooks/useVoice';
 import { useHub } from '../hooks/useHub';
 import { useRemoteServer } from '../hooks/useRemoteServer';
 import { useOAuth } from '../hooks/useOAuth';
+import { useAcp } from '../hooks/useAcp';
+import { useDiagnostics } from '../hooks/useDiagnostics';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -79,6 +83,14 @@ export function App() {
   const remoteServer = useRemoteServer();
   const oauth = useOAuth();
   const [showServer, setShowServer] = useState(false);
+
+  // ACP panel state
+  const acp = useAcp();
+  const [showAcp, setShowAcp] = useState(false);
+
+  // Diagnostics panel state
+  const diagnostics = useDiagnostics();
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -158,6 +170,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           settings.open();
           break;
         }
@@ -173,6 +187,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowProfiles(true);
           break;
         }
@@ -188,6 +204,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowMcp(true);
           mcpManagement.refresh();
           break;
@@ -204,6 +222,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowSkills(true);
           skillsHook.reload();
           break;
@@ -220,6 +240,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowMemories(true);
           void memoriesHook.reload();
           break;
@@ -236,6 +258,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowLoops(true);
           loopsHook.reload();
           break;
@@ -252,6 +276,8 @@ export function App() {
           setShowLoops(false);
           setShowHub(false);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowVoice(true);
           break;
         }
@@ -268,6 +294,8 @@ export function App() {
           setShowVoice(false);
           setShowHub(true);
           setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           break;
         }
 
@@ -282,8 +310,46 @@ export function App() {
           setShowLoops(false);
           setShowVoice(false);
           setShowHub(false);
+          setShowAcp(false);
+          setShowDiagnostics(false);
           setShowServer(true);
           remoteServer.refreshStatus();
+          break;
+        }
+
+        case 'acp': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowVoice(false);
+          setShowHub(false);
+          setShowServer(false);
+          setShowDiagnostics(false);
+          setShowAcp(true);
+          acp.refresh();
+          break;
+        }
+
+        case 'diagnostics': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowVoice(false);
+          setShowHub(false);
+          setShowServer(false);
+          setShowAcp(false);
+          setShowDiagnostics(true);
+          diagnostics.refresh();
           break;
         }
 
@@ -553,8 +619,40 @@ export function App() {
         />
       )}
 
+      {/* ACP panel overlay */}
+      {showAcp && (
+        <AcpPanel
+          agents={acp.agents}
+          onClose={() => setShowAcp(false)}
+          onStartAgent={acp.startAgent}
+          onStopAgent={acp.stopAgent}
+          onAddAgent={acp.addAgent}
+          onRemoveAgent={acp.removeAgent}
+          onRefresh={acp.refresh}
+          delegations={acp.getDelegations(conversationManager.currentConversationId || '')}
+        />
+      )}
+
+      {/* Diagnostics panel overlay */}
+      {showDiagnostics && (
+        <DiagnosticsPanel
+          systemInfo={diagnostics.systemInfo}
+          langfuseStatus={diagnostics.langfuseStatus}
+          errorLog={diagnostics.errorLog}
+          healthCheck={diagnostics.healthCheck}
+          diagnosticReport={diagnostics.diagnosticReport}
+          loading={diagnostics.loading}
+          error={diagnostics.error}
+          onToggleLangfuse={diagnostics.toggleLangfuse}
+          onGenerateReport={diagnostics.generateReport}
+          onRunHealthCheck={diagnostics.runHealthCheck}
+          onClearErrors={diagnostics.clearErrors}
+          onClose={() => setShowDiagnostics(false)}
+        />
+      )}
+
       {/* Chat interface (hidden when any panel is open) */}
-      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && !showServer && (
+      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && !showVoice && !showHub && !showServer && !showAcp && !showDiagnostics && (
         <ChatView
           messages={messages}
           status={status}
@@ -569,7 +667,11 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showServer
+          {showDiagnostics
+            ? 'Diagnostics • Tab switch section • g report • Enter toggle/run • c clear • Esc close'
+            : showAcp
+            ? 'ACP Agents • ↑/↓ navigate • s start • x stop • a add • d delete • v delegations • Esc close'
+            : showServer
             ? 'Server • ↑/↓ navigate • Enter select • Esc back/close'
             : showHub
             ? 'Hub • ↑/↓ navigate • Enter select • Esc back/close'

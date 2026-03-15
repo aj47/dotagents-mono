@@ -100,6 +100,18 @@ describe('command-parser', () => {
       const result = parseInput('/');
       expect(result.type).toBe('message');
     });
+
+    it('parses /acp as a command', () => {
+      const result = parseInput('/acp');
+      expect(result.type).toBe('command');
+      expect((result as ParsedCommand).name).toBe('acp');
+    });
+
+    it('parses /diagnostics as a command', () => {
+      const result = parseInput('/diagnostics');
+      expect(result.type).toBe('command');
+      expect((result as ParsedCommand).name).toBe('diagnostics');
+    });
   });
 
   describe('getHelpText', () => {
@@ -109,6 +121,8 @@ describe('command-parser', () => {
       expect(help).toContain('/list');
       expect(help).toContain('/conversations');
       expect(help).toContain('/switch');
+      expect(help).toContain('/acp');
+      expect(help).toContain('/diagnostics');
       expect(help).toContain('/help');
       expect(help).toContain('/quit');
     });

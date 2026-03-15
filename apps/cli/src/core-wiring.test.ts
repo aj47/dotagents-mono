@@ -21,6 +21,14 @@ vi.mock('@dotagents/core', () => ({
   setParakeetSTTPathResolver: vi.fn(),
   setRemoteServerProgressEmitter: vi.fn(),
   setOAuthClientUserInteraction: vi.fn(),
+  setACPServiceProgressEmitter: vi.fn(),
+  setACPMainAgentProgressEmitter: vi.fn(),
+  setACPRouterToolsProgressEmitter: vi.fn(),
+  setACPBackgroundNotifierProgressEmitter: vi.fn(),
+  setACPBackgroundNotifierNotificationService: vi.fn(),
+  diagnosticsService: {
+    setMcpProvider: vi.fn(),
+  },
   mcpService: {
     initialize: vi.fn().mockResolvedValue(undefined),
     getAvailableTools: vi.fn().mockReturnValue([]),

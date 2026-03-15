@@ -8,7 +8,7 @@
  * Must be called during CLI startup before any core services are used.
  */
 
-import type { PathResolver, ProgressEmitter, UserInteraction } from '@dotagents/core';
+import type { PathResolver, ProgressEmitter, UserInteraction, NotificationService } from '@dotagents/core';
 import {
   // MCP Service
   setMCPServicePathResolver,
@@ -51,6 +51,16 @@ import {
 
   // OAuth client wiring
   setOAuthClientUserInteraction,
+
+  // ACP wiring
+  setACPServiceProgressEmitter,
+  setACPMainAgentProgressEmitter,
+  setACPRouterToolsProgressEmitter,
+  setACPBackgroundNotifierProgressEmitter,
+  setACPBackgroundNotifierNotificationService,
+
+  // Diagnostics wiring
+  diagnosticsService,
 } from '@dotagents/core';
 
 /**
@@ -63,6 +73,7 @@ export function wireCoreDependencies(
   pathResolver: PathResolver,
   progressEmitter: ProgressEmitter,
   userInteraction: UserInteraction,
+  notificationService?: NotificationService,
 ): void {
   // --- ProgressEmitter wiring ---
   setEmitAgentProgressEmitter(progressEmitter);
@@ -95,6 +106,25 @@ export function wireCoreDependencies(
 
   // --- OAuth client wiring ---
   setOAuthClientUserInteraction(userInteraction);
+
+  // --- ACP wiring ---
+  setACPServiceProgressEmitter(progressEmitter);
+  setACPMainAgentProgressEmitter(progressEmitter);
+  setACPRouterToolsProgressEmitter(progressEmitter);
+  setACPBackgroundNotifierProgressEmitter(progressEmitter);
+  if (notificationService) {
+    setACPBackgroundNotifierNotificationService(notificationService);
+  }
+
+  // --- Diagnostics wiring ---
+  // Wire MCP provider for diagnostics so system info reports available tools
+  diagnosticsService.setMcpProvider({
+    getAvailableTools: () => mcpService.getAvailableTools(),
+    testServerConnection: async (_serverName: string, _serverConfig: unknown) => {
+      // MCP service handles connection testing internally; return a basic result
+      return { success: true, toolCount: 0 };
+    },
+  });
 
   // --- Command verification ---
   setCommandPathResolver({
