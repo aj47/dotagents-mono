@@ -5,4 +5,5 @@ export {
   clearActualTokenUsage,
   clearIterativeSummary,
   recordActualTokenUsage,
+  summarizeContent,
 } from '@dotagents/core'

@@ -315,6 +315,7 @@ export {
   clearActualTokenUsage,
   clearIterativeSummary,
   recordActualTokenUsage,
+  summarizeContent,
 } from './context-budget';
 
 // LLM Fetch
@@ -525,6 +526,8 @@ export {
   skillsService,
   setBundledSkillsPath,
   initializeBundledSkills,
+  startSkillsFolderWatcher,
+  stopSkillsFolderWatcher,
 } from './skills-service';
 
 // Loop Service

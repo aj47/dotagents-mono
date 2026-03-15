@@ -2,8 +2,17 @@ import { describe, it, expect } from "vitest"
 import {
   filterEphemeralMessages,
   isEphemeralMessage,
-  type ConversationMessage,
 } from "./conversation-history-utils"
+
+// Local type matching the core's conversation-history-utils ConversationMessage
+interface ConversationMessage {
+  role: "user" | "assistant" | "tool"
+  content: string | Array<{ type: string; text: string }>
+  toolCalls?: unknown[]
+  toolResults?: unknown[]
+  timestamp?: number
+  ephemeral?: boolean
+}
 
 describe("conversation-history-utils", () => {
   describe("filterEphemeralMessages", () => {

@@ -11,7 +11,7 @@ import {
 } from "./window"
 import { listenToKeyboardEvents } from "./keyboard"
 import { registerIpcMain } from "@egoist/tipc/main"
-import { router } from "./tipc"
+import { router, runAgentLoopSession } from "./tipc"
 import { registerServeProtocol, registerServeSchema } from "./serve"
 import { createAppMenu } from "./menu"
 import { initTray } from "./tray"
@@ -38,6 +38,15 @@ import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import { downloadHubBundleToTempFile, findHubBundleInstallBundleUrl } from "./hub-install"
+
+// Core service wiring — registers Electron adapters and wires all setter dependencies.
+// Must be imported after config.ts (which registers PathResolver) but before services are used.
+import {
+  finalizeProgressEmitterWiring,
+  wireLoopRunner,
+  wireACPBackgroundNotifierRunner,
+  setSystemPromptAdditionsFn,
+} from "./core-wiring"
 import { buildHubBundleInstallUrl, resolveStartupMainWindowDecision } from "./startup-routing"
 
 // Check for --qr flag (headless mode with QR code)
@@ -152,6 +161,24 @@ app.on("second-instance", (_event, commandLine) => {
 app.whenReady().then(async () => {
   initDebugFlags(process.argv)
   logApp("DotAgents starting up...")
+
+  // Finalize core service wiring now that WINDOWS map is available
+  finalizeProgressEmitterWiring(WINDOWS)
+  wireLoopRunner(async (prompt, conversationId, sessionId) => {
+    await runAgentLoopSession(prompt, conversationId, sessionId)
+  })
+  wireACPBackgroundNotifierRunner(runAgentLoopSession)
+
+  // Wire system prompt additions for ACP/profile-based routing
+  import("./system-prompts").then((mod) => {
+    setSystemPromptAdditionsFn((excludeAgentId) => ({
+      acpRoutingPrompt: mod.getACPRoutingPromptAddition() || undefined,
+      agentsDelegationPrompt: mod.getAgentsPromptAddition(excludeAgentId) || undefined,
+      subSessionPrompt: mod.getSubSessionPromptAddition() || undefined,
+    }))
+  }).catch(() => {})
+
+  logApp("Core services wired")
 
   if (startupHubBundleInstallUrl) {
     await queueHubBundleInstallFromUrl(startupHubBundleInstallUrl, { openIfReady: false })

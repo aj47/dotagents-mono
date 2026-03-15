@@ -20,7 +20,24 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 // ============================================================================
 
 function getPathResolver(): PathResolver {
-  return container.resolve<PathResolver>(ServiceTokens.PathResolver)
+  // Try to resolve PathResolver from the service container.
+  // Falls back to a simple default if not registered (e.g., during early startup or tests).
+  if (container.has(ServiceTokens.PathResolver)) {
+    return container.resolve<PathResolver>(ServiceTokens.PathResolver)
+  }
+  // Fallback: use os-based defaults
+  return {
+    getUserDataPath: () => path.join(os.homedir(), ".dotagents"),
+    getConfigPath: () => path.join(os.homedir(), ".dotagents"),
+    getAppDataPath: () => process.platform === "darwin"
+      ? path.join(os.homedir(), "Library", "Application Support")
+      : path.join(os.homedir(), ".config"),
+    getTempPath: () => os.tmpdir(),
+    getHomePath: () => os.homedir(),
+    getDesktopPath: () => path.join(os.homedir(), "Desktop"),
+    getDownloadsPath: () => path.join(os.homedir(), "Downloads"),
+    getLogsPath: () => path.join(os.homedir(), ".dotagents", "logs"),
+  }
 }
 
 /**

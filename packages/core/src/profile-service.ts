@@ -12,7 +12,7 @@ import type { PathResolver } from "./interfaces/path-resolver"
 import { container, ServiceTokens } from "./service-container"
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
-import { configStore } from "./config"
+import { configStore, getDataFolder } from "./config"
 
 // Injectable: builtin tool names provider
 let _getBuiltinToolNamesForProfile: () => string[] = () => []
@@ -293,8 +293,8 @@ function isValidSkillsConfig(config: unknown): config is Partial<ProfileSkillsCo
 }
 
 function getProfilesPath(): string {
-  const pathResolver = container.resolve<PathResolver>(ServiceTokens.PathResolver)
-  return path.join(pathResolver.getAppDataPath(), process.env.APP_ID || "dotagents", "profiles.json")
+  // Use getDataFolder from config (which has PathResolver fallback built in)
+  return path.join(getDataFolder(), "profiles.json")
 }
 
 const DEFAULT_PROFILES: Profile[] = [
