@@ -6,7 +6,7 @@
  */
 
 /** Known slash commands */
-export type CommandName = 'new' | 'list' | 'conversations' | 'switch' | 'settings' | 'quit' | 'help';
+export type CommandName = 'new' | 'list' | 'conversations' | 'switch' | 'settings' | 'profiles' | 'quit' | 'help';
 
 export interface ParsedCommand {
   type: 'command';
@@ -29,6 +29,7 @@ const KNOWN_COMMANDS: Set<string> = new Set([
   'conversations',
   'switch',
   'settings',
+  'profiles',
   'quit',
   'help',
 ]);
@@ -75,6 +76,7 @@ export function getHelpText(): string {
     '  /conversations    — List all conversations (alias)',
     '  /switch <id>      — Switch to a conversation by ID or number',
     '  /settings         — Open settings panel',
+    '  /profiles         — Manage agent profiles',
     '  /help             — Show this help message',
     '  /quit             — Exit the CLI',
   ].join('\n');

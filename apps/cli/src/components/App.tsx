@@ -3,10 +3,12 @@ import { useState, useCallback } from 'react';
 import { ChatView } from './ChatView';
 import { ConversationListView } from './ConversationListView';
 import { SettingsPanel } from './SettingsPanel';
+import { AgentProfilePanel } from './AgentProfilePanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
 import { useSettings } from '../hooks/useSettings';
+import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -29,6 +31,10 @@ export function App() {
 
   // Settings panel state
   const settings = useSettings();
+
+  // Agent profiles state
+  const agentProfiles = useAgentProfiles();
+  const [showProfiles, setShowProfiles] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -100,7 +106,16 @@ export function App() {
         case 'settings': {
           conversationManager.dismissConversationList();
           setSystemMessage(null);
+          setShowProfiles(false);
           settings.open();
+          break;
+        }
+
+        case 'profiles': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(true);
           break;
         }
 
@@ -197,7 +212,7 @@ export function App() {
       )}
 
       {/* Settings panel overlay */}
-      {settings.isOpen && (
+      {settings.isOpen && !showProfiles && (
         <SettingsPanel
           activeCategory={settings.activeCategory}
           onCategoryChange={settings.setActiveCategory}
@@ -218,8 +233,22 @@ export function App() {
         />
       )}
 
-      {/* Chat interface (hidden when settings are open) */}
-      {!settings.isOpen && (
+      {/* Agent profiles panel overlay */}
+      {showProfiles && (
+        <AgentProfilePanel
+          profiles={agentProfiles.profiles}
+          activeProfile={agentProfiles.activeProfile}
+          error={agentProfiles.error}
+          onClose={() => setShowProfiles(false)}
+          onCreateProfile={agentProfiles.createProfile}
+          onUpdateProfile={agentProfiles.updateProfile}
+          onDeleteProfile={agentProfiles.deleteProfile}
+          onSwitchProfile={agentProfiles.switchProfile}
+        />
+      )}
+
+      {/* Chat interface (hidden when settings or profiles are open) */}
+      {!settings.isOpen && !showProfiles && (
         <ChatView
           messages={messages}
           status={status}
@@ -234,19 +263,24 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {settings.isOpen
-            ? 'Settings • Escape to close • Tab/←/→ to switch categories'
-            : (
-              <>
-                {conversationManager.currentConversationId
-                  ? `[${conversationManager.currentConversationId}] `
-                  : ''}
-                {status === 'streaming'
-                  ? 'Ctrl+C to cancel • '
-                  : ''}
-                Press Ctrl+C or /quit to exit • /help for commands
-              </>
-            )}
+          {showProfiles
+            ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
+            : settings.isOpen
+              ? 'Settings • Escape to close • Tab/←/→ to switch categories'
+              : (
+                <>
+                  {agentProfiles.activeProfile
+                    ? `[${agentProfiles.activeProfile.displayName}] `
+                    : ''}
+                  {conversationManager.currentConversationId
+                    ? `(${conversationManager.currentConversationId}) `
+                    : ''}
+                  {status === 'streaming'
+                    ? 'Ctrl+C to cancel • '
+                    : ''}
+                  Press Ctrl+C or /quit to exit • /help for commands
+                </>
+              )}
         </text>
       </box>
     </box>
