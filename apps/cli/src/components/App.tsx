@@ -4,6 +4,7 @@ import { ChatView } from './ChatView';
 import { ConversationListView } from './ConversationListView';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
+import { useMcpService } from '../hooks/useMcpService';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -13,11 +14,16 @@ import type { ChatMessage } from '../types/chat';
  * Renders the main TUI frame with a header, the chat interface,
  * and a status bar at the bottom. Integrates conversation management
  * commands (/new, /list, /switch) with the chat interface.
+ *
+ * Initializes MCP servers at startup and provides tools to the chat hook.
  */
 export function App() {
   const { width } = useTerminalDimensions();
   const [exiting, setExiting] = useState(false);
   const [systemMessage, setSystemMessage] = useState<string | null>(null);
+
+  // Initialize MCP service — loads servers from .agents config
+  const mcp = useMcpService();
 
   const conversationManager = useConversationManager();
   const {
@@ -29,7 +35,11 @@ export function App() {
     setMessages,
     approveToolCall,
     denyToolCall,
-  } = useChat({ onMessageSaved: conversationManager.saveMessage });
+    cancelStreaming,
+  } = useChat({
+    onMessageSaved: conversationManager.saveMessage,
+    tools: mcp.tools,
+  });
 
   /**
    * Handle user input: either a slash command or a chat message.
@@ -100,6 +110,12 @@ export function App() {
 
   useKeyboard((key) => {
     if (key.ctrl && key.name === 'c') {
+      // If currently streaming, cancel the stream first
+      if (status === 'streaming' || status === 'awaiting_approval') {
+        cancelStreaming();
+        return;
+      }
+      // Otherwise, exit
       setExiting(true);
       // Allow a brief moment for cleanup then exit
       setTimeout(() => process.exit(0), 100);
@@ -119,6 +135,14 @@ export function App() {
     ? ` — ${conversationManager.currentConversationTitle}`
     : ' — Your AI team, one command away';
 
+  // Build MCP status indicator
+  const mcpStatusText =
+    mcp.status === 'initializing'
+      ? ' ⠋ Loading MCP servers...'
+      : mcp.status === 'ready' && mcp.tools.length > 0
+        ? ` [${mcp.tools.length} tools]`
+        : '';
+
   return (
     <box flexDirection="column" width={width} flexGrow={1}>
       {/* Header */}
@@ -133,7 +157,17 @@ export function App() {
           <strong>DotAgents CLI</strong>
         </text>
         <text fg="#666">{titleSuffix}</text>
+        <text fg="#565f89">{mcpStatusText}</text>
       </box>
+
+      {/* MCP warnings */}
+      {mcp.warnings.length > 0 && (
+        <box width="100%" paddingX={1}>
+          {mcp.warnings.map((w, i) => (
+            <text key={`mcp-warn-${i}`} fg="#e0af68">⚠ MCP: {w}</text>
+          ))}
+        </box>
+      )}
 
       {/* System message (command feedback) */}
       {systemMessage && (
@@ -166,6 +200,9 @@ export function App() {
         <text fg="#565f89">
           {conversationManager.currentConversationId
             ? `[${conversationManager.currentConversationId}] `
+            : ''}
+          {status === 'streaming'
+            ? 'Ctrl+C to cancel • '
             : ''}
           Press Ctrl+C or /quit to exit • /help for commands
         </text>

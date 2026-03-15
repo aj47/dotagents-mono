@@ -1,7 +1,8 @@
 /**
  * DotAgents CLI Entry Point
  *
- * Initializes the service container with CLI-specific adapters
+ * Initializes the service container with CLI-specific adapters,
+ * wires core dependencies (MCP, builtins, LLM, etc.),
  * and renders the TUI application using OpenTUI React.
  */
 
@@ -11,16 +12,19 @@ import {
   container,
   ServiceTokens,
 } from '@dotagents/core';
+import type { PathResolver, ProgressEmitter, UserInteraction } from '@dotagents/core';
 import {
   FilePathResolver,
   TerminalProgressEmitter,
   TerminalUserInteraction,
   TerminalNotificationService,
 } from './adapters/index';
+import { wireCoreDependencies } from './core-wiring';
 import { App } from './components/App';
 
 /**
- * Initialize the service container with CLI-specific adapter implementations.
+ * Initialize the service container with CLI-specific adapter implementations
+ * and wire all core service dependencies.
  */
 function initializeServiceContainer(): void {
   const pathResolver = new FilePathResolver();
@@ -34,6 +38,13 @@ function initializeServiceContainer(): void {
   });
   container.register(ServiceTokens.UserInteraction, userInteraction);
   container.register(ServiceTokens.NotificationService, notificationService);
+
+  // Wire all core service dependencies (MCP, builtins, LLM, etc.)
+  wireCoreDependencies(
+    pathResolver as PathResolver,
+    progressEmitter as ProgressEmitter,
+    userInteraction as UserInteraction,
+  );
 }
 
 /**
@@ -41,7 +52,7 @@ function initializeServiceContainer(): void {
  */
 async function main(): Promise<void> {
   try {
-    // Register CLI-specific services
+    // Register CLI-specific services and wire dependencies
     initializeServiceContainer();
 
     // Start the OpenTUI renderer
