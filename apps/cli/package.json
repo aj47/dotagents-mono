@@ -2,23 +2,23 @@
   "name": "@dotagents/cli",
   "version": "0.0.1",
   "description": "Standalone CLI for DotAgents — terminal user interface built with OpenTUI",
-  "main": "./dist/index.js",
+  "type": "module",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "bin": {
-    "dotagents": "./dist/index.js"
+    "dotagents": "./dist/index.mjs"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.mjs"
     }
   },
   "scripts": {
     "build": "tsup",
-    "dev": "tsx src/index.tsx",
-    "start": "node dist/index.js",
+    "dev": "bun src/index.tsx",
+    "start": "bun dist/index.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
