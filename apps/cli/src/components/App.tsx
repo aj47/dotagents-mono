@@ -5,12 +5,18 @@ import { ConversationListView } from './ConversationListView';
 import { SettingsPanel } from './SettingsPanel';
 import { AgentProfilePanel } from './AgentProfilePanel';
 import { McpManagementPanel } from './McpManagementPanel';
+import { SkillsPanel } from './SkillsPanel';
+import { MemoriesPanel } from './MemoriesPanel';
+import { LoopsPanel } from './LoopsPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
 import { useMcpManagement } from '../hooks/useMcpManagement';
 import { useSettings } from '../hooks/useSettings';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
+import { useSkills } from '../hooks/useSkills';
+import { useMemories } from '../hooks/useMemories';
+import { useLoops } from '../hooks/useLoops';
 import { parseInput, getHelpText } from '../utils/command-parser';
 import type { ChatMessage } from '../types/chat';
 
@@ -41,6 +47,18 @@ export function App() {
   // MCP management panel state
   const mcpManagement = useMcpManagement();
   const [showMcp, setShowMcp] = useState(false);
+
+  // Skills panel state
+  const skillsHook = useSkills();
+  const [showSkills, setShowSkills] = useState(false);
+
+  // Memories panel state
+  const memoriesHook = useMemories();
+  const [showMemories, setShowMemories] = useState(false);
+
+  // Loops panel state
+  const loopsHook = useLoops();
+  const [showLoops, setShowLoops] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -114,6 +132,9 @@ export function App() {
           setSystemMessage(null);
           setShowProfiles(false);
           setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
           settings.open();
           break;
         }
@@ -123,6 +144,9 @@ export function App() {
           setSystemMessage(null);
           settings.close();
           setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
           setShowProfiles(true);
           break;
         }
@@ -132,8 +156,50 @@ export function App() {
           setSystemMessage(null);
           settings.close();
           setShowProfiles(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(false);
           setShowMcp(true);
           mcpManagement.refresh();
+          break;
+        }
+
+        case 'skills': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowMemories(false);
+          setShowLoops(false);
+          setShowSkills(true);
+          skillsHook.reload();
+          break;
+        }
+
+        case 'memories': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowLoops(false);
+          setShowMemories(true);
+          void memoriesHook.reload();
+          break;
+        }
+
+        case 'loops': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(false);
+          setShowSkills(false);
+          setShowMemories(false);
+          setShowLoops(true);
+          loopsHook.reload();
           break;
         }
 
@@ -252,7 +318,7 @@ export function App() {
       )}
 
       {/* Agent profiles panel overlay */}
-      {showProfiles && !showMcp && (
+      {showProfiles && (
         <AgentProfilePanel
           profiles={agentProfiles.profiles}
           activeProfile={agentProfiles.activeProfile}
@@ -283,8 +349,53 @@ export function App() {
         />
       )}
 
-      {/* Chat interface (hidden when settings, profiles, or MCP are open) */}
-      {!settings.isOpen && !showProfiles && !showMcp && (
+      {/* Skills management panel overlay */}
+      {showSkills && (
+        <SkillsPanel
+          skills={skillsHook.skills}
+          enabledSkillIds={skillsHook.enabledSkillIds}
+          error={skillsHook.error}
+          onClose={() => setShowSkills(false)}
+          onCreateSkill={skillsHook.createSkill}
+          onUpdateSkill={skillsHook.updateSkill}
+          onDeleteSkill={skillsHook.deleteSkill}
+          onEnableSkill={skillsHook.enableSkill}
+          onDisableSkill={skillsHook.disableSkill}
+          onInstallFromGitHub={skillsHook.installFromGitHub}
+        />
+      )}
+
+      {/* Memories management panel overlay */}
+      {showMemories && (
+        <MemoriesPanel
+          memories={memoriesHook.memories}
+          autoExtractionEnabled={memoriesHook.autoExtractionEnabled}
+          error={memoriesHook.error}
+          onClose={() => setShowMemories(false)}
+          onCreateMemory={memoriesHook.createMemory}
+          onUpdateMemory={memoriesHook.updateMemory}
+          onDeleteMemory={memoriesHook.deleteMemory}
+        />
+      )}
+
+      {/* Loops (repeat tasks) management panel overlay */}
+      {showLoops && (
+        <LoopsPanel
+          loops={loopsHook.loops}
+          statuses={loopsHook.statuses}
+          error={loopsHook.error}
+          onClose={() => setShowLoops(false)}
+          onCreateLoop={loopsHook.createLoop}
+          onUpdateLoop={loopsHook.updateLoop}
+          onDeleteLoop={loopsHook.deleteLoop}
+          onEnableLoop={loopsHook.enableLoop}
+          onDisableLoop={loopsHook.disableLoop}
+          onTriggerLoop={loopsHook.triggerLoop}
+        />
+      )}
+
+      {/* Chat interface (hidden when any panel is open) */}
+      {!settings.isOpen && !showProfiles && !showMcp && !showSkills && !showMemories && !showLoops && (
         <ChatView
           messages={messages}
           status={status}
@@ -299,26 +410,32 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showMcp
-            ? 'MCP Servers • Escape to close • Tab switch view • a/r/d actions'
-            : showProfiles
-              ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
-              : settings.isOpen
-                ? 'Settings • Escape to close • Tab/←/→ to switch categories'
-                : (
-                <>
-                  {agentProfiles.activeProfile
-                    ? `[${agentProfiles.activeProfile.displayName}] `
-                    : ''}
-                  {conversationManager.currentConversationId
-                    ? `(${conversationManager.currentConversationId}) `
-                    : ''}
-                  {status === 'streaming'
-                    ? 'Ctrl+C to cancel • '
-                    : ''}
-                  Press Ctrl+C or /quit to exit • /help for commands
-                </>
-              )}
+          {showSkills
+            ? 'Skills • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/g actions'
+            : showMemories
+              ? 'Memories • Escape to close • ↑/↓ navigate • c/e/d actions'
+              : showLoops
+                ? 'Repeat Tasks • Escape to close • ↑/↓ navigate • Enter toggle • c/e/d/t actions'
+                : showMcp
+                  ? 'MCP Servers • Escape to close • Tab switch view • a/r/d actions'
+                  : showProfiles
+                    ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
+                    : settings.isOpen
+                      ? 'Settings • Escape to close • Tab/←/→ to switch categories'
+                      : (
+                      <>
+                        {agentProfiles.activeProfile
+                          ? `[${agentProfiles.activeProfile.displayName}] `
+                          : ''}
+                        {conversationManager.currentConversationId
+                          ? `(${conversationManager.currentConversationId}) `
+                          : ''}
+                        {status === 'streaming'
+                          ? 'Ctrl+C to cancel • '
+                          : ''}
+                        Press Ctrl+C or /quit to exit • /help for commands
+                      </>
+                    )}
         </text>
       </box>
     </box>
