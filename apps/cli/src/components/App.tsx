@@ -4,9 +4,11 @@ import { ChatView } from './ChatView';
 import { ConversationListView } from './ConversationListView';
 import { SettingsPanel } from './SettingsPanel';
 import { AgentProfilePanel } from './AgentProfilePanel';
+import { McpManagementPanel } from './McpManagementPanel';
 import { useChat } from '../hooks/useChat';
 import { useConversationManager } from '../hooks/useConversationManager';
 import { useMcpService } from '../hooks/useMcpService';
+import { useMcpManagement } from '../hooks/useMcpManagement';
 import { useSettings } from '../hooks/useSettings';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { parseInput, getHelpText } from '../utils/command-parser';
@@ -35,6 +37,10 @@ export function App() {
   // Agent profiles state
   const agentProfiles = useAgentProfiles();
   const [showProfiles, setShowProfiles] = useState(false);
+
+  // MCP management panel state
+  const mcpManagement = useMcpManagement();
+  const [showMcp, setShowMcp] = useState(false);
 
   const conversationManager = useConversationManager();
   const {
@@ -107,6 +113,7 @@ export function App() {
           conversationManager.dismissConversationList();
           setSystemMessage(null);
           setShowProfiles(false);
+          setShowMcp(false);
           settings.open();
           break;
         }
@@ -115,7 +122,18 @@ export function App() {
           conversationManager.dismissConversationList();
           setSystemMessage(null);
           settings.close();
+          setShowMcp(false);
           setShowProfiles(true);
+          break;
+        }
+
+        case 'mcp': {
+          conversationManager.dismissConversationList();
+          setSystemMessage(null);
+          settings.close();
+          setShowProfiles(false);
+          setShowMcp(true);
+          mcpManagement.refresh();
           break;
         }
 
@@ -234,7 +252,7 @@ export function App() {
       )}
 
       {/* Agent profiles panel overlay */}
-      {showProfiles && (
+      {showProfiles && !showMcp && (
         <AgentProfilePanel
           profiles={agentProfiles.profiles}
           activeProfile={agentProfiles.activeProfile}
@@ -247,8 +265,26 @@ export function App() {
         />
       )}
 
-      {/* Chat interface (hidden when settings or profiles are open) */}
-      {!settings.isOpen && !showProfiles && (
+      {/* MCP management panel overlay */}
+      {showMcp && (
+        <McpManagementPanel
+          servers={mcpManagement.servers}
+          allTools={mcpManagement.allTools}
+          error={null}
+          onClose={() => {
+            setShowMcp(false);
+            // Refresh MCP tools after potential changes
+            mcp.reinitialize();
+          }}
+          onAddServer={mcpManagement.addServer}
+          onRemoveServer={mcpManagement.removeServer}
+          onReconnectServer={mcpManagement.reconnectServer}
+          onRefresh={mcpManagement.refresh}
+        />
+      )}
+
+      {/* Chat interface (hidden when settings, profiles, or MCP are open) */}
+      {!settings.isOpen && !showProfiles && !showMcp && (
         <ChatView
           messages={messages}
           status={status}
@@ -263,11 +299,13 @@ export function App() {
       {/* Status bar */}
       <box width="100%" paddingX={1}>
         <text fg="#565f89">
-          {showProfiles
-            ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
-            : settings.isOpen
-              ? 'Settings • Escape to close • Tab/←/→ to switch categories'
-              : (
+          {showMcp
+            ? 'MCP Servers • Escape to close • Tab switch view • a/r/d actions'
+            : showProfiles
+              ? 'Profiles • Escape to close • ↑/↓ navigate • Enter switch • c/e/d actions'
+              : settings.isOpen
+                ? 'Settings • Escape to close • Tab/←/→ to switch categories'
+                : (
                 <>
                   {agentProfiles.activeProfile
                     ? `[${agentProfiles.activeProfile.displayName}] `
