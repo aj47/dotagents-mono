@@ -256,7 +256,7 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         isPinned: !session.isPinned,
-        updatedAt: new Date().toISOString(),
+        updatedAt: Date.now(),
       };
     });
 
@@ -302,7 +302,7 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         isArchived: !session.isArchived,
-        updatedAt: new Date().toISOString(),
+        updatedAt: Date.now(),
       };
     });
 
