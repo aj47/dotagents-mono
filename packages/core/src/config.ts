@@ -447,6 +447,39 @@ export class ConfigStore {
     // Sync active preset credentials to legacy fields on startup
     this.config = syncPresetToLegacyFields(loaded.config) as Config
 
+    // Migration: ensure mcpVerifyCompletionEnabled and mcpUnlimitedIterations
+    // default to true. These were previously false by default and may have been
+    // persisted to ~/.agents/mcp.json, overriding config.json changes.
+    // This is a one-time fix: once the values are true, this is a no-op.
+    try {
+      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+      const mcpJson = safeReadJsonFileSync<Record<string, unknown>>(globalLayer.mcpJsonPath, {
+        backupDir: globalLayer.backupsDir,
+        defaultValue: {},
+      })
+      let mcpDirty = false
+      if (mcpJson.mcpVerifyCompletionEnabled === false) {
+        mcpJson.mcpVerifyCompletionEnabled = true
+        mcpDirty = true
+      }
+      if (mcpJson.mcpUnlimitedIterations === false) {
+        mcpJson.mcpUnlimitedIterations = true
+        mcpDirty = true
+      }
+      if (mcpDirty) {
+        safeWriteJsonFileSync(globalLayer.mcpJsonPath, mcpJson, {
+          backupDir: globalLayer.backupsDir,
+          maxBackups: 10,
+          pretty: true,
+        })
+        // Also update the in-memory config
+        this.config.mcpVerifyCompletionEnabled = true
+        this.config.mcpUnlimitedIterations = true
+      }
+    } catch {
+      // best-effort
+    }
+
     // Ensure global `.agents` files exist so users/agents can edit them even if
     // we loaded from legacy config.json or defaults.
     try {

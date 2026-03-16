@@ -78,4 +78,20 @@ describe("config", () => {
       expect(config.mcpUnlimitedIterations).toBe(true)
     })
   })
+
+  describe("mcpVerifyCompletionEnabled default (regression)", () => {
+    // This setting MUST default to true. When false, the agent bypasses
+    // verification and accepts any text response as complete — including
+    // "thinking out loud" responses that should trigger tool calls.
+    // The .agents/mcp.json file can override this, so the migration in
+    // ConfigStore constructor must fix stale false values.
+    it("defaults to true so agent responses are verified before delivery", () => {
+      if (!container.has(ServiceTokens.PathResolver)) {
+        container.register(ServiceTokens.PathResolver, new MockPathResolver("/test/app"))
+      }
+      const store = configModule.getConfigStore()
+      const config = store.get()
+      expect(config.mcpVerifyCompletionEnabled).toBe(true)
+    })
+  })
 })
