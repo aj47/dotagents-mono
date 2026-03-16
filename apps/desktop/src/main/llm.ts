@@ -562,6 +562,7 @@ export async function processTranscriptWithAgentMode(
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
+  let lastContextBudgetInfo: { estTokensAfter: number; maxTokens: number; appliedStrategies?: string[] } | undefined
 
   try {
   // Track context usage info for progress display
@@ -1552,7 +1553,7 @@ export async function processTranscriptWithAgentMode(
     // Apply context budget management before the agent LLM call
     // All active tools are sent to the LLM - progressive disclosure tools
     // (list_server_tools, get_tool_schema) allow the LLM to discover tools dynamically
-    const { messages: shrunkMessages, estTokensAfter, maxTokens: maxContextTokens } = await shrinkMessagesForLLM({
+    const { messages: shrunkMessages, estTokensAfter, maxTokens: maxContextTokens, appliedStrategies } = await shrinkMessagesForLLM({
       messages: messages as any,
       availableTools: activeTools,
       relevantTools: undefined,
@@ -1574,6 +1575,8 @@ export async function processTranscriptWithAgentMode(
     })
     // Update context info for progress display
     contextInfoRef = { estTokens: estTokensAfter, maxTokens: maxContextTokens }
+    // Track last context budget for Langfuse trace metadata
+    lastContextBudgetInfo = { estTokensAfter, maxTokens: maxContextTokens, appliedStrategies }
 
     // If stop was requested during context shrinking, exit now
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -2104,13 +2107,19 @@ export async function processTranscriptWithAgentMode(
           break
         }
 
-        if (trimmedContent.length > 0) {
+        // Only add non-garbled content to conversation history.
+        // Garbled tool-call text (e.g. "[Calling tools: execute_command]") just
+        // confuses the model further when it appears in prior turns. Skip it so
+        // the next attempt starts from a clean state.
+        if (trimmedContent.length > 0 && !isGarbledToolCallText) {
           addMessage("assistant", contentText)
         }
 
-        const nudgeMessage = hasToolsAvailable
-          ? "Use available tools directly via native function-calling, or provide a complete final answer."
-          : "Provide a complete final answer."
+        const nudgeMessage = isGarbledToolCallText
+          ? "Your previous response contained text like \"[Calling tools: ...]\" instead of an actual tool call. Do NOT write tool call names as text. Instead, invoke tools using the structured function-calling interface. If you cannot call tools, provide your final answer directly."
+          : hasToolsAvailable
+            ? "Use available tools directly via native function-calling, or provide a complete final answer."
+            : "Provide a complete final answer."
         addMessage("user", nudgeMessage)
 
         noOpCount = 0
@@ -2954,6 +2963,13 @@ export async function processTranscriptWithAgentMode(
         metadata: {
           totalIterations: iteration,
           wasAborted,
+          ...(lastContextBudgetInfo && {
+            contextBudget: {
+              estTokensAfter: lastContextBudgetInfo.estTokensAfter,
+              maxTokens: lastContextBudgetInfo.maxTokens,
+              appliedStrategies: lastContextBudgetInfo.appliedStrategies,
+            },
+          }),
         },
       })
       // Flush to ensure trace is sent
