@@ -1424,6 +1424,7 @@ export async function processTranscriptWithAgentMode(
 
   let noOpCount = 0 // Track iterations without meaningful progress
   let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
+  let garbledToolCallCount = 0 // Track consecutive garbled tool-call-as-text responses
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
   const MAX_COMPLETION_SIGNAL_HINTS = 2
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
@@ -2078,7 +2079,18 @@ export async function processTranscriptWithAgentMode(
 
       // Nudge path for no-progress responses.
       if (config.mcpVerifyCompletionEnabled && (noOpCount >= 2 || (hasToolsAvailable && noOpCount >= 1))) {
-        if (totalNudgeCount >= MAX_NUDGES) {
+        // Detect garbled tool-call-as-text loops: the model keeps outputting
+        // "[Calling tools: ...]" as plain text instead of actual tool calls.
+        // After a few consecutive garbled responses, the model is in a degraded
+        // state and nudging won't help — bail out early instead of looping.
+        const isGarbledToolCallText = !isDeliverableResponseContent(contentText) && trimmedContent.length > 0
+        if (isGarbledToolCallText) {
+          garbledToolCallCount++
+        } else {
+          garbledToolCallCount = 0
+        }
+        const MAX_GARBLED_TOOL_CALL_RETRIES = 3
+        if (totalNudgeCount >= MAX_NUDGES || garbledToolCallCount >= MAX_GARBLED_TOOL_CALL_RETRIES) {
           finalContent = buildIncompleteTaskFallback(contentText)
           addMessage("assistant", finalContent)
           emit({
@@ -2299,6 +2311,7 @@ export async function processTranscriptWithAgentMode(
       for (const execResult of executionResults) {
         toolResults.push(execResult.result)
         toolsExecutedInSession = true
+        garbledToolCallCount = 0 // Reset on successful tool execution
         if (execResult.result.isError) {
           failedTools.push(execResult.toolCall.name)
         }
