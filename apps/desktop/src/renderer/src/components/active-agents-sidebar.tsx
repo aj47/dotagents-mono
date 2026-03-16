@@ -496,7 +496,7 @@ export function ActiveAgentsSidebar({
                     {session.conversationTitle || "Untitled session"}
                   </p>
                   {session.conversationId && (
-                    <>
+                    <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -505,10 +505,7 @@ export function ActiveAgentsSidebar({
                             toggleArchiveSession(session.conversationId)
                           }
                         }}
-                        className={cn(
-                          "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
-                        )}
+                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                         title="Archive session"
                         aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
                       >
@@ -522,17 +519,14 @@ export function ActiveAgentsSidebar({
                             togglePinSession(session.conversationId)
                           }
                         }}
-                        className={cn(
-                          "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
-                        )}
+                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                         title={isPinned ? "Unpin session" : "Pin session"}
                         aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
                         aria-pressed={isPinned}
                       >
                         <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               )
@@ -600,73 +594,67 @@ export function ActiveAgentsSidebar({
                     </span>
                   )}
                 </div>
-                {session.conversationId && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (session.conversationId) {
-                          toggleArchiveSession(session.conversationId)
-                        }
-                      }}
-                      className={cn(
-                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                        "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
-                      )}
-                      title="Archive session"
-                      aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
-                    >
-                      <Archive className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (session.conversationId) {
-                          togglePinSession(session.conversationId)
-                        }
-                      }}
-                      className={cn(
-                        "shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                        "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
-                      )}
-                      title={isActivePinned ? "Unpin session" : "Pin session"}
-                      aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                      aria-pressed={isActivePinned}
-                    >
-                      <Pin className={cn("h-3 w-3", isActivePinned && "fill-current text-foreground")} />
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
-                  className={cn(
-                    "hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 opacity-0 transition-all group-hover:opacity-100",
-                    isFocused && "opacity-100",
+                <div className={cn(
+                  "hidden shrink-0 items-center gap-0.5",
+                  "group-hover:flex group-focus-within:flex",
+                  isFocused && "!flex",
+                )}>
+                  {session.conversationId && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (session.conversationId) {
+                            toggleArchiveSession(session.conversationId)
+                          }
+                        }}
+                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        title="Archive session"
+                        aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
+                      >
+                        <Archive className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (session.conversationId) {
+                            togglePinSession(session.conversationId)
+                          }
+                        }}
+                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        title={isActivePinned ? "Unpin session" : "Pin session"}
+                        aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
+                        aria-pressed={isActivePinned}
+                      >
+                        <Pin className={cn("h-3 w-3", isActivePinned && "fill-current text-foreground")} />
+                      </button>
+                    </>
                   )}
-                  title={
-                    isSnoozed
-                      ? "Restore"
-                      : "Minimize - run in background"
-                  }
-                >
-                  {isSnoozed ? (
-                    <Maximize2 className="h-3 w-3" />
-                  ) : (
-                    <Minimize2 className="h-3 w-3" />
-                  )}
-                </button>
-                <button
-                  onClick={(e) => handleStopSession(session.id, e)}
-                  className={cn(
-                    "hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 opacity-0 transition-all group-hover:opacity-100",
-                    isFocused && "opacity-100",
-                  )}
-                  title="Stop this agent session"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                  <button
+                    onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
+                    className="hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-all"
+                    title={
+                      isSnoozed
+                        ? "Restore"
+                        : "Minimize - run in background"
+                    }
+                  >
+                    {isSnoozed ? (
+                      <Maximize2 className="h-3 w-3" />
+                    ) : (
+                      <Minimize2 className="h-3 w-3" />
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => handleStopSession(session.id, e)}
+                    className="hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 transition-all"
+                    title="Stop this agent session"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             )
           })}
