@@ -1,4 +1,4 @@
-# SpeakMCP Debugging Guide
+# DotAgents Debugging Guide
 
 ## 🔧 Quick Start: Enable Debug Logging
 
@@ -137,9 +137,9 @@ window.electron.ipcRenderer.invoke('createMcpTextInput', { text: 'hi', conversat
 window.electron.ipcRenderer.invoke('getAgentProfiles')
 window.electron.ipcRenderer.invoke('getCurrentAgentProfile')
 
-// Navigation
-window.location.hash = '/settings/general'
-window.location.hash = '/settings/agents'
+// Navigation (app uses BrowserRouter, not HashRouter)
+window.location.href = '/settings/general'
+window.location.href = '/settings/agents'
 ```
 
 > All IPC procedures are defined in `apps/desktop/src/main/tipc.ts`
