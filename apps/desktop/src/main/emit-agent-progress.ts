@@ -78,6 +78,14 @@ function isCriticalUpdate(update: AgentProgressUpdate): boolean {
 export async function emitAgentProgress(update: AgentProgressUpdate): Promise<void> {
   const displayUpdate = sanitizeAgentProgressUpdateForDisplay(update)
 
+  // Backfill snoozed state from the session tracker when callers omit it.
+  // Tile follow-ups intentionally start snoozed so the panel stays quiet; if
+  // early progress updates lose that flag, the renderer can briefly switch the
+  // hidden panel into overlay/agent mode and trigger unintended focus/TTS side effects.
+  if (displayUpdate.sessionId && typeof displayUpdate.isSnoozed === "undefined") {
+    displayUpdate.isSnoozed = agentSessionTracker.isSessionSnoozed(displayUpdate.sessionId)
+  }
+
   // Skip updates for stopped sessions, except final completion updates
   if (displayUpdate.sessionId && !displayUpdate.isComplete) {
     const shouldStop = agentSessionStateManager.shouldStopSession(displayUpdate.sessionId)
