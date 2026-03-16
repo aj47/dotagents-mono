@@ -11,7 +11,7 @@ import {
   setSessionForConversation,
   clearSessionForConversation,
   touchSession,
-  setAcpToSpeakMcpSessionMapping,
+  setAcpToAppSessionMapping,
 } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { AgentProgressUpdate, AgentProgressStep, SessionProfileSnapshot, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
@@ -562,7 +562,7 @@ export async function processTranscriptWithACPAgent(
 
     // Register the ACP session → DotAgents session mapping
     // This is critical for routing tool approval requests to the correct UI session
-    setAcpToSpeakMcpSessionMapping(acpSessionId, sessionId, runId)
+    setAcpToAppSessionMapping(acpSessionId, sessionId, runId)
 
     // Set up progress listener for session updates
     const progressHandler = (event: {

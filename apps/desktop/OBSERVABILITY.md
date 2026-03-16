@@ -1,8 +1,8 @@
-# SpeakMCP Observability Guide
+# DotAgents Observability Guide
 
 ## 📊 Langfuse Integration
 
-SpeakMCP integrates with [Langfuse](https://langfuse.com/) to provide comprehensive observability and monitoring for all LLM calls and agent operations.
+DotAgents integrates with [Langfuse](https://langfuse.com/) to provide comprehensive observability and monitoring for all LLM calls and agent operations.
 
 > **Note**: Langfuse is an **optional dependency**. While it may be installed automatically with your dependencies, the app runs perfectly without it enabled. If you don't need observability features, no additional setup is required.
 
@@ -35,7 +35,7 @@ After installing, restart the app and the Langfuse settings will become availabl
    - Copy your **Public Key** (`pk-lf-...`)
    - Copy your **Secret Key** (`sk-lf-...`)
 
-3. **Configure in SpeakMCP**
+3. **Configure in DotAgents**
    - Open Settings → General (scroll to the bottom)
    - Toggle "Enable Langfuse Tracing" on
    - Enter your Public Key
@@ -75,7 +75,7 @@ Once configured, all agent interactions will appear in your Langfuse dashboard:
 
 ### Langfuse Features Used
 
-| Feature | SpeakMCP Mapping |
+| Feature | DotAgents Mapping |
 |---------|------------------|
 | **Sessions** | Conversation ID - groups all agent interactions in a conversation |
 | **Traces** | Agent Session ID - individual agent run with all LLM/tool calls |

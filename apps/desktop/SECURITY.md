@@ -1,8 +1,8 @@
-# Security Policy for SpeakMCP
+# Security Policy for DotAgents
 
 ## 🔒 Security Overview
 
-SpeakMCP is designed with security as a primary concern. This document outlines our security policies, vulnerability reporting procedures, and best practices for users and contributors.
+DotAgents is designed with security as a primary concern. This document outlines our security policies, vulnerability reporting procedures, and best practices for users and contributors.
 
 ## 🛡️ Security Features
 

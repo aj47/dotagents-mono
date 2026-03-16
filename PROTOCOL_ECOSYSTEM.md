@@ -1,8 +1,8 @@
-# SpeakMCP Protocol Ecosystem Research Summary
+# DotAgents Protocol Ecosystem Research Summary
 
 ## Executive Overview
 
-SpeakMCP is building an **open protocol ecosystem** for AI agent orchestration and configuration management. The system integrates five major protocols/standards:
+DotAgents is building an **open protocol ecosystem** for AI agent orchestration and configuration management. The system integrates five major protocols/standards:
 
 1. **MCP (Model Context Protocol)** - Tool/resource access protocol
 2. **ACP (Agent Client Protocol)** - Agent delegation and communication protocol  
@@ -17,10 +17,10 @@ These work together as a cohesive ecosystem where agents can be configured, exte
 ## 1. MCP (Model Context Protocol)
 
 ### What It Is
-MCP is Anthropic's open protocol for connecting AI models to tools and resources. SpeakMCP acts as an **MCP client** that connects to MCP servers.
+MCP is Anthropic's open protocol for connecting AI models to tools and resources. DotAgents acts as an **MCP client** that connects to MCP servers.
 
 ### Architecture
-- **Client**: SpeakMCP main process (`mcp-service.ts`)
+- **Client**: DotAgents main process (`mcp-service.ts`)
 - **Servers**: External processes or HTTP endpoints that expose tools
 - **Transport Types**:
   - `stdio`: Local process spawned with JSON-RPC over stdin/stdout
@@ -77,10 +77,10 @@ interface MCPServerConfig {
 ## 2. ACP (Agent Client Protocol)
 
 ### What It Is
-ACP is Zed's protocol for **agent-to-agent communication and delegation**. SpeakMCP acts as an **ACP client** that can spawn and communicate with ACP agents.
+ACP is Zed's protocol for **agent-to-agent communication and delegation**. DotAgents acts as an **ACP client** that can spawn and communicate with ACP agents.
 
 ### Architecture
-- **Client**: SpeakMCP main process (`acp-service.ts`, `acp-client-service.ts`)
+- **Client**: DotAgents main process (`acp-service.ts`, `acp-client-service.ts`)
 - **Agents**: External processes (Auggie, Claude Code ACP, etc.) or HTTP endpoints
 - **Communication**: JSON-RPC 2.0 over stdio or HTTP
 - **Bidirectional**: Agents can request permissions, read/write files from the client
@@ -91,7 +91,7 @@ type ACPConnectionType = "stdio" | "remote" | "internal"
 
 // stdio: Spawn local process
 // remote: Connect to HTTP endpoint
-// internal: Use SpeakMCP's built-in agent
+// internal: Use DotAgents's built-in agent
 ```
 
 ### Agent Definition
@@ -155,7 +155,7 @@ Your detailed instructions here in markdown...
 ```
 
 ### Skill Types
-- **Local**: Created within SpeakMCP
+- **Local**: Created within DotAgents
 - **Imported**: Loaded from external files or repositories
 
 ### Skill Loading
@@ -430,7 +430,7 @@ Optional notes in markdown body.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    SpeakMCP Application                      │
+│                    DotAgents Application                      │
 └─────────────────────────────────────────────────────────────┘
                               │
                 ┌─────────────┼─────────────┐
@@ -616,7 +616,7 @@ The repo now contains a static website in `website/` for `https://dotagents.app`
 
 ## Summary: The Open Protocol Ecosystem
 
-SpeakMCP is building a **composable, open protocol ecosystem** where:
+DotAgents is building a **composable, open protocol ecosystem** where:
 
 1. **MCP** provides standardized **tool access** (GitHub, Exa, Memory, etc.)
 2. **ACP** enables **agent delegation** (Auggie, Claude Code, custom agents)

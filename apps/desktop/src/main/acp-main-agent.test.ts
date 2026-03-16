@@ -25,7 +25,7 @@ vi.mock("./acp-session-state", () => ({
   setSessionForConversation: vi.fn(),
   clearSessionForConversation: vi.fn(),
   touchSession: vi.fn(),
-  setAcpToSpeakMcpSessionMapping: vi.fn(),
+  setAcpToAppSessionMapping: vi.fn(),
 }))
 
 vi.mock("./emit-agent-progress", () => ({

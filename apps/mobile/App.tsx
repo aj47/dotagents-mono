@@ -27,7 +27,7 @@ import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 
 
-const speakMCPIcon = require('./assets/dotagents-icon.png');
+const dotagentsIcon = require('./assets/dotagents-icon.png');
 const darkSpinner = require('./assets/loading-spinner.gif');
 const lightSpinner = require('./assets/light-spinner.gif');
 const SESSION_SYNC_POLL_INTERVAL_MS = 15000;

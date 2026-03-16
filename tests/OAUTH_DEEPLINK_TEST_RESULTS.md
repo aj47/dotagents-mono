@@ -73,7 +73,7 @@ Tests  24 passed (24)
 
 ### PR Status
 
-- **PR #290**: https://github.com/aj47/SpeakMCP/pull/290
+- **PR #290**: https://github.com/aj47/dotagents-mono/pull/290
 - **Status**: Open
 - **Branch**: `fix/249-cloudflare-deeplink-callbacks`
 - **Base**: `main`

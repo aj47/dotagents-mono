@@ -9,7 +9,7 @@
  * - Using npx on all platforms to invoke electron-builder
  * - On Windows: Spawning with shell:true to properly resolve .cmd files
  * 
- * Issue: https://github.com/aj47/SpeakMCP/issues/581
+ * Issue: https://github.com/aj47/dotagents-mono/issues/581
  */
 
 const { spawn } = require('child_process');

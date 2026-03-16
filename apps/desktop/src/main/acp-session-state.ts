@@ -142,8 +142,7 @@ export function setAcpToAppSessionMapping(
   logApp(`[ACP Session] Mapped ACP session ${acpSessionId} → app session ${appSessionId}`)
 }
 
-/** @deprecated Use setAcpToAppSessionMapping instead */
-export const setAcpToSpeakMcpSessionMapping = setAcpToAppSessionMapping
+
 
 /**
  * Register the client-side token embedded in an injected MCP server URL.
@@ -191,8 +190,7 @@ export function getAppSessionForAcpSession(acpSessionId: string): string | undef
   return acpToAppSession.get(acpSessionId)
 }
 
-/** @deprecated Use getAppSessionForAcpSession instead */
-export const getSpeakMcpSessionForAcpSession = getAppSessionForAcpSession
+
 
 /**
  * Get the DotAgents run ID for a given ACP session ID.
@@ -234,5 +232,4 @@ export function clearAcpToAppSessionMapping(acpSessionId: string): void {
   }
 }
 
-/** @deprecated Use clearAcpToAppSessionMapping instead */
-export const clearAcpToSpeakMcpSessionMapping = clearAcpToAppSessionMapping
+

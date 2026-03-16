@@ -52,7 +52,7 @@ docker compose run --rm --build build-linux  # Rebuild after code changes
 docker compose run --rm shell             # Interactive development shell
 ```
 
-> **Note**: SpeakMCP is an Electron desktop app that requires a display. Docker is primarily for building Linux packages.
+> **Note**: DotAgents is an Electron desktop app that requires a display. Docker is primarily for building Linux packages.
 
 ## Architecture-specific Linux Build Notes
 
@@ -89,7 +89,7 @@ See [apps/desktop/DEBUGGING.md](apps/desktop/DEBUGGING.md) for detailed debuggin
 ## Project Structure
 
 ```
-SpeakMCP/
+DotAgents/
 ├── apps/
 │   ├── desktop/         # Electron desktop application
 │   │   ├── src/main/    # Main process (MCP, TTS, system integration)

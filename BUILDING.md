@@ -1,6 +1,6 @@
-# Building SpeakMCP
+# Building DotAgents
 
-This guide covers building signed release versions of SpeakMCP for distribution.
+This guide covers building signed release versions of DotAgents for distribution.
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # From appleid.apple.c
 ```
 
 > **Generating App-Specific Password:** Go to https://appleid.apple.com → Sign In → 
-> App-Specific Passwords → Generate a password for "SpeakMCP Notarization"
+> App-Specific Passwords → Generate a password for "DotAgents Notarization"
 
 ### Step 3: Build the Rust Binary
 
@@ -80,12 +80,12 @@ npx electron-builder --mac --config electron-builder.config.cjs --publish=never
 ### Step 5: Verify Output
 
 Built artifacts will be in `apps/desktop/dist/`:
-- `SpeakMCP-X.X.X-arm64.dmg` - Apple Silicon DMG
-- `SpeakMCP-X.X.X-x64.dmg` - Intel DMG
-- `SpeakMCP-X.X.X-arm64.zip` - Apple Silicon ZIP (for auto-updates)
-- `SpeakMCP-X.X.X-x64.zip` - Intel ZIP
-- `SpeakMCP-X.X.X-arm64.pkg` - Apple Silicon installer
-- `SpeakMCP-X.X.X-x64.pkg` - Intel installer
+- `DotAgents-X.X.X-arm64.dmg` - Apple Silicon DMG
+- `DotAgents-X.X.X-x64.dmg` - Intel DMG
+- `DotAgents-X.X.X-arm64.zip` - Apple Silicon ZIP (for auto-updates)
+- `DotAgents-X.X.X-x64.zip` - Intel ZIP
+- `DotAgents-X.X.X-arm64.pkg` - Apple Silicon installer
+- `DotAgents-X.X.X-x64.pkg` - Intel installer
 
 ## Quick One-Liner
 

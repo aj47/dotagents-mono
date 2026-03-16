@@ -1,16 +1,16 @@
-# Privacy Policy for SpeakMCP
+# Privacy Policy for DotAgents
 
 ## 📋 Privacy Policy Overview
 
 **Effective Date**: August 14, 2025  
 **Last Updated**: August 14, 2025
 
-SpeakMCP is designed with privacy as a fundamental principle. This privacy policy explains how we collect, use, and protect your information.
+DotAgents is designed with privacy as a fundamental principle. This privacy policy explains how we collect, use, and protect your information.
 
 ## 🚫 **No Data Collection**
 
 ### Core Principle
-SpeakMCP operates on a **zero-data-collection** principle. We do not collect, store, or transmit any personal information to external servers.
+DotAgents operates on a **zero-data-collection** principle. We do not collect, store, or transmit any personal information to external servers.
 
 ### What We Don't Collect
 - **No Personal Information**: Names, emails, or identifying information
@@ -40,6 +40,7 @@ All data is stored **exclusively** on your local machine:
 - **Windows**: `%APPDATA%/SpeakMCP/`
 - **Linux**: `~/.config/SpeakMCP/`
 
+
 ### Encryption
 - **API Keys**: Encrypted using system keychain/keyring
 - **Sensitive Settings**: Encrypted using AES-256 encryption
@@ -48,7 +49,7 @@ All data is stored **exclusively** on your local machine:
 ## 🔍 **Third-Party Services**
 
 ### API Providers
-When you use SpeakMCP with external services (OpenAI, Groq, Gemini, etc.):
+When you use DotAgents with external services (OpenAI, Groq, Gemini, etc.):
 - **Direct Connection**: Your API calls go directly to the service provider
 - **No Proxy**: We do not proxy or intercept your communications
 - **Provider Policies**: Subject to the privacy policies of the respective providers

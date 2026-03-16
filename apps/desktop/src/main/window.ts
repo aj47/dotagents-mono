@@ -1081,7 +1081,7 @@ export function resizePanelForAgentMode() {
  * This ensures the panel is at least TEXT_INPUT_MIN_HEIGHT tall for usability.
  * This fixes the issue where the panel was too small for text input after
  * being shrunk for waveform recording.
- * See: https://github.com/aj47/SpeakMCP/issues/840
+ * See: https://github.com/aj47/dotagents-mono/issues/840
  */
 export function resizePanelForTextInput() {
   setPanelMode("textInput")
@@ -1096,7 +1096,7 @@ export function resizePanelToNormal() {
  * This shrinks the panel height to WAVEFORM_MIN_HEIGHT while keeping the current width.
  * This fixes the issue where the panel had too much negative space when showing
  * the waveform after being sized for agent mode.
- * See: https://github.com/aj47/SpeakMCP/issues/817
+ * See: https://github.com/aj47/dotagents-mono/issues/817
  */
 export function resizePanelForWaveform() {
   const win = WINDOWS.get("panel")
