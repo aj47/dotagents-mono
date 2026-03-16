@@ -645,13 +645,17 @@ app.on("window-all-closed", () => {
   }
 })
 
-// Handle SIGTERM in GUI mode (sent by electron-vite --watch on restart).
+// Handle SIGTERM/SIGINT in GUI mode.
+// SIGTERM is sent by electron-vite --watch on restart.
+// SIGINT is sent by Ctrl+C in the terminal.
 // On macOS, app.quit() alone doesn't terminate the process because
-// window-all-closed intentionally skips quitting. Without this handler,
-// each HMR restart leaks an orphaned Electron process.
-process.on("SIGTERM", () => {
-  logApp("Received SIGTERM, forcing exit")
-  app.quit()
-  // Force exit after a short grace period in case before-quit cleanup hangs
-  setTimeout(() => process.exit(0), 3000).unref()
-})
+// window-all-closed intentionally skips quitting. Without these handlers,
+// Electron processes leak as orphans.
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    logApp(`Received ${signal}, forcing exit`)
+    app.quit()
+    // Force exit after a short grace period in case before-quit cleanup hangs
+    setTimeout(() => process.exit(0), 3000).unref()
+  })
+}
