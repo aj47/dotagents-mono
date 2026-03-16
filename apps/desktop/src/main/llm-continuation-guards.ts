@@ -9,6 +9,7 @@ const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]
 // multi_tool_use.parallel or functions.* as text with garbled Unicode.
 const GARBLED_TOOL_CALL_TEXT_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.|\[Calling tools?:.*\].*(?:to=|json\s*\{))/i
 const PROGRESS_UPDATE_REGEX = /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|working on it|still working on it)\b/i
+const NEXT_STEP_PROGRESS_REGEX = /(?:^|[.!?]\s+)(?:next(?:\s+item)?\s*(?::|[-—]))/i
 const NON_PROGRESS_SIGNOFF_REGEX = /(?:^|[.!?]\s+)(?:let me know if you need(?: anything else| more help| anything more)?|feel free to reach out if you need anything else)\b/i
 const OPTIONAL_INPUT_SIGNAL_REGEX = /\b(if you want|if you'd like|if you’d like|do you want me to|want me to|quick preference|before i do it|which style|which tone)\b/i
 const OPTIONAL_APPROVAL_REASON_REGEX = /\b(approval|preference|style|tone)\b/i
@@ -128,19 +129,24 @@ export function normalizeVerificationResultForCompletion(
   }
 }
 
-function isProgressUpdateResponse(content?: string): boolean {
+export function isProgressUpdateResponse(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
   if (NON_PROGRESS_SIGNOFF_REGEX.test(trimmed)) return false
-  return PROGRESS_UPDATE_REGEX.test(trimmed)
+  return PROGRESS_UPDATE_REGEX.test(trimmed) || NEXT_STEP_PROGRESS_REGEX.test(trimmed)
+}
+
+export function isGarbledToolCallText(content?: string): boolean {
+  const trimmed = typeof content === "string" ? content.trim() : ""
+  if (!trimmed) return false
+  return TOOL_CALL_PLACEHOLDER_REGEX.test(trimmed) || GARBLED_TOOL_CALL_TEXT_REGEX.test(trimmed)
 }
 
 export function isDeliverableResponseContent(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
-  if (TOOL_CALL_PLACEHOLDER_REGEX.test(trimmed)) return false
+  if (isGarbledToolCallText(trimmed)) return false
   if (RAW_TOOL_TRANSCRIPT_REGEX.test(trimmed)) return false
-  if (GARBLED_TOOL_CALL_TEXT_REGEX.test(trimmed)) return false
   if (isProgressUpdateResponse(trimmed)) return false
   return true
 }

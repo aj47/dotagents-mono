@@ -1,11 +1,58 @@
 import { describe, it, expect } from "vitest"
 import {
   filterEphemeralMessages,
+  isInternalNudgeContent,
   isEphemeralMessage,
   type ConversationMessage,
 } from "./conversation-history-utils"
 
 describe("conversation-history-utils", () => {
+  describe("isInternalNudgeContent", () => {
+    it("detects garbled tool-call recovery nudges", () => {
+      expect(
+        isInternalNudgeContent(
+          'Your previous response contained text like "[Calling tools: ...]" instead of an actual tool call. Do NOT write tool call names as text.'
+        )
+      ).toBe(true)
+    })
+
+    it("detects selector-aware garbled tool-call recovery nudges", () => {
+      expect(
+        isInternalNudgeContent(
+          'Your previous response contained text like "[Calling tools: ...]" instead of an actual tool call. Do NOT write tool call names as text. Instead, invoke tools using the structured function-calling interface. The latest successful step already identified @e56; use it in the next tool call if it is still the correct selector. If you cannot call tools, provide your final answer directly.'
+        )
+      ).toBe(true)
+    })
+
+    it("detects intent-only tool-usage nudges", () => {
+      expect(
+        isInternalNudgeContent(
+          'Your previous response only described the next step instead of actually doing it. Do NOT narrate intended actions like "Let me..." or "I\'ll...". Invoke the next tool call now using the structured function-calling interface.'
+        )
+      ).toBe(true)
+    })
+
+    it("detects selector-aware intent-only tool-usage nudges", () => {
+      expect(
+        isInternalNudgeContent(
+          'Your previous response only described the next step instead of actually doing it. Do NOT narrate intended actions like "Let me..." or "I\'ll...". Invoke the next tool call now using the structured function-calling interface. You already identified @e45; use it in the tool call if it is the correct selector.'
+        )
+      ).toBe(true)
+    })
+
+    it("detects verification nudges", () => {
+      expect(
+        isInternalNudgeContent(
+          "Reason: Completion criteria not met.\nMissing items:\n- add the next checklist item\nContinue and finish remaining work."
+        )
+      ).toBe(true)
+    })
+
+    it("does not classify normal user messages as internal nudges", () => {
+      expect(isInternalNudgeContent("continue with my tax prep")).toBe(false)
+    })
+  })
+
   describe("filterEphemeralMessages", () => {
     it("should remove ephemeral messages from history", () => {
       const history: ConversationMessage[] = [

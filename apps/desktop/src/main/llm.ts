@@ -46,13 +46,15 @@ import {
   appendAgentStopNote,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
-import { filterEphemeralMessages } from "./conversation-history-utils"
+import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
 import {
   isDeliverableResponseContent,
+  isGarbledToolCallText,
+  isProgressUpdateResponse,
   normalizeMissingItemsList,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
@@ -979,6 +981,18 @@ export async function processTranscriptWithAgentMode(
     logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
   }
 
+  const sanitizedPreviousConversationHistory = (previousConversationHistory || []).filter(
+    (entry) => !(entry.role === "user" && isInternalNudgeContent(entry.content))
+  )
+
+  if ((previousConversationHistory?.length || 0) !== sanitizedPreviousConversationHistory.length) {
+    logLLM(
+      `[llm.ts processTranscriptWithAgentMode] stripped ${
+        (previousConversationHistory?.length || 0) - sanitizedPreviousConversationHistory.length
+      } persisted internal nudge messages from prior history`
+    )
+  }
+
   const conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -987,13 +1001,40 @@ export async function processTranscriptWithAgentMode(
     timestamp?: number
     ephemeral?: boolean
   }> = [
-    ...(previousConversationHistory || []),
+    ...sanitizedPreviousConversationHistory,
     { role: "user", content: transcript, timestamp: Date.now() },
   ]
 
   // Track the index where the current user prompt was added
   // This is used to scope tool result checks to only the current turn
-  const currentPromptIndex = previousConversationHistory?.length || 0
+  const currentPromptIndex = sanitizedPreviousConversationHistory.length
+
+  const buildIntentOnlyToolUsageNudge = (contentText: string) => {
+    const selectorRef = contentText.match(/@[a-z][0-9]+/i)?.[0]
+    const baseMessage = "Your previous response only described the next step instead of actually doing it. Do NOT narrate intended actions like \"Let me...\" or \"I'll...\". Invoke the next tool call now using the structured function-calling interface."
+    return selectorRef
+      ? `${baseMessage} You already identified ${selectorRef}; use it in the tool call if it is the correct selector.`
+      : baseMessage
+  }
+
+  const extractLatestSelectorRefFromHistory = () => {
+    for (let i = conversationHistory.length - 1; i >= currentPromptIndex; i--) {
+      const content = typeof conversationHistory[i]?.content === "string"
+        ? conversationHistory[i].content
+        : ""
+      const selectorRef = content.match(/@[a-z][0-9]+/i)?.[0]
+      if (selectorRef) return selectorRef
+    }
+    return undefined
+  }
+
+  const buildGarbledToolCallNudge = () => {
+    const selectorRef = extractLatestSelectorRefFromHistory()
+    const baseMessage = "Your previous response contained text like \"[Calling tools: ...]\" instead of an actual tool call. Do NOT write tool call names as text. Instead, invoke tools using the structured function-calling interface."
+    return selectorRef
+      ? `${baseMessage} The latest successful step already identified ${selectorRef}; use it in the next tool call if it is still the correct selector. If you cannot call tools, provide your final answer directly.`
+      : `${baseMessage} If you cannot call tools, provide your final answer directly.`
+  }
 
   logLLM(`[llm.ts processTranscriptWithAgentMode] conversationHistory initialized with ${conversationHistory.length} messages, roles: [${conversationHistory.map(m => m.role).join(', ')}]`)
 
@@ -1002,9 +1043,9 @@ export async function processTranscriptWithAgentMode(
   // Check if ANY user message in previousConversationHistory has the same content (not just the last one)
   // This handles retry scenarios where the user message exists but isn't the last message
   // (e.g., after a failed attempt that added assistant/tool messages)
-  const userMessageAlreadyExists = previousConversationHistory?.some(
+  const userMessageAlreadyExists = sanitizedPreviousConversationHistory.some(
     msg => msg.role === "user" && msg.content === transcript
-  ) ?? false
+  )
   const shouldPersistInitialUserMessage = transcript !== INTERNAL_COMPLETION_NUDGE_TEXT
   if (!userMessageAlreadyExists && shouldPersistInitialUserMessage) {
     saveMessageIncremental("user", transcript).catch(err => {
@@ -1021,27 +1062,9 @@ export async function processTranscriptWithAgentMode(
   const formatConversationForProgress = (
     history: typeof conversationHistory,
   ) => {
-    const isNudge = (content: string) => {
-      const trimmed = content.trim()
-      if (trimmed === INTERNAL_COMPLETION_NUDGE_TEXT) return true
-
-      return (
-        trimmed.includes("Please either take action using available tools") ||
-        trimmed.includes("You have relevant tools available for this request") ||
-        trimmed.includes("Your previous response was empty") ||
-        trimmed.includes("Verifier indicates the task is not complete") ||
-        trimmed.includes("Please respond with a valid JSON object") ||
-        trimmed.includes("Use available tools directly via native function-calling") ||
-        trimmed.includes("Provide a complete final answer") ||
-        trimmed.includes("Your last response was not a final deliverable") ||
-        trimmed.includes("Your last response was empty or non-deliverable") ||
-        trimmed.includes("Continue and finish remaining work")
-      )
-    }
-
     return history
       .filter((entry) => !entry.ephemeral)
-      .filter((entry) => !(entry.role === "user" && isNudge(entry.content)))
+      .filter((entry) => !(entry.role === "user" && isInternalNudgeContent(entry.content)))
       .map((entry) => ({
         role: entry.role,
         content: entry.content,
@@ -1323,11 +1346,10 @@ export async function processTranscriptWithAgentMode(
         : toolsExecutedInSession || conversationHistory.some((e) => e.role === "tool")
 
       if (!hasToolResultsSoFar) {
-        conversationHistory.push({
-          role: "user",
-          content: "Use available tools directly via native function-calling. Do not respond with intent-only updates.",
-          timestamp: Date.now(),
-        })
+        addEphemeralMessage(
+          "user",
+          "Use available tools directly via native function-calling. Do not respond with intent-only updates."
+        )
       }
     }
 
@@ -1401,7 +1423,7 @@ export async function processTranscriptWithAgentMode(
       ? `Reason: ${verificationReason}`
       : "Reason: Completion criteria not met."
     const userNudge = `${reason}\n${missing ? `Missing items:\n${missing}` : ""}\nContinue and finish remaining work.`
-    conversationHistory.push({ role: "user", content: userNudge, timestamp: Date.now() })
+    addEphemeralMessage("user", userNudge)
     maybeNudgeToolUsage(newFailCount)
 
     return {
@@ -1689,7 +1711,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: false,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })
-        addMessage("user", "Previous request had empty response. Please retry or summarize progress.")
+        addEphemeralMessage("user", "Previous request had empty response. Please retry or summarize progress.")
         continue
       }
 
@@ -1777,7 +1799,7 @@ export async function processTranscriptWithAgentMode(
       const retryMessage = hasTruncatedContent
         ? "Previous request had empty response. The tool output was truncated which may have caused confusion. Please either: (1) try a different approach to get the data you need, (2) work with the partial data available, or (3) summarize your progress so far."
         : "Previous request had empty response. Please retry or summarize progress."
-      addMessage("user", retryMessage)
+      addEphemeralMessage("user", retryMessage)
       continue
     }
 
@@ -1983,6 +2005,9 @@ export async function processTranscriptWithAgentMode(
               addMessage("assistant", finalContent)
             }
             noOpCount = 0
+            totalNudgeCount = 0
+            garbledToolCallCount = 0
+            completionSignalHintCount = 0
             continue
           }
         }
@@ -2086,9 +2111,16 @@ export async function processTranscriptWithAgentMode(
         // "[Calling tools: ...]" as plain text instead of actual tool calls.
         // After a few consecutive garbled responses, the model is in a degraded
         // state and nudging won't help — bail out early instead of looping.
-        const isGarbledToolCallText = !isDeliverableResponseContent(contentText) && trimmedContent.length > 0
-        if (isGarbledToolCallText) {
-          garbledToolCallCount++
+        const lastConversationMessage = conversationHistory[conversationHistory.length - 1]
+        const followsSuccessfulToolResult = lastConversationMessage?.role === "tool" && !/\bERROR:\b/i.test(lastConversationMessage.content || "")
+        if (followsSuccessfulToolResult) {
+          totalNudgeCount = 0
+          completionSignalHintCount = 0
+        }
+
+        const isGarbledToolCallTextResponse = isGarbledToolCallText(contentText)
+        if (isGarbledToolCallTextResponse) {
+          garbledToolCallCount = followsSuccessfulToolResult ? 1 : garbledToolCallCount + 1
         } else {
           garbledToolCallCount = 0
         }
@@ -2111,16 +2143,20 @@ export async function processTranscriptWithAgentMode(
         // Garbled tool-call text (e.g. "[Calling tools: execute_command]") just
         // confuses the model further when it appears in prior turns. Skip it so
         // the next attempt starts from a clean state.
-        if (trimmedContent.length > 0 && !isGarbledToolCallText) {
+        if (trimmedContent.length > 0 && !isGarbledToolCallTextResponse) {
           addMessage("assistant", contentText)
         }
 
-        const nudgeMessage = isGarbledToolCallText
-          ? "Your previous response contained text like \"[Calling tools: ...]\" instead of an actual tool call. Do NOT write tool call names as text. Instead, invoke tools using the structured function-calling interface. If you cannot call tools, provide your final answer directly."
+        const isIntentOnlyProgressText = isProgressUpdateResponse(contentText)
+
+        const nudgeMessage = isGarbledToolCallTextResponse
+          ? buildGarbledToolCallNudge()
+          : isIntentOnlyProgressText && hasToolsAvailable
+            ? buildIntentOnlyToolUsageNudge(contentText)
           : hasToolsAvailable
             ? "Use available tools directly via native function-calling, or provide a complete final answer."
             : "Provide a complete final answer."
-        addMessage("user", nudgeMessage)
+        addEphemeralMessage("user", nudgeMessage)
 
         noOpCount = 0
         totalNudgeCount++
@@ -2783,7 +2819,10 @@ export async function processTranscriptWithAgentMode(
 	        }
 
 	        if (result.shouldContinue) {
-	          noOpCount = 0
+		          noOpCount = 0
+		          totalNudgeCount = 0
+		          garbledToolCallCount = 0
+		          completionSignalHintCount = 0
 	          continue
 	        }
 	      }

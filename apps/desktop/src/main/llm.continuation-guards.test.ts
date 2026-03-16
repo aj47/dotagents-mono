@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   isDeliverableResponseContent,
+  isGarbledToolCallText,
+  isProgressUpdateResponse,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
 } from "./llm-continuation-guards"
@@ -188,6 +190,23 @@ describe("continuation guard helpers", () => {
     expect(isDeliverableResponseContent(
       'multi_tool_use.parallel to=functions.execute_command'
     )).toBe(false)
+  })
+
+  it("treats mixed status-plus-intent responses as progress updates, not deliverable answers", () => {
+    const content = "The new empty field is at @e33 (nth=4). Let me add the next item."
+    expect(isProgressUpdateResponse(content)).toBe(true)
+    expect(isDeliverableResponseContent(content)).toBe(false)
+  })
+
+  it("treats bare next-step continuation text as progress updates", () => {
+    const content = 'Next: "Health insurance docs (Form 1095)".'
+    expect(isProgressUpdateResponse(content)).toBe(true)
+    expect(isDeliverableResponseContent(content)).toBe(false)
+  })
+
+  it("only classifies actual placeholder-style tool text as garbled", () => {
+    expect(isGarbledToolCallText('[Calling tools: execute_command]')).toBe(true)
+    expect(isGarbledToolCallText('The new empty field is at @e33 (nth=4). Let me add the next item.')).toBe(false)
   })
 
   it("treats common sign-offs as deliverable content", () => {
