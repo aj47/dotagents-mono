@@ -235,10 +235,12 @@ type CompactMessageProps = {
   variant?: "default" | "overlay" | "tile"
   /** Session ID for tracking TTS playback across remounts */
   sessionId?: string
+  /** Snoozed/background sessions must never auto-play overlay TTS */
+  isSnoozed?: boolean
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId, isSnoozed = false }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -405,7 +407,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   //   single-session and multi-session views in the panel)
   useEffect(() => {
     // Only auto-generate and play TTS in overlay variant to prevent double playback
-    const shouldAutoPlay = variant === "overlay"
+    const shouldAutoPlay = variant === "overlay" && !isSnoozed
     if (!shouldAutoPlay || !shouldAutoPlayTTS || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || wasStopped) {
       return
     }
@@ -455,7 +457,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         }
         // Error is already handled in generateAudio function
       })
-  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, ttsError, wasStopped, variant, sessionId, ttsSource])
+  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, wasStopped, variant, sessionId, ttsSource])
 
   const getRoleStyle = () => {
     switch (message.role) {
@@ -606,7 +608,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 isGenerating={isGeneratingAudio}
                 error={ttsError}
                 compact={true}
-                autoPlay={isLast ? (configQuery.data?.ttsAutoPlay ?? true) : false}
+                autoPlay={isLast ? ((configQuery.data?.ttsAutoPlay ?? true) && !isSnoozed) : false}
                 onPlayStateChange={setIsTTSPlaying}
                 audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
               />
@@ -702,7 +704,8 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.wasStopped === next.wasStopped &&
   prev.isExpanded === next.isExpanded &&
   prev.variant === next.variant &&
-  prev.sessionId === next.sessionId
+  prev.sessionId === next.sessionId &&
+  prev.isSnoozed === next.isSnoozed
 ))
 
 // Helper to extract execute_command display info
@@ -2549,6 +2552,7 @@ const MidTurnUserResponseBubble: React.FC<{
   sessionId?: string
   agentLabel?: string
   variant?: "default" | "overlay" | "tile"
+  isSnoozed?: boolean
   isComplete: boolean
   isExpanded: boolean
   onToggleExpand: () => void
@@ -2559,6 +2563,7 @@ const MidTurnUserResponseBubble: React.FC<{
   sessionId,
   agentLabel = "Agent",
   variant = "default",
+  isSnoozed = false,
   isComplete,
   isExpanded,
   onToggleExpand,
@@ -2641,7 +2646,7 @@ const MidTurnUserResponseBubble: React.FC<{
 
   // Auto-play TTS for mid-turn userResponse (only in overlay variant to prevent double-play)
   useEffect(() => {
-    const shouldAutoPlay = variant === "overlay"
+    const shouldAutoPlay = variant === "overlay" && !isSnoozed
     if (!shouldAutoPlay || !ttsSource || !configQuery.data?.ttsEnabled || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || isComplete) {
       return
     }
@@ -2674,7 +2679,7 @@ const MidTurnUserResponseBubble: React.FC<{
           inFlightTtsKeyRef.current = null
         }
       })
-  }, [ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, ttsError, variant, sessionId, isComplete])
+  }, [ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
 
   // Cleanup in-flight TTS key on unmount
   useEffect(() => {
@@ -2785,7 +2790,7 @@ const MidTurnUserResponseBubble: React.FC<{
             isGenerating={isGeneratingAudio}
             error={ttsError}
             compact={true}
-            autoPlay={configQuery.data?.ttsAutoPlay ?? true}
+            autoPlay={!isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
             onPlayStateChange={setIsTTSPlaying}
           />
           {isExpanded && ttsError && (
@@ -3920,6 +3925,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
                             variant="tile"
                             sessionId={progress.sessionId}
+                            isSnoozed={progress.isSnoozed}
                           />
                         )
                       } else if (item.kind === "assistant_with_tools") {
@@ -3954,6 +3960,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             sessionId={progress.sessionId}
                             agentLabel={primaryAgentLabel}
                             variant="tile"
+                            isSnoozed={progress.isSnoozed}
                             isComplete={isComplete}
                             isExpanded={expandedItems[itemKey] ?? false}
                             onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? false)}
@@ -4298,6 +4305,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
                       variant={variant}
                       sessionId={progress.sessionId}
+                      isSnoozed={progress.isSnoozed}
                     />
                   )
                 } else if (item.kind === "assistant_with_tools") {
@@ -4342,6 +4350,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       sessionId={progress.sessionId}
                       agentLabel={primaryAgentLabel}
                       variant="overlay"
+                      isSnoozed={progress.isSnoozed}
                       isComplete={isComplete}
                       isExpanded={expandedItems[itemKey] ?? false}
                       onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? false)}
