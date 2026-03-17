@@ -1,8 +1,11 @@
+import * as path from "path"
+import { pathToFileURL } from "url"
 import { describe, expect, it, vi, afterEach } from "vitest"
 
 import {
   getDevCommand,
   getSignalExitCode,
+  isDirectExecution,
   terminateChildProcessTree,
 } from "../../scripts/dev-with-sherpa"
 
@@ -23,6 +26,42 @@ describe("dev-with-sherpa launcher helpers", () => {
       "--",
       "--debug-app",
     ])
+  })
+
+  it("detects direct execution when argv[1] is a relative script path", () => {
+    const cwd = path.join("/repo", "apps", "desktop")
+    const metaUrl = pathToFileURL(path.join(cwd, "scripts", "dev-with-sherpa.ts")).href
+
+    expect(isDirectExecution(["node", "scripts/dev-with-sherpa.ts"], metaUrl, cwd)).toBe(true)
+  })
+
+  it("detects direct execution when a wrapper passes the script path later in argv", () => {
+    const cwd = path.join("/repo", "apps", "desktop")
+    const metaUrl = pathToFileURL(path.join(cwd, "scripts", "dev-with-sherpa.ts")).href
+
+    expect(
+      isDirectExecution(
+        ["node", path.join(cwd, "node_modules", ".bin", "tsx"), "scripts/dev-with-sherpa.ts"],
+        metaUrl,
+        cwd,
+      ),
+    ).toBe(true)
+  })
+
+  it("tolerates wrapper or compiled entries that preserve the script basename", () => {
+    const cwd = path.join("/repo", "apps", "desktop")
+    const metaUrl = pathToFileURL(path.join(cwd, "scripts", "dev-with-sherpa.ts")).href
+
+    expect(
+      isDirectExecution(["node", path.join(cwd, "dist", "dev-with-sherpa.js")], metaUrl, cwd),
+    ).toBe(true)
+  })
+
+  it("ignores malformed argv entries instead of throwing", () => {
+    const cwd = path.join("/repo", "apps", "desktop")
+    const metaUrl = pathToFileURL(path.join(cwd, "scripts", "dev-with-sherpa.ts")).href
+
+    expect(isDirectExecution(["node", "file://%zz"], metaUrl, cwd)).toBe(false)
   })
 
   it("kills the whole unix child process group", () => {

@@ -16,7 +16,7 @@ import { spawn, type ChildProcess } from "child_process"
 import * as fs from "fs"
 import * as os from "os"
 import * as path from "path"
-import { pathToFileURL } from "url"
+import { fileURLToPath } from "url"
 
 const FORCE_KILL_TIMEOUT_MS = 5000
 
@@ -65,10 +65,35 @@ export function terminateChildProcessTree(
   }
 }
 
-function isDirectExecution(): boolean {
-  const entry = process.argv[1]
-  if (!entry) return false
-  return import.meta.url === pathToFileURL(entry).href
+function normalizeExecutionPath(entry: string, cwd: string): string | null {
+  if (!entry || entry.startsWith("-")) return null
+
+  try {
+    const resolvedPath = entry.startsWith("file:")
+      ? fileURLToPath(entry)
+      : path.resolve(cwd, entry)
+
+    return path.normalize(resolvedPath)
+  } catch {
+    return null
+  }
+}
+
+export function isDirectExecution(
+  argv = process.argv,
+  metaUrl = import.meta.url,
+  cwd = process.cwd(),
+): boolean {
+  const modulePath = path.normalize(fileURLToPath(metaUrl))
+  const moduleBaseName = path.basename(modulePath, path.extname(modulePath))
+
+  return argv.slice(1).some((entry) => {
+    const candidatePath = normalizeExecutionPath(entry, cwd)
+    if (!candidatePath) return false
+    if (candidatePath === modulePath) return true
+
+    return path.basename(candidatePath, path.extname(candidatePath)) === moduleBaseName
+  })
 }
 
 function findSherpaLibraryPath(): string | null {
