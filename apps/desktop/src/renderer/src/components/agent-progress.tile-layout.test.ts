@@ -149,6 +149,15 @@ describe("agent progress tile layout", () => {
     )
   })
 
+  it("keeps the session-tile scroll-to-bottom affordance scoped inside the chat area", () => {
+    expect(agentProgressSource).toContain('title="Scroll to bottom"')
+    expect(agentProgressSource).toContain('aria-label="Scroll to bottom"')
+    expect(agentProgressSource).toContain('scrollToBottom("smooth")')
+    expect(agentProgressSource).toContain(
+      'className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background"'
+    )
+  })
+
   it("uses a lightweight plain-text path for active streaming bubbles before final markdown rendering", () => {
     expect(agentProgressSource).toContain('const contentNode = streamingContent.isStreaming')
     expect(agentProgressSource).toContain('className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')

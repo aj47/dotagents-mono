@@ -130,7 +130,10 @@ function countTextOccurrences(text: string, needle: string) {
 function findLatestResponseToggle(tree: any, previewText: string) {
   const toggle = findAll(
     tree,
-    (value) => typeof value?.props?.onClick === "function" && getTextContent(value).includes(previewText),
+    (value) => typeof value?.props?.onClick === "function"
+      && typeof value?.props?.className === "string"
+      && value.props.className.includes("bg-green-100/50")
+      && getTextContent(value).includes(previewText),
   )[0]
   if (!toggle) throw new Error("Latest response toggle not found")
   return toggle
@@ -144,6 +147,7 @@ function findPastResponsesToggle(tree: any) {
 
 async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
+  const captured = { tileFollowUpInputProps: null as any }
 
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
@@ -211,7 +215,12 @@ async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) 
   vi.doMock("../contexts/theme-context", () => themeContextMock)
   vi.doMock("@renderer/contexts/theme-context", () => themeContextMock)
   vi.doMock("@renderer/lib/debug", () => ({ logUI: vi.fn(), logExpand: vi.fn() }))
-  vi.doMock("./tile-follow-up-input", () => ({ TileFollowUpInput: Null }))
+  vi.doMock("./tile-follow-up-input", () => ({
+    TileFollowUpInput: (props: any) => {
+      captured.tileFollowUpInputProps = props
+      return { type: "TileFollowUpInput", props }
+    },
+  }))
   vi.doMock("./overlay-follow-up-input", () => ({ OverlayFollowUpInput: Null }))
   vi.doMock("@renderer/components/message-queue-panel", () => ({ MessageQueuePanel: Null }))
   vi.doMock("@renderer/hooks/use-resizable", () => ({
@@ -232,7 +241,7 @@ async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) 
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
   const mod = await import("./agent-progress")
-  return { AgentProgress: mod.AgentProgress }
+  return { AgentProgress: mod.AgentProgress, captured }
 }
 
 afterEach(() => {
@@ -264,7 +273,7 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Past Responses")
 
     const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
-    latestResponseToggle.props.onClick()
+    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
 
     tree = runtime.render(AgentProgress, { progress })
     text = getTextContent(tree)
@@ -295,7 +304,7 @@ describe("agent progress response history", () => {
     let tree = runtime.render(AgentProgress, { progress })
     const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
 
-    latestResponseToggle.props.onClick()
+    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
     tree = runtime.render(AgentProgress, { progress })
 
     let pastResponsesToggle = findPastResponsesToggle(tree)
@@ -335,7 +344,7 @@ describe("agent progress response history", () => {
 
     let tree = runtime.render(AgentProgress, { progress })
     const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
-    latestResponseToggle.props.onClick()
+    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
     tree = runtime.render(AgentProgress, { progress })
 
     const pastResponsesToggle = findPastResponsesToggle(tree)
@@ -344,5 +353,37 @@ describe("agent progress response history", () => {
 
     const text = getTextContent(tree)
     expect(countTextOccurrences(text, "Repeated draft")).toBe(2)
+  })
+
+  it("collapses expanded agent responses after a tile follow-up is sent", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress, captured } = await loadAgentProgress(runtime)
+    const onFollowUpSent = vi.fn()
+    const progress = {
+      sessionId: "session-4",
+      conversationId: "conversation-4",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [],
+      userResponse: "Final answer",
+      userResponseHistory: ["Earlier draft"],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
+    const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
+
+    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
+    expect(getTextContent(tree)).toContain("Latest response")
+
+    expect(typeof captured.tileFollowUpInputProps?.onMessageSent).toBe("function")
+    captured.tileFollowUpInputProps.onMessageSent()
+
+    tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
+    expect(getTextContent(tree)).not.toContain("Latest response")
+    expect(onFollowUpSent).toHaveBeenCalledTimes(1)
   })
 })

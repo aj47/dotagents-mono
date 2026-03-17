@@ -117,6 +117,8 @@ type DisplayItem =
       pastResponses?: string[]
     } }
 
+const MID_TURN_RESPONSE_ITEM_ID = "mid-turn-response"
+
 function extractRespondToUserContentFromArgs(args: unknown): string | null {
   if (!args || typeof args !== "object") return null
 
@@ -2883,6 +2885,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     pendingInitialScrollTimeoutsRef.current = []
   }, [])
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const scrollContainer = scrollContainerRef.current
+    if (!scrollContainer) return
+
+    if (behavior === "auto" || typeof scrollContainer.scrollTo !== "function") {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight
+      return
+    }
+
+    scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior })
+  }, [])
+
   useEffect(() => {
     shouldAutoScrollRef.current = shouldAutoScroll
   }, [shouldAutoScroll])
@@ -2919,6 +2933,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
   const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
+
+  const handleFollowUpSent = useCallback(() => {
+    if (variant === "tile") {
+      setExpandedItems((prev) => {
+        if (!prev[MID_TURN_RESPONSE_ITEM_ID]) return prev
+        return {
+          ...prev,
+          [MID_TURN_RESPONSE_ITEM_ID]: false,
+        }
+      })
+      setShouldAutoScroll(true)
+      setIsUserScrolling(false)
+      scrollToBottom("auto")
+    }
+
+    onFollowUpSent?.()
+  }, [onFollowUpSent, scrollToBottom, variant])
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
@@ -3470,7 +3501,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     if (effectiveUserResponse) {
       items.push({
         kind: "mid_turn_response",
-        id: "mid-turn-response",
+        id: MID_TURN_RESPONSE_ITEM_ID,
         data: {
           userResponse: effectiveUserResponse,
           pastResponses: effectiveUserResponseHistory,
@@ -3587,10 +3618,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const scrollContainer = scrollContainerRef.current
     if (!scrollContainer) return
 
-    const scrollToBottom = () => {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight
-    }
-
     // Calculate total content length for streaming detection (including streaming content)
     const totalContentLength = messages.reduce(
       (sum, msg) => sum + (msg.content?.length ?? 0),
@@ -3622,34 +3649,31 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       // Only auto-scroll if we should (user hasn't manually scrolled up)
       if (shouldAutoScroll) {
-        scrollToBottom()
+        scrollToBottom("auto")
       }
     }
-  }, [messages, progress.streamingContent?.text, shouldAutoScroll, shouldAutoScrollContent, visibleDisplayItems])
+  }, [messages, progress.streamingContent?.text, scrollToBottom, shouldAutoScroll, shouldAutoScrollContent, visibleDisplayItems])
 
   // Initial scroll to bottom on mount and when first display item appears
   useEffect(() => {
     if (!shouldAutoScrollContent) return undefined
-    const scrollContainer = scrollContainerRef.current
-    if (!scrollContainer) return undefined
+    if (!scrollContainerRef.current) return undefined
 
     clearPendingInitialScrollAttempts()
-
-    const scrollToBottom = () => {
-      if (!shouldAutoScrollRef.current) return
-      scrollContainer.scrollTop = scrollContainer.scrollHeight
-    }
 
     // Multiple attempts to ensure scrolling works with dynamic content
     const scrollAttempts = [0, 50, 100, 200]
     pendingInitialScrollTimeoutsRef.current = scrollAttempts.map((delay) => {
       return setTimeout(() => {
-        requestAnimationFrame(scrollToBottom)
+        requestAnimationFrame(() => {
+          if (!shouldAutoScrollRef.current) return
+          scrollToBottom("auto")
+        })
       }, delay)
     })
 
     return clearPendingInitialScrollAttempts
-  }, [clearPendingInitialScrollAttempts, shouldAutoScrollContent, visibleDisplayItems.length > 0])
+  }, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0])
 
   // Make panel focusable when agent completes (overlay variant only)
   // This enables the continue conversation input to receive focus and be interactable
@@ -4012,6 +4036,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   </div>
                 )}
               </div>
+              {isUserScrolling && visibleDisplayItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShouldAutoScroll(true)
+                    setIsUserScrolling(false)
+                    scrollToBottom("smooth")
+                  }}
+                  className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background"
+                  title="Scroll to bottom"
+                  aria-label="Scroll to bottom"
+                >
+                  <ChevronDown className="h-3 w-3" />
+                  Latest
+                </button>
+              )}
             </div>
 
             {/* Tool Approval - Fixed position outside scroll area */}
@@ -4109,7 +4150,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             agentName={profileName}
             conversationTitle={progress.conversationTitle}
             className="flex-shrink-0"
-            onMessageSent={onFollowUpSent}
+            onMessageSent={handleFollowUpSent}
             onVoiceContinue={onVoiceContinue}
           />
         )}
