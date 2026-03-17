@@ -287,6 +287,23 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(result).toContain('![diagram](https://example.com/img.png)')
   })
 
+  it('renders path-only images as a text placeholder', () => {
+    const args = {
+      images: [{ alt: 'local diagram', path: '/tmp/diagram.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local diagram): `/tmp/diagram.png`')
+  })
+
+  it('preserves text alongside path-only image placeholders', () => {
+    const args = {
+      text: 'Saved locally:',
+      images: [{ alt: 'desktop capture', path: '/tmp/capture.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:\n\nLocal image (desktop capture): `/tmp/capture.png`')
+  })
+
   it('returns null for empty args', () => {
     expect(extractRespondToUserContentFromArgs({ text: '', images: [] })).toBeNull()
   })

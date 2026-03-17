@@ -485,6 +485,12 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
 
+  const formatLocalImagePlaceholder = (alt: string, imagePath: string) => {
+    const safeAlt = alt.trim() || 'Image';
+    const escapedPath = imagePath.replace(/`/g, '\\`');
+    return `Local image (${safeAlt}): \`${escapedPath}\``;
+  };
+
   const imagesMd = images
     .map((img, index) => {
       if (!img || typeof img !== 'object') return '';
@@ -502,10 +508,11 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
       const mimeType = typeof image.mimeType === 'string' ? image.mimeType.trim() : '';
       const data = typeof image.data === 'string' ? image.data.trim() : '';
       const legacyDataUrl = mimeType && data ? `data:${mimeType};base64,${data}` : '';
-      const uri = url || dataUrl || legacyDataUrl || path;
+      const uri = url || dataUrl || legacyDataUrl;
 
-      if (!uri) return '';
-      return `![${alt}](${uri})`;
+      if (uri) return `![${alt}](${uri})`;
+      if (path) return formatLocalImagePlaceholder(alt, path);
+      return '';
     })
     .filter(Boolean)
     .join('\n\n');
