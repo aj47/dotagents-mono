@@ -145,6 +145,12 @@ function findPastResponsesToggle(tree: any) {
   return toggle
 }
 
+function findElementByTitle(tree: any, title: string) {
+  const match = findAll(tree, (value) => value?.props?.title === title)[0]
+  if (!match) throw new Error(`Element with title \"${title}\" not found`)
+  return match
+}
+
 async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
   const captured = { tileFollowUpInputProps: null as any }
@@ -191,6 +197,7 @@ async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) 
     Activity: icon("Activity"),
     Moon: icon("Moon"),
     Maximize2: icon("Maximize2"),
+    LayoutGrid: icon("LayoutGrid"),
     RefreshCw: icon("RefreshCw"),
     Bot: icon("Bot"),
     OctagonX: icon("OctagonX"),
@@ -228,6 +235,7 @@ async function loadAgentProgress(runtime: ReturnType<typeof createHookRuntime>) 
     useResizable: () => ({ height: 360, isResizing: false, handleHeightResizeStart: vi.fn() }),
   }))
   vi.doMock("@dotagents/shared", () => ({
+    extractRespondToUserResponseEvents: () => [],
     getAgentConversationStateLabel: (state: string) => state,
     getToolResultsSummary: () => "",
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
@@ -385,5 +393,145 @@ describe("agent progress response history", () => {
     tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
     expect(getTextContent(tree)).not.toContain("Latest response")
     expect(onFollowUpSent).toHaveBeenCalledTimes(1)
+  })
+
+  it("maximizes a running tile from pointer-down without waiting for click", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const onExpand = vi.fn()
+    const progress = {
+      sessionId: "session-5",
+      conversationId: "conversation-5",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
+    const maximizeButton = findElementByTitle(tree, "Maximize tile")
+
+    maximizeButton.props.onPointerDown({
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(onExpand).toHaveBeenCalledTimes(1)
+  })
+
+  it("exposes maximize for snoozed in-progress tiles without a separate restore button", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-5b",
+      conversationId: "conversation-5b",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      isSnoozed: true,
+      finalContent: "",
+      conversationHistory: [],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: false })
+    expect(findElementByTitle(tree, "Maximize tile")).toBeTruthy()
+    expect(findAll(tree, (value) => value?.props?.title === "Restore session")).toHaveLength(0)
+  })
+
+  it("shows a restore tile layout button when the tile is already maximized", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-5c",
+      conversationId: "conversation-5c",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: true })
+    expect(findElementByTitle(tree, "Restore tile layout")).toBeTruthy()
+  })
+
+  it("maximizes the running latest-response bubble once per pointer interaction while preserving keyboard click support", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const onExpand = vi.fn()
+    const progress = {
+      sessionId: "session-6",
+      conversationId: "conversation-6",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [],
+      userResponse: "Need your confirmation",
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
+    const maximizeButton = findElementByTitle(tree, "Maximize")
+
+    maximizeButton.props.onPointerDown({
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+    maximizeButton.props.onClick({
+      detail: 1,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+    maximizeButton.props.onClick({
+      detail: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+
+    expect(onExpand).toHaveBeenCalledTimes(2)
+  })
+
+  it("clears the latest-response pointer-down maximize guard when the pointer interaction is canceled", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const onExpand = vi.fn()
+    const progress = {
+      sessionId: "session-7",
+      conversationId: "conversation-7",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [],
+      userResponse: "Still waiting on you",
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
+    const maximizeButton = findElementByTitle(tree, "Maximize")
+
+    maximizeButton.props.onPointerDown({
+      button: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+    maximizeButton.props.onPointerCancel()
+    maximizeButton.props.onClick({
+      detail: 0,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+
+    expect(onExpand).toHaveBeenCalledTimes(2)
   })
 })

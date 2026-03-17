@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   extractRespondToUserContentFromArgs,
+  getLatestRespondToUserEventFromResponseEvents,
   getLatestRespondToUserContentFromConversationHistory,
+  getRespondToUserHistoryFromResponseEvents,
   getLatestRespondToUserContentFromToolCalls,
   resolveLatestUserFacingResponse,
 } from "./respond-to-user-utils"
@@ -50,6 +52,23 @@ describe("respond-to-user-utils", () => {
     ])).toBe("Latest")
   })
 
+  it("can scope conversation-history fallback to the current turn", () => {
+    expect(getLatestRespondToUserContentFromConversationHistory([
+      { role: "assistant", toolCalls: [{ name: "respond_to_user", arguments: { text: "Earlier" } }] },
+      { role: "assistant", toolCalls: [{ name: "respond_to_user", arguments: { text: "Current" } }] },
+    ], 1)).toBe("Current")
+  })
+
+  it("derives latest and history from ordered response events", () => {
+    const responseEvents = [
+      { id: "evt-1", sessionId: "session-1", runId: 2, ordinal: 1, text: "Draft", timestamp: 1 },
+      { id: "evt-2", sessionId: "session-1", runId: 2, ordinal: 2, text: "Final", timestamp: 2 },
+    ]
+
+    expect(getLatestRespondToUserEventFromResponseEvents(responseEvents)?.text).toBe("Final")
+    expect(getRespondToUserHistoryFromResponseEvents(responseEvents)).toEqual(["Draft"])
+  })
+
   it("prefers the current iteration's planned respond_to_user over a stale stored response", () => {
     expect(resolveLatestUserFacingResponse({
       storedResponse: "Stale answer",
@@ -63,5 +82,13 @@ describe("respond-to-user-utils", () => {
       storedResponse: "Stored answer",
       conversationHistory: [{ role: "assistant", toolCalls: [{ name: "respond_to_user", arguments: { text: "History answer" } }] }],
     })).toBe("Stored answer")
+  })
+
+  it("prefers current-run response events over prior-turn history", () => {
+    expect(resolveLatestUserFacingResponse({
+      responseEvents: [{ id: "evt-2", sessionId: "session-1", runId: 3, ordinal: 1, text: "Current run", timestamp: 2 }],
+      conversationHistory: [{ role: "assistant", toolCalls: [{ name: "respond_to_user", arguments: { text: "Older history" } }] }],
+      sinceIndex: 1,
+    })).toBe("Current run")
   })
 })

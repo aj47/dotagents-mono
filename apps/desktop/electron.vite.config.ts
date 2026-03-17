@@ -17,14 +17,19 @@ const define = {
 // Native modules like onnxruntime-node must be externalized (not bundled) so their
 // internal require() for .node bindings works at runtime.
 const optionalDeps = Object.keys(pkg.optionalDependencies || {})
+const desktopTsconfigPathsOptions = {
+  root: __dirname,
+  projects: ["tsconfig.node.json"] as string[],
+  ignoreConfigErrors: true,
+}
 
 export default defineConfig({
   main: {
-    plugins: [tsconfigPaths(), externalizeDepsPlugin({ include: optionalDeps })],
+    plugins: [tsconfigPaths(desktopTsconfigPathsOptions), externalizeDepsPlugin({ include: optionalDeps })],
     define,
   },
   preload: {
-    plugins: [tsconfigPaths(), externalizeDepsPlugin()],
+    plugins: [tsconfigPaths(desktopTsconfigPathsOptions), externalizeDepsPlugin()],
     build: {
       rollupOptions: {
         output: {
@@ -48,7 +53,8 @@ export default defineConfig({
       preserveSymlinks: true,
     },
     optimizeDeps: {
-      include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@dotagents/shared"],
+      include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
+      exclude: ["@dotagents/shared"],
       esbuildOptions: {
         preserveSymlinks: true,
       },

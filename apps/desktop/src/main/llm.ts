@@ -32,8 +32,8 @@ import {
 } from "./summarization-service"
 import { memoryService } from "./memory-service"
 import {
-  archiveSessionUserResponse,
   getSessionUserResponse,
+  getSessionRunUserResponseEvents,
   getSessionUserResponseHistory,
 } from "./session-user-response-store"
 import { resolveLatestUserFacingResponse, getLatestRespondToUserContentFromConversationHistory } from "./respond-to-user-utils"
@@ -508,11 +508,6 @@ export async function processTranscriptWithAgentMode(
   const currentConversationId = conversationId
   const currentSessionId =
     sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  // On revival (session already has a stored response from the previous run),
-  // archive it into the history so the UI can still display it. For brand-new
-  // sessions the archive is a no-op — it already clears the current response
-  // slot while preserving history.
-  archiveSessionUserResponse(currentSessionId)
   // Number of messages in the conversation history that predate this agent session.
   // Used by the UI to show only this session's messages while still saving full history.
   // When continuing a conversation, we set this to 0 so the UI shows the full history.
@@ -602,9 +597,11 @@ export async function processTranscriptWithAgentMode(
     const session = agentSessionTracker.getSession(currentSessionId)
     const conversationTitle = session?.conversationTitle
     const profileName = session?.profileSnapshot?.profileName
-    const storedUserResponse = getSessionUserResponse(currentSessionId)
+    const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
+    const storedUserResponse = getSessionUserResponse(currentSessionId, effectiveRunId)
     const normalizedStoredUserResponse = resolveLatestUserFacingResponse({
       storedResponse: storedUserResponse,
+      responseEvents,
       conversationHistory: update.conversationHistory as any,
     })
     const isKillSwitchCompletion =
@@ -631,13 +628,14 @@ export async function processTranscriptWithAgentMode(
       userResponseForUpdate !== lastEmittedUserResponse
 
     // Get history of past respond_to_user calls (excluding current)
-    const responseHistory = getSessionUserResponseHistory(currentSessionId)
+    const responseHistory = getSessionUserResponseHistory(currentSessionId, effectiveRunId)
 
     const fullUpdate: AgentProgressUpdate = {
       ...update,
       // Only include userResponse when it changed. This avoids re-sending large
       // image payloads on every progress tick while preserving merge behavior.
       ...(shouldEmitUserResponse ? { userResponse: userResponseForUpdate } : {}),
+      ...(responseEvents.length > 0 ? { responseEvents } : {}),
       // Include response history if there are past responses
       ...(shouldEmitUserResponse && responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
       conversationState,
@@ -1265,10 +1263,12 @@ export async function processTranscriptWithAgentMode(
       mode: "agent_state",
       transcript,
       finalAssistantText,
-      storedResponse: getSessionUserResponse(currentSessionId),
+      storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+      responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
       verificationFailCount: currentVerificationFailCount,
       verifyContextMaxItems: config.mcpVerifyContextMaxItems || 20,
       conversationHistory: conversationHistory as any,
+      sinceIndex: currentPromptIndex,
     })
   }
 
@@ -2014,8 +2014,10 @@ export async function processTranscriptWithAgentMode(
 
         // Skip post-verify summary if respond_to_user already provided a response (#1084)
         const existingUserResponse1 = resolveLatestUserFacingResponse({
-          storedResponse: getSessionUserResponse(currentSessionId),
+          storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+          responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
           conversationHistory: conversationHistory as any,
+          sinceIndex: currentPromptIndex,
         })
         if (existingUserResponse1?.trim().length) {
           finalContent = existingUserResponse1
@@ -2199,9 +2201,11 @@ export async function processTranscriptWithAgentMode(
         // used in the !hasToolCalls path so both branches converge consistently.
         if (noOpCount >= 2) {
           const storedResponse = resolveLatestUserFacingResponse({
-            storedResponse: getSessionUserResponse(currentSessionId),
+            storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
             plannedToolCalls: toolCallsArray,
+            responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
             conversationHistory: conversationHistory as any,
+            sinceIndex: currentPromptIndex,
           })
           if (storedResponse?.trim().length) {
             // Already have a user-facing response — skip tool execution and break
@@ -2648,8 +2652,10 @@ export async function processTranscriptWithAgentMode(
 
       // Skip summary generation if respond_to_user already provided a response (#1084)
       const existingUserResponse = resolveLatestUserFacingResponse({
-        storedResponse: getSessionUserResponse(currentSessionId),
+        storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+        responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
         conversationHistory: conversationHistory as any,
+        sinceIndex: currentPromptIndex,
       })
       let respondToUserAlreadyInHistory = false
       if (existingUserResponse?.trim().length) {
@@ -2832,8 +2838,10 @@ export async function processTranscriptWithAgentMode(
         // Skip summary generation if respond_to_user already provided a response (#1084)
         // Also skip if respond_to_user response was already added to history above
         const existingUserResponse2 = resolveLatestUserFacingResponse({
-          storedResponse: getSessionUserResponse(currentSessionId),
+          storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+          responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
           conversationHistory: conversationHistory as any,
+          sinceIndex: currentPromptIndex,
         })
         if (existingUserResponse2?.trim().length && !respondToUserAlreadyInHistory) {
           finalContent = existingUserResponse2
@@ -2913,8 +2921,10 @@ export async function processTranscriptWithAgentMode(
 
     const iterationLimitResolution = resolveIterationLimitFinalContent({
       finalContent,
-      storedResponse: getSessionUserResponse(currentSessionId),
+      storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+      responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
       conversationHistory: conversationHistory as any,
+      sinceIndex: currentPromptIndex,
       hasRecentErrors,
     })
     finalContent = iterationLimitResolution.content
@@ -2967,8 +2977,10 @@ export async function processTranscriptWithAgentMode(
 
     if (!finalContent?.trim()) {
       const explicitUserResponse = resolveLatestUserFacingResponse({
-        storedResponse: getSessionUserResponse(currentSessionId),
+        storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+        responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
         conversationHistory: conversationHistory as any,
+        sinceIndex: currentPromptIndex,
       })
 
       if (explicitUserResponse?.trim().length) {

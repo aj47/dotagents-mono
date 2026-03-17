@@ -22,7 +22,9 @@ import {
   getRoleConfig,
   RESPOND_TO_USER_TOOL,
   extractRespondToUserContentFromArgs,
+  extractRespondToUserResponseEvents,
   extractRespondToUserResponses,
+  resolveMessageTimestamps,
   isToolOnlyMessage,
 } from './chat-utils'
 import type { MessageRole, RoleConfig } from './chat-utils'
@@ -286,6 +288,47 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(result).toContain('![diagram](https://example.com/img.png)')
   })
 
+  it('sanitizes markdown image alt text that can break placeholders', () => {
+    const args = {
+      images: [{ alt: 'di[a]gram (draft) `v1`', url: 'https://example.com/img.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('![diagram draft v1](https://example.com/img.png)')
+  })
+
+  it('renders path-only images as a text placeholder', () => {
+    const args = {
+      images: [{ alt: 'local diagram', path: '/tmp/diagram.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local diagram): `/tmp/diagram.png`')
+  })
+
+  it('preserves text alongside path-only image placeholders', () => {
+    const args = {
+      text: 'Saved locally:',
+      images: [{ alt: 'desktop capture', path: '/tmp/capture.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:\n\nLocal image (desktop capture): `/tmp/capture.png`')
+  })
+
+  it('sanitizes local image placeholder alt text that can break formatting', () => {
+    const args = {
+      images: [{ altText: 'lo[cal] (draft) `shot`', path: '/tmp/diagram.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local draft shot): `/tmp/diagram.png`')
+  })
+
+  it('falls back to indexed image labels when sanitizing removes all alt text', () => {
+    const args = {
+      images: [{ alt: '[]()`', url: 'https://example.com/img.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('![Image 1](https://example.com/img.png)')
+  })
+
   it('returns null for empty args', () => {
     expect(extractRespondToUserContentFromArgs({ text: '', images: [] })).toBeNull()
   })
@@ -322,6 +365,122 @@ describe('extractRespondToUserResponses', () => {
       },
     ]
     expect(extractRespondToUserResponses(messages)).toEqual(['Hello'])
+  })
+})
+
+describe('resolveMessageTimestamps', () => {
+  it('treats non-finite timestamps as missing and fills them monotonically', () => {
+    const messages = [
+      { timestamp: Number.NaN },
+      { timestamp: 100 },
+      { timestamp: Number.POSITIVE_INFINITY },
+      {},
+    ]
+
+    expect(resolveMessageTimestamps(messages)).toEqual([99, 100, 101, 102])
+  })
+})
+
+describe('extractRespondToUserResponseEvents', () => {
+  it('preserves ordering and duplicates across assistant messages', () => {
+    const messages = [
+      {
+        role: 'assistant' as const,
+        timestamp: 10,
+        toolCalls: [{ name: 'respond_to_user', arguments: { text: 'Draft' } }],
+      },
+      {
+        role: 'assistant' as const,
+        timestamp: 20,
+        toolCalls: [
+          { name: 'respond_to_user', arguments: { text: 'Draft' } },
+          { name: 'respond_to_user', arguments: { text: 'Final' } },
+        ],
+      },
+    ]
+
+    expect(extractRespondToUserResponseEvents(messages, { sessionId: 'session-1', runId: 2 })).toEqual([
+      {
+        id: 'history-0-0-1',
+        sessionId: 'session-1',
+        runId: 2,
+        ordinal: 1,
+        text: 'Draft',
+        timestamp: 10,
+      },
+      {
+        id: 'history-1-0-2',
+        sessionId: 'session-1',
+        runId: 2,
+        ordinal: 2,
+        text: 'Draft',
+        timestamp: 20,
+      },
+      {
+        id: 'history-1-1-3',
+        sessionId: 'session-1',
+        runId: 2,
+        ordinal: 3,
+        text: 'Final',
+        timestamp: 20,
+      },
+    ])
+  })
+
+  it('fills missing timestamps relative to neighboring messages', () => {
+    const messages = [
+      {
+        role: 'assistant' as const,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Before' } }],
+      },
+      {
+        role: 'assistant' as const,
+        timestamp: 100,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Known' } }],
+      },
+      {
+        role: 'assistant' as const,
+        toolCalls: [
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Gap one' } },
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Gap two' } },
+        ],
+      },
+      {
+        role: 'assistant' as const,
+        timestamp: 200,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'After' } }],
+      },
+    ]
+
+    expect(extractRespondToUserResponseEvents(messages).map((event) => event.timestamp)).toEqual([
+      99,
+      100,
+      101,
+      101,
+      200,
+    ])
+  })
+
+  it('falls back deterministically when all timestamps are missing', () => {
+    const messages = [
+      {
+        role: 'assistant' as const,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'First' } }],
+      },
+      {
+        role: 'assistant' as const,
+        toolCalls: [
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Second' } },
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Third' } },
+        ],
+      },
+    ]
+
+    expect(extractRespondToUserResponseEvents(messages).map((event) => event.timestamp)).toEqual([
+      0,
+      1,
+      1,
+    ])
   })
 })
 

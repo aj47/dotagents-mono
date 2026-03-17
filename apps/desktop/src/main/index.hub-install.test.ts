@@ -8,7 +8,10 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function loadIndexForHubInstall(argv: string[]) {
+async function loadIndexForHubInstall(
+  argv: string[],
+  configOverrides: Record<string, unknown> = {},
+) {
   vi.resetModules()
   process.argv = argv
 
@@ -82,6 +85,7 @@ async function loadIndexForHubInstall(argv: string[]) {
         launchAtLogin: false,
         remoteServerEnabled: false,
         cloudflareTunnelAutoStart: false,
+        ...configOverrides,
       })),
     },
   }))

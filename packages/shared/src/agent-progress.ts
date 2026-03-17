@@ -194,6 +194,19 @@ export interface AgentProgressStep {
   subagentId?: string
 }
 
+/**
+ * Ordered user-facing response emitted during a single agent run.
+ * Consumers should use `id` for playback/delivery dedupe instead of raw text.
+ */
+export interface AgentUserResponseEvent {
+  id: string
+  sessionId: string
+  runId?: number
+  ordinal: number
+  text: string
+  timestamp: number
+}
+
 // ---------------------------------------------------------------------------
 // AgentProgressUpdate — unified superset
 // ---------------------------------------------------------------------------
@@ -222,6 +235,11 @@ export interface AgentProgressUpdate {
    * Consumers should fall back to finalContent if this is not set.
    */
   userResponse?: string
+  /**
+   * Ordered respond_to_user events for the current run.
+   * Prefer this over `userResponse` / `userResponseHistory` when available.
+   */
+  responseEvents?: AgentUserResponseEvent[]
   conversationHistory?: ConversationHistoryMessage[]
   streamingContent?: {
     text: string

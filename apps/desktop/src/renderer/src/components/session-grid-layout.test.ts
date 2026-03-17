@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { getAvailableTileLayoutModes, getTileGridRowSpan } from "./session-grid-layout"
+import { getAvailableTileLayoutModes, getTileGridRowSpan, isTileLayoutModeViable } from "./session-grid-layout"
 
 const sessionGridSource = readFileSync(new URL("./session-grid.tsx", import.meta.url), "utf8")
 
@@ -13,6 +13,11 @@ describe("session grid layout", () => {
 
   it("drops multi-tile presets that would fall below the default tile size", () => {
     expect(getAvailableTileLayoutModes(640, 540, 12)).toEqual(["1x1"])
+  })
+
+  it("still considers tighter multi-tile layouts viable at the minimum tile size", () => {
+    expect(isTileLayoutModeViable(640, 540, 12, "1x2", "default")).toBe(false)
+    expect(isTileLayoutModeViable(640, 540, 12, "1x2", "min")).toBe(true)
   })
 
   it("uses dense grid rows so collapsed tiles can repack reclaimed space", () => {

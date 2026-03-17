@@ -1,82 +1,104 @@
 /**
  * Session User Response Store
  *
- * Stores the user-facing response for each agent session.
- * This is set by the respond_to_user tool and retrieved at session completion
- * to deliver to the user via TTS (voice), messaging (mobile/WhatsApp), etc.
- *
- * Also tracks a history of all respond_to_user calls for a session so the UI
- * can show past responses in a collapsed list with TTS playback.
+ * Stores ordered respond_to_user events scoped to session + run.
+ * Compatibility helpers still expose latest/history string views for callers
+ * that have not fully migrated yet.
  */
+import type { AgentUserResponseEvent } from "@dotagents/shared"
+
 import { logApp } from "./debug"
 
-const sessionUserResponse = new Map<string, string>()
-const sessionUserResponseHistory = new Map<string, string[]>()
+const sessionUserResponseEvents = new Map<string, AgentUserResponseEvent[]>()
+const sessionRunOrdinals = new Map<string, number>()
 
-export function setSessionUserResponse(sessionId: string, text: string): void {
-  // Append to history before overwriting
-  const history = sessionUserResponseHistory.get(sessionId) || []
-  const currentResponse = sessionUserResponse.get(sessionId)
-  if (currentResponse && currentResponse !== text) {
-    history.push(currentResponse)
-    sessionUserResponseHistory.set(sessionId, history)
-  }
-  sessionUserResponse.set(sessionId, text)
-
-  logApp("[session-user-response-store] set", {
-    sessionId,
-    replacedExisting: !!currentResponse,
-    responseLength: text.length,
-    historyLength: history.length,
-  })
+function getRunKey(sessionId: string, runId?: number): string {
+  return `${sessionId}:${typeof runId === "number" ? runId : "no-run"}`
 }
 
-export function getSessionUserResponse(sessionId: string): string | undefined {
-  return sessionUserResponse.get(sessionId)
+export function appendSessionUserResponse(params: {
+  sessionId: string
+  text: string
+  runId?: number
+  timestamp?: number
+}): AgentUserResponseEvent {
+  const { sessionId, text, runId, timestamp = Date.now() } = params
+  const runKey = getRunKey(sessionId, runId)
+  const ordinal = (sessionRunOrdinals.get(runKey) ?? 0) + 1
+  sessionRunOrdinals.set(runKey, ordinal)
+
+  const event: AgentUserResponseEvent = {
+    id: `${runKey}:${ordinal}:${timestamp}`,
+    sessionId,
+    runId,
+    ordinal,
+    text,
+    timestamp,
+  }
+
+  const events = sessionUserResponseEvents.get(sessionId) ?? []
+  sessionUserResponseEvents.set(sessionId, [...events, event])
+
+  logApp("[session-user-response-store] append", {
+    sessionId,
+    runId,
+    ordinal,
+    responseLength: text.length,
+    sessionEventCount: events.length + 1,
+  })
+
+  return event
+}
+
+export function getSessionUserResponseEvents(sessionId: string): AgentUserResponseEvent[] {
+  return sessionUserResponseEvents.get(sessionId) ?? []
+}
+
+export function getSessionRunUserResponseEvents(sessionId: string, runId?: number): AgentUserResponseEvent[] {
+  return getSessionUserResponseEvents(sessionId)
+    .filter((event) => event.runId === runId)
+    .sort((a, b) => a.ordinal - b.ordinal)
+}
+
+export function getLatestSessionUserResponseEvent(sessionId: string, runId?: number): AgentUserResponseEvent | undefined {
+  const events = getSessionRunUserResponseEvents(sessionId, runId)
+  return events[events.length - 1]
+}
+
+export function getSessionUserResponse(sessionId: string, runId?: number): string | undefined {
+  return getLatestSessionUserResponseEvent(sessionId, runId)?.text
 }
 
 /**
- * Get the history of past respond_to_user calls (excluding the current/latest one).
+ * Get past respond_to_user calls for the specified run (excluding latest).
  */
-export function getSessionUserResponseHistory(sessionId: string): string[] {
-  return sessionUserResponseHistory.get(sessionId) || []
+export function getSessionUserResponseHistory(sessionId: string, runId?: number): string[] {
+  const events = getSessionRunUserResponseEvents(sessionId, runId)
+  return events.slice(0, -1).map((event) => event.text)
 }
 
 export function clearSessionUserResponse(sessionId: string): void {
-  const hadResponse = sessionUserResponse.has(sessionId)
-  const historyLength = sessionUserResponseHistory.get(sessionId)?.length || 0
-  sessionUserResponse.delete(sessionId)
-  sessionUserResponseHistory.delete(sessionId)
+  const events = sessionUserResponseEvents.get(sessionId) ?? []
+  sessionUserResponseEvents.delete(sessionId)
+  for (const key of Array.from(sessionRunOrdinals.keys())) {
+    if (key.startsWith(`${sessionId}:`)) {
+      sessionRunOrdinals.delete(key)
+    }
+  }
 
   logApp("[session-user-response-store] clear", {
     sessionId,
-    hadResponse,
-    historyLength,
+    clearedEvents: events.length,
   })
 }
 
 /**
- * Archive the current response into history instead of deleting it.
- * Used on session revival so the previous run's respond_to_user content
- * is preserved in the history list while the "current" slot is freed
- * for the new run's responses.
+ * Legacy no-op kept while callers migrate away from the old current/history model.
  */
 export function archiveSessionUserResponse(sessionId: string): void {
-  const currentResponse = sessionUserResponse.get(sessionId)
-  if (!currentResponse) {
-    logApp("[session-user-response-store] archive (no-op, nothing stored)", { sessionId })
-    return
-  }
-
-  const history = sessionUserResponseHistory.get(sessionId) || []
-  history.push(currentResponse)
-  sessionUserResponseHistory.set(sessionId, history)
-  sessionUserResponse.delete(sessionId)
-
-  logApp("[session-user-response-store] archive", {
+  logApp("[session-user-response-store] archive (no-op with event model)", {
     sessionId,
-    archivedLength: currentResponse.length,
-    historyLength: history.length,
+    retainedEvents: getSessionUserResponseEvents(sessionId).length,
   })
 }
 

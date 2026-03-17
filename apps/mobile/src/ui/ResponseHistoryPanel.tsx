@@ -20,6 +20,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
 
 export interface ResponseHistoryEntry {
+  id?: string;
   text: string;
   timestamp: number;
 }
@@ -261,7 +262,7 @@ export function ResponseHistoryPanel({
             const isNewestEntry =
               shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
             return (
-              <React.Fragment key={`${response.timestamp}-${index}`}>
+              <React.Fragment key={response.id ?? `${response.timestamp}-${index}`}>
                 {index > 0 && <View style={styles.separator} />}
                 <AnimatedResponseItem isNewest={isNewestEntry}>
                   <View style={styles.responseItem}>

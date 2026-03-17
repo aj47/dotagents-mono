@@ -1,3 +1,5 @@
+import type { AgentUserResponseEvent } from "@dotagents/shared"
+
 import { RESPOND_TO_USER_TOOL } from "../shared/builtin-tool-names"
 
 type ToolCallLike = {
@@ -7,6 +9,7 @@ type ToolCallLike = {
 
 type ConversationHistoryLike = Array<{
   role?: string
+  timestamp?: number
   toolCalls?: ToolCallLike[]
 }>
 
@@ -55,11 +58,12 @@ export function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallL
 
 export function getLatestRespondToUserContentFromConversationHistory(
   conversationHistory: ConversationHistoryLike,
+  sinceIndex = 0,
 ): string | undefined {
   if (!Array.isArray(conversationHistory) || conversationHistory.length === 0) return undefined
 
   let latestResponse: string | undefined
-  for (const message of conversationHistory) {
+  for (const message of conversationHistory.slice(Math.max(0, sinceIndex))) {
     if (message?.role !== "assistant") continue
     const content = getLatestRespondToUserContentFromToolCalls(message.toolCalls)
     if (content) {
@@ -70,14 +74,35 @@ export function getLatestRespondToUserContentFromConversationHistory(
   return latestResponse
 }
 
+export function getLatestRespondToUserEventFromResponseEvents(
+  responseEvents?: AgentUserResponseEvent[],
+): AgentUserResponseEvent | undefined {
+  if (!Array.isArray(responseEvents) || responseEvents.length === 0) return undefined
+  return [...responseEvents].sort((a, b) => a.ordinal - b.ordinal)[responseEvents.length - 1]
+}
+
+export function getRespondToUserHistoryFromResponseEvents(
+  responseEvents?: AgentUserResponseEvent[],
+): string[] {
+  if (!Array.isArray(responseEvents) || responseEvents.length <= 1) return []
+  return [...responseEvents]
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .slice(0, -1)
+    .map((event) => event.text)
+}
+
 export function resolveLatestUserFacingResponse({
   storedResponse,
   plannedToolCalls,
   conversationHistory,
+  sinceIndex,
+  responseEvents,
 }: {
   storedResponse?: string
   plannedToolCalls?: ToolCallLike[]
   conversationHistory?: ConversationHistoryLike
+  sinceIndex?: number
+  responseEvents?: AgentUserResponseEvent[]
 }): string | undefined {
   const normalizedStoredResponse =
     typeof storedResponse === "string" && storedResponse.trim().length > 0
@@ -85,6 +110,7 @@ export function resolveLatestUserFacingResponse({
       : undefined
 
   return getLatestRespondToUserContentFromToolCalls(plannedToolCalls)
+    ?? getLatestRespondToUserEventFromResponseEvents(responseEvents)?.text
     ?? normalizedStoredResponse
-    ?? getLatestRespondToUserContentFromConversationHistory(conversationHistory ?? [])
+    ?? getLatestRespondToUserContentFromConversationHistory(conversationHistory ?? [], sinceIndex)
 }

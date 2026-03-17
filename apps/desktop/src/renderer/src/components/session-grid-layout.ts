@@ -51,6 +51,30 @@ export function calculateTileHeight(containerHeight: number, gap: number, layout
   return Math.max(TILE_DIMENSIONS.height.min, height)
 }
 
+export function isTileLayoutModeViable(
+  containerWidth: number,
+  containerHeight: number,
+  gap: number,
+  layoutMode: TileLayoutMode,
+  threshold: "default" | "min" = "default",
+) {
+  if (containerWidth <= 0 || containerHeight <= 0) return true
+
+  const { rows, columns } = parseTileLayoutMode(layoutMode)
+  const minWidth = threshold === "min" ? TILE_DIMENSIONS.width.min : TILE_DIMENSIONS.width.default
+  const minHeight = threshold === "min" ? TILE_DIMENSIONS.height.min : TILE_DIMENSIONS.height.default
+
+  const rawWidth = columns === 1
+    ? containerWidth
+    : Math.floor((containerWidth - gap * Math.max(0, columns - 1) - MULTI_COLUMN_SAFETY_PX) / columns)
+
+  const rawHeight = rows === 1
+    ? containerHeight
+    : Math.floor((containerHeight - gap * Math.max(0, rows - 1)) / rows)
+
+  return rawWidth >= minWidth && rawHeight >= minHeight
+}
+
 export function getAvailableTileLayoutModes(containerWidth: number, containerHeight: number, gap: number): TileLayoutMode[] {
   if (containerWidth <= 0 || containerHeight <= 0) {
     return DEFAULT_TILE_LAYOUT_MODES
@@ -66,9 +90,7 @@ export function getAvailableTileLayoutModes(containerWidth: number, containerHei
       if (rows === 1 && columns === 1) continue
 
       const layoutMode = `${rows}x${columns}` as TileLayoutMode
-      const width = calculateTileWidth(containerWidth, gap, layoutMode)
-      const height = calculateTileHeight(containerHeight, gap, layoutMode)
-      if (width < TILE_DIMENSIONS.width.default || height < TILE_DIMENSIONS.height.default) continue
+      if (!isTileLayoutModeViable(containerWidth, containerHeight, gap, layoutMode, "default")) continue
 
       layouts.push(layoutMode)
     }

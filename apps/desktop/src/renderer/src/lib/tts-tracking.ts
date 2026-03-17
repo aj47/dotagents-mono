@@ -5,8 +5,7 @@
  * between agent-progress (component) and agent-store (store).
  * 
  * The set tracks sessions that have already auto-played TTS, keyed by
- * `${sessionId}:${ttsContent}` to handle cases where the same session
- * might replay with different content.
+ * session-scoped event IDs or fallback content keys.
  */
 
 const sessionsWithTTSPlayed = new Set<string>()
@@ -23,6 +22,16 @@ export function hasTTSPlayed(ttsKey: string): boolean {
  */
 export function markTTSPlayed(ttsKey: string): void {
   sessionsWithTTSPlayed.add(ttsKey)
+}
+
+export function buildResponseEventTTSKey(sessionId: string | undefined, eventId: string, phase: "mid-turn" | "final" = "mid-turn"): string | null {
+  if (!sessionId) return null
+  return `${sessionId}:${phase}:event:${eventId}`
+}
+
+export function buildContentTTSKey(sessionId: string | undefined, content: string, phase: "mid-turn" | "final" = "final"): string | null {
+  if (!sessionId) return null
+  return `${sessionId}:${phase}:content:${content}`
 }
 
 /**

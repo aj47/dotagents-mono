@@ -1,4 +1,4 @@
-import type { AgentConversationState } from "@dotagents/shared"
+import type { AgentConversationState, AgentUserResponseEvent } from "@dotagents/shared"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
 import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 
@@ -48,10 +48,12 @@ export type AgentStateReplayFixture = ReplayBaseFixture & {
   transcript: string
   finalAssistantText?: string
   storedResponse?: string
+  responseEvents?: AgentUserResponseEvent[]
   plannedToolCalls?: ToolCallLike[]
   verificationFailCount?: number
   verifyContextMaxItems?: number
   conversationHistory: ReplayConversationHistoryEntry[]
+  sinceIndex?: number
 }
 
 export type ContinueReplayFixture = ExactVerifierMessagesReplayFixture | AgentStateReplayFixture
@@ -150,8 +152,10 @@ export function buildVerificationMessagesFromAgentState(
   const recent = fixture.conversationHistory.slice(-maxItems)
   const latestUserFacingResponse = resolveLatestUserFacingResponse({
     storedResponse: fixture.storedResponse,
+    responseEvents: fixture.responseEvents,
     plannedToolCalls: fixture.plannedToolCalls,
     conversationHistory: fixture.conversationHistory,
+    sinceIndex: fixture.sinceIndex,
   })
 
   const messages: VerificationMessage[] = [

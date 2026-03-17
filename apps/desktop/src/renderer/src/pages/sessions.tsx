@@ -20,7 +20,8 @@ import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
-import { DEFAULT_TILE_LAYOUT_MODES, getAvailableTileLayoutModes, getTileLayoutLabel, type TileLayoutMode } from "@renderer/components/session-grid-layout"
+import { DEFAULT_TILE_LAYOUT_MODES, getAvailableTileLayoutModes, getTileLayoutLabel, isTileLayoutModeViable, type TileLayoutMode } from "@renderer/components/session-grid-layout"
+import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
@@ -52,7 +53,6 @@ type SessionAgentTileProps = {
   isCollapsed: boolean
   isDragTarget: boolean
   isDragging: boolean
-  showTileMaximize: boolean
   tileLayoutMode: TileLayoutMode
   onCollapsedChange: (sessionId: string, collapsed: boolean) => void
   onDragStart: (sessionId: string, index: number) => void
@@ -76,7 +76,6 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
   isCollapsed,
   isDragTarget,
   isDragging,
-  showTileMaximize,
   tileLayoutMode,
   onCollapsedChange,
   onDragStart,
@@ -148,7 +147,7 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
         onDismiss={handleDismissSession}
         isCollapsed={isCollapsed}
         onCollapsedChange={handleCollapsedChange}
-        onExpand={showTileMaximize ? handleMaximize : undefined}
+        onExpand={handleMaximize}
         isExpanded={isFocused && tileLayoutMode === "1x1"}
         onVoiceContinue={onVoiceContinue}
       />
@@ -776,10 +775,13 @@ export function Component() {
 
   useEffect(() => {
     if (availableLayoutModes.includes(tileLayoutMode)) return
+    if (isTileLayoutModeViable(gridMetrics.width, gridMetrics.height, gridMetrics.gap, tileLayoutMode, "min")) {
+      return
+    }
     const fallback = [...availableLayoutModes].reverse().find((mode) => mode !== "1x1") ?? availableLayoutModes[0] ?? "1x1"
     setTileLayoutMode(fallback)
     setTileResetKey((prev) => prev + 1)
-  }, [availableLayoutModes, tileLayoutMode])
+  }, [availableLayoutModes, gridMetrics, tileLayoutMode])
 
   const handleCycleTileLayout = useCallback(() => {
     setTileLayoutMode(prev => {
@@ -805,6 +807,7 @@ export function Component() {
       setTileResetKey(prev => prev + 1)
     } else {
       previousLayoutModeRef.current = tileLayoutMode
+      clearPersistedSize("session-tile")
       setTileLayoutMode("1x1")
       setTileResetKey(prev => prev + 1)
       if (sessionId) {
@@ -824,7 +827,6 @@ export function Component() {
     !pendingConversationQuery.isError &&
     !isPendingConversationMissing
   const hasPendingTile = !!pendingProgress || showPendingLoadingTile
-  const showTileMaximize = tileLayoutMode !== "1x1"
 
   const hasSessions = allProgressEntries.length > 0 || hasPendingTile
 
@@ -840,13 +842,26 @@ export function Component() {
               onSelectAgent={setSelectedAgentId}
               compact
             />
-            <Button size="sm" onClick={handleTextClick} className="gap-1.5">
+            <Button
+              size="sm"
+              onClick={handleTextClick}
+              className="gap-1.5 px-2 lg:px-3"
+              aria-label="Start with text"
+              title="Start with text"
+            >
               <Plus className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Start with Text</span>
+              <span className="sr-only lg:not-sr-only lg:inline">Start with Text</span>
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleVoiceStart} className="gap-1.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleVoiceStart}
+              className="gap-1.5 px-2 lg:px-3"
+              aria-label="Start with voice"
+              title="Start with voice"
+            >
               <Mic className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Start with Voice</span>
+              <span className="sr-only lg:not-sr-only lg:inline">Start with Voice</span>
             </Button>
             <PredefinedPromptsMenu
               onSelectPrompt={handleSelectPrompt}
@@ -948,7 +963,7 @@ export function Component() {
                     onFollowUpSent={handlePendingContinuationStarted}
                     isCollapsed={collapsedSessions[pendingSessionId] ?? false}
                     onCollapsedChange={(collapsed) => handleCollapsedChange(pendingSessionId, collapsed)}
-                    onExpand={showTileMaximize ? () => handleMaximizeTile(pendingSessionId) : undefined}
+                    onExpand={() => handleMaximizeTile(pendingSessionId)}
                     isExpanded={tileLayoutMode === "1x1"}
                     isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
                     onVoiceContinue={handleOpenVoiceContinuation}
@@ -993,7 +1008,6 @@ export function Component() {
                     isCollapsed={isCollapsed}
                     isDragTarget={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId}
                     isDragging={draggedSessionId === sessionId}
-                    showTileMaximize={showTileMaximize}
                     tileLayoutMode={tileLayoutMode}
                     onCollapsedChange={handleCollapsedChange}
                     onDragStart={handleDragStart}

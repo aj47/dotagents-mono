@@ -42,6 +42,7 @@ import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import {
+  extractRespondToUserResponseEvents,
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
@@ -52,6 +53,7 @@ import {
   isToolOnlyMessage,
   normalizeAgentConversationState,
   type AgentConversationState,
+  type AgentUserResponseEvent,
   type PredefinedPromptSummary,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -248,56 +250,20 @@ type RespondToUserHistorySourceMessage = {
   toolCalls?: Array<{ name: string; arguments: unknown }>;
 };
 
-const resolveMessageTimestamps = (messages: RespondToUserHistorySourceMessage[]): number[] => {
-  const resolved: Array<number | null> = messages.map((message) =>
-    typeof message.timestamp === 'number' && Number.isFinite(message.timestamp) ? message.timestamp : null
-  );
-
-  for (let i = 1; i < resolved.length; i++) {
-    if (resolved[i] === null && resolved[i - 1] !== null) {
-      resolved[i] = (resolved[i - 1] as number) + 1;
-    }
-  }
-
-  for (let i = resolved.length - 2; i >= 0; i--) {
-    if (resolved[i] === null && resolved[i + 1] !== null) {
-      resolved[i] = (resolved[i + 1] as number) - 1;
-    }
-  }
-
-  for (let i = 0; i < resolved.length; i++) {
-    if (resolved[i] === null) {
-      resolved[i] = i;
-    }
-  }
-
-  return resolved as number[];
-};
-
 const extractRespondToUserHistory = (
   messages: RespondToUserHistorySourceMessage[]
-): Array<{ text: string; timestamp: number }> => {
-  const history: Array<{ text: string; timestamp: number }> = [];
-  const seenResponses = new Set<string>();
-  const resolvedTimestamps = resolveMessageTimestamps(messages);
+): AgentUserResponseEvent[] =>
+  extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
 
-  for (const [index, message] of messages.entries()) {
-    if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
+const sortResponseEvents = (events: AgentUserResponseEvent[]): AgentUserResponseEvent[] =>
+  [...events].sort((a, b) => {
+    if ((a.runId ?? 0) !== (b.runId ?? 0)) return (a.runId ?? 0) - (b.runId ?? 0);
+    if (a.ordinal !== b.ordinal) return a.ordinal - b.ordinal;
+    return a.timestamp - b.timestamp;
+  });
 
-    const messageTimestamp = resolvedTimestamps[index];
-
-    for (const call of message.toolCalls) {
-      if (call.name !== RESPOND_TO_USER_TOOL) continue;
-      const responseText = extractRespondToUserContentFromArgs(call.arguments);
-      if (!responseText || seenResponses.has(responseText)) continue;
-
-      seenResponses.add(responseText);
-      history.push({ text: responseText, timestamp: messageTimestamp });
-    }
-  }
-
-  return history;
-};
+const getNextResponseEventOrdinal = (events: AgentUserResponseEvent[]): number =>
+  events.reduce((maxOrdinal, event) => Math.max(maxOrdinal, event.ordinal), 0) + 1;
 
 const getMessageLogMeta = (content: string) => ({
   length: content.length,
@@ -863,9 +829,12 @@ export default function ChatScreen({ route, navigation }: any) {
   // instead of replacing, preventing intermediate messages from disappearing (#1083)
   const progressMessagesRef = useRef<ChatMessage[]>([]);
   // Track respond_to_user history for the current session (Issue #26)
-  const [respondToUserHistory, setRespondToUserHistory] = useState<
-    Array<{ text: string; timestamp: number }>
-  >([]);
+  const [respondToUserHistory, setRespondToUserHistory] = useState<AgentUserResponseEvent[]>([]);
+  const respondToUserHistoryRef = useRef<AgentUserResponseEvent[]>([]);
+  const nextResponseEventOrdinalRef = useRef(1);
+  const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
+  const queuedResponseEventsRef = useRef<AgentUserResponseEvent[]>([]);
+  const activeAutoSpeechEventIdRef = useRef<string | null>(null);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
@@ -988,9 +957,10 @@ export default function ChatScreen({ route, navigation }: any) {
 		stopRecognitionOnly,
 	  ]);
 
-	  const speakAssistantResponse = useCallback((content: string, reason: string) => {
+	  const speakAssistantResponse = useCallback((content: string, reason: string, onSettled?: () => void) => {
 		const processedText = preprocessTextForTTS(content);
 		if (!processedText) {
+				onSettled?.();
 			return false;
 		}
 
@@ -998,6 +968,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		const settle = () => {
 			if (settled) return;
 			settled = true;
+				onSettled?.();
 			if (handsFree) {
 				handsFreeController.onSpeechFinished();
 				voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
@@ -1022,7 +993,97 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-	  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, voiceLog]);
+		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, voiceLog]);
+
+	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
+	    respondToUserHistoryRef.current = events;
+	    nextResponseEventOrdinalRef.current = getNextResponseEventOrdinal(events);
+	  }, []);
+
+	  const replaceResponseHistory = useCallback((events: AgentUserResponseEvent[]) => {
+	    const sortedEvents = sortResponseEvents(events);
+	    syncResponseHistoryRefs(sortedEvents);
+	    setRespondToUserHistory(sortedEvents);
+	  }, [syncResponseHistoryRefs]);
+
+	  const createFallbackResponseEvent = useCallback((
+	    sessionId: string | null | undefined,
+	    runId: number | undefined,
+	    text: string,
+	  ): AgentUserResponseEvent => {
+	    const ordinal = nextResponseEventOrdinalRef.current;
+	    nextResponseEventOrdinalRef.current = ordinal + 1;
+	    const timestamp = Date.now();
+
+	    return {
+	      id: `legacy-progress-${sessionId ?? 'session'}-${runId ?? 'run'}-${ordinal}-${timestamp}`,
+	      sessionId: sessionId ?? 'session',
+	      runId,
+	      ordinal,
+	      text,
+	      timestamp,
+	    };
+	  }, []);
+
+	  const mergeResponseEvents = useCallback((incomingEvents: AgentUserResponseEvent[]) => {
+	    if (!incomingEvents.length) return;
+	    const merged = new Map(respondToUserHistoryRef.current.map((event) => [event.id, event]));
+	    for (const event of incomingEvents) {
+	      merged.set(event.id, event);
+	    }
+
+	    const mergedEvents = sortResponseEvents(Array.from(merged.values()));
+	    syncResponseHistoryRefs(mergedEvents);
+	    setRespondToUserHistory(mergedEvents);
+	  }, [syncResponseHistoryRefs]);
+
+  const processAutoSpeechQueue = useCallback(() => {
+    if (activeAutoSpeechEventIdRef.current || queuedResponseEventsRef.current.length === 0) {
+      return;
+    }
+
+    const nextEvent = queuedResponseEventsRef.current.shift();
+    if (!nextEvent) return;
+    activeAutoSpeechEventIdRef.current = nextEvent.id;
+
+    const spoken = speakAssistantResponse(nextEvent.text, `response event ${nextEvent.ordinal}`, () => {
+      activeAutoSpeechEventIdRef.current = null;
+      processAutoSpeechQueue();
+    });
+
+    if (!spoken) {
+      activeAutoSpeechEventIdRef.current = null;
+      processAutoSpeechQueue();
+      return;
+    }
+
+    playedResponseEventIdsRef.current.add(nextEvent.id);
+  }, [speakAssistantResponse]);
+
+  const enqueueResponseEventsForSpeech = useCallback((events: AgentUserResponseEvent[]) => {
+    if (config.ttsEnabled === false || !events.length) return;
+
+    const queuedIds = new Set(queuedResponseEventsRef.current.map((event) => event.id));
+    const activeId = activeAutoSpeechEventIdRef.current;
+    const unseenEvents = events.filter((event) => (
+      !playedResponseEventIdsRef.current.has(event.id)
+      && !queuedIds.has(event.id)
+      && event.id !== activeId
+    ));
+
+    if (!unseenEvents.length) return;
+
+    queuedResponseEventsRef.current = [
+      ...queuedResponseEventsRef.current,
+      ...unseenEvents,
+    ].sort((a, b) => {
+      if ((a.runId ?? 0) !== (b.runId ?? 0)) return (a.runId ?? 0) - (b.runId ?? 0);
+      if (a.ordinal !== b.ordinal) return a.ordinal - b.ordinal;
+      return a.timestamp - b.timestamp;
+    });
+
+    processAutoSpeechQueue();
+  }, [config.ttsEnabled, processAutoSpeechQueue]);
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -1272,7 +1333,10 @@ export default function ChatScreen({ route, navigation }: any) {
       setExpandedMessages({});
       setExpandedToolCalls({});
       // Clear respond_to_user history for the new session
-      setRespondToUserHistory([]);
+	      replaceResponseHistory([]);
+      playedResponseEventIdsRef.current = new Set();
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventIdRef.current = null;
       // Clear stale in-flight marker when switching sessions.
       pendingLazyLoadSessionIdRef.current = null;
       // Clear skipNextPersistRef to prevent the first real message in the new session
@@ -1296,10 +1360,14 @@ export default function ChatScreen({ route, navigation }: any) {
 
         // Extract respond_to_user content from saved messages for display (#32, #33)
         const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
-        setRespondToUserHistory(savedResponses);
+	        replaceResponseHistory(savedResponses);
+        playedResponseEventIdsRef.current = new Set(savedResponses.map((event) => event.id));
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventIdRef.current = null;
       } else if (currentSession.serverConversationId && hasServerAuth) {
         // Stub session — lazy-load messages from server
         setMessages([]);
+	        replaceResponseHistory([]);
         const stubSessionId = currentSession.id;
         if (pendingLazyLoadSessionIdRef.current === stubSessionId) {
           return;
@@ -1332,7 +1400,10 @@ export default function ChatScreen({ route, navigation }: any) {
             const lazyResponses = extractRespondToUserHistory(
               loadedMessages as RespondToUserHistorySourceMessage[]
             );
-            setRespondToUserHistory(lazyResponses);
+	            replaceResponseHistory(lazyResponses);
+            playedResponseEventIdsRef.current = new Set(lazyResponses.map((event) => event.id));
+            queuedResponseEventsRef.current = [];
+            activeAutoSpeechEventIdRef.current = null;
           })
           .catch((err) => {
             console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
@@ -1344,6 +1415,7 @@ export default function ChatScreen({ route, navigation }: any) {
           });
       } else {
         setMessages([]);
+	        replaceResponseHistory([]);
       }
       return;
     }
@@ -1369,11 +1441,15 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // Extract respond_to_user content from new session messages (#32, #33)
       const newResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
-      setRespondToUserHistory(newResponses);
+	      replaceResponseHistory(newResponses);
+      playedResponseEventIdsRef.current = new Set(newResponses.map((event) => event.id));
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventIdRef.current = null;
     } else {
       setMessages([]);
+	      replaceResponseHistory([]);
     }
-  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -1792,8 +1868,8 @@ export default function ChatScreen({ route, navigation }: any) {
       // Track userResponse from progress updates for TTS
       // This is set via the respond_to_user tool and takes priority over finalText
       let lastUserResponse: string | undefined;
-      // Track if we've already played TTS mid-turn to avoid double playback
-      let midTurnTTSPlayed = false;
+	      let lastResponseEvents: AgentUserResponseEvent[] = [];
+	      let midTurnLegacyResponseText: string | undefined;
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
@@ -1814,24 +1890,27 @@ export default function ChatScreen({ route, navigation }: any) {
         }
 	        latestConversationState = resolveConversationStateFromProgress(update);
 	        setConversationState(latestConversationState);
-        // Capture userResponse from progress updates for TTS and history panel
-        if (update.userResponse || update.spokenContent) {
-          const responseText = update.userResponse || update.spokenContent;
-          if (responseText && responseText !== lastUserResponse) {
-            // Add to respond_to_user history (deduplicate across entire history)
-            setRespondToUserHistory((prev) => {
-              // Check if text already exists anywhere in history (not just last item)
-              if (prev.some((entry) => entry.text === responseText)) return prev;
-              return [...prev, { text: responseText, timestamp: Date.now() }];
-            });
-          }
-          lastUserResponse = update.userResponse || update.spokenContent;
-        }
-        // Mid-turn TTS: play immediately when userResponse is first set
-        if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
-          midTurnTTSPlayed = true;
-	          speakAssistantResponse(lastUserResponse, 'mid-turn progress');
-        }
+	        if (update.responseEvents?.length) {
+	          lastResponseEvents = [...update.responseEvents].sort((a, b) => a.ordinal - b.ordinal);
+	          mergeResponseEvents(lastResponseEvents);
+	          enqueueResponseEventsForSpeech(lastResponseEvents);
+	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
+	        } else if (update.userResponse || update.spokenContent) {
+	          const responseText = update.userResponse || update.spokenContent;
+	          if (responseText && responseText !== lastUserResponse) {
+		            const fallbackEvent = createFallbackResponseEvent(
+		              requestSessionId,
+		              update.runId,
+		              responseText,
+		            );
+	            mergeResponseEvents([fallbackEvent]);
+	          }
+	          lastUserResponse = responseText;
+	          if (responseText && responseText !== midTurnLegacyResponseText && config.ttsEnabled !== false) {
+	            midTurnLegacyResponseText = responseText;
+		            speakAssistantResponse(responseText, 'mid-turn progress');
+	          }
+	        }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
@@ -1882,7 +1961,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
 	      const response = await client.chat(modelMessages, onToken, onProgress, serverConversationId);
       const finalText = response.content || streamingText;
-	      const finalDisplayText = lastUserResponse || finalText;
+		      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
+		      const finalDisplayText = finalResponseEvent?.text || lastUserResponse || finalText;
       console.log('[ChatScreen] Chat completed, conversationId:', response.conversationId);
 
       // Guard: skip UI updates if session has changed, BUT still persist to the original session
@@ -1966,7 +2046,7 @@ export default function ChatScreen({ route, navigation }: any) {
             toolResults: historyMsg.toolResults,
           });
         }
-	        const finalTurnMessages = applyUserResponseToMessages(newMessages, lastUserResponse);
+		        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
 	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
@@ -2056,9 +2136,11 @@ export default function ChatScreen({ route, navigation }: any) {
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // userResponse is explicitly set by the agent for user communication
       // Skip TTS if we already played the same text mid-turn
-      const ttsText = lastUserResponse || finalText;
-      const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
-      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
+	      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
+	      const alreadySpokenMidTurn = !!(finalResponseEvent
+	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
+	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
+	      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
@@ -2232,32 +2314,35 @@ export default function ChatScreen({ route, navigation }: any) {
       let latestConversationState: AgentConversationState = 'running';
       // Track userResponse from progress updates for TTS
       let lastUserResponse: string | undefined;
-      // Track if we've already played TTS mid-turn to avoid double playback
-      let midTurnTTSPlayed = false;
+	      let lastResponseEvents: AgentUserResponseEvent[] = [];
+	      let midTurnLegacyResponseText: string | undefined;
 
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
         latestConversationState = resolveConversationStateFromProgress(update);
         setConversationState(latestConversationState);
-        // Capture userResponse from progress updates for TTS and history panel
-        if (update.userResponse || update.spokenContent) {
-          const responseText = update.userResponse || update.spokenContent;
-          if (responseText && responseText !== lastUserResponse) {
-            // Add to respond_to_user history (deduplicate across entire history)
-            setRespondToUserHistory((prev) => {
-              // Check if text already exists anywhere in history (not just last item)
-              if (prev.some((entry) => entry.text === responseText)) return prev;
-              return [...prev, { text: responseText, timestamp: Date.now() }];
-            });
-          }
-          lastUserResponse = update.userResponse || update.spokenContent;
-        }
-        // Mid-turn TTS: play immediately when userResponse is first set
-        if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
-          midTurnTTSPlayed = true;
-	          speakAssistantResponse(lastUserResponse, 'queued mid-turn progress');
-        }
+	        if (update.responseEvents?.length) {
+	          lastResponseEvents = [...update.responseEvents].sort((a, b) => a.ordinal - b.ordinal);
+	          mergeResponseEvents(lastResponseEvents);
+	          enqueueResponseEventsForSpeech(lastResponseEvents);
+	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
+	        } else if (update.userResponse || update.spokenContent) {
+	          const responseText = update.userResponse || update.spokenContent;
+	          if (responseText && responseText !== lastUserResponse) {
+		            const fallbackEvent = createFallbackResponseEvent(
+		              requestSessionId,
+		              update.runId,
+		              responseText,
+		            );
+	            mergeResponseEvents([fallbackEvent]);
+	          }
+	          lastUserResponse = responseText;
+	          if (responseText && responseText !== midTurnLegacyResponseText && config.ttsEnabled !== false) {
+	            midTurnLegacyResponseText = responseText;
+		            speakAssistantResponse(responseText, 'queued mid-turn progress');
+	          }
+	        }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
           setMessages((m) => {
@@ -2294,7 +2379,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
       const response = await client.chat(modelMessages, onToken, onProgress, serverConversationId);
       const finalText = response.content || streamingText;
-      const finalDisplayText = lastUserResponse || finalText;
+	      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
+	      const finalDisplayText = finalResponseEvent?.text || lastUserResponse || finalText;
 
       // Early exit guards - finalize queue status before returning to prevent stuck 'processing' items
       if (sessionStore.currentSessionId !== requestSessionId) {
@@ -2332,7 +2418,7 @@ export default function ChatScreen({ route, navigation }: any) {
             toolResults: historyMsg.toolResults,
           });
         }
-        const finalTurnMessages = applyUserResponseToMessages(newMessages, lastUserResponse);
+	        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
         setMessages((m) => {
           const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
@@ -2353,8 +2439,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // Skip TTS if we already played the same text mid-turn
-      const ttsText = lastUserResponse || finalText;
-      const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
+	      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
+	      const alreadySpokenMidTurn = !!(finalResponseEvent
+	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
+	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
       if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
@@ -2433,97 +2521,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	  liveTranscript,
 		  sttPreview,
 		});
-
-  const commandQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter(isSlashCommandPrompt)
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        description: 'Slash-style saved prompt from your desktop workspace.',
-        content: prompt.content,
-        source: 'command' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const savedPromptQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter((prompt) => !isSlashCommandPrompt(prompt))
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        description: 'Reusable saved prompt synced from desktop.',
-        content: prompt.content,
-        source: 'saved-prompt' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
-  );
-
-  const quickStartSections = useMemo<QuickStartSection[]>(() => {
-    const sections: QuickStartSection[] = [];
-
-    if (commandQuickStarts.length > 0) {
-      sections.push({
-        id: 'commands',
-        title: 'Custom Commands',
-        subtitle: 'Slash-named saved prompts from desktop show up here.',
-        items: commandQuickStarts,
-      });
-    }
-
-    if (savedPromptQuickStarts.length > 0) {
-      sections.push({
-        id: 'saved-prompts',
-        title: 'Saved Prompts',
-        subtitle: 'Reusable prompts from your desktop setup.',
-        items: savedPromptQuickStarts,
-      });
-    }
-
-    sections.push({
-      id: 'starter-packs',
-      title: 'Starter Packs',
-      subtitle: commandQuickStarts.length === 0
-        ? 'Use these while you build out custom commands and saved prompts.'
-        : 'Built-in launchers for common workflows.',
-      items: starterPackQuickStarts,
-    });
-
-    return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
-
-  const quickStartCategoryPills = useMemo(
-    () => [
-      {
-        id: 'commands-pill',
-        label: 'Custom Commands',
-        value: commandQuickStarts.length > 0 ? `${commandQuickStarts.length} ready` : 'Add slash prompts on desktop',
-      },
-      {
-        id: 'prompts-pill',
-        label: 'Saved Prompts',
-        value: savedPromptQuickStarts.length > 0 ? `${savedPromptQuickStarts.length} synced` : 'Shows desktop prompts here',
-      },
-      {
-        id: 'starter-pill',
-        label: 'Starter Packs',
-        value: `${starterPackQuickStarts.length} tap-to-insert`,
-      },
-    ],
-    [commandQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
-  );
-
-  const quickStartFooterText = isLoadingQuickStartPrompts
-    ? 'Refreshing saved prompts from desktop…'
-    : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
 
   const commandQuickStarts = useMemo(
     () => predefinedPrompts

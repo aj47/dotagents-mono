@@ -399,9 +399,99 @@ describe("acp-main-agent", () => {
     expect(completedUpdate).toEqual(expect.objectContaining({
       isComplete: true,
       finalContent: "Final user-facing answer",
-      userResponse: "Final user-facing answer",
-      userResponseHistory: ["First response"],
     }))
+    expect(completedUpdate?.responseEvents).toEqual([
+      expect.objectContaining({ text: "First response" }),
+      expect.objectContaining({ text: "Final user-facing answer" }),
+    ])
+  })
+
+  it("uses shared monotonic fallback timestamps for ACP responseEvents", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(Number.NaN)
+
+    try {
+      mockSendPrompt.mockImplementation(async () => {
+        sessionUpdateHandler?.({
+          sessionId: "acp-session-1",
+          toolCall: {
+            toolCallId: "tool-r1",
+            title: "Tool: respond_to_user",
+            status: "completed",
+            rawInput: { text: "First response" },
+            rawOutput: { success: true },
+          },
+          isComplete: false,
+        })
+        sessionUpdateHandler?.({
+          sessionId: "acp-session-1",
+          toolCall: {
+            toolCallId: "tool-r2",
+            title: "Tool: respond_to_user",
+            status: "completed",
+            rawInput: { text: "Second response" },
+            rawOutput: { success: true },
+          },
+          isComplete: false,
+        })
+
+        return { success: true, response: "Internal trailing completion text" }
+      })
+
+      await processTranscriptWithACPAgent("hello", {
+        agentName: "test-agent",
+        conversationId: "conversation-1",
+        sessionId: "ui-session-1",
+        runId: 1,
+        onProgress: (update) => updates.push(update),
+      })
+    } finally {
+      dateNowSpy.mockRestore()
+    }
+
+    const completedUpdate = updates.at(-1)
+    expect(completedUpdate?.responseEvents).toEqual([
+      expect.objectContaining({ text: "First response", timestamp: 0 }),
+      expect.objectContaining({ text: "Second response", timestamp: 2 }),
+    ])
+  })
+
+  it("uses the same fallback session identifier for ACP responseEvent ids and sessionId", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-fallback-session",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "Fallback session response" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "Internal fallback" }
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: undefined,
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    } as any)
+
+    const responseEvent = updates.at(-1)?.responseEvents?.[0]
+    expect(responseEvent).toEqual(expect.objectContaining({
+      sessionId: "acp-session",
+      runId: 1,
+      text: "Fallback session response",
+    }))
+    expect(responseEvent?.id).toContain(`acp-${responseEvent?.sessionId}-${responseEvent?.runId}-`)
   })
 
   it("recognizes humanized ACP respond-to-user tool titles for userResponse rendering", async () => {
@@ -436,9 +526,11 @@ describe("acp-main-agent", () => {
 
     const completedUpdate = updates.at(-1)
     expect(completedUpdate).toEqual(expect.objectContaining({
-      userResponse: "Rendered from humanized tool title",
       finalContent: "Rendered from humanized tool title",
     }))
+    expect(completedUpdate?.responseEvents).toEqual([
+      expect.objectContaining({ text: "Rendered from humanized tool title" }),
+    ])
 
     expect(completedUpdate?.conversationHistory).toEqual(
       expect.arrayContaining([

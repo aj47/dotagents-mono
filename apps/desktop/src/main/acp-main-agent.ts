@@ -20,7 +20,7 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
 import { extractRespondToUserContentFromArgs } from "./respond-to-user-utils"
-import { type AgentConversationState } from "@dotagents/shared"
+import { resolveMessageTimestamps, type AgentConversationState, type AgentUserResponseEvent } from "@dotagents/shared"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -208,28 +208,47 @@ function normalizeAcpToolName(name: string | undefined): string | undefined {
   return withoutToolPrefix
 }
 
-function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMessage[]): {
+function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMessage[], options?: {
+  sinceIndex?: number
+  sessionId?: string
+  runId?: number
+}): {
+  responseEvents: AgentUserResponseEvent[]
   userResponse?: string
   userResponseHistory?: string[]
 } {
-  const responses: string[] = []
+  const responseEvents: AgentUserResponseEvent[] = []
+  const sinceIndex = Math.max(0, options?.sinceIndex ?? 0)
+  const resolvedSessionId = options?.sessionId ?? "acp-session"
+  const scopedConversationHistory = conversationHistory.slice(sinceIndex)
+  const resolvedTimestamps = resolveMessageTimestamps(scopedConversationHistory)
 
-  for (const message of conversationHistory) {
+  for (let localMessageIndex = 0; localMessageIndex < scopedConversationHistory.length; localMessageIndex += 1) {
+    const messageIndex = sinceIndex + localMessageIndex
+    const message = scopedConversationHistory[localMessageIndex]
     if (message.role !== "assistant" || !message.toolCalls?.length) continue
 
-    for (const toolCall of message.toolCalls) {
+    for (let toolCallIndex = 0; toolCallIndex < message.toolCalls.length; toolCallIndex += 1) {
+      const toolCall = message.toolCalls[toolCallIndex]
       if (normalizeAcpToolName(toolCall.name) !== RESPOND_TO_USER_TOOL) continue
       const content = extractRespondToUserContentFromArgs(toolCall.arguments)
       if (!content) continue
-      if (responses[responses.length - 1] === content) continue
-      responses.push(content)
+      responseEvents.push({
+        id: `acp-${resolvedSessionId}-${options?.runId ?? "run"}-${messageIndex}-${toolCallIndex}-${responseEvents.length + 1}`,
+        sessionId: resolvedSessionId,
+        runId: options?.runId,
+        ordinal: responseEvents.length + 1,
+        text: content,
+        timestamp: resolvedTimestamps[localMessageIndex],
+      })
     }
   }
 
-  const userResponse = responses[responses.length - 1]
+  const userResponse = responseEvents[responseEvents.length - 1]?.text
   return {
+    responseEvents,
     userResponse,
-    userResponseHistory: responses.length > 1 ? responses.slice(0, -1) : undefined,
+    userResponseHistory: responseEvents.length > 1 ? responseEvents.slice(0, -1).map((event) => event.text) : undefined,
   }
 }
 
@@ -332,6 +351,7 @@ export async function processTranscriptWithACPAgent(
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)
   }
 
+  const currentTurnStartIndex = conversationHistory.length
   let persistedConversationLength = conversationHistory.length
 
   const persistConversationTail = async () => {
@@ -481,11 +501,14 @@ export async function processTranscriptWithACPAgent(
     }
   }
 
-  // Seed lastEmittedUserResponse with the latest respond_to_user from previous
-  // conversation history so we don't re-emit stale content from prior turns
-  // (which would trigger outdated TTS on mobile).
+  // Track only responses emitted during this turn so prior-turn ACP responses
+  // are never replayed into the current run.
   let lastEmittedUserResponse: string | undefined =
-    deriveAcpUserResponseState(conversationHistory).userResponse
+    deriveAcpUserResponseState(conversationHistory, {
+      sinceIndex: currentTurnStartIndex,
+      sessionId,
+      runId,
+    }).userResponse
 
   // Emit progress with optional streaming content and conversation history
   const emitProgress = async (
@@ -494,7 +517,11 @@ export async function processTranscriptWithACPAgent(
     finalContent?: string,
     streamingContent?: { text: string; isStreaming: boolean }
   ) => {
-    const { userResponse, userResponseHistory } = deriveAcpUserResponseState(conversationHistory)
+    const { responseEvents, userResponse, userResponseHistory } = deriveAcpUserResponseState(conversationHistory, {
+      sinceIndex: currentTurnStartIndex,
+      sessionId,
+      runId,
+    })
     const conversationState: AgentConversationState = isComplete ? "complete" : "running"
     // Only include userResponse when it changed to avoid re-emitting stale
     // responses from prior turns (same pattern as llm.ts emit guard)
@@ -512,6 +539,7 @@ export async function processTranscriptWithACPAgent(
       finalContent: finalContent ?? (isComplete ? userResponse : undefined),
       streamingContent,
       conversationHistory,
+      ...(responseEvents.length ? { responseEvents } : {}),
       ...(shouldEmitUserResponse ? { userResponse } : {}),
       ...(shouldEmitUserResponse && userResponseHistory?.length ? { userResponseHistory } : {}),
       // Include ACP session info in progress updates (Task 3.1)
@@ -737,7 +765,11 @@ export async function processTranscriptWithACPAgent(
       const promptContext = buildProfileContext(profileSnapshot, ACP_BUILTIN_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
-      const { userResponse } = deriveAcpUserResponseState(conversationHistory)
+      const { userResponse } = deriveAcpUserResponseState(conversationHistory, {
+        sinceIndex: currentTurnStartIndex,
+        sessionId,
+        runId,
+      })
       // Use accumulated text if result.response is empty but we received streaming content
       const finalResponse = userResponse || result.response || accumulatedText || undefined
 

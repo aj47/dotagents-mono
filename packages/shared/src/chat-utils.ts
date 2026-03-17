@@ -5,6 +5,7 @@
  * across both platforms while allowing platform-specific rendering.
  */
 
+import type { AgentUserResponseEvent } from './agent-progress';
 import { BaseChatMessage, ToolCall, ToolResult } from './types';
 
 /**
@@ -483,6 +484,13 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const parsedArgs = args as Record<string, unknown>;
   const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
+  const sanitizeImageAltText = (alt: string) => alt.replace(/[\[\]\(\)`\\]/g, '').trim();
+
+  const formatLocalImagePlaceholder = (alt: string, imagePath: string) => {
+    const safeAlt = alt.trim() || 'Image';
+    const escapedPath = imagePath.replace(/`/g, '\\`');
+    return `Local image (${safeAlt}): \`${escapedPath}\``;
+  };
 
   const imagesMd = images
     .map((img, index) => {
@@ -494,6 +502,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
         : typeof image.altText === 'string' && image.altText.trim().length > 0
           ? image.altText.trim()
           : `Image ${index + 1}`;
+      const safeAlt = sanitizeImageAltText(alt) || `Image ${index + 1}`;
 
       const url = typeof image.url === 'string' ? image.url.trim() : '';
       const dataUrl = typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
@@ -501,10 +510,11 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
       const mimeType = typeof image.mimeType === 'string' ? image.mimeType.trim() : '';
       const data = typeof image.data === 'string' ? image.data.trim() : '';
       const legacyDataUrl = mimeType && data ? `data:${mimeType};base64,${data}` : '';
-      const uri = url || dataUrl || legacyDataUrl || path;
+      const uri = url || dataUrl || legacyDataUrl;
 
-      if (!uri) return '';
-      return `![${alt}](${uri})`;
+      if (uri) return `![${safeAlt}](${uri})`;
+      if (path) return formatLocalImagePlaceholder(safeAlt, path);
+      return '';
     })
     .filter(Boolean)
     .join('\n\n');
@@ -543,6 +553,86 @@ export function extractRespondToUserResponses(
   }
 
   return responses;
+}
+
+/**
+ * Resolve a monotonic timestamp for each message, filling missing or invalid
+ * timestamps relative to neighboring messages when possible.
+ */
+export function resolveMessageTimestamps(
+  messages: Array<{
+    timestamp?: number;
+  }>,
+): number[] {
+  const resolved: Array<number | null> = messages.map((message) => (
+    typeof message.timestamp === 'number' && Number.isFinite(message.timestamp)
+      ? message.timestamp
+      : null
+  ));
+
+  for (let index = 1; index < resolved.length; index += 1) {
+    if (resolved[index] === null && resolved[index - 1] !== null) {
+      resolved[index] = (resolved[index - 1] as number) + 1;
+    }
+  }
+
+  for (let index = resolved.length - 2; index >= 0; index -= 1) {
+    if (resolved[index] === null && resolved[index + 1] !== null) {
+      resolved[index] = (resolved[index + 1] as number) - 1;
+    }
+  }
+
+  for (let index = 0; index < resolved.length; index += 1) {
+    if (resolved[index] === null) {
+      resolved[index] = index;
+    }
+  }
+
+  return resolved as number[];
+}
+
+/**
+ * Extract ordered respond_to_user events from saved chat messages.
+ * Unlike `extractRespondToUserResponses`, this preserves duplicates and order.
+ */
+export function extractRespondToUserResponseEvents(
+  messages: Array<{
+    role: 'user' | 'assistant' | 'tool';
+    timestamp?: number;
+    toolCalls?: Array<{ name: string; arguments: unknown }>;
+  }>,
+  options?: {
+    sessionId?: string;
+    runId?: number;
+    idPrefix?: string;
+  },
+): AgentUserResponseEvent[] {
+  const events: AgentUserResponseEvent[] = [];
+  const idPrefix = options?.idPrefix ?? 'history';
+  const resolvedTimestamps = resolveMessageTimestamps(messages);
+
+  for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
+    const message = messages[messageIndex];
+    if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
+
+    for (let toolCallIndex = 0; toolCallIndex < message.toolCalls.length; toolCallIndex += 1) {
+      const call = message.toolCalls[toolCallIndex];
+      if (call.name !== RESPOND_TO_USER_TOOL) continue;
+      const content = extractRespondToUserContentFromArgs(call.arguments);
+      if (!content) continue;
+
+      events.push({
+        id: `${idPrefix}-${messageIndex}-${toolCallIndex}-${events.length + 1}`,
+        sessionId: options?.sessionId ?? 'history',
+        runId: options?.runId,
+        ordinal: events.length + 1,
+        text: content,
+        timestamp: resolvedTimestamps[messageIndex],
+      });
+    }
+  }
+
+  return events;
 }
 
 /**

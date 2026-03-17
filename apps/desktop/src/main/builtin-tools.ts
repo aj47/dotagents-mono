@@ -20,7 +20,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
 import { memoryService } from "./memory-service"
 import { messageQueueService } from "./message-queue-service"
-import { setSessionUserResponse } from "./session-user-response-store"
+import { appendSessionUserResponse } from "./session-user-response-store"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -688,7 +688,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    setSessionUserResponse(context.sessionId, responseContent)
+    appendSessionUserResponse({
+      sessionId: context.sessionId,
+      runId: agentSessionStateManager.getSessionRunId(context.sessionId),
+      text: responseContent,
+    })
 
     return {
       content: [

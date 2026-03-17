@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, LayoutGrid, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -19,6 +19,8 @@ import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
+  type AgentUserResponseEvent,
+  extractRespondToUserResponseEvents,
   getAgentConversationStateLabel,
   getToolResultsSummary,
   normalizeAgentConversationState,
@@ -26,7 +28,7 @@ import {
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
-import { hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
+import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
@@ -113,69 +115,20 @@ type DisplayItem =
     } }
   | { kind: "delegation"; id: string; data: ACPDelegationProgress }
   | { kind: "mid_turn_response"; id: string; data: {
-      userResponse: string
-      pastResponses?: string[]
+      currentResponse: AgentUserResponseEvent
+      pastResponses?: AgentUserResponseEvent[]
     } }
 
 const MID_TURN_RESPONSE_ITEM_ID = "mid-turn-response"
 
-function extractRespondToUserContentFromArgs(args: unknown): string | null {
-  if (!args || typeof args !== "object") return null
-
-  const parsedArgs = args as Record<string, unknown>
-  const text = typeof parsedArgs.text === "string" ? parsedArgs.text.trim() : ""
-  const images = Array.isArray(parsedArgs.images)
-    ? parsedArgs.images
-    : []
-
-  const imageMarkdown = images
-    .map((image, index) => {
-      if (!image || typeof image !== "object") return ""
-      const parsedImage = image as Record<string, unknown>
-      const url = typeof parsedImage.url === "string" ? parsedImage.url.trim() : ""
-      const alt = typeof parsedImage.alt === "string" ? parsedImage.alt.trim() : ""
-      const safeAlt = alt.replace(/[\[\]]/g, "") || `Image ${index + 1}`
-      if (url) return `![${safeAlt}](${url})`
-
-      const imagePath = typeof parsedImage.path === "string" ? parsedImage.path.trim() : ""
-      if (!imagePath) return ""
-
-      // Local file paths are not valid markdown image URLs in renderer sanitization.
-      // Keep a textual placeholder so path-only responses are still visible in revived sessions.
-      const escapedPath = imagePath.replace(/`/g, "\\`")
-      return `Local image (${safeAlt}): \`${escapedPath}\``
-    })
-    .filter(Boolean)
-
-  const combined = [text, imageMarkdown.join("\n\n")]
-    .filter(Boolean)
-    .join("\n\n")
-    .trim()
-
-  return combined.length > 0 ? combined : null
-}
-
 function extractRespondToUserResponsesFromMessages(
   messages: Array<{
     role: "user" | "assistant" | "tool"
+    timestamp?: number
     toolCalls?: Array<{ name: string; arguments: unknown }>
   }>,
-): string[] {
-  const responses: string[] = []
-
-  for (const message of messages) {
-    if (message.role !== "assistant" || !message.toolCalls?.length) continue
-
-    for (const call of message.toolCalls) {
-      if (call.name !== RESPOND_TO_USER_TOOL) continue
-      const content = extractRespondToUserContentFromArgs(call.arguments)
-      if (!content) continue
-      if (responses[responses.length - 1] === content) continue
-      responses.push(content)
-    }
-  }
-
-  return responses
+): AgentUserResponseEvent[] {
+  return extractRespondToUserResponseEvents(messages, { idPrefix: "desktop-history" })
 }
 
 const COLLAPSED_USER_RESPONSE_SCAN_LIMIT = 2048
@@ -423,7 +376,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
     // Create a key to track TTS playback for this specific session + content combination
     // Use ttsSource (computed above) to ensure consistency with audioData invalidation
-    const ttsKey = sessionId ? `${sessionId}:${ttsSource}` : null
+    const ttsKey = buildContentTTSKey(sessionId, ttsSource, "final")
 
     // If we have a session key and TTS has already played for this content, skip
     if (ttsKey && hasTTSPlayed(ttsKey)) {
@@ -2549,8 +2502,8 @@ const ResponseHistoryPanel: React.FC<{
 
 // Mid-turn User Response Bubble - shows userResponse from respond_to_user mid-turn with TTS support
 const MidTurnUserResponseBubble: React.FC<{
-  userResponse: string
-  pastResponses?: string[]
+  currentResponse: AgentUserResponseEvent
+  pastResponses?: AgentUserResponseEvent[]
   sessionId?: string
   agentLabel?: string
   variant?: "default" | "overlay" | "tile"
@@ -2560,7 +2513,7 @@ const MidTurnUserResponseBubble: React.FC<{
   onToggleExpand: () => void
   onMaximize?: () => void
 }> = ({
-  userResponse,
+  currentResponse,
   pastResponses,
   sessionId,
   agentLabel = "Agent",
@@ -2571,6 +2524,7 @@ const MidTurnUserResponseBubble: React.FC<{
   onToggleExpand,
   onMaximize,
 }) => {
+  const userResponse = currentResponse.text
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -2578,6 +2532,8 @@ const MidTurnUserResponseBubble: React.FC<{
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
   const [isPastResponsesExpanded, setIsPastResponsesExpanded] = useState(false)
   const inFlightTtsKeyRef = useRef<string | null>(null)
+  const inFlightCompletionTTSKeysRef = useRef<string[]>([])
+  const maximizeTriggeredOnPointerDownRef = useRef(false)
   const configQuery = useConfigQuery()
   const ttsGenerationIdRef = useRef(0)
   const ttsSource = sanitizeMessageContentForSpeech(userResponse)
@@ -2645,7 +2601,7 @@ const MidTurnUserResponseBubble: React.FC<{
   useEffect(() => {
     setAudioData(null)
     setAudioMimeType(null)
-  }, [ttsSource])
+  }, [currentResponse.id, ttsSource])
 
   // Auto-play TTS for mid-turn userResponse (only in overlay variant to prevent double-play)
   useEffect(() => {
@@ -2654,8 +2610,12 @@ const MidTurnUserResponseBubble: React.FC<{
       return
     }
 
-    // Create a key to track TTS playback - use mid-turn prefix to avoid collision with completion TTS
-    const ttsKey = sessionId ? `${sessionId}:mid-turn:${ttsSource}` : null
+    const ttsKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "mid-turn")
+    const eventCompletionKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "final")
+    const contentCompletionKey = buildContentTTSKey(sessionId, ttsSource, "final")
+    const completionKeys = [eventCompletionKey, contentCompletionKey].filter(
+      (key): key is string => Boolean(key),
+    )
 
     if (ttsKey && hasTTSPlayed(ttsKey)) {
       return
@@ -2664,35 +2624,38 @@ const MidTurnUserResponseBubble: React.FC<{
     // Mark as playing before starting generation
     if (ttsKey) {
       markTTSPlayed(ttsKey)
-      // Also mark the non-prefixed key that the completion path will check
-      // to prevent double TTS playback when session completes
-      if (sessionId) {
-        markTTSPlayed(`${sessionId}:${ttsSource}`)
-      }
+      completionKeys.forEach((key) => markTTSPlayed(key))
       inFlightTtsKeyRef.current = ttsKey
+      inFlightCompletionTTSKeysRef.current = completionKeys
     }
 
     generateAudio()
       .then(() => {
         inFlightTtsKeyRef.current = null
+        inFlightCompletionTTSKeysRef.current = []
       })
       .catch(() => {
         if (ttsKey && inFlightTtsKeyRef.current === ttsKey) {
           removeTTSKey(ttsKey)
+          completionKeys.forEach((key) => removeTTSKey(key))
           inFlightTtsKeyRef.current = null
+          inFlightCompletionTTSKeysRef.current = []
         }
       })
-  }, [ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
+  }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
 
   // Cleanup in-flight TTS key on unmount
   useEffect(() => {
     return () => {
       const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
+      const completionKeysAtUnmount = inFlightCompletionTTSKeysRef.current
       if (inFlightKeyAtUnmount) {
         queueMicrotask(() => {
           if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
             removeTTSKey(inFlightKeyAtUnmount)
+            completionKeysAtUnmount.forEach((key) => removeTTSKey(key))
             inFlightTtsKeyRef.current = null
+            inFlightCompletionTTSKeysRef.current = []
           }
         })
       }
@@ -2713,6 +2676,37 @@ const MidTurnUserResponseBubble: React.FC<{
     shouldShowTTSButton &&
     (isExpanded || (variant === "overlay" && (configQuery.data?.ttsAutoPlay ?? true)))
 
+  const handleHeaderClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null
+    if (target?.closest("button, a, input, textarea, select, [role='button']")) {
+      return
+    }
+    onToggleExpand()
+  }, [onToggleExpand])
+
+  const handleMaximizePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!onMaximize || e.button !== 0) return
+    maximizeTriggeredOnPointerDownRef.current = true
+    e.preventDefault()
+    e.stopPropagation()
+    onMaximize()
+  }, [onMaximize])
+
+  const handleMaximizeClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (!onMaximize) return
+    if (maximizeTriggeredOnPointerDownRef.current) {
+      maximizeTriggeredOnPointerDownRef.current = false
+      return
+    }
+    e.preventDefault()
+    onMaximize()
+  }, [onMaximize])
+
+  const handleMaximizePointerCancel = useCallback(() => {
+    maximizeTriggeredOnPointerDownRef.current = false
+  }, [])
+
   return (
     <div className="min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30">
       {/* Header */}
@@ -2721,7 +2715,7 @@ const MidTurnUserResponseBubble: React.FC<{
           "flex min-w-0 flex-wrap items-center gap-1.5 cursor-pointer bg-green-100/50 px-2.5 py-1.5 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40",
           isExpanded && "border-b border-green-200 dark:border-green-800",
         )}
-        onClick={onToggleExpand}
+        onClick={handleHeaderClick}
       >
         {isExpanded ? (
           <ChevronDown className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
@@ -2761,10 +2755,9 @@ const MidTurnUserResponseBubble: React.FC<{
           )}
           {onMaximize && (
             <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onMaximize()
-              }}
+              onPointerDown={handleMaximizePointerDown}
+              onPointerCancel={handleMaximizePointerCancel}
+              onClick={handleMaximizeClick}
               className="shrink-0 rounded p-1 transition-colors hover:bg-green-200/50 dark:hover:bg-green-800/50"
               title="Maximize"
             >
@@ -2834,8 +2827,8 @@ const MidTurnUserResponseBubble: React.FC<{
                 <div className="space-y-1 pt-0.5">
                   {pastResponses!.map((response, idx) => (
                     <PastResponseItem
-                      key={`past-response-${idx}`}
-                      response={response}
+                      key={response.id}
+                      response={response.text}
                       index={idx}
                       sessionId={sessionId}
                     />
@@ -3008,6 +3001,40 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const handleCancelKill = () => {
     setShowKillConfirmation(false)
   }
+
+  const handleRestoreSession = useCallback(async () => {
+    if (!progress?.sessionId) return false
+
+    // Update local store first so the tile reflects the restored session immediately.
+    setSessionSnoozed(progress.sessionId, false)
+    setFocusedSessionId(progress.sessionId)
+
+    try {
+      await tipcClient.unsnoozeAgentSession({ sessionId: progress.sessionId })
+    } catch (error) {
+      setSessionSnoozed(progress.sessionId, true)
+      setFocusedSessionId(null)
+      console.error("Failed to unsnooze session:", error)
+      return false
+    }
+
+    try {
+      await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+    } catch (error) {
+      console.error("Failed to update UI after unsnooze:", error)
+    }
+
+    return true
+  }, [progress?.sessionId, setFocusedSessionId, setSessionSnoozed])
+
+  const handleExpandTile = useCallback(async () => {
+    if (!onExpand) return
+    if (progress?.isSnoozed) {
+      const restored = await handleRestoreSession()
+      if (!restored) return
+    }
+    onExpand()
+  }, [handleRestoreSession, onExpand, progress?.isSnoozed])
 
   // Handle snooze/minimize
   const handleSnooze = async (e?: React.MouseEvent) => {
@@ -3318,20 +3345,43 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return nextMessages
   }, [conversationHistory, finalContent, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
 
-  const fallbackRespondToUserResponses = useMemo(
-    () => (progress.userResponse ? [] : extractRespondToUserResponsesFromMessages(messages)),
-    [messages, progress.userResponse],
+  const legacyResponseEvents = useMemo<AgentUserResponseEvent[]>(() => {
+    if (!progress.userResponse) return []
+    const orderedTexts = [...(progress.userResponseHistory || []), progress.userResponse]
+    const fallbackTimestamp = messages[messages.length - 1]?.timestamp ?? Date.now()
+
+    return orderedTexts.map((text, index) => ({
+      id: `legacy-${progress.sessionId}-${progress.runId ?? "run"}-${index + 1}`,
+      sessionId: progress.sessionId,
+      runId: progress.runId,
+      ordinal: index + 1,
+      text,
+      timestamp: fallbackTimestamp + index,
+    }))
+  }, [messages, progress.runId, progress.sessionId, progress.userResponse, progress.userResponseHistory])
+  const fallbackRespondToUserEvents = useMemo(
+    () => (progress.userResponse || (progress.responseEvents?.length ?? 0) > 0
+      ? []
+      : extractRespondToUserResponsesFromMessages(messages)),
+    [messages, progress.responseEvents, progress.userResponse],
   )
-  const effectiveUserResponse = useMemo(
-    () => progress.userResponse ?? fallbackRespondToUserResponses[fallbackRespondToUserResponses.length - 1],
-    [fallbackRespondToUserResponses, progress.userResponse],
+  const effectiveResponseEvents = useMemo<AgentUserResponseEvent[]>(() => {
+    if ((progress.responseEvents?.length ?? 0) > 0) return progress.responseEvents ?? []
+    if (legacyResponseEvents.length > 0) return legacyResponseEvents
+    return fallbackRespondToUserEvents
+  }, [fallbackRespondToUserEvents, legacyResponseEvents, progress.responseEvents])
+  const currentResponseEvent = useMemo(
+    () => effectiveResponseEvents[effectiveResponseEvents.length - 1],
+    [effectiveResponseEvents],
   )
+  const pastResponseEvents = useMemo(
+    () => effectiveResponseEvents.length > 1 ? effectiveResponseEvents.slice(0, -1) : undefined,
+    [effectiveResponseEvents],
+  )
+  const effectiveUserResponse = currentResponseEvent?.text
   const effectiveUserResponseHistory = useMemo(
-    () => progress.userResponseHistory
-      ?? (fallbackRespondToUserResponses.length > 1
-        ? fallbackRespondToUserResponses.slice(0, -1)
-        : undefined),
-    [fallbackRespondToUserResponses, progress.userResponseHistory],
+    () => pastResponseEvents?.map((event) => event.text),
+    [pastResponseEvents],
   )
   const hasResponseHistoryEntries = !!(effectiveUserResponse || effectiveUserResponseHistory?.length)
   const primaryAgentLabel = useMemo(
@@ -3343,7 +3393,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [steps],
   )
 
-  if (!progress.userResponse && effectiveUserResponse) {
+  if ((progress.responseEvents?.length ?? 0) === 0 && !progress.userResponse && effectiveUserResponse) {
     const logKey = `${progress.sessionId}:${effectiveUserResponse.length}:${effectiveUserResponseHistory?.length || 0}`
     if (lastDerivedUserResponseLogKeyRef.current !== logKey) {
       logUI("[AgentProgress] Derived userResponse from conversation tool calls", {
@@ -3498,13 +3548,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     }
 
-    if (effectiveUserResponse) {
+    if (currentResponseEvent) {
       items.push({
         kind: "mid_turn_response",
         id: MID_TURN_RESPONSE_ITEM_ID,
         data: {
-          userResponse: effectiveUserResponse,
-          pastResponses: effectiveUserResponseHistory,
+          currentResponse: currentResponseEvent,
+          pastResponses: pastResponseEvents,
         },
       })
     }
@@ -3536,7 +3586,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
     timestampedItems.sort((a, b) => (getItemTimestamp(a) ?? 0) - (getItemTimestamp(b) ?? 0))
     return [...timestampedItems, ...currentStateItems]
-  }, [effectiveUserResponse, effectiveUserResponseHistory, messages, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
+  }, [currentResponseEvent, effectiveUserResponse, effectiveUserResponseHistory, messages, pastResponseEvents, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = useMemo(
     () => variant === "tile" && !isFocused && !isExpanded
@@ -3822,57 +3872,33 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
 
-            {!isSnoozed && onExpand && !isExpanded && (
+            {onExpand && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 shrink-0"
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void handleExpandTile()
+                }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onExpand()
+                  if (e.detail === 0) {
+                    e.preventDefault()
+                    void handleExpandTile()
+                  }
                 }}
-                title="Maximize tile"
+                title={isExpanded ? "Restore tile layout" : "Maximize tile"}
               >
-                <Maximize2 className="h-3 w-3" />
+                {isExpanded ? <LayoutGrid className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
               </Button>
             )}
 
             {!isSnoozed && !isComplete && (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
                 <Minimize2 className="h-3 w-3" />
-              </Button>
-            )}
-            {isSnoozed && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={async (e) => {
-                e.stopPropagation()
-                if (!progress?.sessionId) return
-
-                // Update local store first so panel shows content immediately
-                setSessionSnoozed(progress.sessionId, false)
-                // Focus this session in state
-                setFocusedSessionId(progress.sessionId)
-
-                try {
-                  // Unsnooze the session in backend
-                  await tipcClient.unsnoozeAgentSession({ sessionId: progress.sessionId })
-                } catch (error) {
-                  // Rollback local state only when the API call fails to keep UI and backend in sync
-                  setSessionSnoozed(progress.sessionId, true)
-                  setFocusedSessionId(null)
-                  console.error("Failed to unsnooze session:", error)
-                  return
-                }
-
-                // UI updates after successful API call - don't rollback if these fail
-                try {
-                  // Keep panel state in sync for the restored session without forcing panel open.
-                  await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
-                } catch (error) {
-                  // Log UI errors but don't rollback - the backend state is already updated
-                  console.error("Failed to update UI after unsnooze:", error)
-                }
-              }} title="Restore session">
-                <Maximize2 className="h-3 w-3" />
               </Button>
             )}
             {/* Combined close button: stops agent if running, dismisses if complete */}
@@ -3995,7 +4021,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         return (
                           <MidTurnUserResponseBubble
                             key={itemKey}
-                            userResponse={item.data.userResponse}
+                            currentResponse={item.data.currentResponse}
                             pastResponses={item.data.pastResponses}
                             sessionId={progress.sessionId}
                             agentLabel={primaryAgentLabel}
@@ -4004,7 +4030,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isComplete={isComplete}
                             isExpanded={expandedItems[itemKey] ?? false}
                             onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? false)}
-                            onMaximize={onExpand}
+                            onMaximize={handleExpandTile}
                           />
                         )
                       } else if (item.kind === "delegation") {
@@ -4402,7 +4428,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   return (
                     <MidTurnUserResponseBubble
                       key={itemKey}
-                      userResponse={item.data.userResponse}
+                      currentResponse={item.data.currentResponse}
                       pastResponses={item.data.pastResponses}
                       sessionId={progress.sessionId}
                       agentLabel={primaryAgentLabel}

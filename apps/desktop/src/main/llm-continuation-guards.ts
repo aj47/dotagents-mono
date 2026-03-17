@@ -1,5 +1,5 @@
 import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
-import { normalizeAgentConversationState, type AgentConversationState } from "@dotagents/shared"
+import { normalizeAgentConversationState, type AgentConversationState, type AgentUserResponseEvent } from "@dotagents/shared"
 
 const TOOL_CALL_PLACEHOLDER_REGEX = /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]/i
 const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]*\}|\[[\s\S]*\])\s*$/i
@@ -154,12 +154,16 @@ export function isDeliverableResponseContent(content?: string): boolean {
 export function resolveIterationLimitFinalContent({
   finalContent,
   storedResponse,
+  responseEvents,
   conversationHistory,
+  sinceIndex,
   hasRecentErrors,
 }: {
   finalContent?: string
   storedResponse?: string
+  responseEvents?: AgentUserResponseEvent[]
   conversationHistory?: ConversationHistoryLike
+  sinceIndex?: number
   hasRecentErrors: boolean
 }): {
   content: string
@@ -167,7 +171,9 @@ export function resolveIterationLimitFinalContent({
 } {
   const explicitUserResponse = resolveLatestUserFacingResponse({
     storedResponse,
+    responseEvents,
     conversationHistory,
+    sinceIndex,
   })
 
   if (explicitUserResponse?.trim().length) {
