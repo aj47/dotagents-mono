@@ -371,6 +371,62 @@ describe('extractRespondToUserResponseEvents', () => {
       },
     ])
   })
+
+  it('fills missing timestamps relative to neighboring messages', () => {
+    const messages = [
+      {
+        role: 'assistant' as const,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Before' } }],
+      },
+      {
+        role: 'assistant' as const,
+        timestamp: 100,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Known' } }],
+      },
+      {
+        role: 'assistant' as const,
+        toolCalls: [
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Gap one' } },
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Gap two' } },
+        ],
+      },
+      {
+        role: 'assistant' as const,
+        timestamp: 200,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'After' } }],
+      },
+    ]
+
+    expect(extractRespondToUserResponseEvents(messages).map((event) => event.timestamp)).toEqual([
+      99,
+      100,
+      101,
+      101,
+      200,
+    ])
+  })
+
+  it('falls back deterministically when all timestamps are missing', () => {
+    const messages = [
+      {
+        role: 'assistant' as const,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'First' } }],
+      },
+      {
+        role: 'assistant' as const,
+        toolCalls: [
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Second' } },
+          { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Third' } },
+        ],
+      },
+    ]
+
+    expect(extractRespondToUserResponseEvents(messages).map((event) => event.timestamp)).toEqual([
+      0,
+      1,
+      1,
+    ])
+  })
 })
 
 // ── isToolOnlyMessage ────────────────────────────────────────────────────────

@@ -546,6 +546,38 @@ export function extractRespondToUserResponses(
   return responses;
 }
 
+function resolveMessageTimestamps(
+  messages: Array<{
+    timestamp?: number;
+  }>,
+): number[] {
+  const resolved: Array<number | null> = messages.map((message) => (
+    typeof message.timestamp === 'number' && Number.isFinite(message.timestamp)
+      ? message.timestamp
+      : null
+  ));
+
+  for (let index = 1; index < resolved.length; index += 1) {
+    if (resolved[index] === null && resolved[index - 1] !== null) {
+      resolved[index] = (resolved[index - 1] as number) + 1;
+    }
+  }
+
+  for (let index = resolved.length - 2; index >= 0; index -= 1) {
+    if (resolved[index] === null && resolved[index + 1] !== null) {
+      resolved[index] = (resolved[index + 1] as number) - 1;
+    }
+  }
+
+  for (let index = 0; index < resolved.length; index += 1) {
+    if (resolved[index] === null) {
+      resolved[index] = index;
+    }
+  }
+
+  return resolved as number[];
+}
+
 /**
  * Extract ordered respond_to_user events from saved chat messages.
  * Unlike `extractRespondToUserResponses`, this preserves duplicates and order.
@@ -564,6 +596,7 @@ export function extractRespondToUserResponseEvents(
 ): AgentUserResponseEvent[] {
   const events: AgentUserResponseEvent[] = [];
   const idPrefix = options?.idPrefix ?? 'history';
+  const resolvedTimestamps = resolveMessageTimestamps(messages);
 
   for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
     const message = messages[messageIndex];
@@ -581,7 +614,7 @@ export function extractRespondToUserResponseEvents(
         runId: options?.runId,
         ordinal: events.length + 1,
         text: content,
-        timestamp: message.timestamp ?? messageIndex * 1000 + toolCallIndex,
+        timestamp: resolvedTimestamps[messageIndex],
       });
     }
   }
