@@ -287,6 +287,14 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(result).toContain('![diagram](https://example.com/img.png)')
   })
 
+  it('sanitizes markdown image alt text that can break placeholders', () => {
+    const args = {
+      images: [{ alt: 'di[a]gram (draft) `v1`', url: 'https://example.com/img.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('![diagram draft v1](https://example.com/img.png)')
+  })
+
   it('renders path-only images as a text placeholder', () => {
     const args = {
       images: [{ alt: 'local diagram', path: '/tmp/diagram.png' }],
@@ -302,6 +310,22 @@ describe('extractRespondToUserContentFromArgs', () => {
     }
 
     expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:\n\nLocal image (desktop capture): `/tmp/capture.png`')
+  })
+
+  it('sanitizes local image placeholder alt text that can break formatting', () => {
+    const args = {
+      images: [{ altText: 'lo[cal] (draft) `shot`', path: '/tmp/diagram.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local draft shot): `/tmp/diagram.png`')
+  })
+
+  it('falls back to indexed image labels when sanitizing removes all alt text', () => {
+    const args = {
+      images: [{ alt: '[]()`', url: 'https://example.com/img.png' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('![Image 1](https://example.com/img.png)')
   })
 
   it('returns null for empty args', () => {
