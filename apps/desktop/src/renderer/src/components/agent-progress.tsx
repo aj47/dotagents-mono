@@ -2532,6 +2532,7 @@ const MidTurnUserResponseBubble: React.FC<{
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
   const [isPastResponsesExpanded, setIsPastResponsesExpanded] = useState(false)
   const inFlightTtsKeyRef = useRef<string | null>(null)
+  const inFlightCompletionTTSKeysRef = useRef<string[]>([])
   const configQuery = useConfigQuery()
   const ttsGenerationIdRef = useRef(0)
   const ttsSource = sanitizeMessageContentForSpeech(userResponse)
@@ -2609,8 +2610,11 @@ const MidTurnUserResponseBubble: React.FC<{
     }
 
     const ttsKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "mid-turn")
-    const completionKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "final")
-      ?? buildContentTTSKey(sessionId, ttsSource, "final")
+    const eventCompletionKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "final")
+    const contentCompletionKey = buildContentTTSKey(sessionId, ttsSource, "final")
+    const completionKeys = [eventCompletionKey, contentCompletionKey].filter(
+      (key): key is string => Boolean(key),
+    )
 
     if (ttsKey && hasTTSPlayed(ttsKey)) {
       return
@@ -2619,18 +2623,22 @@ const MidTurnUserResponseBubble: React.FC<{
     // Mark as playing before starting generation
     if (ttsKey) {
       markTTSPlayed(ttsKey)
-      if (completionKey) markTTSPlayed(completionKey)
+      completionKeys.forEach((key) => markTTSPlayed(key))
       inFlightTtsKeyRef.current = ttsKey
+      inFlightCompletionTTSKeysRef.current = completionKeys
     }
 
     generateAudio()
       .then(() => {
         inFlightTtsKeyRef.current = null
+        inFlightCompletionTTSKeysRef.current = []
       })
       .catch(() => {
         if (ttsKey && inFlightTtsKeyRef.current === ttsKey) {
           removeTTSKey(ttsKey)
+          completionKeys.forEach((key) => removeTTSKey(key))
           inFlightTtsKeyRef.current = null
+          inFlightCompletionTTSKeysRef.current = []
         }
       })
   }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
@@ -2639,11 +2647,14 @@ const MidTurnUserResponseBubble: React.FC<{
   useEffect(() => {
     return () => {
       const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
+      const completionKeysAtUnmount = inFlightCompletionTTSKeysRef.current
       if (inFlightKeyAtUnmount) {
         queueMicrotask(() => {
           if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
             removeTTSKey(inFlightKeyAtUnmount)
+            completionKeysAtUnmount.forEach((key) => removeTTSKey(key))
             inFlightTtsKeyRef.current = null
+            inFlightCompletionTTSKeysRef.current = []
           }
         })
       }
