@@ -219,6 +219,7 @@ function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMess
 } {
   const responseEvents: AgentUserResponseEvent[] = []
   const sinceIndex = Math.max(0, options?.sinceIndex ?? 0)
+  const resolvedSessionId = options?.sessionId ?? "acp-session"
   const scopedConversationHistory = conversationHistory.slice(sinceIndex)
   const resolvedTimestamps = resolveMessageTimestamps(scopedConversationHistory)
 
@@ -233,8 +234,8 @@ function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMess
       const content = extractRespondToUserContentFromArgs(toolCall.arguments)
       if (!content) continue
       responseEvents.push({
-        id: `acp-${options?.sessionId ?? "session"}-${options?.runId ?? "run"}-${messageIndex}-${toolCallIndex}-${responseEvents.length + 1}`,
-        sessionId: options?.sessionId ?? "acp-session",
+        id: `acp-${resolvedSessionId}-${options?.runId ?? "run"}-${messageIndex}-${toolCallIndex}-${responseEvents.length + 1}`,
+        sessionId: resolvedSessionId,
         runId: options?.runId,
         ordinal: responseEvents.length + 1,
         text: content,

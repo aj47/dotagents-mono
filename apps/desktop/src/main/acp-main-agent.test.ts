@@ -457,6 +457,43 @@ describe("acp-main-agent", () => {
     ])
   })
 
+  it("uses the same fallback session identifier for ACP responseEvent ids and sessionId", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-fallback-session",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "Fallback session response" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "Internal fallback" }
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: undefined,
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    } as any)
+
+    const responseEvent = updates.at(-1)?.responseEvents?.[0]
+    expect(responseEvent).toEqual(expect.objectContaining({
+      sessionId: "acp-session",
+      runId: 1,
+      text: "Fallback session response",
+    }))
+    expect(responseEvent?.id).toContain(`acp-${responseEvent?.sessionId}-${responseEvent?.runId}-`)
+  })
+
   it("recognizes humanized ACP respond-to-user tool titles for userResponse rendering", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<any> = []
