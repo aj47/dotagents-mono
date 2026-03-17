@@ -8,7 +8,10 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function loadIndexForHubInstall(argv: string[]) {
+async function loadIndexForHubInstall(
+  argv: string[],
+  configOverrides: Record<string, unknown> = {},
+) {
   vi.resetModules()
   process.argv = argv
 
@@ -82,6 +85,7 @@ async function loadIndexForHubInstall(argv: string[]) {
         launchAtLogin: false,
         remoteServerEnabled: false,
         cloudflareTunnelAutoStart: false,
+        ...configOverrides,
       })),
     },
   }))
@@ -190,5 +194,48 @@ describe("Hub install handoff routing", () => {
     expect(showMainWindow).toHaveBeenCalledWith(
       `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
     )
+  })
+
+  it("recovers the main window after app-level hide on macOS when dock icon is enabled", async () => {
+    if (process.platform !== "darwin") return
+
+    vi.useFakeTimers()
+    try {
+      const { handlers, showMainWindow } = await loadIndexForHubInstall(["electron"])
+
+      showMainWindow.mockClear()
+      const hideHandler = handlers.get("hide")?.[0] as (() => void) | undefined
+
+      expect(hideHandler).toBeTypeOf("function")
+      hideHandler?.()
+
+      await vi.runAllTimersAsync()
+      expect(showMainWindow).toHaveBeenCalledTimes(1)
+      expect(showMainWindow).toHaveBeenCalledWith()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("skips app-level hide recovery on macOS when hideDockIcon is enabled", async () => {
+    if (process.platform !== "darwin") return
+
+    vi.useFakeTimers()
+    try {
+      const { handlers, showMainWindow } = await loadIndexForHubInstall(["electron"], {
+        hideDockIcon: true,
+      })
+
+      showMainWindow.mockClear()
+      const hideHandler = handlers.get("hide")?.[0] as (() => void) | undefined
+
+      expect(hideHandler).toBeTypeOf("function")
+      hideHandler?.()
+
+      await vi.runAllTimersAsync()
+      expect(showMainWindow).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

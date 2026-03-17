@@ -12,10 +12,64 @@
  * the correct environment variables.
  */
 
-import { spawn } from "child_process"
+import { spawn, type ChildProcess } from "child_process"
 import * as fs from "fs"
 import * as os from "os"
 import * as path from "path"
+import { pathToFileURL } from "url"
+
+const FORCE_KILL_TIMEOUT_MS = 5000
+
+export function getDevCommand(userArgs: string[]): {
+  command: string
+  args: string[]
+} {
+  return {
+    command: process.platform === "win32" ? "pnpm.cmd" : "pnpm",
+    args: ["exec", "electron-vite", "dev", "--watch", "--", ...userArgs],
+  }
+}
+
+export function getSignalExitCode(signal: NodeJS.Signals): number {
+  switch (signal) {
+    case "SIGINT":
+      return 130
+    case "SIGTERM":
+      return 143
+    default:
+      return 1
+  }
+}
+
+export function terminateChildProcessTree(
+  child: Pick<ChildProcess, "pid" | "kill">,
+  signal: NodeJS.Signals,
+  platform = process.platform,
+): boolean {
+  if (!child.pid) return false
+
+  if (platform === "win32") {
+    return child.kill(signal)
+  }
+
+  try {
+    process.kill(-child.pid, signal)
+    return true
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException
+    if (err.code === "ESRCH") {
+      return false
+    }
+
+    return child.kill(signal)
+  }
+}
+
+function isDirectExecution(): boolean {
+  const entry = process.argv[1]
+  if (!entry) return false
+  return import.meta.url === pathToFileURL(entry).href
+}
 
 function findSherpaLibraryPath(): string | null {
   const platform = os.platform() === "win32" ? "win" : os.platform()
@@ -109,19 +163,59 @@ function main(): void {
     }
   }
 
-  // Forward all arguments after our script to electron-vite
-  const args = ["electron-vite", "dev", "--watch", "--", ...userArgs]
+  const { command, args } = getDevCommand(userArgs)
 
-  console.log(`[dev-with-sherpa] Running: npx ${args.join(" ")}`)
+  console.log(`[dev-with-sherpa] Running: ${command} ${args.join(" ")}`)
 
-  const child = spawn("npx", args, {
+  const child = spawn(command, args, {
     env,
     stdio: "inherit",
+    detached: process.platform !== "win32",
     shell: process.platform === "win32",
   })
 
-  child.on("close", (code) => {
-    process.exit(code ?? 0)
+  let shutdownSignal: NodeJS.Signals | null = null
+  let forceKillTimer: ReturnType<typeof setTimeout> | undefined
+
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shutdownSignal) return
+
+    shutdownSignal = signal
+    console.log(`[dev-with-sherpa] Received ${signal}; stopping desktop dev process tree...`)
+
+    terminateChildProcessTree(child, signal)
+
+    forceKillTimer = setTimeout(() => {
+      console.warn(
+        `[dev-with-sherpa] Child process tree still alive after ${FORCE_KILL_TIMEOUT_MS}ms; sending SIGKILL`,
+      )
+      terminateChildProcessTree(child, "SIGKILL")
+    }, FORCE_KILL_TIMEOUT_MS)
+    forceKillTimer.unref()
+  }
+
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => shutdown(signal))
+  }
+
+  child.on("close", (code, signal) => {
+    if (forceKillTimer) {
+      clearTimeout(forceKillTimer)
+    }
+
+    if (code !== null) {
+      process.exit(code)
+    }
+
+    if (signal) {
+      process.exit(getSignalExitCode(signal))
+    }
+
+    if (shutdownSignal) {
+      process.exit(getSignalExitCode(shutdownSignal))
+    }
+
+    process.exit(0)
   })
 
   child.on("error", (err) => {
@@ -130,5 +224,7 @@ function main(): void {
   })
 }
 
-main()
+if (isDirectExecution()) {
+  main()
+}
 

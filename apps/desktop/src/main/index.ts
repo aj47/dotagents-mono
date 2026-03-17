@@ -548,6 +548,22 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // macOS can occasionally leave the app hidden with no visible windows even
+  // though the process is still running. Recover by re-showing the main window
+  // when dock/icon mode is enabled. Respect quit flows and hideDockIcon users.
+  ;(app as unknown as NodeJS.EventEmitter).on("hide", () => {
+    if (process.platform !== "darwin" || isCleaningUp) return
+
+    const cfg = configStore.get()
+    if (cfg.hideDockIcon) return
+
+    logApp("[app.hide] App hidden unexpectedly; re-showing main window")
+    setTimeout(() => {
+      if (isCleaningUp || configStore.get().hideDockIcon) return
+      showMainWindow()
+    }, 0)
+  })
+
   app.on("activate", function () {
     const mainWin = WINDOWS.get("main")
     const cfg = configStore.get()
