@@ -31,6 +31,8 @@ export interface SessionStore {
   setMessagesForSession: (sessionId: string, messages: ChatMessage[]) => Promise<void>;
 
   // Server conversation ID management (for continuing conversations with DotAgents server)
+  markPendingServerConversation: (sessionId: string, pending: boolean) => void;
+  hasPendingServerConversation: () => boolean;
   setServerConversationId: (serverConversationId: string) => Promise<void>;
   setServerConversationIdForSession: (sessionId: string, serverConversationId: string) => Promise<void>;
   getServerConversationId: () => string | undefined;
@@ -80,6 +82,7 @@ export function useSessions(): SessionStore {
   const [ready, setReady] = useState(false);
   // Track sessions being deleted to prevent race conditions (fixes #571)
   const [deletingSessionIds, setDeletingSessionIds] = useState<Set<string>>(new Set());
+  const pendingServerConversationSessionIdsRef = useRef<Set<string>>(new Set());
   // Use ref to ensure we always have the latest sessions for async operations
   // NOTE: We update these refs synchronously in our callbacks, not just in useEffect,
   // to ensure queued async saves always see the correct state (fixes PR review comment)
@@ -168,6 +171,8 @@ export function useSessions(): SessionStore {
   }, [queueSave]);
 
   const deleteSession = useCallback(async (id: string) => {
+    pendingServerConversationSessionIdsRef.current.delete(id);
+
     // Mark session as being deleted to prevent race conditions
     setDeletingSessionIds(prev => new Set(prev).add(id));
 
@@ -222,6 +227,8 @@ export function useSessions(): SessionStore {
   }, [queueSave]);
 
   const clearAllSessions = useCallback(async () => {
+    pendingServerConversationSessionIdsRef.current.clear();
+
     // Mark all sessions as being deleted
     const allIds = new Set(sessionsRef.current.map(s => s.id));
     setDeletingSessionIds(allIds);
@@ -249,6 +256,19 @@ export function useSessions(): SessionStore {
       setDeletingSessionIds(new Set());
     }
   }, [queueSave]);
+
+  const markPendingServerConversation = useCallback((sessionId: string, pending: boolean) => {
+    if (!sessionId) return;
+    if (pending) {
+      pendingServerConversationSessionIdsRef.current.add(sessionId);
+    } else {
+      pendingServerConversationSessionIdsRef.current.delete(sessionId);
+    }
+  }, []);
+
+  const hasPendingServerConversation = useCallback(() => {
+    return pendingServerConversationSessionIdsRef.current.size > 0;
+  }, []);
 
   const toggleSessionPinned = useCallback(async (id: string, client?: SettingsApiClient) => {
     const sessionsToSave = sessionsRef.current.map((session) => {
@@ -519,6 +539,8 @@ export function useSessions(): SessionStore {
     const targetSessionId = currentSessionId;
     const now = Date.now();
 
+    pendingServerConversationSessionIdsRef.current.delete(targetSessionId);
+
     const sessionsToSave = currentSessions.map(session => {
       if (session.id !== targetSessionId) return session;
       return {
@@ -548,6 +570,8 @@ export function useSessions(): SessionStore {
     // is exactly what we intend to set (same pattern as setServerConversationId)
     const currentSessions = sessionsRef.current;
     const now = Date.now();
+
+    pendingServerConversationSessionIdsRef.current.delete(sessionId);
 
     const sessionsToSave = currentSessions.map(session => {
       if (session.id !== sessionId) return session;
@@ -600,8 +624,9 @@ export function useSessions(): SessionStore {
     try {
       // Take snapshot before async operations
       const snapshotSessions = sessionsRef.current;
+      const pendingCreateSessionIds = new Set(pendingServerConversationSessionIdsRef.current);
       const [{ result, sessions: syncedSessions }, serverSettings] = await Promise.all([
-        syncConversations(client, snapshotSessions),
+        syncConversations(client, snapshotSessions, { pendingCreateSessionIds }),
         client.getSettings().catch(() => null),
       ]);
 
@@ -759,6 +784,8 @@ export function useSessions(): SessionStore {
     addMessage,
     getCurrentSession,
     getSessionList,
+    markPendingServerConversation,
+    hasPendingServerConversation,
     setMessages,
     setMessagesForSession,
     setServerConversationId,

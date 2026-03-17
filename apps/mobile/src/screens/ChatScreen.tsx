@@ -1838,11 +1838,11 @@ export default function ChatScreen({ route, navigation }: any) {
     activeRequestIdRef.current = thisRequestId;
 
     const currentSession = sessionStore.getCurrentSession();
-    const serverConversationId = currentSession?.serverConversationId;
+    const startingServerConversationId = currentSession?.serverConversationId;
 
     console.log('[ChatScreen] Session info:', {
       sessionId: currentSession?.id,
-      serverConversationId: serverConversationId || 'new',
+      serverConversationId: startingServerConversationId || 'new',
       requestId: thisRequestId
     });
 
@@ -1853,6 +1853,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
     // Capture the session ID at request start to guard against session changes
     const requestSessionId = sessionStore.currentSessionId;
+    let resolvedConversationId: string | undefined;
+
+    if (requestSessionId && !startingServerConversationId) {
+      sessionStore.markPendingServerConversation(requestSessionId, true);
+    }
 
     // Mark this request as the latest for this session in the connection manager
     // and increment active request count
@@ -1999,6 +2004,7 @@ export default function ChatScreen({ route, navigation }: any) {
         } else {
           await sessionStore.setServerConversationId(response.conversationId);
         }
+        resolvedConversationId = response.conversationId;
       }
 
       if (response.conversationHistory && response.conversationHistory.length > 0) {
@@ -2212,6 +2218,10 @@ export default function ChatScreen({ route, navigation }: any) {
 	        handsFreeController.onRequestCompleted();
 	      }
     } finally {
+      if (requestSessionId && !startingServerConversationId && !resolvedConversationId) {
+        sessionStore.markPendingServerConversation(requestSessionId, false);
+      }
+
       console.log('[ChatScreen] Chat request finished, requestId:', thisRequestId);
 
       // Decrement active request count in the connection manager
@@ -2305,9 +2315,14 @@ export default function ChatScreen({ route, navigation }: any) {
     activeRequestIdRef.current = thisRequestId;
 
     const currentSession = sessionStore.getCurrentSession();
-    const serverConversationId = currentSession?.serverConversationId;
+    const startingServerConversationId = currentSession?.serverConversationId;
 
     const requestSessionId = sessionStore.currentSessionId;
+    let resolvedConversationId: string | undefined;
+
+    if (requestSessionId && !startingServerConversationId) {
+      sessionStore.markPendingServerConversation(requestSessionId, true);
+    }
 
     try {
       let streamingText = '';
@@ -2377,7 +2392,7 @@ export default function ChatScreen({ route, navigation }: any) {
       };
 
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
-      const response = await client.chat(modelMessages, onToken, onProgress, serverConversationId);
+      const response = await client.chat(modelMessages, onToken, onProgress, startingServerConversationId);
       const finalText = response.content || streamingText;
 	      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
 	      const finalDisplayText = finalResponseEvent?.text || lastUserResponse || finalText;
@@ -2397,6 +2412,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (response.conversationId) {
         await sessionStore.setServerConversationId(response.conversationId);
+        resolvedConversationId = response.conversationId;
       }
 
       if (response.conversationHistory && response.conversationHistory.length > 0) {
@@ -2463,6 +2479,10 @@ export default function ChatScreen({ route, navigation }: any) {
 	        handsFreeController.onRequestCompleted();
 	      }
     } finally {
+      if (requestSessionId && !startingServerConversationId && !resolvedConversationId) {
+        sessionStore.markPendingServerConversation(requestSessionId, false);
+      }
+
       if (activeRequestIdRef.current === thisRequestId) {
         setResponding(false);
         setConnectionState(null);

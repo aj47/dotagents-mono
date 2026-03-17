@@ -22,6 +22,18 @@ export interface SyncableSession extends Session {
   // Session already has serverConversationId optional field
 }
 
+export interface SyncConversationOptions {
+  /**
+   * Session IDs that are in the middle of creating their first server-side
+   * conversation through /v1/chat/completions.
+   *
+   * While that request is still linking its returned conversationId back into
+   * local state, sync must not create another server conversation or pull an
+   * unmatched server conversation into a duplicate local stub.
+   */
+  pendingCreateSessionIds?: ReadonlySet<string>;
+}
+
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
 
 /**
@@ -108,7 +120,8 @@ function serverConversationToStubSession(item: ServerConversation): Session {
  */
 export async function syncConversations(
   client: SettingsApiClient,
-  localSessions: Session[]
+  localSessions: Session[],
+  options: SyncConversationOptions = {}
 ): Promise<{ result: SyncResult; sessions: Session[] }> {
   const result: SyncResult = {
     pulled: 0,
@@ -118,6 +131,8 @@ export async function syncConversations(
   };
 
   const updatedSessions: Session[] = [...localSessions];
+  const pendingCreateSessionIds = options.pendingCreateSessionIds ?? new Set<string>();
+  const shouldDeferUnmatchedPulls = pendingCreateSessionIds.size > 0;
 
   try {
     // Step 1: Fetch server conversation list
@@ -179,6 +194,10 @@ export async function syncConversations(
         // We could handle this by either deleting locally or re-pushing
         // For now, we leave it as is
       } else if (session.messages.length > 0) {
+        if (pendingCreateSessionIds.has(session.id)) {
+          continue;
+        }
+
         // Local-only session with messages - push to server
         try {
           const created = await client.createConversation({
@@ -206,6 +225,10 @@ export async function syncConversations(
     const newSessions: Session[] = [];
     for (const serverItem of serverList) {
       if (!localByServerId.has(serverItem.id)) {
+        if (shouldDeferUnmatchedPulls) {
+          continue;
+        }
+
         // Server conversation not in local - create a lazy stub (no message fetch)
         const stubSession = serverConversationToStubSession(serverItem);
         newSessions.push(stubSession);
