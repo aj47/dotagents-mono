@@ -88,7 +88,7 @@ export function Component() {
   const allSelected = filteredKnowledgeNotes.length > 0 && visibleSelectedCount === filteredKnowledgeNotes.length
   const someSelected = visibleSelectedCount > 0 && visibleSelectedCount < filteredKnowledgeNotes.length
   const noteFileTemplate = `---\nkind: note\nid: project-architecture\ntitle: Project Architecture\ncontext: search-only\nupdatedAt: 1770000000000\ntags: architecture, electron\nsummary: Service-oriented Electron app with layered .agents config.\nreferences: docs/architecture.md\n---\n\n## Details\n\nLonger-form markdown content goes here.\n`
-  const consolidationPreviewItems = consolidatePreviewQuery.data?.items ?? []
+  const consolidatePreviewItems = consolidatePreviewQuery.data?.items ?? []
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="space-y-6">
