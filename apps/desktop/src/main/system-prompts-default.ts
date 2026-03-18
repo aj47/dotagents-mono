@@ -44,6 +44,12 @@ KNOWLEDGE NOTES:
 - Default most notes to context: search-only
 - Use context: auto only for a tiny curated subset of high-signal notes
 
+PAST CONVERSATIONS:
+- Prior DotAgents conversations are stored as JSON in the app-data conversations folder: <appData>/<appId>/conversations/
+- Common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux
+- <appId> is usually dotagents, but some installs may use app.dotagents; infer the real local folder when needed instead of assuming one OS-specific path
+- Use index.json to discover relevant conversations, then open matching conv_*.json files for full message history when prior chat context would help
+
 DOTAGENTS CONFIG:
 - DotAgents configuration lives in the layered ~/.agents/ and ./.agents/ filesystem
 - Workspace ./.agents/ overrides global ~/.agents/ on conflicts

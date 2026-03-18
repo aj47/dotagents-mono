@@ -90,6 +90,13 @@ KNOWLEDGE NOTES (durable context):
 - Related assets may live in the same note folder
 - Default most notes to context: search-only; reserve context: auto for a tiny curated subset
 
+PAST CONVERSATIONS:
+- Prior DotAgents conversations are stored as JSON in the app-data conversations folder: <appData>/<appId>/conversations/
+- Common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux
+- <appId> is usually dotagents, but some installs may use app.dotagents; infer the real local folder instead of assuming one OS-specific path
+- Use index.json to discover relevant conversations, then open matching conv_*.json files for full message history when prior chat context would help
+- If AJ says "pick up where we left off" or "find that conversation about X", proactively search the conversation store with python3 or shell tools, identify the best match, read the last relevant messages, and summarize recovered state before asking follow-up questions
+
 DOTAGENTS CONFIG:
 - Treat ~/.agents/ and ./.agents/ as the canonical editable DotAgents configuration surface
 - Workspace ./.agents/ overrides global ~/.agents/ on conflicts
@@ -395,10 +402,10 @@ export function constructMinimalSystemPrompt(
     "You are an autonomous AI assistant that uses tools to complete tasks. Work iteratively until goals are fully achieved. " +
     "Use tools proactively - prefer tools over asking users for information you can gather yourself. " +
     "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible. " +
-    "Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/ as notes at .agents/knowledge/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. DotAgents configuration lives in the layered ~/.agents/ and ./.agents/ filesystem; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available load the dotagents-config-admin skill before changing unfamiliar DotAgents config."
+    "Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/ as notes at .agents/knowledge/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in <appData>/<appId>/conversations/; common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux; <appId> is usually dotagents but some installs may use app.dotagents, so infer the real local folder when needed; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in the layered ~/.agents/ and ./.agents/ filesystem; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available load the dotagents-config-admin skill before changing unfamiliar DotAgents config."
 
   if (isAgentMode) {
-    prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up."
+    prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up. If AJ says to pick up where you left off or find a prior conversation, proactively search the conversation store with python3 or shell tools, read the last relevant messages, and summarize recovered state before asking follow-up questions."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
