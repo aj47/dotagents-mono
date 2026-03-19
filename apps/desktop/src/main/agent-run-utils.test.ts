@@ -80,6 +80,17 @@ describe("getPreferredDelegationOutput", () => {
     ])).toBe("Final delegated answer")
   })
 
+  it("prefers ACP-style respond_to_user tool messages over trailing fallback text", () => {
+    expect(getPreferredDelegationOutput("Internal trailing completion text", [
+      {
+        role: "tool",
+        content: "Final delegated answer",
+        toolName: "Tool: Respond to User",
+        toolInput: { text: "Final delegated answer" },
+      },
+    ])).toBe("Final delegated answer")
+  })
+
   it("falls back to the latest assistant message when no explicit user response exists", () => {
     expect(getPreferredDelegationOutput("raw tool output", [
       { role: "assistant", content: "Assistant summary" },

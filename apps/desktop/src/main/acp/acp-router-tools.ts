@@ -11,11 +11,13 @@ import type {
 } from './types';
 import { acpBackgroundNotifier } from './acp-background-notifier';
 import { configStore } from '../config';
-import { acpService, ACPContentBlock } from '../acp-service';
+import { acpService, ACPContentBlock, ACPToolCallUpdate } from '../acp-service';
 import { buildProfileContext, getPreferredDelegationOutput } from '../agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
+import { RESPOND_TO_USER_TOOL } from '../../shared/runtime-tool-names';
+import { extractRespondToUserContentFromArgs } from '../respond-to-user-utils';
 import {
   runInternalSubSession,
   cancelSubSession,
@@ -190,6 +192,55 @@ function createRunningResult(subAgentState: DelegatedRun): DelegationResult {
   };
 }
 
+function normalizeDelegatedToolName(toolName?: string): string | undefined {
+  if (typeof toolName !== 'string') return undefined;
+
+  const normalized = toolName
+    .trim()
+    .toLowerCase()
+    .replace(/^tool:\s*/i, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function formatDelegatedToolCallName(toolCall: ACPToolCallUpdate): string {
+  const title = toolCall.title?.trim();
+  return normalizeDelegatedToolName(title) || title || 'tool_call';
+}
+
+function maybeTrackRespondToUserToolCall(
+  conversation: ACPSubAgentMessage[],
+  toolCall: ACPToolCallUpdate,
+  timestamp: number,
+): void {
+  if (toolCall.status === 'failed') return;
+
+  const toolName = formatDelegatedToolCallName(toolCall);
+  if (toolName !== RESPOND_TO_USER_TOOL) return;
+
+  const content = extractRespondToUserContentFromArgs(toolCall.rawInput);
+  if (!content) return;
+
+  const lastMessage = conversation[conversation.length - 1];
+  if (
+    lastMessage?.role === 'tool'
+    && lastMessage.toolName === toolName
+    && lastMessage.content === content
+  ) {
+    return;
+  }
+
+  conversation.push({
+    role: 'tool',
+    toolName,
+    toolInput: toolCall.rawInput,
+    content,
+    timestamp,
+  });
+}
+
 /**
  * Register agent name to run ID mapping for session update fallback.
  */
@@ -362,11 +413,12 @@ acpService.on('sessionUpdate', (event: {
   agentName: string;
   sessionId: string;
   content?: ACPContentBlock[];
+  toolCall?: ACPToolCallUpdate;
   isComplete?: boolean;
   stopReason?: string;
   totalBlocks: number;
 }) => {
-  const { agentName, sessionId, content, isComplete, stopReason } = event;
+  const { agentName, sessionId, content, toolCall, isComplete, stopReason } = event;
 
   // Find the run ID for this session
   const mappedRunId = sessionToRunId.get(sessionId);
@@ -451,6 +503,10 @@ acpService.on('sessionUpdate', (event: {
         conversation.push(message);
       }
     }
+  }
+
+  if (toolCall) {
+    maybeTrackRespondToUserToolCall(conversation, toolCall, Date.now());
   }
 
   // Enforce conversation size limit (keep most recent messages)

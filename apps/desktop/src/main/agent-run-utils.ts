@@ -1,5 +1,9 @@
 import type { SessionProfileSnapshot } from "../shared/types"
-import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
+import { RESPOND_TO_USER_TOOL } from "../shared/runtime-tool-names"
+import {
+  extractRespondToUserContentFromArgs,
+  resolveLatestUserFacingResponse,
+} from "./respond-to-user-utils"
 
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
 export const AGENT_STOP_NOTE =
@@ -13,10 +17,43 @@ export interface AgentIterationLimits {
 interface ConversationMessageLike {
   role: string
   content?: string | null
+  toolName?: string
+  toolInput?: unknown
   toolCalls?: Array<{
     name?: string
     arguments?: unknown
   }>
+}
+
+function normalizeDelegationToolName(toolName?: string): string | undefined {
+  if (typeof toolName !== "string") return undefined
+
+  const normalized = toolName
+    .trim()
+    .toLowerCase()
+    .replace(/^tool:\s*/i, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  return normalized.length > 0 ? normalized : undefined
+}
+
+function getLatestAcpRespondToUserContent(
+  conversation?: ConversationMessageLike[],
+): string | undefined {
+  if (!Array.isArray(conversation)) return undefined
+
+  for (let index = conversation.length - 1; index >= 0; index--) {
+    const message = conversation[index]
+    if (normalizeDelegationToolName(message?.toolName) !== RESPOND_TO_USER_TOOL) continue
+
+    const content = extractRespondToUserContentFromArgs(message?.toolInput)
+    if (content) {
+      return content
+    }
+  }
+
+  return undefined
 }
 
 type ProfileContextSource = {
@@ -117,9 +154,11 @@ export function getPreferredDelegationOutput(
   const explicitUserResponse = resolveLatestUserFacingResponse({
     conversationHistory: conversation,
   })
+  const explicitAcpUserResponse = getLatestAcpRespondToUserContent(conversation)
 
   return (
     explicitUserResponse ??
+    explicitAcpUserResponse ??
     getLatestAssistantMessageContent(conversation) ??
     (typeof output === "string" ? output : "")
   )
