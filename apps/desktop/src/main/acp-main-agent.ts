@@ -564,22 +564,24 @@ export async function processTranscriptWithACPAgent(
   try {
     // Get or create ACP session
     const existingSession = forceNewSession ? undefined : getSessionForConversation(conversationId)
-    let acpSessionId: string | undefined
+    const preferredSessionId = existingSession?.agentName === agentName
+      ? existingSession.sessionId
+      : undefined
+    const acpSessionId = await acpService.getOrCreateSession(
+      agentName,
+      !preferredSessionId,
+      undefined,
+      { appSessionId: sessionId },
+      preferredSessionId,
+    )
 
-    if (existingSession && existingSession.agentName === agentName) {
-      // Reuse existing session
-      acpSessionId = existingSession.sessionId
+    setSessionForConversation(conversationId, acpSessionId, agentName)
+    if (preferredSessionId && preferredSessionId === acpSessionId) {
       touchSession(conversationId)
-      logApp(`[ACP Main] Reusing existing session ${acpSessionId}`)
+      logApp(`[ACP Main] Reused existing session ${acpSessionId}`)
+    } else if (preferredSessionId) {
+      logApp(`[ACP Main] Replaced stale session ${preferredSessionId} with ${acpSessionId}`)
     } else {
-      // Create new session
-      acpSessionId = await acpService.getOrCreateSession(
-        agentName,
-        true,
-        undefined,
-        { appSessionId: sessionId },
-      )
-      setSessionForConversation(conversationId, acpSessionId, agentName)
       logApp(`[ACP Main] Created new session ${acpSessionId}`)
     }
 

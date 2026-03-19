@@ -587,4 +587,33 @@ describe("acp-main-agent", () => {
       [expect.objectContaining({ success: true, content: '{\n  "content": "Found persisted result"\n}' })],
     )
   })
+
+  it("passes the persisted ACP session id back into getOrCreateSession for restart-safe reuse", async () => {
+    const acpSessionState = await import("./acp-session-state")
+    vi.mocked(acpSessionState.getSessionForConversation).mockReturnValue({
+      sessionId: "persisted-acp-session",
+      agentName: "test-agent",
+      createdAt: 1,
+      lastUsedAt: 1,
+    })
+
+    mockGetOrCreateSession.mockResolvedValue("persisted-acp-session")
+
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+    })
+
+    expect(mockGetOrCreateSession).toHaveBeenCalledWith(
+      "test-agent",
+      false,
+      undefined,
+      { appSessionId: "ui-session-1" },
+      "persisted-acp-session",
+    )
+  })
 })

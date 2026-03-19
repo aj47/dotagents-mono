@@ -1720,6 +1720,7 @@ class ACPService extends EventEmitter {
   private async createSession(
     agentName: string,
     pendingInjectedMcpContext?: { appSessionId: string },
+    preferredSessionId?: string,
   ): Promise<string | undefined> {
     const instance = this.agents.get(agentName)
     if (!instance) {
@@ -1729,8 +1730,13 @@ class ACPService extends EventEmitter {
     // Reuse existing session if available, but clear previous output to avoid
     // mixing content from different runTask() calls
     if (instance.sessionId) {
-      this.clearSessionOutput(instance.sessionId)
-      return instance.sessionId
+      if (preferredSessionId && instance.sessionId !== preferredSessionId) {
+        this.clearSessionOutput(instance.sessionId)
+        instance.sessionId = undefined
+      } else {
+        this.clearSessionOutput(instance.sessionId)
+        return instance.sessionId
+      }
     }
 
     try {
@@ -1768,8 +1774,95 @@ class ACPService extends EventEmitter {
         }
       }
 
-      // Use session/new per ACP spec (not session/create)
       const sessionCwd = instance.workingDirectory || this.resolveAgentWorkingDirectory(instance.config)
+      const storeSessionMetadata = (result: {
+        sessionId?: string
+        models?: {
+          availableModels: Array<{ modelId: string; name: string; description?: string }>
+          currentModelId: string
+        }
+        modes?: {
+          availableModes: Array<{ id: string; name: string; description?: string }>
+          currentModeId: string
+        }
+        configOptions?: ACPConfigOption[]
+        config_options?: ACPConfigOption[]
+      }, fallbackSessionId?: string) => {
+        const sessionId = result?.sessionId || fallbackSessionId
+        if (sessionId) {
+          instance.sessionId = sessionId
+          if (instance.clientSessionToken) {
+            setAcpClientSessionTokenMapping(instance.clientSessionToken, sessionId)
+          }
+        } else if (instance.clientSessionToken) {
+          clearAcpClientSessionTokenMapping(instance.clientSessionToken)
+          instance.clientSessionToken = undefined
+        }
+
+        // Store models from session/new or session/load response
+        if (result?.models) {
+          instance.sessionInfo = {
+            ...instance.sessionInfo,
+            models: result.models,
+          }
+        }
+
+        // Store modes from session/new or session/load response
+        if (result?.modes) {
+          instance.sessionInfo = {
+            ...instance.sessionInfo,
+            modes: result.modes,
+          }
+        }
+
+        const sessionConfigOptions = Array.isArray(result?.configOptions)
+          ? result.configOptions
+          : Array.isArray(result?.config_options)
+            ? result.config_options
+            : undefined
+
+        if (sessionConfigOptions) {
+          instance.sessionInfo = {
+            ...instance.sessionInfo,
+            configOptions: sessionConfigOptions,
+          }
+        }
+
+        return sessionId
+      }
+
+      if (preferredSessionId) {
+        try {
+          logACP("REQUEST", agentName, "session/load", `Loading existing session ${preferredSessionId}`)
+          const result = await this.sendRequest(agentName, "session/load", {
+            sessionId: preferredSessionId,
+            cwd: sessionCwd,
+            mcpServers,
+          }) as {
+            sessionId?: string
+            models?: {
+              availableModels: Array<{ modelId: string; name: string; description?: string }>
+              currentModelId: string
+            }
+            modes?: {
+              availableModes: Array<{ id: string; name: string; description?: string }>
+              currentModeId: string
+            }
+            configOptions?: ACPConfigOption[]
+            config_options?: ACPConfigOption[]
+          }
+
+          return storeSessionMetadata(result, preferredSessionId)
+        } catch (error) {
+          logApp(`[ACP Service] Failed to load existing ACP session ${preferredSessionId} for ${agentName}; falling back to session/new:`, error)
+          if (instance.clientSessionToken) {
+            clearAcpClientSessionTokenMapping(instance.clientSessionToken)
+            instance.clientSessionToken = undefined
+          }
+        }
+      }
+
+      // Use session/new per ACP spec (not session/create)
       const result = await this.sendRequest(agentName, "session/new", {
         cwd: sessionCwd,
         mcpServers,
@@ -1787,47 +1880,7 @@ class ACPService extends EventEmitter {
         config_options?: ACPConfigOption[]
       }
 
-      const sessionId = result?.sessionId
-      if (sessionId) {
-        instance.sessionId = sessionId
-        if (instance.clientSessionToken) {
-          setAcpClientSessionTokenMapping(instance.clientSessionToken, sessionId)
-        }
-      } else if (instance.clientSessionToken) {
-        clearAcpClientSessionTokenMapping(instance.clientSessionToken)
-        instance.clientSessionToken = undefined
-      }
-
-      // Store models from session/new response (Task 2.2)
-      if (result?.models) {
-        instance.sessionInfo = {
-          ...instance.sessionInfo,
-          models: result.models,
-        }
-      }
-
-      // Store modes from session/new response (Task 2.2)
-      if (result?.modes) {
-        instance.sessionInfo = {
-          ...instance.sessionInfo,
-          modes: result.modes,
-        }
-      }
-
-      const sessionConfigOptions = Array.isArray(result?.configOptions)
-        ? result.configOptions
-        : Array.isArray(result?.config_options)
-          ? result.config_options
-          : undefined
-
-      if (sessionConfigOptions) {
-        instance.sessionInfo = {
-          ...instance.sessionInfo,
-          configOptions: sessionConfigOptions,
-        }
-      }
-
-      return sessionId
+      return storeSessionMetadata(result)
     } catch {
       if (instance.clientSessionToken) {
         clearAcpClientSessionTokenMapping(instance.clientSessionToken)
@@ -2012,6 +2065,7 @@ class ACPService extends EventEmitter {
     forceNew?: boolean,
     workingDirectory?: string,
     pendingInjectedMcpContext?: { appSessionId: string },
+    preferredSessionId?: string,
   ): Promise<string> {
     // Ensure agent is spawned, ready, and reconciled with the latest working-directory config.
     let instance = this.agents.get(agentName)
@@ -2039,11 +2093,11 @@ class ACPService extends EventEmitter {
     }
 
     // Create or reuse session
-    const sessionId = await this.createSession(agentName, pendingInjectedMcpContext)
+    const sessionId = await this.createSession(agentName, pendingInjectedMcpContext, preferredSessionId)
     if (!sessionId) {
       throw new Error(
         `Failed to create ACP session for agent ${agentName}. ` +
-        "Verify the agent command is valid and supports ACP methods like session/new."
+        "Verify the agent command is valid and supports ACP methods like session/new/session/load."
       )
     }
     return sessionId
