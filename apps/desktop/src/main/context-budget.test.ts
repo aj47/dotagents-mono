@@ -47,13 +47,17 @@ vi.mock('@dotagents/shared', () => ({
   sanitizeMessageContentForDisplay: (content: string) => content,
 }))
 
-import { clearContextRefs, readMoreContext, shrinkMessagesForLLM } from './context-budget'
+import { clearArchiveFrontier, clearContextRefs, readMoreContext, shrinkMessagesForLLM } from './context-budget'
 
 describe('shrinkMessagesForLLM replacement policy', () => {
   beforeEach(() => {
     makeTextCompletionWithFetchMock.mockReset()
+    clearArchiveFrontier('session-truncate')
+    clearArchiveFrontier('session-batch')
+    clearArchiveFrontier('session-archive')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
+    clearContextRefs('session-archive')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -116,5 +120,46 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const readResult = readMoreContext('session-batch', contextRef!, { mode: 'search', query: 'bbbb', maxChars: 200 })
     expect(readResult).toEqual(expect.objectContaining({ success: true, contextRef }))
     expect(Number(readResult.matchCount)).toBeGreaterThan(0)
+  })
+
+  it('archives older raw history behind a rolling summary frontier', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 10000,
+    })
+
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'Original task request' },
+      ...Array.from({ length: 28 }, (_, index) => ({
+        role: index % 2 === 0 ? 'assistant' : 'user',
+        content: `message-${index} ${'z'.repeat(80)}`,
+      })),
+    ]
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-archive',
+      messages,
+      lastNMessages: 3,
+    })
+
+    expect(makeTextCompletionWithFetchMock.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(result.appliedStrategies).toContain('archive_frontier')
+    expect(result.messages.length).toBeLessThan(messages.length)
+
+    const summaryMessage = result.messages.find((msg) => msg.content.startsWith('[Session Progress Summary]'))
+    expect(summaryMessage).toBeTruthy()
+
+    const contextRef = summaryMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+
+    const readResult = readMoreContext('session-archive', contextRef!, { mode: 'overview' })
+    expect(readResult).toEqual(expect.objectContaining({
+      success: true,
+      contextRef,
+      kind: 'archived_history',
+    }))
+    expect(Number(readResult.messageCount)).toBeGreaterThan(0)
   })
 })

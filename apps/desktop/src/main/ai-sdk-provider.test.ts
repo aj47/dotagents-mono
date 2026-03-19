@@ -70,4 +70,39 @@ describe("ai-sdk-provider chat model sanitization", () => {
     expect(chat).toHaveBeenCalledWith("openai/gpt-oss-120b")
     expect(mod.getCurrentModelName("groq", "transcript")).toBe("openai/gpt-oss-120b")
   })
+
+  it("reports implicit prefix caching for direct OpenAI", async () => {
+    const { mod } = await loadModule({
+      openaiBaseUrl: "https://api.openai.com/v1",
+    })
+
+    expect(mod.getPromptCachingConfig("openai")).toEqual({
+      strategy: "openai-implicit-prefix",
+    })
+  })
+
+  it("enables gateway auto caching when using Vercel AI Gateway", async () => {
+    const { mod } = await loadModule({
+      openaiBaseUrl: "https://ai-gateway.vercel.sh/v1",
+    })
+
+    expect(mod.getPromptCachingConfig("openai")).toEqual({
+      strategy: "gateway-auto",
+      providerOptions: {
+        gateway: {
+          caching: "auto",
+        },
+      },
+    })
+  })
+
+  it("reports stable-prefix caching strategy for Gemini", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "gemini",
+    })
+
+    expect(mod.getPromptCachingConfig("gemini")).toEqual({
+      strategy: "gemini-stable-prefix",
+    })
+  })
 })
