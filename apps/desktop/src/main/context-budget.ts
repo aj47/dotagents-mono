@@ -8,8 +8,33 @@ import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
 
 export type LLMMessage = { role: string; content: string }
 
+type ContextRefKind = "truncated_tool" | "truncated_payload" | "batch_summary" | "dropped_messages" | "archived_history"
+
+interface ContextRefEntry {
+  ref: string
+  kind: ContextRefKind
+  createdAt: number
+  role: string
+  content: string
+  preview: string
+  totalChars: number
+  toolName?: string
+  messageCount?: number
+}
+
+interface ReadMoreContextOptions {
+  mode?: "overview" | "head" | "tail" | "window" | "search"
+  offset?: number
+  length?: number
+  query?: string
+  maxChars?: number
+}
+
 // Simple in-memory cache for provider/model context windows
 const contextWindowCache = new Map<string, number>()
+const contextRefRegistryBySession = new Map<string, Map<string, ContextRefEntry>>()
+const archiveFrontierCountBySession = new Map<string, number>()
+const archiveHistoryRefBySession = new Map<string, string>()
 
 function key(providerId: string, model: string) {
   return `${providerId}|${model}`
@@ -433,6 +458,258 @@ export function clearActualTokenUsage(sessionId: string): void {
   actualTokenUsageBySession.delete(sessionId)
 }
 
+function buildContextPreview(content: string, maxChars: number = 180): string {
+  const normalized = content.replace(/\s+/g, " ").trim()
+  return normalized.length > maxChars ? `${normalized.slice(0, maxChars)}…` : normalized
+}
+
+function getSessionContextRefRegistry(sessionId: string): Map<string, ContextRefEntry> {
+  let registry = contextRefRegistryBySession.get(sessionId)
+  if (!registry) {
+    registry = new Map<string, ContextRefEntry>()
+    contextRefRegistryBySession.set(sessionId, registry)
+  }
+  return registry
+}
+
+function makeContextRef(): string {
+  return `ctx_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function registerContextRef(
+  sessionId: string | undefined,
+  input: {
+    kind: ContextRefKind
+    role: string
+    content: string
+    toolName?: string
+    messageCount?: number
+  },
+): string | undefined {
+  if (!sessionId) return undefined
+
+  const ref = makeContextRef()
+  const registry = getSessionContextRefRegistry(sessionId)
+  registry.set(ref, {
+    ref,
+    kind: input.kind,
+    createdAt: Date.now(),
+    role: input.role,
+    content: input.content,
+    preview: buildContextPreview(input.content),
+    totalChars: input.content.length,
+    toolName: input.toolName,
+    messageCount: input.messageCount,
+  })
+  return ref
+}
+
+function addContextRefNote(message: string, contextRef?: string): string {
+  if (!contextRef) return message
+  return `${message}\nContext ref: ${contextRef}`
+}
+
+export function clearContextRefs(sessionId: string): void {
+  contextRefRegistryBySession.delete(sessionId)
+  archiveHistoryRefBySession.delete(sessionId)
+}
+
+export function clearArchiveFrontier(sessionId: string): void {
+  archiveFrontierCountBySession.delete(sessionId)
+  archiveHistoryRefBySession.delete(sessionId)
+}
+
+export function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
+  if (!sessionId) return undefined
+  return contextRefRegistryBySession.get(sessionId)?.get(contextRef)
+}
+
+function buildArchivedMessagesContent(messages: LLMMessage[], label: string = "Archived"): string {
+  return messages
+    .map((message, idx) => `[${label} ${idx + 1} | role=${message.role}]\n${message.content || ""}`)
+    .join("\n\n---\n\n")
+}
+
+function upsertArchiveHistoryRef(sessionId: string, archivedMessages: LLMMessage[]): string | undefined {
+  if (archivedMessages.length === 0) {
+    return archiveHistoryRefBySession.get(sessionId)
+  }
+
+  const registry = getSessionContextRefRegistry(sessionId)
+  const nextChunk = buildArchivedMessagesContent(archivedMessages)
+  const existingRef = archiveHistoryRefBySession.get(sessionId)
+
+  if (existingRef) {
+    const existing = registry.get(existingRef)
+    if (existing) {
+      const combined = existing.content
+        ? `${existing.content}\n\n===\n\n${nextChunk}`
+        : nextChunk
+      registry.set(existingRef, {
+        ...existing,
+        kind: "archived_history",
+        content: combined,
+        preview: buildContextPreview(combined),
+        totalChars: combined.length,
+        messageCount: (existing.messageCount || 0) + archivedMessages.length,
+      })
+      return existingRef
+    }
+  }
+
+  const ref = makeContextRef()
+  registry.set(ref, {
+    ref,
+    kind: "archived_history",
+    createdAt: Date.now(),
+    role: "assistant",
+    content: nextChunk,
+    preview: buildContextPreview(nextChunk),
+    totalChars: nextChunk.length,
+    messageCount: archivedMessages.length,
+  })
+  archiveHistoryRefBySession.set(sessionId, ref)
+  return ref
+}
+
+export function readMoreContext(
+  sessionId: string | undefined,
+  contextRef: string,
+  options: ReadMoreContextOptions = {},
+): Record<string, unknown> {
+  const entry = getContextRefEntry(sessionId, contextRef)
+  if (!entry) {
+    return {
+      success: false,
+      contextRef,
+      error: sessionId
+        ? `Context ref not found for this session: ${contextRef}`
+        : "read_more_context requires an active session",
+    }
+  }
+
+  const mode = options.mode ?? "overview"
+  const maxChars = Math.max(100, Math.min(options.maxChars ?? 1200, 4000))
+  const totalChars = entry.totalChars
+
+  if (mode === "overview") {
+    return {
+      success: true,
+      contextRef,
+      mode,
+      kind: entry.kind,
+      role: entry.role,
+      toolName: entry.toolName,
+      messageCount: entry.messageCount,
+      totalChars,
+      preview: entry.preview,
+    }
+  }
+
+  if (mode === "head") {
+    return {
+      success: true,
+      contextRef,
+      mode,
+      totalChars,
+      returnedChars: Math.min(maxChars, totalChars),
+      excerpt: entry.content.slice(0, maxChars),
+    }
+  }
+
+  if (mode === "tail") {
+    const start = Math.max(0, totalChars - maxChars)
+    return {
+      success: true,
+      contextRef,
+      mode,
+      totalChars,
+      start,
+      returnedChars: totalChars - start,
+      excerpt: entry.content.slice(start),
+    }
+  }
+
+  if (mode === "window") {
+    const safeLength = Math.max(100, Math.min(options.length ?? maxChars, maxChars))
+    const safeOffset = Math.max(0, Math.min(options.offset ?? 0, Math.max(0, totalChars - 1)))
+    const start = Math.max(0, Math.min(safeOffset, Math.max(0, totalChars - safeLength)))
+    const end = Math.min(totalChars, start + safeLength)
+    return {
+      success: true,
+      contextRef,
+      mode,
+      totalChars,
+      start,
+      end,
+      returnedChars: end - start,
+      excerpt: entry.content.slice(start, end),
+    }
+  }
+
+  if (mode === "search") {
+    const query = typeof options.query === "string" ? options.query.trim() : ""
+    if (!query) {
+      return {
+        success: false,
+        contextRef,
+        mode,
+        error: "query is required for search mode",
+      }
+    }
+
+    const haystack = entry.content.toLowerCase()
+    const needle = query.toLowerCase()
+    const matches: Array<{ start: number; end: number; excerpt: string }> = []
+    let cursor = 0
+    while (cursor < haystack.length && matches.length < 5) {
+      const foundAt = haystack.indexOf(needle, cursor)
+      if (foundAt === -1) break
+      const desiredBefore = Math.floor(maxChars / 4)
+      const desiredAfter = Math.floor(maxChars / 2)
+      let start = foundAt
+      let end = Math.min(totalChars, foundAt + maxChars)
+
+      if (needle.length < maxChars) {
+        const totalDesiredContext = desiredBefore + desiredAfter
+        const availableContextChars = maxChars - needle.length
+        const contextBefore = Math.min(
+          desiredBefore,
+          Math.floor((availableContextChars * desiredBefore) / Math.max(1, totalDesiredContext)),
+        )
+        const contextAfter = availableContextChars - contextBefore
+
+        start = Math.max(0, foundAt - contextBefore)
+        end = Math.min(totalChars, foundAt + needle.length + contextAfter)
+      }
+
+      matches.push({
+        start,
+        end,
+        excerpt: entry.content.slice(start, end),
+      })
+      cursor = foundAt + needle.length
+    }
+
+    return {
+      success: true,
+      contextRef,
+      mode,
+      query,
+      totalChars,
+      matchCount: matches.length,
+      matches,
+    }
+  }
+
+  return {
+    success: false,
+    contextRef,
+    mode,
+    error: `Unsupported mode: ${mode}`,
+  }
+}
+
 // ============================================================================
 // ITERATIVE SUMMARY CACHE (Pi-style)
 // ============================================================================
@@ -550,6 +827,314 @@ ${src}`
   }
 
   return combined
+}
+
+interface SummaryCandidate {
+  i: number
+  len: number
+  role: string
+  contentForSummary: string
+}
+
+interface SummaryBatch {
+  startIndex: number
+  endIndex: number
+  items: SummaryCandidate[]
+}
+
+const TOOL_TRUNCATE_MARKER = "[Large tool result truncated for context management. If more detail is needed, re-run the tool with narrower input or inspect the source directly.]"
+const PAYLOAD_TRUNCATE_MARKER = "[Large payload truncated for context management. Keep only the most relevant leading content here and fetch narrower details if needed.]"
+const AGGRESSIVE_TRUNCATE_THRESHOLD = 5000
+const AGGRESSIVE_TRUNCATE_KEEP_CHARS = 4000
+const TOOL_RESULT_TRUNCATE_THRESHOLD = 3000
+const TOOL_RESULT_KEEP_CHARS = 1800
+const BATCH_SUMMARY_MAX_INPUT_CHARS = 12000
+const BATCH_SUMMARY_MAX_MESSAGES = 8
+const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 20
+const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
+const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
+const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
+
+function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
+  const content = message.content || ""
+  return message.role === "tool"
+    || content.includes('"url":')
+    || content.includes('"id":')
+    || content.includes("```json")
+    || content.trim().startsWith("{")
+    || content.trim().startsWith("[")
+}
+
+function truncateWithMarker(content: string, keepChars: number, marker: string): string {
+  if (content.length <= keepChars) return content
+  const head = content.slice(0, keepChars).trimEnd()
+  const removedChars = content.length - keepChars
+  return `${head}\n\n${marker} (${removedChars} chars omitted)`
+}
+
+function isTruncationProtectedMessage(message: LLMMessage): boolean {
+  const content = message.content || ""
+  return content.includes(TOOL_TRUNCATE_MARKER) || content.includes(PAYLOAD_TRUNCATE_MARKER)
+}
+
+function collectTruncationProtectedIndices(messages: LLMMessage[]): Set<number> {
+  const protectedIndices = new Set<number>()
+  messages.forEach((message, index) => {
+    if (isTruncationProtectedMessage(message)) {
+      protectedIndices.add(index)
+    }
+  })
+  return protectedIndices
+}
+
+function formatBatchSummaryInput(items: SummaryCandidate[]): string {
+  return items.map((item, idx) => (
+    `[Message ${idx + 1} | role=${item.role} | original_index=${item.i} | chars=${item.len}]\n${item.contentForSummary}`
+  )).join("\n\n---\n\n")
+}
+
+function formatBatchSourceMessages(items: SummaryCandidate[], allMessages: LLMMessage[]): string {
+  return items.map((item, idx) => (
+    `[Message ${idx + 1} | role=${item.role} | original_index=${item.i}]\n${allMessages[item.i]?.content || item.contentForSummary}`
+  )).join("\n\n---\n\n")
+}
+
+function estimateBatchInputLength(items: SummaryCandidate[]): number {
+  return formatBatchSummaryInput(items).length
+}
+
+function buildSummaryBatches(candidates: SummaryCandidate[]): SummaryBatch[] {
+  if (candidates.length === 0) return []
+
+  const ordered = [...candidates].sort((a, b) => a.i - b.i)
+  const batches: SummaryBatch[] = []
+  let current: SummaryCandidate[] = []
+
+  const flush = () => {
+    if (current.length === 0) return
+    batches.push({
+      startIndex: current[0].i,
+      endIndex: current[current.length - 1].i,
+      items: current,
+    })
+    current = []
+  }
+
+  for (const candidate of ordered) {
+    if (current.length === 0) {
+      current = [candidate]
+      continue
+    }
+
+    const last = current[current.length - 1]
+    const nextItems = [...current, candidate]
+    const wouldExceedAdjacency = candidate.i !== last.i + 1
+    const wouldExceedSize = estimateBatchInputLength(nextItems) > BATCH_SUMMARY_MAX_INPUT_CHARS
+    const wouldExceedCount = nextItems.length > BATCH_SUMMARY_MAX_MESSAGES
+
+    if (wouldExceedAdjacency || wouldExceedSize || wouldExceedCount) {
+      flush()
+      current = [candidate]
+      continue
+    }
+
+    current = nextItems
+  }
+
+  flush()
+  return batches
+}
+
+function buildSummaryMessage(batch: SummaryBatch, summary: string, contextRef?: string): LLMMessage {
+  const count = batch.items.length
+  const label = count === 1 ? "message" : "messages"
+  return {
+    role: "assistant",
+    content: addContextRefNote(`[Earlier Context Summary: ${count} ${label}]\n${summary.trim()}`, contextRef),
+  }
+}
+
+function buildBatchSummaryFallback(items: SummaryCandidate[]): string {
+  return items
+    .map((item) => `${item.role}: ${item.contentForSummary.split("\n")[0].trim().slice(0, 120)}`)
+    .join("\n")
+    .slice(0, 800)
+}
+
+async function summarizeMessageBatch(items: SummaryCandidate[], sessionId?: string): Promise<string> {
+  const { providerId } = getProviderAndModel()
+  const source = formatBatchSummaryInput(items)
+  const fallback = buildBatchSummaryFallback(items)
+  const prompt = `Compress these earlier conversation messages into one concise context block.
+
+KEEP:
+- decisions, findings, errors, constraints, unresolved questions, next steps
+- file paths, tool names, IDs, URLs only when important
+- chronological relationships when they matter
+
+DO NOT:
+- reproduce raw logs, large payloads, full code blocks, or bulky JSON unless tiny and essential
+- reproduce secrets, API keys, tokens, passwords, or full credentials
+- waste space narrating every message separately
+
+Target: <=250 tokens.
+
+MESSAGES:
+${source}`
+
+  try {
+    if (sessionId && agentSessionStateManager.shouldStopSession(sessionId)) {
+      return fallback
+    }
+    const summary = await makeTextCompletionWithFetch(prompt, providerId, sessionId)
+    return summary?.trim() || fallback
+  } catch {
+    return fallback
+  }
+}
+
+function buildArchiveEligibleIndices(messages: LLMMessage[], systemIdx: number, firstUserIdx: number): number[] {
+  const indices: number[] = []
+  for (let i = 0; i < messages.length; i++) {
+    if (i === systemIdx || i === firstUserIdx) continue
+    indices.push(i)
+  }
+  return indices
+}
+
+interface ArchiveFrontierState {
+  systemIdx: number
+  firstUserIdx: number
+  eligibleIndices: number[]
+  archivedCount: number
+  liveCount: number
+  keepLiveCount: number
+  overflowCount: number
+  hasArchiveState: boolean
+}
+
+function getArchiveFrontierState(
+  messages: LLMMessage[],
+  sessionId: string | undefined,
+  lastN: number,
+): ArchiveFrontierState | null {
+  if (!sessionId) return null
+
+  const systemIdx = messages.findIndex((m) => m.role === "system")
+  const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
+  const eligibleIndices = buildArchiveEligibleIndices(messages, systemIdx, firstUserIdx)
+  const archivedCount = Math.min(archiveFrontierCountBySession.get(sessionId) ?? 0, eligibleIndices.length)
+  const liveCount = Math.max(0, eligibleIndices.length - archivedCount)
+  const keepLiveCount = Math.max(lastN, ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES)
+  const overflowCount = Math.max(0, liveCount - keepLiveCount)
+
+  return {
+    systemIdx,
+    firstUserIdx,
+    eligibleIndices,
+    archivedCount,
+    liveCount,
+    keepLiveCount,
+    overflowCount,
+    hasArchiveState: archivedCount > 0 || iterativeSummaryCache.has(sessionId),
+  }
+}
+
+function shouldAdvanceArchiveFrontier(
+  state: ArchiveFrontierState | null,
+  messagesLength: number,
+  tokens: number,
+  targetTokens: number,
+): boolean {
+  if (!state) return false
+  if (state.overflowCount < ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH) return false
+
+  return messagesLength > ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT
+    || tokens > targetTokens
+    || tokens > Math.floor(targetTokens * ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO)
+}
+
+function shouldApplyArchiveFrontier(
+  state: ArchiveFrontierState | null,
+  messagesLength: number,
+  tokens: number,
+  targetTokens: number,
+): boolean {
+  if (!state) return false
+  return state.hasArchiveState || shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
+}
+
+async function updateIterativeSummaryForDroppedMessages(
+  sessionId: string,
+  droppedMessages: LLMMessage[],
+  onSummarizationProgress?: ShrinkOptions["onSummarizationProgress"],
+): Promise<void> {
+  if (droppedMessages.length === 0) return
+
+  const previousSummary = iterativeSummaryCache.get(sessionId)
+  const droppedText = droppedMessages
+    .map(m => {
+      const content = sanitizeMessageContentForDisplay(m.content || "")
+      return `${m.role}: ${content.substring(0, 300)}`
+    })
+    .join("\n")
+
+  try {
+    if (agentSessionStateManager.shouldStopSession(sessionId)) {
+      return
+    }
+
+    const updatePrompt = previousSummary
+      ? `You are maintaining a running summary of an AI agent session.
+
+PREVIOUS SUMMARY:
+${previousSummary}
+
+NEW MESSAGES BEING ARCHIVED OUT OF RAW CONTEXT:
+${droppedText.substring(0, 4000)}
+
+Update the summary to incorporate the new information. Preserve all important details from the previous summary. Focus on:
+- What tasks were attempted and their outcomes
+- Key files, paths, IDs, and values discovered
+- Errors encountered and how they were resolved
+- Current state and what the agent should do next
+
+Keep the summary under 1000 characters. Be factual and specific.`
+      : `Summarize these AI agent conversation messages that are being archived out of raw context:
+
+${droppedText.substring(0, 4000)}
+
+Focus on:
+- What tasks were attempted and their outcomes
+- Key files, paths, IDs, and values discovered
+- Errors encountered and how they were resolved
+- Current state and what the agent should do next
+
+Keep the summary under 1000 characters. Be factual and specific.`
+
+    if (onSummarizationProgress) {
+      onSummarizationProgress(0, 1, "Updating archived session summary...")
+    }
+
+    const iterativeSummary = await makeTextCompletionWithFetch(updatePrompt, getProviderAndModel().providerId, sessionId)
+    if (iterativeSummary?.trim()) {
+      iterativeSummaryCache.set(sessionId, iterativeSummary.trim())
+      if (isDebugLLM()) logLLM("[Context Budget] Updated iterative session summary", { length: iterativeSummary.length })
+    }
+  } catch (e) {
+    if (isDebugLLM()) logLLM("[Context Budget] Iterative summary generation failed, continuing", { error: String(e) })
+  }
+}
+
+function buildSessionProgressSummaryMessage(sessionId: string): LLMMessage | null {
+  const iterSummary = iterativeSummaryCache.get(sessionId)
+  if (!iterSummary) return null
+
+  const archiveRef = archiveHistoryRefBySession.get(sessionId)
+  return {
+    role: "assistant",
+    content: addContextRefNote(`[Session Progress Summary]\n${iterSummary}`, archiveRef),
+  }
 }
 
 /**
@@ -765,45 +1350,123 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     }
   }
 
-  if (tokens <= targetTokens) {
+  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
     if (isDebugLLM()) logLLM("ContextBudget: after microcompact", { estTokens: tokens, count: messages.length })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
 
-  // Tier 0b: ALWAYS truncate very large individual messages regardless of budget
-  // This prevents sending massive payloads to the LLM even if total tokens seem OK
-  const AGGRESSIVE_TRUNCATE_THRESHOLD = 5000
+  // Tier 0b: Truncate large payload-like messages before any LLM summarization.
+  // This keeps bulky tool outputs from triggering expensive per-message summaries.
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
-    if (msg.role !== "system" && msg.content && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD) {
-      // Truncate tool results and large user messages (tool results, JSON payloads, etc.)
-      const isToolOrLargePayload = msg.role === "tool" || msg.content.includes('"url":') || msg.content.includes('"id":')
-      if (isToolOrLargePayload) {
-        messages[i] = {
-          ...msg,
-          content: msg.content.substring(0, AGGRESSIVE_TRUNCATE_THRESHOLD) +
-                   '\n\n... (truncated ' + (msg.content.length - AGGRESSIVE_TRUNCATE_THRESHOLD) +
-                   ' characters for context management. Key information preserved above.)'
-        }
-        applied.push("aggressive_truncate")
-        tokens = estimateTokensFromMessages(messages)
-        if (tokens <= targetTokens) {
-          if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
-          return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
-        }
+    if (msg.role === "system" || !msg.content) continue
+
+    const isPayloadLike = isLikelyPayloadLikeMessage(msg)
+    const shouldTruncateToolResult = msg.role === "tool" && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
+    const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
+
+    if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload) continue
+
+    const marker = msg.role === "tool" ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
+    const keepChars = msg.role === "tool" ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
+    const { toolName } = parseToolNameFromContent(msg.content)
+    const contextRef = registerContextRef(opts.sessionId, {
+      kind: msg.role === "tool" ? "truncated_tool" : "truncated_payload",
+      role: msg.role,
+      content: msg.content,
+      toolName: toolName !== "unknown" ? toolName : undefined,
+    })
+    const truncatedContent = addContextRefNote(
+      truncateWithMarker(msg.content, keepChars, marker),
+      contextRef,
+    )
+
+    if (truncatedContent !== msg.content) {
+      messages[i] = {
+        ...msg,
+        content: truncatedContent,
+      }
+      applied.push("aggressive_truncate")
+      tokens = estimateTokensFromMessages(messages)
+      if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
+        if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
+        return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
       }
     }
   }
 
   // Recalculate after Tier 0 truncation
   tokens = estimateTokensFromMessages(messages)
-  if (tokens <= targetTokens) {
+  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
     if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
 
-  // Tier 1: Summarize large messages (prefer tool outputs or very long entries)
-  const indicesByLength = messages
+  // Tier 0c: Archive older raw history behind a rolling summary frontier.
+  // This keeps a bounded live tail even when token count is technically under target.
+  const sessionId = opts.sessionId
+  const archiveFrontierState = getArchiveFrontierState(messages, sessionId, lastN)
+  if (sessionId && shouldApplyArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
+    const systemIdx = archiveFrontierState!.systemIdx
+    const firstUserIdx = archiveFrontierState!.firstUserIdx
+    const eligibleIndices = archiveFrontierState!.eligibleIndices
+    const previousArchivedCount = archiveFrontierState!.archivedCount
+    const unarchivedIndices = eligibleIndices.slice(previousArchivedCount)
+    const overflowCount = archiveFrontierState!.overflowCount
+
+    let nextArchivedCount = previousArchivedCount
+    let newlyArchivedMessages: LLMMessage[] = []
+
+    if (shouldAdvanceArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
+      const archiveIndices = unarchivedIndices.slice(0, overflowCount)
+      newlyArchivedMessages = archiveIndices.map((index) => messages[index])
+
+      if (newlyArchivedMessages.length > 0) {
+        await updateIterativeSummaryForDroppedMessages(sessionId, newlyArchivedMessages, opts.onSummarizationProgress)
+        upsertArchiveHistoryRef(sessionId, newlyArchivedMessages)
+        nextArchivedCount = Math.min(eligibleIndices.length, previousArchivedCount + newlyArchivedMessages.length)
+        archiveFrontierCountBySession.set(sessionId, nextArchivedCount)
+      }
+    }
+
+    if (nextArchivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
+      const ordered: LLMMessage[] = []
+      if (systemIdx >= 0) ordered.push(messages[systemIdx])
+      if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) ordered.push(messages[firstUserIdx])
+
+      const summaryMessage = buildSessionProgressSummaryMessage(sessionId)
+      if (summaryMessage) ordered.push(summaryMessage)
+
+      const progressSummary = buildContextFromSummaries(sessionId)
+      if (progressSummary) {
+        ordered.push({ role: "assistant", content: progressSummary })
+      }
+
+      for (const index of eligibleIndices.slice(nextArchivedCount)) {
+        ordered.push(messages[index])
+      }
+
+      messages = ordered
+      if (!applied.includes("archive_frontier")) applied.push("archive_frontier")
+      tokens = estimateTokensFromMessages(messages)
+    }
+  }
+
+  if (tokens <= targetTokens) {
+    if (isDebugLLM()) logLLM("ContextBudget: after archive_frontier", { estTokens: tokens, kept: messages.length })
+    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+  }
+
+  // Tier 1: Batch-summarize oversized conversational messages.
+  // Tool/payload blobs are truncated above and protected from LLM summarization here.
+  const firstTierOneProtectedUserIdx = messages.findIndex((m) => m.role === "user")
+  const recentTierOneProtectedIndices = new Set<number>()
+  const truncationProtectedIndices = collectTruncationProtectedIndices(messages)
+  for (let k = messages.length - lastN; k < messages.length; k++) {
+    if (k >= 0) recentTierOneProtectedIndices.add(k)
+  }
+
+  const summaryCandidates = messages
     .map((m, i) => {
       const originalContent = m.content || ""
       const budgetContent = sanitizeMessageContentForDisplay(originalContent)
@@ -815,12 +1478,18 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
     })
     .filter((x) => x.len > summarizeThreshold && x.role !== "system")
-    .sort((a, b) => b.len - a.len)
+    .filter((x) => x.role !== "tool")
+    .filter((x) => !truncationProtectedIndices.has(x.i))
+    .filter((x) => x.i !== firstTierOneProtectedUserIdx)
+    .filter((x) => !recentTierOneProtectedIndices.has(x.i))
 
-  const totalToSummarize = indicesByLength.length
+  const summaryBatches = buildSummaryBatches(summaryCandidates)
+  const originalMessagesForBatchRefs = [...messages]
+  const totalToSummarize = summaryBatches.length
   let summarizedCount = 0
+  let indexOffset = 0
 
-  for (const item of indicesByLength) {
+  for (const batch of summaryBatches) {
     // Check if session should stop before summarizing
     if (opts.sessionId && agentSessionStateManager.shouldStopSession(opts.sessionId)) {
       break
@@ -829,24 +1498,35 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     // Emit progress update before summarization
     summarizedCount++
     if (opts.onSummarizationProgress) {
-      const messagePreview = item.contentForSummary.substring(0, 100).replace(/\n/g, " ")
+      const messagePreview = batch.items
+        .map((item) => item.contentForSummary.substring(0, 40).replace(/\n/g, " "))
+        .join(" | ")
       opts.onSummarizationProgress(
         summarizedCount,
         totalToSummarize,
-        `Summarizing large message ${summarizedCount}/${totalToSummarize} (${item.len} chars): ${messagePreview}...`
+        `Summarizing context batch ${summarizedCount}/${totalToSummarize} (${batch.items.length} messages): ${messagePreview}...`
       )
     }
 
-    const summarized = await summarizeContent(item.contentForSummary, opts.sessionId)
-    messages[item.i] = { ...messages[item.i], content: summarized }
+    const summarized = await summarizeMessageBatch(batch.items, opts.sessionId)
+    const contextRef = registerContextRef(opts.sessionId, {
+      kind: "batch_summary",
+      role: "assistant",
+      content: formatBatchSourceMessages(batch.items, originalMessagesForBatchRefs),
+      messageCount: batch.items.length,
+    })
+    const startIndex = batch.startIndex + indexOffset
+    const deleteCount = batch.endIndex - batch.startIndex + 1
+    messages.splice(startIndex, deleteCount, buildSummaryMessage(batch, summarized, contextRef))
+    indexOffset -= deleteCount - 1
 
-    applied.push("summarize")
+    applied.push("batch_summarize")
     tokens = estimateTokensFromMessages(messages)
     if (tokens <= targetTokens) break
   }
 
   if (tokens <= targetTokens) {
-    if (isDebugLLM()) logLLM("ContextBudget: after summarize", { estTokens: tokens })
+    if (isDebugLLM()) logLLM("ContextBudget: after batch_summarize", { estTokens: tokens })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
 
@@ -890,63 +1570,9 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     }
   }
 
-  // ========================================================================
-  // Pi-style iterative summary: merge dropped messages with previous summary
-  // instead of losing them entirely. This preserves cumulative history.
-  // Works independently of dualModelEnabled — always active during compaction.
-  // ========================================================================
   if (opts.sessionId && droppedMessages.length > 0) {
-    const previousSummary = iterativeSummaryCache.get(opts.sessionId)
-    const droppedText = droppedMessages
-      .map(m => {
-        const content = sanitizeMessageContentForDisplay(m.content || "")
-        return `${m.role}: ${content.substring(0, 300)}`
-      })
-      .join("\n")
-
-    try {
-      if (!agentSessionStateManager.shouldStopSession(opts.sessionId)) {
-        const updatePrompt = previousSummary
-          ? `You are maintaining a running summary of an AI agent session.
-
-PREVIOUS SUMMARY:
-${previousSummary}
-
-NEW MESSAGES BEING DROPPED FROM CONTEXT:
-${droppedText.substring(0, 4000)}
-
-Update the summary to incorporate the new information. Preserve all important details from the previous summary. Focus on:
-- What tasks were attempted and their outcomes
-- Key files, paths, IDs, and values discovered
-- Errors encountered and how they were resolved
-- Current state and what the agent should do next
-
-Keep the summary under 1000 characters. Be factual and specific.`
-          : `Summarize these AI agent conversation messages that are being dropped from context:
-
-${droppedText.substring(0, 4000)}
-
-Focus on:
-- What tasks were attempted and their outcomes
-- Key files, paths, IDs, and values discovered
-- Errors encountered and how they were resolved
-
-Keep the summary under 1000 characters. Be factual and specific.`
-
-        if (opts.onSummarizationProgress) {
-          opts.onSummarizationProgress(0, 1, "Building iterative session summary...")
-        }
-
-        const iterativeSummary = await makeTextCompletionWithFetch(updatePrompt, getProviderAndModel().providerId, opts.sessionId)
-        if (iterativeSummary?.trim()) {
-          iterativeSummaryCache.set(opts.sessionId, iterativeSummary.trim())
-          if (isDebugLLM()) logLLM("[Context Budget] Updated iterative session summary", { length: iterativeSummary.length })
-        }
-      }
-    } catch (e) {
-      // Non-fatal: if summary generation fails, continue without it
-      if (isDebugLLM()) logLLM("[Context Budget] Iterative summary generation failed, continuing", { error: String(e) })
-    }
+    await updateIterativeSummaryForDroppedMessages(opts.sessionId, droppedMessages, opts.onSummarizationProgress)
+    upsertArchiveHistoryRef(opts.sessionId, droppedMessages)
   }
 
   // Preserve order: system -> first user -> iterative summary -> tool summary -> (chronological tail)
@@ -954,11 +1580,10 @@ Keep the summary under 1000 characters. Be factual and specific.`
   if (systemIdx >= 0) ordered.push(messages[systemIdx])
   if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) ordered.push(messages[firstUserIdx])
 
-  // Inject iterative summary (Pi-style) — works independently of dualModelEnabled
   if (opts.sessionId) {
-    const iterSummary = iterativeSummaryCache.get(opts.sessionId)
-    if (iterSummary) {
-      ordered.push({ role: "assistant", content: `[Session Progress Summary]\n${iterSummary}` })
+    const summaryMessage = buildSessionProgressSummaryMessage(opts.sessionId)
+    if (summaryMessage) {
+      ordered.push(summaryMessage)
     }
   }
 
@@ -972,9 +1597,11 @@ Keep the summary under 1000 characters. Be factual and specific.`
 
   // Insert tool summary
   if (toolSummaryMessage) ordered.push(toolSummaryMessage)
+
   for (let k = baseLen - effectiveLastN; k < baseLen; k++) {
     if (k >= 0 && k !== systemIdx && k !== firstUserIdx) ordered.push(messages[k])
   }
+
   messages = ordered
   applied.push("drop_middle")
   tokens = estimateTokensFromMessages(messages)

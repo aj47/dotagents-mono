@@ -15,6 +15,7 @@ export const RESERVED_RUNTIME_TOOL_SERVER_NAMES = [RUNTIME_TOOLS_SERVER_NAME] as
 export const INJECTED_RUNTIME_TOOL_TRANSPORT_NAME = "dotagents-injected-runtime-tools"
 
 export const MARK_WORK_COMPLETE_TOOL = "mark_work_complete"
+export const READ_MORE_CONTEXT_TOOL = "read_more_context"
 
 // Internal completion nudge message: include in the LLM context, but hide from the progress UI.
 // Keep this as a single canonical string so we can filter it via exact match (no false positives).

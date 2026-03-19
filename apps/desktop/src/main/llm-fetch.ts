@@ -17,6 +17,7 @@ import {
   createLanguageModel,
   getCurrentProviderId,
   getCurrentModelName,
+  getPromptCachingConfig,
   getTranscriptProviderId,
   type ProviderType,
 } from "./ai-sdk-provider"
@@ -683,6 +684,7 @@ export async function makeLLMCallWithFetch(
     async () => {
       const model = createLanguageModel(effectiveProviderId)
       const { system, messages: convertedMessages } = convertMessages(messages)
+      const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const abortController = createSessionAbortController(sessionId)
 
       try {
@@ -721,6 +723,7 @@ export async function makeLLMCallWithFetch(
               provider: effectiveProviderId,
               hasTools: !!convertedTools,
               toolCount: tools?.length || 0,
+              promptCaching: promptCaching?.strategy,
             },
             input: { system, messages: convertedMessages },
           })
@@ -733,6 +736,7 @@ export async function makeLLMCallWithFetch(
             system,
             messages: convertedMessages,
             abortSignal: abortController.signal,
+            providerOptions: promptCaching?.providerOptions as any,
             tools: convertedTools?.tools,
             // Allow the model to choose whether to use tools or respond with text
             toolChoice: convertedTools?.tools ? "auto" : undefined,
@@ -884,6 +888,7 @@ export async function makeLLMCallWithStreaming(
     getCurrentProviderId()) as ProviderType
   const model = createLanguageModel(effectiveProviderId)
   const { system, messages: convertedMessages } = convertMessages(messages)
+  const promptCaching = getPromptCachingConfig(effectiveProviderId)
 
   // Use external controller if provided, otherwise create and register one
   // This ensures stopSession() / emergency stop can abort in-flight streams
@@ -898,7 +903,7 @@ export async function makeLLMCallWithStreaming(
     createLLMGeneration(sessionId || null, generationId, {
       name: "Streaming LLM Call",
       model: modelName,
-      modelParameters: { provider: effectiveProviderId },
+      modelParameters: { provider: effectiveProviderId, promptCaching: promptCaching?.strategy },
       input: { system, messages: convertedMessages },
     })
   }
@@ -917,6 +922,7 @@ export async function makeLLMCallWithStreaming(
       system,
       messages: convertedMessages,
       abortSignal: abortController.signal,
+      providerOptions: promptCaching?.providerOptions as any,
     })
 
     let accumulated = ""
@@ -989,6 +995,7 @@ export async function makeLLMCallWithStreamingAndTools(
     async () => {
       const model = createLanguageModel(effectiveProviderId)
       const { system, messages: convertedMessages } = convertMessages(messages)
+      const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const abortController = createSessionAbortController(sessionId)
 
       const convertedTools = tools && tools.length > 0
@@ -1016,6 +1023,7 @@ export async function makeLLMCallWithStreamingAndTools(
             provider: effectiveProviderId,
             hasTools: !!convertedTools,
             toolCount: tools?.length || 0,
+            promptCaching: promptCaching?.strategy,
           },
           input: { system, messages: convertedMessages },
         })
@@ -1034,6 +1042,7 @@ export async function makeLLMCallWithStreamingAndTools(
           system,
           messages: convertedMessages,
           abortSignal: abortController.signal,
+          providerOptions: promptCaching?.providerOptions as any,
           tools: convertedTools?.tools,
           toolChoice: convertedTools?.tools ? "auto" : undefined,
         })
@@ -1162,6 +1171,7 @@ export async function makeTextCompletionWithFetch(
         }
 
         const model = createLanguageModel(effectiveProviderId, "transcript")
+        const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
 
         if (isDebugLLM()) {
           logLLM("🚀 AI SDK text completion call", {
@@ -1174,6 +1184,7 @@ export async function makeTextCompletionWithFetch(
           model,
           prompt,
           abortSignal: abortController.signal,
+          providerOptions: promptCaching?.providerOptions as any,
         })
 
         const text = result.text?.trim() || ""
@@ -1245,12 +1256,14 @@ export async function verifyCompletionWithFetch(
 
         // Create Langfuse generation if enabled
         const generationId = isLangfuseEnabled() ? randomUUID() : null
+        const promptCaching = getPromptCachingConfig(effectiveProviderId)
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
             name: "Verification Call",
             model: modelName,
             modelParameters: {
               provider: effectiveProviderId,
+              promptCaching: promptCaching?.strategy,
             },
             input: { system, messages: convertedMessages },
           })
@@ -1263,6 +1276,7 @@ export async function verifyCompletionWithFetch(
             system,
             messages: convertedMessages,
             abortSignal: abortController.signal,
+            providerOptions: promptCaching?.providerOptions as any,
           })
         } catch (error) {
           // End Langfuse generation with error before rethrowing

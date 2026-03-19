@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+const { getPromptCachingConfigMock } = vi.hoisted(() => ({
+  getPromptCachingConfigMock: vi.fn<any, any>(() => undefined),
+}))
+
 // Mock dependencies
 vi.mock('./config', () => ({
   configStore: {
@@ -62,6 +66,7 @@ vi.mock('./ai-sdk-provider', () => ({
   getCurrentProviderId: vi.fn(() => 'openai'),
   getTranscriptProviderId: vi.fn(() => 'openai'),
   getCurrentModelName: vi.fn(() => 'gpt-4.1-mini'),
+  getPromptCachingConfig: getPromptCachingConfigMock,
 }))
 
 // Mock the langfuse-service module
@@ -80,6 +85,31 @@ describe('LLM Fetch with AI SDK', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
+    getPromptCachingConfigMock.mockReset()
+    getPromptCachingConfigMock.mockReturnValue(undefined)
+  })
+
+  it('passes prompt-caching provider options through to generateText when available', async () => {
+    getPromptCachingConfigMock.mockReturnValue({
+      strategy: 'gateway-auto',
+      providerOptions: { gateway: { caching: 'auto' } },
+    })
+
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"cached"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      providerOptions: { gateway: { caching: 'auto' } },
+    }))
   })
 
   it('should return parsed JSON content from LLM response', async () => {

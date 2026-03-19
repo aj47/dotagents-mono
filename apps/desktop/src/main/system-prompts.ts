@@ -83,6 +83,11 @@ AGENT FILE & COMMAND EXECUTION:
 - Run scripts: execute_command with "./script.sh" or "python script.py" etc.
 - Output over 10K chars is automatically truncated (first 5K + last 5K preserved)
 
+COMPACTED CONTEXT:
+- If a prior message says it was truncated or summarized and shows a "Context ref: ctx_...", use read_more_context to inspect the original source
+- Prefer read_more_context(mode: "overview") first, then search/window reads for the exact detail you need
+- Avoid pulling large heads/tails unless a narrower search or window is insufficient
+
 KNOWLEDGE NOTES (durable context):
 - Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/
 - Prefer direct file editing there over special-purpose note tools

@@ -38,6 +38,11 @@ interface ProviderConfig {
   model: string
 }
 
+export interface PromptCachingConfig {
+  strategy: string
+  providerOptions?: Record<string, unknown>
+}
+
 function isTranscriptionOnlyModel(providerId: ProviderType, model: string): boolean {
   const patterns = TRANSCRIPTION_ONLY_MODEL_PATTERNS[providerId as keyof typeof TRANSCRIPTION_ONLY_MODEL_PATTERNS]
   if (!patterns) {
@@ -201,4 +206,40 @@ export function getCurrentModelName(
     providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
 
   return getProviderConfig(effectiveProviderId, modelContext).model
+}
+
+export function getPromptCachingConfig(
+  providerId?: ProviderType,
+  modelContext: "mcp" | "transcript" = "mcp",
+): PromptCachingConfig | undefined {
+  const config = configStore.get()
+  const effectiveProviderId =
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
+  const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
+
+  if (normalizedBaseURL.includes("ai-gateway.vercel.sh")) {
+    return {
+      strategy: "gateway-auto",
+      providerOptions: {
+        gateway: {
+          caching: "auto",
+        },
+      },
+    }
+  }
+
+  if (effectiveProviderId === "openai" && (!normalizedBaseURL || normalizedBaseURL.includes("api.openai.com"))) {
+    return {
+      strategy: "openai-implicit-prefix",
+    }
+  }
+
+  if (effectiveProviderId === "gemini") {
+    return {
+      strategy: "gemini-stable-prefix",
+    }
+  }
+
+  return undefined
 }

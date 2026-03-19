@@ -16,6 +16,7 @@ import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
 import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
+import { readMoreContext } from "./context-budget"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -934,6 +935,35 @@ const toolHandlers: Record<string, ToolHandler> = {
         text: `# ${skill.name}\n\n${skill.instructions}`,
       }],
       isError: false,
+    }
+  },
+
+  read_more_context: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
+    if (!context.sessionId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "read_more_context requires an active agent session" }) }],
+        isError: true,
+      }
+    }
+
+    if (typeof args.contextRef !== "string" || args.contextRef.trim() === "") {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "contextRef must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+
+    const result = readMoreContext(context.sessionId, args.contextRef.trim(), {
+      mode: typeof args.mode === "string" ? args.mode as "overview" | "head" | "tail" | "window" | "search" : undefined,
+      offset: typeof args.offset === "number" ? args.offset : undefined,
+      length: typeof args.length === "number" ? args.length : undefined,
+      query: typeof args.query === "string" ? args.query : undefined,
+      maxChars: typeof args.maxChars === "number" ? args.maxChars : undefined,
+    })
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      isError: result.success === false,
     }
   },
 
