@@ -740,7 +740,7 @@ class ACPService extends EventEmitter {
         autoSpawn: profile.autoSpawn,
         isInternal: profile.isBuiltIn,
         connection: {
-          type: "stdio",
+          type: profile.connection.type,
           command: profile.connection.command,
           args: profile.connection.args,
           env: profile.connection.env,
@@ -800,7 +800,7 @@ class ACPService extends EventEmitter {
       }
     }
 
-    if (agentConfig.connection.type !== "stdio") {
+    if (agentConfig.connection.type !== "stdio" && agentConfig.connection.type !== "acp") {
       throw new Error(`Connection type ${agentConfig.connection.type} not yet supported`)
     }
 
@@ -895,8 +895,20 @@ class ACPService extends EventEmitter {
         this.emit("agentStatusChanged", { agentName, status: "error", error: error.message })
       })
 
-      // Wait a moment for the process to start, then mark as ready
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // ACP agents like auggie may exit immediately unless initialize is sent promptly.
+      // Perform the handshake during startup before reporting the agent as ready.
+      if (agentConfig.connection.type === "acp") {
+        await this.initializeAgent(agentName)
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      if (instance.status === "error") {
+        throw new Error(instance.error || `Agent ${agentName} failed to start`)
+      }
+      if (instance.status === "stopped") {
+        throw new Error(`Agent ${agentName} stopped unexpectedly during startup`)
+      }
 
       if (instance.status === "starting") {
         instance.status = "ready"
@@ -1028,7 +1040,7 @@ class ACPService extends EventEmitter {
    */
   private async sendRequest(agentName: string, method: string, params?: unknown): Promise<unknown> {
     const instance = this.agents.get(agentName)
-    if (!instance || !instance.process || instance.status !== "ready") {
+    if (!instance || !instance.process || (instance.status !== "ready" && instance.status !== "starting")) {
       throw new Error(`Agent ${agentName} is not ready`)
     }
 

@@ -294,6 +294,30 @@ describe("ACP Service", () => {
       expect(acpService.getAgentStatus("augustus")?.status).toBe("ready")
     })
 
+    it("initializes ACP agent profiles during startup before marking them ready", async () => {
+      mockGetByName.mockReturnValue({
+        name: "augustus",
+        displayName: "augustus",
+        description: "Augment Code's AI coding assistant with native ACP support",
+        enabled: true,
+        autoSpawn: false,
+        isBuiltIn: false,
+        connection: {
+          type: "acp",
+          command: "auggie",
+          args: ["--acp"],
+        },
+      })
+
+      const { acpService } = await import("./acp-service")
+      const initializeSpy = vi.spyOn(acpService as any, "initializeAgent").mockResolvedValue(undefined)
+
+      await acpService.spawnAgent("augustus")
+
+      expect(initializeSpy).toHaveBeenCalledWith("augustus")
+      expect(acpService.getAgentStatus("augustus")?.status).toBe("ready")
+    })
+
     it("should resolve relative configured cwd from DOTAGENTS_WORKSPACE_DIR", async () => {
       const workspaceDir = mkdtempSync(join(tmpdir(), "acp-workspace-"))
       const agentCwd = "repo/subdir"
