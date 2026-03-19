@@ -258,130 +258,115 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
   }, []);
 
-  const ensureWebRecognizer = useCallback(() => {
-    if (Platform.OS !== 'web') return false;
-    const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SRClass) {
-      return false;
-    }
+  const bindWebRecognizerHandlers = useCallback((rec: any) => {
+    rec.onstart = () => {
+      log?.('recognizer-start', 'Speech recognizer started.', { source: 'web' });
+    };
+    rec.onerror = (event: any) => {
+      const message = event?.error || 'Unknown web speech error';
+      onRecognizerError?.(message);
+    };
+    rec.onresult = (event: any) => {
+      let interim = '';
+      let finalText = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const text = result[0]?.transcript || '';
+        if (result.isFinal) finalText += text;
+        else interim += text;
+      }
 
-    if (!webRecognitionRef.current) {
-      const rec = new SRClass();
-      rec.lang = 'en-US';
-      rec.interimResults = true;
-      rec.continuous = true;
-      rec.onstart = () => {
-        log?.('recognizer-start', 'Speech recognizer started.', { source: 'web' });
-      };
-      rec.onerror = (event: any) => {
-        const message = event?.error || 'Unknown web speech error';
-        onRecognizerError?.(message);
-      };
-      rec.onresult = (event: any) => {
-        let interim = '';
-        let finalText = '';
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
-          const result = event.results[i];
-          const text = result[0]?.transcript || '';
-          if (result.isFinal) finalText += text;
-          else interim += text;
+      if (finalText) {
+        if (handsFree) {
+          const final = finalText.trim();
+          if (final) {
+            scheduleHandsFreeFinalization('web', mergeVoiceText(pendingHandsFreeFinalRef.current, final));
+          }
+        } else {
+          webFinalRef.current = mergeVoiceText(webFinalRef.current, finalText);
         }
+      }
+
+      const baseFinal = handsFree ? pendingHandsFreeFinalRef.current : webFinalRef.current;
+      const previewText = mergeVoiceText(baseFinal, interim);
+      if (previewText) {
+        setLiveTranscriptValue(previewText);
+        setSttPreviewWithExpiry(previewText);
+      }
+    };
+    rec.onend = () => {
+      if (suppressFinalizeRef.current) {
+        suppressFinalizeRef.current = false;
+        setListeningValue(false);
+        setLiveTranscriptValue('');
+        return;
+      }
+
+      if (handsFree) {
+        pendingPushToTalkFinalRef.current = null;
+        const finalText = normalizeVoiceText(
+          mergeVoiceText(
+            pendingHandsFreeFinalRef.current || webFinalRef.current,
+            liveTranscriptRef.current,
+          ),
+        );
 
         if (finalText) {
-          if (handsFree) {
-            const final = finalText.trim();
-            if (final) {
-              scheduleHandsFreeFinalization('web', mergeVoiceText(pendingHandsFreeFinalRef.current, final));
-            }
-          } else {
-            webFinalRef.current = mergeVoiceText(webFinalRef.current, finalText);
-          }
-        }
-
-        const baseFinal = handsFree ? pendingHandsFreeFinalRef.current : webFinalRef.current;
-        const previewText = mergeVoiceText(baseFinal, interim);
-        if (previewText) {
-          setLiveTranscriptValue(previewText);
-          setSttPreviewWithExpiry(previewText);
-        }
-      };
-      rec.onend = () => {
-        if (suppressFinalizeRef.current) {
-          suppressFinalizeRef.current = false;
-          setListeningValue(false);
-          setLiveTranscriptValue('');
-          return;
-        }
-
-        if (handsFree) {
-          pendingPushToTalkFinalRef.current = null;
-          const finalText = normalizeVoiceText(
-            mergeVoiceText(
-              pendingHandsFreeFinalRef.current || webFinalRef.current,
-              liveTranscriptRef.current,
-            ),
-          );
-
-          if (finalText) {
-            pendingHandsFreeFinalRef.current = finalText;
-            webFinalRef.current = '';
-            if (!handsFreeDebounceRef.current) {
-              scheduleHandsFreeFinalization('web', finalText);
-            }
-            if (!restartWebHandsFreeRecognition()) {
-              setListeningValue(false);
-            }
-            return;
-          }
-
-          clearHandsFreeDebounce();
-          pendingHandsFreeFinalRef.current = '';
+          pendingHandsFreeFinalRef.current = finalText;
           webFinalRef.current = '';
-          setListeningValue(false);
-          setLiveTranscriptValue('');
+          if (!handsFreeDebounceRef.current) {
+            scheduleHandsFreeFinalization('web', finalText);
+          }
+          if (!restartWebHandsFreeRecognition()) {
+            setListeningValue(false);
+          }
           return;
         }
 
         clearHandsFreeDebounce();
-
-        if (!handsFree && !userReleasedButtonRef.current && webRecognitionRef.current) {
-          try {
-            webRecognitionRef.current.start();
-            return;
-          } catch {
-            const accumulatedText = mergeVoiceText(webFinalRef.current, liveTranscriptRef.current);
-            setListeningValue(false);
-            setLiveTranscriptValue('');
-            deferPushToTalkFinalization(accumulatedText, 'web');
-            webFinalRef.current = '';
-            pendingHandsFreeFinalRef.current = '';
-            return;
-          }
-        }
-
-        const gestureId = voiceGestureIdRef.current;
-        const alreadyFinalizedPushToTalk = !handsFree && voiceGestureFinalizedIdRef.current === gestureId;
-        const finalText = mergeVoiceText(
-          pendingHandsFreeFinalRef.current || webFinalRef.current,
-          liveTranscriptRef.current,
-        );
-
         pendingHandsFreeFinalRef.current = '';
-        pendingPushToTalkFinalRef.current = null;
+        webFinalRef.current = '';
         setListeningValue(false);
         setLiveTranscriptValue('');
-        if (finalText && !alreadyFinalizedPushToTalk) {
-          if (!handsFree) {
-            voiceGestureFinalizedIdRef.current = gestureId;
-          }
-          emitFinalized(finalText, 'web');
-        }
-        webFinalRef.current = '';
-      };
-      webRecognitionRef.current = rec;
-    }
+        return;
+      }
 
-    return true;
+      clearHandsFreeDebounce();
+
+      if (!handsFree && !userReleasedButtonRef.current && webRecognitionRef.current) {
+        try {
+          webRecognitionRef.current.start();
+          return;
+        } catch {
+          const accumulatedText = mergeVoiceText(webFinalRef.current, liveTranscriptRef.current);
+          setListeningValue(false);
+          setLiveTranscriptValue('');
+          deferPushToTalkFinalization(accumulatedText, 'web');
+          webFinalRef.current = '';
+          pendingHandsFreeFinalRef.current = '';
+          return;
+        }
+      }
+
+      const gestureId = voiceGestureIdRef.current;
+      const alreadyFinalizedPushToTalk = !handsFree && voiceGestureFinalizedIdRef.current === gestureId;
+      const finalText = mergeVoiceText(
+        pendingHandsFreeFinalRef.current || webFinalRef.current,
+        liveTranscriptRef.current,
+      );
+
+      pendingHandsFreeFinalRef.current = '';
+      pendingPushToTalkFinalRef.current = null;
+      setListeningValue(false);
+      setLiveTranscriptValue('');
+      if (finalText && !alreadyFinalizedPushToTalk) {
+        if (!handsFree) {
+          voiceGestureFinalizedIdRef.current = gestureId;
+        }
+        emitFinalized(finalText, 'web');
+      }
+      webFinalRef.current = '';
+    };
   }, [
     clearHandsFreeDebounce,
     deferPushToTalkFinalization,
@@ -395,6 +380,26 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     setLiveTranscriptValue,
     setSttPreviewWithExpiry,
   ]);
+
+  const ensureWebRecognizer = useCallback(() => {
+    if (Platform.OS !== 'web') return false;
+    const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SRClass) {
+      return false;
+    }
+
+    if (!webRecognitionRef.current) {
+      const rec = new SRClass();
+      rec.lang = 'en-US';
+      rec.interimResults = true;
+      rec.continuous = true;
+      webRecognitionRef.current = rec;
+    }
+
+    bindWebRecognizerHandlers(webRecognitionRef.current);
+
+    return true;
+  }, [bindWebRecognizerHandlers]);
 
   const startRecording = useCallback(async (event?: GestureResponderEvent) => {
     if (startingRef.current || listeningRef.current) {
@@ -680,6 +685,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
     stopOrFinalizePushToTalk();
   }, [stopOrFinalizePushToTalk]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && webRecognitionRef.current) {
+      bindWebRecognizerHandlers(webRecognitionRef.current);
+    }
+  }, [bindWebRecognizerHandlers]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !micButtonRef.current) return;
