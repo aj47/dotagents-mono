@@ -980,6 +980,7 @@ ${source}`
 
 function buildArchiveEligibleIndices(messages: LLMMessage[], systemIdx: number, firstUserIdx: number): number[] {
   const indices: number[] = []
+  const truncationProtectedIndices = new Set<number>()
   for (let i = 0; i < messages.length; i++) {
     if (i === systemIdx || i === firstUserIdx) continue
     indices.push(i)
@@ -1367,8 +1368,8 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     let nextArchivedCount = previousArchivedCount
     let newlyArchivedMessages: LLMMessage[] = []
 
-    if (overflowCount >= ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH || tokens > targetTokens) {
-      const archiveIndices = unarchivedIndices.slice(0, overflowCount || unarchivedIndices.length)
+    if (overflowCount > 0 && (overflowCount >= ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH || tokens > targetTokens)) {
+      const archiveIndices = unarchivedIndices.slice(0, overflowCount)
       newlyArchivedMessages = archiveIndices.map((index) => messages[index])
 
       if (newlyArchivedMessages.length > 0) {

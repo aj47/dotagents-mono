@@ -55,9 +55,11 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-truncate')
     clearArchiveFrontier('session-batch')
     clearArchiveFrontier('session-archive')
+    clearArchiveFrontier('session-live-tail')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
+    clearContextRefs('session-live-tail')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -187,5 +189,38 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const firstMatch = (readResult.matches as Array<{ excerpt: string }>)[0]
     expect(firstMatch.excerpt.length).toBeLessThanOrEqual(200)
     expect(firstMatch.excerpt).toContain(longQuery)
+  })
+
+  it('keeps the live tail when archive frontier has no overflow on a later pass', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
+    Object.assign(mockConfig, {
+      mcpContextSummarizeCharThreshold: 10000,
+      mcpMaxContextTokensOverride: 400,
+    })
+
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'Original task request' },
+      ...Array.from({ length: 16 }, (_, index) => ({
+        role: index % 2 === 0 ? 'assistant' : 'user',
+        content: `live-marker-${index} ${'q'.repeat(700)}`,
+      })),
+    ]
+
+    await shrinkMessagesForLLM({
+      sessionId: 'session-live-tail',
+      messages,
+      lastNMessages: 3,
+    })
+
+    const secondPass = await shrinkMessagesForLLM({
+      sessionId: 'session-live-tail',
+      messages,
+      lastNMessages: 3,
+    })
+
+    expect(secondPass.appliedStrategies).toContain('archive_frontier')
+    expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-15'))).toBe(true)
+    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
   })
 })
