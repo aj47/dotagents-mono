@@ -11,6 +11,7 @@ async function flushPromises() {
 async function loadIndexForHubInstall(
   argv: string[],
   configOverrides: Record<string, unknown> = {},
+  gotSingleInstanceLock = true,
 ) {
   vi.resetModules()
   process.argv = argv
@@ -20,25 +21,39 @@ async function loadIndexForHubInstall(
   const createPanelWindow = vi.fn()
   const createSetupWindow = vi.fn()
   const showMainWindow = vi.fn()
-  const findHubBundleInstallBundleUrl = vi.fn((candidates: readonly string[]) => {
-    const deepLink = candidates.find((candidate) => typeof candidate === "string" && candidate.startsWith("dotagents://install?bundle="))
-    return deepLink
-      ? "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents"
-      : null
-  })
-  const downloadHubBundleToTempFile = vi.fn(async () => "/tmp/downloaded-featured-agent.dotagents")
-  const findHubBundleHandoffFilePath = vi.fn((candidates: readonly string[]) =>
-    candidates.find(
-      (candidate) =>
-        typeof candidate === "string"
-        && candidate.endsWith(".dotagents")
-        && !candidate.startsWith("dotagents://"),
-    ) ?? null,
+  const requestSingleInstanceLock = vi.fn(() => gotSingleInstanceLock)
+  const releaseSingleInstanceLock = vi.fn()
+  const quit = vi.fn()
+  const findHubBundleInstallBundleUrl = vi.fn(
+    (candidates: readonly string[]) => {
+      const deepLink = candidates.find(
+        (candidate) =>
+          typeof candidate === "string" &&
+          candidate.startsWith("dotagents://install?bundle="),
+      )
+      return deepLink
+        ? "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents"
+        : null
+    },
+  )
+  const downloadHubBundleToTempFile = vi.fn(
+    async () => "/tmp/downloaded-featured-agent.dotagents",
+  )
+  const findHubBundleHandoffFilePath = vi.fn(
+    (candidates: readonly string[]) =>
+      candidates.find(
+        (candidate) =>
+          typeof candidate === "string" &&
+          candidate.endsWith(".dotagents") &&
+          !candidate.startsWith("dotagents://"),
+      ) ?? null,
   )
 
   vi.doMock("electron", () => ({
     app: {
       commandLine: { appendSwitch: vi.fn() },
+      requestSingleInstanceLock,
+      releaseSingleInstanceLock,
       whenReady: vi.fn(() => Promise.resolve()),
       on: vi.fn((event: string, handler: Function) => {
         handlers.set(event, [...(handlers.get(event) ?? []), handler])
@@ -47,7 +62,7 @@ async function loadIndexForHubInstall(
       setLoginItemSettings: vi.fn(),
       setActivationPolicy: vi.fn(),
       dock: { show: vi.fn(), hide: vi.fn(), isVisible: vi.fn(() => true) },
-      quit: vi.fn(),
+      quit,
     },
     Menu: { setApplicationMenu: vi.fn() },
   }))
@@ -67,14 +82,26 @@ async function loadIndexForHubInstall(
   }))
   vi.doMock("./keyboard", () => ({ listenToKeyboardEvents: vi.fn() }))
   vi.doMock("./tipc", () => ({ router: {} }))
-  vi.doMock("./serve", () => ({ registerServeProtocol: vi.fn(), registerServeSchema: vi.fn() }))
+  vi.doMock("./serve", () => ({
+    registerServeProtocol: vi.fn(),
+    registerServeSchema: vi.fn(),
+  }))
   vi.doMock("./menu", () => ({ createAppMenu: vi.fn(() => null) }))
   vi.doMock("./tray", () => ({ initTray: vi.fn(), destroyTray: vi.fn() }))
   vi.doMock("./utils", () => ({ isAccessibilityGranted: vi.fn(() => true) }))
-  vi.doMock("./mcp-service", () => ({ mcpService: { initialize: vi.fn(() => Promise.resolve()), cleanup: vi.fn(() => Promise.resolve()) } }))
+  vi.doMock("./mcp-service", () => ({
+    mcpService: {
+      initialize: vi.fn(() => Promise.resolve()),
+      cleanup: vi.fn(() => Promise.resolve()),
+    },
+  }))
   vi.doMock("./debug", () => ({ initDebugFlags: vi.fn(), logApp: vi.fn() }))
-  vi.doMock("./oauth-deeplink-handler", () => ({ initializeDeepLinkHandling: vi.fn() }))
-  vi.doMock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn() } }))
+  vi.doMock("./oauth-deeplink-handler", () => ({
+    initializeDeepLinkHandling: vi.fn(),
+  }))
+  vi.doMock("./diagnostics", () => ({
+    diagnosticsService: { logError: vi.fn() },
+  }))
   vi.doMock("./config", () => ({
     configStore: {
       get: vi.fn(() => ({
@@ -95,8 +122,15 @@ async function loadIndexForHubInstall(
     startRemoteServerForced: vi.fn(() => Promise.resolve({ running: false })),
     stopRemoteServer: vi.fn(() => Promise.resolve()),
   }))
-  vi.doMock("./acp-service", () => ({ acpService: { initialize: vi.fn(() => Promise.resolve()), shutdown: vi.fn(() => Promise.resolve()) } }))
-  vi.doMock("./agent-profile-service", () => ({ agentProfileService: { syncAgentProfilesToACPRegistry: vi.fn() } }))
+  vi.doMock("./acp-service", () => ({
+    acpService: {
+      initialize: vi.fn(() => Promise.resolve()),
+      shutdown: vi.fn(() => Promise.resolve()),
+    },
+  }))
+  vi.doMock("./agent-profile-service", () => ({
+    agentProfileService: { syncAgentProfilesToACPRegistry: vi.fn() },
+  }))
   vi.doMock("./skills-service", () => ({
     initializeBundledSkills: vi.fn(() => ({ copied: [], skipped: [] })),
     skillsService: {},
@@ -108,7 +142,9 @@ async function loadIndexForHubInstall(
     checkCloudflaredInstalled: vi.fn(() => Promise.resolve(false)),
   }))
   vi.doMock("./models-dev-service", () => ({ initModelsDevService: vi.fn() }))
-  vi.doMock("./loop-service", () => ({ loopService: { startAllLoops: vi.fn(), stopAllLoops: vi.fn() } }))
+  vi.doMock("./loop-service", () => ({
+    loopService: { startAllLoops: vi.fn(), stopAllLoops: vi.fn() },
+  }))
   vi.doMock("./state", () => ({ setHeadlessMode: vi.fn() }))
   vi.doMock("./bundle-service", () => ({ findHubBundleHandoffFilePath }))
   vi.doMock("./hub-install", () => ({
@@ -125,6 +161,9 @@ async function loadIndexForHubInstall(
     createMainWindow,
     showMainWindow,
     downloadHubBundleToTempFile,
+    requestSingleInstanceLock,
+    releaseSingleInstanceLock,
+    quit,
   }
 }
 
@@ -137,7 +176,10 @@ afterEach(() => {
 describe("Hub install handoff routing", () => {
   it("opens settings/agents with installBundle when launched with a .dotagents argv path", async () => {
     const bundlePath = "/tmp/from-startup.dotagents"
-    const { createMainWindow } = await loadIndexForHubInstall(["electron", bundlePath])
+    const { createMainWindow } = await loadIndexForHubInstall([
+      "electron",
+      bundlePath,
+    ])
 
     expect(createMainWindow).toHaveBeenCalledWith({
       url: `/settings/agents?installBundle=${encodeURIComponent(bundlePath)}`,
@@ -147,7 +189,8 @@ describe("Hub install handoff routing", () => {
   it("downloads startup Hub install deep links before opening settings/agents", async () => {
     const deepLink =
       "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffeatured-agent.dotagents"
-    const { createMainWindow, downloadHubBundleToTempFile } = await loadIndexForHubInstall(["electron", deepLink])
+    const { createMainWindow, downloadHubBundleToTempFile } =
+      await loadIndexForHubInstall(["electron", deepLink])
 
     expect(downloadHubBundleToTempFile).toHaveBeenCalledWith(
       "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
@@ -159,29 +202,62 @@ describe("Hub install handoff routing", () => {
 
   it("routes open-file and second-instance bundle handoffs into showMainWindow", async () => {
     const bundlePath = "/tmp/from-handoff.dotagents"
-    const { handlers, showMainWindow } = await loadIndexForHubInstall(["electron"])
+    const { handlers, showMainWindow } = await loadIndexForHubInstall([
+      "electron",
+    ])
 
     showMainWindow.mockClear()
-    const openFileHandler = handlers.get("open-file")?.[0] as ((event: { preventDefault: () => void }, filePath: string) => void)
-    const secondInstanceHandler = handlers.get("second-instance")?.[0] as ((event: unknown, commandLine: string[]) => void)
+    const openFileHandler = handlers.get("open-file")?.[0] as (
+      event: { preventDefault: () => void },
+      filePath: string,
+    ) => void
+    const secondInstanceHandler = handlers.get("second-instance")?.[0] as (
+      event: unknown,
+      commandLine: string[],
+    ) => void
 
     const event = { preventDefault: vi.fn() }
     openFileHandler(event, bundlePath)
     expect(event.preventDefault).toHaveBeenCalled()
-    expect(showMainWindow).toHaveBeenCalledWith(`/settings/agents?installBundle=${encodeURIComponent(bundlePath)}`)
+    expect(showMainWindow).toHaveBeenCalledWith(
+      `/settings/agents?installBundle=${encodeURIComponent(bundlePath)}`,
+    )
 
     showMainWindow.mockClear()
     secondInstanceHandler({}, ["DotAgents", bundlePath])
-    expect(showMainWindow).toHaveBeenCalledWith(`/settings/agents?installBundle=${encodeURIComponent(bundlePath)}`)
+    expect(showMainWindow).toHaveBeenCalledWith(
+      `/settings/agents?installBundle=${encodeURIComponent(bundlePath)}`,
+    )
+  })
+
+  it("requests a single-instance lock during normal GUI startup", async () => {
+    const { requestSingleInstanceLock } = await loadIndexForHubInstall([
+      "electron",
+    ])
+
+    expect(requestSingleInstanceLock).toHaveBeenCalledTimes(1)
+  })
+
+  it("quits immediately when a second GUI instance fails to acquire the lock", async () => {
+    const { quit, createMainWindow, requestSingleInstanceLock } =
+      await loadIndexForHubInstall(["electron"], {}, false)
+
+    expect(requestSingleInstanceLock).toHaveBeenCalledTimes(1)
+    expect(quit).toHaveBeenCalledTimes(1)
+    expect(createMainWindow).not.toHaveBeenCalled()
   })
 
   it("downloads Hub install deep links received via open-url and routes them into showMainWindow", async () => {
     const deepLink =
       "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffeatured-agent.dotagents"
-    const { handlers, showMainWindow, downloadHubBundleToTempFile } = await loadIndexForHubInstall(["electron"])
+    const { handlers, showMainWindow, downloadHubBundleToTempFile } =
+      await loadIndexForHubInstall(["electron"])
 
     showMainWindow.mockClear()
-    const openUrlHandler = handlers.get("open-url")?.[0] as ((event: { preventDefault: () => void }, url: string) => void)
+    const openUrlHandler = handlers.get("open-url")?.[0] as (
+      event: { preventDefault: () => void },
+      url: string,
+    ) => void
 
     const event = { preventDefault: vi.fn() }
     openUrlHandler(event, deepLink)

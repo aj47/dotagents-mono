@@ -13,16 +13,20 @@ export class OAuthDeepLinkHandler {
   private rejectCallback: ((error: Error) => void) | null = null
   private timeout: ReturnType<typeof setTimeout> | null = null
   private isListening = false
-  private secondInstanceHandler: ((event: Electron.Event, commandLine: string[]) => void) | null = null
+  private secondInstanceHandler:
+    | ((event: Electron.Event, commandLine: string[]) => void)
+    | null = null
 
-  async waitForCallback(timeoutMs: number = 300000): Promise<OAuthCallbackResult> {
+  async waitForCallback(
+    timeoutMs: number = 300000,
+  ): Promise<OAuthCallbackResult> {
     return new Promise((resolve, reject) => {
       this.resolveCallback = resolve
       this.rejectCallback = reject
 
       this.timeout = setTimeout(() => {
         this.cleanup()
-        reject(new Error('OAuth callback timeout'))
+        reject(new Error("OAuth callback timeout"))
       }, timeoutMs)
 
       this.startListening()
@@ -36,36 +40,42 @@ export class OAuthDeepLinkHandler {
 
     this.isListening = true
 
-    app.on('open-url', this.handleDeepLink)
+    app.on("open-url", this.handleDeepLink)
 
-    if (process.platform === 'darwin') {
-      app.on('will-finish-launching', () => {
-        app.on('open-url', this.handleDeepLink)
+    if (process.platform === "darwin") {
+      app.on("will-finish-launching", () => {
+        app.on("open-url", this.handleDeepLink)
       })
     }
 
-    if (process.platform === 'win32' || process.platform === 'linux') {
+    if (process.platform === "win32" || process.platform === "linux") {
       const args = process.argv
       for (const arg of args) {
-        if (arg.startsWith('dotagents://')) {
+        if (arg.startsWith("dotagents://")) {
           this.handleDeepLink(null as any, arg)
           break
         }
       }
 
-      this.secondInstanceHandler = (_event: Electron.Event, commandLine: string[]) => {
+      this.secondInstanceHandler = (
+        _event: Electron.Event,
+        commandLine: string[],
+      ) => {
         for (const arg of commandLine) {
-          if (arg.startsWith('dotagents://')) {
+          if (arg.startsWith("dotagents://")) {
             this.handleDeepLink(null as any, arg)
             break
           }
         }
       }
-      app.on('second-instance', this.secondInstanceHandler)
+      app.on("second-instance", this.secondInstanceHandler)
     }
   }
 
-  private handleDeepLink = (event: Electron.Event | null, url: string): void => {
+  private handleDeepLink = (
+    event: Electron.Event | null,
+    url: string,
+  ): void => {
     if (event) {
       event.preventDefault()
     }
@@ -77,16 +87,16 @@ export class OAuthDeepLinkHandler {
       if (parsedUrl.hostname) {
         fullPath = `/${parsedUrl.hostname}${parsedUrl.pathname}`
       }
-      const pathname = fullPath.replace(/^\/+/, '/')
+      const pathname = fullPath.replace(/^\/+/, "/")
 
-      const isOAuthProtocol = parsedUrl.protocol.toLowerCase() === 'dotagents:'
-      const isOAuthPath = pathname === '/oauth/callback'
+      const isOAuthProtocol = parsedUrl.protocol.toLowerCase() === "dotagents:"
+      const isOAuthPath = pathname === "/oauth/callback"
 
       if (isOAuthProtocol && isOAuthPath) {
-        const code = parsedUrl.searchParams.get('code')
-        const state = parsedUrl.searchParams.get('state')
-        const error = parsedUrl.searchParams.get('error')
-        const errorDescription = parsedUrl.searchParams.get('error_description')
+        const code = parsedUrl.searchParams.get("code")
+        const state = parsedUrl.searchParams.get("state")
+        const error = parsedUrl.searchParams.get("error")
+        const errorDescription = parsedUrl.searchParams.get("error_description")
 
         const result: OAuthCallbackResult = {
           code: code || undefined,
@@ -111,14 +121,16 @@ export class OAuthDeepLinkHandler {
     }
   }
 
-  private async handleAutomaticOAuthCompletion(result: OAuthCallbackResult): Promise<void> {
+  private async handleAutomaticOAuthCompletion(
+    result: OAuthCallbackResult,
+  ): Promise<void> {
     try {
       if (result.error || !result.code || !result.state) {
         return
       }
 
       // Import mcpService to complete the OAuth flow
-      const { mcpService } = await import('./mcp-service')
+      const { mcpService } = await import("./mcp-service")
 
       // We need to find which server this OAuth callback is for
       // We can do this by checking which server has a pending auth with matching state
@@ -158,9 +170,9 @@ export class OAuthDeepLinkHandler {
     }
 
     if (this.isListening) {
-      app.removeListener('open-url', this.handleDeepLink)
+      app.removeListener("open-url", this.handleDeepLink)
       if (this.secondInstanceHandler) {
-        app.removeListener('second-instance', this.secondInstanceHandler)
+        app.removeListener("second-instance", this.secondInstanceHandler)
         this.secondInstanceHandler = null
       }
       this.isListening = false
@@ -189,7 +201,9 @@ export function getOAuthDeepLinkHandler(): OAuthDeepLinkHandler {
 /**
  * Handle OAuth callback with automatic deep link management
  */
-export async function handleOAuthCallback(timeoutMs?: number): Promise<OAuthCallbackResult> {
+export async function handleOAuthCallback(
+  timeoutMs?: number,
+): Promise<OAuthCallbackResult> {
   const handler = getOAuthDeepLinkHandler()
 
   try {
@@ -207,45 +221,19 @@ export async function handleOAuthCallback(timeoutMs?: number): Promise<OAuthCall
 export function initializeDeepLinkHandling(): void {
   // Only register protocol handler in production builds
   // In development, deep links won't work but we'll provide fallback
-  if (process.env.NODE_ENV === 'production' || !process.env.ELECTRON_RENDERER_URL) {
+  if (
+    process.env.NODE_ENV === "production" ||
+    !process.env.ELECTRON_RENDERER_URL
+  ) {
     try {
-      if (!app.isDefaultProtocolClient('dotagents')) {
-        app.setAsDefaultProtocolClient('dotagents')
+      if (!app.isDefaultProtocolClient("dotagents")) {
+        app.setAsDefaultProtocolClient("dotagents")
       }
     } catch (error) {
       // Silently fail - protocol registration is not critical
     }
   }
 
-  // Handle deep links when app is not running (Windows/Linux)
-  if (process.platform === 'win32' || process.platform === 'linux') {
-    // Only request single instance lock in production
-    if (process.env.NODE_ENV === 'production' || !process.env.ELECTRON_RENDERER_URL) {
-      try {
-        const gotTheLock = app.requestSingleInstanceLock()
-
-        if (!gotTheLock) {
-          app.quit()
-          return
-        } else {
-          app.on('second-instance', (_event, commandLine, _workingDirectory) => {
-            // Someone tried to run a second instance, focus our window instead
-            // and handle any deep link arguments
-
-            // Focus the main window if it exists
-            const { WINDOWS } = require('./window')
-            const mainWindow = WINDOWS.get('main')
-            if (mainWindow) {
-              if (mainWindow.isMinimized()) mainWindow.restore()
-              mainWindow.focus()
-            }
-          })
-        }
-      } catch (error) {
-        // Silently fail - single instance lock is not critical
-      }
-    }
-  }
-
-
+  // Single-instance ownership is handled centrally during app startup.
+  // This helper only manages protocol registration and callback listeners.
 }
