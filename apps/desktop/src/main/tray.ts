@@ -134,6 +134,18 @@ const buildMenu = (tray: Tray) =>
 
 let _tray: Tray | undefined
 
+export const destroyTray = () => {
+  const tray = _tray
+  _tray = undefined
+  if (!tray) return
+
+  try {
+    tray.removeAllListeners()
+    tray.setContextMenu(null)
+    tray.destroy()
+  } catch {}
+}
+
 export const updateTrayIcon = () => {
   if (!_tray) return
 
@@ -150,6 +162,8 @@ const updateTrayMenu = (tray: Tray) => {
 }
 
 export const initTray = () => {
+  destroyTray()
+
   const tray = (_tray = new Tray(defaultIcon))
 
   // On Linux/Wayland (SNI tray), click events don't work reliably.

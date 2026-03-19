@@ -69,7 +69,7 @@ async function loadIndexForHubInstall(
   vi.doMock("./tipc", () => ({ router: {} }))
   vi.doMock("./serve", () => ({ registerServeProtocol: vi.fn(), registerServeSchema: vi.fn() }))
   vi.doMock("./menu", () => ({ createAppMenu: vi.fn(() => null) }))
-  vi.doMock("./tray", () => ({ initTray: vi.fn() }))
+  vi.doMock("./tray", () => ({ initTray: vi.fn(), destroyTray: vi.fn() }))
   vi.doMock("./utils", () => ({ isAccessibilityGranted: vi.fn(() => true) }))
   vi.doMock("./mcp-service", () => ({ mcpService: { initialize: vi.fn(() => Promise.resolve()), cleanup: vi.fn(() => Promise.resolve()) } }))
   vi.doMock("./debug", () => ({ initDebugFlags: vi.fn(), logApp: vi.fn() }))

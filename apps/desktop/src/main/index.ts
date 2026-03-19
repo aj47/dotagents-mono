@@ -14,7 +14,7 @@ import { registerIpcMain } from "@egoist/tipc/main"
 import { router } from "./tipc"
 import { registerServeProtocol, registerServeSchema } from "./serve"
 import { createAppMenu } from "./menu"
-import { initTray } from "./tray"
+import { destroyTray, initTray } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { mcpService } from "./mcp-service"
 import { initDebugFlags, logApp } from "./debug"
@@ -584,13 +584,9 @@ app.whenReady().then(async () => {
 
   app.on("before-quit", async (event) => {
     setAppQuitting()
+    destroyTray()
     makePanelWindowClosable()
     loopService.stopAllLoops()
-
-    // Shutdown ACP agents gracefully
-    acpService.shutdown().catch((error) => {
-      console.error('[App] Error shutting down ACP service:', error)
-    })
 
     // Prevent re-entry during cleanup
     if (isCleaningUp) {
@@ -601,33 +597,48 @@ app.whenReady().then(async () => {
     event.preventDefault()
     isCleaningUp = true
 
-    // Clean up MCP server processes to prevent orphaned node processes
-    // This terminates all child processes spawned by StdioClientTransport
-    let timeoutId: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        mcpService.cleanup(),
-        new Promise<void>((_, reject) => {
-          const id = setTimeout(
-            () => reject(new Error("MCP cleanup timeout")),
-            CLEANUP_TIMEOUT_MS
-          )
-          timeoutId = id
-          // unref() ensures this timer won't keep the event loop alive
-          // if cleanup finishes quickly (only available in Node.js)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if (id && typeof (id as any).unref === "function") {
-            (id as any).unref()
-          }
-        }),
-      ])
-    } catch (error) {
-      logApp("Error during MCP service cleanup on quit:", error)
-    } finally {
-      // Clear the timeout to avoid any lingering references
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId)
+    const withCleanupTimeout = async (
+      label: string,
+      cleanup: () => Promise<void>,
+    ): Promise<void> => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          cleanup(),
+          new Promise<void>((_, reject) => {
+            const id = setTimeout(
+              () => reject(new Error(`${label} cleanup timeout`)),
+              CLEANUP_TIMEOUT_MS,
+            )
+            timeoutId = id
+            // unref() ensures this timer won't keep the event loop alive
+            // if cleanup finishes quickly (only available in Node.js)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (id && typeof (id as any).unref === "function") {
+              ;(id as any).unref()
+            }
+          }),
+        ])
+      } finally {
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId)
+        }
       }
+    }
+
+    try {
+      const cleanupResults = await Promise.allSettled([
+        withCleanupTimeout("ACP", () => acpService.shutdown()),
+        withCleanupTimeout("MCP", () => mcpService.cleanup()),
+      ])
+
+      for (const result of cleanupResults) {
+        if (result.status === "rejected") {
+          logApp("Error during service cleanup on quit:", result.reason)
+        }
+      }
+    } catch (error) {
+      logApp("Unexpected error during service cleanup on quit:", error)
     }
 
     // Now actually quit the app
@@ -654,6 +665,7 @@ app.on("window-all-closed", () => {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     logApp(`Received ${signal}, forcing exit`)
+    destroyTray()
     app.quit()
     // Force exit after a short grace period in case before-quit cleanup hangs
     setTimeout(() => process.exit(0), 3000).unref()
