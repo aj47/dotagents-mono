@@ -3419,31 +3419,14 @@ export default function ChatScreen({ route, navigation }: any) {
                   >
                     <Text style={styles.handsFreeControlButtonText}>Wake</Text>
                   </TouchableOpacity>
-                ) : handsFreeController.state.phase === 'paused' ? (
+                ) : (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.resumeByUser}
+                    onPress={handsFreeController.sleepByUser}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.handsFreeControlButtonText}>Resume</Text>
+                    <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
                   </TouchableOpacity>
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={styles.handsFreeControlButton}
-                      onPress={handsFreeController.pauseByUser}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.handsFreeControlButtonText}>Pause</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.handsFreeControlButton}
-                      onPress={handsFreeController.sleepByUser}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
-                    </TouchableOpacity>
-                  </>
                 )}
               </View>
             </>

@@ -46,3 +46,8 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
   assert.match(screenSource, /handsFreeDebugEnabled && voiceEvents\.length > 0/);
   assert.match(screenSource, /formatVoiceDebugEntry\(entry\)/);
 });
+
+test('consolidates handsfree pause and resume onto the mic while keeping the inline control row to a single wake-or-sleep action', () => {
+  assert.match(screenSource, /<View style=\{styles\.handsFreeControlsRow\}>[\s\S]*?handsFreeController\.state\.phase === 'sleeping'[\s\S]*?onPress=\{handsFreeController\.wakeByUser\}[\s\S]*?<Text style=\{styles\.handsFreeControlButtonText\}>Wake<\/Text>[\s\S]*?onPress=\{handsFreeController\.sleepByUser\}[\s\S]*?<Text style=\{styles\.handsFreeControlButtonText\}>Sleep<\/Text>[\s\S]*?<\/View>/);
+  assert.match(screenSource, /onPress=\{handsFree \? \(\) => \{[\s\S]*?handsFreeController\.state\.phase === 'paused'[\s\S]*?handsFreeController\.resumeByUser\(\)[\s\S]*?handsFreeController\.pauseByUser\(\)[\s\S]*?\} : undefined\}/);
+});
