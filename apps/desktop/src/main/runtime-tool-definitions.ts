@@ -210,6 +210,41 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
       required: ["skillId"],
     },
   },
+  {
+    name: "read_more_context",
+    description: "Read a specific slice of earlier compacted context using a Context ref shown in truncated or summarized messages. Prefer overview/search/window reads over fetching large heads or tails.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contextRef: {
+          type: "string",
+          description: "The Context ref token shown in a compacted message, for example 'ctx_ab12cd34'.",
+        },
+        mode: {
+          type: "string",
+          description: "Read mode: overview, head, tail, window, or search.",
+          enum: ["overview", "head", "tail", "window", "search"],
+        },
+        offset: {
+          type: "number",
+          description: "For window mode: starting character offset into the original content.",
+        },
+        length: {
+          type: "number",
+          description: "For window mode: number of characters to return.",
+        },
+        query: {
+          type: "string",
+          description: "For search mode: text to search for within the original compacted content.",
+        },
+        maxChars: {
+          type: "number",
+          description: "Optional maximum characters to return, capped internally for safety.",
+        },
+      },
+      required: ["contextRef"],
+    },
+  },
 ]
 
 /**

@@ -8,8 +8,31 @@ import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
 
 export type LLMMessage = { role: string; content: string }
 
+type ContextRefKind = "truncated_tool" | "truncated_payload" | "batch_summary" | "dropped_messages"
+
+interface ContextRefEntry {
+  ref: string
+  kind: ContextRefKind
+  createdAt: number
+  role: string
+  content: string
+  preview: string
+  totalChars: number
+  toolName?: string
+  messageCount?: number
+}
+
+interface ReadMoreContextOptions {
+  mode?: "overview" | "head" | "tail" | "window" | "search"
+  offset?: number
+  length?: number
+  query?: string
+  maxChars?: number
+}
+
 // Simple in-memory cache for provider/model context windows
 const contextWindowCache = new Map<string, number>()
+const contextRefRegistryBySession = new Map<string, Map<string, ContextRefEntry>>()
 
 function key(providerId: string, model: string) {
   return `${providerId}|${model}`
@@ -433,6 +456,188 @@ export function clearActualTokenUsage(sessionId: string): void {
   actualTokenUsageBySession.delete(sessionId)
 }
 
+function buildContextPreview(content: string, maxChars: number = 180): string {
+  const normalized = content.replace(/\s+/g, " ").trim()
+  return normalized.length > maxChars ? `${normalized.slice(0, maxChars)}…` : normalized
+}
+
+function getSessionContextRefRegistry(sessionId: string): Map<string, ContextRefEntry> {
+  let registry = contextRefRegistryBySession.get(sessionId)
+  if (!registry) {
+    registry = new Map<string, ContextRefEntry>()
+    contextRefRegistryBySession.set(sessionId, registry)
+  }
+  return registry
+}
+
+function makeContextRef(): string {
+  return `ctx_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function registerContextRef(
+  sessionId: string | undefined,
+  input: {
+    kind: ContextRefKind
+    role: string
+    content: string
+    toolName?: string
+    messageCount?: number
+  },
+): string | undefined {
+  if (!sessionId) return undefined
+
+  const ref = makeContextRef()
+  const registry = getSessionContextRefRegistry(sessionId)
+  registry.set(ref, {
+    ref,
+    kind: input.kind,
+    createdAt: Date.now(),
+    role: input.role,
+    content: input.content,
+    preview: buildContextPreview(input.content),
+    totalChars: input.content.length,
+    toolName: input.toolName,
+    messageCount: input.messageCount,
+  })
+  return ref
+}
+
+function addContextRefNote(message: string, contextRef?: string): string {
+  if (!contextRef) return message
+  return `${message}\nContext ref: ${contextRef}`
+}
+
+export function clearContextRefs(sessionId: string): void {
+  contextRefRegistryBySession.delete(sessionId)
+}
+
+export function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
+  if (!sessionId) return undefined
+  return contextRefRegistryBySession.get(sessionId)?.get(contextRef)
+}
+
+export function readMoreContext(
+  sessionId: string | undefined,
+  contextRef: string,
+  options: ReadMoreContextOptions = {},
+): Record<string, unknown> {
+  const entry = getContextRefEntry(sessionId, contextRef)
+  if (!entry) {
+    return {
+      success: false,
+      contextRef,
+      error: sessionId
+        ? `Context ref not found for this session: ${contextRef}`
+        : "read_more_context requires an active session",
+    }
+  }
+
+  const mode = options.mode ?? "overview"
+  const maxChars = Math.max(100, Math.min(options.maxChars ?? 1200, 4000))
+  const totalChars = entry.totalChars
+
+  if (mode === "overview") {
+    return {
+      success: true,
+      contextRef,
+      mode,
+      kind: entry.kind,
+      role: entry.role,
+      toolName: entry.toolName,
+      messageCount: entry.messageCount,
+      totalChars,
+      preview: entry.preview,
+    }
+  }
+
+  if (mode === "head") {
+    return {
+      success: true,
+      contextRef,
+      mode,
+      totalChars,
+      returnedChars: Math.min(maxChars, totalChars),
+      excerpt: entry.content.slice(0, maxChars),
+    }
+  }
+
+  if (mode === "tail") {
+    const start = Math.max(0, totalChars - maxChars)
+    return {
+      success: true,
+      contextRef,
+      mode,
+      totalChars,
+      start,
+      returnedChars: totalChars - start,
+      excerpt: entry.content.slice(start),
+    }
+  }
+
+  if (mode === "window") {
+    const safeLength = Math.max(100, Math.min(options.length ?? maxChars, maxChars))
+    const safeOffset = Math.max(0, Math.min(options.offset ?? 0, Math.max(0, totalChars - 1)))
+    const start = Math.max(0, Math.min(safeOffset, Math.max(0, totalChars - safeLength)))
+    const end = Math.min(totalChars, start + safeLength)
+    return {
+      success: true,
+      contextRef,
+      mode,
+      totalChars,
+      start,
+      end,
+      returnedChars: end - start,
+      excerpt: entry.content.slice(start, end),
+    }
+  }
+
+  if (mode === "search") {
+    const query = typeof options.query === "string" ? options.query.trim() : ""
+    if (!query) {
+      return {
+        success: false,
+        contextRef,
+        mode,
+        error: "query is required for search mode",
+      }
+    }
+
+    const haystack = entry.content.toLowerCase()
+    const needle = query.toLowerCase()
+    const matches: Array<{ start: number; end: number; excerpt: string }> = []
+    let cursor = 0
+    while (cursor < haystack.length && matches.length < 5) {
+      const foundAt = haystack.indexOf(needle, cursor)
+      if (foundAt === -1) break
+      const start = Math.max(0, foundAt - Math.floor(maxChars / 4))
+      const end = Math.min(totalChars, foundAt + needle.length + Math.floor(maxChars / 2))
+      matches.push({
+        start,
+        end,
+        excerpt: entry.content.slice(start, end),
+      })
+      cursor = foundAt + needle.length
+    }
+
+    return {
+      success: true,
+      contextRef,
+      mode,
+      query,
+      totalChars,
+      matchCount: matches.length,
+      matches,
+    }
+  }
+
+  return {
+    success: false,
+    contextRef,
+    mode,
+    error: `Unsupported mode: ${mode}`,
+  }
+}
+
 // ============================================================================
 // ITERATIVE SUMMARY CACHE (Pi-style)
 // ============================================================================
@@ -597,6 +802,12 @@ function formatBatchSummaryInput(items: SummaryCandidate[]): string {
   )).join("\n\n---\n\n")
 }
 
+function formatBatchSourceMessages(items: SummaryCandidate[], allMessages: LLMMessage[]): string {
+  return items.map((item, idx) => (
+    `[Message ${idx + 1} | role=${item.role} | original_index=${item.i}]\n${allMessages[item.i]?.content || item.contentForSummary}`
+  )).join("\n\n---\n\n")
+}
+
 function estimateBatchInputLength(items: SummaryCandidate[]): number {
   return formatBatchSummaryInput(items).length
 }
@@ -643,12 +854,12 @@ function buildSummaryBatches(candidates: SummaryCandidate[]): SummaryBatch[] {
   return batches
 }
 
-function buildSummaryMessage(batch: SummaryBatch, summary: string): LLMMessage {
+function buildSummaryMessage(batch: SummaryBatch, summary: string, contextRef?: string): LLMMessage {
   const count = batch.items.length
   const label = count === 1 ? "message" : "messages"
   return {
     role: "assistant",
-    content: `[Earlier Context Summary: ${count} ${label}]\n${summary.trim()}`,
+    content: addContextRefNote(`[Earlier Context Summary: ${count} ${label}]\n${summary.trim()}`, contextRef),
   }
 }
 
@@ -924,7 +1135,17 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
     const marker = msg.role === "tool" ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
     const keepChars = msg.role === "tool" ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
-    const truncatedContent = truncateWithMarker(msg.content, keepChars, marker)
+    const { toolName } = parseToolNameFromContent(msg.content)
+    const contextRef = registerContextRef(opts.sessionId, {
+      kind: msg.role === "tool" ? "truncated_tool" : "truncated_payload",
+      role: msg.role,
+      content: msg.content,
+      toolName: toolName !== "unknown" ? toolName : undefined,
+    })
+    const truncatedContent = addContextRefNote(
+      truncateWithMarker(msg.content, keepChars, marker),
+      contextRef,
+    )
 
     if (truncatedContent !== msg.content) {
       messages[i] = {
@@ -998,9 +1219,15 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     }
 
     const summarized = await summarizeMessageBatch(batch.items, opts.sessionId)
+    const contextRef = registerContextRef(opts.sessionId, {
+      kind: "batch_summary",
+      role: "assistant",
+      content: formatBatchSourceMessages(batch.items, messages),
+      messageCount: batch.items.length,
+    })
     const startIndex = batch.startIndex + indexOffset
     const deleteCount = batch.endIndex - batch.startIndex + 1
-    messages.splice(startIndex, deleteCount, buildSummaryMessage(batch, summarized))
+    messages.splice(startIndex, deleteCount, buildSummaryMessage(batch, summarized, contextRef))
     indexOffset -= deleteCount - 1
 
     applied.push("batch_summarize")
@@ -1135,9 +1362,32 @@ Keep the summary under 1000 characters. Be factual and specific.`
 
   // Insert tool summary
   if (toolSummaryMessage) ordered.push(toolSummaryMessage)
+
+  const droppedMessagesRef = opts.sessionId && droppedMessages.length > 0
+    ? registerContextRef(opts.sessionId, {
+      kind: "dropped_messages",
+      role: "assistant",
+      content: droppedMessages
+        .map((message, idx) => `[Dropped ${idx + 1} | role=${message.role}]\n${message.content || ""}`)
+        .join("\n\n---\n\n"),
+      messageCount: droppedMessages.length,
+    })
+    : undefined
+
   for (let k = baseLen - effectiveLastN; k < baseLen; k++) {
     if (k >= 0 && k !== systemIdx && k !== firstUserIdx) ordered.push(messages[k])
   }
+
+  if (droppedMessagesRef) {
+    const insertedSummaryIdx = ordered.findIndex((message) => message.content.startsWith("[Session Progress Summary]"))
+    if (insertedSummaryIdx >= 0) {
+      ordered[insertedSummaryIdx] = {
+        ...ordered[insertedSummaryIdx],
+        content: addContextRefNote(ordered[insertedSummaryIdx].content, droppedMessagesRef),
+      }
+    }
+  }
+
   messages = ordered
   applied.push("drop_middle")
   tokens = estimateTokensFromMessages(messages)

@@ -47,11 +47,13 @@ vi.mock('@dotagents/shared', () => ({
   sanitizeMessageContentForDisplay: (content: string) => content,
 }))
 
-import { shrinkMessagesForLLM } from './context-budget'
+import { clearContextRefs, readMoreContext, shrinkMessagesForLLM } from './context-budget'
 
 describe('shrinkMessagesForLLM replacement policy', () => {
   beforeEach(() => {
     makeTextCompletionWithFetchMock.mockReset()
+    clearContextRefs('session-truncate')
+    clearContextRefs('session-batch')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -77,7 +79,14 @@ describe('shrinkMessagesForLLM replacement policy', () => {
 
     expect(makeTextCompletionWithFetchMock).not.toHaveBeenCalled()
     expect(result.appliedStrategies).toContain('aggressive_truncate')
-    expect(result.messages.some((msg) => msg.content.includes('Large tool result truncated for context management'))).toBe(true)
+    const truncatedMessage = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    expect(truncatedMessage).toBeTruthy()
+    const contextRef = truncatedMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+
+    const readResult = readMoreContext('session-truncate', contextRef!, { mode: 'tail', maxChars: 120 })
+    expect(readResult).toEqual(expect.objectContaining({ success: true, contextRef }))
+    expect(String(readResult.excerpt)).toContain('x'.repeat(50))
   })
 
   it('batch-summarizes contiguous oversized conversational messages in one call', async () => {
@@ -99,6 +108,13 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
     expect(result.appliedStrategies).toContain('batch_summarize')
     expect(result.messages).toHaveLength(4)
-    expect(result.messages.some((msg) => msg.content.includes('[Earlier Context Summary: 3 messages]'))).toBe(true)
+    const summaryMessage = result.messages.find((msg) => msg.content.includes('[Earlier Context Summary: 3 messages]'))
+    expect(summaryMessage).toBeTruthy()
+    const contextRef = summaryMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+
+    const readResult = readMoreContext('session-batch', contextRef!, { mode: 'search', query: 'bbbb', maxChars: 200 })
+    expect(readResult).toEqual(expect.objectContaining({ success: true, contextRef }))
+    expect(Number(readResult.matchCount)).toBeGreaterThan(0)
   })
 })
