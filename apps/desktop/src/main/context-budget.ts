@@ -850,10 +850,10 @@ const TOOL_RESULT_TRUNCATE_THRESHOLD = 3000
 const TOOL_RESULT_KEEP_CHARS = 1800
 const BATCH_SUMMARY_MAX_INPUT_CHARS = 12000
 const BATCH_SUMMARY_MAX_MESSAGES = 8
-const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 12
-const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 24
-const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.65
-const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 4
+const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 20
+const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
+const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
+const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
 
 function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
   const content = message.content || ""
@@ -1002,14 +1002,23 @@ function buildArchiveEligibleIndices(messages: LLMMessage[], systemIdx: number, 
   return indices
 }
 
-function shouldApplyArchiveFrontier(
+interface ArchiveFrontierState {
+  systemIdx: number
+  firstUserIdx: number
+  eligibleIndices: number[]
+  archivedCount: number
+  liveCount: number
+  keepLiveCount: number
+  overflowCount: number
+  hasArchiveState: boolean
+}
+
+function getArchiveFrontierState(
   messages: LLMMessage[],
   sessionId: string | undefined,
-  tokens: number,
-  targetTokens: number,
   lastN: number,
-): boolean {
-  if (!sessionId) return false
+): ArchiveFrontierState | null {
+  if (!sessionId) return null
 
   const systemIdx = messages.findIndex((m) => m.role === "system")
   const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
@@ -1017,15 +1026,42 @@ function shouldApplyArchiveFrontier(
   const archivedCount = Math.min(archiveFrontierCountBySession.get(sessionId) ?? 0, eligibleIndices.length)
   const liveCount = Math.max(0, eligibleIndices.length - archivedCount)
   const keepLiveCount = Math.max(lastN, ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES)
+  const overflowCount = Math.max(0, liveCount - keepLiveCount)
 
-  if (archivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
-    return true
+  return {
+    systemIdx,
+    firstUserIdx,
+    eligibleIndices,
+    archivedCount,
+    liveCount,
+    keepLiveCount,
+    overflowCount,
+    hasArchiveState: archivedCount > 0 || iterativeSummaryCache.has(sessionId),
   }
+}
 
-  return liveCount > keepLiveCount && (
-    messages.length > ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT
-      || tokens > Math.floor(targetTokens * ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO)
-  )
+function shouldAdvanceArchiveFrontier(
+  state: ArchiveFrontierState | null,
+  messagesLength: number,
+  tokens: number,
+  targetTokens: number,
+): boolean {
+  if (!state) return false
+  if (state.overflowCount < ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH) return false
+
+  return messagesLength > ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT
+    || tokens > targetTokens
+    || tokens > Math.floor(targetTokens * ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO)
+}
+
+function shouldApplyArchiveFrontier(
+  state: ArchiveFrontierState | null,
+  messagesLength: number,
+  tokens: number,
+  targetTokens: number,
+): boolean {
+  if (!state) return false
+  return state.hasArchiveState || shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
 }
 
 async function updateIterativeSummaryForDroppedMessages(
@@ -1314,7 +1350,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     }
   }
 
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
     if (isDebugLLM()) logLLM("ContextBudget: after microcompact", { estTokens: tokens, count: messages.length })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
@@ -1352,7 +1388,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
       applied.push("aggressive_truncate")
       tokens = estimateTokensFromMessages(messages)
-      if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+      if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
         if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
         return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
       }
@@ -1361,50 +1397,49 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   // Recalculate after Tier 0 truncation
   tokens = estimateTokensFromMessages(messages)
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
     if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 0c: Archive older raw history behind a rolling summary frontier.
   // This keeps a bounded live tail even when token count is technically under target.
-  if (opts.sessionId && shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
-    const systemIdx = messages.findIndex((m) => m.role === "system")
-    const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
-    const eligibleIndices = buildArchiveEligibleIndices(messages, systemIdx, firstUserIdx)
-    const previousArchivedCount = Math.min(archiveFrontierCountBySession.get(opts.sessionId) ?? 0, eligibleIndices.length)
-    const keepLiveCount = Math.max(lastN, ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES)
+  const sessionId = opts.sessionId
+  const archiveFrontierState = getArchiveFrontierState(messages, sessionId, lastN)
+  if (sessionId && shouldApplyArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
+    const systemIdx = archiveFrontierState!.systemIdx
+    const firstUserIdx = archiveFrontierState!.firstUserIdx
+    const eligibleIndices = archiveFrontierState!.eligibleIndices
+    const previousArchivedCount = archiveFrontierState!.archivedCount
     const unarchivedIndices = eligibleIndices.slice(previousArchivedCount)
-    const overflowCount = Math.max(0, unarchivedIndices.length - keepLiveCount)
+    const overflowCount = archiveFrontierState!.overflowCount
 
     let nextArchivedCount = previousArchivedCount
     let newlyArchivedMessages: LLMMessage[] = []
 
-    if (overflowCount > 0 && (overflowCount >= ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH || tokens > targetTokens)) {
+    if (shouldAdvanceArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
       const archiveIndices = unarchivedIndices.slice(0, overflowCount)
       newlyArchivedMessages = archiveIndices.map((index) => messages[index])
 
       if (newlyArchivedMessages.length > 0) {
-        await updateIterativeSummaryForDroppedMessages(opts.sessionId, newlyArchivedMessages, opts.onSummarizationProgress)
-        upsertArchiveHistoryRef(opts.sessionId, newlyArchivedMessages)
+        await updateIterativeSummaryForDroppedMessages(sessionId, newlyArchivedMessages, opts.onSummarizationProgress)
+        upsertArchiveHistoryRef(sessionId, newlyArchivedMessages)
         nextArchivedCount = Math.min(eligibleIndices.length, previousArchivedCount + newlyArchivedMessages.length)
-        archiveFrontierCountBySession.set(opts.sessionId, nextArchivedCount)
+        archiveFrontierCountBySession.set(sessionId, nextArchivedCount)
       }
     }
 
-    if (nextArchivedCount > 0 || iterativeSummaryCache.has(opts.sessionId)) {
+    if (nextArchivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
       const ordered: LLMMessage[] = []
       if (systemIdx >= 0) ordered.push(messages[systemIdx])
       if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) ordered.push(messages[firstUserIdx])
 
-      const summaryMessage = buildSessionProgressSummaryMessage(opts.sessionId)
+      const summaryMessage = buildSessionProgressSummaryMessage(sessionId)
       if (summaryMessage) ordered.push(summaryMessage)
 
-      if (opts.sessionId) {
-        const progressSummary = buildContextFromSummaries(opts.sessionId)
-        if (progressSummary) {
-          ordered.push({ role: "assistant", content: progressSummary })
-        }
+      const progressSummary = buildContextFromSummaries(sessionId)
+      if (progressSummary) {
+        ordered.push({ role: "assistant", content: progressSummary })
       }
 
       for (const index of eligibleIndices.slice(nextArchivedCount)) {
@@ -1412,12 +1447,12 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
 
       messages = ordered
-      applied.push("archive_frontier")
+      if (!applied.includes("archive_frontier")) applied.push("archive_frontier")
       tokens = estimateTokensFromMessages(messages)
     }
   }
 
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+  if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after archive_frontier", { estTokens: tokens, kept: messages.length })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
@@ -1490,7 +1525,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     if (tokens <= targetTokens) break
   }
 
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+  if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after batch_summarize", { estTokens: tokens })
     return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }

@@ -136,7 +136,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const messages = [
       { role: 'system', content: 'system prompt' },
       { role: 'user', content: 'Original task request' },
-      ...Array.from({ length: 28 }, (_, index) => ({
+      ...Array.from({ length: 48 }, (_, index) => ({
         role: index % 2 === 0 ? 'assistant' : 'user',
         content: `message-${index} ${'z'.repeat(80)}`,
       })),
@@ -193,19 +193,20 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(firstMatch.excerpt).toContain(longQuery)
   })
 
-  it('keeps the live tail when archive frontier has no overflow on a later pass', async () => {
+  it('does not keep updating archived session summary when there is no new overflow', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
     Object.assign(mockConfig, {
       mcpContextSummarizeCharThreshold: 10000,
-      mcpMaxContextTokensOverride: 400,
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
     })
 
     const messages = [
       { role: 'system', content: 'system prompt' },
       { role: 'user', content: 'Original task request' },
-      ...Array.from({ length: 16 }, (_, index) => ({
+      ...Array.from({ length: 44 }, (_, index) => ({
         role: index % 2 === 0 ? 'assistant' : 'user',
-        content: `live-marker-${index} ${'q'.repeat(700)}`,
+        content: `live-marker-${index} ${'q'.repeat(120)}`,
       })),
     ]
 
@@ -222,7 +223,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     })
 
     expect(secondPass.appliedStrategies).toContain('archive_frontier')
-    expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-15'))).toBe(true)
+    expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
+    expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-43'))).toBe(true)
     expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
   })
 
