@@ -459,6 +459,70 @@ describe("ACP Service", () => {
     })
   })
 
+  describe("sendPrompt", () => {
+    it("prefers direct prompt response content over streamed session/update text", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      vi.spyOn(acpService as any, "sendRequest").mockImplementation(async () => {
+        acpService.emit("notification", {
+          agentName: "test-agent",
+          method: "session/update",
+          params: {
+            sessionId: "session-final-answer",
+            update: {
+              sessionUpdate: "agent_message_chunk",
+              text: "Working through the task with detailed internal progress",
+            },
+          },
+        })
+
+        return {
+          content: [{ type: "text", text: "Concise final answer" }],
+        }
+      })
+
+      const result = await acpService.sendPrompt("test-agent", "session-final-answer", "Do the thing")
+
+      expect(result).toEqual({
+        success: true,
+        response: "Concise final answer",
+        stopReason: undefined,
+      })
+    })
+
+    it("falls back to streamed session/update text when the prompt response has no text", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      vi.spyOn(acpService as any, "sendRequest").mockImplementation(async () => {
+        acpService.emit("notification", {
+          agentName: "test-agent",
+          method: "session/update",
+          params: {
+            sessionId: "session-stream-only",
+            update: {
+              sessionUpdate: "agent_message_chunk",
+              text: "Streamed final answer",
+            },
+          },
+        })
+
+        return {
+          stopReason: "end_turn",
+        }
+      })
+
+      const result = await acpService.sendPrompt("test-agent", "session-stream-only", "Do the thing")
+
+      expect(result).toEqual({
+        success: true,
+        response: "Streamed final answer",
+        stopReason: "end_turn",
+      })
+    })
+  })
+
   describe("getAgentStatus", () => {
     it("should return stopped for unspawned agent", async () => {
       const { acpService } = await import("./acp-service")
