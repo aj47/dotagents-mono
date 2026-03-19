@@ -177,6 +177,51 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
   }, [clearHandsFreeDebounce, log, setListeningValue, setLiveTranscriptValue]);
 
+  const finalizePendingHandsFree = useCallback((source: 'native' | 'web') => {
+    const textToSend = normalizeVoiceText(
+      pendingHandsFreeFinalRef.current
+      || (source === 'web' ? webFinalRef.current : nativeFinalRef.current)
+      || liveTranscriptRef.current,
+    );
+
+    pendingHandsFreeFinalRef.current = '';
+    if (source === 'web') {
+      webFinalRef.current = '';
+    } else {
+      nativeFinalRef.current = '';
+    }
+    setLiveTranscriptValue('');
+
+    if (!textToSend) {
+      return false;
+    }
+
+    void stopRecognitionOnly();
+    emitFinalized(textToSend, source);
+    return true;
+  }, [emitFinalized, setLiveTranscriptValue, stopRecognitionOnly]);
+
+  const scheduleHandsFreeFinalization = useCallback((source: 'native' | 'web', text: string) => {
+    const finalText = normalizeVoiceText(text);
+    if (!finalText) {
+      return false;
+    }
+
+    pendingHandsFreeFinalRef.current = finalText;
+    if (source === 'web') {
+      webFinalRef.current = '';
+    } else {
+      nativeFinalRef.current = '';
+    }
+
+    clearHandsFreeDebounce();
+    handsFreeDebounceRef.current = setTimeout(() => {
+      handsFreeDebounceRef.current = null;
+      finalizePendingHandsFree(source);
+    }, Math.max(0, handsFreeDebounceMs));
+    return true;
+  }, [clearHandsFreeDebounce, finalizePendingHandsFree, handsFreeDebounceMs]);
+
   const ensureWebRecognizer = useCallback(() => {
     if (Platform.OS !== 'web') return false;
     const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -208,20 +253,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
 
         if (finalText) {
           if (handsFree) {
-            clearHandsFreeDebounce();
             const final = finalText.trim();
             if (final) {
-              pendingHandsFreeFinalRef.current = mergeVoiceText(pendingHandsFreeFinalRef.current, final);
-              handsFreeDebounceRef.current = setTimeout(() => {
-                const textToSend = pendingHandsFreeFinalRef.current.trim();
-                pendingHandsFreeFinalRef.current = '';
-                webFinalRef.current = '';
-                setLiveTranscriptValue('');
-                if (textToSend) {
-                  void stopRecognitionOnly();
-                  emitFinalized(textToSend, 'web');
-                }
-              }, handsFreeDebounceMs);
+              scheduleHandsFreeFinalization('web', mergeVoiceText(pendingHandsFreeFinalRef.current, final));
             }
           } else {
             webFinalRef.current = mergeVoiceText(webFinalRef.current, finalText);
@@ -236,14 +270,40 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         }
       };
       rec.onend = () => {
-        clearHandsFreeDebounce();
-
         if (suppressFinalizeRef.current) {
           suppressFinalizeRef.current = false;
           setListeningValue(false);
           setLiveTranscriptValue('');
           return;
         }
+
+        if (handsFree) {
+          pendingPushToTalkFinalRef.current = null;
+          const finalText = normalizeVoiceText(
+            mergeVoiceText(
+              pendingHandsFreeFinalRef.current || webFinalRef.current,
+              liveTranscriptRef.current,
+            ),
+          );
+
+          if (finalText) {
+            pendingHandsFreeFinalRef.current = finalText;
+            webFinalRef.current = '';
+            if (!handsFreeDebounceRef.current) {
+              scheduleHandsFreeFinalization('web', finalText);
+            }
+            return;
+          }
+
+          clearHandsFreeDebounce();
+          pendingHandsFreeFinalRef.current = '';
+          webFinalRef.current = '';
+          setListeningValue(false);
+          setLiveTranscriptValue('');
+          return;
+        }
+
+        clearHandsFreeDebounce();
 
         if (!handsFree && !userReleasedButtonRef.current && webRecognitionRef.current) {
           try {
@@ -288,13 +348,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     deferPushToTalkFinalization,
     emitFinalized,
     handsFree,
-    handsFreeDebounceMs,
     log,
     onRecognizerError,
+    scheduleHandsFreeFinalization,
     setListeningValue,
     setLiveTranscriptValue,
     setSttPreviewWithExpiry,
-    stopRecognitionOnly,
   ]);
 
   const startRecording = useCallback(async (event?: GestureResponderEvent) => {
@@ -332,20 +391,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
               const text = nativeEvent?.results?.[0]?.transcript ?? nativeEvent?.text ?? nativeEvent?.transcript ?? '';
               if (nativeEvent?.isFinal && text) {
                 if (handsFree) {
-                  clearHandsFreeDebounce();
                   const final = text.trim();
                   if (final) {
-                    pendingHandsFreeFinalRef.current = mergeVoiceText(pendingHandsFreeFinalRef.current, final);
-                    handsFreeDebounceRef.current = setTimeout(() => {
-                      const textToSend = pendingHandsFreeFinalRef.current.trim();
-                      pendingHandsFreeFinalRef.current = '';
-                      nativeFinalRef.current = '';
-                      setLiveTranscriptValue('');
-                      if (textToSend) {
-                        void stopRecognitionOnly();
-                        emitFinalized(textToSend, 'native');
-                      }
-                    }, handsFreeDebounceMs);
+                    scheduleHandsFreeFinalization('native', mergeVoiceText(pendingHandsFreeFinalRef.current, final));
                   }
                 } else {
                   nativeFinalRef.current = mergeVoiceText(nativeFinalRef.current, text);
@@ -371,14 +419,40 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
             });
 
             const subEnd = srEmitterRef.current.addListener('end', async () => {
-              clearHandsFreeDebounce();
-
               if (suppressFinalizeRef.current) {
                 suppressFinalizeRef.current = false;
                 setListeningValue(false);
                 setLiveTranscriptValue('');
                 return;
               }
+
+              if (handsFree) {
+                pendingPushToTalkFinalRef.current = null;
+                const finalText = normalizeVoiceText(
+                  mergeVoiceText(
+                    pendingHandsFreeFinalRef.current || nativeFinalRef.current,
+                    liveTranscriptRef.current,
+                  ),
+                );
+
+                if (finalText) {
+                  pendingHandsFreeFinalRef.current = finalText;
+                  nativeFinalRef.current = '';
+                  if (!handsFreeDebounceRef.current) {
+                    scheduleHandsFreeFinalization('native', finalText);
+                  }
+                  return;
+                }
+
+                clearHandsFreeDebounce();
+                pendingHandsFreeFinalRef.current = '';
+                nativeFinalRef.current = '';
+                setListeningValue(false);
+                setLiveTranscriptValue('');
+                return;
+              }
+
+              clearHandsFreeDebounce();
 
               if (!handsFree && !userReleasedButtonRef.current) {
                 try {
@@ -489,14 +563,13 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     emitFinalized,
     ensureWebRecognizer,
     handsFree,
-    handsFreeDebounceMs,
     log,
     onPermissionDenied,
     onRecognizerError,
+    scheduleHandsFreeFinalization,
     setListeningValue,
     setLiveTranscriptValue,
     setSttPreviewWithExpiry,
-    stopRecognitionOnly,
   ]);
 
   const stopRecordingAndHandle = useCallback(async () => {

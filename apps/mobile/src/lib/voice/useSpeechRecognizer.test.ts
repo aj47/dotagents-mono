@@ -150,4 +150,38 @@ describe('useSpeechRecognizer', () => {
     expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'send', source: 'web' });
     expect(speechRecognition.startCalls).toBe(2);
   });
+
+  it('respects the configured hands-free silence delay even after recognizer end fires', async () => {
+    vi.useFakeTimers();
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 10_000,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const speechRecognition = FakeSpeechRecognition.instances[0];
+
+    speechRecognition.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'hello world' }, isFinal: true }],
+    });
+
+    vi.advanceTimersByTime(1_500);
+    speechRecognition.onend?.();
+
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(8_499);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'handsfree', source: 'web' });
+  });
 });
