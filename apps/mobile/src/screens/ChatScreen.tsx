@@ -317,6 +317,13 @@ const getRespondToUserContentFromMessage = (message: ChatMessage): string | null
 
 const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
 
+// Match [tool_name] {json...} or [tool_name] [...] patterns anywhere in text
+// Used to strip raw tool call / tool result text that leaks into visible content
+const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
+
+// Match garbled tool-call-as-text patterns (model hallucinating tool call syntax)
+const GARBLED_TOOL_CALL_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.)/i;
+
 const looksLikeToolPayloadContent = (content?: string): boolean => {
   const trimmedContent = content?.trim();
   if (!trimmedContent) {
@@ -336,7 +343,32 @@ const looksLikeToolPayloadContent = (content?: string): boolean => {
     return true;
   }
 
+  // Catch garbled tool call text
+  if (GARBLED_TOOL_CALL_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
   return false;
+};
+
+/**
+ * Strip raw tool call / tool result text that leaks into visible message content.
+ * Removes patterns like "[execute_command] {"command":"ls"}" or
+ * "[tool_name] [{"key":"value"}]" that backends sometimes include as text.
+ */
+const stripRawToolTextFromContent = (content: string): string => {
+  if (!content) return content;
+
+  // Remove [tool_name] {json} or [tool_name] [array] patterns
+  let cleaned = content.replace(INLINE_TOOL_BRACKET_REGEX, '');
+
+  // Remove tool marker tags like <|tool_call_begin|> etc.
+  cleaned = cleaned.replace(/<\|[^|]*\|>/g, '');
+
+  // Remove garbled multi_tool_use patterns
+  cleaned = cleaned.replace(/(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.)[\s\S]*$/i, '');
+
+  return cleaned.trim();
 };
 
 const getVisibleMessageContent = (message: ChatMessage): string => {
@@ -367,7 +399,11 @@ const getVisibleMessageContent = (message: ChatMessage): string => {
     return '';
   }
 
-  return message.content || '';
+  // Strip any remaining inline tool call text (e.g. "[execute_command] {json}")
+  // that might be embedded within otherwise valid content
+  const rawContent = message.content || '';
+  const stripped = stripRawToolTextFromContent(rawContent);
+  return stripped || rawContent;
 };
 
 const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
@@ -2902,7 +2938,8 @@ export default function ChatScreen({ route, navigation }: any) {
             const isPending = toolCallCount > 0 && toolCallCount > toolResultCount;
 
             // Skip empty messages: no visible content AND no tool calls to display
-            if (visibleMessageContent.trim().length === 0 && toolCallCount === 0 && toolResultCount === 0) {
+            // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
+            if (visibleMessageContent.trim().length === 0 && toolCallCount === 0) {
               return null;
             }
 
@@ -3059,6 +3096,26 @@ export default function ChatScreen({ route, navigation }: any) {
                         {/* Expanded view - each tool call with its own params + result */}
                         {isExpanded && (
                           <View style={[
+                            { position: 'relative' as const },
+                          ]}>
+                          {/* Collapse button at top of expanded view */}
+                          <Pressable
+                            onPress={() => toggleMessageExpansion(i)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Collapse tool execution details"
+                            accessibilityHint="Collapse back to compact view"
+                            style={({ pressed }) => [
+                              styles.toolCallCompactContainer,
+                              pressed && styles.toolCallCompactPressed,
+                              { marginBottom: 4 },
+                            ]}
+                          >
+                            <Text style={styles.toolCallCompactStatus}>▲</Text>
+                            <Text style={styles.toolCallCompactName}>
+                              Collapse {toolCallCount} tool {toolCallCount === 1 ? 'call' : 'calls'}
+                            </Text>
+                          </Pressable>
+                          <View style={[
                             styles.toolExecutionCard,
                             isPending && styles.toolExecutionPending,
                             allSuccess && styles.toolExecutionSuccess,
@@ -3148,6 +3205,24 @@ export default function ChatScreen({ route, navigation }: any) {
                             {(m.toolCalls?.length ?? 0) === 0 && (
                               <Text style={styles.toolResponsePendingText}>No tool calls</Text>
                             )}
+                          </View>
+                          {/* Collapse button at bottom of expanded view for easy access */}
+                          <Pressable
+                            onPress={() => toggleMessageExpansion(i)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Collapse tool execution details"
+                            accessibilityHint="Collapse back to compact view"
+                            style={({ pressed }) => [
+                              styles.toolCallCompactContainer,
+                              pressed && styles.toolCallCompactPressed,
+                              { marginTop: 4 },
+                            ]}
+                          >
+                            <Text style={styles.toolCallCompactStatus}>▲</Text>
+                            <Text style={styles.toolCallCompactName}>
+                              Collapse
+                            </Text>
+                          </Pressable>
                           </View>
                         )}
                       </>
