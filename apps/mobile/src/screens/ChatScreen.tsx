@@ -315,6 +315,8 @@ const getRespondToUserContentFromMessage = (message: ChatMessage): string | null
   return null;
 };
 
+const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
+
 const looksLikeToolPayloadContent = (content?: string): boolean => {
   const trimmedContent = content?.trim();
   if (!trimmedContent) {
@@ -326,6 +328,11 @@ const looksLikeToolPayloadContent = (content?: string): boolean => {
   }
 
   if (TOOL_PAYLOAD_PREFIX_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
+  // Catch raw tool result content like "[tool_name] { json }" or "[tool_name] # markdown"
+  if (TOOL_RESULT_BRACKET_REGEX.test(trimmedContent)) {
     return true;
   }
 
@@ -354,6 +361,12 @@ const getVisibleMessageContent = (message: ChatMessage): string => {
     return '';
   }
 
+  // Hide standalone messages that are raw tool results (no structured metadata
+  // but content looks like "[tool_name] { json }" from unmerged tool responses)
+  if (looksLikeToolPayloadContent(message.content)) {
+    return '';
+  }
+
   return message.content || '';
 };
 
@@ -361,6 +374,11 @@ const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
   const hasToolMetadata =
     (message.toolCalls?.length ?? 0) > 0 ||
     (message.toolResults?.length ?? 0) > 0;
+
+  // Also treat standalone raw tool result messages as tool-only
+  if (looksLikeToolPayloadContent(message.content)) {
+    return true;
+  }
 
   return hasToolMetadata && getVisibleMessageContent(message).trim().length === 0;
 };
@@ -2883,6 +2901,11 @@ export default function ChatScreen({ route, navigation }: any) {
             // isPending is true when there are more tool calls than results (including partial completion)
             const isPending = toolCallCount > 0 && toolCallCount > toolResultCount;
 
+            // Skip empty messages: no visible content AND no tool calls to display
+            if (visibleMessageContent.trim().length === 0 && toolCallCount === 0 && toolResultCount === 0) {
+              return null;
+            }
+
             return (
               <View
                 key={i}
@@ -2983,8 +3006,8 @@ export default function ChatScreen({ route, navigation }: any) {
                       </View>
                     ) : null}
 
-                    {/* Unified Tool Execution Display - show when there are toolCalls OR toolResults */}
-                    {((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0) && (
+                    {/* Unified Tool Execution Display - only show when there are actual toolCalls with names */}
+                    {(m.toolCalls?.length ?? 0) > 0 && (
                       <>
                         {/* Collapsed view - one line per tool call with useful info */}
                         {!isExpanded && (
