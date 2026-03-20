@@ -1260,7 +1260,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 2,
+      marginBottom: 0,
     },
     sessionTitleRow: {
       flexDirection: 'row',
@@ -1276,7 +1276,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginLeft: spacing.sm,
     },
     sessionTitle: {
-      ...theme.typography.body,
+      fontSize: 15,
+      lineHeight: 20,
       fontWeight: '600',
       flex: 1,
       minWidth: 0,
