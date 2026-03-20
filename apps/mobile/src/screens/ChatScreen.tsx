@@ -209,6 +209,9 @@ const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.tes
 
 const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
 
+/** Meta-tools whose results are already shown as visible message content or are purely internal */
+const HIDDEN_META_TOOLS = new Set([RESPOND_TO_USER_TOOL, 'mark_work_complete']);
+
 const sanitizeMessageContentForModel = (content: string) =>
   content.replace(INLINE_DATA_IMAGE_MARKDOWN_REGEX, (_match, altText: string) => {
     const cleanedAlt = altText?.trim();
@@ -2915,9 +2918,14 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           {messages.map((m, i) => {
             const visibleMessageContent = getVisibleMessageContent(m);
-            const shouldCollapse = m.role === 'assistant'
-              ? shouldCollapseMessage(visibleMessageContent)
-              : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
+            // Messages whose visible content comes from respond_to_user should
+            // never be collapsed — they ARE the assistant's response to the user
+            const hasRespondToUserContent = !!getRespondToUserContentFromMessage(m);
+            const shouldCollapse = hasRespondToUserContent
+              ? false
+              : m.role === 'assistant'
+                ? shouldCollapseMessage(visibleMessageContent)
+                : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = expandedMessages[i] ?? false;
@@ -2935,6 +2943,10 @@ export default function ChatScreen({ route, navigation }: any) {
               config.ttsEnabled !== false &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
 
+            // Filter out meta-tools from display (respond_to_user, mark_work_complete)
+            // since their content is already shown as visible message text
+            const displayToolCalls = (m.toolCalls ?? []).filter(tc => !HIDDEN_META_TOOLS.has(tc.name));
+            const displayToolCallCount = displayToolCalls.length;
             const toolCallCount = m.toolCalls?.length ?? 0;
             const toolResultCount = m.toolResults?.length ?? 0;
             const hasToolResults = toolResultCount > 0;
@@ -2945,7 +2957,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
             // Skip empty messages: no visible content AND no tool calls to display
             // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
-            if (visibleMessageContent.trim().length === 0 && toolCallCount === 0) {
+            if (visibleMessageContent.trim().length === 0 && displayToolCallCount === 0) {
               return null;
             }
 
@@ -3049,8 +3061,8 @@ export default function ChatScreen({ route, navigation }: any) {
                       </View>
                     ) : null}
 
-                    {/* Unified Tool Execution Display - only show when there are actual toolCalls with names */}
-                    {(m.toolCalls?.length ?? 0) > 0 && (
+                    {/* Unified Tool Execution Display - only show when there are displayable tool calls */}
+                    {displayToolCallCount > 0 && (
                       <>
                         {/* Collapsed view - one line per tool call with useful info */}
                         {!isExpanded && (
@@ -3066,9 +3078,10 @@ export default function ChatScreen({ route, navigation }: any) {
                               pressed && styles.toolCallCompactPressed,
                             ]}
                           >
-                            {(m.toolCalls ?? []).map((tc, tcIdx) => {
-                              const tcResult = m.toolResults?.[tcIdx];
-                              const tcPending = !tcResult && tcIdx >= (m.toolResults?.length ?? 0);
+                            {displayToolCalls.map((tc, tcIdx) => {
+                              const origIdx = (m.toolCalls ?? []).indexOf(tc);
+                              const tcResult = m.toolResults?.[origIdx];
+                              const tcPending = !tcResult && origIdx >= (m.toolResults?.length ?? 0);
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
                               const argPreview = formatArgumentsPreview(tc.arguments);
@@ -3118,7 +3131,7 @@ export default function ChatScreen({ route, navigation }: any) {
                           >
                             <Text style={styles.toolCallCompactStatus}>▲</Text>
                             <Text style={styles.toolCallCompactName}>
-                              Collapse {toolCallCount} tool {toolCallCount === 1 ? 'call' : 'calls'}
+                              Collapse {displayToolCallCount} tool {displayToolCallCount === 1 ? 'call' : 'calls'}
                             </Text>
                           </Pressable>
                           <View style={[
@@ -3127,9 +3140,10 @@ export default function ChatScreen({ route, navigation }: any) {
                             allSuccess && styles.toolExecutionSuccess,
                             hasErrors && styles.toolExecutionError,
                           ]}>
-                            {m.toolCalls?.map((toolCall, idx) => {
-                              const result = m.toolResults?.[idx];
-                              const isResultPending = !result && idx >= (m.toolResults?.length ?? 0);
+                            {displayToolCalls.map((toolCall, idx) => {
+                              const origIdx = (m.toolCalls ?? []).indexOf(toolCall);
+                              const result = m.toolResults?.[origIdx];
+                              const isResultPending = !result && origIdx >= (m.toolResults?.length ?? 0);
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
                               const stableMessageKey = m.id ?? String(i);
@@ -3207,8 +3221,8 @@ export default function ChatScreen({ route, navigation }: any) {
                                 </View>
                               );
                             })}
-                            {/* Show message if no tool calls */}
-                            {(m.toolCalls?.length ?? 0) === 0 && (
+                            {/* Show message if no displayable tool calls */}
+                            {displayToolCallCount === 0 && (
                               <Text style={styles.toolResponsePendingText}>No tool calls</Text>
                             )}
                           </View>
