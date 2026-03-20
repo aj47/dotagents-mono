@@ -55,6 +55,55 @@ export APPLE_ID="your@email.com"                  # Your Apple ID email
 export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # From appleid.apple.com
 ```
 
+**Preferred alternative: App Store Connect API key notarization**
+```bash
+export APPLE_API_KEY_ID="ABC123DEFG"
+export APPLE_API_ISSUER="11111111-2222-3333-4444-555555555555"
+export APPLE_API_KEY="$HOME/.config/dotagents/AuthKey_ABC123DEFG.p8"
+```
+
+If `APPLE_API_KEY`, `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER` are set, the local desktop release flow will prefer API-key notarization over Apple ID + app-specific password.
+
+When API-key notarization is active, any legacy Apple ID vars are ignored automatically so `electron-builder` does not accidentally choose the older auth path first.
+
+### Step 2.5: Save them in a local shell file
+
+The local desktop release scripts now auto-load release credentials from:
+
+1. `~/.config/dotagents/release.env`
+2. `~/.dotagents/release.env`
+3. `./.env`
+4. `./.env.local`
+5. `apps/desktop/.env`
+6. `apps/desktop/.env.local`
+
+Example:
+
+```bash
+export CSC_NAME="Your Name (TEAMID)"
+export APPLE_DEVELOPER_ID="Your Name (TEAMID)"
+export ENABLE_HARDENED_RUNTIME=true
+export APPLE_TEAM_ID="TEAMID"
+export APPLE_ID="your@email.com"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+export APPLE_API_KEY_ID="ABC123DEFG"
+export APPLE_API_ISSUER="11111111-2222-3333-4444-555555555555"
+export APPLE_API_KEY="$HOME/.config/dotagents/AuthKey_ABC123DEFG.p8"
+export GH_TOKEN="ghp_xxx" # optional: publish release assets from your machine
+```
+
+If you want to use a different env file, set `DOTAGENTS_RELEASE_ENV_FILE=/path/to/file.env`.
+
+Recommended: keep release credentials in `~/.config/dotagents/release.env` so they never live inside the public repo.
+
+Then source it from your shell config, for example in `~/.zshrc`:
+
+```bash
+[ -f "$HOME/.config/dotagents/release.env" ] && source "$HOME/.config/dotagents/release.env"
+```
+
+After editing `~/.zshrc`, reload it with `source ~/.zshrc` or open a new shell.
+
 > **Generating App-Specific Password:** Go to https://appleid.apple.com → Sign In → 
 > App-Specific Passwords → Generate a password for "DotAgents Notarization"
 
@@ -77,6 +126,13 @@ npx electron-vite build
 npx electron-builder --mac --config electron-builder.config.cjs --publish=never
 ```
 
+Or use the local desktop release script, which loads `.env` automatically and publishes only when `GH_TOKEN` is set:
+
+```bash
+cd apps/desktop
+pnpm release
+```
+
 ### Step 5: Verify Output
 
 Built artifacts will be in `apps/desktop/dist/`:
@@ -89,16 +145,10 @@ Built artifacts will be in `apps/desktop/dist/`:
 
 ## Quick One-Liner
 
-For a complete signed build (replace with your actual name and team ID):
+For a complete signed build from your local `.env`:
 
 ```bash
-cd apps/desktop && \
-export CSC_NAME="Your Name (TEAMID)" && \
-export APPLE_DEVELOPER_ID="Your Name (TEAMID)" && \
-export ENABLE_HARDENED_RUNTIME=true && \
-pnpm run build-rs && \
-npx electron-vite build && \
-npx electron-builder --mac --config electron-builder.config.cjs --publish=never
+cd apps/desktop && pnpm release
 ```
 
 ## Troubleshooting
@@ -140,15 +190,15 @@ npx electron-builder --mac --config electron-builder.config.cjs --publish=never
 For convenience, there's a build script that handles all platforms:
 
 ```bash
-# Build all platforms
+# Build all platforms locally
 ./scripts/build-release.sh
 
-# macOS only
+# macOS only (loads .env automatically)
 ./scripts/build-release.sh --mac-only
 
 # Skip specific platforms
 ./scripts/build-release.sh --skip-ios --skip-android
 ```
 
-See the script header for all required environment variables.
+The local desktop release flow is intentionally local-first; the repo no longer relies on GitHub Actions to produce desktop release artifacts.
 

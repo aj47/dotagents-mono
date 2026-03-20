@@ -222,13 +222,17 @@ module.exports = {
       ],
     },
     notarize:
-      process.env.APPLE_TEAM_ID &&
-      process.env.APPLE_ID &&
-      process.env.APPLE_APP_SPECIFIC_PASSWORD
-        ? {
-            teamId: process.env.APPLE_TEAM_ID,
-          }
-        : undefined,
+      process.env.APPLE_API_KEY &&
+      process.env.APPLE_API_KEY_ID &&
+      process.env.APPLE_API_ISSUER
+        ? true
+        : process.env.APPLE_TEAM_ID &&
+            process.env.APPLE_ID &&
+            process.env.APPLE_APP_SPECIFIC_PASSWORD
+          ? {
+              teamId: process.env.APPLE_TEAM_ID,
+            }
+          : undefined,
   },
   mas: {
     artifactName: "${productName}-${version}-mas.${ext}",

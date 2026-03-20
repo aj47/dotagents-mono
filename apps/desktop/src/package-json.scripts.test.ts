@@ -1,14 +1,9 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as { scripts?: Record<string, string> }
-
-const buildReleaseWorkflow = readFileSync(
-  new URL("../../../.github/workflows/build-release.yml", import.meta.url),
-  "utf8",
-)
 
 const installScript = readFileSync(
   new URL("../../../scripts/install.sh", import.meta.url),
@@ -30,6 +25,21 @@ const installationDoc = readFileSync(
   "utf8",
 )
 
+const desktopReleaseScript = readFileSync(
+  new URL("../scripts/release.js", import.meta.url),
+  "utf8",
+)
+
+const rootBuildReleaseScript = readFileSync(
+  new URL("../../../scripts/build-release.sh", import.meta.url),
+  "utf8",
+)
+
+const buildingDoc = readFileSync(
+  new URL("../../../BUILDING.md", import.meta.url),
+  "utf8",
+)
+
 describe("desktop package scripts", () => {
   it("uses pnpm instead of npm run inside package scripts", () => {
     const scriptEntries = Object.entries(packageJson.scripts ?? {})
@@ -40,17 +50,38 @@ describe("desktop package scripts", () => {
     }
   })
 
-  it("keeps the release workflow pointed at the current shared workspace package", () => {
-    expect(buildReleaseWorkflow).toContain("pnpm --filter @dotagents/shared build")
-    expect(buildReleaseWorkflow).not.toContain("@speakmcp/shared")
+  it("keeps desktop releases local instead of relying on a GitHub Actions release workflow", () => {
+    expect(existsSync(new URL("../../../.github/workflows/build-release.yml", import.meta.url))).toBe(false)
   })
 
-  it("publishes desktop release assets from the current desktop build pipeline", () => {
-    expect(buildReleaseWorkflow).toContain("tags:")
-    expect(buildReleaseWorkflow).toContain("build-macos")
-    expect(buildReleaseWorkflow).toContain("publish-release")
-    expect(buildReleaseWorkflow).toContain("softprops/action-gh-release@v2")
-    expect(buildReleaseWorkflow).not.toContain("speakmcp-rs")
+  it("loads .env-based credentials in the local desktop release flow", () => {
+    expect(desktopReleaseScript).toContain("DOTAGENTS_RELEASE_ENV_FILE")
+    expect(desktopReleaseScript).toContain('.config", "dotagents", "release.env')
+    expect(desktopReleaseScript).toContain("APPLE_API_KEY")
+    expect(desktopReleaseScript).toContain("APPLE_API_KEY_ID")
+    expect(desktopReleaseScript).toContain("APPLE_API_ISSUER")
+    expect(desktopReleaseScript).toContain("const parseEnvValue")
+    expect(desktopReleaseScript).toContain('replace(/\\s+#.*$/, "")')
+    expect(desktopReleaseScript).toContain('delete process.env.APPLE_ID')
+    expect(desktopReleaseScript).toContain('delete process.env.APPLE_APP_SPECIFIC_PASSWORD')
+    expect(desktopReleaseScript).toContain("APPLE_APP_SPECIFIC_PASSWORD")
+    expect(desktopReleaseScript).toContain("GH_TOKEN")
+    expect(desktopReleaseScript.indexOf("loadReleaseEnv()")).toBeLessThan(
+      desktopReleaseScript.indexOf("const publishMode = resolvePublishMode()"),
+    )
+    expect(rootBuildReleaseScript).toContain("load_release_env")
+    expect(rootBuildReleaseScript).toContain('$HOME/.config/dotagents/release.env')
+    expect(rootBuildReleaseScript).toContain("validate_macos_release_env")
+    expect(rootBuildReleaseScript).toContain("APPLE_API_KEY")
+    expect(rootBuildReleaseScript).toContain("APPLE_API_KEY_ID")
+    expect(rootBuildReleaseScript).toContain("APPLE_API_ISSUER")
+    expect(rootBuildReleaseScript).toContain("unset APPLE_ID")
+    expect(rootBuildReleaseScript).toContain("unset APPLE_APP_SPECIFIC_PASSWORD")
+    expect(buildingDoc).toContain("pnpm release")
+    expect(buildingDoc).toContain("DOTAGENTS_RELEASE_ENV_FILE")
+    expect(buildingDoc).toContain("~/.config/dotagents/release.env")
+    expect(buildingDoc).toContain("source \"$HOME/.config/dotagents/release.env\"")
+    expect(buildingDoc).toContain("legacy Apple ID vars are ignored")
   })
 
   it("ships cross-platform one-line installer entry points", () => {
@@ -63,7 +94,12 @@ describe("desktop package scripts", () => {
     expect(installationDoc).toContain("scripts/install.ps1 | iex")
   })
 
-  it("allows unsigned macOS CI release builds when identity auto-discovery is disabled", () => {
-    expect(desktopBuilderConfig).toContain('process.env.CSC_IDENTITY_AUTO_DISCOVERY === "false"')
+  it("keeps notarization wired through electron-builder env vars", () => {
+    expect(desktopBuilderConfig).toContain("process.env.APPLE_API_KEY")
+    expect(desktopBuilderConfig).toContain("process.env.APPLE_API_KEY_ID")
+    expect(desktopBuilderConfig).toContain("process.env.APPLE_API_ISSUER")
+    expect(desktopBuilderConfig).toContain("process.env.APPLE_TEAM_ID")
+    expect(desktopBuilderConfig).toContain("process.env.APPLE_ID")
+    expect(desktopBuilderConfig).toContain("process.env.APPLE_APP_SPECIFIC_PASSWORD")
   })
 })
