@@ -47,6 +47,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
+  formatArgumentsPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
@@ -2890,8 +2891,8 @@ export default function ChatScreen({ route, navigation }: any) {
                   m.role === 'user' ? styles.user : styles.assistant,
                 ]}
               >
-                {/* Compact message header - no role labels, just tap to expand */}
-                {shouldCollapse && (
+                {/* Compact message header - only for non-tool-only messages (tool-only uses the tool compact row) */}
+                {shouldCollapse && !shouldTreatMessageAsToolOnly(m) && (
                   <Pressable
                     onPress={() => toggleMessageExpansion(i)}
                     accessibilityRole="button"
@@ -2985,7 +2986,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     {/* Unified Tool Execution Display - show when there are toolCalls OR toolResults */}
                     {((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0) && (
                       <>
-                        {/* Collapsed view - single line summary for all tools */}
+                        {/* Collapsed view - one line per tool call with useful info */}
                         {!isExpanded && (
                           <Pressable
                             onPress={() => toggleMessageExpansion(i)}
@@ -2995,48 +2996,40 @@ export default function ChatScreen({ route, navigation }: any) {
                             accessibilityState={{ expanded: false }}
                             aria-expanded={false}
                             style={({ pressed }) => [
-                              styles.toolCallCompactRow,
-                              isPending && styles.toolCallCompactPending,
-                              allSuccess && styles.toolCallCompactSuccess,
-                              hasErrors && styles.toolCallCompactError,
+                              styles.toolCallCompactContainer,
                               pressed && styles.toolCallCompactPressed,
                             ]}
                           >
-                            <Text style={[
-                              styles.toolCallCompactIcon,
-                              isPending && styles.toolCallCompactIconPending,
-                              allSuccess && styles.toolCallCompactIconSuccess,
-                              hasErrors && styles.toolCallCompactIconError,
-                            ]}>🔧</Text>
-                            <Text
-                              style={[
-                                styles.toolCallCompactName,
-                                isPending && styles.toolCallCompactNamePending,
-                                allSuccess && styles.toolCallCompactNameSuccess,
-                                hasErrors && styles.toolCallCompactNameError,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {(m.toolCalls?.map(tc => tc.name) ?? []).join(', ')}
-                            </Text>
-                            <Text style={[
-                              styles.toolCallCompactStatus,
-                              isPending && styles.toolCallCompactStatusPending,
-                              allSuccess && styles.toolCallCompactStatusSuccess,
-                              hasErrors && styles.toolCallCompactStatusError,
-                            ]}>
-                              {isPending ? '⏳' : allSuccess ? '✓' : '✗'}
-                            </Text>
-                            {/* Result preview - show truncated result content like desktop */}
-                            {!isPending && m.toolResults && m.toolResults.length > 0 && (
-                              <Text
-                                style={styles.toolCallCompactPreview}
-                                numberOfLines={1}
-                              >
-                                {getToolResultsSummary(m.toolResults)}
-                              </Text>
-                            )}
-                            <Text style={styles.toolCallCompactChevron}>▶</Text>
+                            {(m.toolCalls ?? []).map((tc, tcIdx) => {
+                              const tcResult = m.toolResults?.[tcIdx];
+                              const tcPending = !tcResult && tcIdx >= (m.toolResults?.length ?? 0);
+                              const tcSuccess = tcResult?.success === true;
+                              const tcError = tcResult?.success === false;
+                              const argPreview = formatArgumentsPreview(tc.arguments);
+                              return (
+                                <View key={tcIdx} style={styles.toolCallCompactLine}>
+                                  <Text style={[
+                                    styles.toolCallCompactStatus,
+                                    tcPending && styles.toolCallCompactStatusPending,
+                                    tcSuccess && styles.toolCallCompactStatusSuccess,
+                                    tcError && styles.toolCallCompactStatusError,
+                                  ]}>
+                                    {tcPending ? '⏳' : tcSuccess ? '✓' : '✗'}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.toolCallCompactName,
+                                      tcPending && styles.toolCallCompactNamePending,
+                                      tcSuccess && styles.toolCallCompactNameSuccess,
+                                      tcError && styles.toolCallCompactNameError,
+                                    ]}
+                                    numberOfLines={1}
+                                  >
+                                    {tc.name}{argPreview ? ` · ${argPreview}` : ''}
+                                  </Text>
+                                </View>
+                              );
+                            })}
                           </Pressable>
                         )}
 
@@ -4106,43 +4099,27 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderLeftColor: hexToRgba(theme.colors.destructive, 0.5),
       backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
     },
-    toolCallCompactRow: {
+    toolCallCompactContainer: {
+      paddingVertical: 1,
+      paddingHorizontal: 2,
+      borderRadius: radius.sm,
+      gap: 1,
+    },
+    toolCallCompactLine: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 2,
-      paddingHorizontal: 3,
-      borderRadius: radius.sm,
-      gap: 3,
-    },
-    toolCallCompactPending: {
-      backgroundColor: hexToRgba(theme.colors.info, 0.05),
-    },
-    toolCallCompactSuccess: {
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.03),
-    },
-    toolCallCompactError: {
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.03),
+      gap: 4,
+      paddingVertical: 1,
     },
     toolCallCompactPressed: {
       opacity: 0.7,
-    },
-    toolCallCompactIcon: {
-      fontSize: 8,
-    },
-    toolCallCompactIconPending: {
-      // uses default
-    },
-    toolCallCompactIconSuccess: {
-      color: theme.colors.mutedForeground,
-    },
-    toolCallCompactIconError: {
-      color: theme.colors.mutedForeground,
     },
     toolCallCompactName: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       fontWeight: '500',
       flexShrink: 1,
+      color: theme.colors.mutedForeground,
     },
     toolCallCompactNamePending: {
       color: theme.colors.info,
@@ -4155,7 +4132,6 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolCallCompactStatus: {
       fontSize: 9,
-      marginLeft: 1,
     },
     toolCallCompactStatusPending: {
       color: theme.colors.info,
@@ -4165,19 +4141,6 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolCallCompactStatusError: {
       color: theme.colors.mutedForeground,
-    },
-    toolCallCompactChevron: {
-      fontSize: 8,
-      color: theme.colors.mutedForeground,
-      opacity: 0.4,
-      marginLeft: 'auto',
-    },
-    toolCallCompactPreview: {
-      fontSize: 9,
-      color: theme.colors.mutedForeground,
-      opacity: 0.6,
-      flex: 1,
-      marginLeft: 2,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.xs,
