@@ -294,7 +294,7 @@ export const Component = () => {
               "flex shrink-0 items-center",
               isCollapsed ? "justify-center" : "justify-between",
               // On macOS, add top padding to clear the traffic-light window controls
-              process.env.IS_MAC ? "pb-1 pt-7" : "pb-1 pt-2",
+              process.env.IS_MAC ? "pb-1 pt-9" : "pb-1 pt-2",
               isCollapsed ? "px-1" : "px-2",
             )}
           >
@@ -305,7 +305,7 @@ export const Component = () => {
                   onClick={handleToggleGlobalTTS}
                   disabled={!configQuery.data || saveConfigMutation.isPending}
                   className={cn(
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors disabled:opacity-50",
+                    "flex h-6 w-6 items-center justify-center text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded-md transition-colors disabled:opacity-50",
                   )}
                   title={
                     isGlobalTTSEnabled
@@ -331,7 +331,7 @@ export const Component = () => {
                   type="button"
                   onClick={handleEmergencyStopAll}
                   disabled={isEmergencyStopping}
-                  className="text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
+                  className="flex h-6 w-6 items-center justify-center text-destructive hover:bg-destructive/10 shrink-0 rounded-md transition-colors disabled:opacity-50"
                   title="Emergency stop all agent sessions"
                   aria-label="Emergency stop all agent sessions"
                 >
