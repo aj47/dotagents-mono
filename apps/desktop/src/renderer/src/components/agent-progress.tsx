@@ -24,6 +24,9 @@ import {
   getAgentConversationStateLabel,
   getToolResultsSummary,
   normalizeAgentConversationState,
+  TOOL_GROUP_PREVIEW_COUNT,
+  TOOL_GROUP_MIN_SIZE,
+  getToolActivitySummaryLine,
 } from "@dotagents/shared"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
@@ -117,6 +120,12 @@ type DisplayItem =
   | { kind: "mid_turn_response"; id: string; data: {
       currentResponse: AgentUserResponseEvent
       pastResponses?: AgentUserResponseEvent[]
+    } }
+  | { kind: "tool_activity_group"; id: string; data: {
+      /** The original DisplayItems that were collapsed into this group. */
+      items: DisplayItem[]
+      /** Short single-line preview strings (last 3 from the group). */
+      previewLines: string[]
     } }
 
 const MID_TURN_RESPONSE_ITEM_ID = "mid-turn-response"
@@ -1072,6 +1081,77 @@ const formatArgumentsPreview = (args: any): string => {
   return preview
 }
 
+// Collapsed group of consecutive tool-call activity.
+// Shows a compact header with the last 3 single-line summaries; expands to
+// reveal all contained items when clicked.
+const ToolActivityGroupBubble: React.FC<{
+  group: {
+    items: DisplayItem[]
+    previewLines: string[]
+  }
+  isExpanded: boolean
+  onToggleExpand: () => void
+  /** Render a single child DisplayItem when the group is expanded. */
+  renderItem: (item: DisplayItem, index: number) => React.ReactNode
+}> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
+  const totalCount = group.items.length
+
+  return (
+    <div className={cn(
+      "rounded-md text-xs transition-all duration-200",
+      "border border-border/40 bg-muted/20",
+      !isExpanded && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer",
+    )}>
+      {/* Collapsed header */}
+      <div
+        className="flex items-center gap-1.5 px-2.5 py-1.5"
+        onClick={() => !isExpanded && onToggleExpand()}
+      >
+        <Wrench className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+        <span className="text-[11px] font-medium text-muted-foreground">
+          {totalCount} tool step{totalCount === 1 ? "" : "s"}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
+          className="ml-auto p-0.5 rounded hover:bg-muted/30 transition-colors"
+          aria-label={isExpanded ? "Collapse tool group" : "Expand tool group"}
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-3 w-3 text-muted-foreground/60" />
+          ) : (
+            <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
+          )}
+        </button>
+      </div>
+
+      {/* Preview lines (collapsed) */}
+      {!isExpanded && group.previewLines.length > 0 && (
+        <div
+          className="px-2.5 pb-1.5 space-y-0.5 cursor-pointer"
+          onClick={onToggleExpand}
+        >
+          {group.previewLines.map((line, idx) => (
+            <div
+              key={idx}
+              className="truncate text-[10px] text-muted-foreground/70 font-mono"
+            >
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Expanded: render all child items */}
+      {isExpanded && (
+        <div className="px-1.5 pb-1.5 space-y-1">
+          {group.items.map((item, idx) => renderItem(item, idx))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 // Inline Tool Approval bubble - appears in the conversation flow
 const ToolApprovalBubble: React.FC<{
   approval: {
@@ -1747,21 +1827,21 @@ const DelegationBubble: React.FC<{
 
   // Track live elapsed time only while running
   const [liveElapsed, setLiveElapsed] = useState(0)
-  
+
   useEffect(() => {
     // Only run timer while the delegation is actively running
     if (!isRunning) {
       return undefined
     }
-    
+
     // Update immediately
     setLiveElapsed(Math.round((Date.now() - delegation.startTime) / 1000))
-    
+
     // Update every second
     const interval = setInterval(() => {
       setLiveElapsed(Math.round((Date.now() - delegation.startTime) / 1000))
     }, 1000)
-    
+
     return () => clearInterval(interval)
   }, [isRunning, delegation.startTime])
 
@@ -3765,6 +3845,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         case "tool_approval":
         case "streaming":
         case "mid_turn_response":
+        case "tool_activity_group":
           return null
       }
     }
@@ -3915,7 +3996,62 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const currentStateItems = items.filter((item) => getItemTimestamp(item) === null)
 
     timestampedItems.sort((a, b) => (getItemTimestamp(a) ?? 0) - (getItemTimestamp(b) ?? 0))
-    return [...timestampedItems, ...currentStateItems]
+    const sortedItems = [...timestampedItems, ...currentStateItems]
+
+    // --- Group consecutive tool-activity DisplayItems ---
+    // A DisplayItem is "tool activity" if it is assistant_with_tools or tool_execution.
+    const isToolActivityItem = (item: DisplayItem): boolean =>
+      item.kind === "assistant_with_tools" || item.kind === "tool_execution"
+
+    const grouped: DisplayItem[] = []
+    let runStart: number | null = null
+
+    const flushToolRun = (runEnd: number) => {
+      if (runStart === null) return
+      const count = runEnd - runStart + 1
+      if (count < TOOL_GROUP_MIN_SIZE) {
+        // Too small to group — emit items individually
+        for (let j = runStart; j <= runEnd; j++) grouped.push(sortedItems[j])
+        runStart = null
+        return
+      }
+      const runItems = sortedItems.slice(runStart, runEnd + 1)
+      // Build preview lines from the last N items using the shared helper
+      const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
+      const previewLines: string[] = []
+      for (let j = previewStart; j < runItems.length; j++) {
+        const it = runItems[j]
+        if (it.kind === "assistant_with_tools") {
+          previewLines.push(getToolActivitySummaryLine({
+            role: "assistant",
+            toolCalls: it.data.calls,
+          }))
+        } else if (it.kind === "tool_execution") {
+          previewLines.push(getToolActivitySummaryLine({
+            role: "tool",
+            toolResults: it.data.results,
+          }))
+        }
+      }
+      grouped.push({
+        kind: "tool_activity_group",
+        id: `tool-group-${runStart}-${runEnd}`,
+        data: { items: runItems, previewLines },
+      })
+      runStart = null
+    }
+
+    for (let i = 0; i < sortedItems.length; i++) {
+      if (isToolActivityItem(sortedItems[i])) {
+        if (runStart === null) runStart = i
+      } else {
+        flushToolRun(i - 1)
+        grouped.push(sortedItems[i])
+      }
+    }
+    if (runStart !== null) flushToolRun(sortedItems.length - 1)
+
+    return grouped
   }, [currentResponseEvent, effectiveUserResponse, effectiveUserResponseHistory, messages, pastResponseEvents, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = useMemo(
@@ -4373,6 +4509,37 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             onToggleExpand={() => toggleItemExpansion(itemKey, false)}
                           />
                         )
+                      } else if (item.kind === "tool_activity_group") {
+                        return (
+                          <ToolActivityGroupBubble
+                            key={itemKey}
+                            group={item.data}
+                            isExpanded={isExpanded}
+                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                            renderItem={(child, childIdx) => {
+                              const childKey = child.id || `group-child-${childIdx}`
+                              const childExpanded = expandedItems[childKey] ?? false
+                              if (child.kind === "assistant_with_tools") {
+                                return (
+                                  <AssistantWithToolsBubble
+                                    key={childKey}
+                                    data={child.data}
+                                    isExpanded={childExpanded}
+                                    onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                                  />
+                                )
+                              }
+                              return (
+                                <ToolExecutionBubble
+                                  key={childKey}
+                                  execution={(child as any).data}
+                                  isExpanded={childExpanded}
+                                  onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                                />
+                              )
+                            }}
+                          />
+                        )
                       } else {
                         return (
                           <ToolExecutionBubble
@@ -4778,6 +4945,37 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       isExpanded={delegationExpanded}
                       onToggleExpand={() => toggleItemExpansion(itemKey, false)}
                       onOpenDetails={setSelectedDelegationRunId}
+                    />
+                  )
+                } else if (item.kind === "tool_activity_group") {
+                  return (
+                    <ToolActivityGroupBubble
+                      key={itemKey}
+                      group={item.data}
+                      isExpanded={isExpanded}
+                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                      renderItem={(child, childIdx) => {
+                        const childKey = child.id || `group-child-${childIdx}`
+                        const childExpanded = expandedItems[childKey] ?? false
+                        if (child.kind === "assistant_with_tools") {
+                          return (
+                            <AssistantWithToolsBubble
+                              key={childKey}
+                              data={child.data}
+                              isExpanded={childExpanded}
+                              onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                            />
+                          )
+                        }
+                        return (
+                          <ToolExecutionBubble
+                            key={childKey}
+                            execution={(child as any).data}
+                            isExpanded={childExpanded}
+                            onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                          />
+                        )
+                      }}
                     />
                   )
                 } else {
