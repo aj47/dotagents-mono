@@ -1309,11 +1309,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
     },
     sessionPreview: {
-      ...theme.typography.body,
+      ...theme.typography.caption,
       color: theme.colors.mutedForeground,
     },
     sessionPreviewMeta: {
-      ...theme.typography.body,
+      ...theme.typography.caption,
       color: theme.colors.mutedForeground,
       fontWeight: '500',
     },
