@@ -10,22 +10,37 @@ import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
 
-import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { logUI } from "@renderer/lib/debug"
 import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
-import { AgentSelector, useSelectedAgentId } from "@renderer/components/agent-selector"
+import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
-import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
+import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { DEFAULT_TILE_LAYOUT_MODES, getAvailableTileLayoutModes, getTileLayoutLabel, isTileLayoutModeViable, type TileLayoutMode } from "@renderer/components/session-grid-layout"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
+import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
 
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
   sidebarWidth: number
+  selectedAgentId: string | null
+  setSelectedAgentId: (id: string | null) => void
+  onStartTextSession: () => void | Promise<void>
+  onStartVoiceSession: () => void | Promise<void>
+  onStartPromptSession: (content: string) => void | Promise<void>
+  openSessionActionDialog: (dialog: {
+    mode: SessionActionDialogMode
+    initialText?: string
+    conversationId?: string
+    sessionId?: string
+    fromTile?: boolean
+    continueConversationTitle?: string
+    agentName?: string
+    onSubmitted?: () => void
+  }) => void
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -304,11 +319,21 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
 export function Component() {
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
-  const { onOpenPastSessionsDialog, sidebarWidth } = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
+  const layoutContext = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
+  const {
+    onOpenPastSessionsDialog,
+    sidebarWidth,
+    selectedAgentId = null,
+    setSelectedAgentId = () => {},
+    onStartTextSession = async () => {},
+    onStartVoiceSession = async () => {},
+    onStartPromptSession = async () => {},
+    openSessionActionDialog = () => {},
+  } = layoutContext
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
-  const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
   const scrollToSessionId = useAgentStore((s) => s.scrollToSessionId)
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   // Get config for shortcut displays
@@ -324,16 +349,6 @@ export function Component() {
   const [tileResetKey, setTileResetKey] = useState(0)
   const [tileLayoutMode, setTileLayoutMode] = useState<TileLayoutMode>("1x2")
   const [gridMetrics, setGridMetrics] = useState({ width: 0, height: 0, gap: 12 })
-  const [sessionActionDialog, setSessionActionDialog] = useState<{
-    mode: SessionActionDialogMode
-    initialText?: string
-    conversationId?: string
-    sessionId?: string
-    fromTile?: boolean
-    continueConversationTitle?: string
-    agentName?: string
-    onSubmitted?: () => void
-  } | null>(null)
 
   const sessionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -415,8 +430,10 @@ export function Component() {
         return true
       })
 
+    let orderedEntries: [string, AgentProgressUpdate | null | undefined][]
+
     if (sessionOrder.length > 0) {
-      return entries.sort((a, b) => {
+      orderedEntries = entries.sort((a, b) => {
         const aIndex = sessionOrder.indexOf(a[0])
         const bIndex = sessionOrder.indexOf(b[0])
         // New sessions (not in order list) should appear first (at top)
@@ -428,16 +445,25 @@ export function Component() {
         if (bIndex === -1) return 1   // b is new, put it first
         return aIndex - bIndex
       })
+    } else {
+      // Default sort: active sessions first, then by last activity (newest first)
+      orderedEntries = entries.sort((a, b) => {
+        const aComplete = a[1]?.isComplete ?? false
+        const bComplete = b[1]?.isComplete ?? false
+        if (aComplete !== bComplete) return aComplete ? 1 : -1
+        return getLastActivityTimestamp(b[1]) - getLastActivityTimestamp(a[1])
+      })
     }
 
-    // Default sort: active sessions first, then by last activity (newest first)
-    return entries.sort((a, b) => {
-      const aComplete = a[1]?.isComplete ?? false
-      const bComplete = b[1]?.isComplete ?? false
-      if (aComplete !== bComplete) return aComplete ? 1 : -1
-      return getLastActivityTimestamp(b[1]) - getLastActivityTimestamp(a[1])
-    })
-  }, [agentProgressById, sessionOrder, getLastActivityTimestamp, pendingConversationId])
+    return orderActiveSessionsByPinnedFirst(
+      orderedEntries.map(([id, progress]) => ({
+        id,
+        conversationId: progress?.conversationId,
+        entry: [id, progress] as const,
+      })),
+      pinnedSessionIds,
+    ).map(({ entry }) => entry)
+  }, [agentProgressById, sessionOrder, getLastActivityTimestamp, pendingConversationId, pinnedSessionIds])
 
   // Sync session order when new sessions appear
   useEffect(() => {
@@ -608,23 +634,6 @@ export function Component() {
     setPendingConversationId(null)
   }
 
-  const applySelectedAgentToNextSession = useCallback(async (options?: { silent?: boolean }) => {
-    return applySelectedAgentForNextSession({
-      selectedAgentId,
-      setSelectedAgentId,
-      silent: options?.silent,
-      onError: (error) => {
-        logUI("[Sessions] Failed to apply selected agent", { selectedAgentId, error })
-      },
-    })
-  }, [selectedAgentId, setSelectedAgentId])
-
-  // Keep the main-process current profile aligned with the selected agent so all
-  // new-session entry points (including conversation follow-ups) use the selector.
-  useEffect(() => {
-    void applySelectedAgentToNextSession({ silent: true })
-  }, [applySelectedAgentToNextSession])
-
   const handlePendingContinuationStarted = useCallback(() => {
     setPendingContinuationStartedAt((existing) => existing ?? Date.now())
   }, [])
@@ -686,23 +695,17 @@ export function Component() {
 
   // Handle text click - open panel with text input
   const handleTextClick = async () => {
-    const applied = await applySelectedAgentToNextSession()
-    if (!applied) return
-    setSessionActionDialog({ mode: "text" })
+    await onStartTextSession()
   }
 
   // Handle voice start - trigger MCP recording
   const handleVoiceStart = async () => {
-    const applied = await applySelectedAgentToNextSession()
-    if (!applied) return
-    setSessionActionDialog({ mode: "voice" })
+    await onStartVoiceSession()
   }
 
   // Handle predefined prompt selection - open panel with text input pre-filled
   const handleSelectPrompt = async (content: string) => {
-    const applied = await applySelectedAgentToNextSession()
-    if (!applied) return
-    setSessionActionDialog({ mode: "text", initialText: content })
+    await onStartPromptSession(content)
   }
 
   const handleOpenVoiceContinuation = useCallback((options: {
@@ -713,7 +716,7 @@ export function Component() {
     agentName?: string
     onSubmitted?: () => void
   }) => {
-    setSessionActionDialog({
+    openSessionActionDialog({
       mode: "voice",
       conversationId: options.conversationId,
       sessionId: options.sessionId,
@@ -722,7 +725,7 @@ export function Component() {
       agentName: options.agentName,
       onSubmitted: options.onSubmitted,
     })
-  }, [])
+  }, [openSessionActionDialog])
 
   // Drag and drop handlers
   const handleDragStart = useCallback((sessionId: string, _index: number) => {
@@ -832,61 +835,15 @@ export function Component() {
 
   return (
     <div className="group/tile flex h-full flex-col">
-      {/* Header with start buttons - outside the scroll area so its height is excluded
-          when SessionGrid measures the parent to size tiles. */}
       {hasSessions && (
-        <div className="flex-shrink-0 px-3 py-2 flex flex-wrap items-center gap-2 bg-muted/20 border-b">
-          <div className="flex flex-wrap gap-1.5 items-center min-w-0 flex-1">
-            <AgentSelector
-              selectedAgentId={selectedAgentId}
-              onSelectAgent={setSelectedAgentId}
-              compact
-            />
-            <Button
-              size="sm"
-              onClick={handleTextClick}
-              className="gap-1.5 px-2 lg:px-3"
-              aria-label="Start with text"
-              title="Start with text"
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span className="sr-only lg:not-sr-only lg:inline">Start with Text</span>
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleVoiceStart}
-              className="gap-1.5 px-2 lg:px-3"
-              aria-label="Start with voice"
-              title="Start with voice"
-            >
-              <Mic className="h-4 w-4 shrink-0" />
-              <span className="sr-only lg:not-sr-only lg:inline">Start with Voice</span>
-            </Button>
-            <PredefinedPromptsMenu
-              onSelectPrompt={handleSelectPrompt}
-            />
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Past sessions button */}
-            {onOpenPastSessionsDialog && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onOpenPastSessionsDialog}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-                title="Past Sessions"
-              >
-                <Clock className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline">Past Sessions</span>
-              </Button>
-            )}
+        <div className="flex-shrink-0 px-3 pt-2">
+          <div className="flex items-center justify-end gap-1">
             {/* Cycle tile layout mode button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleCycleTileLayout}
-              className="h-7 px-2"
+              className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
               title={`Next layout: ${getTileLayoutLabel(nextTileLayoutMode)} (click to cycle)`}
               aria-label="Cycle tile layout"
               disabled={availableLayoutModes.length <= 1}
@@ -904,7 +861,7 @@ export function Component() {
                 variant="ghost"
                 size="sm"
                 onClick={handleClearInactiveSessions}
-                className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
                 title={`Clear ${inactiveSessionCount} completed sessions (conversations are saved to history)`}
                 aria-label={`Clear ${inactiveSessionCount} completed sessions`}
               >
@@ -1022,26 +979,6 @@ export function Component() {
             </SessionGrid>
         )}
 
-        {sessionActionDialog && (
-          <SessionActionDialog
-            open={true}
-            mode={sessionActionDialog.mode}
-            initialText={sessionActionDialog.initialText}
-            conversationId={sessionActionDialog.conversationId}
-            sessionId={sessionActionDialog.sessionId}
-            fromTile={sessionActionDialog.fromTile}
-            continueConversationTitle={sessionActionDialog.continueConversationTitle}
-            agentName={sessionActionDialog.agentName}
-            selectedAgentId={selectedAgentId}
-            onSelectAgent={setSelectedAgentId}
-            onSubmitted={sessionActionDialog.onSubmitted}
-            onOpenChange={(nextOpen) => {
-              if (!nextOpen) {
-                setSessionActionDialog(null)
-              }
-            }}
-          />
-        )}
       </div>
     </div>
   )

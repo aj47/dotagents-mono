@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, LayoutGrid, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, LayoutGrid, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -3376,6 +3376,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
+  const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
+  const togglePinSession = useAgentStore((s) => s.togglePinSession)
 
   // Get queued messages for this conversation (used in overlay variant)
   const queuedMessages = useMessageQueue(progress?.conversationId)
@@ -3465,6 +3467,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
     onExpand()
   }, [handleRestoreSession, onExpand, progress?.isSnoozed])
+
+  const conversationId = progress?.conversationId
+  const isPinned = !!conversationId && pinnedSessionIds.has(conversationId)
 
   // Handle snooze/minimize
   const handleSnooze = async (e?: React.MouseEvent) => {
@@ -4423,6 +4428,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
+
+            {conversationId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  togglePinSession(conversationId)
+                }}
+                title={isPinned ? "Unpin session" : "Pin session"}
+                aria-label={isPinned ? "Unpin session" : "Pin session"}
+                aria-pressed={isPinned}
+              >
+                <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
+              </Button>
+            )}
 
             {onExpand && (
               <Button

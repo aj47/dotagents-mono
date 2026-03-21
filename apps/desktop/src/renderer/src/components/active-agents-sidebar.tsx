@@ -12,6 +12,8 @@ import {
   Clock,
   Pin,
   Pencil,
+  Mic,
+  Plus,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
@@ -28,6 +30,9 @@ import {
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
 import { useNavigate } from "react-router-dom"
+import { AgentSelector } from "./agent-selector"
+import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { Button } from "./ui/button"
 import {
   normalizeAgentConversationState,
 } from "@dotagents/shared"
@@ -87,8 +92,18 @@ const STORAGE_KEY = "active-agents-sidebar-expanded"
 
 export function ActiveAgentsSidebar({
   onOpenPastSessionsDialog,
+  selectedAgentId = null,
+  onSelectAgent,
+  onStartTextSession,
+  onStartVoiceSession,
+  onStartPromptSession,
 }: {
   onOpenPastSessionsDialog?: () => void
+  selectedAgentId?: string | null
+  onSelectAgent?: (id: string | null) => void
+  onStartTextSession?: () => void | Promise<void>
+  onStartVoiceSession?: () => void | Promise<void>
+  onStartPromptSession?: (content: string) => void | Promise<void>
 }) {
   const [isExpanded, setIsExpanded] = useState(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -566,6 +581,9 @@ export function ActiveAgentsSidebar({
     [allPastSessions.length, hasMorePastSessions, minimumPastSessionsNeeded],
   )
 
+  const hasLaunchControls =
+    !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
+
   return (
     <div className="px-2">
       <div className="flex items-center">
@@ -618,6 +636,54 @@ export function ActiveAgentsSidebar({
           </button>
         )}
       </div>
+
+      {isExpanded && hasLaunchControls && (
+        <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
+          <div className="flex items-center gap-2">
+            {onSelectAgent && (
+              <div className="min-w-0 flex-1">
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onSelectAgent={onSelectAgent}
+                  compact
+                />
+              </div>
+            )}
+            {onStartPromptSession && (
+              <PredefinedPromptsMenu
+                onSelectPrompt={onStartPromptSession}
+                buttonSize="sm"
+                className="h-7 w-7 rounded-md border border-input bg-background shadow-sm"
+              />
+            )}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {onStartTextSession && (
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5 px-2"
+                onClick={() => void onStartTextSession()}
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <span>Start Text</span>
+              </Button>
+            )}
+            {onStartVoiceSession && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="gap-1.5 px-2"
+                onClick={() => void onStartVoiceSession()}
+              >
+                <Mic className="h-3.5 w-3.5 shrink-0" />
+                <span>Start Voice</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {isExpanded && (
         <div
