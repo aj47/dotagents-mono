@@ -414,7 +414,11 @@ const getVisibleMessageContent = (message: ChatMessage): string => {
   // that might be embedded within otherwise valid content
   const rawContent = message.content || '';
   const stripped = stripRawToolTextFromContent(rawContent);
-  return stripped || rawContent;
+  if (stripped.length > 0) {
+    return stripped;
+  }
+
+  return stripped === rawContent ? rawContent : '';
 };
 
 const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {

@@ -53,10 +53,12 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
   assert.match(screenSource, /looksLikeToolPayloadContent\(message\.content\)/);
   assert.match(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = \/\^\(\?:using tool:\|tool result:\)\/i;/);
+  assert.match(screenSource, /if \(stripped\.length > 0\) \{\s+return stripped;\s+\}\s+return stripped === rawContent \? rawContent : '';/);
   assert.doesNotMatch(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = .*input:\|output:/);
   assert.doesNotMatch(screenSource, /const looksLikeToolPayloadContent = \(content\?: string\): boolean => \{[\s\S]*?JSON\.parse\(trimmedContent\)/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ historyMsg\.content/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ msg\.content/);
+  assert.doesNotMatch(screenSource, /return stripped \|\| rawContent;/);
 });
 
 test('bases assistant collapse decisions on visible content instead of raw tool payload metadata', () => {
