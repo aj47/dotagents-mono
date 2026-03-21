@@ -33,6 +33,8 @@ When changing unfamiliar DotAgents config, inspect the relevant files first, the
 
 - Prefer `./.agents/` for workspace-specific behavior
 - Prefer `~/.agents/` for user-wide defaults
+- Create new repeat tasks in `~/.agents/tasks/` by default
+- Use `./.agents/tasks/` only when intentionally overriding or shadowing a global repeat task
 - Config merge is shallow by key
 - Agents, skills, tasks, and knowledge notes merge by ID
 - When a workspace file intentionally overrides a global file, edit the workspace copy
@@ -75,7 +77,7 @@ Edit `skills/<id>/skill.md`. Keep the frontmatter valid and update the markdown 
 
 ### Change a repeat task
 
-Edit `tasks/<id>/task.md`. Frontmatter defines the task metadata; the markdown body is the task prompt.
+Edit `~/.agents/tasks/<id>/task.md` for the canonical repeat task definition. Use `./.agents/tasks/<id>/task.md` only for an intentional workspace override. Frontmatter defines the task metadata; the markdown body is the task prompt.
 
 ### Change durable knowledge
 

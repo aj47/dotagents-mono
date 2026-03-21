@@ -24,5 +24,7 @@ describe("bundled dotagents config skill", () => {
     expect(parsed?.instructions).toContain("dotagents-settings.json")
     expect(parsed?.instructions).toContain("agents/<id>/agent.md")
     expect(parsed?.instructions).toContain("tasks/<id>/task.md")
+    expect(parsed?.instructions).toContain("Create new repeat tasks in `~/.agents/tasks/` by default")
+    expect(parsed?.instructions).toContain("Use `./.agents/tasks/` only when intentionally overriding or shadowing a global repeat task")
   })
 })
