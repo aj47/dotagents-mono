@@ -323,6 +323,19 @@ function isEmptyResponseError(error: unknown): boolean {
   return false
 }
 
+function isCredentialCooldownError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+  return message.includes("cooling down") && (
+    message.includes("all credentials for model") ||
+    message.includes("all credentials") ||
+    message.includes("credentials for model")
+  )
+}
+
 /**
  * Check if an error is retryable.
  * Uses AI SDK structured error fields (statusCode, isRetryable) when available,
@@ -345,6 +358,12 @@ function isRetryableError(error: unknown): boolean {
     // They are handled specially in withRetry - return true here so they're not rejected outright
     if (isEmptyResponseError(error)) {
       return true
+    }
+
+    // Credential pool exhaustion should fail fast rather than burning retries
+    // against a model that currently has no usable credentials.
+    if (isCredentialCooldownError(error)) {
+      return false
     }
 
     // Check for AI SDK structured error fields (AI_APICallError, etc.)
@@ -477,6 +496,19 @@ async function withRetry<T>(
       }
 
       // Check if retryable
+      if (isCredentialCooldownError(error)) {
+        diagnosticsService.logWarning(
+          "llm-fetch",
+          "Skipping retry because all credentials for the requested model are cooling down",
+          { error: getErrorMessage(error) }
+        )
+        clearRetryStatus()
+        throw normalizeError(
+          error,
+          `${getErrorMessage(error)} Retry skipped because the requested model currently has no warm credentials. Try another model/provider or wait for cooldown.`
+        )
+      }
+
       if (!isRetryableError(error)) {
         diagnosticsService.logError(
           "llm-fetch",

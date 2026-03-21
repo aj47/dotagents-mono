@@ -778,6 +778,30 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('Success after rate limit retry')
   })
 
+  it('should fail fast on credential cooldown exhaustion even when the provider marks it retryable', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    const { diagnosticsService } = await import('./diagnostics')
+
+    const error = new Error('All credentials for model claude-sonnet-4-6 are cooling down') as any
+    error.statusCode = 429
+    error.isRetryable = true
+    generateTextMock.mockRejectedValue(error)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('cooling down')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    expect(diagnosticsService.logWarning).toHaveBeenCalledWith(
+      'llm-fetch',
+      'Skipping retry because all credentials for the requested model are cooling down',
+      { error: 'All credentials for model claude-sonnet-4-6 are cooling down' }
+    )
+  })
+
   it('should not retry and throw "Session stopped by kill switch" when session stopped after API failure', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)

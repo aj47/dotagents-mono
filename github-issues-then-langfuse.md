@@ -94,6 +94,38 @@
 - Verification commands/run results: `node --test apps/desktop/tests/delegation-polling-guardrails.test.mjs` passed (3/3); `git diff --check` passed; `if [ -d node_modules ]; then pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit; else echo '__TS_SKIP__ node_modules missing'; fi` returned `__TS_SKIP__ node_modules missing`, so full desktop typechecking could not run in this worktree.
 - Blockers/remaining uncertainty: The new guardrails directly address the reported delegated polling loop, but a broader cost/duration circuit-breaker was intentionally left out of this narrow fix and could still be worth revisiting if future traces show runaway sessions through another path.
 
+### Issue #195 — [Langfuse] Repeated claude-sonnet-4-6 credential cooldown errors causing failed retries and 10–25m sessions
+
+- Open issue count at start of iteration: 25
+- Status: Fixed locally; pending close comment after handoff commit
+- Diagnosis: `apps/desktop/src/main/llm-fetch.ts` treated retryable/429 API errors as retryable even when the actual provider error said all credentials for the requested model were cooling down. That meant the app could keep re-entering the standard retry path against a model with no warm credentials, matching the Langfuse issue’s repeated long-running failure pattern.
+- Changes:
+  - Added `isCredentialCooldownError(...)` to detect provider errors that explicitly report all credentials for a model are cooling down
+  - Marked those cooldown-exhaustion errors non-retryable even if the provider also reports `statusCode: 429` or `isRetryable: true`
+  - Added a cooldown-specific warning/normalized error path so the failure now exits immediately with clearer guidance instead of burning more retries
+  - Added a focused Vitest regression in `apps/desktop/src/main/llm-fetch.test.ts`
+  - Added a runnable source-level Node regression in `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` for this dependency-light worktree
+- Verification:
+  - `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` ✅ passed (2/2)
+  - `git diff --check` ✅ passed
+  - `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` ⚠️ failed because this worktree has no installed dependencies (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`)
+- Blockers/follow-ups:
+  - Full behavioral execution of the Vitest regression is blocked until workspace dependencies are installed
+  - Resolution comment: pending
+
+#### Evidence
+
+- Evidence ID: llm-fetch-cooldown-fail-fast
+- Scope: GitHub issue #195 — fail fast when the requested model has no warm credentials instead of retrying cooldown exhaustion
+- Commit range: PENDING
+- Rationale: Langfuse showed repeated 10–25 minute sessions where the same exhausted model kept getting retried after the provider had already reported that all credentials were cooling down. Failing fast on that concrete condition reduces wasted latency/cost and surfaces a more actionable error sooner.
+- QA feedback: None (new iteration)
+- Before evidence: No tracked screenshot for this source-level reliability fix. Before-state evidence was `apps/desktop/src/main/llm-fetch.ts` treating `429` / structured retryable API errors as retryable without a carve-out for provider messages like `All credentials for model claude-sonnet-4-6 are cooling down`, which matched issue #195’s repeated cooldown loops.
+- Change: Added credential-cooldown detection in `apps/desktop/src/main/llm-fetch.ts`, short-circuited retries for that condition with cooldown-specific diagnostics and a clearer normalized error, added a focused Vitest regression in `apps/desktop/src/main/llm-fetch.test.ts`, and added a runnable source-level guardrail test in `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`.
+- After evidence: No tracked screenshot for this source-level reliability fix. After-state evidence is `apps/desktop/src/main/llm-fetch.ts` now detecting cooldown exhaustion before retrying, logging `Skipping retry because all credentials for the requested model are cooling down`, and surfacing a fail-fast cooldown message, with matching assertions in both `apps/desktop/src/main/llm-fetch.test.ts` and `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`.
+- Verification commands/run results: `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` passed (2/2); `git diff --check` passed; `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, confirming this worktree still lacks the dependencies needed for the full Vitest run.
+- Blockers/remaining uncertainty: The fail-fast guard directly addresses the concrete cooldown-exhaustion pattern from issue #195, but broader model/provider failover is still a separate follow-up if future traces show users want automatic fallback instead of an immediate surfaced error.
+
 ## Langfuse Traces Inspected
 
 - None this iteration. Phase 1 remains active because open GitHub issues still exist.
