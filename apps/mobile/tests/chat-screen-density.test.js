@@ -62,9 +62,11 @@ test('derives visible assistant content from respond_to_user output and suppress
 });
 
 test('bases assistant collapse decisions on visible content instead of raw tool payload metadata', () => {
-  assert.match(screenSource, /const visibleMessageContent = getVisibleMessageContent\(m\);\s+const shouldCollapse = m\.role === 'assistant'\s+\? shouldCollapseMessage\(visibleMessageContent\)\s+: shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
+  assert.match(screenSource, /const visibleMessageContent = getVisibleMessageContent\(m\);/);
+  assert.match(screenSource, /const shouldCollapse = m\.role === 'assistant'\s+\? shouldCollapseMessage\(visibleMessageContent\)\s+: shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
+  assert.match(screenSource, /const effectiveShouldCollapse = hasRespondToUserContent \? false : shouldCollapse;/);
   assert.doesNotMatch(screenSource, /const shouldCollapse = shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
-  assert.match(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0 &&\s+!isExpanded &&\s+shouldCollapse;/);
+  assert.match(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0 &&\s+!isExpanded &&\s+effectiveShouldCollapse;/);
 });
 
 test('derives tool execution card status from displayed non-meta tool entries', () => {

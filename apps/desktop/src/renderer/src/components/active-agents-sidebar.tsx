@@ -569,7 +569,7 @@ export function ActiveAgentsSidebar({
             // Use store's isSnoozed for active sessions (matches main view), backend for past
             const isSnoozed = isPast
               ? false
-              : (sessionProgress?.isSnoozed ?? session.isSnoozed ?? false)
+              : (sessionProgress?.isSnoozed ?? false)
 
             if (isPast) {
               const isPinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false

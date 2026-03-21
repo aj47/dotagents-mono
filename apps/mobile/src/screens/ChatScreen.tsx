@@ -92,6 +92,8 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
+const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
+const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 
@@ -870,6 +872,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_CHAT_MESSAGES);
   // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
   const messagesRef = useRef<ChatMessage[]>(messages);
   // Track progress messages so we can merge them with final conversationHistory
@@ -1268,6 +1271,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     // Consider "at bottom" if within 50 pixels of the bottom
     const isAtBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
+    const isNearTop = contentOffset.y <= 120;
 
     if (isAtBottom && !shouldAutoScroll) {
       // User scrolled back to bottom, resume auto-scroll
@@ -1276,7 +1280,22 @@ export default function ChatScreen({ route, navigation }: any) {
       // Only pause auto-scroll when user is actively dragging (not programmatic scroll)
       setShouldAutoScroll(false);
     }
-  }, [shouldAutoScroll]);
+    if (isNearTop && visibleMessageCount < messages.length) {
+      setVisibleMessageCount((current) => Math.min(messages.length, current + VISIBLE_CHAT_MESSAGES_INCREMENT));
+    }
+  }, [messages.length, shouldAutoScroll, visibleMessageCount]);
+
+  useEffect(() => {
+    setVisibleMessageCount(INITIAL_VISIBLE_CHAT_MESSAGES);
+  }, [sessionStore.currentSessionId]);
+
+  useEffect(() => {
+    setVisibleMessageCount((current) => {
+      if (messages.length === 0) return INITIAL_VISIBLE_CHAT_MESSAGES;
+      const next = Math.max(INITIAL_VISIBLE_CHAT_MESSAGES, current);
+      return Math.min(messages.length, next);
+    });
+  }, [messages.length]);
 
   // Scroll to bottom when messages change and auto-scroll is enabled
   // Uses debouncing to handle rapid streaming updates efficiently
@@ -2862,6 +2881,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
 		: (listening ? '...' : 'Hold');
 
+  const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
+  const visibleMessages = messages.slice(firstVisibleMessageIndex);
+  const canLoadOlderMessages = firstVisibleMessageIndex > 0;
 
 
 
@@ -2934,7 +2956,15 @@ export default function ChatScreen({ route, navigation }: any) {
               ))}
             </View>
           )}
-          {messages.map((m, i) => {
+          {canLoadOlderMessages && (
+            <View style={styles.loadOlderContainer}>
+              <Text style={styles.loadOlderText}>
+                Showing latest {visibleMessages.length} of {messages.length} messages. Scroll up to load older messages.
+              </Text>
+            </View>
+          )}
+          {visibleMessages.map((m, visibleIndex) => {
+            const i = firstVisibleMessageIndex + visibleIndex;
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             if (group) {
@@ -2985,22 +3015,21 @@ export default function ChatScreen({ route, navigation }: any) {
             // Messages whose visible content comes from respond_to_user should
             // never be collapsed — they ARE the assistant's response to the user
             const hasRespondToUserContent = !!getRespondToUserContentFromMessage(m);
-            const shouldCollapse = hasRespondToUserContent
-              ? false
-              : m.role === 'assistant'
-                ? shouldCollapseMessage(visibleMessageContent)
-                : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
+            const shouldCollapse = m.role === 'assistant'
+              ? shouldCollapseMessage(visibleMessageContent)
+              : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
+            const effectiveShouldCollapse = hasRespondToUserContent ? false : shouldCollapse;
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = expandedMessages[i] ?? false;
             const hasToolMetadata =
               (m.toolCalls?.length ?? 0) > 0 ||
               (m.toolResults?.length ?? 0) > 0;
-            const shouldShowExpandedContent = visibleMessageContent.length > 0 && (isExpanded || !shouldCollapse);
+            const shouldShowExpandedContent = visibleMessageContent.length > 0 && (isExpanded || !effectiveShouldCollapse);
             const shouldShowCollapsedTextPreview =
               visibleMessageContent.length > 0 &&
               !isExpanded &&
-              shouldCollapse;
+              effectiveShouldCollapse;
             const canSpeakVisibleContent =
               m.role === 'assistant' &&
               visibleMessageContent.trim().length > 0 &&
@@ -3909,6 +3938,15 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerPinButtonTextActive: {
       color: theme.colors.primary,
+    },
+    loadOlderContainer: {
+      alignItems: 'center',
+      paddingVertical: spacing.xs,
+    },
+    loadOlderText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
     },
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {

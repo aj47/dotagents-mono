@@ -846,12 +846,11 @@ export default function SessionListScreen({ navigation }: Props) {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
     const rawPreview = (item.searchPreview ?? item.preview) || 'No messages yet';
-    let sessionPreviewText = rawPreview;
-    if (rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')) {
-      sessionPreviewText = 'Used a tool';
-    } else if (rawPreview.includes('{"')) {
-      sessionPreviewText = rawPreview.replace(/\{.*\}/g, '{...}').trim();
-    }
+    const sessionPreviewText = rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')
+      ? 'Used a tool'
+      : rawPreview.includes('{"')
+        ? rawPreview.replace(/\{.*\}/g, '{...}').trim()
+        : rawPreview;
     const sessionMetaLabel = `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`;
 
     return (
@@ -1279,6 +1278,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 15,
       lineHeight: 20,
       fontWeight: '600',
+      color: theme.colors.foreground,
       flex: 1,
       minWidth: 0,
     },

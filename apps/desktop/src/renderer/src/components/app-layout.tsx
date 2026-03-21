@@ -474,7 +474,7 @@ export const Component = () => {
                   const hasPendingApproval =
                     !!sessionProgress?.pendingToolApproval
                   const isSnoozed =
-                    sessionProgress?.isSnoozed ?? session.isSnoozed ?? false
+                    sessionProgress?.isSnoozed ?? false
                   const statusDotColor = hasPendingApproval
                     ? "bg-amber-500"
                     : isSnoozed

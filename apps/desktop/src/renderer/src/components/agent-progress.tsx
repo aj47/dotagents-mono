@@ -31,6 +31,7 @@ import {
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
+import { LoadingSpinner } from "./ui/loading-spinner"
 import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
@@ -4337,7 +4338,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
     }
     if (conversationState === "running") {
-      return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
+      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-4 [&_img]:w-4" />
     }
     if (isSnoozed) {
       return <Moon className="h-4 w-4 text-muted-foreground" />
