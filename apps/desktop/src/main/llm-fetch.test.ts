@@ -802,6 +802,30 @@ describe('LLM Fetch with AI SDK', () => {
     )
   })
 
+  it('should fail fast on provider account rate limits even when the provider marks them retryable', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    const { diagnosticsService } = await import('./diagnostics')
+
+    const error = new Error("This request would exceed your account's rate limit. Please try again later.") as any
+    error.statusCode = 429
+    error.isRetryable = true
+    generateTextMock.mockRejectedValue(error)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow("provider account is currently rate limited")
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    expect(diagnosticsService.logWarning).toHaveBeenCalledWith(
+      'llm-fetch',
+      'Skipping retry because the provider account is currently rate limited',
+      { error: "This request would exceed your account's rate limit. Please try again later." }
+    )
+  })
+
   it('should not retry and throw "Session stopped by kill switch" when session stopped after API failure', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)

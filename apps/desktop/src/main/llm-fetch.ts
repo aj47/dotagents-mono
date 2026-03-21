@@ -27,6 +27,7 @@ import { diagnosticsService } from "./diagnostics"
 import { isDebugLLM, logLLM } from "./debug"
 import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
+import { classifyRetryDisposition } from "./llm-retry-policy"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared"
 import {
@@ -302,119 +303,6 @@ async function interruptibleDelay(delay: number, sessionId?: string): Promise<vo
 }
 
 /**
- * Check if an error is an empty response error.
- * Empty responses should fail fast without backoff since they typically indicate:
- * - API endpoint issues
- * - Authentication problems
- * - Malformed requests
- * These won't resolve by waiting, so exponential backoff wastes time.
- * See: https://github.com/aj47/dotagents-mono/issues/964
- */
-function isEmptyResponseError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase()
-    return (
-      message.includes("empty response") ||
-      message.includes("empty content") ||
-      message.includes("no text") ||
-      message.includes("no content")
-    )
-  }
-  return false
-}
-
-function isCredentialCooldownError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false
-  }
-
-  const message = error.message.toLowerCase()
-  return message.includes("cooling down") && (
-    message.includes("all credentials for model") ||
-    message.includes("all credentials") ||
-    message.includes("credentials for model")
-  )
-}
-
-/**
- * Check if an error is retryable.
- * Uses AI SDK structured error fields (statusCode, isRetryable) when available,
- * with fallback to message-based detection for consistency across providers.
- *
- * NOTE: Empty response errors are handled separately - they retry immediately
- * without backoff (see withRetry function).
- */
-function isRetryableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    // Abort errors should never be retried
-    if (
-      error.name === "AbortError" ||
-      error.message.toLowerCase().includes("abort")
-    ) {
-      return false
-    }
-
-    // Empty response errors are retryable but WITHOUT backoff
-    // They are handled specially in withRetry - return true here so they're not rejected outright
-    if (isEmptyResponseError(error)) {
-      return true
-    }
-
-    // Credential pool exhaustion should fail fast rather than burning retries
-    // against a model that currently has no usable credentials.
-    if (isCredentialCooldownError(error)) {
-      return false
-    }
-
-    // Check for AI SDK structured error fields (AI_APICallError, etc.)
-    // These errors have statusCode and isRetryable properties
-    const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
-
-    // If the error has an explicit isRetryable flag, use it
-    if (typeof errorWithStatus.isRetryable === "boolean") {
-      return errorWithStatus.isRetryable
-    }
-
-    // Check for statusCode or status field (AI SDK errors use statusCode)
-    const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-    if (typeof statusCode === "number") {
-      // Rate limits (429) are always retryable
-      if (statusCode === 429) {
-        return true
-      }
-      // Server errors (5xx) are retryable
-      if (statusCode >= 500 && statusCode < 600) {
-        return true
-      }
-      // Timeout errors
-      if (statusCode === 408 || statusCode === 504) {
-        return true
-      }
-      // Client errors (4xx except 429, 408) are not retryable
-      if (statusCode >= 400 && statusCode < 500) {
-        return false
-      }
-    }
-
-    // Fallback: message-based detection for transient network issues
-    // NOTE: empty response/content removed - handled separately without backoff
-    const message = error.message.toLowerCase()
-    return (
-      message.includes("rate limit") ||
-      message.includes("429") ||
-      message.includes("500") ||
-      message.includes("502") ||
-      message.includes("503") ||
-      message.includes("504") ||
-      message.includes("timeout") ||
-      message.includes("network") ||
-      message.includes("connection")
-    )
-  }
-  return false
-}
-
-/**
  * Execute an async function with retry logic
  */
 async function withRetry<T>(
@@ -476,6 +364,7 @@ async function withRetry<T>(
       return result
     } catch (error) {
       lastError = error
+      const retryDisposition = classifyRetryDisposition(error)
 
       // Don't retry aborts or stopped sessions
       if ((error as any)?.name === "AbortError") {
@@ -495,8 +384,7 @@ async function withRetry<T>(
         throw new Error(catchStopReason)
       }
 
-      // Check if retryable
-      if (isCredentialCooldownError(error)) {
+      if (retryDisposition.kind === "credential-cooldown") {
         diagnosticsService.logWarning(
           "llm-fetch",
           "Skipping retry because all credentials for the requested model are cooling down",
@@ -509,7 +397,20 @@ async function withRetry<T>(
         )
       }
 
-      if (!isRetryableError(error)) {
+      if (retryDisposition.kind === "account-rate-limit") {
+        diagnosticsService.logWarning(
+          "llm-fetch",
+          "Skipping retry because the provider account is currently rate limited",
+          { error: getErrorMessage(error) }
+        )
+        clearRetryStatus()
+        throw normalizeError(
+          error,
+          `${getErrorMessage(error)} Retry skipped because the provider account is currently rate limited. Try another model/provider or wait before retrying.`
+        )
+      }
+
+      if (retryDisposition.kind === "non-retryable") {
         diagnosticsService.logError(
           "llm-fetch",
           "Non-retryable API error",
@@ -521,23 +422,8 @@ async function withRetry<T>(
 
       // Check for empty response errors - these skip backoff entirely
       // See: https://github.com/aj47/dotagents-mono/issues/964
-      const isEmptyResponse = isEmptyResponseError(error)
-
-      // Check for rate limit (429) using structured error fields when available
-      let isRateLimit = false
-      if (error instanceof Error) {
-        // Check for AI SDK structured error fields (AI_APICallError, etc.)
-        const errorWithStatus = error as { statusCode?: number; status?: number }
-        const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-
-        if (typeof statusCode === "number" && statusCode === 429) {
-          isRateLimit = true
-        } else {
-          // Fallback to message-based detection for errors without structured fields
-          const message = error.message.toLowerCase()
-          isRateLimit = message.includes("429") || message.includes("rate limit")
-        }
-      }
+      const isEmptyResponse = retryDisposition.kind === "retry-immediately"
+      const isRateLimit = retryDisposition.kind === "retry-indefinitely"
 
       // Rate limits retry indefinitely, other errors respect the limit
       // Empty response errors also respect the limit but skip backoff
