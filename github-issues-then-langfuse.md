@@ -98,15 +98,15 @@
 
 - Open issue count at start of iteration: 25
 - Status: Closed after local handoff commit and resolution comment
-- Diagnosis: `apps/desktop/src/main/llm-fetch.ts` treated retryable/429 API errors as retryable even when the actual provider error said all credentials for the requested model were cooling down. That meant the app could keep re-entering the standard retry path against a model with no warm credentials, matching the Langfuse issue’s repeated long-running failure pattern.
+- Diagnosis: `apps/desktop/src/main/llm-fetch.ts` originally treated retryable/429 API errors as retryable even when the actual provider error said all credentials for the requested model were cooling down. That meant the app could keep re-entering the standard retry path against a model with no warm credentials, matching the Langfuse issue’s repeated long-running failure pattern. Later refactors extracted the cooldown/account-limit classification into `apps/desktop/src/main/llm-retry-policy.ts`, so the current fail-fast path is split across the classifier and `llm-fetch.ts`.
 - Changes:
-  - Added `isCredentialCooldownError(...)` to detect provider errors that explicitly report all credentials for a model are cooling down
+  - Added `isCredentialCooldownError(...)` to detect provider errors that explicitly report all credentials for a model are cooling down (now housed in `apps/desktop/src/main/llm-retry-policy.ts` after the later retry-policy extraction)
   - Marked those cooldown-exhaustion errors non-retryable even if the provider also reports `statusCode: 429` or `isRetryable: true`
   - Added a cooldown-specific warning/normalized error path so the failure now exits immediately with clearer guidance instead of burning more retries
   - Added a focused Vitest regression in `apps/desktop/src/main/llm-fetch.test.ts`
   - Added a runnable source-level Node regression in `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` for this dependency-light worktree
 - Verification:
-  - `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` ✅ passed (2/2)
+  - `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` ✅ passes again after the QA remediation below updated it for the retry-policy extraction
   - `git diff --check` ✅ passed
   - `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` ⚠️ failed because this worktree has no installed dependencies (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`)
 - Blockers/follow-ups:
@@ -121,10 +121,39 @@
 - Rationale: Langfuse showed repeated 10–25 minute sessions where the same exhausted model kept getting retried after the provider had already reported that all credentials were cooling down. Failing fast on that concrete condition reduces wasted latency/cost and surfaces a more actionable error sooner.
 - QA feedback: None (new iteration)
 - Before evidence: No tracked screenshot for this source-level reliability fix. Before-state evidence was `apps/desktop/src/main/llm-fetch.ts` treating `429` / structured retryable API errors as retryable without a carve-out for provider messages like `All credentials for model claude-sonnet-4-6 are cooling down`, which matched issue #195’s repeated cooldown loops.
-- Change: Added credential-cooldown detection in `apps/desktop/src/main/llm-fetch.ts`, short-circuited retries for that condition with cooldown-specific diagnostics and a clearer normalized error, added a focused Vitest regression in `apps/desktop/src/main/llm-fetch.test.ts`, and added a runnable source-level guardrail test in `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`.
-- After evidence: No tracked screenshot for this source-level reliability fix. After-state evidence is `apps/desktop/src/main/llm-fetch.ts` now detecting cooldown exhaustion before retrying, logging `Skipping retry because all credentials for the requested model are cooling down`, and surfacing a fail-fast cooldown message, with matching assertions in both `apps/desktop/src/main/llm-fetch.test.ts` and `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`.
-- Verification commands/run results: `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` passed (2/2); `git diff --check` passed; `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, confirming this worktree still lacks the dependencies needed for the full Vitest run.
+- Change: Added credential-cooldown detection in the retry classifier (now `apps/desktop/src/main/llm-retry-policy.ts` after later refactoring), short-circuited retries for that condition in `apps/desktop/src/main/llm-fetch.ts` with cooldown-specific diagnostics and a clearer normalized error, added a focused Vitest regression in `apps/desktop/src/main/llm-fetch.test.ts`, and kept a runnable source-level guardrail test in `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`.
+- After evidence: No tracked screenshot for this source-level reliability fix. After-state evidence is `apps/desktop/src/main/llm-retry-policy.ts` now classifying cooldown exhaustion as `credential-cooldown`, while `apps/desktop/src/main/llm-fetch.ts` logs `Skipping retry because all credentials for the requested model are cooling down` and surfaces a fail-fast cooldown message, with matching assertions in both `apps/desktop/src/main/llm-fetch.test.ts` and `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`.
+- Verification commands/run results: `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` passes again after the QA remediation below updated it for the retry-policy extraction; `git diff --check` passed; `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, confirming this worktree still lacks the dependencies needed for the full Vitest run.
 - Blockers/remaining uncertainty: The fail-fast guard directly addresses the concrete cooldown-exhaustion pattern from issue #195, but broader model/provider failover is still a separate follow-up if future traces show users want automatic fallback instead of an immediate surfaced error.
+
+### Issue #195 follow-up — QA remediation for cooldown guardrail sync after retry-policy extraction
+
+- Open issue count at start of iteration: 16
+- Status: Follow-up committed for QA remediation; issue #195 remains closed
+- Diagnosis: The later issue #196 retry-policy extraction moved cooldown classification into `apps/desktop/src/main/llm-retry-policy.ts`, but the dependency-light guardrail test and the issue #195 ledger text still assumed the old `llm-fetch.ts`-only implementation. That made the exact documented verification command fail and left the ledger misleading at reviewed HEAD.
+- Changes:
+  - Updated `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` so it now asserts the current split architecture: cooldown classification in `apps/desktop/src/main/llm-retry-policy.ts` and fail-fast handling in `apps/desktop/src/main/llm-fetch.ts`
+  - Refreshed the existing issue #195 ledger entry so it points to `llm-retry-policy.ts` as the current home of the cooldown classifier instead of implying the logic still lives only inside `llm-fetch.ts`
+- Verification:
+  - `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` ✅ passed (2/2)
+  - `node --experimental-strip-types --test apps/desktop/tests/llm-retry-policy.test.ts` ✅ passed (4/4)
+  - `git diff --check` ✅ passed
+- Blockers/follow-ups:
+  - `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` remains blocked by missing installed dependencies in this worktree (`Command "vitest" not found`)
+  - Open GitHub issues still remain for later Phase 1 iterations; this pass was intentionally limited to clearing the outstanding QA regression on the current branch
+
+#### Evidence
+
+- Evidence ID: llm-fetch-cooldown-guardrail-sync
+- Scope: QA remediation for GitHub issue #195 — keep the cooldown fail-fast guardrail test and ledger aligned with the extracted retry classifier
+- Commit range: 39ebe79068574dc99c9d43a202a1581fec13a7d7..2f28fb53d2d17c0c41fdc4ef7d870c699fca2f78
+- Rationale: The branch had an exact reviewer-reported regression: the documented dependency-light verification command no longer passed after cooldown classification moved into `llm-retry-policy.ts`, and the ledger still described the old code location. Realigning the guardrail test and notes restores trustworthy verification for the existing fail-fast fix.
+- QA feedback: Addressed reviewer findings 1-2 from the 2026-03-20 QA pass on evidence ID `llm-fetch-cooldown-fail-fast`: the guardrail test was updated for `llm-retry-policy.ts`, and the ledger text now reflects the extracted classifier instead of claiming the cooldown detection still lives only in `llm-fetch.ts`.
+- Before evidence: No tracked screenshot for this source-level QA remediation. Before-state evidence was the failing command `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs`, whose regex assertions still expected `isCredentialCooldownError(...)` to be declared directly in `apps/desktop/src/main/llm-fetch.ts`, plus the stale issue #195 ledger text describing that old layout.
+- Change: Updated `apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` to assert cooldown classification in `apps/desktop/src/main/llm-retry-policy.ts` and the fail-fast branch in `apps/desktop/src/main/llm-fetch.ts`, and refreshed the issue #195 ledger entry to describe that split truthfully.
+- After evidence: No tracked screenshot for this source-level QA remediation. After-state evidence is the same guardrail command passing against the current architecture and the issue #195 ledger entry now naming `apps/desktop/src/main/llm-retry-policy.ts` as the classifier home while preserving the `llm-fetch.ts` fail-fast behavior notes.
+- Verification commands/run results: `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` passed (2/2); `node --experimental-strip-types --test apps/desktop/tests/llm-retry-policy.test.ts` passed (4/4); `git diff --check` passed.
+- Blockers/remaining uncertainty: Full Vitest confirmation for `apps/desktop/src/main/llm-fetch.test.ts` is still blocked until workspace dependencies are installed, but the exact QA-reported command now passes again and the ledger is no longer stale about the retry-classifier location.
 
 ### Issue #196 — [Langfuse] Repeated Claude account rate-limit errors causing failed retries in Main Agent sessions
 
