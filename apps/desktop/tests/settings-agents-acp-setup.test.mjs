@@ -20,8 +20,12 @@ const commandVerificationSource = fs.readFileSync(
 
 test('desktop agent presets include Codex and OpenCode ACP defaults with setup guidance', () => {
   assert.match(settingsAgentsSource, /codex:\s*\{[\s\S]*displayName: "Codex"/)
-  assert.match(settingsAgentsSource, /codex:[\s\S]*connectionCommand: "codex-acp"/)
-  assert.match(settingsAgentsSource, /codex:[\s\S]*installCommand: "npm install -g @zed-industries\/codex-acp"/)
+  assert.match(settingsAgentsSource, /codex:[\s\S]*connectionCommand: "npx"/)
+  assert.match(settingsAgentsSource, /codex:[\s\S]*connectionArgs: "@zed-industries\/codex-acp"/)
+  assert.match(settingsAgentsSource, /codex:[\s\S]*installCommand: "npx @zed-industries\/codex-acp"/)
+  assert.match(settingsAgentsSource, /codex:[\s\S]*release binary directly/)
+  assert.match(settingsAgentsSource, /agent\.connectionCommand === "codex-acp" \|\|/)
+  assert.match(settingsAgentsSource, /agent\.connectionCommand === "npx" && args === "@zed-industries\/codex-acp"/)
   assert.match(settingsAgentsSource, /opencode:\s*\{[\s\S]*displayName: "OpenCode"/)
   assert.match(settingsAgentsSource, /opencode:[\s\S]*connectionCommand: "opencode"/)
   assert.match(settingsAgentsSource, /opencode:[\s\S]*connectionArgs: "acp"/)

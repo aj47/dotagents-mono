@@ -105,10 +105,10 @@ const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   codex: {
     displayName: "Codex",
     description: "OpenAI Codex via the official ACP adapter",
-    connectionType: "acp", connectionCommand: "codex-acp", connectionArgs: "", enabled: true,
+    connectionType: "acp", connectionCommand: "npx", connectionArgs: "@zed-industries/codex-acp", enabled: true,
     docsUrl: "https://github.com/zed-industries/codex-acp",
-    installCommand: "npm install -g @zed-industries/codex-acp",
-    authHint: "Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying.",
+    installCommand: "npx @zed-industries/codex-acp",
+    authHint: "Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying. You can also use the release binary directly.",
     cwdHint: "Set the working directory to the project Codex should inspect and edit.",
     verifyArgs: ["--help"],
   },
@@ -130,7 +130,10 @@ function detectPresetKey(agent?: Partial<EditingAgent> | null): AgentPresetKey |
 
   if (agent.connectionType === "acp" && agent.connectionCommand === "auggie" && args === "--acp") return "auggie"
   if (agent.connectionType === "acp" && agent.connectionCommand === "claude-code-acp") return "claude-code"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "codex-acp") return "codex"
+  if (agent.connectionType === "acp" && (
+    agent.connectionCommand === "codex-acp" ||
+    (agent.connectionCommand === "npx" && args === "@zed-industries/codex-acp")
+  )) return "codex"
   if (agent.connectionType === "acp" && agent.connectionCommand === "opencode" && args === "acp") return "opencode"
 
   return undefined
