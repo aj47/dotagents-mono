@@ -10,7 +10,7 @@ import { promisify } from "util"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
-import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import { dataFolder, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getAgentsSkillsBackupDir,
@@ -325,8 +325,7 @@ async function listGitHubDirectory(owner: string, repo: string, ref: string, dir
 
 // Skills are stored in a JSON file in the app data folder
 export const skillsPath = path.join(
-  app.getPath("appData"),
-  process.env.APP_ID,
+  dataFolder,
   "skills.json"
 )
 
@@ -336,8 +335,7 @@ export const skillsPath = path.join(
 // - Windows: %APPDATA%/app.dotagents/skills/
 // - Linux: ~/.config/app.dotagents/skills/
 export const skillsFolder = path.join(
-  app.getPath("appData"),
-  process.env.APP_ID,
+  dataFolder,
   "skills"
 )
 

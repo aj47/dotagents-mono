@@ -13,6 +13,11 @@ describe("agent progress TTS guardrails", () => {
     expect(agentProgressSource).toContain('autoPlay={!isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}')
   })
 
+  it("keeps response-linked assistant messages replayable and eligible for smart auto-play", () => {
+    expect(agentProgressSource).toContain('(isComplete || !!message.responseEvent)')
+    expect(agentProgressSource).toContain('autoPlay={(isLast || !!message.responseEvent) ? ((configQuery.data?.ttsAutoPlay ?? true) && !isSnoozed) : false}')
+  })
+
   it("marks and cleans up the same final content TTS key during mid-turn auto-play", () => {
     expect(agentProgressSource).toContain('const contentCompletionKey = buildContentTTSKey(sessionId, ttsSource, "final")')
     expect(agentProgressSource).toContain('const completionKeys = [eventCompletionKey, contentCompletionKey].filter(')

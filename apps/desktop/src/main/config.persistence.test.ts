@@ -16,6 +16,16 @@ vi.mock("electron", () => ({
  * This test verifies that the desktop re-export layer works correctly.
  */
 describe("config desktop re-exports", () => {
+  it("defaults APP_ID to the packaged desktop namespace when unset", async () => {
+    vi.resetModules()
+    Reflect.deleteProperty(process.env, "APP_ID")
+
+    const configModule = await import("./config")
+
+    expect(configModule.appId).toBe("app.dotagents")
+    expect(configModule.dataFolder).toContain("app.dotagents")
+  })
+
   it("re-exports persistConfigToDisk from @dotagents/core", async () => {
     process.env.APP_ID = "dotagents-test"
     const configModule = await import("./config")

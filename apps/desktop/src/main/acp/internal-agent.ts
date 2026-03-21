@@ -23,6 +23,7 @@ import { skillsService } from '../skills-service';
 import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-profile-service';
 import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
+import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 import type { AgentProgressUpdate, SessionProfileSnapshot, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage, AgentProfile } from '../../shared/types';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';
 
@@ -448,6 +449,8 @@ export async function runInternalSubSession(
       ?? agentSessionTracker.getSessionProfileSnapshot(parentSessionId);
   }
 
+  setAcpToAppSessionMapping(subSessionId, parentSessionId, subSession.parentRunId);
+
   // Create isolated session state for this sub-session
   agentSessionStateManager.createSession(subSessionId, effectiveProfileSnapshot);
 
@@ -718,6 +721,7 @@ export async function runInternalSubSession(
   } finally {
     // Clean up session state and rate limit tracking
     agentSessionStateManager.cleanupSession(subSessionId);
+    clearAcpToAppSessionMapping(subSessionId);
     lastEmitTime.delete(subSessionId);
     
     // Clean up parent-child relationship to prevent MAX_CONCURRENT_SUB_SESSIONS from becoming a lifetime limit

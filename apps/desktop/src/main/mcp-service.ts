@@ -215,8 +215,7 @@ export class MCPService {
       // If so, derive runtimeDisabledServers directly from enabledServers to avoid config/profile drift
       // This handles newly-added MCP servers and ensures servers in enabledServers are not disabled
       const profilesPath = path.join(
-        app.getPath("appData"),
-        process.env.APP_ID,
+        dataFolder,
         "profiles.json"
       )
       if (existsSync(profilesPath)) {
@@ -2971,7 +2970,7 @@ export class MCPService {
       }
 
       // Set auth directory to DotAgents data folder
-      environment.WHATSAPP_AUTH_DIR = path.join(app.getPath("appData"), process.env.APP_ID || "dotagents", "whatsapp-auth")
+      environment.WHATSAPP_AUTH_DIR = path.join(dataFolder, "whatsapp-auth")
     }
 
     return environment

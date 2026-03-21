@@ -80,6 +80,16 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
   })
 
+  it("only shows collapsed tool previews for the latest pending tool run", () => {
+    expect(agentProgressSource).toContain('const shouldShowPreviewLines = runEnd === sortedItems.length - 1')
+    expect(agentProgressSource).toContain('!isExpanded && group.previewLines.length > 0')
+  })
+
+  it("keeps respond_to_user assistant tool calls outside collapsed tool activity groups", () => {
+    expect(agentProgressSource).toContain('return !item.data.calls.some((call) => isCompletionControlTool(call.name))')
+    expect(agentProgressSource).toContain('function isCompletionControlTool(toolName: string): boolean {')
+  })
+
   it("wraps expanded tool detail chrome and caps tool output blocks inside narrow tiles", () => {
     expect(agentProgressSource).toContain(
       'className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]"'
@@ -117,7 +127,7 @@ describe("agent progress tile layout", () => {
 
   it("keeps mid-turn response cards and past-response history readable in narrow tiles", () => {
     expect(agentProgressSource).toContain(
-      'className="min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30"'
+      '"min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30"'
     )
     expect(agentProgressSource).toContain(
       '"flex min-w-0 flex-wrap items-center gap-1.5 cursor-pointer bg-green-100/50 px-2.5 py-1.5 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40"'
@@ -139,7 +149,7 @@ describe("agent progress tile layout", () => {
       'className="mb-1 flex w-full items-center gap-1.5 rounded-sm px-0.5 py-0.5 text-left transition-colors hover:bg-green-100/40 dark:hover:bg-green-900/20"'
     )
     expect(agentProgressSource).toContain(
-      'className="min-w-0 max-w-full overflow-hidden rounded-md border border-green-200/60 dark:border-green-800/40"'
+      '"min-w-0 max-w-full overflow-hidden rounded-md border border-green-200/60 dark:border-green-800/40"'
     )
     expect(agentProgressSource).toContain(
       'className="flex min-w-0 items-start gap-2 cursor-pointer px-2.5 py-1.5 transition-colors hover:bg-green-50/50 dark:hover:bg-green-900/20"'

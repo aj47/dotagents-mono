@@ -17,6 +17,7 @@ import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
+import { getAppSessionForAcpSession } from "./acp-session-state"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -515,7 +516,8 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const session = agentSessionTracker.getSession(context.sessionId)
+    const trackedSessionId = getAppSessionForAcpSession(context.sessionId) ?? context.sessionId
+    const session = agentSessionTracker.getSession(trackedSessionId)
     if (!session?.conversationId) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not linked to a conversation" }) }],
@@ -535,7 +537,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    agentSessionTracker.updateSession(context.sessionId, {
+    agentSessionTracker.updateSession(trackedSessionId, {
       conversationTitle: updatedConversation.title,
     })
 

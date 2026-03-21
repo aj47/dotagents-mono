@@ -1,11 +1,10 @@
-import { app } from "electron"
 import path from "path"
 import fs from "fs"
 import { Profile, ProfilesData, ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, MCPServerConfig } from "@shared/types"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@shared/runtime-tool-names"
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
-import { configStore } from "./config"
+import { configStore, dataFolder } from "./config"
 import { getRuntimeToolNames } from "./runtime-tool-definitions"
 
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
@@ -267,11 +266,7 @@ function isValidSkillsConfig(config: unknown): config is Partial<ProfileSkillsCo
   return true
 }
 
-export const profilesPath = path.join(
-  app.getPath("appData"),
-  process.env.APP_ID,
-  "profiles.json"
-)
+export const profilesPath = path.join(dataFolder, "profiles.json")
 
 const DEFAULT_PROFILES: Profile[] = [
   {

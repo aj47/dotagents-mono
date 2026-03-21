@@ -27,6 +27,7 @@ import {
 } from './internal-agent';
 import { agentProfileService } from '../agent-profile-service';
 import type { AgentProfile } from '../../shared/types';
+import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 
 // ============================================================================
 // Consolidated Delegation State
@@ -72,6 +73,7 @@ function cleanupDelegationMappings(runId: string, agentName: string): void {
   for (const [sessionId, mappedRunId] of sessionToRunId.entries()) {
     if (mappedRunId === runId) {
       sessionToRunId.delete(sessionId);
+      clearAcpToAppSessionMapping(sessionId);
     }
   }
 }
@@ -1123,6 +1125,13 @@ async function executeACPAgent(
       if (resolvedSessionId) {
         subAgentState.acpSessionId = resolvedSessionId;
         sessionToRunId.set(resolvedSessionId, subAgentState.runId);
+        if (parentSessionId) {
+          setAcpToAppSessionMapping(
+            resolvedSessionId,
+            parentSessionId,
+            agentSessionStateManager.getSessionRunId(parentSessionId),
+          );
+        }
       }
     };
 
@@ -1131,6 +1140,7 @@ async function executeACPAgent(
         args.agentName,
         false,
         args.workingDirectory,
+        parentSessionId ? { appSessionId: parentSessionId } : undefined,
       );
       registerSessionMapping(sessionId);
       return sessionId;

@@ -20,3 +20,4 @@ export * from './agent-progress';
 export * from './message-display-utils';
 export * from './stt-models';
 export * from './api-key-error-utils';
+export * from './tool-activity-grouping';

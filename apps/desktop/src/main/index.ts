@@ -655,12 +655,24 @@ if (!gotSingleInstanceLock) {
       optimizer.watchWindowShortcuts(window)
     })
 
-    app.on("activate", function () {
+    const MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS = 250
+    let lastMacAppActivationAt = 0
+
+    const handleAppActivation = (reason: "app.activate" | "app.did-become-active") => {
       const mainWin = WINDOWS.get("main")
       const cfg = configStore.get()
 
-      if (process.platform === "darwin" && !cfg.hideDockIcon) {
-        ensureAppSwitcherPresence("app.activate")
+      if (process.platform === "darwin") {
+        const now = Date.now()
+        if (now - lastMacAppActivationAt < MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS) {
+          logApp(`[${reason}] Skipping duplicate macOS activation pulse`)
+          return
+        }
+        lastMacAppActivationAt = now
+
+        if (!cfg.hideDockIcon) {
+          ensureAppSwitcherPresence(reason)
+        }
       }
 
       if (accessibilityGranted) {
@@ -688,6 +700,16 @@ if (!gotSingleInstanceLock) {
           createSetupWindow()
         }
       }
+    }
+
+    // macOS app switcher activation (Cmd+Tab) does not reliably emit `activate`.
+    // Electron provides `did-become-active` specifically for all activation paths.
+    app.on("activate", function () {
+      handleAppActivation("app.activate")
+    })
+
+    app.on("did-become-active", function () {
+      handleAppActivation("app.did-become-active")
     })
 
     // Track if we're already cleaning up to prevent re-entry

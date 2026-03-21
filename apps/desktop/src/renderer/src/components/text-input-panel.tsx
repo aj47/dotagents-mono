@@ -257,6 +257,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message here..."
+            autoFocus
             className={cn(
               "modern-input modern-text-strong min-h-0 flex-1 resize-none border-0",
               "bg-transparent focus:border-ring focus:ring-1 focus:ring-ring",

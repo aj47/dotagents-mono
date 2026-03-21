@@ -32,3 +32,10 @@ test('conversation indexing and append flow follow represented full-history coun
   assert.match(serviceSource, /conversation\.rawMessages\.push\(message\)/)
   assert.match(serviceSource, /await this\.persistStorageMetadataIfNeeded\(conversationId, conversationPath, normalizedConversation\)/)
 })
+
+test('conversation service rebuilds the history index when conversation files outnumber indexed entries', () => {
+  assert.match(serviceSource, /if \(conversationFileCount > loadedIndex\.length\) \{/)
+  assert.match(serviceSource, /return this\.rebuildConversationIndexFromDisk\("conversation files outnumber indexed entries"\)/)
+  assert.match(serviceSource, /private async rebuildConversationIndexFromDisk\(reason: string\): Promise<ConversationHistoryItem\[]>/)
+  assert.match(serviceSource, /rebuiltIndex\.push\(this\.buildConversationHistoryItem\(conversation\)\)/)
+})

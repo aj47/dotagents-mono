@@ -177,16 +177,139 @@ export class ConversationService {
     if (this.indexCache !== null) {
       return this.indexCache
     }
+
+    let loadedIndex: ConversationHistoryItem[] = []
     try {
       const indexPath = this.getConversationIndexPath()
       const data = await fsPromises.readFile(indexPath, "utf8")
       const parsed = JSON.parse(data)
-      this.indexCache = Array.isArray(parsed) ? parsed : []
+      loadedIndex = Array.isArray(parsed) ? parsed : []
     } catch {
       // File doesn't exist or is corrupted — start fresh
-      this.indexCache = []
+      loadedIndex = []
     }
+
+    this.indexCache = loadedIndex
+
+    const conversationFileCount = await this.getConversationFileCount()
+    if (conversationFileCount > loadedIndex.length) {
+      return this.rebuildConversationIndexFromDisk("conversation files outnumber indexed entries")
+    }
+
     return this.indexCache!
+  }
+
+  private async getConversationFileCount(): Promise<number> {
+    try {
+      const entries = await fsPromises.readdir(conversationsFolder)
+      return entries.filter((entry) => entry.endsWith(".json") && entry !== "index.json").length
+    } catch {
+      return 0
+    }
+  }
+
+  private buildConversationHistoryItem(conversation: Conversation): ConversationHistoryItem {
+    const storedMessages = this.getStoredRawMessages(conversation)
+    const lastMessage = storedMessages[storedMessages.length - 1]
+
+    return {
+      id: conversation.id,
+      title: conversation.title,
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+      messageCount: this.getRepresentedMessageCount(conversation),
+      lastMessage: lastMessage?.content || "",
+      preview: this.generatePreview(storedMessages),
+    }
+  }
+
+  private async parseConversationData(
+    conversationId: string,
+    conversationData: string,
+    conversationPath?: string,
+    persistRepairs: boolean = true,
+  ): Promise<Conversation | null> {
+    try {
+      const conversation = JSON.parse(conversationData) as unknown
+      if (!this.isValidConversationShape(conversation)) {
+        logApp(`[ConversationService] Invalid conversation shape for ${conversationId}`)
+        return null
+      }
+
+      const normalizedConversation = conversation as Conversation
+      if (persistRepairs && conversationPath) {
+        await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, normalizedConversation)
+      }
+      return normalizedConversation
+    } catch (error) {
+      const repairedConversation = this.tryRepairConversationFromCorruptedData(conversationData)
+      if (!repairedConversation) {
+        logApp(`[ConversationService] Failed to parse conversation ${conversationId}; unable to repair.`, error)
+        return null
+      }
+
+      if (persistRepairs && conversationPath) {
+        try {
+          await this.writeConversationFileAtomic(conversationPath, JSON.stringify(repairedConversation, null, 2))
+          logApp(`[ConversationService] Repaired corrupted conversation file: ${conversationId}`)
+        } catch (repairSaveError) {
+          logApp(
+            `[ConversationService] Recovered conversation ${conversationId} in-memory, but failed to persist repaired file.`,
+            repairSaveError,
+          )
+        }
+
+        await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, repairedConversation)
+      }
+
+      return repairedConversation
+    }
+  }
+
+  private async rebuildConversationIndexFromDisk(reason: string): Promise<ConversationHistoryItem[]> {
+    try {
+      this.ensureConversationsFolder()
+      const entries = await fsPromises.readdir(conversationsFolder)
+      const conversationFiles = entries
+        .filter((entry) => entry.endsWith(".json") && entry !== "index.json")
+        .sort()
+
+      const rebuiltIndex: ConversationHistoryItem[] = []
+      for (const entry of conversationFiles) {
+        const conversationId = entry.replace(/\.json$/u, "")
+        const conversationPath = this.getConversationPath(conversationId)
+
+        let conversationData: string
+        try {
+          conversationData = await fsPromises.readFile(conversationPath, "utf8")
+        } catch {
+          continue
+        }
+
+        const conversation = await this.parseConversationData(
+          conversationId,
+          conversationData,
+          conversationPath,
+          false,
+        )
+        if (!conversation) {
+          continue
+        }
+
+        rebuiltIndex.push(this.buildConversationHistoryItem(conversation))
+      }
+
+      rebuiltIndex.sort((a, b) => b.updatedAt - a.updatedAt)
+      this.indexCache = rebuiltIndex
+      await this.writeIndexToDisk()
+      logApp(`[ConversationService] Rebuilt conversation index from disk (${reason})`, {
+        rebuiltCount: rebuiltIndex.length,
+      })
+      return rebuiltIndex
+    } catch (error) {
+      logApp("[ConversationService] Error rebuilding conversation index from disk:", error)
+      return this.indexCache ?? []
+    }
   }
 
   /**
@@ -208,23 +331,12 @@ export class ConversationService {
     await this.enqueueIndexMutation(async () => {
       try {
         let index = await this.ensureIndexLoaded()
-        const storedMessages = this.getStoredRawMessages(conversation)
 
         // Remove existing entry if it exists
         index = index.filter((item) => item.id !== conversation.id)
 
         // Create new index entry
-        const lastMessage =
-          storedMessages[storedMessages.length - 1]
-        const indexItem: ConversationHistoryItem = {
-          id: conversation.id,
-          title: conversation.title,
-          createdAt: conversation.createdAt,
-          updatedAt: conversation.updatedAt,
-          messageCount: this.getRepresentedMessageCount(conversation),
-          lastMessage: lastMessage?.content || "",
-          preview: this.generatePreview(storedMessages),
-        }
+        const indexItem = this.buildConversationHistoryItem(conversation)
 
         // Add to beginning of array (most recent first)
         index.unshift(indexItem)
@@ -397,38 +509,7 @@ export class ConversationService {
       return null
     }
 
-    try {
-      const conversation = JSON.parse(conversationData) as unknown
-      if (!this.isValidConversationShape(conversation)) {
-        logApp(`[ConversationService] Invalid conversation shape for ${conversationId}`)
-        return null
-      }
-      const normalizedConversation = conversation as Conversation
-      await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, normalizedConversation)
-      return normalizedConversation
-    } catch (error) {
-      const repairedConversation = this.tryRepairConversationFromCorruptedData(conversationData)
-      if (!repairedConversation) {
-        logApp(`[ConversationService] Failed to parse conversation ${conversationId}; unable to repair.`, error)
-        return null
-      }
-
-      try {
-        // Write the repaired file directly using atomic write instead of saveConversationUnlocked.
-        // This method is always called from within enqueueConversationMutation, so the write is
-        // already serialized. Using writeConversationFileAtomic directly avoids re-entering the
-        // index update path and keeps the repair minimal (just fix the corrupted file on disk).
-        const repairPath = this.getConversationPath(conversationId)
-        await this.writeConversationFileAtomic(repairPath, JSON.stringify(repairedConversation, null, 2))
-        logApp(`[ConversationService] Repaired corrupted conversation file: ${conversationId}`)
-      } catch (repairSaveError) {
-        logApp(`[ConversationService] Recovered conversation ${conversationId} in-memory, but failed to persist repaired file.`, repairSaveError)
-      }
-
-      await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, repairedConversation)
-
-      return repairedConversation
-    }
+    return this.parseConversationData(conversationId, conversationData, conversationPath, true)
   }
 
   private async persistStorageMetadataIfNeeded(
