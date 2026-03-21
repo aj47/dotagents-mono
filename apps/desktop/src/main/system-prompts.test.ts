@@ -64,6 +64,7 @@ describe("constructSystemPrompt", () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain("index.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("conv_*.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("app.dotagents")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("Use the active workspace/repo path provided by the environment")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("layered ~/.agents/ and ./.agents/ filesystem")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("Create new repeat tasks in ~/.agents/tasks/ by default")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("use ./.agents/tasks/ only for an intentional workspace override")

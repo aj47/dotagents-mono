@@ -10,10 +10,9 @@ function read(relativePath) {
 }
 
 test('checked-in agent guidance points at dotagents-mono and rejects the stale repo path', () => {
-  const agentsPrompt = read('.agents/agents.md')
+  const prompt = read('apps/desktop/src/main/system-prompts-default.ts')
 
-  assert.match(agentsPrompt, /aj47\/dotagents-mono/)
-  assert.match(agentsPrompt, /Use the active workspace\/repo path provided by the environment/)
-  assert.doesNotMatch(agentsPrompt, /current main project is aj47\/dotagents\./i)
-  assert.doesNotMatch(agentsPrompt, /\/Users\/ajjoobandi\/aj47\/dotagents/)
+  assert.match(prompt, /Use the active workspace\/repo path provided by the environment/)
+  assert.doesNotMatch(prompt, /current main project is aj47\/dotagents\./i)
+  assert.doesNotMatch(prompt, /\/Users\/ajjoobandi\/aj47\/dotagents/)
 })

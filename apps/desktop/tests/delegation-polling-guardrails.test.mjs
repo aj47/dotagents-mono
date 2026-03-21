@@ -33,10 +33,8 @@ test('delegation tool definitions steer models away from tight polling loops', (
 test('main prompts tell agents to prefer wait\/sync options over repeated status checks', () => {
   const smartRouter = read('apps/desktop/src/main/acp/acp-smart-router.ts')
   const defaultPrompt = read('apps/desktop/src/main/system-prompts-default.ts')
-  const bundledPrompt = read('.agents/system-prompt.md')
 
   assert.match(smartRouter, /Use waitForResult: true when the delegated result is needed before your next step or user reply/)
   assert.match(smartRouter, /never poll in a tight loop/)
   assert.match(defaultPrompt, /Avoid tight polling loops for long-running or background tools/)
-  assert.match(bundledPrompt, /Avoid tight polling loops for long-running or background tools/)
 })
