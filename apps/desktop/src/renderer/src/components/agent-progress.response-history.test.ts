@@ -175,6 +175,19 @@ function findElementByTitle(tree: any, title: string) {
   return match
 }
 
+function findToolRow(tree: any, toolName: string) {
+  const match = findAll(
+    tree,
+    (value) => value?.type === "div"
+      && typeof value?.props?.className === "string"
+      && value.props.className.includes("text-[11px]")
+      && value.props.className.includes("cursor-pointer")
+      && getTextContent(value).includes(toolName),
+  )[0]
+  if (!match) throw new Error(`Tool row for \"${toolName}\" not found`)
+  return match
+}
+
 async function loadAgentProgress(
   runtime: ReturnType<typeof createHookRuntime>,
   options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean },
@@ -288,12 +301,21 @@ async function loadAgentProgress(
     extractRespondToUserResponseEvents: () => [],
     getAgentConversationStateLabel: (state: string) => state,
     getToolResultsSummary: () => "",
+    getToolActivitySummaryLine: () => "",
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
+    TOOL_GROUP_PREVIEW_COUNT: 3,
+    TOOL_GROUP_MIN_SIZE: 2,
   }))
   vi.doMock("./tool-execution-stats", () => ({ ToolExecutionStats: Null }))
   vi.doMock("./acp-session-badge", () => ({ ACPSessionBadge: Null }))
   vi.doMock("./agent-summary-view", () => ({ AgentSummaryView: Null }))
-  vi.doMock("@renderer/lib/tts-tracking", () => ({ hasTTSPlayed: () => false, markTTSPlayed: vi.fn(), removeTTSKey: vi.fn() }))
+  vi.doMock("@renderer/lib/tts-tracking", () => ({
+    hasTTSPlayed: () => false,
+    markTTSPlayed: vi.fn(),
+    removeTTSKey: vi.fn(),
+    buildResponseEventTTSKey: vi.fn(() => null),
+    buildContentTTSKey: vi.fn(() => null),
+  }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@dotagents/shared/message-display-utils", () => ({ sanitizeMessageContentForSpeech: (text: string) => text }))
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -558,6 +580,50 @@ describe("agent progress response history", () => {
     expect(text).toContain("Need your approval")
     expect(text).not.toContain("respond_to_user")
     expect(text).not.toContain("mark_work_complete")
+  })
+
+  it("keeps visible tool result status aligned after hiding completion-control tools", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-tool-pairing",
+      conversationId: "conversation-tool-pairing",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 90,
+          toolCalls: [
+            { name: "respond_to_user", arguments: { message: "Working on it" } },
+            { name: "visible_pending_tool", arguments: { id: "pending" } },
+            { name: "visible_success_tool", arguments: { id: "success" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 95,
+          toolResults: [
+            { success: true, content: "meta ok" },
+            undefined,
+            { success: true, content: "visible success" },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const pendingRow = findToolRow(tree, "visible_pending_tool")
+    const successRow = findToolRow(tree, "visible_success_tool")
+
+    expect(pendingRow.props.className).toContain("text-blue-600")
+    expect(successRow.props.className).toContain("text-green-600")
+    expect(getTextContent(tree)).not.toContain("respond_to_user")
   })
 
   it("keeps reloaded completed sessions from showing completion-tool rows or duplicate final output", async () => {

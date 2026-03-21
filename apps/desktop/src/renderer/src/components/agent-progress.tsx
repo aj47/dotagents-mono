@@ -93,7 +93,7 @@ type DisplayItem =
       timestamp: number
       isComplete: boolean
       calls: Array<{ name: string; arguments: any }>
-      results: Array<{ success: boolean; content: string; error?: string }>
+      results: Array<{ success: boolean; content: string; error?: string } | undefined>
       executionStats?: {
         durationMs?: number
         totalTokens?: number
@@ -879,7 +879,7 @@ const AssistantWithToolsBubble: React.FC<{
     timestamp: number
     isComplete: boolean
     calls: Array<{ name: string; arguments: any }>
-    results: Array<{ success: boolean; content: string; error?: string }>
+    results: Array<{ success: boolean; content: string; error?: string } | undefined>
     executionStats?: {
       durationMs?: number
       totalTokens?: number
@@ -891,16 +891,18 @@ const AssistantWithToolsBubble: React.FC<{
 }> = ({ data, isExpanded, onToggleExpand }) => {
   const [showToolDetails, setShowToolDetails] = useState(false)
 
-  const isPending = data.results.length === 0
-  const allSuccess = data.results.length > 0 && data.results.every(r => r.success)
+  const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
+  const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
+  const isPending = toolCallEntries.some(({ result }) => !result)
+  const allSuccess = resolvedResults.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
-  const shouldCollapse = (data.thought?.length ?? 0) > 100 || data.calls.length > 0
+  const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
     if (isExpanded || isPending) return null
-    if (data.results.length === 0) return null
-    const toolResults = data.results.map(r => ({
+    if (resolvedResults.length === 0) return null
+    const toolResults = resolvedResults.map(r => ({
       success: r.success,
       content: r.content,
       error: r.error,
@@ -955,8 +957,7 @@ const AssistantWithToolsBubble: React.FC<{
             hasThought ? "mt-1" : "",
             "space-y-0.5"
           )}>
-            {data.calls.map((call, idx) => {
-              const result = data.results[idx]
+            {toolCallEntries.map(({ call, result }, idx) => {
               const callIsPending = !result
               const callSuccess = result?.success
               const callResultSummary = result ? getToolResultsSummary([result]) : null
@@ -1020,8 +1021,7 @@ const AssistantWithToolsBubble: React.FC<{
           {/* Expanded tool details */}
           {showToolDetails && (
             <div className="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2">
-              {data.calls.map((call, idx) => {
-                const result = data.results[idx]
+              {toolCallEntries.map(({ call, result }, idx) => {
                 return (
                   <div key={idx} className="text-[10px] space-y-1">
                     <div className="font-medium opacity-70 break-words">Parameters:</div>
@@ -3954,7 +3954,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               timestamp: message.timestamp,
               isComplete: message.isComplete,
               calls: visibleToolCalls.map(({ call }) => call),
-              results: visibleToolCalls.map(({ result }) => result).filter((result): result is NonNullable<typeof result> => Boolean(result)),
+              // Preserve per-call result alignment after hiding completion-control tools.
+              // Some visible calls may still be pending while later visible calls already have results.
+              results: visibleToolCalls.map(({ result }) => result),
               executionStats: matchingStep?.executionStats ? {
                 durationMs: matchingStep.executionStats.durationMs,
                 totalTokens: matchingStep.executionStats.totalTokens,
