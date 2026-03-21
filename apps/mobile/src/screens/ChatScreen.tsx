@@ -57,6 +57,7 @@ import {
   groupToolActivity,
   type AgentConversationState,
   type AgentUserResponseEvent,
+  type HandsFreePhase,
   type PredefinedPromptSummary,
   type ToolActivityGroup,
 } from '@dotagents/shared';
@@ -512,6 +513,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
+  const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
   const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
@@ -917,6 +919,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		sleepPhrase: handsFreeSleepPhrase,
 		log: voiceLog,
 	  });
+  useEffect(() => {
+    handsFreePhaseRef.current = handsFreeController.state.phase;
+  }, [handsFreeController.state.phase]);
 
 	  const {
 		listening,
@@ -2372,13 +2377,16 @@ export default function ChatScreen({ route, navigation }: any) {
         }, 5000);
 
         // Process next queued message if any
-        if (messageQueueEnabled) {
+        if (messageQueueEnabled && (!handsFree || handsFreePhaseRef.current !== 'paused')) {
           const nextMessage = messageQueue.peek(currentConversationId);
           if (nextMessage) {
             console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
-            messageQueue.markProcessing(currentConversationId, nextMessage.id);
             // Use setTimeout to avoid recursive call stack issues
             setTimeout(() => {
+              if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+                return;
+              }
+              messageQueue.markProcessing(currentConversationId, nextMessage.id);
               processQueuedMessage(nextMessage);
             }, 100);
           }
@@ -2610,10 +2618,13 @@ export default function ChatScreen({ route, navigation }: any) {
 
         // Process next queued message if any
         const nextMessage = messageQueue.peek(currentConversationId);
-        if (nextMessage) {
+        if (nextMessage && (!handsFree || handsFreePhaseRef.current !== 'paused')) {
           console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
-          messageQueue.markProcessing(currentConversationId, nextMessage.id);
           setTimeout(() => {
+            if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+              return;
+            }
+            messageQueue.markProcessing(currentConversationId, nextMessage.id);
             processQueuedMessage(nextMessage);
           }, 100);
         }
@@ -2627,12 +2638,17 @@ export default function ChatScreen({ route, navigation }: any) {
     const nextMessage = messageQueue.peek(currentConversationId);
     if (!nextMessage) return;
 
+    if (handsFree && handsFreeController.state.phase === 'paused') return;
+
     console.log('[ChatScreen] Processing queue while idle, next message:', nextMessage.id);
-    messageQueue.markProcessing(currentConversationId, nextMessage.id);
     setTimeout(() => {
+      if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+        return;
+      }
+      messageQueue.markProcessing(currentConversationId, nextMessage.id);
       processQueuedMessage(nextMessage);
     }, 100);
-  }, [currentConversationId, messageQueue, processQueuedMessage, responding]);
+  }, [currentConversationId, handsFree, handsFreeController.state.phase, messageQueue, processQueuedMessage, responding]);
 
 	// Keep sendRef in sync with the latest send() implementation for speech callbacks.
 	// IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
