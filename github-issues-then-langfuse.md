@@ -97,7 +97,7 @@
 ### Issue #195 — [Langfuse] Repeated claude-sonnet-4-6 credential cooldown errors causing failed retries and 10–25m sessions
 
 - Open issue count at start of iteration: 25
-- Status: Fixed locally; pending close comment after handoff commit
+- Status: Closed after local handoff commit and resolution comment
 - Diagnosis: `apps/desktop/src/main/llm-fetch.ts` treated retryable/429 API errors as retryable even when the actual provider error said all credentials for the requested model were cooling down. That meant the app could keep re-entering the standard retry path against a model with no warm credentials, matching the Langfuse issue’s repeated long-running failure pattern.
 - Changes:
   - Added `isCredentialCooldownError(...)` to detect provider errors that explicitly report all credentials for a model are cooling down
@@ -111,13 +111,13 @@
   - `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` ⚠️ failed because this worktree has no installed dependencies (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`)
 - Blockers/follow-ups:
   - Full behavioral execution of the Vitest regression is blocked until workspace dependencies are installed
-  - Resolution comment: pending
+  - Resolution comment: https://github.com/aj47/dotagents-mono/issues/195#issuecomment-4102454362
 
 #### Evidence
 
 - Evidence ID: llm-fetch-cooldown-fail-fast
 - Scope: GitHub issue #195 — fail fast when the requested model has no warm credentials instead of retrying cooldown exhaustion
-- Commit range: PENDING
+- Commit range: ed69666a7440c808c3fa0cbf046e7d9554367094..ae2373b2a65124029d849806883f9e2ac44f8b30
 - Rationale: Langfuse showed repeated 10–25 minute sessions where the same exhausted model kept getting retried after the provider had already reported that all credentials were cooling down. Failing fast on that concrete condition reduces wasted latency/cost and surfaces a more actionable error sooner.
 - QA feedback: None (new iteration)
 - Before evidence: No tracked screenshot for this source-level reliability fix. Before-state evidence was `apps/desktop/src/main/llm-fetch.ts` treating `429` / structured retryable API errors as retryable without a carve-out for provider messages like `All credentials for model claude-sonnet-4-6 are cooling down`, which matched issue #195’s repeated cooldown loops.
