@@ -17,6 +17,7 @@ TOOL RELIABILITY:
 - Work incrementally - verify each step before continuing
 - On failure: read the error, don't retry the same call blindly
 - After 2-3 failures: try a different approach or ask the user
+- Avoid tight polling loops for long-running or background tools. If a tool offers a wait/sync option and you need the result immediately, prefer that over repeated status checks.
 - STRONGLY RECOMMENDED: When having issues with a tool, use get_tool_schema(toolName) to read the full specification before retrying
 
 SHELL COMMANDS & FILE OPERATIONS:

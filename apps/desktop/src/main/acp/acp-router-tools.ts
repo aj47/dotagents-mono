@@ -42,6 +42,10 @@ interface DelegatedRun extends ACPSubAgentState {
   conversation: ACPSubAgentMessage[];
   /** Last time we emitted a progress update to the UI (for rate limiting) */
   lastEmitTime: number;
+  /** Last time check_agent_status was called for this run */
+  lastStatusCheckAt: number;
+  /** Number of times check_agent_status has been called while the run is still active */
+  statusCheckCount: number;
 }
 
 /**
@@ -119,6 +123,8 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
     isAsync: args.isAsync,
     conversation: [userMessage],
     lastEmitTime: 0,
+    lastStatusCheckAt: 0,
+    statusCheckCount: 0,
   };
   delegatedRuns.set(runId, delegatedRun);
   return delegatedRun;
@@ -138,6 +144,22 @@ interface DelegationResult {
   conversation?: ACPSubAgentMessage[];
   message?: string;
   note?: string;
+  recommendedPollIntervalMs?: number;
+  nextPollAllowedAt?: number;
+  shouldContinueOtherWork?: boolean;
+  pollingSuppressed?: boolean;
+}
+
+const RECOMMENDED_DELEGATION_STATUS_POLL_INTERVAL_MS = 15000;
+const MAX_DELEGATION_STATUS_POLL_INTERVAL_MS = 60000;
+const MAX_DELEGATION_STATUS_CHECKS = 8;
+
+function getDelegationStatusPollIntervalMs(statusCheckCount: number): number {
+  const exponent = Math.max(statusCheckCount - 1, 0);
+  return Math.min(
+    RECOMMENDED_DELEGATION_STATUS_POLL_INTERVAL_MS * (2 ** exponent),
+    MAX_DELEGATION_STATUS_POLL_INTERVAL_MS,
+  );
 }
 
 /**
@@ -185,12 +207,18 @@ function createFailedResult(
  * Create an async running delegation result (for waitForResult=false).
  */
 function createRunningResult(subAgentState: DelegatedRun): DelegationResult {
+  const nextPollAllowedAt = Date.now() + RECOMMENDED_DELEGATION_STATUS_POLL_INTERVAL_MS;
+
   return {
     success: true,
     runId: subAgentState.runId,
     agentName: subAgentState.agentName,
     status: 'running',
-    message: `Task delegated to "${subAgentState.agentName}". Use check_agent_status with runId "${subAgentState.runId}" to check progress.`,
+    message: `Task delegated to "${subAgentState.agentName}" and is running in the background.`,
+    note: 'If you need the delegated result before your next step, prefer delegate_to_agent with waitForResult: true. DotAgents will resume the parent session automatically when this async run finishes, so only call check_agent_status occasionally and never in a tight loop.',
+    recommendedPollIntervalMs: RECOMMENDED_DELEGATION_STATUS_POLL_INTERVAL_MS,
+    nextPollAllowedAt,
+    shouldContinueOtherWork: true,
   };
 }
 
@@ -1349,8 +1377,44 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       };
     }
 
-    // Query remote server for actual status if we have tracking info and the task is still running
-    if (subAgentState.acpRunId && subAgentState.baseUrl && subAgentState.status === 'running') {
+    const now = Date.now();
+    const isActiveAsyncRun = subAgentState.status === 'running' && subAgentState.isAsync;
+
+    if (isActiveAsyncRun) {
+      subAgentState.statusCheckCount += 1;
+    }
+
+    const pollIntervalMs = isActiveAsyncRun
+      ? getDelegationStatusPollIntervalMs(subAgentState.statusCheckCount)
+      : RECOMMENDED_DELEGATION_STATUS_POLL_INTERVAL_MS;
+    const previousStatusCheckAt = subAgentState.lastStatusCheckAt;
+    const recentlyChecked = previousStatusCheckAt > 0
+      && (now - previousStatusCheckAt) < pollIntervalMs;
+    const pollingSuppressed = isActiveAsyncRun && subAgentState.statusCheckCount > MAX_DELEGATION_STATUS_CHECKS;
+
+    if (pollingSuppressed) {
+      return {
+        success: false,
+        runId: subAgentState.runId,
+        agentName: subAgentState.agentName,
+        status: subAgentState.status,
+        error: 'Polling limit reached for this delegated run. Stop calling check_agent_status in a loop; DotAgents will resume the parent session automatically when it finishes. If you need the delegated result in the same turn on a future run, use waitForResult: true.',
+        recommendedPollIntervalMs: pollIntervalMs,
+        nextPollAllowedAt: now + pollIntervalMs,
+        shouldContinueOtherWork: true,
+        pollingSuppressed: true,
+      };
+    }
+
+    // Query remote server for actual status if we have tracking info and the task is still running.
+    // For async/background work, avoid repeatedly re-querying on every model turn; the background
+    // notifier already polls remote runs and resumes the parent session when they complete.
+    if (
+      subAgentState.acpRunId
+      && subAgentState.baseUrl
+      && subAgentState.status === 'running'
+      && !recentlyChecked
+    ) {
       try {
         // ACP protocol: Use ACP client to query run status
         const acpResult = await acpClientService.getRunStatus(
@@ -1369,6 +1433,8 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       }
     }
 
+    subAgentState.lastStatusCheckAt = now;
+
     const response: Record<string, unknown> = {
       success: true,
       runId: subAgentState.runId,
@@ -1377,11 +1443,27 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       workingDirectory: subAgentState.workingDirectory,
       status: subAgentState.status,
       startTime: subAgentState.startTime,
-      duration: Date.now() - subAgentState.startTime,
+      duration: now - subAgentState.startTime,
     };
 
     if (subAgentState.progress) {
       response.progress = subAgentState.progress;
+    }
+
+    if (subAgentState.status === 'running' && subAgentState.isAsync) {
+      const retryAfterMs = recentlyChecked
+        ? Math.max(
+          pollIntervalMs - (now - previousStatusCheckAt),
+          1000,
+        )
+        : pollIntervalMs;
+
+      response.note = recentlyChecked
+        ? `This delegated run was checked recently and is still running. Avoid tight polling; wait about ${Math.ceil(retryAfterMs / 1000)}s before calling check_agent_status again.`
+        : `This delegated run is still running in the background. DotAgents will resume the parent session automatically when it finishes, so continue other work and only check status occasionally. Poll interval is currently ${Math.ceil(pollIntervalMs / 1000)}s.`;
+      response.recommendedPollIntervalMs = pollIntervalMs;
+      response.nextPollAllowedAt = now + retryAfterMs;
+      response.shouldContinueOtherWork = true;
     }
 
     if (subAgentState.status === 'completed' && subAgentState.result) {

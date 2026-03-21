@@ -32,7 +32,7 @@ export const acpRouterToolDefinitions = [
   {
     name: 'delegate_to_agent',
     description:
-      'Delegate a sub-task to a specialized ACP agent. The agent will work autonomously and return results. Use this when a task is better suited for a specialist.',
+      'Delegate a sub-task to a specialized ACP agent. Use waitForResult: true when you need the delegated result before your next step or reply; leave it false only for background work you can safely let finish without tight polling.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -59,7 +59,7 @@ export const acpRouterToolDefinitions = [
         },
         waitForResult: {
           type: 'boolean',
-          description: 'Whether to wait for the agent to complete before continuing (default: false/background)',
+          description: 'Whether to wait for the agent to complete before continuing. Use true when you need the result in the same turn; leave false only for background work and do not pair it with tight check_agent_status loops.',
           default: false,
         },
       },
@@ -68,7 +68,7 @@ export const acpRouterToolDefinitions = [
   },
   {
     name: 'check_agent_status',
-    description: 'Check the status of a running delegated agent task. If runId is omitted, checks the most recent delegated run (or filters by agentName if provided).',
+    description: 'Check the status of a running delegated agent task. If runId is omitted, checks the most recent delegated run (or filters by agentName if provided). Do not call this repeatedly in a tight loop; wait for meaningful time or continue other work between checks.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -146,7 +146,7 @@ export const acpRouterToolDefinitions = [
   {
     name: 'send_to_agent',
     description:
-      'Send a task to an agent. Alias for delegate_to_agent. The agent will process the task and return results.',
+      'Send a task to an agent. Alias for delegate_to_agent. Use waitForResult: true when you need the delegated result before your next step or reply; leave it false only for background work you can safely let finish without tight polling.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -177,7 +177,7 @@ export const acpRouterToolDefinitions = [
         },
         waitForResult: {
           type: 'boolean',
-          description: 'Whether to wait for the agent to complete before continuing (default: false/background)',
+          description: 'Whether to wait for the agent to complete before continuing. Use true when you need the result in the same turn; leave false only for background work and do not pair it with tight check_agent_status loops.',
           default: false,
         },
       },

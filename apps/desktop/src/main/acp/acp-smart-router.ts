@@ -59,7 +59,8 @@ ${agentDescriptions}
 Use delegate_to_agent with agentName and a clear task description.
 If work must run in a specific path, pass workingDirectory.
 Use prepareOnly: true when you only need to warm up/spawn the agent without running a task.
-Monitor the agent's progress and incorporate its results into your response.
+Use waitForResult: true when the delegated result is needed before your next step or user reply.
+If you start background work with waitForResult: false, continue other work and only check status sparingly; never poll in a tight loop.
 `.trim()
   }
 }
