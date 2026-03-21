@@ -63,6 +63,23 @@ interface SidebarSession {
   key: string
 }
 
+function getSessionLastMessageTimestamp(
+  session: AgentSession,
+  conversationTimestamp?: number,
+): number {
+  return Math.max(
+    conversationTimestamp ?? 0,
+    session.endTime ?? 0,
+    session.startTime ?? 0,
+  )
+}
+
+function formatMinutesAgo(timestamp: number): string | null {
+  if (!timestamp || !Number.isFinite(timestamp)) return null
+  const minutesAgo = Math.max(Math.floor((Date.now() - timestamp) / 60_000), 0)
+  return minutesAgo === 1 ? "1m ago" : `${minutesAgo}m ago`
+}
+
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
@@ -610,6 +627,16 @@ export function ActiveAgentsSidebar({
           {sidebarSessions.map(({ session, isPast, key }) => {
             const isFocused = focusedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
+            const conversationTimestamp =
+              sessionProgress?.conversationHistory &&
+              sessionProgress.conversationHistory.length > 0
+                ? sessionProgress.conversationHistory[
+                    sessionProgress.conversationHistory.length - 1
+                  ]?.timestamp
+                : undefined
+            const lastMessageMinutesAgo = formatMinutesAgo(
+              getSessionLastMessageTimestamp(session, conversationTimestamp),
+            )
             const hasPendingApproval =
               !isPast && !!sessionProgress?.pendingToolApproval
             const conversationState = sessionProgress?.conversationState
@@ -654,6 +681,11 @@ export function ActiveAgentsSidebar({
                     session.status === "error" ? "bg-red-500" : "bg-green-500",
                   )} />
                   {renderEditableTitle(session, "flex-1")}
+                  {lastMessageMinutesAgo && (
+                    <span className="text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
+                      {lastMessageMinutesAgo}
+                    </span>
+                  )}
                   {session.conversationId && (
                     <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">
                       {renderSessionMenu(session, isPinned)}
@@ -722,6 +754,16 @@ export function ActiveAgentsSidebar({
                     </span>
                   )}
                 </div>
+                {lastMessageMinutesAgo && (
+                  <span
+                    className={cn(
+                      "shrink-0 text-[10px] tabular-nums text-muted-foreground",
+                      "group-hover:hidden group-focus-within:hidden",
+                    )}
+                  >
+                    {lastMessageMinutesAgo}
+                  </span>
+                )}
                 <div className={cn(
                   "hidden shrink-0 items-center gap-0.5",
                   "group-hover:flex group-focus-within:flex",
