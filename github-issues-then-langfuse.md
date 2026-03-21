@@ -191,7 +191,7 @@
 ### Issue #165 — [Langfuse] Agent uses stale repo path /Users/ajjoobandi/aj47/dotagents
 
 - Open issue count at start of iteration: 24
-- Status: Fixed locally; pending handoff commit and resolution comment
+- Status: Closed after local handoff commit and resolution comment
 - Diagnosis: The active checked-in `.agents/agents.md` prompt still told the agent that AJ's current main project was `aj47/dotagents`, which is stale relative to this repo (`aj47/dotagents-mono`). That prompt text is a credible root cause for sessions drifting toward the old filesystem path noted in the Langfuse issue.
 - Changes:
   - Updated `.agents/agents.md` to name `aj47/dotagents-mono` as the current main project
@@ -202,12 +202,13 @@
   - `git diff --check` ✅ passed
 - Blockers/follow-ups:
   - Historical `.agents/.backups/agents.md.*.bak` snapshots still contain the old wording by design, but the active checked-in prompt no longer does and those backup files were not modified in this iteration
+  - Resolution comment: https://github.com/aj47/dotagents-mono/issues/165#issuecomment-4102601648
 
 #### Evidence
 
 - Evidence ID: repo-path-guidance
 - Scope: GitHub issue #165 — remove stale repo-path guidance that could steer agents toward the old DotAgents location
-- Commit range: 233a916e868c27e75dc6d6afb881c66f5b41a537..<pending>
+- Commit range: 233a916e868c27e75dc6d6afb881c66f5b41a537..6968175981c9b26f0d15d540772aa21515cc1185
 - Rationale: Langfuse captured agent runs attempting commands in `/Users/ajjoobandi/aj47/dotagents`, which wastes iterations and risks follow-on failures. The checked-in agent guidance still named the old project slug, so updating that durable prompt reduces the chance of path drift in future sessions.
 - QA feedback: None (new iteration)
 - Before evidence: No tracked screenshot for this source-level prompt fix. Before-state evidence was `.agents/agents.md` stating `current main project is aj47/dotagents`, which is stale for this repo and plausibly explains the old-path behavior reported in issue #165.
