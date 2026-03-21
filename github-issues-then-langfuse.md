@@ -188,6 +188,34 @@
 - Verification commands/run results: `node --experimental-strip-types --test apps/desktop/tests/llm-retry-policy.test.ts` passed (4/4); `git diff --check` passed; `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, confirming this worktree still lacks the dependencies needed for the full Vitest run.
 - Blockers/remaining uncertainty: The fail-fast guard directly addresses the concrete account-level exhaustion pattern from issue #196, but the repo still lacks installed dependencies for the full Vitest confirmation and the change intentionally stops short of automatic model/provider fallback.
 
+### Issue #165 — [Langfuse] Agent uses stale repo path /Users/ajjoobandi/aj47/dotagents
+
+- Open issue count at start of iteration: 24
+- Status: Fixed locally; pending handoff commit and resolution comment
+- Diagnosis: The active checked-in `.agents/agents.md` prompt still told the agent that AJ's current main project was `aj47/dotagents`, which is stale relative to this repo (`aj47/dotagents-mono`). That prompt text is a credible root cause for sessions drifting toward the old filesystem path noted in the Langfuse issue.
+- Changes:
+  - Updated `.agents/agents.md` to name `aj47/dotagents-mono` as the current main project
+  - Added explicit guidance to trust the active workspace/repo path from the environment instead of assuming an old repo path
+  - Added a focused dependency-light regression test in `apps/desktop/tests/repo-path-guidance.test.mjs`
+- Verification:
+  - `node --test apps/desktop/tests/repo-path-guidance.test.mjs` ✅ passed (1/1)
+  - `git diff --check` ✅ passed
+- Blockers/follow-ups:
+  - Historical `.agents/.backups/agents.md.*.bak` snapshots still contain the old wording by design, but the active checked-in prompt no longer does and those backup files were not modified in this iteration
+
+#### Evidence
+
+- Evidence ID: repo-path-guidance
+- Scope: GitHub issue #165 — remove stale repo-path guidance that could steer agents toward the old DotAgents location
+- Commit range: 233a916e868c27e75dc6d6afb881c66f5b41a537..<pending>
+- Rationale: Langfuse captured agent runs attempting commands in `/Users/ajjoobandi/aj47/dotagents`, which wastes iterations and risks follow-on failures. The checked-in agent guidance still named the old project slug, so updating that durable prompt reduces the chance of path drift in future sessions.
+- QA feedback: None (new iteration)
+- Before evidence: No tracked screenshot for this source-level prompt fix. Before-state evidence was `.agents/agents.md` stating `current main project is aj47/dotagents`, which is stale for this repo and plausibly explains the old-path behavior reported in issue #165.
+- Change: Updated `.agents/agents.md` to point at `aj47/dotagents-mono`, added explicit instruction to trust the environment-provided workspace/repo path, and added `apps/desktop/tests/repo-path-guidance.test.mjs` to keep the checked-in prompt aligned.
+- After evidence: No tracked screenshot for this source-level prompt fix. After-state evidence is `.agents/agents.md` now naming `aj47/dotagents-mono` and warning against assuming an old repo path, with `apps/desktop/tests/repo-path-guidance.test.mjs` passing against that guidance.
+- Verification commands/run results: `node --test apps/desktop/tests/repo-path-guidance.test.mjs` passed (1/1); `git diff --check` passed.
+- Blockers/remaining uncertainty: Backup snapshots under `.agents/.backups/` still preserve historical wording, but the active checked-in prompt used for current guidance is corrected and the backups were intentionally left untouched.
+
 ## Langfuse Traces Inspected
 
 - None this iteration. Phase 1 remains active because open GitHub issues still exist.
