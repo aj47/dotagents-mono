@@ -126,6 +126,39 @@
 - Verification commands/run results: `node --test apps/desktop/tests/llm-fetch-cooldown-guardrails.test.mjs` passed (2/2); `git diff --check` passed; `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, confirming this worktree still lacks the dependencies needed for the full Vitest run.
 - Blockers/remaining uncertainty: The fail-fast guard directly addresses the concrete cooldown-exhaustion pattern from issue #195, but broader model/provider failover is still a separate follow-up if future traces show users want automatic fallback instead of an immediate surfaced error.
 
+### Issue #196 — [Langfuse] Repeated Claude account rate-limit errors causing failed retries in Main Agent sessions
+
+- Open issue count at start of iteration: 25
+- Status: Closed after local handoff commit and resolution comment
+- Diagnosis: `apps/desktop/src/main/llm-fetch.ts` treated generic `429` rate limits as indefinitely retryable even when the provider message explicitly said the request would exceed the account-level rate limit. That kept the request on the same retry path instead of surfacing a fail-fast error, matching the repeated Langfuse failures in issue #196.
+- Changes:
+  - Extracted pure retry classification into `apps/desktop/src/main/llm-retry-policy.ts` so retry decisions can be tested without installed workspace dependencies
+  - Added `account-rate-limit` detection for provider messages like `This request would exceed your account's rate limit. Please try again later.`
+  - Updated `withRetry(...)` in `apps/desktop/src/main/llm-fetch.ts` to fail fast on account-level rate-limit exhaustion with a targeted warning and clearer normalized error instead of re-entering the indefinite `429` retry path
+  - Added a focused Vitest regression in `apps/desktop/src/main/llm-fetch.test.ts`
+  - Added a runnable Node behavioral test in `apps/desktop/tests/llm-retry-policy.test.ts` covering credential cooldown, account-level rate limits, generic `429`, and empty-response paths
+- Verification:
+  - `node --experimental-strip-types --test apps/desktop/tests/llm-retry-policy.test.ts` ✅ passed (4/4)
+  - `git diff --check` ✅ passed
+  - `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` ⚠️ failed because this worktree still has no installed dependencies (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`)
+- Blockers/follow-ups:
+  - Full Vitest execution for the touched `llm-fetch.test.ts` coverage remains blocked until dependencies are installed in this worktree
+  - Broader model/provider fallback on account-level rate limits is still a separate follow-up if future traces show fail-fast is not sufficient
+  - Resolution comment: https://github.com/aj47/dotagents-mono/issues/196#issuecomment-4102485718
+
+#### Evidence
+
+- Evidence ID: llm-fetch-account-rate-limit-fail-fast
+- Scope: GitHub issue #196 — fail fast when the provider reports account-level rate-limit exhaustion instead of retrying the same exhausted request path
+- Commit range: dda8adff05412617697262e477ed644f14084b14..7e08f2531124d0c39c61eb83b2770f18ccbec93e
+- Rationale: Langfuse showed repeated Main Agent failures spending time and retries on requests that the provider had already rejected at the account level. Distinguishing account-level exhaustion from generic transient `429`s reduces wasted retries/cost and surfaces a more actionable failure immediately.
+- QA feedback: Explicit deferral: prior unresolved QA findings on the #191/#195 stack remain open for a later iteration; this iteration focused on new issue #196, while also strengthening retry-policy behavior coverage beyond the earlier regex-only guardrail style.
+- Before evidence: No tracked screenshot for this source-level reliability fix. Before-state evidence was `apps/desktop/src/main/llm-fetch.ts` treating account-exhaustion messages like `This request would exceed your account's rate limit. Please try again later.` the same as generic retryable `429`s, which kept the request on the indefinite rate-limit retry path.
+- Change: Added pure retry classification in `apps/desktop/src/main/llm-retry-policy.ts`, taught it to recognize account-level rate-limit exhaustion separately from credential cooldown and generic `429`s, wired `apps/desktop/src/main/llm-fetch.ts` through that classifier, and added targeted coverage in both `apps/desktop/src/main/llm-fetch.test.ts` and `apps/desktop/tests/llm-retry-policy.test.ts`.
+- After evidence: No tracked screenshot for this source-level reliability fix. After-state evidence is `apps/desktop/src/main/llm-fetch.ts` now logging `Skipping retry because the provider account is currently rate limited` and surfacing a fail-fast normalized error for account-level exhaustion, while `apps/desktop/tests/llm-retry-policy.test.ts` passes against the new retry classifier behavior for cooldown, account-limit, generic `429`, and empty-response cases.
+- Verification commands/run results: `node --experimental-strip-types --test apps/desktop/tests/llm-retry-policy.test.ts` passed (4/4); `git diff --check` passed; `pnpm exec vitest run apps/desktop/src/main/llm-fetch.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, confirming this worktree still lacks the dependencies needed for the full Vitest run.
+- Blockers/remaining uncertainty: The fail-fast guard directly addresses the concrete account-level exhaustion pattern from issue #196, but the repo still lacks installed dependencies for the full Vitest confirmation and the change intentionally stops short of automatic model/provider fallback.
+
 ## Langfuse Traces Inspected
 
 - None this iteration. Phase 1 remains active because open GitHub issues still exist.
