@@ -5,15 +5,23 @@ import {
   Archive,
   ChevronDown,
   ChevronRight,
+  MoreHorizontal,
   X,
   Minimize2,
   Maximize2,
   Clock,
   Pin,
+  Pencil,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import {
   filterPastSessionsAgainstActiveSessions,
@@ -442,21 +450,71 @@ export function ActiveAgentsSidebar({
       }
 
       return (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            startTitleEditing(conversationId, title)
-          }}
+        <span
           className={cn("min-w-0 truncate text-left", className)}
-          title={conversationId ? "Rename session title" : title}
-          disabled={!conversationId}
+          title={conversationId ? "Conversation title" : title}
         >
           {prefix ? `${prefix}${title}` : title}
-        </button>
+        </span>
       )
     },
     [clearTitleEditing, editingConversationId, editingTitle, saveTitleEdit, startTitleEditing],
+  )
+
+  const renderSessionMenu = useCallback(
+    (session: AgentSession, isPinned: boolean) => {
+      if (!session.conversationId) return null
+
+      const conversationId = session.conversationId
+      const title = session.conversationTitle || "Untitled session"
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+              className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              title="Session actions"
+              aria-label={`Session actions for ${title}`}
+            >
+              <MoreHorizontal className="h-3 w-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem
+              onClick={(event) => {
+                event.stopPropagation()
+                startTitleEditing(conversationId, title)
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(event) => {
+                event.stopPropagation()
+                togglePinSession(conversationId)
+              }}
+            >
+              <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current text-foreground")} />
+              {isPinned ? "Unpin" : "Pin"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleArchiveSession(conversationId)
+              }}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              Archive
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+    [startTitleEditing, toggleArchiveSession, togglePinSession],
   )
 
   const handleHeaderClick = () => {
@@ -598,35 +656,7 @@ export function ActiveAgentsSidebar({
                   {renderEditableTitle(session, "flex-1")}
                   {session.conversationId && (
                     <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            toggleArchiveSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title="Archive session"
-                        aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
-                      >
-                        <Archive className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            togglePinSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title={isPinned ? "Unpin session" : "Pin session"}
-                        aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                        aria-pressed={isPinned}
-                      >
-                        <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
-                      </button>
+                      {renderSessionMenu(session, isPinned)}
                     </div>
                   )}
                 </div>
@@ -699,35 +729,7 @@ export function ActiveAgentsSidebar({
                 )}>
                   {session.conversationId && (
                     <>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            toggleArchiveSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title="Archive session"
-                        aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
-                      >
-                        <Archive className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            togglePinSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title={isActivePinned ? "Unpin session" : "Pin session"}
-                        aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                        aria-pressed={isActivePinned}
-                      >
-                        <Pin className={cn("h-3 w-3", isActivePinned && "fill-current text-foreground")} />
-                      </button>
+                      {renderSessionMenu(session, isActivePinned)}
                     </>
                   )}
                   <button

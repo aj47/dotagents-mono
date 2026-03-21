@@ -27,11 +27,14 @@ test('runtime tool surface exposes set_session_title', () => {
   assert.match(handlers, /conversationService\.renameConversationTitle\(/)
 })
 
-test('sidebar supports inline session title editing and persistence', () => {
+test('sidebar uses menu-driven session title editing', () => {
   const source = read('apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx')
 
-  assert.match(source, /aria-label="Rename session title"/)
+  assert.match(source, /<DropdownMenu>/)
+  assert.match(source, /MoreHorizontal/)
+  assert.match(source, /DropdownMenuItem/)
+  assert.match(source, /renderSessionMenu/)
   assert.match(source, /tipcClient\.renameConversationTitle\(/)
-  assert.match(source, /event\.key === "Enter"/)
-  assert.match(source, /event\.key === "Escape"/)
+  assert.match(source, /type="button"/)
+  assert.match(source, /startTitleEditing\(conversationId, title\)/)
 })
