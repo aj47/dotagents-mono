@@ -1,4 +1,5 @@
 import type {
+  ACPDelegationProgress,
   ToolCall,
   ToolResult,
   ConversationHistoryMessage,
@@ -37,6 +38,9 @@ export type ChatMessage = {
   timestamp?: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
+  kind?: 'delegation';
+  delegationRunId?: string;
+  delegationStatus?: ACPDelegationProgress['status'];
 };
 
 export type ChatResponse = ChatApiResponse;

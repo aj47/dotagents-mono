@@ -75,6 +75,11 @@ import {
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import {
+  extractDelegationMessages,
+  findLastUpdatableAssistantMessageIndex,
+  mergeProgressMessagesWithFinalTurn,
+} from './chat-progress-utils';
 
 interface PendingImageAttachment {
   id: string;
@@ -440,6 +445,20 @@ const applyUserResponseToMessages = (
 
   updatedMessages.push({ role: 'assistant', content: trimmedResponse });
   return updatedMessages;
+};
+
+const updateLastUpdatableAssistantMessage = (
+  messages: ChatMessage[],
+  updater: (message: ChatMessage) => ChatMessage
+): ChatMessage[] => {
+  const nextMessages = [...messages];
+  const targetIndex = findLastUpdatableAssistantMessageIndex(nextMessages);
+  if (targetIndex < 0) {
+    return nextMessages;
+  }
+
+  nextMessages[targetIndex] = updater(nextMessages[targetIndex]);
+  return nextMessages;
 };
 
 export default function ChatScreen({ route, navigation }: any) {
@@ -1494,6 +1513,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const convertProgressToMessages = useCallback((update: AgentProgressUpdate): ChatMessage[] => {
     const messages: ChatMessage[] = [];
+    const delegationMessages = extractDelegationMessages(update.steps);
     console.log('[convertProgressToMessages] Processing update, steps:', update.steps?.length || 0, 'history:', update.conversationHistory?.length || 0, 'isComplete:', update.isComplete);
 
     if (update.steps && update.steps.length > 0) {
@@ -1527,6 +1547,8 @@ export default function ChatScreen({ route, navigation }: any) {
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
         });
       }
+
+      messages.push(...delegationMessages);
     }
 
     if (update.conversationHistory && update.conversationHistory.length > 0) {
@@ -1539,7 +1561,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const hasAssistantMessages = currentTurnStartIndex + 1 < update.conversationHistory.length;
       if (hasAssistantMessages) {
-        messages.length = 0;
+        const historyMessages: ChatMessage[] = [];
 
         for (let i = currentTurnStartIndex + 1; i < update.conversationHistory.length; i++) {
           const historyMsg = update.conversationHistory[i];
@@ -1547,8 +1569,8 @@ export default function ChatScreen({ route, navigation }: any) {
           // Merge tool results into the preceding assistant message to avoid duplication
           // The server sends: assistant (with toolCalls) -> tool (with toolResults)
           // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
+          if (historyMsg.role === 'tool' && historyMessages.length > 0) {
+            const lastMessage = historyMessages[historyMessages.length - 1];
             if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
               const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
 
@@ -1565,19 +1587,23 @@ export default function ChatScreen({ route, navigation }: any) {
             }
           }
 
-          messages.push({
+          historyMessages.push({
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
           });
         }
+
+        messages.length = 0;
+        messages.push(...delegationMessages, ...historyMessages);
       }
     }
 
     if (update.streamingContent?.text) {
-      if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
-        messages[messages.length - 1].content = update.streamingContent.text;
+      const lastAssistantIndex = findLastUpdatableAssistantMessageIndex(messages);
+      if (lastAssistantIndex >= 0) {
+        messages[lastAssistantIndex].content = update.streamingContent.text;
       } else {
         messages.push({
           role: 'assistant',
@@ -1868,14 +1894,11 @@ export default function ChatScreen({ route, navigation }: any) {
         }
 
         setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
-              copy[i] = { ...copy[i], content: streamingText };
-              break;
-            }
-          }
-          return copy;
+          const updated = updateLastUpdatableAssistantMessage(m, (message) => ({
+            ...message,
+            content: streamingText,
+          }));
+          return updated;
         });
       };
 
@@ -1997,21 +2020,7 @@ export default function ChatScreen({ route, navigation }: any) {
             console.log('[ChatScreen] beforePlaceholder count:', beforePlaceholder.length);
             // If progress had more messages than conversationHistory, keep progress messages
             // and only update/append the final message from history
-            let mergedMessages: ChatMessage[];
-	            if (progressMsgs.length > 0 && finalTurnMessages.length === 0) {
-              // Edge case: server returned empty history but we have progress messages
-              // Keep progress messages to prevent intermediate messages from disappearing (#1083)
-              console.log('[ChatScreen] Merging: newMessages empty, keeping progress messages');
-              mergedMessages = [...progressMsgs];
-	            } else if (progressMsgs.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
-              console.log('[ChatScreen] Merging: progress had more messages, preserving intermediate');
-              mergedMessages = [...progressMsgs];
-              // Replace/update the last message with the final one from history
-	              mergedMessages[mergedMessages.length - 1] = finalTurnMessages[finalTurnMessages.length - 1];
-            } else {
-              // History is authoritative when it has >= messages
-	              mergedMessages = finalTurnMessages;
-            }
+            const mergedMessages = mergeProgressMessagesWithFinalTurn(progressMsgs, finalTurnMessages);
             const result = [...beforePlaceholder, ...mergedMessages];
             console.log('[ChatScreen] Final messages count:', result.length);
             return result;
@@ -2036,14 +2045,10 @@ export default function ChatScreen({ route, navigation }: any) {
         } else {
           // Normal case: update UI state
           setMessages((m) => {
-            const copy = [...m];
-            for (let i = copy.length - 1; i >= 0; i--) {
-              if (copy[i].role === 'assistant') {
-	                copy[i] = { ...copy[i], content: finalDisplayText };
-                break;
-              }
-            }
-            return copy;
+            return updateLastUpdatableAssistantMessage(m, (message) => ({
+              ...message,
+              content: finalDisplayText,
+            }));
           });
         }
       } else {
@@ -2235,6 +2240,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // Track if we've already played TTS mid-turn to avoid double playback
       let midTurnTTSPlayed = false;
 
+      progressMessagesRef.current = [];
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
@@ -2260,6 +2266,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
+          progressMessagesRef.current = progressMessages;
           setMessages((m) => {
             const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
             return [...beforePlaceholder, ...progressMessages];
@@ -2280,14 +2287,10 @@ export default function ChatScreen({ route, navigation }: any) {
           streamingText += tok;
         }
         setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
-              copy[i] = { ...copy[i], content: streamingText };
-              break;
-            }
-          }
-          return copy;
+          return updateLastUpdatableAssistantMessage(m, (message) => ({
+            ...message,
+            content: streamingText,
+          }));
         });
       };
 
@@ -2336,18 +2339,15 @@ export default function ChatScreen({ route, navigation }: any) {
 
         setMessages((m) => {
           const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-          return [...beforePlaceholder, ...finalTurnMessages];
+          const mergedMessages = mergeProgressMessagesWithFinalTurn(progressMessagesRef.current, finalTurnMessages);
+          return [...beforePlaceholder, ...mergedMessages];
         });
       } else if (finalDisplayText) {
         setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
-              copy[i] = { ...copy[i], content: finalDisplayText };
-              break;
-            }
-          }
-          return copy;
+          return updateLastUpdatableAssistantMessage(m, (message) => ({
+            ...message,
+            content: finalDisplayText,
+          }));
         });
       }
 
@@ -2433,97 +2433,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	  liveTranscript,
 		  sttPreview,
 		});
-
-  const commandQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter(isSlashCommandPrompt)
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        description: 'Slash-style saved prompt from your desktop workspace.',
-        content: prompt.content,
-        source: 'command' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const savedPromptQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter((prompt) => !isSlashCommandPrompt(prompt))
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        description: 'Reusable saved prompt synced from desktop.',
-        content: prompt.content,
-        source: 'saved-prompt' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
-  );
-
-  const quickStartSections = useMemo<QuickStartSection[]>(() => {
-    const sections: QuickStartSection[] = [];
-
-    if (commandQuickStarts.length > 0) {
-      sections.push({
-        id: 'commands',
-        title: 'Custom Commands',
-        subtitle: 'Slash-named saved prompts from desktop show up here.',
-        items: commandQuickStarts,
-      });
-    }
-
-    if (savedPromptQuickStarts.length > 0) {
-      sections.push({
-        id: 'saved-prompts',
-        title: 'Saved Prompts',
-        subtitle: 'Reusable prompts from your desktop setup.',
-        items: savedPromptQuickStarts,
-      });
-    }
-
-    sections.push({
-      id: 'starter-packs',
-      title: 'Starter Packs',
-      subtitle: commandQuickStarts.length === 0
-        ? 'Use these while you build out custom commands and saved prompts.'
-        : 'Built-in launchers for common workflows.',
-      items: starterPackQuickStarts,
-    });
-
-    return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
-
-  const quickStartCategoryPills = useMemo(
-    () => [
-      {
-        id: 'commands-pill',
-        label: 'Custom Commands',
-        value: commandQuickStarts.length > 0 ? `${commandQuickStarts.length} ready` : 'Add slash prompts on desktop',
-      },
-      {
-        id: 'prompts-pill',
-        label: 'Saved Prompts',
-        value: savedPromptQuickStarts.length > 0 ? `${savedPromptQuickStarts.length} synced` : 'Shows desktop prompts here',
-      },
-      {
-        id: 'starter-pill',
-        label: 'Starter Packs',
-        value: `${starterPackQuickStarts.length} tap-to-insert`,
-      },
-    ],
-    [commandQuickStarts.length, savedPromptQuickStarts.length, starterPackQuickStarts.length]
-  );
-
-  const quickStartFooterText = isLoadingQuickStartPrompts
-    ? 'Refreshing saved prompts from desktop…'
-    : 'Tap any item to insert it into the composer. QR pairing stays in connection settings and disconnected flows.';
 
   const commandQuickStarts = useMemo(
     () => predefinedPrompts
