@@ -2962,7 +2962,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     ]}
                   >
                     <Text style={styles.toolActivityGroupHeader}>
-                      ▶ {group.count} tool {group.count === 1 ? 'call' : 'calls'}
+                      ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
                     </Text>
                     {group.previewLines.map((line, lineIdx) => (
                       <Text
@@ -3066,7 +3066,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     ]}
                   >
                     <Text style={styles.toolActivityGroupHeader}>
-                      ▼ {group!.count} tool {group!.count === 1 ? 'call' : 'calls'}
+                      ▼ {group!.count} tool {group!.count === 1 ? 'activity' : 'activities'}
                     </Text>
                   </Pressable>
                 )}
@@ -3365,7 +3365,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     ]}
                   >
                     <Text style={styles.toolActivityGroupHeader}>
-                      ▲ Collapse {group!.count} tool {group!.count === 1 ? 'call' : 'calls'}
+                      ▲ Collapse {group!.count} tool {group!.count === 1 ? 'activity' : 'activities'}
                     </Text>
                   </Pressable>
                 )}

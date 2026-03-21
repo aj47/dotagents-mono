@@ -78,6 +78,15 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /const hasErrors = hasToolResults && m\.toolResults!\.some\(r => !r\.success\);/);
 });
 
+test('uses tool activities wording consistently for grouped tool activity labels', () => {
+  assert.match(screenSource, /accessibilityLabel=\{`\$\{group\.count\} tool activities, collapsed\. Tap to expand\.`\}/);
+  assert.match(screenSource, /▶ \{group\.count\} tool \{group\.count === 1 \? 'activity' : 'activities'\}/);
+  assert.match(screenSource, /accessibilityLabel=\{`Collapse \$\{group!\.count\} tool activities`\}/);
+  assert.match(screenSource, /▼ \{group!\.count\} tool \{group!\.count === 1 \? 'activity' : 'activities'\}/);
+  assert.match(screenSource, /▲ Collapse \{group!\.count\} tool \{group!\.count === 1 \? 'activity' : 'activities'\}/);
+  assert.doesNotMatch(screenSource, /▶ \{group\.count\} tool \{group\.count === 1 \? 'call' : 'calls'\}/);
+});
+
 test('keeps the TTS control inline with assistant message text instead of on a detached row', () => {
   assert.match(screenSource, /assistantMessageRow:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'flex-start'/);
   assert.match(screenSource, /<View style=\{m\.role === 'assistant' \? styles\.assistantMessageRow : undefined\}>[\s\S]*?speakMessage\(i, visibleMessageContent\)/);
