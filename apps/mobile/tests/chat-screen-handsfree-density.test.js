@@ -52,3 +52,10 @@ test('keeps wake/sleep controls inline and wires a dedicated pause/resume contro
   assert.match(screenSource, /<View style=\{styles\.handsFreeControlsRow\}>[\s\S]*?onPress=\{\(\) => \{[\s\S]*?handsFreeController\.state\.phase === 'paused'[\s\S]*?handsFreeController\.resumeByUser\(\)[\s\S]*?handsFreeController\.pauseByUser\(\)[\s\S]*?void stopRecognitionOnly\(\);[\s\S]*?<Text style=\{styles\.handsFreeControlButtonText\}>\s*\{handsFreeController\.state\.phase === 'paused' \? 'Resume' : 'Pause'\}\s*<\/Text>[\s\S]*?<\/View>/);
   assert.match(screenSource, /onPress=\{handsFree \? \(\) => \{[\s\S]*?handsFreeController\.state\.phase === 'paused'[\s\S]*?handsFreeController\.resumeByUser\(\)[\s\S]*?handsFreeController\.pauseByUser\(\)[\s\S]*?\} : undefined\}/);
 });
+
+test('pauses queued-message auto-processing while handsfree is paused', () => {
+  assert.match(screenSource, /const handsFreePhaseRef = useRef<HandsFreePhase>\('sleeping'\);/);
+  assert.match(screenSource, /handsFreePhaseRef\.current = handsFreeController\.state\.phase;/);
+  assert.match(screenSource, /if \(messageQueueEnabled && \(!handsFree \|\| handsFreePhaseRef\.current !== 'paused'\)\) \{/);
+  assert.match(screenSource, /if \(handsFreeRef\.current && handsFreePhaseRef\.current === 'paused'\) \{\s*return;\s*\}[\s\S]*?messageQueue\.markProcessing\(currentConversationId, nextMessage\.id\);/);
+});

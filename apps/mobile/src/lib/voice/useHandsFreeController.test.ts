@@ -231,4 +231,27 @@ describe('resolveHandsFreeUtterance', () => {
     expect(controller.state).toEqual(createInitialHandsFreeState());
     expect(controller.shouldKeepRecognizerActive).toBe(false);
   });
+
+  it('keeps the recognizer active while processing so overlapping utterances can be queued', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, { ...options, enabled: true });
+    runtime.commitEffects();
+    controller = runtime.render(useHook, { ...options, enabled: true });
+
+    expect(controller.handleFinalTranscript('hey dot agents what is the weather')).toEqual({
+      type: 'send',
+      text: 'what is the weather',
+    });
+
+    controller = runtime.render(useHook, { ...options, enabled: true });
+    expect(controller.state.phase).toBe('processing');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
 });

@@ -507,7 +507,10 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     () => enabled
       && runtimeActive
       && state.pauseReason !== 'user'
-      && (state.phase === 'sleeping' || state.phase === 'waking' || state.phase === 'listening'),
+      && (state.phase === 'sleeping'
+        || state.phase === 'waking'
+        || state.phase === 'listening'
+        || state.phase === 'processing'),
     [enabled, runtimeActive, state.phase, state.pauseReason],
   );
 
