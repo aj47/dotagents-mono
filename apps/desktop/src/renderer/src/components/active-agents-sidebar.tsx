@@ -5,7 +5,9 @@ import {
   Archive,
   ChevronDown,
   ChevronRight,
+  Mic,
   MoreHorizontal,
+  Plus,
   X,
   Minimize2,
   Maximize2,
@@ -16,21 +18,22 @@ import {
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
+import { Button } from "./ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
+import { AgentSelector, useSelectedAgentId } from "./agent-selector"
+import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import {
   filterPastSessionsAgainstActiveSessions,
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
 import { useNavigate } from "react-router-dom"
-import {
-  normalizeAgentConversationState,
-} from "@dotagents/shared"
+import { normalizeAgentConversationState } from "@dotagents/shared"
 
 interface AgentSession {
   id: string
@@ -111,9 +114,12 @@ export function ActiveAgentsSidebar({
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
   const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
-  const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
+  const [editingConversationId, setEditingConversationId] = useState<
+    string | null
+  >(null)
   const [editingTitle, setEditingTitle] = useState("")
   const skipTitleSaveOnBlurRef = useRef(false)
+  const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -147,7 +153,9 @@ export function ActiveAgentsSidebar({
         .map((session) => session.conversationId)
         .filter((id): id is string => !!id),
     )
-    const seenFallbackIds = new Set<string>(activeSessions.map((session) => session.id))
+    const seenFallbackIds = new Set<string>(
+      activeSessions.map((session) => session.id),
+    )
 
     const addPastSession = (session: AgentSession, keyPrefix: string) => {
       const conversationId = session.conversationId
@@ -202,18 +210,21 @@ export function ActiveAgentsSidebar({
       activeSessions,
       pinnedSessionIds,
     )
-    const activeItems: SidebarSession[] = orderedActiveSessions.map((session) => ({
-      session,
-      isPast: false,
-      key: `active:${session.id}`,
-    }))
-    const dedupedPastSessions = filterPastSessionsAgainstActiveSessions<SidebarSession>(
-      allPastSessions,
-      orderedActiveSessions,
-    ).filter((item) => {
-      const cid = item.session.conversationId
-      return !cid || !archivedSessionIds.has(cid)
-    })
+    const activeItems: SidebarSession[] = orderedActiveSessions.map(
+      (session) => ({
+        session,
+        isPast: false,
+        key: `active:${session.id}`,
+      }),
+    )
+    const dedupedPastSessions =
+      filterPastSessionsAgainstActiveSessions<SidebarSession>(
+        allPastSessions,
+        orderedActiveSessions,
+      ).filter((item) => {
+        const cid = item.session.conversationId
+        return !cid || !archivedSessionIds.has(cid)
+      })
 
     // Ensure pinned past sessions always appear, even if beyond the visible count.
     // Split into pinned (always shown) and unpinned (paginated).
@@ -228,7 +239,10 @@ export function ActiveAgentsSidebar({
       }
     }
 
-    const unpinnedSliceCount = Math.max(displayedPastSessionCount - pinnedPast.length, 0)
+    const unpinnedSliceCount = Math.max(
+      displayedPastSessionCount - pinnedPast.length,
+      0,
+    )
 
     return {
       sidebarSessions: [
@@ -239,7 +253,13 @@ export function ActiveAgentsSidebar({
       // "Has more" is based on unpinned sessions only since pinned are always shown
       hasMorePastSessions: unpinnedPast.length > unpinnedSliceCount,
     }
-  }, [activeSessions, allPastSessions, displayedPastSessionCount, pinnedSessionIds, archivedSessionIds])
+  }, [
+    activeSessions,
+    allPastSessions,
+    displayedPastSessionCount,
+    pinnedSessionIds,
+    archivedSessionIds,
+  ])
 
   const hasAnySessions = sidebarSessions.length > 0
 
@@ -393,39 +413,50 @@ export function ActiveAgentsSidebar({
     setEditingTitle("")
   }, [])
 
-  const startTitleEditing = useCallback((conversationId?: string, title?: string) => {
-    if (!conversationId) return
-    setEditingConversationId(conversationId)
-    setEditingTitle(title || "Untitled session")
-  }, [])
+  const startTitleEditing = useCallback(
+    (conversationId?: string, title?: string) => {
+      if (!conversationId) return
+      setEditingConversationId(conversationId)
+      setEditingTitle(title || "Untitled session")
+    },
+    [],
+  )
 
-  const saveTitleEdit = useCallback(async (conversationId?: string, currentTitle?: string) => {
-    if (!conversationId) {
-      clearTitleEditing()
-      return
-    }
+  const saveTitleEdit = useCallback(
+    async (conversationId?: string, currentTitle?: string) => {
+      if (!conversationId) {
+        clearTitleEditing()
+        return
+      }
 
-    const nextTitle = editingTitle.trim()
-    const previousTitle = (currentTitle || "Untitled session").trim()
+      const nextTitle = editingTitle.trim()
+      const previousTitle = (currentTitle || "Untitled session").trim()
 
-    if (!nextTitle || nextTitle === previousTitle) {
-      clearTitleEditing()
-      return
-    }
+      if (!nextTitle || nextTitle === previousTitle) {
+        clearTitleEditing()
+        return
+      }
 
-    try {
-      await tipcClient.renameConversationTitle({ conversationId, title: nextTitle })
-      clearTitleEditing()
+      try {
+        await tipcClient.renameConversationTitle({
+          conversationId,
+          title: nextTitle,
+        })
+        clearTitleEditing()
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
-        queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
-        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
-      ])
-    } catch (error) {
-      console.error("Failed to rename session title:", error)
-    }
-  }, [clearTitleEditing, editingTitle, queryClient])
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["conversation", conversationId],
+          }),
+        ])
+      } catch (error) {
+        console.error("Failed to rename session title:", error)
+      }
+    },
+    [clearTitleEditing, editingTitle, queryClient],
+  )
 
   const renderEditableTitle = useCallback(
     (session: AgentSession, className: string, prefix?: string) => {
@@ -458,7 +489,7 @@ export function ActiveAgentsSidebar({
             }}
             autoFocus
             className={cn(
-              "h-6 w-full rounded border border-input bg-background px-1.5 text-xs text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring",
+              "border-input bg-background text-foreground focus-visible:border-ring h-6 w-full rounded border px-1.5 text-xs shadow-sm outline-none ring-0",
               className,
             )}
             aria-label="Rename session title"
@@ -475,7 +506,13 @@ export function ActiveAgentsSidebar({
         </span>
       )
     },
-    [clearTitleEditing, editingConversationId, editingTitle, saveTitleEdit, startTitleEditing],
+    [
+      clearTitleEditing,
+      editingConversationId,
+      editingTitle,
+      saveTitleEdit,
+      startTitleEditing,
+    ],
   )
 
   const renderSessionMenu = useCallback(
@@ -492,7 +529,7 @@ export function ActiveAgentsSidebar({
               type="button"
               onClick={(event) => event.stopPropagation()}
               onMouseDown={(event) => event.stopPropagation()}
-              className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              className="hover:bg-accent focus-visible:ring-ring shrink-0 rounded p-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
               title="Session actions"
               aria-label={`Session actions for ${title}`}
             >
@@ -515,7 +552,12 @@ export function ActiveAgentsSidebar({
                 togglePinSession(conversationId)
               }}
             >
-              <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current text-foreground")} />
+              <Pin
+                className={cn(
+                  "h-3.5 w-3.5",
+                  isPinned && "text-foreground fill-current",
+                )}
+              />
               {isPinned ? "Unpin" : "Pin"}
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -543,6 +585,19 @@ export function ActiveAgentsSidebar({
       setIsExpanded(true)
     }
   }
+
+  const handleStartSessionAction = useCallback(
+    (mode: "text" | "voice", prompt?: string) => {
+      const params = new URLSearchParams()
+      params.set("start", mode)
+      if (prompt) {
+        params.set("prompt", prompt)
+      }
+
+      navigate({ pathname: "/", search: `?${params.toString()}` })
+    },
+    [navigate],
+  )
 
   const handleSidebarSessionsScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
@@ -620,205 +675,258 @@ export function ActiveAgentsSidebar({
       </div>
 
       {isExpanded && (
-        <div
-          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
-          onScroll={handleSidebarSessionsScroll}
-        >
-          {sidebarSessions.map(({ session, isPast, key }) => {
-            const isFocused = focusedSessionId === session.id
-            const sessionProgress = agentProgressById.get(session.id)
-            const conversationTimestamp =
-              sessionProgress?.conversationHistory &&
-              sessionProgress.conversationHistory.length > 0
-                ? sessionProgress.conversationHistory[
-                    sessionProgress.conversationHistory.length - 1
-                  ]?.timestamp
-                : undefined
-            const lastMessageMinutesAgo = formatMinutesAgo(
-              getSessionLastMessageTimestamp(session, conversationTimestamp),
-            )
-            const hasPendingApproval =
-              !isPast && !!sessionProgress?.pendingToolApproval
-            const conversationState = sessionProgress?.conversationState
-              ? normalizeAgentConversationState(
-                  sessionProgress.conversationState,
-                  sessionProgress.isComplete ? "complete" : "running",
-                )
-              : hasPendingApproval
-                ? "needs_input"
-                : session.status === "error" || session.status === "stopped"
-                  ? "blocked"
-                  : session.status === "active"
-                    ? "running"
-                    : "complete"
-            // Use store's isSnoozed for active sessions (matches main view), backend for past
-            const isSnoozed = isPast
-              ? false
-              : (sessionProgress?.isSnoozed ?? false)
+        <>
+          <div className="mt-1 pl-2 pr-1">
+            <div className="bg-muted/20 rounded-md border p-2">
+              <div className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-wide">
+                Start Session
+              </div>
+              <div className="space-y-2">
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onSelectAgent={setSelectedAgentId}
+                  compact
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                    onClick={() => handleStartSessionAction("text")}
+                    aria-label="Start with text"
+                    title="Start with text"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Text</span>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                    onClick={() => handleStartSessionAction("voice")}
+                    aria-label="Start with voice"
+                    title="Start with voice"
+                  >
+                    <Mic className="h-3.5 w-3.5" />
+                    <span>Voice</span>
+                  </Button>
+                  <PredefinedPromptsMenu
+                    onSelectPrompt={(content) =>
+                      handleStartSessionAction("text", content)
+                    }
+                    buttonSize="sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            className="mt-2 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
+            onScroll={handleSidebarSessionsScroll}
+          >
+            {sidebarSessions.map(({ session, isPast, key }) => {
+              const isFocused = focusedSessionId === session.id
+              const sessionProgress = agentProgressById.get(session.id)
+              const conversationTimestamp =
+                sessionProgress?.conversationHistory &&
+                sessionProgress.conversationHistory.length > 0
+                  ? sessionProgress.conversationHistory[
+                      sessionProgress.conversationHistory.length - 1
+                    ]?.timestamp
+                  : undefined
+              const lastMessageMinutesAgo = formatMinutesAgo(
+                getSessionLastMessageTimestamp(session, conversationTimestamp),
+              )
+              const hasPendingApproval =
+                !isPast && !!sessionProgress?.pendingToolApproval
+              const conversationState = sessionProgress?.conversationState
+                ? normalizeAgentConversationState(
+                    sessionProgress.conversationState,
+                    sessionProgress.isComplete ? "complete" : "running",
+                  )
+                : hasPendingApproval
+                  ? "needs_input"
+                  : session.status === "error" || session.status === "stopped"
+                    ? "blocked"
+                    : session.status === "active"
+                      ? "running"
+                      : "complete"
+              // Use store's isSnoozed for active sessions (matches main view), backend for past
+              const isSnoozed = isPast
+                ? false
+                : (sessionProgress?.isSnoozed ?? false)
 
-            if (isPast) {
-              const isPinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
+              if (isPast) {
+                const isPinned = session.conversationId
+                  ? pinnedSessionIds.has(session.conversationId)
+                  : false
+                return (
+                  <div
+                    key={key}
+                    onClick={() => {
+                      if (session.conversationId) {
+                        logUI(
+                          "[ActiveAgentsSidebar] Navigating to sessions view for completed session:",
+                          session.conversationId,
+                        )
+                        navigate(`/${session.conversationId}`)
+                      }
+                    }}
+                    className={cn(
+                      "text-muted-foreground group flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                      session.conversationId &&
+                        "hover:bg-accent/50 cursor-pointer",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 shrink-0 rounded-full",
+                        session.status === "error"
+                          ? "bg-red-500"
+                          : "bg-green-500",
+                      )}
+                    />
+                    {renderEditableTitle(session, "flex-1")}
+                    {lastMessageMinutesAgo && (
+                      <span className="text-muted-foreground text-[10px] tabular-nums group-focus-within:hidden group-hover:hidden">
+                        {lastMessageMinutesAgo}
+                      </span>
+                    )}
+                    {session.conversationId && (
+                      <div className="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
+                        {renderSessionMenu(session, isPinned)}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              // Active session row
+              // Status colors: amber for pending approval, blue for active, gray for snoozed
+              const statusDotColor = hasPendingApproval
+                ? "bg-amber-500"
+                : conversationState === "blocked"
+                  ? "bg-red-500"
+                  : conversationState === "complete"
+                    ? "bg-green-500"
+                    : isSnoozed
+                      ? "bg-muted-foreground"
+                      : "bg-blue-500"
+
+              // Get agent/profile name from progress data
+              const agentName = sessionProgress?.profileName
+              const isActivePinned = session.conversationId
+                ? pinnedSessionIds.has(session.conversationId)
+                : false
+
               return (
                 <div
                   key={key}
-                  onClick={() => {
-                    if (session.conversationId) {
-                      logUI(
-                        "[ActiveAgentsSidebar] Navigating to sessions view for completed session:",
-                        session.conversationId,
-                      )
-                      navigate(`/${session.conversationId}`)
-                    }
-                  }}
+                  onClick={() => handleSessionClick(session.id)}
                   className={cn(
-                    "group text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
-                    session.conversationId &&
-                      "hover:bg-accent/50 cursor-pointer",
+                    "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    hasPendingApproval
+                      ? "bg-amber-500/10"
+                      : isFocused
+                        ? "bg-blue-500/10"
+                        : "hover:bg-accent/50",
                   )}
                 >
-                  <span className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    session.status === "error" ? "bg-red-500" : "bg-green-500",
-                  )} />
-                  {renderEditableTitle(session, "flex-1")}
+                  {/* Status dot */}
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      statusDotColor,
+                      !isSnoozed && !hasPendingApproval && "animate-pulse",
+                    )}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    {renderEditableTitle(
+                      session,
+                      cn(
+                        hasPendingApproval
+                          ? "text-amber-700 dark:text-amber-300"
+                          : isSnoozed
+                            ? "text-muted-foreground"
+                            : "text-foreground",
+                      ),
+                      hasPendingApproval ? "⚠ " : undefined,
+                    )}
+                    {/* Agent name indicator */}
+                    {agentName && (
+                      <span
+                        className="text-primary/60 truncate text-[10px]"
+                        title={`Agent: ${agentName}`}
+                      >
+                        {agentName}
+                      </span>
+                    )}
+                  </div>
                   {lastMessageMinutesAgo && (
-                    <span className="text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
+                    <span
+                      className={cn(
+                        "text-muted-foreground shrink-0 text-[10px] tabular-nums",
+                        "group-focus-within:hidden group-hover:hidden",
+                      )}
+                    >
                       {lastMessageMinutesAgo}
                     </span>
                   )}
-                  {session.conversationId && (
-                    <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">
-                      {renderSessionMenu(session, isPinned)}
-                    </div>
-                  )}
+                  <div
+                    className={cn(
+                      "hidden shrink-0 items-center gap-0.5",
+                      "group-focus-within:flex group-hover:flex",
+                      isFocused && "!flex",
+                    )}
+                  >
+                    {session.conversationId && (
+                      <>{renderSessionMenu(session, isActivePinned)}</>
+                    )}
+                    <button
+                      onClick={(e) =>
+                        handleToggleSnooze(session.id, isSnoozed, e)
+                      }
+                      className="hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-all"
+                      title={
+                        isSnoozed ? "Restore" : "Minimize - run in background"
+                      }
+                    >
+                      {isSnoozed ? (
+                        <Maximize2 className="h-3 w-3" />
+                      ) : (
+                        <Minimize2 className="h-3 w-3" />
+                      )}
+                    </button>
+                    <button
+                      onClick={(e) => handleStopSession(session.id, e)}
+                      className="hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 transition-all"
+                      title="Stop this agent session"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               )
-            }
+            })}
 
-            // Active session row
-            // Status colors: amber for pending approval, blue for active, gray for snoozed
-            const statusDotColor = hasPendingApproval
-              ? "bg-amber-500"
-              : conversationState === "blocked"
-                ? "bg-red-500"
-                : conversationState === "complete"
-                  ? "bg-green-500"
-              : isSnoozed
-                ? "bg-muted-foreground"
-                : "bg-blue-500"
-
-            // Get agent/profile name from progress data
-            const agentName = sessionProgress?.profileName
-            const isActivePinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
-
-            return (
-              <div
-                key={key}
-                onClick={() => handleSessionClick(session.id)}
-                className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
-                  hasPendingApproval
-                    ? "bg-amber-500/10"
-                    : isFocused
-                      ? "bg-blue-500/10"
-                      : "hover:bg-accent/50",
-                )}
-              >
-                {/* Status dot */}
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    statusDotColor,
-                    !isSnoozed && !hasPendingApproval && "animate-pulse",
-                  )}
-                />
-                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  {renderEditableTitle(
-                    session,
-                    cn(
-                      hasPendingApproval
-                        ? "text-amber-700 dark:text-amber-300"
-                        : isSnoozed
-                          ? "text-muted-foreground"
-                          : "text-foreground",
+            {hasMorePastSessions && (
+              <button
+                type="button"
+                onClick={() =>
+                  setVisiblePastSessionCount((prev) =>
+                    Math.min(
+                      Math.max(prev, minimumPastSessionsNeeded) +
+                        SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
+                      allPastSessions.length,
                     ),
-                    hasPendingApproval ? "⚠ " : undefined,
-                  )}
-                  {/* Agent name indicator */}
-                  {agentName && (
-                    <span
-                      className="text-[10px] text-primary/60 truncate"
-                      title={`Agent: ${agentName}`}
-                    >
-                      {agentName}
-                    </span>
-                  )}
-                </div>
-                {lastMessageMinutesAgo && (
-                  <span
-                    className={cn(
-                      "shrink-0 text-[10px] tabular-nums text-muted-foreground",
-                      "group-hover:hidden group-focus-within:hidden",
-                    )}
-                  >
-                    {lastMessageMinutesAgo}
-                  </span>
-                )}
-                <div className={cn(
-                  "hidden shrink-0 items-center gap-0.5",
-                  "group-hover:flex group-focus-within:flex",
-                  isFocused && "!flex",
-                )}>
-                  {session.conversationId && (
-                    <>
-                      {renderSessionMenu(session, isActivePinned)}
-                    </>
-                  )}
-                  <button
-                    onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
-                    className="hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-all"
-                    title={
-                      isSnoozed
-                        ? "Restore"
-                        : "Minimize - run in background"
-                    }
-                  >
-                    {isSnoozed ? (
-                      <Maximize2 className="h-3 w-3" />
-                    ) : (
-                      <Minimize2 className="h-3 w-3" />
-                    )}
-                  </button>
-                  <button
-                    onClick={(e) => handleStopSession(session.id, e)}
-                    className="hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 transition-all"
-                    title="Stop this agent session"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-
-          {hasMorePastSessions && (
-            <button
-              type="button"
-              onClick={() =>
-                setVisiblePastSessionCount((prev) =>
-                  Math.min(
-                    Math.max(prev, minimumPastSessionsNeeded) +
-                      SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
-                    allPastSessions.length,
-                  ),
-                )
-              }
-              className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
-            >
-              Load more sessions
-            </button>
-          )}
-        </div>
+                  )
+                }
+                className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+              >
+                Load more sessions
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
