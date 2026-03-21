@@ -31,8 +31,16 @@ describe("sessions in-app actions", () => {
     expect(sidebarSource).toContain("<PredefinedPromptsMenu")
     expect(sidebarSource).toContain("onStartTextSession")
     expect(sidebarSource).toContain("onStartVoiceSession")
+    expect(sidebarSource).toContain('aria-label="Start text session"')
+    expect(sidebarSource).toContain('aria-label="Start voice session"')
+    expect(sidebarSource).not.toContain("<span>Start Text</span>")
+    expect(sidebarSource).not.toContain("<span>Start Voice</span>")
     expect(sessionsSource).not.toContain('aria-label="Start with text"')
     expect(sessionsSource).not.toContain('aria-label="Start with voice"')
+  })
+
+  it("does not reserve top toolbar space above session tiles unless layout controls are actually needed", () => {
+    expect(sessionsSource).toContain("const showSessionToolbar = hasSessions && availableLayoutModes.length > 1")
   })
 
   it("preserves an explicitly restored tile layout if it remains viable at the minimum tile size", () => {

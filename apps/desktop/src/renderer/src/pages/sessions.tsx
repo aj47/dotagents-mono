@@ -832,10 +832,11 @@ export function Component() {
   const hasPendingTile = !!pendingProgress || showPendingLoadingTile
 
   const hasSessions = allProgressEntries.length > 0 || hasPendingTile
+  const showSessionToolbar = hasSessions && availableLayoutModes.length > 1
 
   return (
     <div className="group/tile flex h-full flex-col">
-      {hasSessions && (
+      {showSessionToolbar && (
         <div className="flex-shrink-0 px-3 pt-2">
           <div className="flex items-center justify-end gap-1">
             {/* Cycle tile layout mode button */}
@@ -846,7 +847,6 @@ export function Component() {
               className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
               title={`Next layout: ${getTileLayoutLabel(nextTileLayoutMode)} (click to cycle)`}
               aria-label="Cycle tile layout"
-              disabled={availableLayoutModes.length <= 1}
             >
               {nextTileLayoutMode === "1x1" ? (
                 <Maximize2 className="h-4 w-4" />

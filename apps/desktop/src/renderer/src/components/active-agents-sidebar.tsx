@@ -656,17 +656,17 @@ export function ActiveAgentsSidebar({
                 className="h-7 w-7 rounded-md border border-input bg-background shadow-sm"
               />
             )}
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-1.5">
             {onStartTextSession && (
               <Button
                 type="button"
+                variant="outline"
                 size="sm"
-                className="gap-1.5 px-2"
+                className="h-7 w-7 shrink-0 rounded-md px-0"
                 onClick={() => void onStartTextSession()}
+                title="Start text session"
+                aria-label="Start text session"
               >
                 <Plus className="h-3.5 w-3.5 shrink-0" />
-                <span>Start Text</span>
               </Button>
             )}
             {onStartVoiceSession && (
@@ -674,11 +674,12 @@ export function ActiveAgentsSidebar({
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="gap-1.5 px-2"
+                className="h-7 w-7 shrink-0 rounded-md px-0"
                 onClick={() => void onStartVoiceSession()}
+                title="Start voice session"
+                aria-label="Start voice session"
               >
                 <Mic className="h-3.5 w-3.5 shrink-0" />
-                <span>Start Voice</span>
               </Button>
             )}
           </div>
