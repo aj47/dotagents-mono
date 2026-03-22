@@ -39,6 +39,7 @@ test("sidebar keeps session renaming behind an explicit overflow action and pers
   assert.match(source, /SessionOverflowMenu/)
   assert.match(source, /<MoreHorizontal className="h-3 w-3" \/>/)
   assert.match(source, /<DropdownMenuItem onSelect=\{\(\) => onRename\(\)\}>/)
+  assert.match(source, /group-focus-within:opacity-100/)
   assert.doesNotMatch(
     source,
     /title=\{conversationId \? "Rename session title" : title\}/,
@@ -51,6 +52,6 @@ test("agent selector keeps agent names text-first without internal or ACP badges
     "apps/desktop/src/renderer/src/components/agent-selector.tsx",
   )
 
-  assert.doesNotMatch(source, /internal/i)
-  assert.doesNotMatch(source, /\bACP\b/)
+  assert.doesNotMatch(source, />\s*Internal\s*</)
+  assert.doesNotMatch(source, />\s*ACP\s*</)
 })

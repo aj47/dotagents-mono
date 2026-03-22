@@ -667,7 +667,7 @@ export function ActiveAgentsSidebar({
                     }
                   }}
                   className={cn(
-                    "text-muted-foreground group flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-8 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
@@ -682,7 +682,14 @@ export function ActiveAgentsSidebar({
                   />
                   {renderEditableTitle(session, "flex-1")}
                   {session.conversationId && (
-                    <div className="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
+                    <div
+                      className={cn(
+                        "absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                        "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                        "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                        "focus-within:pointer-events-auto focus-within:opacity-100",
+                      )}
+                    >
                       <SessionOverflowMenu
                         sessionTitle={
                           session.conversationTitle || "Untitled session"
@@ -731,7 +738,7 @@ export function ActiveAgentsSidebar({
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-16 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isFocused
@@ -771,9 +778,11 @@ export function ActiveAgentsSidebar({
                 </div>
                 <div
                   className={cn(
-                    "hidden shrink-0 items-center gap-0.5",
-                    "group-focus-within:flex group-hover:flex",
-                    isFocused && "!flex",
+                    "absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                    "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                    "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                    "focus-within:pointer-events-auto focus-within:opacity-100",
+                    isFocused && "pointer-events-auto opacity-100",
                   )}
                 >
                   {session.conversationId && (
