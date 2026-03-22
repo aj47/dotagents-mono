@@ -3,12 +3,10 @@
  */
 
 import type { ToolCall, ToolResult } from './types';
-
-const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi;
+import { replaceMarkdownMedia } from './message-media';
 
 export function sanitizeSessionText(content: string): string {
-  return content
-    .replace(MARKDOWN_IMAGE_REGEX, '[Image]')
+  return replaceMarkdownMedia(content, ({ kind }) => (kind === 'video' ? '[Video]' : '[Image]'))
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -163,4 +161,3 @@ export function sessionToListItem(session: Session): SessionListItem {
 export function isStubSession(session: Session): boolean {
   return session.messages.length === 0 && !!session.serverConversationId && !!session.serverMetadata;
 }
-

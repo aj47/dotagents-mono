@@ -43,6 +43,9 @@ import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import {
+  buildMarkdownMediaTag,
+  countMarkdownMedia,
+  replaceMarkdownMedia,
   extractRespondToUserResponseEvents,
   preprocessTextForTTS,
   shouldCollapseMessage,
@@ -84,22 +87,27 @@ import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
 
-interface PendingImageAttachment {
+interface PendingMessageAttachment {
   id: string;
+  kind: 'image' | 'video';
   name: string;
   previewUri: string;
-  dataUrl: string;
+  messageUri: string;
+  mimeType: string;
+  durationMs?: number | null;
 }
 
-const MAX_PENDING_IMAGES = 4;
+const PICKABLE_MEDIA_TYPES: ImagePicker.MediaType[] = ['images', 'videos'];
+const MAX_PENDING_ATTACHMENTS = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
+const MAX_PENDING_VIDEO_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
 const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
 const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 
-const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+const ATTACHMENT_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -109,9 +117,13 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.heic': 'image/heic',
   '.heif': 'image/heif',
+  '.mp4': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.m4v': 'video/x-m4v',
+  '.3gp': 'video/3gpp',
+  '.ogv': 'video/ogg',
 };
-
-const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
 
 const getApproxBase64Bytes = (base64: string) => {
   const normalized = base64.replace(/\s+/g, '');
@@ -127,13 +139,13 @@ const getApproxDataUrlBytes = (dataUrl: string) => {
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 
-const inferImageMimeType = (asset: {
+const inferAttachmentMimeType = (asset: {
   mimeType?: string | null;
   fileName?: string | null;
   uri?: string | null;
 }) => {
   const mimeType = asset.mimeType?.trim().toLowerCase();
-  if (mimeType?.startsWith('image/')) {
+  if (mimeType?.startsWith('image/') || mimeType?.startsWith('video/')) {
     return mimeType;
   }
 
@@ -142,20 +154,49 @@ const inferImageMimeType = (asset: {
   if (!extensionMatch) {
     return null;
   }
-  return IMAGE_MIME_BY_EXTENSION[`.${extensionMatch[1].toLowerCase()}`] || null;
+  return ATTACHMENT_MIME_BY_EXTENSION[`.${extensionMatch[1].toLowerCase()}`] || null;
 };
 
-const buildMessageWithPendingImages = (text: string, images: PendingImageAttachment[]) => {
+const inferPickedAttachmentKind = (asset: {
+  type?: 'image' | 'video' | 'livePhoto' | 'pairedVideo' | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+  uri?: string | null;
+}): 'image' | 'video' | null => {
+  if (asset.type === 'video' || asset.type === 'pairedVideo') {
+    return 'video';
+  }
+  if (asset.type === 'image' || asset.type === 'livePhoto') {
+    return 'image';
+  }
+
+  const mimeType = inferAttachmentMimeType(asset);
+  if (!mimeType) {
+    return null;
+  }
+  if (mimeType.startsWith('video/')) {
+    return 'video';
+  }
+  if (mimeType.startsWith('image/')) {
+    return 'image';
+  }
+  return null;
+};
+
+const buildMessageWithPendingAttachments = (text: string, attachments: PendingMessageAttachment[]) => {
   const trimmed = text.trim();
-  const imageMarkdown = images
-    .map((image, index) => {
-      const fallbackName = `Image ${index + 1}`;
-      const safeName = escapeMarkdownImageAlt(image.name || fallbackName) || fallbackName;
-      return `![${safeName}](${image.dataUrl})`;
+  const attachmentMarkdown = attachments
+    .map((attachment, index) => {
+      const fallbackName = `${attachment.kind === 'video' ? 'Video' : 'Image'} ${index + 1}`;
+      return buildMarkdownMediaTag(
+        attachment.kind,
+        attachment.name || fallbackName,
+        attachment.messageUri
+      );
     })
     .join('\n\n');
 
-  return [trimmed, imageMarkdown].filter(Boolean).join('\n\n');
+  return [trimmed, attachmentMarkdown].filter(Boolean).join('\n\n');
 };
 
 type QuickStartShortcut = {
@@ -213,15 +254,13 @@ const STARTER_PACK_SHORTCUTS: QuickStartShortcut[] = [
 
 const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
 
-const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
-
 /** Meta-tools whose results are already shown as visible message content or are purely internal */
 const HIDDEN_META_TOOLS = new Set([RESPOND_TO_USER_TOOL, 'mark_work_complete']);
 
 const sanitizeMessageContentForModel = (content: string) =>
-  content.replace(INLINE_DATA_IMAGE_MARKDOWN_REGEX, (_match, altText: string) => {
-    const cleanedAlt = altText?.trim();
-    return cleanedAlt ? `[Image: ${cleanedAlt}]` : '[Image]';
+  replaceMarkdownMedia(content, ({ kind, label }) => {
+    const prefix = kind === 'video' ? 'Video' : 'Image';
+    return label ? `[${prefix}: ${label}]` : `[${prefix}]`;
   });
 
 const sanitizeMessagesForModel = (messages: ChatMessage[]): ChatMessage[] =>
@@ -269,10 +308,14 @@ const sortResponseEvents = (events: AgentUserResponseEvent[]): AgentUserResponse
 const getNextResponseEventOrdinal = (events: AgentUserResponseEvent[]): number =>
   events.reduce((maxOrdinal, event) => Math.max(maxOrdinal, event.ordinal), 0) + 1;
 
-const getMessageLogMeta = (content: string) => ({
-  length: content.length,
-  inlineImageCount: (content.match(/!\[[^\]]*\]\((?:data:image\/[^)]+)\)/gi) || []).length,
-});
+const getMessageLogMeta = (content: string) => {
+  const counts = countMarkdownMedia(content);
+  return {
+    length: content.length,
+    inlineImageCount: counts.images,
+    inlineVideoCount: counts.videos,
+  };
+};
 
 const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
 
@@ -298,8 +341,10 @@ const mergeVoiceText = (base?: string, live?: string) => {
 };
 
 const getCollapsedMessagePreview = (content: string) =>
-  content
-    .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
+  replaceMarkdownMedia(content, ({ kind, label }) => {
+    const prefix = kind === 'video' ? 'Video' : 'Image';
+    return label ? `[${prefix}: ${label}]` : `[${prefix}]`;
+  })
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -892,7 +937,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
 	  const [input, setInput] = useState('');
-	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
+	  const [pendingAttachments, setPendingAttachments] = useState<PendingMessageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
@@ -1793,14 +1838,16 @@ export default function ChatScreen({ route, navigation }: any) {
   const queuedMessages = messageQueue.getQueue(currentConversationId);
   const nextQueuedMessage = !responding ? messageQueue.peek(currentConversationId) : null;
 
-  const handlePickImages = useCallback(async () => {
-    if (pendingImages.length >= MAX_PENDING_IMAGES) {
-      Alert.alert('Image limit reached', `You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
+  const handlePickMedia = useCallback(async () => {
+    if (pendingAttachments.length >= MAX_PENDING_ATTACHMENTS) {
+      Alert.alert('Attachment limit reached', `You can attach up to ${MAX_PENDING_ATTACHMENTS} images or videos per message.`);
       return;
     }
 
-    const existingEmbeddedBytes = pendingImages.reduce(
-      (sum, image) => sum + getApproxDataUrlBytes(image.dataUrl),
+    const existingEmbeddedBytes = pendingAttachments.reduce(
+      (sum, attachment) => attachment.kind === 'image'
+        ? sum + getApproxDataUrlBytes(attachment.messageUri)
+        : sum,
       0
     );
     if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
@@ -1813,26 +1860,62 @@ export default function ChatScreen({ route, navigation }: any) {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: PICKABLE_MEDIA_TYPES,
         allowsMultipleSelection: true,
-        selectionLimit: MAX_PENDING_IMAGES - pendingImages.length,
+        selectionLimit: MAX_PENDING_ATTACHMENTS - pendingAttachments.length,
         quality: 0.8,
         base64: true,
       });
 
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
-      const slotsRemaining = MAX_PENDING_IMAGES - pendingImages.length;
+      const slotsRemaining = MAX_PENDING_ATTACHMENTS - pendingAttachments.length;
       const selectedAssets = result.assets.slice(0, slotsRemaining);
-      const nextImages: PendingImageAttachment[] = [];
+      const nextAttachments: PendingMessageAttachment[] = [];
       const missingBase64Names: string[] = [];
       const oversizedImageNames: string[] = [];
+      const oversizedVideoNames: string[] = [];
       const unknownMimeNames: string[] = [];
       const budgetExceededNames: string[] = [];
+      const missingVideoUriNames: string[] = [];
       let runningEmbeddedBytes = existingEmbeddedBytes;
 
       selectedAssets.forEach((asset, index) => {
-        const displayName = asset.fileName || `Image ${index + 1}`;
+        const kind = inferPickedAttachmentKind(asset);
+        const displayName = asset.fileName || `${kind === 'video' ? 'Video' : 'Image'} ${index + 1}`;
+        const mimeType = inferAttachmentMimeType(asset);
+
+        if (!kind || !mimeType) {
+          unknownMimeNames.push(displayName);
+          return;
+        }
+
+        if (kind === 'video') {
+          const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
+            ? asset.fileSize
+            : 0;
+          if (fileSizeBytes > MAX_PENDING_VIDEO_FILE_SIZE_BYTES) {
+            oversizedVideoNames.push(displayName);
+            return;
+          }
+          if (!asset.uri) {
+            missingVideoUriNames.push(displayName);
+            return;
+          }
+
+          const fileName = asset.fileName || `video-${Date.now()}-${index + 1}`;
+          nextAttachments.push({
+            id: `${Date.now()}-${index}-${asset.uri}`,
+            kind,
+            name: fileName,
+            previewUri: asset.uri,
+            messageUri: encodeURI(asset.uri),
+            mimeType,
+            durationMs: asset.duration ?? null,
+          });
+          return;
+        }
+
         if (!asset.base64) {
           missingBase64Names.push(displayName);
           return;
@@ -1847,12 +1930,6 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
 
-        const mimeType = inferImageMimeType(asset);
-        if (!mimeType) {
-          unknownMimeNames.push(displayName);
-          return;
-        }
-
         const dataUrl = `data:${mimeType};base64,${asset.base64}`;
         const embeddedBytes = getApproxDataUrlBytes(dataUrl) || inferredBytes;
         if (runningEmbeddedBytes + embeddedBytes > MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
@@ -1862,22 +1939,32 @@ export default function ChatScreen({ route, navigation }: any) {
         runningEmbeddedBytes += embeddedBytes;
 
         const fileName = asset.fileName || `image-${Date.now()}-${index + 1}`;
-        nextImages.push({
+        nextAttachments.push({
           id: `${Date.now()}-${index}-${asset.uri}`,
+          kind,
           name: fileName,
           previewUri: asset.uri,
-          dataUrl,
+          messageUri: dataUrl,
+          mimeType,
+          durationMs: asset.duration ?? null,
         });
       });
 
-      if (nextImages.length > 0) {
-        setPendingImages((prev) => [...prev, ...nextImages]);
+      if (nextAttachments.length > 0) {
+        setPendingAttachments((prev) => [...prev, ...nextAttachments]);
       }
 
       if (missingBase64Names.length > 0) {
         Alert.alert(
           'Some images were skipped',
           `${missingBase64Names.join(', ')} could not be attached. Please try again.`
+        );
+      }
+
+      if (missingVideoUriNames.length > 0) {
+        Alert.alert(
+          'Some videos were skipped',
+          `${missingVideoUriNames.join(', ')} could not be attached. Please try again.`
         );
       }
 
@@ -1888,10 +1975,17 @@ export default function ChatScreen({ route, navigation }: any) {
         );
       }
 
+      if (oversizedVideoNames.length > 0) {
+        Alert.alert(
+          'Video too large',
+          `${oversizedVideoNames.join(', ')} exceed the 20MB limit.`
+        );
+      }
+
       if (unknownMimeNames.length > 0) {
         Alert.alert(
-          'Unsupported image format',
-          `${unknownMimeNames.join(', ')} could not be attached because the image type could not be determined.`
+          'Unsupported media format',
+          `${unknownMimeNames.join(', ')} could not be attached because the file type could not be determined.`
         );
       }
 
@@ -1902,12 +1996,12 @@ export default function ChatScreen({ route, navigation }: any) {
         );
       }
     } catch (error: any) {
-      Alert.alert('Image picker error', error?.message || 'Unable to select images right now.');
+      Alert.alert('Media picker error', error?.message || 'Unable to select media right now.');
     }
-  }, [pendingImages]);
+  }, [pendingAttachments]);
 
-  const removePendingImage = useCallback((attachmentId: string) => {
-    setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));
+  const removePendingAttachment = useCallback((attachmentId: string) => {
+    setPendingAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId));
   }, []);
 
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
@@ -1919,7 +2013,7 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.enqueue(currentConversationId, text);
       setInput('');
       if (options?.fromComposer) {
-        setPendingImages([]);
+        setPendingAttachments([]);
       }
       return;
     }
@@ -1969,7 +2063,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     setInput('');
 	    if (options?.fromComposer) {
-	      setPendingImages([]);
+	      setPendingAttachments([]);
 	    }
 
     // Capture the session ID at request start to guard against session changes
@@ -2744,23 +2838,23 @@ export default function ChatScreen({ route, navigation }: any) {
     return sections;
   }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
 
-  const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+  const composerHasContent = input.trim().length > 0 || pendingAttachments.length > 0;
 
   const sendComposerInput = useCallback(() => {
-    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+    const composedMessage = buildMessageWithPendingAttachments(input, pendingAttachments);
     if (!composedMessage.trim()) return;
     void send(composedMessage, { fromComposer: true });
-  }, [input, pendingImages, send]);
+  }, [input, pendingAttachments, send]);
 
   const queueComposerInput = useCallback(() => {
-    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+    const composedMessage = buildMessageWithPendingAttachments(input, pendingAttachments);
     if (!composedMessage.trim()) return;
 
     messageQueue.enqueue(currentConversationId, composedMessage);
     setInput('');
-    setPendingImages([]);
+    setPendingAttachments([]);
     setDebugInfo('Message queued. Use Send Next when you are ready.');
-  }, [currentConversationId, input, messageQueue, pendingImages]);
+  }, [currentConversationId, input, messageQueue, pendingAttachments]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -3667,21 +3761,42 @@ export default function ChatScreen({ route, navigation }: any) {
 		              <Text style={styles.sttPreviewText}>{sttPreview}</Text>
 	            </View>
 	          )}
-	          {pendingImages.length > 0 && (
+	          {pendingAttachments.length > 0 && (
 	            <ScrollView
 	              horizontal
 	              showsHorizontalScrollIndicator={false}
-	              contentContainerStyle={styles.pendingImagesRow}
+	              contentContainerStyle={styles.pendingAttachmentsRow}
 	            >
-	              {pendingImages.map((image) => (
-	                <View key={image.id} style={styles.pendingImageCard}>
-	                  <Image source={{ uri: image.previewUri }} style={styles.pendingImagePreview} />
+	              {pendingAttachments.map((attachment) => (
+	                <View key={attachment.id} style={styles.pendingAttachmentCard}>
+	                  {attachment.kind === 'image' ? (
+	                    <Image source={{ uri: attachment.previewUri }} style={styles.pendingAttachmentPreview} />
+	                  ) : isWebPlatform ? (
+	                    // Web uses the browser's native video element for preview playback.
+	                    // @ts-ignore - React Native Web supports intrinsic video elements.
+	                    <video
+	                      src={attachment.previewUri}
+	                      controls
+	                      playsInline
+	                      preload="metadata"
+	                      style={styles.pendingVideoPreview as any}
+	                    />
+	                  ) : (
+	                    <View style={styles.pendingVideoFallback}>
+	                      <Text style={styles.pendingVideoFallbackText}>Video</Text>
+	                    </View>
+	                  )}
+	                  <View style={styles.pendingAttachmentBadge}>
+	                    <Text style={styles.pendingAttachmentBadgeText}>
+	                      {attachment.kind === 'video' ? 'Video' : 'Image'}
+	                    </Text>
+	                  </View>
 	                  <TouchableOpacity
-	                    style={styles.pendingImageRemoveButton}
-	                    onPress={() => removePendingImage(image.id)}
+	                    style={styles.pendingAttachmentRemoveButton}
+	                    onPress={() => removePendingAttachment(attachment.id)}
 	                    activeOpacity={0.8}
 	                  >
-	                    <Text style={styles.pendingImageRemoveButtonText}>✕</Text>
+	                    <Text style={styles.pendingAttachmentRemoveButtonText}>✕</Text>
 	                  </TouchableOpacity>
 	                </View>
 	              ))}
@@ -3739,14 +3854,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
-	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
-	              onPress={handlePickImages}
+	              style={[styles.ttsToggle, pendingAttachments.length > 0 && styles.ttsToggleOn]}
+	              onPress={handlePickMedia}
 	              activeOpacity={0.7}
 	              accessibilityRole="button"
-	              accessibilityLabel="Attach images"
-	              accessibilityHint="Select one or more images to include with your next message."
+	              accessibilityLabel="Attach media"
+	              accessibilityHint="Select one or more images or videos to include with your next message."
 	            >
-	              <Text style={styles.ttsToggleText}>🖼️</Text>
+	              <Text style={styles.ttsToggleText}>📎</Text>
 	            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
@@ -3810,7 +3925,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 disabled={!composerHasContent}
                 accessibilityRole="button"
                 accessibilityLabel={createButtonAccessibilityLabel('Queue message')}
-                accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
+                accessibilityHint="Adds your typed text and attached media to the queued-messages list without sending immediately."
                 accessibilityState={{ disabled: !composerHasContent }}
               >
                 <Text style={styles.queueButtonText}>Queue</Text>
@@ -3823,7 +3938,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	              disabled={!composerHasContent}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Send message')}
-	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
+	              accessibilityHint="Sends your typed text and any attached media to the selected agent."
               accessibilityState={{ disabled: !composerHasContent }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
@@ -4047,13 +4162,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
     },
-    pendingImagesRow: {
+    pendingAttachmentsRow: {
       paddingHorizontal: spacing.sm,
       paddingTop: spacing.xs,
       paddingBottom: 2,
       gap: spacing.xs,
     },
-    pendingImageCard: {
+    pendingAttachmentCard: {
       width: 64,
       height: 64,
       borderRadius: radius.md,
@@ -4063,11 +4178,45 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: theme.colors.muted,
       position: 'relative',
     },
-    pendingImagePreview: {
+    pendingAttachmentPreview: {
       width: '100%',
       height: '100%',
     },
-    pendingImageRemoveButton: {
+    pendingVideoPreview: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      backgroundColor: '#000000',
+    },
+    pendingVideoFallback: {
+      width: '100%',
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+    },
+    pendingVideoFallbackText: {
+      ...theme.typography.caption,
+      color: theme.colors.foreground,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    pendingAttachmentBadge: {
+      position: 'absolute',
+      left: 4,
+      bottom: 4,
+      borderRadius: radius.sm,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+    },
+    pendingAttachmentBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 9,
+      fontWeight: '700',
+      lineHeight: 10,
+    },
+    pendingAttachmentRemoveButton: {
       position: 'absolute',
       top: 4,
       right: 4,
@@ -4078,7 +4227,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    pendingImageRemoveButtonText: {
+    pendingAttachmentRemoveButtonText: {
       color: '#FFFFFF',
       fontSize: 11,
       fontWeight: '700',

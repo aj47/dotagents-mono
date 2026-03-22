@@ -1,22 +1,32 @@
 import type { AgentProgressUpdate } from "./agent-progress"
+import { replaceMarkdownMedia } from "./message-media"
 
 // Inline data URLs can be megabytes long; replace them in display/budget text.
-const INLINE_DATA_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi
-const MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi
+const hasMarkdownVideo = (content: string): boolean => /!\[\s*video:/i.test(content)
 
 export function hasInlineDataImage(content: string): boolean {
   return !!content && /data:image\//i.test(content)
 }
 
 export function sanitizeMessageContentForDisplay(content: string): string {
-  if (!hasInlineDataImage(content)) {
+  if (!hasInlineDataImage(content) && !hasMarkdownVideo(content)) {
     return content
   }
 
-  return content.replace(INLINE_DATA_IMAGE_REGEX, (_match, altText: string) => {
-    const cleanedAlt = altText?.trim()
-    return cleanedAlt ? `[Image: ${cleanedAlt}]` : "[Image]"
+  let changed = false
+  const sanitized = replaceMarkdownMedia(content, ({ kind, label, match, url }) => {
+    if (kind === "video") {
+      changed = true
+      return label ? `[Video: ${label}]` : "[Video]"
+    }
+    if (!/^data:image\//i.test(url)) {
+      return match
+    }
+    changed = true
+    return label ? `[Image: ${label}]` : "[Image]"
   })
+
+  return changed ? sanitized : content
 }
 
 export function sanitizeMessageContentForSpeech(content: string): string {
@@ -24,11 +34,11 @@ export function sanitizeMessageContentForSpeech(content: string): string {
     return content
   }
 
-  // Strip markdown image payloads (including inline data URLs) before TTS.
+  // Strip markdown media payloads before TTS.
   // This keeps speech requests small and avoids reading non-verbal content.
-  return content.replace(MARKDOWN_IMAGE_REGEX, (_match, altText: string) => {
-    const cleanedAlt = altText?.trim()
-    return cleanedAlt ? `Image: ${cleanedAlt}` : "Image"
+  return replaceMarkdownMedia(content, ({ kind, label }) => {
+    const prefix = kind === "video" ? "Video" : "Image"
+    return label ? `${prefix}: ${label}` : prefix
   })
 }
 
