@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readFileSync } from "fs"
 import { dirname } from "path"
+import { safeWriteJsonFileSync } from "./agents-files/safe-file"
 import { logApp } from "./debug"
 
 export function loadPersistedJson<T>(filePath: string, label: string): T | undefined {
@@ -18,7 +19,7 @@ export function loadPersistedJson<T>(filePath: string, label: string): T | undef
 export function savePersistedJson(filePath: string, value: unknown, label: string): void {
   try {
     mkdirSync(dirname(filePath), { recursive: true })
-    writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8")
+    safeWriteJsonFileSync(filePath, value)
   } catch (error) {
     logApp(`[${label}] Failed to persist state:`, error)
   }
