@@ -73,6 +73,7 @@ import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES, getOAuthExample } from "@shared/oauth-examples"
 import { parseShellCommand } from "@shared/shell-parse"
+import { SecureStorageNote } from "./secure-storage-note"
 
 
 
@@ -353,6 +354,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         {/* Manual Configuration Tab */}
         {activeTab === 'manual' && (
           <div className="space-y-4">
+            <SecureStorageNote className="mt-0" />
             <div className="space-y-2">
               <Label htmlFor="server-name">Server Name</Label>
               <Input

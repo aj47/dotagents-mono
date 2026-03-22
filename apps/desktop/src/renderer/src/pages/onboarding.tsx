@@ -17,6 +17,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { Recorder } from "@renderer/lib/recorder"
 import { useMutation } from "@tanstack/react-query"
 import { KeyRecorder } from "@renderer/components/key-recorder"
+import { SecureStorageNote } from "@renderer/components/secure-storage-note"
 import { getMcpToolsShortcutDisplay } from "@shared/key-utils"
 
 type OnboardingStep = "welcome" | "api-key" | "dictation" | "agent" | "complete"
@@ -281,6 +282,7 @@ function ApiKeyStep({
             onChange={(e) => onApiKeyChange(e.target.value)}
             className="w-full"
           />
+          <SecureStorageNote />
           <p className="text-xs text-muted-foreground mt-2">
             Get your <span className="font-medium text-green-600 dark:text-green-400">free</span> API key from{" "}
             <a
@@ -813,4 +815,3 @@ function FeatureCard({
     </div>
   )
 }
-

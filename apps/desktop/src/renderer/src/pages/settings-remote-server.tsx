@@ -13,6 +13,7 @@ import {
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { SecureStorageNote } from "@renderer/components/secure-storage-note"
 import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
@@ -305,6 +306,7 @@ export function RemoteServerSettingsGroups({
                     Copy disabled in Streamer Mode
                   </div>
                 )}
+                <SecureStorageNote />
               </Control>
 
               <Control label={<ControlLabel label="Log Level" tooltip="Fastify logger level" />} className="px-3">

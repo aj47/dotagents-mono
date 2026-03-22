@@ -1,5 +1,6 @@
 import { app } from "electron"
 import os from "os"
+import path from "path"
 import type { PathResolver } from "@dotagents/core"
 
 /**
@@ -16,6 +17,11 @@ export class ElectronPathResolver implements PathResolver {
   }
 
   getAppDataPath(): string {
+    const overridePath = process.env.DOTAGENTS_APP_DATA_PATH?.trim()
+    if (overridePath) {
+      return path.resolve(overridePath)
+    }
+
     return app.getPath("appData")
   }
 

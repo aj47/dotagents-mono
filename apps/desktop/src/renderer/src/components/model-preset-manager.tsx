@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Key, Globe, Bot, FileText, Settings2 } from "lucide-react"
 import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@shared/index"
 import { PresetModelSelector } from "./preset-model-selector"
+import { SecureStorageNote } from "./secure-storage-note"
 
 export function ModelPresetManager({
   showAgentModel = true,
@@ -383,13 +384,16 @@ export function ModelPresetManager({
             </div>
             <div>
               <Label htmlFor="preset-key">API Key</Label>
-              <Input
-                id="preset-key"
-                type="password"
-                value={newPreset.apiKey}
-                onChange={(e) => setNewPreset({ ...newPreset, apiKey: e.target.value })}
-                placeholder="sk-..."
-              />
+              <>
+                <Input
+                  id="preset-key"
+                  type="password"
+                  value={newPreset.apiKey}
+                  onChange={(e) => setNewPreset({ ...newPreset, apiKey: e.target.value })}
+                  placeholder="sk-..."
+                />
+                <SecureStorageNote />
+              </>
             </div>
 
             {/* Model Preferences Section */}
@@ -494,15 +498,18 @@ export function ModelPresetManager({
               </div>
               <div>
                 <Label htmlFor="edit-preset-key">API Key</Label>
-                <Input
-                  id="edit-preset-key"
-                  type="password"
-                  value={editingPreset.apiKey}
-                  onChange={(e) =>
-                    setEditingPreset({ ...editingPreset, apiKey: e.target.value })
-                  }
-                  placeholder="sk-..."
-                />
+                <>
+                  <Input
+                    id="edit-preset-key"
+                    type="password"
+                    value={editingPreset.apiKey}
+                    onChange={(e) =>
+                      setEditingPreset({ ...editingPreset, apiKey: e.target.value })
+                    }
+                    placeholder="sk-..."
+                  />
+                  <SecureStorageNote />
+                </>
               </div>
 
               {/* Model Preferences Section */}
@@ -568,4 +575,3 @@ export function ModelPresetManager({
     </div>
   )
 }
-

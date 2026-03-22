@@ -26,6 +26,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
+import { SecureStorageNote } from "@renderer/components/secure-storage-note"
 import {
   getEffectiveShortcut,
   formatKeyComboForDisplay,
@@ -1325,25 +1326,31 @@ export function Component() {
           {configQuery.data?.langfuseEnabled && (
             <>
               <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
-                <Input
-                  type="text"
-                  value={langfuseDrafts.langfusePublicKey}
-                  onChange={(e) => updateLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
-                  onBlur={(e) => flushLangfuseSave("langfusePublicKey", e.currentTarget.value)}
-                  placeholder="pk-lf-..."
-                  className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
-                />
+                <>
+                  <Input
+                    type="text"
+                    value={langfuseDrafts.langfusePublicKey}
+                    onChange={(e) => updateLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
+                    onBlur={(e) => flushLangfuseSave("langfusePublicKey", e.currentTarget.value)}
+                    placeholder="pk-lf-..."
+                    className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
+                  />
+                  <SecureStorageNote />
+                </>
               </Control>
 
               <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
-                <Input
-                  type="password"
-                  value={langfuseDrafts.langfuseSecretKey}
-                  onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
-                  onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
-                  placeholder="sk-lf-..."
-                  className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
-                />
+                <>
+                  <Input
+                    type="password"
+                    value={langfuseDrafts.langfuseSecretKey}
+                    onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
+                    onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
+                    placeholder="sk-lf-..."
+                    className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
+                  />
+                  <SecureStorageNote />
+                </>
               </Control>
 
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
