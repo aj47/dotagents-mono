@@ -5,7 +5,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { SessionGrid, SessionTileWrapper } from "@renderer/components/session-grid"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
+import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
@@ -19,9 +19,12 @@ import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
-import { DEFAULT_TILE_LAYOUT_MODES, getAvailableTileLayoutModes, getTileLayoutLabel, isTileLayoutModeViable, type TileLayoutMode } from "@renderer/components/session-grid-layout"
+import { DEFAULT_TILE_LAYOUT_MODES, getAvailableTileLayoutModes, isTileLayoutModeViable, type TileLayoutMode } from "@renderer/components/session-grid-layout"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
+
+const CYCLE_LAYOUT_EVENT = "sessions:cycle-layout"
+const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
 
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
@@ -795,12 +798,6 @@ export function Component() {
     setTileResetKey(prev => prev + 1)
   }, [availableLayoutModes])
 
-  const nextTileLayoutMode = useMemo(() => {
-    const layouts = availableLayoutModes.length > 0 ? availableLayoutModes : DEFAULT_TILE_LAYOUT_MODES
-    const idx = layouts.indexOf(tileLayoutMode)
-    return layouts[(idx + 1) % layouts.length]
-  }, [availableLayoutModes, tileLayoutMode])
-
   // Track previous layout mode so we can restore when exiting maximize
   const previousLayoutModeRef = useRef<TileLayoutMode>("1x2")
 
@@ -832,46 +829,33 @@ export function Component() {
   const hasPendingTile = !!pendingProgress || showPendingLoadingTile
 
   const hasSessions = allProgressEntries.length > 0 || hasPendingTile
-  const showSessionToolbar = hasSessions && availableLayoutModes.length > 1
+
+  useEffect(() => {
+    const handleCycleLayout = () => {
+      if (!hasSessions || availableLayoutModes.length <= 1) return
+      handleCycleTileLayout()
+    }
+
+    const handleClearInactive = () => {
+      if (inactiveSessionCount <= 0) return
+      void handleClearInactiveSessions()
+    }
+
+    window.addEventListener(CYCLE_LAYOUT_EVENT, handleCycleLayout)
+    window.addEventListener(CLEAR_INACTIVE_EVENT, handleClearInactive)
+    return () => {
+      window.removeEventListener(CYCLE_LAYOUT_EVENT, handleCycleLayout)
+      window.removeEventListener(CLEAR_INACTIVE_EVENT, handleClearInactive)
+    }
+  }, [
+    availableLayoutModes.length,
+    handleCycleTileLayout,
+    hasSessions,
+    inactiveSessionCount,
+  ])
 
   return (
     <div className="group/tile flex h-full flex-col">
-      {showSessionToolbar && (
-        <div className="flex-shrink-0 px-3 pt-2">
-          <div className="flex items-center justify-end gap-1">
-            {/* Cycle tile layout mode button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCycleTileLayout}
-              className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
-              title={`Next layout: ${getTileLayoutLabel(nextTileLayoutMode)} (click to cycle)`}
-              aria-label="Cycle tile layout"
-            >
-              {nextTileLayoutMode === "1x1" ? (
-                <Maximize2 className="h-4 w-4" />
-              ) : nextTileLayoutMode === "2x2" ? (
-                <Grid2x2 className="h-4 w-4" />
-              ) : (
-                <LayoutGrid className="h-4 w-4" />
-              )}
-            </Button>
-            {inactiveSessionCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearInactiveSessions}
-                className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
-                title={`Clear ${inactiveSessionCount} completed sessions (conversations are saved to history)`}
-                aria-label={`Clear ${inactiveSessionCount} completed sessions`}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Scrollable content area - flex-1 min-h-0 so it fills remaining height without overflow */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover">
         {/* Show empty state when no sessions and no pending */}
@@ -896,6 +880,7 @@ export function Component() {
               layoutMode={tileLayoutMode}
               layoutChangeKey={sidebarWidth}
               onMetricsChange={setGridMetrics}
+              className="px-3 py-3"
             >
               {/* Pending continuation tile first */}
               {pendingProgress && pendingSessionId && (

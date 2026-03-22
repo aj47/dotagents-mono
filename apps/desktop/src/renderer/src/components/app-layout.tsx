@@ -104,6 +104,15 @@ export const Component = () => {
     () => collapsedActiveSessions.slice(0, 3),
     [collapsedActiveSessions],
   )
+  const cycleSessionsLayout = useCallback(() => {
+    navigate("/")
+    window.dispatchEvent(new Event("sessions:cycle-layout"))
+  }, [navigate])
+
+  const clearInactiveSessions = useCallback(() => {
+    navigate("/")
+    window.dispatchEvent(new Event("sessions:clear-inactive"))
+  }, [navigate])
 
   const applySelectedAgentToNextSession = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -660,6 +669,9 @@ export const Component = () => {
                 onStartTextSession={handleStartTextSession}
                 onStartVoiceSession={handleStartVoiceSession}
                 onStartPromptSession={handleStartPromptSession}
+                onCycleTileLayout={isSessionsActive ? cycleSessionsLayout : undefined}
+                onClearInactiveSessions={isSessionsActive ? clearInactiveSessions : undefined}
+                inactiveSessionCount={0}
               />
 
               {/* Agents Section - capability management */}

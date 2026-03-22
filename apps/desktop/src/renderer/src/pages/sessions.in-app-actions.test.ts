@@ -31,16 +31,19 @@ describe("sessions in-app actions", () => {
     expect(sidebarSource).toContain("<PredefinedPromptsMenu")
     expect(sidebarSource).toContain("onStartTextSession")
     expect(sidebarSource).toContain("onStartVoiceSession")
+    expect(sidebarSource).toContain("onCycleTileLayout")
     expect(sidebarSource).toContain('aria-label="Start text session"')
     expect(sidebarSource).toContain('aria-label="Start voice session"')
+    expect(sidebarSource).toContain('aria-label="Cycle tile layout"')
     expect(sidebarSource).not.toContain("<span>Start Text</span>")
     expect(sidebarSource).not.toContain("<span>Start Voice</span>")
-    expect(sessionsSource).not.toContain('aria-label="Start with text"')
-    expect(sessionsSource).not.toContain('aria-label="Start with voice"')
+    expect(sessionsSource).not.toContain('aria-label="Cycle tile layout"')
   })
 
-  it("does not reserve top toolbar space above session tiles unless layout controls are actually needed", () => {
-    expect(sessionsSource).toContain("const showSessionToolbar = hasSessions && availableLayoutModes.length > 1")
+  it("does not reserve a sessions-only top toolbar above the tile grid", () => {
+    expect(sessionsSource).toContain('className="px-3 py-3"')
+    expect(sessionsSource).toContain('window.addEventListener(CYCLE_LAYOUT_EVENT, handleCycleLayout)')
+    expect(sessionsSource).not.toContain('aria-label="Cycle tile layout"')
   })
 
   it("preserves an explicitly restored tile layout if it remains viable at the minimum tile size", () => {

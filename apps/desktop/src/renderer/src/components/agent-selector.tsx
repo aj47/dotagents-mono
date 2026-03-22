@@ -112,8 +112,10 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
           variant="outline"
           size="sm"
           className={cn(
-            "min-w-0 max-w-[min(13rem,calc(100vw-2rem))] justify-between gap-1.5 text-xs font-normal",
-            compact && "h-7 px-2",
+            "min-w-0 justify-between gap-1.5 text-xs font-normal",
+            compact
+              ? "h-7 w-full max-w-none px-2"
+              : "max-w-[min(13rem,calc(100vw-2rem))]",
           )}
           title={displayName}
         >
