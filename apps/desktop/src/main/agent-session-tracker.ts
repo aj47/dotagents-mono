@@ -94,8 +94,8 @@ class AgentSessionTracker {
 
   private normalizeCompletedSessions(sessions: AgentSession[]): AgentSession[] {
     return sessions
-      .slice(0, MAX_COMPLETED_SESSIONS)
       .sort((a, b) => (b.endTime || b.startTime || 0) - (a.endTime || a.startTime || 0))
+      .slice(0, MAX_COMPLETED_SESSIONS)
   }
 
   private persistState(): void {
@@ -495,4 +495,3 @@ class AgentSessionTracker {
 }
 
 export const agentSessionTracker = AgentSessionTracker.getInstance()
-

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { mkdtempSync, rmSync } from "fs"
+import { mkdtempSync, rmSync, writeFileSync } from "fs"
 import { join } from "path"
 import { tmpdir } from "os"
 
@@ -54,6 +54,50 @@ describe("agent-session-tracker persistence", () => {
     expect(secondLoad.agentSessionTracker.findCompletedSession(sessionId)).toEqual(
       expect.objectContaining({ id: sessionId, status: "stopped" }),
     )
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
+
+  it("keeps the newest restored completed sessions when persisted state exceeds the cap", async () => {
+    const persistedSessions = Array.from({ length: 24 }, (_, index) => {
+      const itemNumber = index + 1
+      const isNewest = itemNumber > 20
+
+      return {
+        id: isNewest ? `newest-${itemNumber - 20}` : `older-${itemNumber}`,
+        conversationId: isNewest ? `newest-conv-${itemNumber - 20}` : `older-conv-${itemNumber}`,
+        conversationTitle: isNewest ? `Newest ${itemNumber - 20}` : `Older ${itemNumber}`,
+        status: "completed" as const,
+        startTime: isNewest ? 5000 + itemNumber : 1000 + itemNumber,
+        endTime: isNewest ? 5000 + itemNumber : 1000 + itemNumber,
+      }
+    })
+
+    writeFileSync(
+      join(dataFolder, "agent-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        activeSessions: [],
+        completedSessions: persistedSessions,
+      }),
+      "utf8",
+    )
+
+    const trackerLoad = await loadTracker(dataFolder)
+    const recentSessionTitles = trackerLoad.agentSessionTracker
+      .getRecentSessions(4)
+      .map((session) => session.conversationTitle)
+
+    expect(recentSessionTitles).toEqual([
+      "Newest 4",
+      "Newest 3",
+      "Newest 2",
+      "Newest 1",
+    ])
+    expect(trackerLoad.agentSessionTracker.findCompletedSession("newest-4")).toEqual(
+      expect.objectContaining({ conversationTitle: "Newest 4" }),
+    )
+    expect(trackerLoad.agentSessionTracker.findCompletedSession("older-1")).toBeUndefined()
 
     rmSync(dataFolder, { recursive: true, force: true })
   })
