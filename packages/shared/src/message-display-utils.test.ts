@@ -47,6 +47,11 @@ describe('sanitizeMessageContentForDisplay', () => {
     const content = '![a](data:image/png;base64,x) text ![b](data:image/jpeg;base64,y)'
     expect(sanitizeMessageContentForDisplay(content)).toBe('[Image: a] text [Image: b]')
   })
+
+  it('replaces markdown video tokens with video placeholders', () => {
+    const content = 'Watch this ![video: demo clip](blob:http://localhost/demo)'
+    expect(sanitizeMessageContentForDisplay(content)).toBe('Watch this [Video: demo clip]')
+  })
 })
 
 describe('sanitizeMessageContentForSpeech', () => {
@@ -69,6 +74,11 @@ describe('sanitizeMessageContentForSpeech', () => {
     expect(sanitizeMessageContentForSpeech(content)).toBe('Image')
   })
 
+  it('strips markdown video tokens', () => {
+    const content = 'Review ![video: demo clip](blob:http://localhost/demo) please'
+    expect(sanitizeMessageContentForSpeech(content)).toBe('Review Video: demo clip please')
+  })
+
   it('leaves plain text unchanged', () => {
     const content = 'Just regular text with no images'
     expect(sanitizeMessageContentForSpeech(content)).toBe(content)
@@ -89,6 +99,14 @@ describe('sanitizeConversationHistoryForDisplay', () => {
     const result = sanitizeConversationHistoryForDisplay(history)!
     expect(result[0].content).toBe('[Image: img]')
     expect(result[1].content).toBe('plain text')
+  })
+
+  it('sanitizes markdown videos in conversation history entries', () => {
+    const history = [
+      { role: 'user' as const, content: '![video: preview](blob:http://localhost/demo)' },
+    ]
+    const result = sanitizeConversationHistoryForDisplay(history)!
+    expect(result[0].content).toBe('[Video: preview]')
   })
 
   it('returns same reference when no changes are needed', () => {
@@ -129,5 +147,16 @@ describe('sanitizeAgentProgressUpdateForDisplay', () => {
     expect(result).not.toBe(update)
     expect(result.conversationHistory![0].content).toBe('Here: [Image: pic]')
     expect(result.sessionId).toBe('test')
+  })
+
+  it('sanitizes video history content', () => {
+    const update: AgentProgressUpdate = {
+      ...baseUpdate,
+      conversationHistory: [
+        { role: 'assistant', content: 'Here: ![video: clip](blob:http://localhost/demo)' },
+      ],
+    }
+    const result = sanitizeAgentProgressUpdateForDisplay(update)
+    expect(result.conversationHistory![0].content).toBe('Here: [Video: clip]')
   })
 })

@@ -71,6 +71,13 @@ describe('generateSessionTitle', () => {
     expect(title).toContain('[Image]')
     expect(title).not.toContain('data:image')
   })
+
+  it('sanitizes markdown videos in title', () => {
+    const msg = 'Check this ![video: demo](blob:http://localhost/demo)'
+    const title = generateSessionTitle(msg)
+    expect(title).toContain('[Video]')
+    expect(title).not.toContain('blob:http')
+  })
 })
 
 // ── createSession ────────────────────────────────────────────────────────────
@@ -157,6 +164,10 @@ describe('sanitizeSessionText', () => {
 
   it('replaces data URL images with [Image]', () => {
     expect(sanitizeSessionText('![](data:image/png;base64,abc)')).toBe('[Image]')
+  })
+
+  it('replaces markdown videos with [Video]', () => {
+    expect(sanitizeSessionText('See ![video: demo](blob:http://localhost/demo) now')).toBe('See [Video] now')
   })
 })
 

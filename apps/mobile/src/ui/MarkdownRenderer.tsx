@@ -1,6 +1,7 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { splitContentByMarkdownVideos } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 
@@ -150,14 +151,92 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       height: 1,
       marginVertical: spacing.xs,
     },
+    videoBlock: {
+      marginBottom: spacing.xs,
+    },
+    videoCaption: {
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      lineHeight: 16,
+      marginTop: 4,
+    },
+    videoFallback: {
+      minHeight: 140,
+      maxHeight: 320,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.muted,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.md,
+    },
+    videoFallbackLabel: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    videoFallbackMeta: {
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      lineHeight: 16,
+      textAlign: 'center',
+    },
   });
 
+  const segments = splitContentByMarkdownVideos(content);
+
   return (
-    <Markdown style={markdownStyles}>
-      {content}
-    </Markdown>
+    <>
+      {segments.map((segment, index) => {
+        if (segment.kind === 'markdown') {
+          if (!segment.content) {
+            return null;
+          }
+          return (
+            <Markdown key={`markdown-${index}`} style={markdownStyles}>
+              {segment.content}
+            </Markdown>
+          );
+        }
+
+        return (
+          <View key={`video-${index}`} style={markdownStyles.videoBlock}>
+            {Platform.OS === 'web' ? (
+              // React Native Web supports rendering intrinsic media elements.
+              // @ts-ignore - intrinsic video elements are web-only here.
+              <video
+                src={segment.url}
+                controls
+                playsInline
+                preload="metadata"
+                style={{
+                  width: '100%',
+                  minHeight: 140,
+                  maxHeight: 320,
+                  borderRadius: radius.md,
+                  backgroundColor: theme.colors.muted,
+                } as any}
+              />
+            ) : (
+              <View style={markdownStyles.videoFallback}>
+                <Text style={markdownStyles.videoFallbackLabel}>Video attachment</Text>
+                <Text style={markdownStyles.videoFallbackMeta}>
+                  {segment.label || 'Play this video on web or keep it in the transcript as an attachment.'}
+                </Text>
+              </View>
+            )}
+            {!!segment.label && (
+              <Text style={markdownStyles.videoCaption}>{segment.label}</Text>
+            )}
+          </View>
+        );
+      })}
+    </>
   );
 };
 
 export default MarkdownRenderer;
-
