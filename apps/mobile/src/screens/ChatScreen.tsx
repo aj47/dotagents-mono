@@ -83,6 +83,7 @@ import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
+import { mergeToolHistoryMessageIntoPreviousAssistant } from './chat-history-tool-merge';
 
 interface PendingImageAttachment {
   id: string;
@@ -1736,22 +1737,11 @@ export default function ChatScreen({ route, navigation }: any) {
           // Merge tool results into the preceding assistant message to avoid duplication
           // The server sends: assistant (with toolCalls) -> tool (with toolResults)
           // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-
-              if (hasToolResults) {
-                // Merge toolResults into the existing assistant message
-                lastMessage.toolResults = [
-                  ...(lastMessage.toolResults || []),
-                  ...(historyMsg.toolResults || []),
-                ];
-                // Skip adding this as a separate message only when we merged results
-                continue;
-              }
-              // If tool message has content but no toolResults, fall through to add it as a message
-            }
+          if (
+            historyMsg.role === 'tool' &&
+            mergeToolHistoryMessageIntoPreviousAssistant(messages, historyMsg, HIDDEN_META_TOOLS)
+          ) {
+            continue;
           }
 
           messages.push({
@@ -2148,22 +2138,11 @@ export default function ChatScreen({ route, navigation }: any) {
           // Merge tool results into the preceding assistant message to avoid duplication
           // The server sends: assistant (with toolCalls) -> tool (with toolResults)
           // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && newMessages.length > 0) {
-            const lastMessage = newMessages[newMessages.length - 1];
-            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-
-              if (hasToolResults) {
-                // Merge toolResults into the existing assistant message
-                lastMessage.toolResults = [
-                  ...(lastMessage.toolResults || []),
-                  ...(historyMsg.toolResults || []),
-                ];
-                // Skip adding this as a separate message only when we merged results
-                continue;
-              }
-              // If tool message has content but no toolResults, fall through to add it as a message
-            }
+          if (
+            historyMsg.role === 'tool' &&
+            mergeToolHistoryMessageIntoPreviousAssistant(newMessages, historyMsg, HIDDEN_META_TOOLS)
+          ) {
+            continue;
           }
 
           newMessages.push({
@@ -3603,20 +3582,11 @@ export default function ChatScreen({ route, navigation }: any) {
                                 toolCalls: msg.toolCalls,
                                 toolResults: msg.toolResults,
                               });
-                            } else if (msg.role === 'tool' && recoveredMessages.length > 0) {
-                              // Merge tool message toolResults into the preceding assistant message
-                              const lastMessage = recoveredMessages[recoveredMessages.length - 1];
-                              if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-                                const hasToolResults = msg.toolResults && msg.toolResults.length > 0;
-
-                                if (hasToolResults) {
-                                  // Merge toolResults into the existing assistant message
-                                  lastMessage.toolResults = [
-                                    ...(lastMessage.toolResults || []),
-                                    ...(msg.toolResults || []),
-                                  ];
-                                }
-                              }
+                            } else if (
+                              msg.role === 'tool' &&
+                              mergeToolHistoryMessageIntoPreviousAssistant(recoveredMessages, msg, HIDDEN_META_TOOLS)
+                            ) {
+                              continue;
                             }
                           }
 
