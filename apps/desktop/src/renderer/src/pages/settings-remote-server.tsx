@@ -13,6 +13,7 @@ import {
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { SecureStorageNote } from "@renderer/components/secure-storage-note"
 import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
@@ -268,37 +269,40 @@ export function RemoteServerSettingsGroups({
               </Control>
 
               <Control label={<ControlLabel label="API Key" tooltip="Bearer token required in Authorization header" />} className="px-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input type="password" value={cfg.remoteServerApiKey || ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={streamerMode}
-                    title={streamerMode ? "Disabled in Streamer Mode" : undefined}
-                    onClick={() => {
-                      if (!cfg.remoteServerApiKey || streamerMode) return
-                      void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
-                        console.error("Failed to copy remote server API key", err)
-                      })
-                    }}
-                  >
-                    {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={async () => {
-                      // Generate a new 32-byte API key (hex)
-                      const bytes = new Uint8Array(32)
-                      window.crypto.getRandomValues(bytes)
-                      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
-                      saveConfig({ remoteServerApiKey: hex })
-                      await configQuery.refetch()
-                    }}
-                  >
-                    Regenerate
-                  </Button>
-                </div>
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input type="password" value={cfg.remoteServerApiKey || ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={streamerMode}
+                      title={streamerMode ? "Disabled in Streamer Mode" : undefined}
+                      onClick={() => {
+                        if (!cfg.remoteServerApiKey || streamerMode) return
+                        void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
+                          console.error("Failed to copy remote server API key", err)
+                        })
+                      }}
+                    >
+                      {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        // Generate a new 32-byte API key (hex)
+                        const bytes = new Uint8Array(32)
+                        window.crypto.getRandomValues(bytes)
+                        const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
+                        saveConfig({ remoteServerApiKey: hex })
+                        await configQuery.refetch()
+                      }}
+                    >
+                      Regenerate
+                    </Button>
+                  </div>
+                  <SecureStorageNote />
+                </>
                 {streamerMode && (
                   <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                     <EyeOff className="h-3 w-3" />

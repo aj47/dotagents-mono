@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Button } from "@renderer/components/ui/button"
+import { SecureStorageNote } from "@renderer/components/secure-storage-note"
 import {
   useConfigQuery,
   useSaveConfigMutation,
@@ -781,17 +782,20 @@ export function Component() {
     },
   ) => (
     <Control label={label} className="px-3">
-      <Input
-        type={type}
-        placeholder={placeholder}
-        value={providerDrafts[key]}
-        onChange={(e) => {
-          updateProviderDraft(key, e.currentTarget.value)
-        }}
-        onBlur={(e) => {
-          flushProviderSave(key, e.currentTarget.value)
-        }}
-      />
+      <>
+        <Input
+          type={type}
+          placeholder={placeholder}
+          value={providerDrafts[key]}
+          onChange={(e) => {
+            updateProviderDraft(key, e.currentTarget.value)
+          }}
+          onBlur={(e) => {
+            flushProviderSave(key, e.currentTarget.value)
+          }}
+        />
+        {type === "password" && <SecureStorageNote />}
+      </>
     </Control>
   )
 
