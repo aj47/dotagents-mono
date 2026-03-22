@@ -3,15 +3,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import {
   Archive,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
+  LayoutGrid,
+  Maximize2,
+  Minimize2,
   MoreHorizontal,
   X,
-  Minimize2,
-  Maximize2,
   Clock,
   Pin,
   Pencil,
+  Mic,
+  Plus,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
@@ -28,6 +32,9 @@ import {
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
 import { useNavigate } from "react-router-dom"
+import { AgentSelector } from "./agent-selector"
+import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { Button } from "./ui/button"
 import {
   normalizeAgentConversationState,
 } from "@dotagents/shared"
@@ -87,8 +94,24 @@ const STORAGE_KEY = "active-agents-sidebar-expanded"
 
 export function ActiveAgentsSidebar({
   onOpenPastSessionsDialog,
+  selectedAgentId = null,
+  onSelectAgent,
+  onStartTextSession,
+  onStartVoiceSession,
+  onStartPromptSession,
+  onCycleTileLayout,
+  inactiveSessionCount = 0,
+  onClearInactiveSessions,
 }: {
   onOpenPastSessionsDialog?: () => void
+  selectedAgentId?: string | null
+  onSelectAgent?: (id: string | null) => void
+  onStartTextSession?: () => void | Promise<void>
+  onStartVoiceSession?: () => void | Promise<void>
+  onStartPromptSession?: (content: string) => void | Promise<void>
+  onCycleTileLayout?: () => void
+  inactiveSessionCount?: number
+  onClearInactiveSessions?: () => void | Promise<void>
 }) {
   const [isExpanded, setIsExpanded] = useState(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -566,6 +589,9 @@ export function ActiveAgentsSidebar({
     [allPastSessions.length, hasMorePastSessions, minimumPastSessionsNeeded],
   )
 
+  const hasLaunchControls =
+    !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
+
   return (
     <div className="px-2">
       <div className="flex items-center">
@@ -618,6 +644,86 @@ export function ActiveAgentsSidebar({
           </button>
         )}
       </div>
+
+      {isExpanded && hasLaunchControls && (
+        <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
+          {onSelectAgent && (
+            <div className="min-w-0 w-full">
+              <AgentSelector
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={onSelectAgent}
+                compact
+              />
+            </div>
+          )}
+          <div
+            className={cn(
+              "flex w-full items-center justify-end gap-2",
+              onSelectAgent && "mt-2",
+            )}
+          >
+            {onStartPromptSession && (
+              <PredefinedPromptsMenu
+                onSelectPrompt={onStartPromptSession}
+                buttonSize="sm"
+                className="h-8 w-8 rounded-md border border-input bg-background shadow-sm"
+              />
+            )}
+            {onStartTextSession && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                onClick={() => void onStartTextSession()}
+                title="Start text session"
+                aria-label="Start text session"
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            )}
+            {onStartVoiceSession && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                onClick={() => void onStartVoiceSession()}
+                title="Start voice session"
+                aria-label="Start voice session"
+              >
+                <Mic className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            )}
+            {onCycleTileLayout && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                onClick={() => void onCycleTileLayout()}
+                title="Cycle tile layout"
+                aria-label="Cycle tile layout"
+              >
+                <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            )}
+            {onClearInactiveSessions && inactiveSessionCount > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                onClick={() => void onClearInactiveSessions()}
+                title={`Clear ${inactiveSessionCount} completed sessions`}
+                aria-label={`Clear ${inactiveSessionCount} completed sessions`}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {isExpanded && (
         <div
