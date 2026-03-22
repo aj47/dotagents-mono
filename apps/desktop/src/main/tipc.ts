@@ -4622,6 +4622,22 @@ export const router = {
     )
   }),
 
+  getHubCatalog: t.procedure.action(async () => {
+    const { fetchHubCatalog } = await import("./hub-catalog")
+    return fetchHubCatalog()
+  }),
+
+  downloadHubCatalogBundle: t.procedure
+    .input<{
+      artifactUrl: string
+      fileName?: string
+      catalogId?: string
+    }>()
+    .action(async ({ input }) => {
+      const { downloadHubCatalogBundle } = await import("./hub-catalog")
+      return downloadHubCatalogBundle(input)
+    }),
+
   exportBundle: t.procedure
     .input<{
       name?: string

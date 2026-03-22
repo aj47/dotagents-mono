@@ -19,15 +19,43 @@ import {
   DropdownMenuTrigger,
 } from "@renderer/components/ui/dropdown-menu"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
+import { HubCatalogBrowser } from "@renderer/components/hub-catalog-browser"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal } from "lucide-react"
 
+type SkillViewMode = "installed" | "community"
+type BundleImportComponentConfig = {
+  agentProfiles?: boolean
+  mcpServers?: boolean
+  skills?: boolean
+  repeatTasks?: boolean
+  knowledgeNotes?: boolean
+}
+
+const SKILL_ONLY_IMPORT_COMPONENTS: BundleImportComponentConfig = {
+  agentProfiles: false,
+  mcpServers: false,
+  skills: true,
+  repeatTasks: false,
+  knowledgeNotes: false,
+}
+
+const LOCAL_SKILL_BUNDLE_IMPORT_DESCRIPTION = "Preview and import skills from a local .dotagents bundle file."
+
+interface CommunityBundlePreviewInput {
+  filePath: string
+  item: {
+    name: string
+  }
+  downloadedFrom: string
+}
 
 export function Component() {
   const queryClient = useQueryClient()
+  const [activeView, setActiveView] = useState<SkillViewMode>("installed")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
@@ -36,6 +64,17 @@ export function Component() {
   const [newSkillInstructions, setNewSkillInstructions] = useState("")
   const [isGitHubDialogOpen, setIsGitHubDialogOpen] = useState(false)
   const [isBundleImportDialogOpen, setIsBundleImportDialogOpen] = useState(false)
+  const [bundleImportFilePath, setBundleImportFilePath] = useState<string | undefined>()
+  const [bundleImportDialogTitle, setBundleImportDialogTitle] = useState("Import Skill Bundle")
+  const [bundleImportDialogDescription, setBundleImportDialogDescription] = useState(
+    LOCAL_SKILL_BUNDLE_IMPORT_DESCRIPTION,
+  )
+  const [bundleImportInitialComponents, setBundleImportInitialComponents] = useState<
+    BundleImportComponentConfig | undefined
+  >(SKILL_ONLY_IMPORT_COMPONENTS)
+  const [bundleImportAvailableComponents, setBundleImportAvailableComponents] = useState<
+    BundleImportComponentConfig | undefined
+  >(SKILL_ONLY_IMPORT_COMPONENTS)
   const [gitHubRepoInput, setGitHubRepoInput] = useState("")
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set())
@@ -416,6 +455,48 @@ export function Component() {
     setSelectedSkillIds(new Set())
   }
 
+  const resetBundleImportDialogState = () => {
+    setBundleImportFilePath(undefined)
+    setBundleImportDialogTitle("Import Skill Bundle")
+    setBundleImportDialogDescription(LOCAL_SKILL_BUNDLE_IMPORT_DESCRIPTION)
+    setBundleImportInitialComponents(SKILL_ONLY_IMPORT_COMPONENTS)
+    setBundleImportAvailableComponents(SKILL_ONLY_IMPORT_COMPONENTS)
+  }
+
+  const handleBundleImportDialogOpenChange = (open: boolean) => {
+    setIsBundleImportDialogOpen(open)
+    if (!open) {
+      resetBundleImportDialogState()
+    }
+  }
+
+  const openLocalBundleImportDialog = () => {
+    resetBundleImportDialogState()
+    setIsBundleImportDialogOpen(true)
+  }
+
+  const handlePreviewCommunityBundle = ({
+    filePath,
+    item,
+    downloadedFrom,
+  }: CommunityBundlePreviewInput) => {
+    setBundleImportFilePath(filePath)
+    setBundleImportDialogTitle(`Install ${item.name}`)
+    setBundleImportDialogDescription(
+      `Preview and import the downloaded DotAgents Hub bundle. Downloaded from ${downloadedFrom}.`,
+    )
+    setBundleImportInitialComponents(undefined)
+    setBundleImportAvailableComponents(undefined)
+    setIsBundleImportDialogOpen(true)
+  }
+
+  const handleActiveViewChange = (view: SkillViewMode) => {
+    if (view !== "installed") {
+      exitSelectMode()
+    }
+    setActiveView(view)
+  }
+
   const handleEditSkill = (skill: AgentSkill) => {
     setEditingSkill({ ...skill })
     setIsEditDialogOpen(true)
@@ -424,6 +505,9 @@ export function Component() {
   const handleBundleImportComplete = () => {
     queryClient.invalidateQueries({ queryKey: ["skills"] })
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
+    queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+    queryClient.invalidateQueries({ queryKey: ["serverStatusSidebar"] })
   }
 
   const skillsFileTemplate = `---
@@ -440,264 +524,291 @@ Write your skill instructions here.
   return (
     <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="min-w-0 space-y-6">
-        <div className="flex flex-wrap justify-end gap-2">
-          {isSelectMode ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={toggleSelectAll}
-              >
-                {selectedSkillIds.size === skills.length && skills.length > 0 ? (
-                  <CheckSquare className="h-3 w-3" />
-                ) : (
-                  <Square className="h-3 w-3" />
-                )}
-                {selectedSkillIds.size === skills.length && skills.length > 0 ? "Deselect All" : "Select All"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={handleExportSelectedBundle}
-                disabled={selectedSkillIds.size === 0 || exportBundleMutation.isPending}
-              >
-                {exportBundleMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Download className="h-3 w-3" />
-                )}
-                Export Bundle {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : ""}
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="gap-1.5"
-                onClick={handleDeleteSelected}
-                disabled={selectedSkillIds.size === 0 || deleteSkillsMutation.isPending}
-              >
-                {deleteSkillsMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3 w-3" />
-                )}
-                Delete {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : "Selected"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                onClick={exitSelectMode}
-              >
-                <X className="h-3 w-3" />
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              {skills.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => setIsSelectMode(true)}
-                >
-                  <CheckSquare className="h-3 w-3" />
-                  Select
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => openSkillsFolderMutation.mutate()}
-              >
-                <FolderOpen className="h-3 w-3" />
-                Open Folder
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => openWorkspaceSkillsFolderMutation.mutate()}
-                disabled={!agentsFoldersQuery.data?.workspace?.skillsDir || openWorkspaceSkillsFolderMutation.isPending}
-              >
-                <FolderUp className="h-3 w-3" />
-                Workspace
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => scanSkillsFolderMutation.mutate()}
-                disabled={scanSkillsFolderMutation.isPending}
-              >
-                <RefreshCw className={`h-3 w-3 ${scanSkillsFolderMutation.isPending ? 'animate-spin' : ''}`} />
-                Scan Folder
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-lg border bg-muted/20 p-1">
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeView === "installed" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}
+              onClick={() => handleActiveViewChange("installed")}
+            >
+              Installed
+            </button>
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeView === "community" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}
+              onClick={() => handleActiveViewChange("community")}
+            >
+              Community Hub
+            </button>
+          </div>
+
+          {activeView === "installed" && (
+            <div className="flex flex-wrap justify-end gap-2">
+              {isSelectMode ? (
+                <>
                   <Button
                     variant="outline"
                     size="sm"
                     className="gap-1.5"
-                    disabled={importSkillMutation.isPending || importSkillFolderMutation.isPending || importSkillsFromParentFolderMutation.isPending || importSkillFromGitHubMutation.isPending}
+                    onClick={toggleSelectAll}
                   >
-                    <Upload className="h-3 w-3" />
-                    Import
-                    <ChevronDown className="h-3 w-3" />
+                    {selectedSkillIds.size === skills.length && skills.length > 0 ? (
+                      <CheckSquare className="h-3 w-3" />
+                    ) : (
+                      <Square className="h-3 w-3" />
+                    )}
+                    {selectedSkillIds.size === skills.length && skills.length > 0 ? "Deselect All" : "Select All"}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsBundleImportDialogOpen(true)}>
-                    <Package />
-                    Import Bundle
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsGitHubDialogOpen(true)}>
-                    <Github />
-                    Import from GitHub
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => importSkillMutation.mutate()}>
-                    <Upload />
-                    Import SKILL.md File
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => importSkillFolderMutation.mutate()}>
-                    <FolderOpen />
-                    Import Skill Folder
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => importSkillsFromParentFolderMutation.mutate()}>
-                    <FolderUp />
-                    Bulk Import from Folder
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setIsCreateDialogOpen(true)}
-              >
-                <Plus className="h-3 w-3" />
-                New Skill
-              </Button>
-            </>
-          )}
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          Enabled skills add their instructions to the system prompt.
-        </p>
-
-        <details className="rounded-lg border bg-card">
-          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium">
-            Modular config (.agents) file template
-          </summary>
-          <div className="px-4 pb-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              You can hand-author skills in <span className="font-mono">.agents/skills/&lt;id&gt;/skill.md</span>. Frontmatter
-              uses simple <span className="font-mono">key: value</span> lines (not YAML). If a workspace <span className="font-mono">.agents</span>
-              folder exists, it can override the global layer by skill <span className="font-mono">id</span>.
-            </p>
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">
-                Global: <span className="font-mono break-all">{agentsFoldersQuery.data?.global?.skillsDir ?? "~/.agents/skills"}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Workspace:{" "}
-                <span className="font-mono break-all">
-                  {agentsFoldersQuery.data?.workspace?.skillsDir ?? "Not detected"}
-                  {agentsFoldersQuery.data?.workspace?.skillsDir && agentsFoldersQuery.data?.workspaceSource
-                    ? ` (${agentsFoldersQuery.data.workspaceSource})`
-                    : ""}
-                </span>
-              </div>
-            </div>
-            <div className="rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{skillsFileTemplate}</div>
-          </div>
-        </details>
-
-        {/* Skills List */}
-        <div className="space-y-1">
-          {skillsQuery.isLoading ? (
-            <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground">
-              <div className="flex items-center justify-center gap-2 font-medium text-foreground/80">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span>Loading skills...</span>
-              </div>
-            </div>
-          ) : skillsQuery.isError ? (
-            <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 px-4 py-5 text-center">
-              <p className="text-sm font-medium text-destructive">Failed to load skills.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Please try again.</p>
-            </div>
-          ) : skills.length === 0 ? (
-            <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-5 text-center">
-              <p className="text-sm font-medium">No skills yet.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Create your first skill or import one.</p>
-            </div>
-          ) : (
-            skills.map((skill) => (
-              <div
-                key={skill.id}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg border bg-card ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
-                onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {isSelectMode && (
-                    <button
-                      type="button"
-                      className="shrink-0 flex items-center justify-center"
-                      onClick={(e) => { e.stopPropagation(); toggleSkillSelection(skill.id) }}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={handleExportSelectedBundle}
+                    disabled={selectedSkillIds.size === 0 || exportBundleMutation.isPending}
+                  >
+                    {exportBundleMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
+                    Export Bundle {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : ""}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={handleDeleteSelected}
+                    disabled={selectedSkillIds.size === 0 || deleteSkillsMutation.isPending}
+                  >
+                    {deleteSkillsMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                    Delete {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : "Selected"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={exitSelectMode}
+                  >
+                    <X className="h-3 w-3" />
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {skills.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => setIsSelectMode(true)}
                     >
-                      {selectedSkillIds.has(skill.id) ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
+                      <CheckSquare className="h-3 w-3" />
+                      Select
+                    </Button>
                   )}
-                  <span className="font-medium truncate">{skill.name}</span>
-                </div>
-                {!isSelectMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => openSkillsFolderMutation.mutate()}
+                  >
+                    <FolderOpen className="h-3 w-3" />
+                    Open Folder
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => openWorkspaceSkillsFolderMutation.mutate()}
+                    disabled={!agentsFoldersQuery.data?.workspace?.skillsDir || openWorkspaceSkillsFolderMutation.isPending}
+                  >
+                    <FolderUp className="h-3 w-3" />
+                    Workspace
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => scanSkillsFolderMutation.mutate()}
+                    disabled={scanSkillsFolderMutation.isPending}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${scanSkillsFolderMutation.isPending ? 'animate-spin' : ''}`} />
+                    Scan Folder
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="ml-2 h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                        aria-label={`Actions for ${skill.name}`}
+                        className="gap-1.5"
+                        disabled={importSkillMutation.isPending || importSkillFolderMutation.isPending || importSkillsFromParentFolderMutation.isPending || importSkillFromGitHubMutation.isPending}
                       >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                        <span>Actions</span>
+                        <Upload className="h-3 w-3" />
+                        Import
+                        <ChevronDown className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditSkill(skill)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
+                      <DropdownMenuItem onClick={openLocalBundleImportDialog}>
+                        <Package />
+                        Import Bundle
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openSkillFileMutation.mutate(skill.id)}>
-                        <FileText className="h-3.5 w-3.5" />
-                        Reveal File
+                      <DropdownMenuItem onClick={() => setIsGitHubDialogOpen(true)}>
+                        <Github />
+                        Import from GitHub
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => exportSkillMutation.mutate(skill.id)}>
-                        <Download className="h-3.5 w-3.5" />
-                        Export
+                      <DropdownMenuItem onClick={() => importSkillMutation.mutate()}>
+                        <Upload />
+                        Import SKILL.md File
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteSkill(skill)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
+                      <DropdownMenuItem onClick={() => importSkillFolderMutation.mutate()}>
+                        <FolderOpen />
+                        Import Skill Folder
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => importSkillsFromParentFolderMutation.mutate()}>
+                        <FolderUp />
+                        Bulk Import from Folder
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
-              </div>
-            ))
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setIsCreateDialogOpen(true)}
+                  >
+                    <Plus className="h-3 w-3" />
+                    New Skill
+                  </Button>
+                </>
+              )}
+            </div>
           )}
         </div>
+
+        {activeView === "installed" ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Enabled skills add their instructions to the system prompt.
+            </p>
+
+            <details className="rounded-lg border bg-card">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium">
+                Modular config (.agents) file template
+              </summary>
+              <div className="px-4 pb-4 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  You can hand-author skills in <span className="font-mono">.agents/skills/&lt;id&gt;/skill.md</span>. Frontmatter
+                  uses simple <span className="font-mono">key: value</span> lines (not YAML). If a workspace <span className="font-mono">.agents</span>
+                  folder exists, it can override the global layer by skill <span className="font-mono">id</span>.
+                </p>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">
+                    Global: <span className="font-mono break-all">{agentsFoldersQuery.data?.global?.skillsDir ?? "~/.agents/skills"}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Workspace:{" "}
+                    <span className="font-mono break-all">
+                      {agentsFoldersQuery.data?.workspace?.skillsDir ?? "Not detected"}
+                      {agentsFoldersQuery.data?.workspace?.skillsDir && agentsFoldersQuery.data?.workspaceSource
+                        ? ` (${agentsFoldersQuery.data.workspaceSource})`
+                        : ""}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{skillsFileTemplate}</div>
+              </div>
+            </details>
+
+            {/* Skills List */}
+            <div className="space-y-1">
+              {skillsQuery.isLoading ? (
+                <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2 font-medium text-foreground/80">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span>Loading skills...</span>
+                  </div>
+                </div>
+              ) : skillsQuery.isError ? (
+                <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 px-4 py-5 text-center">
+                  <p className="text-sm font-medium text-destructive">Failed to load skills.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Please try again.</p>
+                </div>
+              ) : skills.length === 0 ? (
+                <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-5 text-center">
+                  <p className="text-sm font-medium">No skills yet.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Create your first skill or import one.</p>
+                </div>
+              ) : (
+                skills.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg border bg-card ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
+                    onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {isSelectMode && (
+                        <button
+                          type="button"
+                          className="shrink-0 flex items-center justify-center"
+                          onClick={(e) => { e.stopPropagation(); toggleSkillSelection(skill.id) }}
+                        >
+                          {selectedSkillIds.has(skill.id) ? (
+                            <CheckSquare className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Square className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      )}
+                      <span className="font-medium truncate">{skill.name}</span>
+                    </div>
+                    {!isSelectMode && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="ml-2 h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                            aria-label={`Actions for ${skill.name}`}
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                            <span>Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEditSkill(skill)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openSkillFileMutation.mutate(skill.id)}>
+                            <FileText className="h-3.5 w-3.5" />
+                            Reveal File
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => exportSkillMutation.mutate(skill.id)}>
+                            <Download className="h-3.5 w-3.5" />
+                            Export
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteSkill(skill)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <HubCatalogBrowser onPreviewInstall={handlePreviewCommunityBundle} />
+        )}
 
         {/* Create Skill Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -808,24 +919,13 @@ Write your skill instructions here.
 
         <BundleImportDialog
           open={isBundleImportDialogOpen}
-          onOpenChange={setIsBundleImportDialogOpen}
+          onOpenChange={handleBundleImportDialogOpenChange}
           onImportComplete={handleBundleImportComplete}
-          title="Import Skill Bundle"
-          description="Preview and import skills from a local .dotagents bundle file."
-          initialComponents={{
-            agentProfiles: false,
-            mcpServers: false,
-            skills: true,
-            repeatTasks: false,
-            knowledgeNotes: false,
-          }}
-          availableComponents={{
-            agentProfiles: false,
-            mcpServers: false,
-            skills: true,
-            repeatTasks: false,
-            knowledgeNotes: false,
-          }}
+          initialFilePath={bundleImportFilePath}
+          title={bundleImportDialogTitle}
+          description={bundleImportDialogDescription}
+          initialComponents={bundleImportInitialComponents}
+          availableComponents={bundleImportAvailableComponents}
         />
 
         {/* GitHub Import Dialog */}
@@ -883,4 +983,3 @@ Write your skill instructions here.
     </div>
   )
 }
-

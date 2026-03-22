@@ -71,7 +71,7 @@ export interface BundleAgentProfile {
   displayName?: string
   description?: string
   enabled: boolean
-  role?: AgentProfileRole
+  role?: AgentProfileRole | "assistant"
   systemPrompt?: string
   guidelines?: string
   connection: {
@@ -318,6 +318,7 @@ const MCP_SERVER_CONFIG_KEYS = [
 ] as const
 const AGENT_PROFILE_CONNECTION_TYPES = ["internal", "acp", "stdio", "remote"] as const
 const AGENT_PROFILE_ROLES = ["user-profile", "delegation-target", "external-agent"] as const
+const LEGACY_PUBLIC_AGENT_PROFILE_ROLES = ["assistant"] as const
 
 function isReservedTopLevelMcpKey(key: string): boolean {
   if (key === "mcpConfig" || key === "mcpServers") return true
@@ -1037,6 +1038,7 @@ export function findHubBundleHandoffFilePath(candidates: readonly string[]): str
 type BundleManifestInputComponents = Omit<BundleManifest["components"], "repeatTasks" | "knowledgeNotes"> & {
   repeatTasks?: number
   knowledgeNotes?: number
+  memories?: number
 }
 
 type ParsedDotAgentsBundle = Omit<DotAgentsBundle, "manifest" | "repeatTasks" | "knowledgeNotes"> & {
@@ -1045,6 +1047,7 @@ type ParsedDotAgentsBundle = Omit<DotAgentsBundle, "manifest" | "repeatTasks" | 
   }
   repeatTasks?: BundleRepeatTask[]
   knowledgeNotes?: BundleKnowledgeNote[]
+  memories?: unknown[]
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -1092,6 +1095,15 @@ function isAgentProfileRole(value: unknown): value is AgentProfileRole {
   return typeof value === "string" && (AGENT_PROFILE_ROLES as readonly string[]).includes(value)
 }
 
+function isBundleAgentProfileRole(value: unknown): value is BundleAgentProfile["role"] {
+  return typeof value === "string" &&
+    [...AGENT_PROFILE_ROLES, ...LEGACY_PUBLIC_AGENT_PROFILE_ROLES].includes(value as any)
+}
+
+function normalizeBundleAgentProfileRole(role: BundleAgentProfile["role"]): AgentProfileRole | undefined {
+  return role === "assistant" ? undefined : role
+}
+
 function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
   if (!isRecordObject(value)) return false
   if (!isNonEmptyString(value.id)) return false
@@ -1099,7 +1111,7 @@ function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
   if (typeof value.enabled !== "boolean") return false
   if (!isOptionalString(value.displayName)) return false
   if (!isOptionalString(value.description)) return false
-  if (value.role !== undefined && !isAgentProfileRole(value.role)) return false
+  if (value.role !== undefined && !isBundleAgentProfileRole(value.role)) return false
   if (!isOptionalString(value.systemPrompt)) return false
   if (!isOptionalString(value.guidelines)) return false
   if (!isRecordObject(value.connection)) return false
@@ -1162,6 +1174,7 @@ function hasValidManifestComponents(value: unknown): value is BundleManifestInpu
   if (!isNonNegativeFiniteNumber(value.skills)) return false
   if (value.repeatTasks !== undefined && !isNonNegativeFiniteNumber(value.repeatTasks)) return false
   if (value.knowledgeNotes !== undefined && !isNonNegativeFiniteNumber(value.knowledgeNotes)) return false
+  if (value.memories !== undefined && !isNonNegativeFiniteNumber(value.memories)) return false
   return true
 }
 
@@ -1186,20 +1199,27 @@ function validateBundle(bundle: unknown): bundle is ParsedDotAgentsBundle {
   if ("knowledgeNotes" in b && b.knowledgeNotes !== undefined) {
     if (!Array.isArray(b.knowledgeNotes) || !b.knowledgeNotes.every(isBundleKnowledgeNote)) return false
   }
+  if ("memories" in b && b.memories !== undefined && !Array.isArray(b.memories)) return false
   return true
 }
 
 function normalizeBundle(bundle: ParsedDotAgentsBundle): DotAgentsBundle {
   const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
   const knowledgeNotes = Array.isArray(bundle.knowledgeNotes) ? bundle.knowledgeNotes : []
+  const legacyMemories = Array.isArray(bundle.memories) ? bundle.memories : []
   const rawComponents = isRecordObject(bundle.manifest.components)
     ? (bundle.manifest.components as Record<string, unknown>)
     : {}
   const countOrFallback = (value: unknown, fallback: number): number =>
     typeof value === "number" && Number.isFinite(value) ? value : fallback
+  const knowledgeNotesCountFallback = knowledgeNotes.length > 0 ? knowledgeNotes.length : legacyMemories.length
 
   return {
     ...bundle,
+    agentProfiles: bundle.agentProfiles.map((profile) => ({
+      ...profile,
+      role: normalizeBundleAgentProfileRole(profile.role),
+    })),
     manifest: {
       ...bundle.manifest,
       components: {
@@ -1207,7 +1227,10 @@ function normalizeBundle(bundle: ParsedDotAgentsBundle): DotAgentsBundle {
         mcpServers: countOrFallback(rawComponents.mcpServers, bundle.mcpServers.length),
         skills: countOrFallback(rawComponents.skills, bundle.skills.length),
         repeatTasks: countOrFallback(rawComponents.repeatTasks, repeatTasks.length),
-        knowledgeNotes: countOrFallback(rawComponents.knowledgeNotes, knowledgeNotes.length),
+        knowledgeNotes: countOrFallback(
+          rawComponents.knowledgeNotes ?? rawComponents.memories,
+          knowledgeNotesCountFallback,
+        ),
       },
     },
     repeatTasks,
@@ -1440,7 +1463,7 @@ export async function importBundle(
           systemPrompt: bundleProfile.systemPrompt,
           guidelines: bundleProfile.guidelines,
           connection,
-          role: bundleProfile.role,
+          role: normalizeBundleAgentProfileRole(bundleProfile.role),
           enabled: bundleProfile.enabled,
           createdAt: now,
           updatedAt: now,
