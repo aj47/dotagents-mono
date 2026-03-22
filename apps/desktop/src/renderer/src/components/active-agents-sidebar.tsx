@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import {
-  Archive,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -12,8 +11,6 @@ import {
   MoreHorizontal,
   X,
   Clock,
-  Pin,
-  Pencil,
   Mic,
   Plus,
 } from "lucide-react"
@@ -24,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
@@ -35,9 +33,7 @@ import { useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
-import {
-  normalizeAgentConversationState,
-} from "@dotagents/shared"
+import { normalizeAgentConversationState } from "@dotagents/shared"
 
 interface AgentSession {
   id: string
@@ -92,6 +88,54 @@ const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 
+function SessionOverflowMenu({
+  sessionTitle,
+  isPinned,
+  canRename,
+  onRename,
+  onTogglePin,
+  onArchive,
+}: {
+  sessionTitle: string
+  isPinned: boolean
+  canRename: boolean
+  onRename?: () => void
+  onTogglePin: () => void
+  onArchive: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(event) => event.stopPropagation()}
+          className="hover:bg-accent focus-visible:ring-ring shrink-0 rounded p-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          aria-label={`Session actions for ${sessionTitle}`}
+          title="Session actions"
+        >
+          <MoreHorizontal className="h-3 w-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {canRename && onRename && (
+          <>
+            <DropdownMenuItem onSelect={() => onRename()}>
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuItem onSelect={() => onTogglePin()}>
+          {isPinned ? "Unpin" : "Pin"}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onArchive()}>
+          Archive
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function ActiveAgentsSidebar({
   onOpenPastSessionsDialog,
   selectedAgentId = null,
@@ -134,7 +178,9 @@ export function ActiveAgentsSidebar({
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
   const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
-  const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
+  const [editingConversationId, setEditingConversationId] = useState<
+    string | null
+  >(null)
   const [editingTitle, setEditingTitle] = useState("")
   const skipTitleSaveOnBlurRef = useRef(false)
   const navigate = useNavigate()
@@ -170,7 +216,9 @@ export function ActiveAgentsSidebar({
         .map((session) => session.conversationId)
         .filter((id): id is string => !!id),
     )
-    const seenFallbackIds = new Set<string>(activeSessions.map((session) => session.id))
+    const seenFallbackIds = new Set<string>(
+      activeSessions.map((session) => session.id),
+    )
 
     const addPastSession = (session: AgentSession, keyPrefix: string) => {
       const conversationId = session.conversationId
@@ -225,18 +273,21 @@ export function ActiveAgentsSidebar({
       activeSessions,
       pinnedSessionIds,
     )
-    const activeItems: SidebarSession[] = orderedActiveSessions.map((session) => ({
-      session,
-      isPast: false,
-      key: `active:${session.id}`,
-    }))
-    const dedupedPastSessions = filterPastSessionsAgainstActiveSessions<SidebarSession>(
-      allPastSessions,
-      orderedActiveSessions,
-    ).filter((item) => {
-      const cid = item.session.conversationId
-      return !cid || !archivedSessionIds.has(cid)
-    })
+    const activeItems: SidebarSession[] = orderedActiveSessions.map(
+      (session) => ({
+        session,
+        isPast: false,
+        key: `active:${session.id}`,
+      }),
+    )
+    const dedupedPastSessions =
+      filterPastSessionsAgainstActiveSessions<SidebarSession>(
+        allPastSessions,
+        orderedActiveSessions,
+      ).filter((item) => {
+        const cid = item.session.conversationId
+        return !cid || !archivedSessionIds.has(cid)
+      })
 
     // Ensure pinned past sessions always appear, even if beyond the visible count.
     // Split into pinned (always shown) and unpinned (paginated).
@@ -251,7 +302,10 @@ export function ActiveAgentsSidebar({
       }
     }
 
-    const unpinnedSliceCount = Math.max(displayedPastSessionCount - pinnedPast.length, 0)
+    const unpinnedSliceCount = Math.max(
+      displayedPastSessionCount - pinnedPast.length,
+      0,
+    )
 
     return {
       sidebarSessions: [
@@ -262,7 +316,13 @@ export function ActiveAgentsSidebar({
       // "Has more" is based on unpinned sessions only since pinned are always shown
       hasMorePastSessions: unpinnedPast.length > unpinnedSliceCount,
     }
-  }, [activeSessions, allPastSessions, displayedPastSessionCount, pinnedSessionIds, archivedSessionIds])
+  }, [
+    activeSessions,
+    allPastSessions,
+    displayedPastSessionCount,
+    pinnedSessionIds,
+    archivedSessionIds,
+  ])
 
   const hasAnySessions = sidebarSessions.length > 0
 
@@ -416,39 +476,50 @@ export function ActiveAgentsSidebar({
     setEditingTitle("")
   }, [])
 
-  const startTitleEditing = useCallback((conversationId?: string, title?: string) => {
-    if (!conversationId) return
-    setEditingConversationId(conversationId)
-    setEditingTitle(title || "Untitled session")
-  }, [])
+  const startTitleEditing = useCallback(
+    (conversationId?: string, title?: string) => {
+      if (!conversationId) return
+      setEditingConversationId(conversationId)
+      setEditingTitle(title || "Untitled session")
+    },
+    [],
+  )
 
-  const saveTitleEdit = useCallback(async (conversationId?: string, currentTitle?: string) => {
-    if (!conversationId) {
-      clearTitleEditing()
-      return
-    }
+  const saveTitleEdit = useCallback(
+    async (conversationId?: string, currentTitle?: string) => {
+      if (!conversationId) {
+        clearTitleEditing()
+        return
+      }
 
-    const nextTitle = editingTitle.trim()
-    const previousTitle = (currentTitle || "Untitled session").trim()
+      const nextTitle = editingTitle.trim()
+      const previousTitle = (currentTitle || "Untitled session").trim()
 
-    if (!nextTitle || nextTitle === previousTitle) {
-      clearTitleEditing()
-      return
-    }
+      if (!nextTitle || nextTitle === previousTitle) {
+        clearTitleEditing()
+        return
+      }
 
-    try {
-      await tipcClient.renameConversationTitle({ conversationId, title: nextTitle })
-      clearTitleEditing()
+      try {
+        await tipcClient.renameConversationTitle({
+          conversationId,
+          title: nextTitle,
+        })
+        clearTitleEditing()
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
-        queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
-        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
-      ])
-    } catch (error) {
-      console.error("Failed to rename session title:", error)
-    }
-  }, [clearTitleEditing, editingTitle, queryClient])
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["conversation", conversationId],
+          }),
+        ])
+      } catch (error) {
+        console.error("Failed to rename session title:", error)
+      }
+    },
+    [clearTitleEditing, editingTitle, queryClient],
+  )
 
   const renderEditableTitle = useCallback(
     (session: AgentSession, className: string, prefix?: string) => {
@@ -481,7 +552,7 @@ export function ActiveAgentsSidebar({
             }}
             autoFocus
             className={cn(
-              "h-6 w-full rounded border border-input bg-background px-1.5 text-xs text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring",
+              "border-input bg-background text-foreground focus-visible:border-ring h-6 w-full rounded border px-1.5 text-xs shadow-sm outline-none ring-0",
               className,
             )}
             aria-label="Rename session title"
@@ -492,69 +563,19 @@ export function ActiveAgentsSidebar({
       return (
         <span
           className={cn("min-w-0 truncate text-left", className)}
-          title={conversationId ? "Conversation title" : title}
+          title={title}
         >
           {prefix ? `${prefix}${title}` : title}
         </span>
       )
     },
-    [clearTitleEditing, editingConversationId, editingTitle, saveTitleEdit, startTitleEditing],
-  )
-
-  const renderSessionMenu = useCallback(
-    (session: AgentSession, isPinned: boolean) => {
-      if (!session.conversationId) return null
-
-      const conversationId = session.conversationId
-      const title = session.conversationTitle || "Untitled session"
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              onClick={(event) => event.stopPropagation()}
-              onMouseDown={(event) => event.stopPropagation()}
-              className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-              title="Session actions"
-              aria-label={`Session actions for ${title}`}
-            >
-              <MoreHorizontal className="h-3 w-3" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              onClick={(event) => {
-                event.stopPropagation()
-                startTitleEditing(conversationId, title)
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(event) => {
-                event.stopPropagation()
-                togglePinSession(conversationId)
-              }}
-            >
-              <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current text-foreground")} />
-              {isPinned ? "Unpin" : "Pin"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleArchiveSession(conversationId)
-              }}
-            >
-              <Archive className="h-3.5 w-3.5" />
-              Archive
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
-    [startTitleEditing, toggleArchiveSession, togglePinSession],
+    [
+      clearTitleEditing,
+      editingConversationId,
+      editingTitle,
+      saveTitleEdit,
+      startTitleEditing,
+    ],
   )
 
   const handleHeaderClick = () => {
@@ -763,7 +784,9 @@ export function ActiveAgentsSidebar({
               : (sessionProgress?.isSnoozed ?? false)
 
             if (isPast) {
-              const isPinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
+              const isPinned = session.conversationId
+                ? pinnedSessionIds.has(session.conversationId)
+                : false
               return (
                 <div
                   key={key}
@@ -777,15 +800,19 @@ export function ActiveAgentsSidebar({
                     }
                   }}
                   className={cn(
-                    "group text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-8 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  <span className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    session.status === "error" ? "bg-red-500" : "bg-green-500",
-                  )} />
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      session.status === "error"
+                        ? "bg-red-500"
+                        : "bg-green-500",
+                    )}
+                  />
                   {renderEditableTitle(session, "flex-1")}
                   {lastMessageMinutesAgo && (
                     <span className="text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
@@ -793,8 +820,33 @@ export function ActiveAgentsSidebar({
                     </span>
                   )}
                   {session.conversationId && (
-                    <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">
-                      {renderSessionMenu(session, isPinned)}
+                    <div
+                      className={cn(
+                        "absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                        "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                        "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                        "focus-within:pointer-events-auto focus-within:opacity-100",
+                      )}
+                    >
+                      <SessionOverflowMenu
+                        sessionTitle={
+                          session.conversationTitle || "Untitled session"
+                        }
+                        isPinned={isPinned}
+                        canRename={!!session.conversationId}
+                        onRename={() =>
+                          startTitleEditing(
+                            session.conversationId,
+                            session.conversationTitle,
+                          )
+                        }
+                        onTogglePin={() =>
+                          togglePinSession(session.conversationId!)
+                        }
+                        onArchive={() =>
+                          toggleArchiveSession(session.conversationId!)
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -809,20 +861,22 @@ export function ActiveAgentsSidebar({
                 ? "bg-red-500"
                 : conversationState === "complete"
                   ? "bg-green-500"
-              : isSnoozed
-                ? "bg-muted-foreground"
-                : "bg-blue-500"
+                  : isSnoozed
+                    ? "bg-muted-foreground"
+                    : "bg-blue-500"
 
             // Get agent/profile name from progress data
             const agentName = sessionProgress?.profileName
-            const isActivePinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
+            const isActivePinned = session.conversationId
+              ? pinnedSessionIds.has(session.conversationId)
+              : false
 
             return (
               <div
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-16 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isFocused
@@ -838,7 +892,7 @@ export function ActiveAgentsSidebar({
                     !isSnoozed && !hasPendingApproval && "animate-pulse",
                   )}
                 />
-                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   {renderEditableTitle(
                     session,
                     cn(
@@ -853,7 +907,7 @@ export function ActiveAgentsSidebar({
                   {/* Agent name indicator */}
                   {agentName && (
                     <span
-                      className="text-[10px] text-primary/60 truncate"
+                      className="text-primary/60 truncate text-[10px]"
                       title={`Agent: ${agentName}`}
                     >
                       {agentName}
@@ -870,23 +924,43 @@ export function ActiveAgentsSidebar({
                     {lastMessageMinutesAgo}
                   </span>
                 )}
-                <div className={cn(
-                  "hidden shrink-0 items-center gap-0.5",
-                  "group-hover:flex group-focus-within:flex",
-                  isFocused && "!flex",
-                )}>
+                <div
+                  className={cn(
+                    "absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                    "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                    "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                    "focus-within:pointer-events-auto focus-within:opacity-100",
+                    isFocused && "pointer-events-auto opacity-100",
+                  )}
+                >
                   {session.conversationId && (
-                    <>
-                      {renderSessionMenu(session, isActivePinned)}
-                    </>
+                    <SessionOverflowMenu
+                      sessionTitle={
+                        session.conversationTitle || "Untitled session"
+                      }
+                      isPinned={isActivePinned}
+                      canRename={!!session.conversationId}
+                      onRename={() =>
+                        startTitleEditing(
+                          session.conversationId,
+                          session.conversationTitle,
+                        )
+                      }
+                      onTogglePin={() =>
+                        togglePinSession(session.conversationId!)
+                      }
+                      onArchive={() =>
+                        toggleArchiveSession(session.conversationId!)
+                      }
+                    />
                   )}
                   <button
-                    onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
+                    onClick={(e) =>
+                      handleToggleSnooze(session.id, isSnoozed, e)
+                    }
                     className="hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-all"
                     title={
-                      isSnoozed
-                        ? "Restore"
-                        : "Minimize - run in background"
+                      isSnoozed ? "Restore" : "Minimize - run in background"
                     }
                   >
                     {isSnoozed ? (
