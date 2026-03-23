@@ -323,6 +323,13 @@ function isEmptyResponseError(error: unknown): boolean {
   return false
 }
 
+function isRetryableTlsTransportMessage(message: string): boolean {
+  return (
+    message.includes("remote error: tls:") ||
+    message.includes("bad record mac")
+  )
+}
+
 /**
  * Check if an error is retryable.
  * Uses AI SDK structured error fields (statusCode, isRetryable) when available,
@@ -333,10 +340,12 @@ function isEmptyResponseError(error: unknown): boolean {
  */
 function isRetryableError(error: unknown): boolean {
   if (error instanceof Error) {
+    const message = error.message.toLowerCase()
+
     // Abort errors should never be retried
     if (
       error.name === "AbortError" ||
-      error.message.toLowerCase().includes("abort")
+      message.includes("abort")
     ) {
       return false
     }
@@ -344,6 +353,12 @@ function isRetryableError(error: unknown): boolean {
     // Empty response errors are retryable but WITHOUT backoff
     // They are handled specially in withRetry - return true here so they're not rejected outright
     if (isEmptyResponseError(error)) {
+      return true
+    }
+
+    // Some gateways surface transient TLS transport failures as 400s with
+    // isRetryable=false even though retrying the same request can recover.
+    if (isRetryableTlsTransportMessage(message)) {
       return true
     }
 
@@ -379,7 +394,6 @@ function isRetryableError(error: unknown): boolean {
 
     // Fallback: message-based detection for transient network issues
     // NOTE: empty response/content removed - handled separately without backoff
-    const message = error.message.toLowerCase()
     return (
       message.includes("rate limit") ||
       message.includes("429") ||
