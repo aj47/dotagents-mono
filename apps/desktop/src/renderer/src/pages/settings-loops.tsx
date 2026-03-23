@@ -13,6 +13,13 @@ import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig } from "@shared/types"
 import { toast } from "sonner"
+import {
+  formatFailureSummary,
+  formatLoopIntervalDraft,
+  getLoopEnabledLabel,
+  getLoopFailureHeadline,
+  parseLoopIntervalDraft,
+} from "./settings-loops.helpers"
 
 interface EditingLoop {
   id?: string
@@ -69,24 +76,6 @@ function formatInterval(minutes: number): string {
   if (hours === 0) return `${days}d ${mins}m`
   if (mins === 0) return `${days}d ${hours}h`
   return `${days}d ${hours}h ${mins}m`
-}
-
-function formatLoopIntervalDraft(minutes?: number): string {
-  const normalizedMinutes = typeof minutes === "number" && Number.isFinite(minutes)
-    ? Math.floor(minutes)
-    : 0
-
-  return normalizedMinutes >= 1 ? String(normalizedMinutes) : "1"
-}
-
-function parseLoopIntervalDraft(draft: string): number | null {
-  const trimmedDraft = draft.trim()
-  if (!/^[0-9]+$/.test(trimmedDraft)) return null
-
-  const parsed = Number(trimmedDraft)
-  if (!Number.isInteger(parsed) || parsed < 1) return null
-
-  return parsed
 }
 
 export function SettingsLoops() {
@@ -244,8 +233,6 @@ export function SettingsLoops() {
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
         const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
-        const consecutiveFailures = loop.consecutiveFailures ?? 0
-        const isAutoPaused = !loop.enabled && !!loop.autoPausedAt
         return (
           <div
             key={loop.id}
@@ -260,10 +247,15 @@ export function SettingsLoops() {
                   <span className="truncate font-medium">{loop.name}</span>
                   {isRunning ? (
                     <Badge variant="secondary">Running</Badge>
-                  ) : isAutoPaused ? (
+                  ) : loop.autoPausedAt ? (
                     <Badge variant="destructive">Auto-paused</Badge>
                   ) : !loop.enabled ? (
                     <Badge variant="outline">Disabled</Badge>
+                  ) : null}
+                  {(loop.consecutiveFailures ?? 0) > 0 && !isRunning ? (
+                    <Badge variant="outline">
+                      {loop.consecutiveFailures} failure{loop.consecutiveFailures === 1 ? "" : "s"}
+                    </Badge>
                   ) : null}
                 </div>
                 <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
@@ -318,41 +310,28 @@ export function SettingsLoops() {
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
               <div>Last run: {formatLastRun(lastRunAt)}</div>
+              {loop.lastFailureAt ? (
+                <div>Last failure: {formatLastRun(loop.lastFailureAt)}</div>
+              ) : null}
             </div>
 
-            {consecutiveFailures > 0 && (
-              <div
-                className={cn(
-                  "mt-2 rounded-md border px-3 py-2 text-xs",
-                  isAutoPaused
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                    : "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300",
-                )}
-              >
-                <div className="font-medium">
-                  {isAutoPaused
-                    ? `Auto-paused after ${consecutiveFailures} consecutive failures`
-                    : `${consecutiveFailures} consecutive failure${consecutiveFailures === 1 ? "" : "s"}`}
-                </div>
-                {loop.lastError && (
-                  <div className="mt-1 break-words text-muted-foreground">
-                    Last error: {loop.lastError}
-                  </div>
-                )}
-                {loop.lastFailureAt && (
-                  <div className="mt-1 text-muted-foreground">
-                    Last failure: {formatLastRun(loop.lastFailureAt)}
-                  </div>
-                )}
+            {loop.lastFailureMessage ? (
+              <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs">
+                <p className="font-medium text-destructive">
+                  {getLoopFailureHeadline(loop)}
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {formatFailureSummary(loop.lastFailureMessage)}
+                </p>
               </div>
-            )}
+            ) : null}
 
             <div className="mt-2 flex items-center gap-2">
               <Switch
                 checked={loop.enabled}
                 onCheckedChange={() => handleToggleEnabled(loop)}
               />
-              <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
+              <Label className="text-xs">{getLoopEnabledLabel(loop)}</Label>
             </div>
           </div>
         )

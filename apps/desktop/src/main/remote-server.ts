@@ -2746,6 +2746,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
+      consecutiveFailures: loop.consecutiveFailures,
+      lastFailureAt: loop.lastFailureAt,
+      lastFailureMessage: loop.lastFailureMessage,
+      autoPausedAt: loop.autoPausedAt,
     }
   }
 
@@ -2773,6 +2777,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
+            consecutiveFailures: l.consecutiveFailures,
+            lastFailureAt: l.lastFailureAt,
+            lastFailureMessage: l.lastFailureMessage,
+            autoPausedAt: l.autoPausedAt,
           }
         }),
       })

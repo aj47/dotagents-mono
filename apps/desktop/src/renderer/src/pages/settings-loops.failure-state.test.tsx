@@ -136,7 +136,7 @@ describe("desktop repeat-task failure state UI", () => {
             enabled: false,
             consecutiveFailures: 3,
             lastFailureAt: 1774242000000,
-            lastError: 'Configured ACP main agent "missing-loop-agent" not found.',
+            lastFailureMessage: 'Configured ACP main agent "missing-loop-agent" not found.',
             autoPausedAt: 1774242060000,
           }]
           : [],
@@ -161,8 +161,8 @@ describe("desktop repeat-task failure state UI", () => {
     const renderedText = textContent(tree)
 
     expect(renderedText).toContain("Auto-paused")
-    expect(renderedText).toContain("Auto-paused after 3 consecutive failures")
-    expect(renderedText).toContain('Last error: Configured ACP main agent "missing-loop-agent" not found.')
+    expect(renderedText).toContain("Auto-paused after 3 consecutive failed automatic runs")
+    expect(renderedText).toContain('Configured ACP main agent "missing-loop-agent" not found.')
     expect(renderedText).toContain("Last failure:")
   })
 })

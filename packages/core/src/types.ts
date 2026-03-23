@@ -66,7 +66,7 @@ export interface LoopConfig {
   runOnStartup?: boolean
   consecutiveFailures?: number
   lastFailureAt?: number
-  lastError?: string
+  lastFailureMessage?: string
   autoPausedAt?: number
 }
 

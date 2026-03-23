@@ -42,20 +42,19 @@ describe("desktop repeat-task save result handling", () => {
     expect(invalidateIndex).toBeGreaterThan(guardIndex)
   })
 
-  it("refreshes loop queries after a successful manual run", () => {
+  it("refreshes loop queries after a successful manual run trigger", () => {
     const runSection = getSection(settingsLoopsSource, "  const handleRunNow = async (loop: LoopConfig) => {", "  const handleOpenTaskFile = async")
 
     expect(runSection).toContain("const result = await tipcClient.triggerLoop?.({ loopId: loop.id })")
     expect(runSection).toContain('queryClient.invalidateQueries({ queryKey: ["loops"] })')
     expect(runSection).toContain('queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })')
 
-    const successIndex = runSection.indexOf('toast.success(`Running "${loop.name}"...`)')
+    const triggerIndex = runSection.indexOf("const result = await tipcClient.triggerLoop?.({ loopId: loop.id })")
     const loopsInvalidateIndex = runSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loops"] })')
     const statusesInvalidateIndex = runSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })')
 
-    expect(loopsInvalidateIndex).toBeGreaterThanOrEqual(0)
-    expect(statusesInvalidateIndex).toBeGreaterThanOrEqual(0)
-    expect(successIndex).toBeGreaterThan(loopsInvalidateIndex)
-    expect(successIndex).toBeGreaterThan(statusesInvalidateIndex)
+    expect(triggerIndex).toBeGreaterThanOrEqual(0)
+    expect(loopsInvalidateIndex).toBeGreaterThan(triggerIndex)
+    expect(statusesInvalidateIndex).toBeGreaterThan(loopsInvalidateIndex)
   })
 })

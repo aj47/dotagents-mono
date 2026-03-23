@@ -986,10 +986,10 @@ export interface LoopConfig {
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
-  consecutiveFailures?: number // consecutive failed runs since the last success
-  lastFailureAt?: number   // timestamp (ms) of the most recent failure
-  lastError?: string       // most recent failure summary
-  autoPausedAt?: number    // timestamp (ms) when the circuit breaker disabled the task
+  consecutiveFailures?: number
+  lastFailureAt?: number
+  lastFailureMessage?: string
+  autoPausedAt?: number
 }
 
 export type Config = {

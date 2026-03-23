@@ -11,13 +11,13 @@ describe("task metadata persistence", () => {
       enabled: false,
       consecutiveFailures: 3,
       lastFailureAt: 1774242000000,
-      lastError: "Configured ACP main agent \"missing-loop-agent\" not found.",
+      lastFailureMessage: "Configured ACP main agent \"missing-loop-agent\" not found.",
       autoPausedAt: 1774242060000,
     })
 
     expect(markdown).toContain("consecutiveFailures: 3")
     expect(markdown).toContain("lastFailureAt: 1774242000000")
-    expect(markdown).toContain('lastError: Configured ACP main agent "missing-loop-agent" not found.')
+    expect(markdown).toContain('lastFailureMessage: Configured ACP main agent "missing-loop-agent" not found.')
     expect(markdown).toContain("autoPausedAt: 1774242060000")
   })
 
@@ -30,7 +30,7 @@ intervalMinutes: 60
 enabled: false
 consecutiveFailures: 2
 lastFailureAt: 1774242000000
-lastError: Configured ACP main agent "missing-loop-agent" not found.
+lastFailureMessage: Configured ACP main agent "missing-loop-agent" not found.
 autoPausedAt: 1774242060000
 ---
 
@@ -41,7 +41,7 @@ Trigger the failure path.
       id: "burning-loop",
       consecutiveFailures: 2,
       lastFailureAt: 1774242000000,
-      lastError: 'Configured ACP main agent "missing-loop-agent" not found.',
+      lastFailureMessage: 'Configured ACP main agent "missing-loop-agent" not found.',
       autoPausedAt: 1774242060000,
     }))
   })

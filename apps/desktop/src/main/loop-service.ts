@@ -12,7 +12,6 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
-import { getErrorMessage } from "@dotagents/core"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
@@ -21,6 +20,13 @@ import {
   writeAllTaskFiles,
   deleteTaskFiles,
 } from "./agents-files/tasks"
+import {
+  applyLoopRunClassification,
+  classifyLoopRunOutcome,
+  prepareLoopForSave,
+  type LoopRunClassification,
+  type LoopRunKind,
+} from "./loop-failure-state"
 
 export interface LoopStatus {
   id: string
@@ -31,8 +37,6 @@ export interface LoopStatus {
   nextRunAt?: number
   intervalMinutes: number
 }
-
-const MAX_CONSECUTIVE_LOOP_FAILURES = 3
 
 class LoopService {
   private static instance: LoopService | null = null
@@ -153,11 +157,10 @@ class LoopService {
   /** Save (create or update) a loop. */
   saveLoop(loop: LoopConfig): boolean {
     const idx = this.loops.findIndex((l) => l.id === loop.id)
-    const existingLoop = idx >= 0 ? this.loops[idx] : undefined
-    const shouldResetFailureState = loop.enabled && (!existingLoop || !existingLoop.enabled)
-    const normalizedLoop = shouldResetFailureState ? this.clearLoopFailureState(loop) : loop
+    const previousLoop = idx >= 0 ? this.loops[idx] : undefined
+    const normalizedLoop = prepareLoopForSave(loop, previousLoop)
     const nextLoops = idx >= 0
-      ? this.loops.map((currentLoop, existingIdx) => existingIdx === idx ? normalizedLoop : currentLoop)
+      ? this.loops.map((existingLoop, existingIdx) => existingIdx === idx ? normalizedLoop : existingLoop)
       : [...this.loops, normalizedLoop]
 
     const saved = this.saveTask(normalizedLoop, nextLoops)
@@ -229,7 +232,7 @@ class LoopService {
     if (loop.runOnStartup) {
       logApp(`[LoopService] Loop "${loop.name}" has runOnStartup=true, triggering immediately`)
       setImmediate(() => {
-        void this.executeLoop(loopId, { rescheduleAfterRun: true })
+        void this.executeLoop(loopId, { rescheduleAfterRun: true, runKind: "automatic" })
       })
     } else {
       this.scheduleNextRun(loopId, this.getIntervalMs(loop))
@@ -266,7 +269,7 @@ class LoopService {
     logApp(`[LoopService] Manually triggering loop "${loop.name}" (${loopId})`)
     // Reschedule after manual run if the loop is enabled so we don't lose the timer
     const shouldReschedule = loop.enabled && this.activeTimers.has(loopId)
-    await this.executeLoop(loopId, { rescheduleAfterRun: shouldReschedule })
+    await this.executeLoop(loopId, { rescheduleAfterRun: shouldReschedule, runKind: "manual" })
     return true
   }
 
@@ -299,7 +302,7 @@ class LoopService {
     }
   }
 
-  private async executeLoop(loopId: string, options: { rescheduleAfterRun: boolean }): Promise<void> {
+  private async executeLoop(loopId: string, options: { rescheduleAfterRun: boolean; runKind: LoopRunKind }): Promise<void> {
     const loop = this.getLoop(loopId)
 
     if (!loop) {
@@ -317,21 +320,24 @@ class LoopService {
 
     logApp(`[LoopService] Executing loop "${loop.name}" (${loopId})`)
 
+    let runClassification: LoopRunClassification = { failed: false }
+
     try {
       // Update lastRunAt in memory and persist
-      loop.lastRunAt = Date.now()
-      this.saveTask(loop)
+      const startedAt = Date.now()
+      const startedLoop = { ...loop, lastRunAt: startedAt }
+      this.saveLoop(startedLoop)
 
       let profileSnapshot: SessionProfileSnapshot | undefined
-      if (loop.profileId) {
-        const profile = agentProfileService.getById(loop.profileId)
+      if (startedLoop.profileId) {
+        const profile = agentProfileService.getById(startedLoop.profileId)
         if (profile) {
           profileSnapshot = createSessionSnapshotFromProfile(profile)
         }
       }
 
-      const conversation = await conversationService.createConversation(loop.prompt, "user")
-      const conversationTitle = `[Repeat] ${loop.name}`
+      const conversation = await conversationService.createConversation(startedLoop.prompt, "user")
+      const conversationTitle = `[Repeat] ${startedLoop.name}`
       const sessionId = agentSessionTracker.startSession(
         conversation.id,
         conversationTitle,
@@ -339,28 +345,32 @@ class LoopService {
         profileSnapshot
       )
 
-      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
+      logApp(`[LoopService] Created session ${sessionId} for loop "${startedLoop.name}"`)
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      const result = await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
-      const failureMessage = this.getLoopRunFailureMessage(result)
-      if (failureMessage) {
-        this.recordLoopFailure(loop, failureMessage, sessionId)
-      } else {
-        this.recordLoopSuccess(loop)
-      }
+      const finalContent = await runAgentLoopSession(startedLoop.prompt, conversation.id, sessionId)
+      runClassification = classifyLoopRunOutcome({ content: finalContent })
     } catch (error) {
-      const errorMessage = getErrorMessage(error)
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
-      this.recordLoopFailure(loop, errorMessage)
+      runClassification = classifyLoopRunOutcome({ error })
     } finally {
+      const latestLoop = this.getLoop(loopId)
+      if (latestLoop) {
+        const settledLoop = applyLoopRunClassification(
+          latestLoop,
+          runClassification,
+          options.runKind,
+        )
+        this.saveLoop(settledLoop)
+      }
+
       this.executingLoops.delete(loopId)
 
       if (options.rescheduleAfterRun && !this.isStopping) {
-        const latestLoop = this.getLoop(loopId)
-        if (latestLoop?.enabled) {
-          this.scheduleNextRun(loopId, this.getIntervalMs(latestLoop))
+        const loopAfterSettlement = this.getLoop(loopId)
+        if (loopAfterSettlement?.enabled) {
+          this.scheduleNextRun(loopId, this.getIntervalMs(loopAfterSettlement))
         }
       }
     }
@@ -373,7 +383,7 @@ class LoopService {
     const timer = setTimeout(() => {
       this.activeTimers.delete(loopId)
       this.loopNextRunAt.delete(loopId)
-      void this.executeLoop(loopId, { rescheduleAfterRun: true })
+      void this.executeLoop(loopId, { rescheduleAfterRun: true, runKind: "automatic" })
     }, delayMs)
 
     this.activeTimers.set(loopId, timer)
@@ -398,78 +408,6 @@ class LoopService {
     }
 
     return safeMinutes * 60 * 1000
-  }
-
-  private clearLoopFailureState(loop: LoopConfig): LoopConfig {
-    const { consecutiveFailures, lastFailureAt, lastError, autoPausedAt, ...rest } = loop
-    return rest
-  }
-
-  private getLoopRunFailureMessage(result: string): string | null {
-    const normalizedResult = result.replace(/\s+/g, " ").trim()
-    if (!normalizedResult) return null
-
-    const failurePatterns = [
-      /^Error:/i,
-      /I couldn't complete the request after multiple attempts/i,
-      /reached maximum iteration limit/i,
-      /Task stopped due to iteration limit/i,
-      /Failed to create ACP session/i,
-      /Failed to start ACP agent/i,
-      /ACP agent .* is not ready/i,
-      /Authentication required:/i,
-      /Configured ACP main agent .* not found/i,
-      /No ACP main agent configured/i,
-      /No ACP main agent selected/i,
-      /Available ACP agents:/i,
-    ]
-
-    return failurePatterns.some((pattern) => pattern.test(normalizedResult))
-      ? normalizedResult.slice(0, 240)
-      : null
-  }
-
-  private recordLoopSuccess(loop: LoopConfig): void {
-    if (!loop.consecutiveFailures && !loop.lastFailureAt && !loop.lastError && !loop.autoPausedAt) {
-      return
-    }
-
-    delete loop.consecutiveFailures
-    delete loop.lastFailureAt
-    delete loop.lastError
-    delete loop.autoPausedAt
-    this.saveTask(loop)
-  }
-
-  private recordLoopFailure(loop: LoopConfig, errorMessage: string, sessionId?: string): void {
-    const normalizedError = errorMessage.replace(/\s+/g, " ").trim().slice(0, 240) || "Loop run failed"
-    const failureCount = (loop.consecutiveFailures ?? 0) + 1
-
-    loop.consecutiveFailures = failureCount
-    loop.lastFailureAt = Date.now()
-    loop.lastError = normalizedError
-
-    const activeSession = sessionId ? agentSessionTracker.getSession(sessionId) : undefined
-    if (activeSession) {
-      agentSessionTracker.errorSession(sessionId, normalizedError)
-    }
-
-    if (failureCount >= MAX_CONSECUTIVE_LOOP_FAILURES) {
-      loop.enabled = false
-      loop.autoPausedAt = Date.now()
-      logApp(
-        `[LoopService] Auto-paused loop "${loop.name}" (${loop.id}) after ${failureCount} consecutive failures`,
-        { error: normalizedError }
-      )
-    } else {
-      delete loop.autoPausedAt
-      logApp(
-        `[LoopService] Loop "${loop.name}" (${loop.id}) failed (${failureCount}/${MAX_CONSECUTIVE_LOOP_FAILURES})`,
-        { error: normalizedError }
-      )
-    }
-
-    this.saveTask(loop)
   }
 }
 

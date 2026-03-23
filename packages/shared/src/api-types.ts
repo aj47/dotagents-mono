@@ -398,6 +398,10 @@ export interface Loop {
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;
+  consecutiveFailures?: number;
+  lastFailureAt?: number;
+  lastFailureMessage?: string;
+  autoPausedAt?: number;
 }
 
 export interface LoopsResponse {
