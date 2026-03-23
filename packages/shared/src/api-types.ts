@@ -392,6 +392,7 @@ export interface Loop {
   prompt: string;
   intervalMinutes: number;
   enabled: boolean;
+  maxIterations?: number;
   profileId?: string;
   profileName?: string;
   runOnStartup?: boolean;

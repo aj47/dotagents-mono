@@ -983,6 +983,7 @@ export interface LoopConfig {
   prompt: string           // the prompt text sent to the agent
   intervalMinutes: number  // how often to run (in minutes)
   enabled: boolean         // whether this loop is active
+  maxIterations?: number   // optional task-specific iteration cap
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval

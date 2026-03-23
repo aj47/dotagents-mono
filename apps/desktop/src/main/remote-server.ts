@@ -2740,6 +2740,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       prompt: loop.prompt,
       intervalMinutes: loop.intervalMinutes,
       enabled: loop.enabled,
+      maxIterations: loop.maxIterations,
       profileId: loop.profileId,
       profileName: getLoopProfileName(loop.profileId),
       runOnStartup: loop.runOnStartup,
@@ -2767,6 +2768,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             prompt: l.prompt,
             intervalMinutes: l.intervalMinutes,
             enabled: l.enabled,
+            maxIterations: l.maxIterations,
             profileId: l.profileId,
             profileName: getLoopProfileName(l.profileId),
             runOnStartup: l.runOnStartup,
@@ -3000,6 +3002,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         prompt?: unknown
         intervalMinutes?: unknown
         enabled?: unknown
+        maxIterations?: unknown
         profileId?: unknown
       }
 
@@ -3024,11 +3027,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply.code(400).send({ error: "enabled must be a boolean when provided" })
       }
+      if (
+        body.maxIterations !== undefined
+        && (
+          typeof body.maxIterations !== "number"
+          || !Number.isFinite(body.maxIterations)
+          || !Number.isInteger(body.maxIterations)
+          || body.maxIterations < 1
+        )
+      ) {
+        return reply.code(400).send({ error: "maxIterations must be a finite integer >= 1 when provided" })
+      }
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
+      const maxIterations = typeof body.maxIterations === "number" ? body.maxIterations : undefined
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
@@ -3038,6 +3053,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         prompt,
         intervalMinutes,
         enabled,
+        maxIterations,
         profileId: profileId || undefined,
       }
 
@@ -3073,6 +3089,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         prompt?: unknown
         intervalMinutes?: unknown
         enabled?: unknown
+        maxIterations?: unknown
         profileId?: unknown
       }
 
@@ -3115,6 +3132,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply.code(400).send({ error: "enabled must be a boolean when provided" })
       }
+      if (
+        body.maxIterations !== undefined
+        && (
+          typeof body.maxIterations !== "number"
+          || !Number.isFinite(body.maxIterations)
+          || !Number.isInteger(body.maxIterations)
+          || body.maxIterations < 1
+        )
+      ) {
+        return reply.code(400).send({ error: "maxIterations must be a finite integer >= 1 when provided" })
+      }
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
@@ -3126,6 +3154,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           ? body.intervalMinutes
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
+      const maxIterations =
+        typeof body.maxIterations === "number"
+          ? body.maxIterations
+          : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const updated = {
         ...existing,
@@ -3133,6 +3165,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(prompt !== undefined && { prompt }),
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
+        ...(maxIterations !== undefined && { maxIterations }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
       }
 

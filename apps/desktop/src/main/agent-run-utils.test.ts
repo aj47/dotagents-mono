@@ -7,6 +7,7 @@ import {
   buildProfileContext,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
+  resolveConfiguredMaxIterations,
 } from "./agent-run-utils"
 
 describe("resolveAgentIterationLimits", () => {
@@ -34,6 +35,29 @@ describe("resolveAgentIterationLimits", () => {
       loopMaxIterations: 1,
       guardrailBudget: 1,
     })
+  })
+})
+
+describe("resolveConfiguredMaxIterations", () => {
+  it("prefers an explicit task-specific iteration override", () => {
+    expect(resolveConfiguredMaxIterations({
+      mcpUnlimitedIterations: true,
+      mcpMaxIterations: 10,
+    }, 15)).toBe(15)
+  })
+
+  it("falls back to the global unlimited setting when no override is set", () => {
+    expect(resolveConfiguredMaxIterations({
+      mcpUnlimitedIterations: true,
+      mcpMaxIterations: 10,
+    })).toBe(Number.POSITIVE_INFINITY)
+  })
+
+  it("normalizes invalid overrides back to the global finite limit", () => {
+    expect(resolveConfiguredMaxIterations({
+      mcpUnlimitedIterations: false,
+      mcpMaxIterations: 12,
+    }, 0)).toBe(12)
   })
 })
 

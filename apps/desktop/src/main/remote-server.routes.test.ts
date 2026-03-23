@@ -150,4 +150,19 @@ describe("remote-server route registration", () => {
     expect(failureIndex).toBeGreaterThan(saveIndex)
     expect(successIndex).toBeGreaterThan(failureIndex)
   })
+
+  it("preserves task-specific max-iteration caps in repeat task routes", () => {
+    const source = getRemoteServerSource()
+    const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+    const updateLoopSection = getSection(source, 'fastify.patch("/v1/loops/:id"', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+
+    expect(source).toContain("maxIterations: loop.maxIterations")
+    expect(source).toContain("maxIterations: l.maxIterations")
+    expect(createLoopSection).toContain("maxIterations?: unknown")
+    expect(createLoopSection).toContain('return reply.code(400).send({ error: "maxIterations must be a finite integer >= 1 when provided" })')
+    expect(createLoopSection).toContain("const maxIterations = typeof body.maxIterations === \"number\" ? body.maxIterations : undefined")
+    expect(createLoopSection).toContain("maxIterations,")
+    expect(updateLoopSection).toContain("maxIterations?: unknown")
+    expect(updateLoopSection).toContain("...(maxIterations !== undefined && { maxIterations })")
+  })
 })

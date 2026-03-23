@@ -337,7 +337,9 @@ class LoopService {
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      await runAgentLoopSession(loop.prompt, conversation.id, sessionId, {
+        maxIterations: loop.maxIterations,
+      })
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
     } finally {

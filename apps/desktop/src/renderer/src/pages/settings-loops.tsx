@@ -19,6 +19,7 @@ interface EditingLoop {
   name: string
   prompt: string
   intervalMinutesDraft: string
+  maxIterationsDraft: string
   enabled: boolean
   runOnStartup: boolean
 }
@@ -34,6 +35,7 @@ const emptyLoop: EditingLoop = {
   name: "",
   prompt: "",
   intervalMinutesDraft: "15",
+  maxIterationsDraft: "",
   enabled: true,
   runOnStartup: false,
 }
@@ -46,6 +48,9 @@ const INTERVAL_PRESETS = [
   { label: "6 hours", value: 360 },
   { label: "24 hours", value: 1440 },
 ]
+
+const LOOP_MAX_ITERATIONS_MIN = 1
+const LOOP_MAX_ITERATIONS_MAX = 100
 
 function formatLastRun(timestamp?: number): string {
   if (!timestamp) return "Never"
@@ -89,6 +94,33 @@ function parseLoopIntervalDraft(draft: string): number | null {
   return parsed
 }
 
+function formatLoopMaxIterationsDraft(maxIterations?: number): string {
+  const normalizedMaxIterations = typeof maxIterations === "number" && Number.isFinite(maxIterations)
+    ? Math.floor(maxIterations)
+    : 0
+
+  return normalizedMaxIterations >= LOOP_MAX_ITERATIONS_MIN
+    ? String(normalizedMaxIterations)
+    : ""
+}
+
+function parseLoopMaxIterationsDraft(draft: string): number | null | undefined {
+  const trimmedDraft = draft.trim()
+  if (!trimmedDraft) return undefined
+  if (!/^[0-9]+$/.test(trimmedDraft)) return null
+
+  const parsed = Number(trimmedDraft)
+  if (
+    !Number.isInteger(parsed)
+    || parsed < LOOP_MAX_ITERATIONS_MIN
+    || parsed > LOOP_MAX_ITERATIONS_MAX
+  ) {
+    return null
+  }
+
+  return parsed
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
@@ -127,6 +159,7 @@ export function SettingsLoops() {
       name: loop.name,
       prompt: loop.prompt,
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
+      maxIterationsDraft: formatLoopMaxIterationsDraft(loop.maxIterations),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
     })
@@ -156,6 +189,12 @@ export function SettingsLoops() {
       return
     }
 
+    const parsedMaxIterations = parseLoopMaxIterationsDraft(editing.maxIterationsDraft)
+    if (parsedMaxIterations === null) {
+      toast.error(`Max iterations must be a whole number between ${LOOP_MAX_ITERATIONS_MIN} and ${LOOP_MAX_ITERATIONS_MAX}`)
+      return
+    }
+
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
@@ -163,6 +202,7 @@ export function SettingsLoops() {
       prompt: editing.prompt.trim(),
       intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
+      ...(parsedMaxIterations !== undefined && { maxIterations: parsedMaxIterations }),
       runOnStartup: editing.runOnStartup,
     }
 
@@ -307,6 +347,9 @@ export function SettingsLoops() {
                 <Clock className="h-3.5 w-3.5" />
                 Every {formatInterval(loop.intervalMinutes)}
               </div>
+              {typeof loop.maxIterations === "number" && (
+                <div>Max {loop.maxIterations} iterations</div>
+              )}
               {loop.runOnStartup && <div>Runs on startup</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
@@ -338,7 +381,7 @@ export function SettingsLoops() {
       <Card className="max-w-3xl">
         <CardHeader className="space-y-1 pb-2">
           <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
-          <CardDescription>Set the prompt, interval, and startup behavior.</CardDescription>
+          <CardDescription>Set the prompt, interval, optional max-iteration cap, and startup behavior.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -385,6 +428,22 @@ export function SettingsLoops() {
                   {preset.label}
                 </Button>
               ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="maxIterations">Max Iterations</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id="maxIterations"
+                type="number"
+                min={LOOP_MAX_ITERATIONS_MIN}
+                max={LOOP_MAX_ITERATIONS_MAX}
+                value={editing.maxIterationsDraft}
+                onChange={(e) => setEditing({ ...editing, maxIterationsDraft: e.target.value })}
+                className="h-8 w-28"
+                placeholder="Global"
+              />
+              <span className="self-center text-xs text-muted-foreground">leave blank to inherit the general setting</span>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">

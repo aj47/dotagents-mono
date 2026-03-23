@@ -116,6 +116,7 @@ export interface LoopCreateRequest {
   prompt: string;
   intervalMinutes: number;
   enabled: boolean;
+  maxIterations?: number;
   profileId?: string;
 }
 
@@ -124,6 +125,7 @@ export interface LoopUpdateRequest {
   prompt?: string;
   intervalMinutes?: number;
   enabled?: boolean;
+  maxIterations?: number;
   profileId?: string;
 }
 

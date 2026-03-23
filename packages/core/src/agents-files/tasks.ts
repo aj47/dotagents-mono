@@ -40,6 +40,18 @@ function parseNumber(raw: string | undefined, defaultValue: number): number {
   return Number.isFinite(n) ? n : defaultValue
 }
 
+function parseOptionalPositiveInteger(raw: string | undefined): number | undefined {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return undefined
+
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return undefined
+  }
+
+  return Math.max(1, Math.floor(parsed))
+}
+
 // ============================================================================
 // Path helpers
 // ============================================================================
@@ -73,6 +85,9 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
     enabled: String(task.enabled),
   }
 
+  if (typeof task.maxIterations === "number" && Number.isFinite(task.maxIterations) && task.maxIterations >= 1) {
+    frontmatter.maxIterations = String(Math.floor(task.maxIterations))
+  }
   if (task.profileId) frontmatter.profileId = task.profileId
   if (task.runOnStartup) frontmatter.runOnStartup = "true"
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
@@ -96,6 +111,7 @@ export function parseTaskMarkdown(
 
   const name = (fm.name ?? "").trim() || id
   const intervalMinutes = parseNumber(fm.intervalMinutes, 60)
+  const maxIterations = parseOptionalPositiveInteger(fm.maxIterations)
 
   return {
     id,
@@ -103,6 +119,7 @@ export function parseTaskMarkdown(
     prompt: body.trim(),
     intervalMinutes: Math.max(1, intervalMinutes),
     enabled: parseBoolean(fm.enabled, true),
+    maxIterations,
     profileId: (fm.profileId ?? "").trim() || undefined,
     runOnStartup: parseBoolean(fm.runOnStartup, false) || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,

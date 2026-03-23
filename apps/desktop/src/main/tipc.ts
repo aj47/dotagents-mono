@@ -86,6 +86,7 @@ import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+import { resolveConfiguredMaxIterations } from "./agent-run-utils"
 
 /**
  * Convert Float32Array audio samples to WAV format buffer
@@ -252,9 +253,10 @@ async function processWithAgentMode(
   conversationId?: string,
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
+  maxIterationsOverride?: number,
 ): Promise<string> {
   const config = configStore.get()
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  const effectiveMaxIterations = resolveConfiguredMaxIterations(config, maxIterationsOverride)
 
   // Check if ACP main agent mode is enabled - route to ACP agent instead of LLM API
   if (config.mainAgentMode === "acp" && config.mainAgentName) {
@@ -552,9 +554,10 @@ async function processWithAgentMode(
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
-  existingSessionId: string
+  existingSessionId: string,
+  options: { maxIterations?: number } = {},
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true)
+  return processWithAgentMode(text, conversationId, existingSessionId, true, options.maxIterations)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"

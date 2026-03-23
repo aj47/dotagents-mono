@@ -108,6 +108,7 @@ export interface BundleRepeatTask {
   prompt: string
   intervalMinutes: number
   enabled: boolean
+  maxIterations?: number
   runOnStartup?: boolean
   // profileId omitted — the profile may not exist in the target environment
 }
@@ -673,6 +674,7 @@ function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemS
       prompt: task.prompt,
       intervalMinutes: task.intervalMinutes,
       enabled: task.enabled,
+      maxIterations: task.maxIterations,
       runOnStartup: task.runOnStartup,
       // profileId intentionally omitted — may not exist in target environment
     }))
@@ -1136,6 +1138,7 @@ function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (typeof value.prompt !== "string") return false
   if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
   if (typeof value.enabled !== "boolean") return false
+  if (value.maxIterations !== undefined && (!isNonNegativeFiniteNumber(value.maxIterations) || value.maxIterations < 1)) return false
   return value.runOnStartup === undefined || typeof value.runOnStartup === "boolean"
 }
 
@@ -1631,6 +1634,7 @@ export async function importBundle(
           prompt: bundleTask.prompt,
           intervalMinutes: bundleTask.intervalMinutes,
           enabled: bundleTask.enabled,
+          maxIterations: bundleTask.maxIterations,
           runOnStartup: bundleTask.runOnStartup,
           // profileId intentionally not imported — may not exist in target
         }

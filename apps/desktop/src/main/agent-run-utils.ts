@@ -14,6 +14,11 @@ export interface AgentIterationLimits {
   guardrailBudget: number
 }
 
+export interface AgentIterationConfig {
+  mcpUnlimitedIterations?: boolean
+  mcpMaxIterations?: number
+}
+
 interface ConversationMessageLike {
   role: string
   content?: string | null
@@ -89,6 +94,17 @@ export function resolveAgentIterationLimits(
     loopMaxIterations: normalizedMaxIterations,
     guardrailBudget: normalizedMaxIterations,
   }
+}
+
+export function resolveConfiguredMaxIterations(
+  config: AgentIterationConfig,
+  requestedOverride?: number,
+): number {
+  if (typeof requestedOverride === "number" && Number.isFinite(requestedOverride) && requestedOverride >= 1) {
+    return Math.max(1, Math.floor(requestedOverride))
+  }
+
+  return config.mcpUnlimitedIterations ? Number.POSITIVE_INFINITY : (config.mcpMaxIterations ?? 10)
 }
 
 export function appendAgentStopNote(content: string): string {

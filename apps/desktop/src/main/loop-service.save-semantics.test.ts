@@ -45,5 +45,9 @@ describe("loop-service save semantics", () => {
     expect(saveIndex).toBeGreaterThan(nextLoopsIndex)
     expect(commitIndex).toBeGreaterThan(saveIndex)
   })
-})
 
+  it("passes task-specific maxIterations overrides into background agent sessions", () => {
+    expect(loopServiceSource).toContain("await runAgentLoopSession(loop.prompt, conversation.id, sessionId, {")
+    expect(loopServiceSource).toContain("maxIterations: loop.maxIterations")
+  })
+})

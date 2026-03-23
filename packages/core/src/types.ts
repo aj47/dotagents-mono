@@ -61,6 +61,7 @@ export interface LoopConfig {
   prompt: string
   intervalMinutes: number
   enabled: boolean
+  maxIterations?: number
   profileId?: string
   lastRunAt?: number
   runOnStartup?: boolean
