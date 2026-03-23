@@ -60,6 +60,10 @@ import {
   resolveIterationLimitFinalContent,
 } from "./llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
+import {
+  extractLatestReusableSelectorRef,
+  getToolRetryHeuristic,
+} from "./tool-retry-heuristics"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
 import {
   normalizeAgentConversationState,
@@ -368,6 +372,7 @@ interface ToolExecutionResult {
   result: MCPToolResult
   retryCount: number
   cancelledByKill: boolean
+  recoveryMessage?: string
 }
 
 /**
@@ -391,6 +396,7 @@ async function executeToolWithRetries(
       },
       retryCount: 0,
       cancelledByKill: true,
+      recoveryMessage: undefined,
     }
   }
 
@@ -427,12 +433,13 @@ async function executeToolWithRetries(
       result,
       retryCount: 0,
       cancelledByKill: true,
+      recoveryMessage: undefined,
     }
   }
 
-  // Enhanced retry logic for specific error types
   let retryCount = 0
-  while (result.isError && retryCount < maxRetries) {
+  let recoveryMessage: string | undefined
+  while (result.isError) {
     // Check kill switch before retrying
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
       return {
@@ -443,34 +450,27 @@ async function executeToolWithRetries(
         },
         retryCount,
         cancelledByKill: true,
+        recoveryMessage,
       }
     }
 
-    const errorText = result.content
-      .map((c) => c.text)
-      .join(" ")
-      .toLowerCase()
-
-    // Check if this is a retryable error
-    const isRetryableError =
-      errorText.includes("timeout") ||
-      errorText.includes("connection") ||
-      errorText.includes("network") ||
-      errorText.includes("temporary") ||
-      errorText.includes("busy")
-
-    if (isRetryableError) {
-      retryCount++
-
-      // Wait before retry (exponential backoff)
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.pow(2, retryCount) * 1000),
-      )
-
-      result = await executeToolCall(toolCall, onToolProgress)
-    } else {
-      break // Don't retry non-transient errors
+    const retryDecision = getToolRetryHeuristic(toolCall, result)
+    if (retryDecision.recoveryMessage && !recoveryMessage) {
+      recoveryMessage = retryDecision.recoveryMessage
     }
+
+    if (!retryDecision.shouldAutoRetry || retryCount >= maxRetries) {
+      break
+    }
+
+    retryCount++
+
+    // Wait before retry (exponential backoff)
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.pow(2, retryCount) * 1000),
+    )
+
+    result = await executeToolCall(toolCall, onToolProgress)
   }
 
   return {
@@ -478,6 +478,7 @@ async function executeToolWithRetries(
     result,
     retryCount,
     cancelledByKill: false,
+    recoveryMessage,
   }
 }
 
@@ -1033,19 +1034,8 @@ export async function processTranscriptWithAgentMode(
       : baseMessage
   }
 
-  const extractLatestSelectorRefFromHistory = () => {
-    for (let i = conversationHistory.length - 1; i >= currentPromptIndex; i--) {
-      const content = typeof conversationHistory[i]?.content === "string"
-        ? conversationHistory[i].content
-        : ""
-      const selectorRef = content.match(/@[a-z][0-9]+/i)?.[0]
-      if (selectorRef) return selectorRef
-    }
-    return undefined
-  }
-
   const buildGarbledToolCallNudge = () => {
-    const selectorRef = extractLatestSelectorRefFromHistory()
+    const selectorRef = extractLatestReusableSelectorRef(conversationHistory, currentPromptIndex)
     const baseMessage = "Your previous response contained text like \"[Calling tools: ...]\" instead of an actual tool call. Do NOT write tool call names as text. Instead, invoke tools using the structured function-calling interface."
     return selectorRef
       ? `${baseMessage} The latest successful step already identified ${selectorRef}; use it in the next tool call if it is still the correct selector. If you cannot call tools, provide your final answer directly.`
@@ -2282,6 +2272,7 @@ export async function processTranscriptWithAgentMode(
     // Default is parallel execution when multiple tools are called
     const forceSequential = config.mcpParallelToolExecution === false
     const useParallelExecution = !forceSequential && toolCallsArray.length > 1
+    const recoveryMessages: string[] = []
 
     if (useParallelExecution) {
       // PARALLEL EXECUTION: Execute all tool calls concurrently
@@ -2379,6 +2370,9 @@ export async function processTranscriptWithAgentMode(
         toolResults.push(execResult.result)
         toolsExecutedInSession = true
         garbledToolCallCount = 0 // Reset on successful tool execution
+        if (execResult.recoveryMessage) {
+          recoveryMessages.push(execResult.recoveryMessage)
+        }
         if (execResult.result.isError) {
           failedTools.push(execResult.toolCall.name)
         }
@@ -2475,6 +2469,9 @@ export async function processTranscriptWithAgentMode(
 
         toolResults.push(execResult.result)
         toolsExecutedInSession = true
+        if (execResult.recoveryMessage) {
+          recoveryMessages.push(execResult.recoveryMessage)
+        }
 
         // Track failed tools for better error reporting
         if (execResult.result.isError) {
@@ -2656,6 +2653,10 @@ export async function processTranscriptWithAgentMode(
         content: errorSummary,
         timestamp: Date.now(),
       })
+
+      for (const recoveryMessage of Array.from(new Set(recoveryMessages))) {
+        addEphemeralMessage("user", recoveryMessage)
+      }
     }
 
     // Check if agent indicated completion after executing tools.
