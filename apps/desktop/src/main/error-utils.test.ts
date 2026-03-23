@@ -66,6 +66,14 @@ describe("error-utils", () => {
     )
   })
 
+  it("appends nested socket detail for generic terminated transport errors", () => {
+    const error = new TypeError("terminated", {
+      cause: new Error("read ECONNRESET"),
+    })
+
+    expect(getErrorMessage(error, "Fallback message")).toBe("terminated: read ECONNRESET")
+  })
+
   it("uses the fallback when a blank Error only stringifies to its constructor name", () => {
     expect(getErrorMessage(new Error(""), "Fallback message")).toBe("Fallback message")
     expect(getErrorMessage(new TypeError(""), "Fallback message")).toBe("Fallback message")

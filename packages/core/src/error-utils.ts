@@ -9,8 +9,24 @@ function findFirstNestedMessage(values: unknown[], seen: WeakSet<object>): strin
   return undefined
 }
 
-function isIncompleteErrorMessage(message: string): boolean {
-  return /:\s*$/.test(message.trim())
+function shouldAppendNestedErrorDetail(message: string): boolean {
+  const normalized = message.trim().toLowerCase()
+
+  if (!normalized) {
+    return false
+  }
+
+  if (/:$/.test(normalized)) {
+    return true
+  }
+
+  return [
+    "terminated",
+    "aborted",
+    "fetch failed",
+    "request failed",
+    "unknown error",
+  ].includes(normalized)
 }
 
 function appendNestedErrorDetail(message: string, nestedMessage: string): string {
@@ -72,7 +88,7 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
     )
 
     if (error.message) {
-      if (nestedMessage && isIncompleteErrorMessage(error.message)) {
+      if (nestedMessage && shouldAppendNestedErrorDetail(error.message)) {
         return appendNestedErrorDetail(error.message, nestedMessage)
       }
 
