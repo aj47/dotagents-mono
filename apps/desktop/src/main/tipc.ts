@@ -299,7 +299,9 @@ async function processWithAgentMode(
         const currentProfile = agentProfileService.getCurrentProfile()
         return currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined
       })()
-    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
+    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot, {
+      maxDurationMs: sessionMaxDurationMs,
+    })
 
     try {
       // Process with ACP agent

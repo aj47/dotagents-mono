@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { AGENT_SESSION_TIMEOUT_NOTE } from "./agent-run-utils"
 
 const mockGetAgentInstance = vi.fn()
 const mockGetOrCreateSession = vi.fn()
 const mockSendPrompt = vi.fn()
+const mockCancelPrompt = vi.fn(() => Promise.resolve())
 const mockOn = vi.fn()
 const mockOff = vi.fn()
 const mockEmitAgentProgress = vi.fn(() => Promise.resolve())
 const mockLoadConversation = vi.fn()
 const mockAddMessageToConversation = vi.fn(() => Promise.resolve())
+const mockShouldStopSession = vi.fn(() => false)
+const mockGetSessionStopReason = vi.fn(() => undefined as "manual" | "timeout" | undefined)
 let sessionUpdateHandler: ((event: any) => void) | undefined
 
 vi.mock("./acp-service", () => ({
@@ -15,6 +19,7 @@ vi.mock("./acp-service", () => ({
     getAgentInstance: mockGetAgentInstance,
     getOrCreateSession: mockGetOrCreateSession,
     sendPrompt: mockSendPrompt,
+    cancelPrompt: mockCancelPrompt,
     on: mockOn,
     off: mockOff,
   },
@@ -43,6 +48,13 @@ vi.mock("./debug", () => ({
   logApp: vi.fn(),
 }))
 
+vi.mock("./state", () => ({
+  agentSessionStateManager: {
+    shouldStopSession: mockShouldStopSession,
+    getSessionStopReason: mockGetSessionStopReason,
+  },
+}))
+
 describe("acp-main-agent", () => {
   beforeEach(() => {
     vi.resetModules()
@@ -53,6 +65,9 @@ describe("acp-main-agent", () => {
     mockAddMessageToConversation.mockResolvedValue(undefined)
     mockGetOrCreateSession.mockResolvedValue("acp-session-1")
     mockSendPrompt.mockResolvedValue({ success: true, response: "done" })
+    mockCancelPrompt.mockResolvedValue(undefined)
+    mockShouldStopSession.mockReturnValue(false)
+    mockGetSessionStopReason.mockReturnValue(undefined)
     mockOn.mockImplementation((eventName: string, handler: (event: any) => void) => {
       if (eventName === "sessionUpdate") {
         sessionUpdateHandler = handler
@@ -540,6 +555,66 @@ describe("acp-main-agent", () => {
         }),
       ]),
     )
+  })
+
+  it("cancels ACP prompts when the session timeout fires and marks the run blocked", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+      const updates: Array<any> = []
+      let shouldStop = false
+
+      mockShouldStopSession.mockImplementation(() => shouldStop)
+      mockGetSessionStopReason.mockImplementation(() => (shouldStop ? "timeout" : undefined))
+      mockSendPrompt.mockImplementation(async () => {
+        sessionUpdateHandler?.({
+          sessionId: "acp-session-1",
+          content: [{ type: "text", text: "Mock ACP agent started a long-running task..." }],
+          isComplete: false,
+        })
+
+        return await new Promise(() => {})
+      })
+
+      const resultPromise = processTranscriptWithACPAgent("hello", {
+        agentName: "test-agent",
+        conversationId: "conversation-1",
+        sessionId: "ui-session-1",
+        runId: 1,
+        onProgress: (update) => updates.push(update),
+      })
+
+      await Promise.resolve()
+      await Promise.resolve()
+
+      shouldStop = true
+      await vi.advanceTimersByTimeAsync(150)
+
+      const result = await resultPromise
+
+      expect(mockCancelPrompt).toHaveBeenCalledWith("test-agent", "acp-session-1")
+      expect(result).toEqual(expect.objectContaining({
+        success: false,
+        stopReason: "timeout",
+        response: expect.stringContaining(AGENT_SESSION_TIMEOUT_NOTE),
+      }))
+
+      const completedUpdate = updates.at(-1)
+      expect(completedUpdate).toEqual(expect.objectContaining({
+        isComplete: true,
+        conversationState: "blocked",
+        finalContent: expect.stringContaining(AGENT_SESSION_TIMEOUT_NOTE),
+      }))
+      expect(completedUpdate?.steps).toEqual([
+        expect.objectContaining({
+          title: "Session time limit reached",
+          status: "error",
+        }),
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("persists ACP tool-call and tool-result history back to the conversation", async () => {

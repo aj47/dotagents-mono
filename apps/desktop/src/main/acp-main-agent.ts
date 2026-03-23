@@ -18,8 +18,15 @@ import { AgentProgressUpdate, AgentProgressStep, SessionProfileSnapshot, ACPConf
 import { MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } from "../shared/runtime-tool-names"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
-import { buildProfileContext } from "./agent-run-utils"
+import {
+  appendAgentStopNote,
+  buildProfileContext,
+  getAgentStopStepDetails,
+  getPreferredDelegationOutput,
+  type AgentStopReason,
+} from "./agent-run-utils"
 import { extractRespondToUserContentFromArgs } from "./respond-to-user-utils"
+import { agentSessionStateManager } from "./state"
 import { resolveMessageTimestamps, type AgentConversationState, type AgentUserResponseEvent } from "@dotagents/shared"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
@@ -348,6 +355,10 @@ export async function processTranscriptWithACPAgent(
 
   const currentTurnStartIndex = conversationHistory.length
   let persistedConversationLength = conversationHistory.length
+  const getCurrentStopReason = (): AgentStopReason =>
+    agentSessionStateManager.getSessionStopReason(sessionId) === "timeout"
+      ? "timeout"
+      : "manual"
 
   const persistConversationTail = async () => {
     if (persistedConversationLength >= conversationHistory.length) {
@@ -510,14 +521,15 @@ export async function processTranscriptWithACPAgent(
     steps: AgentProgressStep[],
     isComplete: boolean,
     finalContent?: string,
-    streamingContent?: { text: string; isStreaming: boolean }
+    streamingContent?: { text: string; isStreaming: boolean },
+    conversationStateOverride?: AgentConversationState,
   ) => {
     const { responseEvents, userResponse, userResponseHistory } = deriveAcpUserResponseState(conversationHistory, {
       sinceIndex: currentTurnStartIndex,
       sessionId,
       runId,
     })
-    const conversationState: AgentConversationState = isComplete ? "complete" : "running"
+    const conversationState: AgentConversationState = conversationStateOverride ?? (isComplete ? "complete" : "running")
     // Only include userResponse when it changed to avoid re-emitting stale
     // responses from prior turns (same pattern as llm.ts emit guard)
     const shouldEmitUserResponse =
@@ -545,6 +557,45 @@ export async function processTranscriptWithACPAgent(
     }
     await emitAgentProgress(update)
     onProgress?.(update)
+  }
+
+  const emitStoppedProgress = async (reason: AgentStopReason): Promise<string> => {
+    const finalContent = appendAgentStopNote(
+      getPreferredDelegationOutput(accumulatedText || undefined, conversationHistory),
+      reason,
+    )
+    const timestamp = Date.now()
+    const lastMessage = conversationHistory[conversationHistory.length - 1]
+
+    if (
+      !lastMessage ||
+      lastMessage.role !== "assistant" ||
+      lastMessage.content !== finalContent
+    ) {
+      appendConversationEntry({
+        role: "assistant",
+        content: finalContent,
+        timestamp,
+      })
+    }
+
+    const stepDetails = getAgentStopStepDetails(reason)
+    await emitProgress([
+      {
+        id: generateStepId("acp-stopped"),
+        type: "completion",
+        title: stepDetails.title,
+        description: stepDetails.description,
+        status: "error",
+        timestamp,
+        llmContent: finalContent,
+      },
+    ], true, finalContent, {
+      text: finalContent,
+      isStreaming: false,
+    }, "blocked")
+
+    return finalContent
   }
 
   // Note: User message is already added to conversation by createMcpTextInput or processQueuedMessages
@@ -758,7 +809,65 @@ export async function processTranscriptWithACPAgent(
     try {
       // Send the prompt
       const promptContext = buildProfileContext(profileSnapshot, ACP_RUNTIME_TOOL_PROMPT_CONTEXT)
-      const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
+      let stopInterval: ReturnType<typeof setInterval> | null = null
+      const promptPromise = acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
+      let stopResolved = false
+      const stopAwarePromise = new Promise<{ kind: "stopped"; reason: AgentStopReason }>((resolve) => {
+        const maybeStop = () => {
+          if (stopResolved || !agentSessionStateManager.shouldStopSession(sessionId)) return
+          stopResolved = true
+          if (stopInterval) {
+            clearInterval(stopInterval)
+            stopInterval = null
+          }
+          const reason = getCurrentStopReason()
+          acpService.cancelPrompt(agentName, acpSessionId).catch((cancelError) => {
+            logApp(`[ACP Main] Failed to cancel ACP prompt for session ${acpSessionId}: ${cancelError}`)
+          })
+          resolve({ kind: "stopped", reason })
+        }
+
+        maybeStop()
+        if (stopResolved) return
+
+        stopInterval = setInterval(maybeStop, 100)
+        stopInterval.unref?.()
+      })
+      const promptOutcome = await Promise.race([
+        promptPromise.then((result) => ({ kind: "result" as const, result })),
+        stopAwarePromise,
+      ])
+
+      if (stopInterval) {
+        clearInterval(stopInterval)
+        stopInterval = null
+      }
+
+      if (promptOutcome.kind === "stopped") {
+        promptPromise.catch((promptError) => {
+          logApp(`[ACP Main] Ignoring ACP prompt result after stop for session ${acpSessionId}: ${promptError}`)
+        })
+
+        const finalStoppedContent = await emitStoppedProgress(promptOutcome.reason)
+
+        try {
+          await persistConversationTail()
+        } catch (persistError) {
+          logApp(`[ACP Main] Failed to persist conversation tail after stop: ${persistError}`)
+        }
+
+        logApp(`[ACP Main] Stopped ${promptOutcome.reason} for session ${acpSessionId}`)
+
+        return {
+          success: false,
+          response: finalStoppedContent,
+          acpSessionId,
+          stopReason: promptOutcome.reason,
+          error: finalStoppedContent,
+        }
+      }
+
+      const { result } = promptOutcome
 
       const { userResponse } = deriveAcpUserResponseState(conversationHistory, {
         sinceIndex: currentTurnStartIndex,

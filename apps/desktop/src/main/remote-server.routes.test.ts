@@ -50,6 +50,9 @@ describe("remote-server route registration", () => {
 
     expect(source).toContain('cfg.mainAgentMode === "acp" && cfg.mainAgentName')
     expect(source).toContain("processTranscriptWithACPAgent")
+    expect(source).toContain("const sessionMaxDurationMs = resolveAgentSessionMaxDurationMs(cfg.mcpSessionTimeoutMinutes)")
+    expect(source).toContain("agentSessionStateManager.startSessionRun(sessionId, profileSnapshot, {")
+    expect(source).toContain("maxDurationMs: sessionMaxDurationMs")
   })
 
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {

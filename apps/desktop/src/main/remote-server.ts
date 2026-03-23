@@ -698,7 +698,9 @@ async function runAgent(options: RunAgentOptions): Promise<{
         )
       }
 
-      const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
+      const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot, {
+        maxDurationMs: sessionMaxDurationMs,
+      })
 
       try {
         const result = await processTranscriptWithACPAgent(prompt, {
