@@ -1028,4 +1028,35 @@ describe('LLM Fetch with AI SDK', () => {
     expect(onChunk).toHaveBeenCalledWith('Recovered after TLS retry.', 'Recovered after TLS retry.')
     expect(result.content).toBe('Recovered after TLS retry.')
   })
+
+  it('should not retry non-TLS errors that only contain tls inside another token', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    let callCount = 0
+    streamTextMock.mockImplementation(() => {
+      callCount++
+      const error = new Error('notls: internal error') as any
+      error.statusCode = 400
+      error.isRetryable = false
+
+      return {
+        fullStream: (async function* () {
+          yield { type: 'error', error }
+        })(),
+      } as any
+    })
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreamingAndTools(
+        [{ role: 'user', content: 'test' }],
+        vi.fn(),
+        'openai',
+      )
+    ).rejects.toThrow('notls: internal error')
+
+    expect(callCount).toBe(1)
+  })
 })

@@ -324,7 +324,12 @@ function isEmptyResponseError(error: unknown): boolean {
 }
 
 function isRetryableTlsTransportMessage(message: string): boolean {
-  if (!message.includes("tls")) {
+  const hasTlsTransportMarker =
+    /\btls\b/.test(message) ||
+    /\bssl\b/.test(message) ||
+    message.includes("bad record mac")
+
+  if (!hasTlsTransportMarker) {
     return false
   }
 
