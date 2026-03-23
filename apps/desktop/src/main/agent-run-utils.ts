@@ -13,6 +13,7 @@ export const AGENT_TIMEOUT_NOTE =
 export const DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES = 30
 export const AGENT_SESSION_TIMEOUT_OVERRIDE_ENV =
   "DOTAGENTS_AGENT_SESSION_TIMEOUT_MS"
+export const MAX_AGENT_SESSION_TIMEOUT_MS = 2_147_483_647
 
 export interface AgentIterationLimits {
   loopMaxIterations: number
@@ -47,6 +48,13 @@ function parsePositiveNumber(value: unknown): number | undefined {
   }
 
   return undefined
+}
+
+function clampAgentSessionTimeoutMs(value: number): number {
+  return Math.min(
+    MAX_AGENT_SESSION_TIMEOUT_MS,
+    Math.max(1, Math.floor(value)),
+  )
 }
 
 function normalizeDelegationToolName(toolName?: string): string | undefined {
@@ -150,14 +158,14 @@ export function resolveAgentSessionTimeoutMs(
     env[AGENT_SESSION_TIMEOUT_OVERRIDE_ENV],
   )
   if (overrideMs !== undefined) {
-    return Math.max(1, Math.floor(overrideMs))
+    return clampAgentSessionTimeoutMs(overrideMs)
   }
 
   const timeoutMinutes =
     parsePositiveNumber(config?.mcpSessionTimeoutMinutes) ??
     DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES
 
-  return Math.max(1, Math.floor(timeoutMinutes * 60_000))
+  return clampAgentSessionTimeoutMs(timeoutMinutes * 60_000)
 }
 
 export function getLatestAssistantMessageContent(

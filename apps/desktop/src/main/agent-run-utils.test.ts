@@ -6,6 +6,7 @@ import {
   AGENT_TIMEOUT_NOTE,
   DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
+  MAX_AGENT_SESSION_TIMEOUT_MS,
   appendAgentTimeoutNote,
   appendAgentStopNote,
   buildProfileContext,
@@ -100,6 +101,26 @@ describe("resolveAgentSessionTimeoutMs", () => {
         { [AGENT_SESSION_TIMEOUT_OVERRIDE_ENV]: "4000" } as unknown as NodeJS.ProcessEnv,
       ),
     ).toBe(4000)
+  })
+
+  it("caps oversized timeout values to the maximum Node timer duration", () => {
+    expect(
+      resolveAgentSessionTimeoutMs(
+        { mcpSessionTimeoutMinutes: 99_999_999 },
+        {} as NodeJS.ProcessEnv,
+      ),
+    ).toBe(MAX_AGENT_SESSION_TIMEOUT_MS)
+
+    expect(
+      resolveAgentSessionTimeoutMs(
+        { mcpSessionTimeoutMinutes: 30 },
+        {
+          [AGENT_SESSION_TIMEOUT_OVERRIDE_ENV]: String(
+            MAX_AGENT_SESSION_TIMEOUT_MS + 1,
+          ),
+        } as unknown as NodeJS.ProcessEnv,
+      ),
+    ).toBe(MAX_AGENT_SESSION_TIMEOUT_MS)
   })
 })
 

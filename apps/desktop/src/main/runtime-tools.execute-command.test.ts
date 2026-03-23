@@ -54,10 +54,11 @@ describe("runtime-tools execute_command", () => {
 
   it("registers the spawned shell process with the active session", async () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
+    const command = `${JSON.stringify(process.execPath)} -e "process.stdout.write(\\\"ready\\\")"`
 
     const result = await executeRuntimeTool(
       "execute_command",
-      { command: "printf ready" },
+      { command },
       "session-timeout-test",
     )
 
@@ -70,7 +71,7 @@ describe("runtime-tools execute_command", () => {
     expect(result?.isError).toBe(false)
     expect(JSON.parse(result!.content[0].text)).toMatchObject({
       success: true,
-      command: "printf ready",
+      command,
       stdout: "ready",
     })
   })
