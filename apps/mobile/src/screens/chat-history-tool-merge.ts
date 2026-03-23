@@ -38,9 +38,18 @@ function findLegacyToolResultTargetIndex(
   message: ChatMessage,
   hiddenToolNames: ReadonlySet<string>,
 ): number {
-  const toolCalls = message.toolCalls ?? [];
-  const toolResults = message.toolResults ?? [];
+  return findNextToolResultTargetIndex(
+    message.toolCalls ?? [],
+    message.toolResults ?? [],
+    hiddenToolNames,
+  );
+}
 
+function findNextToolResultTargetIndex(
+  toolCalls: NonNullable<ChatMessage['toolCalls']>,
+  toolResults: NonNullable<ChatMessage['toolResults']>,
+  hiddenToolNames: ReadonlySet<string>,
+): number {
   for (let i = 0; i < toolCalls.length; i += 1) {
     if (hiddenToolNames.has(toolCalls[i].name)) continue;
     if (toolResults[i] !== undefined) continue;
@@ -69,10 +78,25 @@ export function mergeToolHistoryMessageIntoPreviousAssistant(
 
   const structuredResults = toolMessage.toolResults;
   if (structuredResults && structuredResults.length > 0) {
-    lastMessage.toolResults = [
-      ...(lastMessage.toolResults || []),
-      ...structuredResults,
-    ];
+    const nextResults = [...(lastMessage.toolResults || [])];
+    const toolCalls = lastMessage.toolCalls ?? [];
+
+    for (const structuredResult of structuredResults) {
+      const targetIndex = findNextToolResultTargetIndex(
+        toolCalls,
+        nextResults,
+        hiddenToolNames,
+      );
+
+      if (targetIndex < 0) {
+        nextResults.push(structuredResult);
+        continue;
+      }
+
+      nextResults[targetIndex] = structuredResult;
+    }
+
+    lastMessage.toolResults = nextResults as typeof lastMessage.toolResults;
     return true;
   }
 

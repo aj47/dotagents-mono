@@ -24,6 +24,37 @@ describe('chat-history-tool-merge', () => {
     expect(messages[0].toolResults).toEqual([{ success: true, content: 'hello world' }]);
   });
 
+  it('aligns structured tool results to the first unresolved visible tool call', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'assistant-structured-hidden',
+        role: 'assistant',
+        content: '',
+        timestamp: 1,
+        toolCalls: [
+          { name: 'respond_to_user', arguments: { text: 'Working on it' } },
+          { name: 'read_file', arguments: { path: 'package.json' } },
+        ],
+      },
+    ];
+
+    expect(mergeToolHistoryMessageIntoPreviousAssistant(
+      messages,
+      {
+        content: '',
+        toolResults: [{ success: true, content: '{"name":"dotagents-mono"}' }],
+      },
+      new Set(['respond_to_user', 'mark_work_complete']),
+    )).toBe(true);
+
+    expect(messages[0].toolResults).toHaveLength(2);
+    expect(messages[0].toolResults?.[0]).toBeUndefined();
+    expect(messages[0].toolResults?.[1]).toEqual({
+      success: true,
+      content: '{"name":"dotagents-mono"}',
+    });
+  });
+
   it('synthesizes a failed tool result from a legacy content-only tool message', () => {
     const messages: ChatMessage[] = [
       {
@@ -74,6 +105,46 @@ describe('chat-history-tool-merge', () => {
       success: false,
       content: 'permission denied',
       error: 'permission denied',
+    });
+  });
+
+  it('keeps structured result batches aligned after an earlier visible result is already filled', () => {
+    const existingToolResults: NonNullable<ChatMessage['toolResults']> = [];
+    existingToolResults[1] = { success: true, content: '{"name":"dotagents-mono"}' };
+
+    const messages: ChatMessage[] = [
+      {
+        id: 'assistant-structured-batch',
+        role: 'assistant',
+        content: '',
+        timestamp: 4,
+        toolCalls: [
+          { name: 'respond_to_user', arguments: { text: 'Working on it' } },
+          { name: 'read_file', arguments: { path: 'package.json' } },
+          { name: 'execute_command', arguments: { command: 'pwd' } },
+        ],
+        toolResults: existingToolResults,
+      },
+    ];
+
+    expect(mergeToolHistoryMessageIntoPreviousAssistant(
+      messages,
+      {
+        content: '',
+        toolResults: [{ success: true, content: '/tmp/electron-ui-recording' }],
+      },
+      new Set(['respond_to_user', 'mark_work_complete']),
+    )).toBe(true);
+
+    expect(messages[0].toolResults).toHaveLength(3);
+    expect(messages[0].toolResults?.[0]).toBeUndefined();
+    expect(messages[0].toolResults?.[1]).toEqual({
+      success: true,
+      content: '{"name":"dotagents-mono"}',
+    });
+    expect(messages[0].toolResults?.[2]).toEqual({
+      success: true,
+      content: '/tmp/electron-ui-recording',
     });
   });
 });
