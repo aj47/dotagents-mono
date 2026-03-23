@@ -71,11 +71,48 @@ export const WHATSAPP_DEFAULT_ENABLED_TOOLS = [
 
 const RUNTIME_BUILTIN_TOOL_SOURCE_NAME = "dotagents-runtime-tools"
 const RUNTIME_BUILTIN_TOOL_SOURCE_LABEL = "DotAgents Runtime Tools"
+const PLAYWRIGHT_MCP_SERVER_NAME = "playwright"
+const PLAYWRIGHT_MCP_PACKAGE_NAME = "@playwright/mcp"
+const PLAYWRIGHT_MCP_USER_AGENT_ENV = "PLAYWRIGHT_MCP_USER_AGENT"
+const PLAYWRIGHT_MCP_CONFIG_ENV = "PLAYWRIGHT_MCP_CONFIG"
+const PLAYWRIGHT_MCP_DEFAULT_CHROME_VERSION = "133.0.6943.127"
 
 const ESSENTIAL_RUNTIME_TOOL_NAMES = new Set<string>(["mark_work_complete"])
 
 function isEssentialRuntimeTool(toolName: string): boolean {
   return ESSENTIAL_RUNTIME_TOOL_NAMES.has(toolName)
+}
+
+function hasCliFlag(args: string[] | undefined, flagName: string): boolean {
+  return (args || []).some((arg) => arg === flagName || arg.startsWith(`${flagName}=`))
+}
+
+function isPlaywrightMcpServer(serverName: string, serverConfig: MCPServerConfig): boolean {
+  if (serverName === PLAYWRIGHT_MCP_SERVER_NAME) {
+    return true
+  }
+
+  if (serverConfig.command?.includes(PLAYWRIGHT_MCP_PACKAGE_NAME)) {
+    return true
+  }
+
+  return (serverConfig.args || []).some((arg) => arg.includes(PLAYWRIGHT_MCP_PACKAGE_NAME))
+}
+
+function getPlaywrightMcpPlatformToken(): string {
+  switch (process.platform) {
+    case "darwin":
+      return "Macintosh; Intel Mac OS X 10_15_7"
+    case "win32":
+      return "Windows NT 10.0; Win64; x64"
+    default:
+      return "X11; Linux x86_64"
+  }
+}
+
+function getDefaultPlaywrightMcpUserAgent(): string {
+  const chromeVersion = process.versions.chrome || PLAYWRIGHT_MCP_DEFAULT_CHROME_VERSION
+  return `Mozilla/5.0 (${getPlaywrightMcpPlatformToken()}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`
 }
 
 /**
@@ -634,7 +671,7 @@ export class MCPService {
         const resolvedCommand = await this.resolveCommandPath(
           serverConfig.command,
         )
-        let environment = await this.prepareEnvironment(serverName, serverConfig.env)
+        let environment = await this.prepareEnvironment(serverName, serverConfig)
 
         // For internal servers (like WhatsApp), always use the bundled path
         // This prevents stale paths from external workspaces from being used
@@ -2908,7 +2945,7 @@ export class MCPService {
    */
   async prepareEnvironment(
     serverName: string,
-    serverEnv?: Record<string, string>,
+    serverConfig: MCPServerConfig,
   ): Promise<Record<string, string>> {
     // Create a clean environment with only string values
     const environment: Record<string, string> = {}
@@ -2943,8 +2980,19 @@ export class MCPService {
     }
 
     // Add server-specific environment variables
-    if (serverEnv) {
-      Object.assign(environment, serverEnv)
+    if (serverConfig.env) {
+      Object.assign(environment, serverConfig.env)
+    }
+
+    if (
+      isPlaywrightMcpServer(serverName, serverConfig) &&
+      !environment[PLAYWRIGHT_MCP_USER_AGENT_ENV] &&
+      !environment[PLAYWRIGHT_MCP_CONFIG_ENV] &&
+      !hasCliFlag(serverConfig.args, "--user-agent") &&
+      // Config files can already define browser.contextOptions.userAgent.
+      !hasCliFlag(serverConfig.args, "--config")
+    ) {
+      environment[PLAYWRIGHT_MCP_USER_AGENT_ENV] = getDefaultPlaywrightMcpUserAgent()
     }
 
     // Inject WhatsApp configuration for the WhatsApp MCP server
