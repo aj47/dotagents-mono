@@ -1,7 +1,7 @@
 import { app } from "electron"
 import fs from "fs"
 import path from "path"
-import type { Config } from "@shared/types"
+import type { Config, ModelPreset } from "@shared/types"
 import {
   container,
   ServiceTokens,
@@ -16,6 +16,7 @@ import {
   normalizeError,
   type ConfigStore as CoreConfigStore,
 } from "@dotagents/core"
+import { DEFAULT_MODEL_PRESET_ID, getBuiltInModelPresets } from "@dotagents/shared"
 import type { AgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getAgentsLayerPaths,
@@ -163,6 +164,36 @@ function writeSanitizedAgentsLayer(layer: AgentsLayerPaths, config: Config): voi
   writeSection(layer.layoutJsonPath, split.layout)
 }
 
+function getActivePreset(config: Partial<Config>): ModelPreset | undefined {
+  const builtIn = getBuiltInModelPresets()
+  const savedPresets = config.modelPresets || []
+  const currentPresetId = config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
+
+  const allPresets = builtIn.map((preset) => {
+    const saved = savedPresets.find((candidate: ModelPreset) => candidate.id === preset.id)
+    return saved
+      ? { ...preset, ...Object.fromEntries(Object.entries(saved).filter(([_, value]) => value !== undefined)) }
+      : preset
+  })
+
+  const customPresets = savedPresets.filter((preset: ModelPreset) => !preset.isBuiltIn)
+  allPresets.push(...customPresets)
+
+  return allPresets.find((preset) => preset.id === currentPresetId)
+}
+
+function syncPresetToLegacyFields(config: Partial<Config>): Partial<Config> {
+  const activePreset = getActivePreset(config)
+  if (activePreset) {
+    config.openaiApiKey = activePreset.apiKey || ""
+    config.openaiBaseUrl = activePreset.baseUrl || ""
+    config.mcpToolsOpenaiModel = activePreset.mcpToolsModel || ""
+    config.transcriptPostProcessingOpenaiModel = activePreset.transcriptProcessingModel || ""
+  }
+
+  return config
+}
+
 if (!process.env.APP_ID?.trim()) {
   process.env.APP_ID = DEFAULT_APP_ID
 }
@@ -245,16 +276,20 @@ export class ConfigStore {
     }
 
     const sanitizedConfig = this.coreConfigStore.reload() as Config
-    this.coreConfigStore.config = sanitizedConfig
+    const mergedConfig = syncPresetToLegacyFields({
+      ...mergeConfigSecrets(sanitizedConfig, mergedSecrets),
+    }) as Config
+    this.coreConfigStore.config = mergedConfig
 
-    return mergeConfigSecrets(sanitizedConfig, mergedSecrets)
+    return mergedConfig
   }
 
   private persist(
     config: Config,
     options?: Parameters<typeof persistCoreConfigToDisk>[1],
   ): ReturnType<typeof persistCoreConfigToDisk> {
-    const { sanitizedConfig, secrets } = splitConfigSecrets(config)
+    const syncedConfig = syncPresetToLegacyFields({ ...config }) as Config
+    const { sanitizedConfig, secrets } = splitConfigSecrets(syncedConfig)
 
     this.secretStorage.save(secrets)
     const persistResult = persistCoreConfigToDisk(sanitizedConfig, options)

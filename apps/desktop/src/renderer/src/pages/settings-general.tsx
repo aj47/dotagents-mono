@@ -1335,7 +1335,6 @@ export function Component() {
                     placeholder="pk-lf-..."
                     className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                   />
-                  <SecureStorageNote />
                 </>
               </Control>
 

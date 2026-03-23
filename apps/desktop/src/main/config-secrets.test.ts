@@ -114,4 +114,23 @@ describe("config secret helpers", () => {
       },
     })
   })
+
+  it("warns when the stored secrets file cannot be decrypted or parsed", async () => {
+    const {
+      ConfigSecretStorage,
+      CONFIG_SECRETS_FILE_NAME,
+    } = await import("./config-secrets")
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-config-secrets-"))
+    const storagePath = path.join(tempDir, CONFIG_SECRETS_FILE_NAME)
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    fs.mkdirSync(tempDir, { recursive: true })
+    fs.writeFileSync(storagePath, "not-json", "utf8")
+
+    const storage = new ConfigSecretStorage(tempDir)
+
+    expect(storage.load()).toEqual({})
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(storagePath))
+  })
 })

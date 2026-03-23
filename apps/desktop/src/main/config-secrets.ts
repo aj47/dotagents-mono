@@ -304,7 +304,9 @@ export class ConfigSecretStorage {
       const decrypted = this.decrypt(encrypted)
       const parsed = JSON.parse(decrypted)
       return isRecord(parsed) ? parsed : {}
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`[config-secrets] Failed to load ${this.storageFilePath}: ${message}`)
       return {}
     }
   }

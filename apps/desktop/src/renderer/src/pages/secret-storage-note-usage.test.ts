@@ -15,4 +15,9 @@ describe("secret storage disclosure UI", () => {
     expect(remoteSource).toMatch(/<SecureStorageNote/)
     expect(presetSource).toMatch(/<SecureStorageNote/)
   })
+
+  it("only shows the Langfuse disclosure note for the secret key field", () => {
+    expect(generalSource).not.toMatch(/placeholder="pk-lf-\.\.\."[\s\S]{0,200}<SecureStorageNote\s*\/>/)
+    expect(generalSource).toMatch(/placeholder="sk-lf-\.\.\."[\s\S]{0,200}<SecureStorageNote\s*\/>/)
+  })
 })

@@ -247,4 +247,37 @@ describe("desktop config persistence", () => {
     expect(loadedConfig.modelPresets?.[0]?.apiKey).toBe("sk-openai-plaintext")
     expect(loadedConfig.langfuseSecretKey).toBe("sk-lf-plaintext")
   })
+
+  it("syncs active preset legacy fields before saving and after reload", async () => {
+    createTempEnvironment()
+    const { configStore } = await import("./config")
+
+    configStore.save({
+      onboardingCompleted: true,
+      currentModelPresetId: "builtin-openai",
+      modelPresets: [
+        {
+          id: "builtin-openai",
+          apiKey: "sk-openai-secret",
+          baseUrl: "https://api.example.com/v1",
+          mcpToolsModel: "gpt-4.1-mini",
+          transcriptProcessingModel: "gpt-4o-mini",
+        },
+      ],
+    } as unknown as Config)
+
+    expect(configStore.get().openaiApiKey).toBe("sk-openai-secret")
+    expect(configStore.get().openaiBaseUrl).toBe("https://api.example.com/v1")
+    expect(configStore.get().mcpToolsOpenaiModel).toBe("gpt-4.1-mini")
+    expect(configStore.get().transcriptPostProcessingOpenaiModel).toBe("gpt-4o-mini")
+
+    vi.resetModules()
+    const reloadedConfigModule = await import("./config")
+    const reloadedConfig = reloadedConfigModule.configStore.get()
+
+    expect(reloadedConfig.openaiApiKey).toBe("sk-openai-secret")
+    expect(reloadedConfig.openaiBaseUrl).toBe("https://api.example.com/v1")
+    expect(reloadedConfig.mcpToolsOpenaiModel).toBe("gpt-4.1-mini")
+    expect(reloadedConfig.transcriptPostProcessingOpenaiModel).toBe("gpt-4o-mini")
+  })
 })
