@@ -27,6 +27,7 @@ import { knowledgeNotesService } from "./knowledge-notes-service"
 import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { resolveAgentSessionMaxDurationMs } from "./agent-run-utils"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -664,6 +665,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
   // Start or reuse agent session
   const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+  const sessionMaxDurationMs = resolveAgentSessionMaxDurationMs(cfg.mcpSessionTimeoutMinutes)
 
   const loadFormattedConversationHistory = async () => {
     const latestConversation = await conversationService.loadConversation(conversationId)
@@ -746,6 +748,10 @@ async function runAgent(options: RunAgentOptions): Promise<{
       return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
     }
 
+    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot, {
+      maxDurationMs: sessionMaxDurationMs,
+    })
+
     const agentResult = await processTranscriptWithAgentMode(
       prompt,
       availableTools,
@@ -756,10 +762,14 @@ async function runAgent(options: RunAgentOptions): Promise<{
       sessionId, // Pass session ID for progress routing
       onProgress, // Pass progress callback for SSE streaming
       profileSnapshot, // Pass profile snapshot for session isolation
+      runId,
     )
 
-    // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    if (agentResult.stoppedReason) {
+      agentSessionTracker.stopSession(sessionId)
+    } else {
+      agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    }
 
     // Format conversation history for API response (convert MCPToolResult to ToolResult format)
     const formattedHistory = formatConversationHistoryForApi(agentResult.conversationHistory)

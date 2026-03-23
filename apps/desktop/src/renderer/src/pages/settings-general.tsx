@@ -37,6 +37,9 @@ const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const MCP_MAX_ITERATIONS_MIN = 1
 const MCP_MAX_ITERATIONS_MAX = 50
 const MCP_MAX_ITERATIONS_DEFAULT = 10
+const MCP_SESSION_TIMEOUT_MINUTES_MIN = 1
+const MCP_SESSION_TIMEOUT_MINUTES_MAX = 720
+const MCP_SESSION_TIMEOUT_MINUTES_DEFAULT = 30
 
 type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
 
@@ -55,6 +58,13 @@ function parseMcpMaxIterationsDraft(value: string) {
   return parsedValue
 }
 
+function parseMcpSessionTimeoutDraft(value: string) {
+  const parsedValue = Number.parseInt(value, 10)
+  if (Number.isNaN(parsedValue)) return null
+  if (parsedValue < MCP_SESSION_TIMEOUT_MINUTES_MIN || parsedValue > MCP_SESSION_TIMEOUT_MINUTES_MAX) return null
+  return parsedValue
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
@@ -70,6 +80,10 @@ export function Component() {
     () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
   )
   const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [mcpSessionTimeoutDraft, setMcpSessionTimeoutDraft] = useState(
+    () => String(cfg?.mcpSessionTimeoutMinutes ?? MCP_SESSION_TIMEOUT_MINUTES_DEFAULT),
+  )
+  const mcpSessionTimeoutSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Defer audio device enumeration until the user expands the Audio Devices section
   const [audioSectionOpen, setAudioSectionOpen] = useState(false)
@@ -211,6 +225,10 @@ export function Component() {
   }, [cfg?.mcpMaxIterations])
 
   useEffect(() => {
+    setMcpSessionTimeoutDraft(String(cfg?.mcpSessionTimeoutMinutes ?? MCP_SESSION_TIMEOUT_MINUTES_DEFAULT))
+  }, [cfg?.mcpSessionTimeoutMinutes])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(langfuseSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
@@ -222,6 +240,10 @@ export function Component() {
 
       if (mcpMaxIterationsSaveTimeoutRef.current) {
         clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      }
+
+      if (mcpSessionTimeoutSaveTimeoutRef.current) {
+        clearTimeout(mcpSessionTimeoutSaveTimeoutRef.current)
       }
     }
   }, [])
@@ -315,6 +337,41 @@ export function Component() {
     setMcpMaxIterationsDraft(value)
     scheduleMcpMaxIterationsSave(value)
   }, [scheduleMcpMaxIterationsSave])
+
+  const flushMcpSessionTimeoutSave = useCallback((value: string) => {
+    if (mcpSessionTimeoutSaveTimeoutRef.current) {
+      clearTimeout(mcpSessionTimeoutSaveTimeoutRef.current)
+      mcpSessionTimeoutSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpSessionTimeoutDraft(value)
+    if (parsedValue === null) {
+      setMcpSessionTimeoutDraft(String(cfgRef.current?.mcpSessionTimeoutMinutes ?? MCP_SESSION_TIMEOUT_MINUTES_DEFAULT))
+      return
+    }
+
+    saveConfig({ mcpSessionTimeoutMinutes: parsedValue })
+  }, [saveConfig])
+
+  const scheduleMcpSessionTimeoutSave = useCallback((value: string) => {
+    if (mcpSessionTimeoutSaveTimeoutRef.current) {
+      clearTimeout(mcpSessionTimeoutSaveTimeoutRef.current)
+      mcpSessionTimeoutSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpSessionTimeoutDraft(value)
+    if (parsedValue === null) return
+
+    mcpSessionTimeoutSaveTimeoutRef.current = setTimeout(() => {
+      mcpSessionTimeoutSaveTimeoutRef.current = null
+      saveConfig({ mcpSessionTimeoutMinutes: parsedValue })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateMcpSessionTimeoutDraft = useCallback((value: string) => {
+    setMcpSessionTimeoutDraft(value)
+    scheduleMcpSessionTimeoutSave(value)
+  }, [scheduleMcpSessionTimeoutSave])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -448,6 +505,26 @@ export function Component() {
               checked={configQuery.data?.mcpUnlimitedIterations ?? true}
               onCheckedChange={(checked) => saveConfig({ mcpUnlimitedIterations: checked })}
             />
+          </Control>
+
+          <Control label={<ControlLabel label="Session Time Limit" tooltip="Hard wall-clock cap for DotAgents-managed agent runs. Applies even when Unlimited Iterations is enabled." />} className="px-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                type="number"
+                min={String(MCP_SESSION_TIMEOUT_MINUTES_MIN)}
+                max={String(MCP_SESSION_TIMEOUT_MINUTES_MAX)}
+                step="1"
+                value={mcpSessionTimeoutDraft}
+                onChange={(e) => updateMcpSessionTimeoutDraft(e.currentTarget.value)}
+                onBlur={(e) => flushMcpSessionTimeoutSave(e.currentTarget.value)}
+                placeholder={String(MCP_SESSION_TIMEOUT_MINUTES_DEFAULT)}
+                className="w-32"
+              />
+              <span className="text-xs text-muted-foreground">minutes</span>
+              <span className="text-xs text-muted-foreground">
+                Stops long-running agent sessions even when unlimited iterations are allowed.
+              </span>
+            </div>
           </Control>
 
           {!(configQuery.data?.mcpUnlimitedIterations ?? true) && (

@@ -86,6 +86,7 @@ import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+import { resolveAgentSessionMaxDurationMs } from "./agent-run-utils"
 
 /**
  * Convert Float32Array audio samples to WAV format buffer
@@ -255,6 +256,7 @@ async function processWithAgentMode(
 ): Promise<string> {
   const config = configStore.get()
   const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  const sessionMaxDurationMs = resolveAgentSessionMaxDurationMs(config.mcpSessionTimeoutMinutes)
 
   // Check if ACP main agent mode is enabled - route to ACP agent instead of LLM API
   if (config.mainAgentMode === "acp" && config.mainAgentName) {
@@ -363,7 +365,9 @@ async function processWithAgentMode(
   let conversationTitle = text
   // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
+  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot, {
+    maxDurationMs: sessionMaxDurationMs,
+  })
 
   try {
     // Initialize MCP with progress feedback
@@ -511,7 +515,11 @@ async function processWithAgentMode(
     )
 
     // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    if (agentResult.stoppedReason) {
+      agentSessionTracker.stopSession(sessionId)
+    } else {
+      agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    }
 
     return agentResult.content
   } catch (error) {

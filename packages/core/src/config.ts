@@ -180,6 +180,7 @@ const getConfig = (): LoadedConfig => {
     mcpAutoPasteDelay: 1000, // 1 second delay by default
     mcpMaxIterations: 10, // Default max iterations for agent mode
     mcpUnlimitedIterations: true, // Default to unlimited iterations
+    mcpSessionTimeoutMinutes: 30, // Hard wall-clock cap for DotAgents-managed agent runs
     textInputEnabled: true,
 
     // Text input: On Windows, use Ctrl+Shift+T to avoid browser new tab conflict

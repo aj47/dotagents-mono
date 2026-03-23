@@ -44,6 +44,8 @@ import {
 } from "../shared/runtime-tool-names"
 import {
   appendAgentStopNote,
+  getAgentStoppedToolMessage,
+  getAgentStopStepDetails,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
@@ -342,6 +344,7 @@ export interface AgentModeResponse {
     toolResults?: MCPToolResult[]
   }>
   totalIterations: number
+  stoppedReason?: "manual" | "timeout"
 }
 
 function createProgressStep(
@@ -370,6 +373,19 @@ interface ToolExecutionResult {
   cancelledByKill: boolean
 }
 
+function getSessionStopReason(sessionId: string): "manual" | "timeout" {
+  return agentSessionStateManager.getSessionStopReason(sessionId) === "timeout"
+    ? "timeout"
+    : "manual"
+}
+
+function buildStoppedToolResult(sessionId: string): MCPToolResult {
+  return {
+    content: [{ type: "text", text: getAgentStoppedToolMessage(getSessionStopReason(sessionId)) }],
+    isError: true,
+  }
+}
+
 /**
  * Execute a single tool call with retry logic and kill switch support
  * This helper is used by both sequential and parallel execution modes
@@ -385,10 +401,7 @@ async function executeToolWithRetries(
   if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
     return {
       toolCall,
-      result: {
-        content: [{ type: "text", text: "Tool execution cancelled by emergency kill switch" }],
-        isError: true,
-      },
+      result: buildStoppedToolResult(currentSessionId),
       retryCount: 0,
       cancelledByKill: true,
     }
@@ -402,10 +415,7 @@ async function executeToolWithRetries(
       if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
         cancelledByKill = true
         if (cancelInterval) clearInterval(cancelInterval)
-        resolve({
-          content: [{ type: "text", text: "Tool execution cancelled by emergency kill switch" }],
-          isError: true,
-        })
+        resolve(buildStoppedToolResult(currentSessionId))
       }
     }, 100)
   })
@@ -437,10 +447,7 @@ async function executeToolWithRetries(
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
       return {
         toolCall,
-        result: {
-          content: [{ type: "text", text: "Tool execution cancelled by emergency kill switch" }],
-          isError: true,
-        },
+        result: buildStoppedToolResult(currentSessionId),
         retryCount,
         cancelledByKill: true,
       }
@@ -556,6 +563,7 @@ export async function processTranscriptWithAgentMode(
   let iteration = 0
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
+  let stoppedReason: "manual" | "timeout" | undefined
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
   let lastContextBudgetInfo: { estTokensAfter: number; maxTokens: number; appliedStrategies?: string[] } | undefined
 
@@ -1106,7 +1114,16 @@ export async function processTranscriptWithAgentMode(
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
-    finalContent = appendAgentStopNote(finalContent)
+    stoppedReason = getSessionStopReason(currentSessionId)
+    const stepDetails = getAgentStopStepDetails(stoppedReason)
+    const lastStep = steps[steps.length - 1]
+    if (lastStep) {
+      lastStep.status = "error"
+      lastStep.title = stepDetails.title
+      lastStep.description = stepDetails.description
+    }
+
+    finalContent = appendAgentStopNote(finalContent, stoppedReason)
 
     const lastMessage = conversationHistory[conversationHistory.length - 1]
     if (
@@ -1122,6 +1139,7 @@ export async function processTranscriptWithAgentMode(
       maxIterations,
       steps,
       isComplete: true,
+      conversationState: "blocked",
       finalContent,
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
@@ -3022,6 +3040,7 @@ export async function processTranscriptWithAgentMode(
       content: finalContent,
       conversationHistory: filterEphemeralMessages(conversationHistory),
       totalIterations: iteration,
+      stoppedReason,
     }
   } finally {
     // End Langfuse trace for this agent session if enabled

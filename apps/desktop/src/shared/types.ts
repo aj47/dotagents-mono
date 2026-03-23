@@ -1129,6 +1129,7 @@ export type Config = {
   mcpAutoPasteDelay?: number
   mcpMaxIterations?: number
   mcpUnlimitedIterations?: boolean
+  mcpSessionTimeoutMinutes?: number
 
   // MCP Server Configuration
   mcpConfig?: MCPConfig

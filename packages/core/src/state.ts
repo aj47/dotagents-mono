@@ -16,6 +16,8 @@ export function setHeadlessMode(value: boolean): void {
   isHeadlessMode = value
 }
 
+export type AgentSessionStopReason = "manual" | "timeout"
+
 export interface AgentSessionState {
   sessionId: string
   runId: number
@@ -23,6 +25,9 @@ export interface AgentSessionState {
   iterationCount: number
   abortControllers: Set<AbortController>
   processes: Set<ChildProcess>
+  stopReason?: AgentSessionStopReason
+  deadlineAt?: number
+  timeoutHandle?: ReturnType<typeof setTimeout> | null
   /**
    * Profile snapshot captured at session creation time.
    * This ensures session isolation - changes to the global profile don't affect running sessions.
@@ -186,6 +191,53 @@ function killSessionProcesses(processes: Set<ChildProcess>): void {
   processes.clear()
 }
 
+function normalizeSessionMaxDurationMs(maxDurationMs?: number): number | undefined {
+  if (typeof maxDurationMs !== "number" || !Number.isFinite(maxDurationMs) || maxDurationMs <= 0) {
+    return undefined
+  }
+
+  return Math.max(1, Math.floor(maxDurationMs))
+}
+
+function clearSessionTimeout(session: AgentSessionState): void {
+  if (session.timeoutHandle) {
+    clearTimeout(session.timeoutHandle)
+    session.timeoutHandle = null
+  }
+  session.deadlineAt = undefined
+}
+
+function stopSessionInternal(sessionId: string, reason: AgentSessionStopReason): void {
+  const session = state.agentSessions.get(sessionId)
+  if (session) {
+    session.shouldStop = true
+    session.stopReason = reason
+    clearSessionTimeout(session)
+
+    abortAndUnregisterSessionControllers(session.abortControllers)
+    killSessionProcesses(session.processes)
+  }
+
+  toolApprovalManager.cancelSessionApprovals(sessionId)
+}
+
+function applySessionTimeout(
+  sessionId: string,
+  session: AgentSessionState,
+  maxDurationMs?: number,
+): void {
+  clearSessionTimeout(session)
+
+  const normalizedDurationMs = normalizeSessionMaxDurationMs(maxDurationMs)
+  if (!normalizedDurationMs) return
+
+  session.deadlineAt = Date.now() + normalizedDurationMs
+  session.timeoutHandle = setTimeout(() => {
+    stopSessionInternal(sessionId, "timeout")
+  }, normalizedDurationMs)
+  session.timeoutHandle.unref?.()
+}
+
 export const agentSessionStateManager = {
   /**
    * Create a new agent session state
@@ -209,6 +261,7 @@ export const agentSessionStateManager = {
         iterationCount: 0,
         abortControllers: new Set(),
         processes: new Set(),
+        timeoutHandle: null,
         profileSnapshot,
       })
     }
@@ -231,11 +284,18 @@ export const agentSessionStateManager = {
   },
 
   // Start a new run for a session and return the new run ID.
-  startSessionRun(sessionId: string, profileSnapshot?: SessionProfileSnapshot): number {
+  startSessionRun(
+    sessionId: string,
+    profileSnapshot?: SessionProfileSnapshot,
+    options?: { maxDurationMs?: number },
+  ): number {
     this.createSession(sessionId, profileSnapshot)
     const session = state.agentSessions.get(sessionId)!
     session.runId += 1
     session.shouldStop = false
+    session.stopReason = undefined
+    session.iterationCount = 0
+    applySessionTimeout(sessionId, session, options?.maxDurationMs)
     rememberSessionRunId(sessionId, session.runId)
     return session.runId
   },
@@ -244,6 +304,11 @@ export const agentSessionStateManager = {
   getSessionRunId(sessionId: string): number | undefined {
     const session = state.agentSessions.get(sessionId)
     return session?.runId ?? state.agentSessionRunCounters.get(sessionId)
+  },
+
+  getSessionStopReason(sessionId: string): AgentSessionStopReason | undefined {
+    const session = state.agentSessions.get(sessionId)
+    return session?.stopReason
   },
 
   // Check if session is registered in the state manager
@@ -259,21 +324,13 @@ export const agentSessionStateManager = {
 
   // Mark session for stop and kill its processes
   stopSession(sessionId: string): void {
-    const session = state.agentSessions.get(sessionId)
-    if (session) {
-      session.shouldStop = true
-
-      abortAndUnregisterSessionControllers(session.abortControllers)
-      killSessionProcesses(session.processes)
-    }
-
-    toolApprovalManager.cancelSessionApprovals(sessionId)
+    stopSessionInternal(sessionId, "manual")
   },
 
   // Stop all sessions
   stopAllSessions(): void {
     for (const [sessionId] of state.agentSessions) {
-      this.stopSession(sessionId)
+      stopSessionInternal(sessionId, "manual")
     }
     // Also set legacy global flag
     state.shouldStopAgent = true
@@ -333,6 +390,7 @@ export const agentSessionStateManager = {
     if (session) {
       rememberSessionRunId(sessionId, session.runId)
 
+      clearSessionTimeout(session)
       abortAndUnregisterSessionControllers(session.abortControllers)
       killSessionProcesses(session.processes)
       toolApprovalManager.cancelSessionApprovals(sessionId)

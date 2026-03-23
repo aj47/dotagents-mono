@@ -1,8 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("agentSessionStateManager", () => {
   beforeEach(() => {
     vi.resetModules()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("stopSession aborts and unregisters session controllers and cancels pending approvals", async () => {
@@ -41,5 +45,25 @@ describe("agentSessionStateManager", () => {
     expect(agentSessionStateManager.getSessionRunId("session-cleanup")).toBe(runId)
     await expect(promise).resolves.toBe(false)
     expect(toolApprovalManager.getPendingApprovalCount()).toBe(0)
+  })
+
+  it("stops timed sessions automatically and records the timeout reason", async () => {
+    vi.useFakeTimers()
+
+    const { agentSessionStateManager, state } = await import("./state")
+
+    const runId = agentSessionStateManager.startSessionRun("session-timeout", undefined, {
+      maxDurationMs: 1_000,
+    })
+    const controller = new AbortController()
+    agentSessionStateManager.registerAbortController("session-timeout", controller)
+
+    vi.advanceTimersByTime(1_000)
+
+    expect(controller.signal.aborted).toBe(true)
+    expect(state.llmAbortControllers.has(controller)).toBe(false)
+    expect(agentSessionStateManager.shouldStopSession("session-timeout")).toBe(true)
+    expect(agentSessionStateManager.getSessionStopReason("session-timeout")).toBe("timeout")
+    expect(agentSessionStateManager.getSessionRunId("session-timeout")).toBe(runId)
   })
 })

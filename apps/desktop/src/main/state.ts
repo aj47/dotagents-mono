@@ -10,4 +10,4 @@ export {
   agentSessionStateManager,
   toolApprovalManager,
 } from "@dotagents/core"
-export type { AgentSessionState } from "@dotagents/core"
+export type { AgentSessionState, AgentSessionStopReason } from "@dotagents/core"

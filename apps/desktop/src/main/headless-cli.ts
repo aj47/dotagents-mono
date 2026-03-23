@@ -6,13 +6,14 @@ import readline from "readline"
 import { configStore } from "./config"
 import { mcpService, MCPToolResult } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
-import { state } from "./state"
+import { state, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "./error-utils"
 import { SessionProfileSnapshot, AgentProgressUpdate } from "@shared/types"
+import { resolveAgentSessionMaxDurationMs } from "./agent-run-utils"
 
 // ANSI color codes (no external deps)
 const colors = {
@@ -236,6 +237,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
   // Start session
   const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
   const sessionId = agentSessionTracker.startSession(conversationId, conversationTitle, true, profileSnapshot)
+  const sessionMaxDurationMs = resolveAgentSessionMaxDurationMs(cfg.mcpSessionTimeoutMinutes)
 
   try {
     await mcpService.initialize()
@@ -281,6 +283,10 @@ async function runAgentCLI(prompt: string): Promise<void> {
 
     console.log(`${colors.dim}Processing...${colors.reset}`)
 
+    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot, {
+      maxDurationMs: sessionMaxDurationMs,
+    })
+
     const agentResult = await processTranscriptWithAgentMode(
       prompt,
       availableTools,
@@ -291,9 +297,14 @@ async function runAgentCLI(prompt: string): Promise<void> {
       sessionId,
       onProgress,
       profileSnapshot,
+      runId,
     )
 
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    if (agentResult.stoppedReason) {
+      agentSessionTracker.stopSession(sessionId)
+    } else {
+      agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    }
 
     // Print the response
     console.log()

@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest"
 
 import {
   AGENT_STOP_NOTE,
+  AGENT_SESSION_TIMEOUT_NOTE,
+  DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
   appendAgentStopNote,
   buildProfileContext,
   getPreferredDelegationOutput,
+  resolveAgentSessionMaxDurationMs,
+  resolveAgentSessionTimeoutMinutes,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 
@@ -48,6 +52,25 @@ describe("appendAgentStopNote", () => {
     expect(appendAgentStopNote(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(
       `Finished work\n\n${AGENT_STOP_NOTE}`,
     )
+  })
+
+  it("can append a timeout-specific stop note", () => {
+    expect(appendAgentStopNote("Still running", "timeout")).toBe(
+      `Still running\n\n${AGENT_SESSION_TIMEOUT_NOTE}`,
+    )
+  })
+})
+
+describe("resolveAgentSessionTimeoutMinutes", () => {
+  it("falls back to the default timeout for missing or invalid values", () => {
+    expect(resolveAgentSessionTimeoutMinutes()).toBe(DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES)
+    expect(resolveAgentSessionTimeoutMinutes(0)).toBe(DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES)
+    expect(resolveAgentSessionTimeoutMinutes(Number.NaN)).toBe(DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES)
+  })
+
+  it("normalizes custom timeout minutes to whole-minute bounds", () => {
+    expect(resolveAgentSessionTimeoutMinutes(45.9)).toBe(45)
+    expect(resolveAgentSessionMaxDurationMs(45.9)).toBe(45 * 60_000)
   })
 })
 

@@ -8,6 +8,13 @@ import {
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
+export const AGENT_SESSION_TIMEOUT_NOTE =
+  "(Agent mode stopped after reaching the configured session time limit)"
+export const DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES = 30
+export const MIN_AGENT_SESSION_TIMEOUT_MINUTES = 1
+export const MAX_AGENT_SESSION_TIMEOUT_MINUTES = 720
+
+export type AgentStopReason = "manual" | "timeout"
 
 export interface AgentIterationLimits {
   loopMaxIterations: number
@@ -91,15 +98,64 @@ export function resolveAgentIterationLimits(
   }
 }
 
-export function appendAgentStopNote(content: string): string {
+export function resolveAgentSessionTimeoutMinutes(requestedMinutes?: number): number {
+  if (
+    typeof requestedMinutes !== "number" ||
+    !Number.isFinite(requestedMinutes) ||
+    requestedMinutes < MIN_AGENT_SESSION_TIMEOUT_MINUTES
+  ) {
+    return DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES
+  }
+
+  return Math.min(
+    MAX_AGENT_SESSION_TIMEOUT_MINUTES,
+    Math.floor(requestedMinutes),
+  )
+}
+
+export function resolveAgentSessionMaxDurationMs(requestedMinutes?: number): number {
+  return resolveAgentSessionTimeoutMinutes(requestedMinutes) * 60_000
+}
+
+export function getAgentStopNote(reason: AgentStopReason = "manual"): string {
+  return reason === "timeout" ? AGENT_SESSION_TIMEOUT_NOTE : AGENT_STOP_NOTE
+}
+
+export function getAgentStopStepDetails(
+  reason: AgentStopReason = "manual",
+): { title: string; description: string } {
+  if (reason === "timeout") {
+    return {
+      title: "Session time limit reached",
+      description: "Agent stopped after hitting the configured wall-clock limit",
+    }
+  }
+
+  return {
+    title: "Agent stopped",
+    description: "Emergency stop triggered",
+  }
+}
+
+export function getAgentStoppedToolMessage(reason: AgentStopReason = "manual"): string {
+  return reason === "timeout"
+    ? "Tool execution cancelled because the agent reached the configured session time limit"
+    : "Tool execution cancelled by emergency kill switch"
+}
+
+export function appendAgentStopNote(
+  content: string,
+  reason: AgentStopReason = "manual",
+): string {
   const normalizedContent = typeof content === "string" ? content.trimEnd() : ""
-  if (normalizedContent.includes(AGENT_STOP_NOTE)) {
+  const note = getAgentStopNote(reason)
+  if (normalizedContent.includes(note)) {
     return normalizedContent
   }
 
   return normalizedContent.length > 0
-    ? `${normalizedContent}\n\n${AGENT_STOP_NOTE}`
-    : AGENT_STOP_NOTE
+    ? `${normalizedContent}\n\n${note}`
+    : note
 }
 
 export function getLatestAssistantMessageContent(
