@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Key, Globe, Bot, FileText, Settings2 } from "lucide-react"
 import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@shared/index"
 import { PresetModelSelector } from "./preset-model-selector"
+import { LocalOnlySecretNote } from "./local-only-secret-note"
 
 export function ModelPresetManager({
   showAgentModel = true,
@@ -390,6 +391,7 @@ export function ModelPresetManager({
                 onChange={(e) => setNewPreset({ ...newPreset, apiKey: e.target.value })}
                 placeholder="sk-..."
               />
+              <LocalOnlySecretNote className="mt-2" />
             </div>
 
             {/* Model Preferences Section */}
@@ -503,6 +505,7 @@ export function ModelPresetManager({
                   }
                   placeholder="sk-..."
                 />
+                <LocalOnlySecretNote className="mt-2" />
               </div>
 
               {/* Model Preferences Section */}
@@ -568,4 +571,3 @@ export function ModelPresetManager({
     </div>
   )
 }
-

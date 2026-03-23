@@ -8,6 +8,7 @@ import {
   safeWriteJsonFileSync,
 } from "./safe-file"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
+import { createShareableConfig, mergeConfigWithLocalOnlyPreference } from "../config-secrets"
 
 export const AGENTS_DIR_NAME = ".agents"
 export const AGENTS_BACKUPS_DIR_NAME = ".backups"
@@ -130,7 +131,9 @@ export function loadMergedAgentsConfig(
     : ({} as Partial<Config>)
 
   return {
-    merged: { ...globalConfig, ...workspaceConfig },
+    merged: mergeConfigWithLocalOnlyPreference(workspaceConfig, globalConfig, {
+      preferPrimaryLocalOnly: true,
+    }),
     hasAnyAgentsFiles: globalHas || workspaceHas,
   }
 }
@@ -258,7 +261,7 @@ export function writeAgentsLayerFromConfig(
   ensureDirSync(layer.agentsDir)
   ensureDirSync(layer.layoutsDir)
 
-  const split = splitConfigIntoAgentsFiles(config)
+  const split = splitConfigIntoAgentsFiles(createShareableConfig(config) as Config)
 
   const writeJsonIfNeeded = (filePath: string, value: unknown) => {
     if (onlyIfMissing && fileExists(filePath)) return
@@ -273,6 +276,42 @@ export function writeAgentsLayerFromConfig(
   writeJsonIfNeeded(layer.mcpJsonPath, split.mcp)
   writeJsonIfNeeded(layer.modelsJsonPath, split.models)
   writeJsonIfNeeded(layer.layoutJsonPath, split.layout)
+}
+
+export function sanitizeAgentsLayerFiles(
+  layer: AgentsLayerPaths,
+  options: { maxBackups?: number } = {},
+): boolean {
+  const maxBackups = options.maxBackups ?? 10
+  const filePaths = [
+    layer.settingsJsonPath,
+    layer.mcpJsonPath,
+    layer.modelsJsonPath,
+    layer.layoutJsonPath,
+  ]
+
+  let sanitized = false
+
+  for (const filePath of filePaths) {
+    if (!fileExists(filePath)) continue
+
+    const current = safeReadJsonFileSync<Partial<Config>>(filePath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    })
+    const shareable = createShareableConfig(current)
+
+    if (JSON.stringify(current) === JSON.stringify(shareable)) continue
+
+    safeWriteJsonFileSync(filePath, shareable, {
+      backupDir: layer.backupsDir,
+      maxBackups,
+      pretty: true,
+    })
+    sanitized = true
+  }
+
+  return sanitized
 }
 
 /**

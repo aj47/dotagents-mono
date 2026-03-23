@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Button } from "@renderer/components/ui/button"
+import { LocalOnlySecretNote } from "@renderer/components/local-only-secret-note"
 import {
   useConfigQuery,
   useSaveConfigMutation,
@@ -903,6 +904,10 @@ export function Component() {
                   placeholder: "https://api.groq.com/openai/v1",
                 })}
 
+                <div className="px-3 py-2">
+                  <LocalOnlySecretNote />
+                </div>
+
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
                   Groq model selection now lives on the Models page.
                 </p>
@@ -948,6 +953,10 @@ export function Component() {
                   type: "url",
                   placeholder: "https://generativelanguage.googleapis.com",
                 })}
+
+                <div className="px-3 py-2">
+                  <LocalOnlySecretNote />
+                </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
                   Gemini model selection now lives on the Models page.
@@ -1030,6 +1039,10 @@ export function Component() {
                   placeholder: "https://api.groq.com/openai/v1",
                 })}
 
+                <div className="px-3 py-2">
+                  <LocalOnlySecretNote />
+                </div>
+
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
                   Groq model selection now lives on the Models page.
                 </p>
@@ -1073,6 +1086,10 @@ export function Component() {
                   type: "url",
                   placeholder: "https://generativelanguage.googleapis.com",
                 })}
+
+                <div className="px-3 py-2">
+                  <LocalOnlySecretNote />
+                </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
                   Gemini model selection now lives on the Models page.

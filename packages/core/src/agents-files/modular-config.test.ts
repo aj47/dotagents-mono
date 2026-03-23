@@ -8,6 +8,7 @@ import {
   getAgentsLayerPaths,
   loadAgentsLayerConfig,
   loadMergedAgentsConfig,
+  sanitizeAgentsLayerFiles,
   writeAgentsLayerFromConfig,
   writeAgentsPrompts,
 } from "./modular-config"
@@ -74,6 +75,23 @@ describe("modular-config", () => {
       mcpMaxIterations: 99,
       openaiApiKey: "sk-test",
       themePreference: "dark",
+      remoteServerApiKey: "local-only-key",
+      modelPresets: [
+        {
+          id: "preset-a",
+          name: "Preset A",
+          baseUrl: "https://example.com/v1",
+          apiKey: "preset-secret",
+        },
+      ],
+      mcpConfig: {
+        mcpServers: {
+          demo: {
+            command: "demo-server",
+            env: { API_KEY: "secret" },
+          },
+        },
+      },
       mcpCustomSystemPrompt: "",
       mcpToolsSystemPrompt: "Extra guidelines",
     } as unknown as Config
@@ -96,8 +114,56 @@ describe("modular-config", () => {
 
     expect(settings.textInputEnabled).toBe(false)
     expect(mcp.mcpMaxIterations).toBe(99)
-    expect(models.openaiApiKey).toBe("sk-test")
+    expect(models.openaiApiKey).toBeUndefined()
+    expect(models.modelPresets[0].apiKey).toBeUndefined()
+    expect(settings.remoteServerApiKey).toBeUndefined()
+    expect(mcp.mcpConfig.mcpServers.demo.env).toBeUndefined()
     expect(layout.themePreference).toBe("dark")
+  })
+
+  it("sanitizes existing agents layer files in place", () => {
+    const dir = mkTempDir("dotagents-modular-sanitize-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    writeJson(layer.settingsJsonPath, {
+      remoteServerApiKey: "local-only-key",
+      launchAtLogin: true,
+    })
+    writeJson(layer.modelsJsonPath, {
+      groqApiKey: "sk-groq",
+      modelPresets: [
+        {
+          id: "preset-a",
+          name: "Preset A",
+          apiKey: "preset-secret",
+        },
+      ],
+    })
+    writeJson(layer.mcpJsonPath, {
+      mcpConfig: {
+        mcpServers: {
+          demo: {
+            command: "demo-server",
+            env: { API_KEY: "secret" },
+          },
+        },
+      },
+      mcpMaxIterations: 5,
+    })
+
+    expect(sanitizeAgentsLayerFiles(layer)).toBe(true)
+
+    const settings = JSON.parse(fs.readFileSync(layer.settingsJsonPath, "utf8"))
+    const models = JSON.parse(fs.readFileSync(layer.modelsJsonPath, "utf8"))
+    const mcp = JSON.parse(fs.readFileSync(layer.mcpJsonPath, "utf8"))
+
+    expect(settings.remoteServerApiKey).toBeUndefined()
+    expect(settings.launchAtLogin).toBe(true)
+    expect(models.groqApiKey).toBeUndefined()
+    expect(models.modelPresets[0].apiKey).toBeUndefined()
+    expect(mcp.mcpConfig.mcpServers.demo.env).toBeUndefined()
+    expect(mcp.mcpMaxIterations).toBe(5)
   })
 
   it("finds .agents directory upward", () => {

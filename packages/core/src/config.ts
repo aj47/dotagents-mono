@@ -9,11 +9,14 @@ import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shar
 import {
   findAgentsDirUpward,
   getAgentsLayerPaths,
+  loadAgentsLayerConfig,
   loadMergedAgentsConfig,
+  sanitizeAgentsLayerFiles,
   writeAgentsLayerFromConfig,
 } from "./agents-files/modular-config"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
 import { getErrorMessage, normalizeError } from "./error-utils"
+import { hasLocalOnlyConfigValues, mergeConfigWithLocalOnlyPreference } from "./config-secrets"
 
 const DEFAULT_APP_ID = "app.dotagents"
 
@@ -346,9 +349,13 @@ const getConfig = (): LoadedConfig => {
   // Merge order: defaults ← config.json ← .agents (if present)
   // This ensures existing settings (API keys etc.) from config.json are always preserved,
   // while .agents files can selectively override specific values.
-  const mergedConfig = hasAnyAgentsFiles
-    ? { ...defaultConfig, ...savedConfig, ...mergedAgents }
-    : { ...defaultConfig, ...savedConfig }
+  const layeredConfig = hasAnyAgentsFiles
+    ? mergeConfigWithLocalOnlyPreference(mergedAgents, savedConfig, {
+      preferPrimaryLocalOnly: false,
+    })
+    : savedConfig
+
+  const mergedConfig = { ...defaultConfig, ...layeredConfig }
 
   const legacyTextInputModeSize = (mergedConfig as Record<string, unknown>).panelTextInputModeSize
   if (!mergedConfig.panelTextInputSize && legacyTextInputModeSize) {
@@ -435,6 +442,32 @@ export class ConfigStore {
     const loaded = getConfig()
     // Sync active preset credentials to legacy fields on startup
     this.config = syncPresetToLegacyFields(loaded.config) as Config
+
+    try {
+      const layers = [getAgentsLayerPaths(globalAgentsFolder)]
+      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+      if (workspaceAgentsFolder) {
+        layers.push(getAgentsLayerPaths(workspaceAgentsFolder))
+      }
+
+      let migratedLocalOnlyValues = false
+      for (const layer of layers) {
+        const layerConfig = loadAgentsLayerConfig(layer)
+        if (!hasLocalOnlyConfigValues(layerConfig)) continue
+        sanitizeAgentsLayerFiles(layer)
+        migratedLocalOnlyValues = true
+      }
+
+      if (migratedLocalOnlyValues) {
+        safeWriteJsonFileSync(getConfigPath(), this.config, {
+          backupDir: path.join(getDataFolder(), ".backups"),
+          maxBackups: 10,
+          pretty: false,
+        })
+      }
+    } catch {
+      // best-effort
+    }
 
     // Migration: ensure mcpVerifyCompletionEnabled and mcpUnlimitedIterations
     // default to true. These were previously false by default and may have been

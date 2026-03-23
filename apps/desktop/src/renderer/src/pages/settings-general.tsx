@@ -26,6 +26,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
+import { LocalOnlySecretNote } from "@renderer/components/local-only-secret-note"
 import {
   getEffectiveShortcut,
   formatKeyComboForDisplay,
@@ -1336,14 +1337,17 @@ export function Component() {
               </Control>
 
               <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
-                <Input
-                  type="password"
-                  value={langfuseDrafts.langfuseSecretKey}
-                  onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
-                  onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
-                  placeholder="sk-lf-..."
-                  className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
-                />
+                <div className="w-full space-y-2">
+                  <Input
+                    type="password"
+                    value={langfuseDrafts.langfuseSecretKey}
+                    onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
+                    onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
+                    placeholder="sk-lf-..."
+                    className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
+                  />
+                  <LocalOnlySecretNote className="sm:max-w-[360px]" />
+                </div>
               </Control>
 
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
