@@ -218,6 +218,8 @@ export function SettingsLoops() {
         toast.error(`Could not trigger "${loop.name}" right now`)
         return
       }
+      queryClient.invalidateQueries({ queryKey: ["loops"] })
+      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
       toast.success(`Running "${loop.name}"...`)
     } catch {
       toast.error("Failed to trigger task")
@@ -242,6 +244,8 @@ export function SettingsLoops() {
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
         const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
+        const consecutiveFailures = loop.consecutiveFailures ?? 0
+        const isAutoPaused = !loop.enabled && !!loop.autoPausedAt
         return (
           <div
             key={loop.id}
@@ -256,6 +260,8 @@ export function SettingsLoops() {
                   <span className="truncate font-medium">{loop.name}</span>
                   {isRunning ? (
                     <Badge variant="secondary">Running</Badge>
+                  ) : isAutoPaused ? (
+                    <Badge variant="destructive">Auto-paused</Badge>
                   ) : !loop.enabled ? (
                     <Badge variant="outline">Disabled</Badge>
                   ) : null}
@@ -313,6 +319,33 @@ export function SettingsLoops() {
               )}
               <div>Last run: {formatLastRun(lastRunAt)}</div>
             </div>
+
+            {consecutiveFailures > 0 && (
+              <div
+                className={cn(
+                  "mt-2 rounded-md border px-3 py-2 text-xs",
+                  isAutoPaused
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300",
+                )}
+              >
+                <div className="font-medium">
+                  {isAutoPaused
+                    ? `Auto-paused after ${consecutiveFailures} consecutive failures`
+                    : `${consecutiveFailures} consecutive failure${consecutiveFailures === 1 ? "" : "s"}`}
+                </div>
+                {loop.lastError && (
+                  <div className="mt-1 break-words text-muted-foreground">
+                    Last error: {loop.lastError}
+                  </div>
+                )}
+                {loop.lastFailureAt && (
+                  <div className="mt-1 text-muted-foreground">
+                    Last failure: {formatLastRun(loop.lastFailureAt)}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-2 flex items-center gap-2">
               <Switch

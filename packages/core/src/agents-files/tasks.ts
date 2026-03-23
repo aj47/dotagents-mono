@@ -76,6 +76,10 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
   if (task.profileId) frontmatter.profileId = task.profileId
   if (task.runOnStartup) frontmatter.runOnStartup = "true"
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
+  if (task.consecutiveFailures) frontmatter.consecutiveFailures = String(task.consecutiveFailures)
+  if (task.lastFailureAt) frontmatter.lastFailureAt = String(task.lastFailureAt)
+  if (task.lastError) frontmatter.lastError = task.lastError.replace(/\s+/g, " ").trim()
+  if (task.autoPausedAt) frontmatter.autoPausedAt = String(task.autoPausedAt)
 
   return stringifyFrontmatterDocument({ frontmatter, body: task.prompt || "" })
 }
@@ -106,6 +110,10 @@ export function parseTaskMarkdown(
     profileId: (fm.profileId ?? "").trim() || undefined,
     runOnStartup: parseBoolean(fm.runOnStartup, false) || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
+    consecutiveFailures: fm.consecutiveFailures ? parseNumber(fm.consecutiveFailures, 0) || undefined : undefined,
+    lastFailureAt: fm.lastFailureAt ? parseNumber(fm.lastFailureAt, 0) || undefined : undefined,
+    lastError: (fm.lastError ?? "").trim() || undefined,
+    autoPausedAt: fm.autoPausedAt ? parseNumber(fm.autoPausedAt, 0) || undefined : undefined,
   }
 }
 

@@ -12,6 +12,7 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import { getErrorMessage } from "@dotagents/core"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
@@ -30,6 +31,8 @@ export interface LoopStatus {
   nextRunAt?: number
   intervalMinutes: number
 }
+
+const MAX_CONSECUTIVE_LOOP_FAILURES = 3
 
 class LoopService {
   private static instance: LoopService | null = null
@@ -150,11 +153,14 @@ class LoopService {
   /** Save (create or update) a loop. */
   saveLoop(loop: LoopConfig): boolean {
     const idx = this.loops.findIndex((l) => l.id === loop.id)
+    const existingLoop = idx >= 0 ? this.loops[idx] : undefined
+    const shouldResetFailureState = loop.enabled && (!existingLoop || !existingLoop.enabled)
+    const normalizedLoop = shouldResetFailureState ? this.clearLoopFailureState(loop) : loop
     const nextLoops = idx >= 0
-      ? this.loops.map((existingLoop, existingIdx) => existingIdx === idx ? loop : existingLoop)
-      : [...this.loops, loop]
+      ? this.loops.map((currentLoop, existingIdx) => existingIdx === idx ? normalizedLoop : currentLoop)
+      : [...this.loops, normalizedLoop]
 
-    const saved = this.saveTask(loop, nextLoops)
+    const saved = this.saveTask(normalizedLoop, nextLoops)
     if (!saved) {
       return false
     }
@@ -337,9 +343,17 @@ class LoopService {
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      const result = await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      const failureMessage = this.getLoopRunFailureMessage(result)
+      if (failureMessage) {
+        this.recordLoopFailure(loop, failureMessage, sessionId)
+      } else {
+        this.recordLoopSuccess(loop)
+      }
     } catch (error) {
+      const errorMessage = getErrorMessage(error)
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
+      this.recordLoopFailure(loop, errorMessage)
     } finally {
       this.executingLoops.delete(loopId)
 
@@ -384,6 +398,78 @@ class LoopService {
     }
 
     return safeMinutes * 60 * 1000
+  }
+
+  private clearLoopFailureState(loop: LoopConfig): LoopConfig {
+    const { consecutiveFailures, lastFailureAt, lastError, autoPausedAt, ...rest } = loop
+    return rest
+  }
+
+  private getLoopRunFailureMessage(result: string): string | null {
+    const normalizedResult = result.replace(/\s+/g, " ").trim()
+    if (!normalizedResult) return null
+
+    const failurePatterns = [
+      /^Error:/i,
+      /I couldn't complete the request after multiple attempts/i,
+      /reached maximum iteration limit/i,
+      /Task stopped due to iteration limit/i,
+      /Failed to create ACP session/i,
+      /Failed to start ACP agent/i,
+      /ACP agent .* is not ready/i,
+      /Authentication required:/i,
+      /Configured ACP main agent .* not found/i,
+      /No ACP main agent configured/i,
+      /No ACP main agent selected/i,
+      /Available ACP agents:/i,
+    ]
+
+    return failurePatterns.some((pattern) => pattern.test(normalizedResult))
+      ? normalizedResult.slice(0, 240)
+      : null
+  }
+
+  private recordLoopSuccess(loop: LoopConfig): void {
+    if (!loop.consecutiveFailures && !loop.lastFailureAt && !loop.lastError && !loop.autoPausedAt) {
+      return
+    }
+
+    delete loop.consecutiveFailures
+    delete loop.lastFailureAt
+    delete loop.lastError
+    delete loop.autoPausedAt
+    this.saveTask(loop)
+  }
+
+  private recordLoopFailure(loop: LoopConfig, errorMessage: string, sessionId?: string): void {
+    const normalizedError = errorMessage.replace(/\s+/g, " ").trim().slice(0, 240) || "Loop run failed"
+    const failureCount = (loop.consecutiveFailures ?? 0) + 1
+
+    loop.consecutiveFailures = failureCount
+    loop.lastFailureAt = Date.now()
+    loop.lastError = normalizedError
+
+    const activeSession = sessionId ? agentSessionTracker.getSession(sessionId) : undefined
+    if (activeSession) {
+      agentSessionTracker.errorSession(sessionId, normalizedError)
+    }
+
+    if (failureCount >= MAX_CONSECUTIVE_LOOP_FAILURES) {
+      loop.enabled = false
+      loop.autoPausedAt = Date.now()
+      logApp(
+        `[LoopService] Auto-paused loop "${loop.name}" (${loop.id}) after ${failureCount} consecutive failures`,
+        { error: normalizedError }
+      )
+    } else {
+      delete loop.autoPausedAt
+      logApp(
+        `[LoopService] Loop "${loop.name}" (${loop.id}) failed (${failureCount}/${MAX_CONSECUTIVE_LOOP_FAILURES})`,
+        { error: normalizedError }
+      )
+    }
+
+    this.saveTask(loop)
   }
 }
 

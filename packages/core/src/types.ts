@@ -64,6 +64,10 @@ export interface LoopConfig {
   profileId?: string
   lastRunAt?: number
   runOnStartup?: boolean
+  consecutiveFailures?: number
+  lastFailureAt?: number
+  lastError?: string
+  autoPausedAt?: number
 }
 
 // ============================================================================
