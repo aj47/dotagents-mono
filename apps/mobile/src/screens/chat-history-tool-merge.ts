@@ -64,6 +64,32 @@ function findNextToolResultTargetIndex(
   return -1;
 }
 
+export function alignStructuredToolResults(
+  toolCalls: NonNullable<ChatMessage['toolCalls']>,
+  existingToolResults: NonNullable<ChatMessage['toolResults']>,
+  structuredResults: ReadonlyArray<NonNullable<ConversationHistoryMessage['toolResults']>[number]>,
+  hiddenToolNames: ReadonlySet<string> = new Set(),
+): NonNullable<ChatMessage['toolResults']> {
+  const nextResults = [...existingToolResults];
+
+  for (const structuredResult of structuredResults) {
+    const targetIndex = findNextToolResultTargetIndex(
+      toolCalls,
+      nextResults,
+      hiddenToolNames,
+    );
+
+    if (targetIndex < 0) {
+      nextResults.push(structuredResult);
+      continue;
+    }
+
+    nextResults[targetIndex] = structuredResult;
+  }
+
+  return nextResults as NonNullable<ChatMessage['toolResults']>;
+}
+
 export function mergeToolHistoryMessageIntoPreviousAssistant(
   messages: ChatMessage[],
   toolMessage: Pick<ConversationHistoryMessage, 'content' | 'toolResults'>,
@@ -78,24 +104,12 @@ export function mergeToolHistoryMessageIntoPreviousAssistant(
 
   const structuredResults = toolMessage.toolResults;
   if (structuredResults && structuredResults.length > 0) {
-    const nextResults = [...(lastMessage.toolResults || [])];
-    const toolCalls = lastMessage.toolCalls ?? [];
-
-    for (const structuredResult of structuredResults) {
-      const targetIndex = findNextToolResultTargetIndex(
-        toolCalls,
-        nextResults,
-        hiddenToolNames,
-      );
-
-      if (targetIndex < 0) {
-        nextResults.push(structuredResult);
-        continue;
-      }
-
-      nextResults[targetIndex] = structuredResult;
-    }
-
+    const nextResults = alignStructuredToolResults(
+      lastMessage.toolCalls ?? [],
+      lastMessage.toolResults ?? [],
+      structuredResults,
+      hiddenToolNames,
+    );
     lastMessage.toolResults = nextResults as typeof lastMessage.toolResults;
     return true;
   }

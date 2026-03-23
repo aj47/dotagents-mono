@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { ChatMessage } from '../types/session';
 
-import { mergeToolHistoryMessageIntoPreviousAssistant } from './chat-history-tool-merge';
+import {
+  alignStructuredToolResults,
+  mergeToolHistoryMessageIntoPreviousAssistant,
+} from './chat-history-tool-merge';
 
 describe('chat-history-tool-merge', () => {
   it('merges structured tool results into the previous assistant tool call message', () => {
@@ -50,6 +53,27 @@ describe('chat-history-tool-merge', () => {
     expect(messages[0].toolResults).toHaveLength(2);
     expect(messages[0].toolResults?.[0]).toBeUndefined();
     expect(messages[0].toolResults?.[1]).toEqual({
+      success: true,
+      content: '{"name":"dotagents-mono"}',
+    });
+  });
+
+  it('aligns standalone progress tool results to the first unresolved visible tool call', () => {
+    const toolCalls: NonNullable<ChatMessage['toolCalls']> = [
+      { name: 'respond_to_user', arguments: { content: 'Working on it' } },
+      { name: 'read_file', arguments: { path: 'package.json' } },
+    ];
+
+    const nextResults = alignStructuredToolResults(
+      toolCalls,
+      [],
+      [{ success: true, content: '{"name":"dotagents-mono"}' }],
+      new Set(['respond_to_user', 'mark_work_complete']),
+    );
+
+    expect(nextResults).toHaveLength(2);
+    expect(nextResults[0]).toBeUndefined();
+    expect(nextResults[1]).toEqual({
       success: true,
       content: '{"name":"dotagents-mono"}',
     });

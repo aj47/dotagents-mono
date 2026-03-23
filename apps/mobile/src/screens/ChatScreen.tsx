@@ -83,7 +83,10 @@ import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
-import { mergeToolHistoryMessageIntoPreviousAssistant } from './chat-history-tool-merge';
+import {
+  alignStructuredToolResults,
+  mergeToolHistoryMessageIntoPreviousAssistant,
+} from './chat-history-tool-merge';
 
 interface PendingImageAttachment {
   id: string;
@@ -1687,8 +1690,8 @@ export default function ChatScreen({ route, navigation }: any) {
     console.log('[convertProgressToMessages] Processing update, steps:', update.steps?.length || 0, 'history:', update.conversationHistory?.length || 0, 'isComplete:', update.isComplete);
 
     if (update.steps && update.steps.length > 0) {
-      let currentToolCalls: any[] = [];
-      let currentToolResults: any[] = [];
+      let currentToolCalls: NonNullable<ChatMessage['toolCalls']> = [];
+      let currentToolResults: NonNullable<ChatMessage['toolResults']> = [];
       let thinkingContent = '';
 
       for (const step of update.steps) {
@@ -1700,10 +1703,24 @@ export default function ChatScreen({ route, navigation }: any) {
             currentToolCalls.push(step.toolCall);
           }
           if (step.toolResult) {
-            currentToolResults.push(step.toolResult);
+            if (step.toolCall) {
+              currentToolResults[currentToolCalls.length - 1] = step.toolResult;
+            } else {
+              currentToolResults = alignStructuredToolResults(
+                currentToolCalls,
+                currentToolResults,
+                [step.toolResult],
+                HIDDEN_META_TOOLS,
+              );
+            }
           }
         } else if (step.type === 'tool_result' && step.toolResult) {
-          currentToolResults.push(step.toolResult);
+          currentToolResults = alignStructuredToolResults(
+            currentToolCalls,
+            currentToolResults,
+            [step.toolResult],
+            HIDDEN_META_TOOLS,
+          );
         } else if (step.type === 'completion' && stepContent) {
           thinkingContent = stepContent;
         }
