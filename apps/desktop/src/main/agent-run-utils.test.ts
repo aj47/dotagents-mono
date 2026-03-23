@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  AGENT_SESSION_TIMEOUT_OVERRIDE_ENV,
   AGENT_STOP_NOTE,
+  AGENT_TIMEOUT_NOTE,
+  DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
+  appendAgentTimeoutNote,
   appendAgentStopNote,
   buildProfileContext,
   getPreferredDelegationOutput,
+  isAgentStopContent,
   resolveAgentIterationLimits,
+  resolveAgentSessionTimeoutMs,
 } from "./agent-run-utils"
 
 describe("resolveAgentIterationLimits", () => {
@@ -48,6 +54,52 @@ describe("appendAgentStopNote", () => {
     expect(appendAgentStopNote(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(
       `Finished work\n\n${AGENT_STOP_NOTE}`,
     )
+  })
+})
+
+describe("appendAgentTimeoutNote", () => {
+  it("appends the runtime timeout note once after trimming trailing whitespace", () => {
+    expect(appendAgentTimeoutNote("Finished work.   ")).toBe(
+      `Finished work.\n\n${AGENT_TIMEOUT_NOTE}`,
+    )
+  })
+
+  it("does not duplicate the runtime timeout note", () => {
+    expect(appendAgentTimeoutNote(`Finished work\n\n${AGENT_TIMEOUT_NOTE}`)).toBe(
+      `Finished work\n\n${AGENT_TIMEOUT_NOTE}`,
+    )
+  })
+})
+
+describe("isAgentStopContent", () => {
+  it("recognizes both kill-switch and timeout stop notes", () => {
+    expect(isAgentStopContent(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(true)
+    expect(isAgentStopContent(`Finished work\n\n${AGENT_TIMEOUT_NOTE}`)).toBe(true)
+    expect(isAgentStopContent("Finished work")).toBe(false)
+  })
+})
+
+describe("resolveAgentSessionTimeoutMs", () => {
+  it("uses the configured timeout minutes when present", () => {
+    expect(resolveAgentSessionTimeoutMs({ mcpSessionTimeoutMinutes: 2.5 }, {} as NodeJS.ProcessEnv)).toBe(150000)
+  })
+
+  it("falls back to the default timeout when the config is missing or invalid", () => {
+    expect(resolveAgentSessionTimeoutMs(undefined, {} as NodeJS.ProcessEnv)).toBe(
+      DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES * 60_000,
+    )
+    expect(resolveAgentSessionTimeoutMs({ mcpSessionTimeoutMinutes: 0 }, {} as NodeJS.ProcessEnv)).toBe(
+      DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES * 60_000,
+    )
+  })
+
+  it("prefers the test override environment variable when set", () => {
+    expect(
+      resolveAgentSessionTimeoutMs(
+        { mcpSessionTimeoutMinutes: 30 },
+        { [AGENT_SESSION_TIMEOUT_OVERRIDE_ENV]: "4000" } as unknown as NodeJS.ProcessEnv,
+      ),
+    ).toBe(4000)
   })
 })
 

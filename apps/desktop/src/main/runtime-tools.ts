@@ -20,10 +20,7 @@ import { readMoreContext } from "./context-budget"
 import { getAppSessionForAcpSession } from "./acp-session-state"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
-import { promisify } from "util"
 import path from "path"
-
-const execAsync = promisify(exec)
 
 // Re-export from the dependency-free definitions module.
 // This breaks the circular dependency: profile-service -> runtime-tool-definitions (no cycle)
@@ -99,6 +96,28 @@ const getDataImageBytesFromUrl = (url: string): number | null => {
 
 const getUtf8ByteLength = (value: string): number =>
   Buffer.byteLength(value, "utf8")
+
+function executeCommandWithSessionTracking(
+  command: string,
+  options: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string },
+  sessionId?: string,
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = exec(command, options, (error, stdout, stderr) => {
+      if (error) {
+        Object.assign(error, { stdout, stderr })
+        reject(error)
+        return
+      }
+
+      resolve({ stdout, stderr })
+    })
+
+    if (sessionId) {
+      agentSessionStateManager.registerProcess(sessionId, child)
+    }
+  })
+}
 
 async function imagePathToDataUrl(rawPath: string): Promise<string> {
   const resolvedPath = path.isAbsolute(rawPath)
@@ -584,7 +603,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  execute_command: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     const { skillsService } = await import("./skills-service")
 
     // Validate required command parameter
@@ -658,7 +677,11 @@ const toolHandlers: Record<string, ToolHandler> = {
         execOptions.timeout = timeout
       }
 
-      const { stdout, stderr } = await execAsync(command, execOptions)
+      const { stdout, stderr } = await executeCommandWithSessionTracking(
+        command,
+        execOptions,
+        context.sessionId,
+      )
 
       // Truncate large outputs to prevent context bloat
       // Keep first 5K + last 5K chars so agent sees both beginning and end

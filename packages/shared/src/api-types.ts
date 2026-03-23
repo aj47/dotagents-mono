@@ -65,6 +65,7 @@ export interface Settings {
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
+  mcpSessionTimeoutMinutes?: number;
   mcpUnlimitedIterations?: boolean;
   mainAgentMode?: 'api' | 'acp';
   mainAgentName?: string;
@@ -147,6 +148,7 @@ export interface SettingsUpdate {
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
+  mcpSessionTimeoutMinutes?: number;
   mcpUnlimitedIterations?: boolean;
   mainAgentMode?: 'api' | 'acp';
   mainAgentName?: string;

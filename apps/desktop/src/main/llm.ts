@@ -44,6 +44,9 @@ import {
 } from "../shared/runtime-tool-names"
 import {
   appendAgentStopNote,
+  appendAgentTimeoutNote,
+  isAgentStopContent,
+  resolveAgentSessionTimeoutMs,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
@@ -102,10 +105,9 @@ function cleanErrorMessage(errorText: string): string {
 }
 
 function resolveProgressConversationState(update: Pick<AgentProgressUpdate, "conversationState" | "isComplete" | "pendingToolApproval" | "finalContent">): AgentConversationState {
-  const isKillSwitchCompletion =
+  const isStopCompletion =
     update.isComplete &&
-    typeof update.finalContent === "string" &&
-    update.finalContent.includes("emergency kill switch")
+    isAgentStopContent(update.finalContent)
 
   if (update.conversationState) {
     return normalizeAgentConversationState(
@@ -118,7 +120,7 @@ function resolveProgressConversationState(update: Pick<AgentProgressUpdate, "con
     return "needs_input"
   }
 
-  if (isKillSwitchCompletion) {
+  if (isStopCompletion) {
     return "blocked"
   }
 
@@ -381,12 +383,15 @@ async function executeToolWithRetries(
   onToolProgress: (message: string) => void,
   maxRetries: number = 2,
 ): Promise<ToolExecutionResult> {
+  const sessionStoppedMessage =
+    "Tool execution cancelled because the agent session was stopped"
+
   // Check for stop signal before starting
   if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
     return {
       toolCall,
       result: {
-        content: [{ type: "text", text: "Tool execution cancelled by emergency kill switch" }],
+        content: [{ type: "text", text: sessionStoppedMessage }],
         isError: true,
       },
       retryCount: 0,
@@ -403,7 +408,7 @@ async function executeToolWithRetries(
         cancelledByKill = true
         if (cancelInterval) clearInterval(cancelInterval)
         resolve({
-          content: [{ type: "text", text: "Tool execution cancelled by emergency kill switch" }],
+          content: [{ type: "text", text: sessionStoppedMessage }],
           isError: true,
         })
       }
@@ -438,7 +443,7 @@ async function executeToolWithRetries(
       return {
         toolCall,
         result: {
-          content: [{ type: "text", text: "Tool execution cancelled by emergency kill switch" }],
+          content: [{ type: "text", text: sessionStoppedMessage }],
           isError: true,
         },
         retryCount,
@@ -529,6 +534,8 @@ export async function processTranscriptWithAgentMode(
     effectiveRunId = agentSessionStateManager.startSessionRun(currentSessionId, effectiveProfileSnapshot)
   }
 
+  const sessionTimeoutMs = resolveAgentSessionTimeoutMs(config)
+
   // Track step summaries for dual-model mode
   const stepSummaries: import("../shared/types").AgentStepSummary[] = []
 
@@ -556,8 +563,22 @@ export async function processTranscriptWithAgentMode(
   let iteration = 0
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
+  let didSessionTimeOut = false
+  let sessionCompleted = false
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
   let lastContextBudgetInfo: { estTokensAfter: number; maxTokens: number; appliedStrategies?: string[] } | undefined
+  const sessionTimeoutTimer = setTimeout(() => {
+    if (sessionCompleted || agentSessionStateManager.shouldStopSession(currentSessionId)) {
+      return
+    }
+
+    didSessionTimeOut = true
+    logLLM(
+      `Agent session ${currentSessionId} exceeded runtime budget (${sessionTimeoutMs}ms); stopping session`,
+    )
+    agentSessionStateManager.stopSession(currentSessionId)
+  }, sessionTimeoutMs)
+  sessionTimeoutTimer.unref?.()
 
   try {
   // Track context usage info for progress display
@@ -602,15 +623,14 @@ export async function processTranscriptWithAgentMode(
       responseEvents,
       conversationHistory: update.conversationHistory as any,
     })
-    const isKillSwitchCompletion =
+    const isStopCompletion =
       update.isComplete &&
-      typeof update.finalContent === "string" &&
-      update.finalContent.includes("emergency kill switch")
+      isAgentStopContent(update.finalContent)
     const conversationState = resolveProgressConversationState(update)
     const userResponseForUpdate =
       update.userResponse ??
       normalizedStoredUserResponse ??
-      (update.isComplete && !isKillSwitchCompletion
+      (update.isComplete && !isStopCompletion
         ? update.finalContent
         : undefined)
     const userResponseSource =
@@ -618,7 +638,7 @@ export async function processTranscriptWithAgentMode(
         ? "update"
         : normalizedStoredUserResponse !== undefined
         ? "store"
-        : update.isComplete && !isKillSwitchCompletion
+        : update.isComplete && !isStopCompletion
         ? "finalContent"
         : "none"
     const shouldEmitUserResponse =
@@ -1105,8 +1125,15 @@ export async function processTranscriptWithAgentMode(
       }))
   }
 
-  const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
-    finalContent = appendAgentStopNote(finalContent)
+  const getStopDescription = () =>
+    didSessionTimeOut
+      ? "Agent mode was stopped after exceeding the session runtime limit"
+      : "Agent mode was stopped by emergency kill switch"
+
+  const finalizeSessionStop = (steps: AgentProgressStep[]) => {
+    finalContent = didSessionTimeOut
+      ? appendAgentTimeoutNote(finalContent)
+      : appendAgentStopNote(finalContent)
 
     const lastMessage = conversationHistory[conversationHistory.length - 1]
     if (
@@ -1117,11 +1144,13 @@ export async function processTranscriptWithAgentMode(
       addMessage("assistant", finalContent)
     }
 
+    sessionCompleted = true
     emit({
       currentIteration: iteration,
       maxIterations,
       steps,
       isComplete: true,
+      conversationState: "blocked",
       finalContent,
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
@@ -1512,16 +1541,16 @@ export async function processTranscriptWithAgentMode(
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
       logLLM(`Agent session ${currentSessionId} stopped by kill switch`)
 
-      // Add emergency stop step
+      // Add session stop step
       const stopStep = createProgressStep(
         "completion",
         "Agent stopped",
-        "Agent mode was stopped by emergency kill switch",
+        getStopDescription(),
         "error",
       )
       progressSteps.push(stopStep)
 
-      finalizeEmergencyStop(progressSteps.slice(-3))
+      finalizeSessionStop(progressSteps.slice(-3))
       break
     }
 
@@ -1623,8 +1652,8 @@ export async function processTranscriptWithAgentMode(
       logLLM(`Agent session ${currentSessionId} stopped during context shrink`)
       thinkingStep.status = "completed"
       thinkingStep.title = "Agent stopped"
-      thinkingStep.description = "Emergency stop triggered"
-      finalizeEmergencyStop(progressSteps.slice(-3))
+      thinkingStep.description = getStopDescription()
+      finalizeSessionStop(progressSteps.slice(-3))
       break
     }
 
@@ -1680,17 +1709,17 @@ export async function processTranscriptWithAgentMode(
         logLLM(`Agent session ${currentSessionId} stopped right after LLM response`)
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
-        thinkingStep.description = "Emergency stop triggered"
-        finalizeEmergencyStop(progressSteps.slice(-3))
+        thinkingStep.description = getStopDescription()
+        finalizeSessionStop(progressSteps.slice(-3))
         break
       }
     } catch (error: any) {
       if (error?.name === "AbortError" || agentSessionStateManager.shouldStopSession(currentSessionId)) {
-        logLLM(`LLM call aborted for session ${currentSessionId} due to emergency stop`)
+        logLLM(`LLM call aborted for session ${currentSessionId} due to session stop`)
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
-        thinkingStep.description = "Emergency stop triggered"
-        finalizeEmergencyStop(progressSteps.slice(-3))
+        thinkingStep.description = getStopDescription()
+        finalizeSessionStop(progressSteps.slice(-3))
         break
       }
 
@@ -1709,6 +1738,7 @@ export async function processTranscriptWithAgentMode(
           thinkingStep.description = "Empty response limit exceeded"
           const emptyResponseFinalContent = "I encountered repeated empty responses and couldn't complete the task. Please try again."
           conversationHistory.push({ role: "assistant", content: emptyResponseFinalContent, timestamp: Date.now() })
+          sessionCompleted = true
           emit({
             currentIteration: iteration,
             maxIterations,
@@ -1787,6 +1817,7 @@ export async function processTranscriptWithAgentMode(
         thinkingStep.description = "Empty response limit exceeded"
         const emptyResponseFinalContent = "I encountered repeated empty responses and couldn't complete the task. Please try again."
         conversationHistory.push({ role: "assistant", content: emptyResponseFinalContent, timestamp: Date.now() })
+        sessionCompleted = true
         emit({
           currentIteration: iteration,
           maxIterations,
@@ -1928,6 +1959,7 @@ export async function processTranscriptWithAgentMode(
           }
           finalContent = contentText
           addMessage("assistant", finalContent)
+          sessionCompleted = true
           emit({
             currentIteration: iteration,
             maxIterations,
@@ -2075,6 +2107,7 @@ export async function processTranscriptWithAgentMode(
         )
         progressSteps.push(completionStep)
 
+        sessionCompleted = true
         emit({
           currentIteration: iteration,
           maxIterations,
@@ -2148,6 +2181,7 @@ export async function processTranscriptWithAgentMode(
         if (totalNudgeCount >= MAX_NUDGES || garbledToolCallCount >= MAX_GARBLED_TOOL_CALL_RETRIES) {
           finalContent = buildIncompleteTaskFallback(contentText)
           addMessage("assistant", finalContent)
+          sessionCompleted = true
           emit({
             currentIteration: iteration,
             maxIterations,
@@ -2187,6 +2221,7 @@ export async function processTranscriptWithAgentMode(
       if (!config.mcpVerifyCompletionEnabled) {
         finalContent = buildIncompleteTaskFallback(contentText)
         addMessage("assistant", finalContent)
+        sessionCompleted = true
         emit({
           currentIteration: iteration,
           maxIterations,
@@ -2229,6 +2264,7 @@ export async function processTranscriptWithAgentMode(
             // Already have a user-facing response — skip tool execution and break
             finalContent = storedResponse
             addMessage("assistant", finalContent)
+            sessionCompleted = true
             emit({
               currentIteration: iteration,
               maxIterations,
@@ -2273,7 +2309,7 @@ export async function processTranscriptWithAgentMode(
     // Check for stop signal before starting tool execution
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
       logLLM(`Agent session ${currentSessionId} stopped before tool execution`)
-      finalizeEmergencyStop(progressSteps.slice(-3))
+      finalizeSessionStop(progressSteps.slice(-3))
       break
     }
 
@@ -2370,7 +2406,7 @@ export async function processTranscriptWithAgentMode(
       // Check if any tool was cancelled by kill switch
       const anyCancelled = executionResults.some(r => r.cancelledByKill)
       if (anyCancelled) {
-        finalizeEmergencyStop(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)))
+        finalizeSessionStop(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)))
         break
       }
 
@@ -2407,7 +2443,7 @@ export async function processTranscriptWithAgentMode(
         // Check for stop signal before executing each tool
         if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
           logLLM(`Agent session ${currentSessionId} stopped during tool execution`)
-          finalizeEmergencyStop(progressSteps.slice(-3))
+          finalizeSessionStop(progressSteps.slice(-3))
           break
         }
 
@@ -2458,18 +2494,18 @@ export async function processTranscriptWithAgentMode(
           toolCallStep.status = "error"
           toolCallStep.toolResult = {
             success: false,
-            content: "Tool execution cancelled by emergency kill switch",
-            error: "Cancelled by emergency kill switch",
+            content: "Tool execution cancelled because the agent session was stopped",
+            error: "Cancelled because the agent session was stopped",
           }
           const toolResultStep = createProgressStep(
             "tool_result",
             `${toolCall.name} cancelled`,
-            "Tool execution cancelled by emergency kill switch",
+            "Tool execution cancelled because the agent session was stopped",
             "error",
           )
           toolResultStep.toolResult = toolCallStep.toolResult
           progressSteps.push(toolResultStep)
-          finalizeEmergencyStop(progressSteps.slice(-3))
+          finalizeSessionStop(progressSteps.slice(-3))
           break
         }
 
@@ -2516,7 +2552,7 @@ export async function processTranscriptWithAgentMode(
 
     // If stop was requested during tool execution, exit the agent loop now
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
-      finalizeEmergencyStop(progressSteps.slice(-3))
+      finalizeSessionStop(progressSteps.slice(-3))
       break
     }
 
@@ -2759,7 +2795,7 @@ export async function processTranscriptWithAgentMode(
           // Check if stop was requested during summary generation
           if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
             logLLM(`Agent session ${currentSessionId} stopped during summary generation`)
-            finalizeEmergencyStop(progressSteps.slice(-3))
+            finalizeSessionStop(progressSteps.slice(-3))
             break
           }
 
@@ -2838,7 +2874,7 @@ export async function processTranscriptWithAgentMode(
 	        // Check if stop was requested during verification
 	        if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
 	          logLLM(`Agent session ${currentSessionId} stopped during verification`)
-	          finalizeEmergencyStop(progressSteps.slice(-3))
+	          finalizeSessionStop(progressSteps.slice(-3))
 	          break
 	        }
 
@@ -2872,7 +2908,7 @@ export async function processTranscriptWithAgentMode(
           try {
             const result = await generatePostVerifySummary(finalContent, true, activeTools)
             if (result.stopped) {
-              finalizeEmergencyStop(progressSteps.slice(-3))
+              finalizeSessionStop(progressSteps.slice(-3))
               break
             }
             finalContent = result.content
@@ -2912,6 +2948,7 @@ export async function processTranscriptWithAgentMode(
       progressSteps.push(completionStep)
 
       // Emit final progress
+      sessionCompleted = true
       emit({
         currentIteration: iteration,
         maxIterations,
@@ -2982,6 +3019,7 @@ export async function processTranscriptWithAgentMode(
     progressSteps.push(timeoutStep)
 
     // Emit final progress
+    sessionCompleted = true
     emit({
       currentIteration: iteration,
       maxIterations,
@@ -3024,6 +3062,8 @@ export async function processTranscriptWithAgentMode(
       totalIterations: iteration,
     }
   } finally {
+    clearTimeout(sessionTimeoutTimer)
+
     // End Langfuse trace for this agent session if enabled
     // This is in a finally block to ensure traces are closed even on unexpected exceptions
     if (isLangfuseEnabled()) {

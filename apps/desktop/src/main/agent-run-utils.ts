@@ -8,6 +8,11 @@ import {
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
+export const AGENT_TIMEOUT_NOTE =
+  "(Agent mode was stopped after exceeding the session runtime limit)"
+export const DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES = 30
+export const AGENT_SESSION_TIMEOUT_OVERRIDE_ENV =
+  "DOTAGENTS_AGENT_SESSION_TIMEOUT_MS"
 
 export interface AgentIterationLimits {
   loopMaxIterations: number
@@ -23,6 +28,25 @@ interface ConversationMessageLike {
     name?: string
     arguments?: unknown
   }>
+}
+
+type SessionTimeoutConfig = {
+  mcpSessionTimeoutMinutes?: number
+}
+
+function parsePositiveNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+
+  return undefined
 }
 
 function normalizeDelegationToolName(toolName?: string): string | undefined {
@@ -100,6 +124,40 @@ export function appendAgentStopNote(content: string): string {
   return normalizedContent.length > 0
     ? `${normalizedContent}\n\n${AGENT_STOP_NOTE}`
     : AGENT_STOP_NOTE
+}
+
+export function appendAgentTimeoutNote(content: string): string {
+  const normalizedContent = typeof content === "string" ? content.trimEnd() : ""
+  if (normalizedContent.includes(AGENT_TIMEOUT_NOTE)) {
+    return normalizedContent
+  }
+
+  return normalizedContent.length > 0
+    ? `${normalizedContent}\n\n${AGENT_TIMEOUT_NOTE}`
+    : AGENT_TIMEOUT_NOTE
+}
+
+export function isAgentStopContent(content?: string | null): boolean {
+  if (typeof content !== "string") return false
+  return content.includes(AGENT_STOP_NOTE) || content.includes(AGENT_TIMEOUT_NOTE)
+}
+
+export function resolveAgentSessionTimeoutMs(
+  config?: SessionTimeoutConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const overrideMs = parsePositiveNumber(
+    env[AGENT_SESSION_TIMEOUT_OVERRIDE_ENV],
+  )
+  if (overrideMs !== undefined) {
+    return Math.max(1, Math.floor(overrideMs))
+  }
+
+  const timeoutMinutes =
+    parsePositiveNumber(config?.mcpSessionTimeoutMinutes) ??
+    DEFAULT_AGENT_SESSION_TIMEOUT_MINUTES
+
+  return Math.max(1, Math.floor(timeoutMinutes * 60_000))
 }
 
 export function getLatestAssistantMessageContent(

@@ -179,6 +179,7 @@ const getConfig = (): LoadedConfig => {
     mcpAutoPasteEnabled: false,
     mcpAutoPasteDelay: 1000, // 1 second delay by default
     mcpMaxIterations: 10, // Default max iterations for agent mode
+    mcpSessionTimeoutMinutes: 30, // Default wall-clock timeout for a single agent session
     mcpUnlimitedIterations: true, // Default to unlimited iterations
     textInputEnabled: true,
 
