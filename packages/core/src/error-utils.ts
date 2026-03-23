@@ -1,3 +1,68 @@
+function normalizeMessage(message: string | undefined): string | undefined {
+  const trimmed = message?.trim()
+  return trimmed || undefined
+}
+
+function shouldAppendNestedErrorMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase()
+
+  if (!normalized) {
+    return false
+  }
+
+  if (normalized.endsWith(":")) {
+    return true
+  }
+
+  return [
+    /^cannot connect to api\b/,
+    /^failed after \d+ attempts\b/,
+    /\brequest failed\b/,
+    /\bstreaming request failed\b/,
+    /\bfetch failed\b/,
+    /\bnetwork error\b/,
+    /\bconnection failed\b/,
+    /^terminated$/,
+    /^aborted$/,
+    /\bunknown error\b/,
+  ].some((pattern) => pattern.test(normalized))
+}
+
+function mergeNestedErrorMessage(
+  message: string | undefined,
+  nestedMessage: string | undefined,
+): string | undefined {
+  const normalizedMessage = normalizeMessage(message)
+  const normalizedNestedMessage = normalizeMessage(nestedMessage)
+
+  if (!normalizedMessage) {
+    return normalizedNestedMessage
+  }
+
+  if (!normalizedNestedMessage) {
+    return normalizedMessage
+  }
+
+  if (normalizedMessage === normalizedNestedMessage) {
+    return normalizedMessage
+  }
+
+  if (normalizedMessage.includes(normalizedNestedMessage)) {
+    return normalizedMessage
+  }
+
+  if (normalizedNestedMessage.includes(normalizedMessage)) {
+    return normalizedNestedMessage
+  }
+
+  if (!shouldAppendNestedErrorMessage(normalizedMessage)) {
+    return normalizedMessage
+  }
+
+  const separator = normalizedMessage.endsWith(":") ? " " : ": "
+  return `${normalizedMessage}${separator}${normalizedNestedMessage}`
+}
+
 function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string | undefined {
   if (error === null || error === undefined) {
     return undefined
@@ -12,18 +77,15 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
   }
 
   if (error instanceof Error) {
-    if (error.message) {
-      return error.message
-    }
-
     const nestedFromCause = findNestedErrorMessage((error as Error & { cause?: unknown }).cause, seen)
-    if (nestedFromCause) {
-      return nestedFromCause
-    }
-
     const nestedFromErrors = findNestedErrorMessage((error as Error & { errors?: unknown }).errors, seen)
-    if (nestedFromErrors) {
-      return nestedFromErrors
+
+    const mergedMessage = mergeNestedErrorMessage(
+      error.message,
+      nestedFromCause || nestedFromErrors,
+    )
+    if (mergedMessage) {
+      return mergedMessage
     }
   }
 
@@ -48,11 +110,14 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
       errors?: unknown
     }
 
-    for (const value of [candidate.message, candidate.error, candidate.cause, candidate.errors]) {
-      const nestedMessage = findNestedErrorMessage(value, seen)
-      if (nestedMessage) {
-        return nestedMessage
-      }
+    const messageField = findNestedErrorMessage(candidate.message, seen)
+    const nestedField = [candidate.error, candidate.cause, candidate.errors]
+      .map((value) => findNestedErrorMessage(value, seen))
+      .find((value): value is string => Boolean(value))
+
+    const mergedMessage = mergeNestedErrorMessage(messageField, nestedField)
+    if (mergedMessage) {
+      return mergedMessage
     }
 
     try {
