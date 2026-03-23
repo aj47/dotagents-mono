@@ -286,6 +286,86 @@ const MAX_MESSAGE_CONTENT_SIZE = 10000;
 /** Maximum total conversation size to send to UI (characters) */
 const MAX_CONVERSATION_SIZE_FOR_UI = 50000;
 
+const MAIN_AGENT_PROFILE_NAME = 'main-agent';
+
+const LOCAL_WORKSPACE_SIGNAL_PATTERN = /(?:\/users\/|[a-z]:\\|(^|[\s"'`])\.\.?(?:\/|\\)|\b(?:repo|repository|codebase|workspace|worktree|local files|source tree|project files)\b|\b(?:apps|packages|src|tests?)\/|\b(?:package\.json|pnpm-lock\.yaml|tsconfig(?:\.[^/\s]+)?\.json|vite\.config(?:\.[^/\s]+)?\.[a-z]+|README\.md)\b|\.(?:ts|tsx|js|jsx|mjs|cjs|json|py|go|rs|java|swift|kt|rb|php|cs)\b)/i;
+const LOCAL_CODING_ACTION_PATTERN = /\b(?:fix|debug|diagnose|investigate|inspect|implement|edit|modify|patch|update|refactor|repair|reproduce|run|test|typecheck|lint|build|compile|search|read files?)\b/i;
+
+function isMainAgentSession(parentSessionId?: string): boolean {
+  if (!parentSessionId) return false;
+
+  const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(parentSessionId);
+  return profileSnapshot?.profileName === MAIN_AGENT_PROFILE_NAME;
+}
+
+function looksLikeLocalWorkspaceCodingTask(args: {
+  task: string;
+  context?: string;
+  workingDirectory?: string;
+}): boolean {
+  const combinedText = [args.task, args.context, args.workingDirectory]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join('\n');
+
+  return LOCAL_WORKSPACE_SIGNAL_PATTERN.test(combinedText)
+    && LOCAL_CODING_ACTION_PATTERN.test(combinedText);
+}
+
+function explicitlyRequestsAgent(args: {
+  agentName: string;
+  task: string;
+  context?: string;
+}, displayName?: string): boolean {
+  const combinedText = [args.task, args.context]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join('\n')
+    .toLowerCase();
+
+  const candidateNames = [args.agentName, displayName]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim().toLowerCase());
+
+  return candidateNames.some((candidate) => {
+    return [
+      `use ${candidate}`,
+      `ask ${candidate}`,
+      `delegate to ${candidate}`,
+      `send to ${candidate}`,
+      `${candidate} should`,
+      `${candidate} can`,
+      `${candidate} agent`,
+    ].some((phrase) => combinedText.includes(phrase));
+  });
+}
+
+function createBlockedMainAgentDelegationResult(agentName: string): object {
+  return {
+    success: false,
+    error: `Main Agent should handle local repo/workspace coding or debugging directly instead of delegating the full task to "${agentName}". Inspect the files and use local tools yourself first; if you need parallel help, delegate only narrow side work to "internal".`,
+  };
+}
+
+function shouldBlockMainAgentDelegation(
+  args: {
+    agentName: string;
+    task: string;
+    context?: string;
+    prepareOnly?: boolean;
+    workingDirectory?: string;
+  },
+  parentSessionId: string | undefined,
+  targetConnectionType?: AgentProfile['connection']['type'],
+  targetDisplayName?: string,
+): boolean {
+  if (args.prepareOnly) return false;
+  if (!isMainAgentSession(parentSessionId)) return false;
+  if (targetConnectionType === 'internal' || args.agentName === 'internal') return false;
+  if (!looksLikeLocalWorkspaceCodingTask(args)) return false;
+  if (explicitlyRequestsAgent(args, targetDisplayName)) return false;
+
+  return true;
+}
+
 // Initialize background notifier with our delegated runs map
 acpBackgroundNotifier.setDelegatedRunsMap(delegatedRuns);
 
@@ -755,6 +835,15 @@ export async function handleDelegateToAgent(
   // Try unified agent profile lookup first
   const profile = agentProfileService.getByName(normalizedArgs.agentName);
   if (profile) {
+    if (shouldBlockMainAgentDelegation(
+      normalizedArgs,
+      parentSessionId,
+      profile.connection.type,
+      profile.displayName,
+    )) {
+      return createBlockedMainAgentDelegationResult(normalizedArgs.agentName);
+    }
+
     // Check if agent is enabled
     if (!profile.enabled) {
       return {
@@ -770,6 +859,10 @@ export async function handleDelegateToAgent(
   // BACKWARD COMPATIBILITY: Handle explicit 'internal' agent name
   if (normalizedArgs.agentName === 'internal') {
     return executeInternalAgent(normalizedArgs, parentSessionId, waitForResult);
+  }
+
+  if (shouldBlockMainAgentDelegation(normalizedArgs, parentSessionId)) {
+    return createBlockedMainAgentDelegationResult(normalizedArgs.agentName);
   }
 
   // BACKWARD COMPATIBILITY: Fall back to legacy ACP agent lookup from config

@@ -183,7 +183,9 @@ describe("constructSystemPrompt", () => {
     const prompt = getAgentsPromptAddition()
 
     expect(prompt).toContain("Prefer doing the work directly")
+    expect(prompt).toContain("For local repo/workspace coding or debugging tasks")
     expect(prompt).toContain("Delegate when the user explicitly asks for a specific agent")
+    expect(prompt).toContain('prefer the internal agent for bounded parallel help')
     expect(prompt).toContain("incorporate the result into a complete answer")
     expect(prompt).not.toContain("ALWAYS delegate")
     expect(prompt).not.toContain("Only respond directly if NO agent matches")

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 let sessionUpdateHandler: ((event: any) => void) | undefined
+const mockGetByName = vi.fn((): any => undefined)
+const mockGetSessionProfileSnapshot = vi.fn((): any => undefined)
 
 const mockAcpService = {
   on: vi.fn((eventName: string, handler: (event: any) => void) => {
@@ -65,6 +67,7 @@ vi.mock("../emit-agent-progress", () => ({
 vi.mock("../state", () => ({
   agentSessionStateManager: {
     getSessionRunId: vi.fn(() => 7),
+    getSessionProfileSnapshot: mockGetSessionProfileSnapshot,
   },
 }))
 
@@ -75,7 +78,7 @@ vi.mock("../acp-session-state", () => ({
 
 vi.mock("../agent-profile-service", () => ({
   agentProfileService: {
-    getByName: vi.fn(() => undefined),
+    getByName: mockGetByName,
     getAll: vi.fn(() => []),
   },
 }))
@@ -99,6 +102,8 @@ describe("handleDelegateToAgent", () => {
     vi.resetModules()
     vi.clearAllMocks()
     sessionUpdateHandler = undefined
+    mockGetByName.mockReturnValue(undefined)
+    mockGetSessionProfileSnapshot.mockReturnValue(undefined)
   })
 
   it("prefers ACP respond_to_user tool-call content over trailing plain text", async () => {
@@ -141,5 +146,71 @@ describe("handleDelegateToAgent", () => {
       { appSessionId: "parent-session-1" },
     )
     expect(mockSetAcpToAppSessionMapping).toHaveBeenCalledWith("acp-session-1", "parent-session-1", 7)
+  })
+
+  it("blocks main-agent delegation for local workspace coding tasks", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "profile-main-agent",
+      profileName: "main-agent",
+      guidelines: "",
+    })
+
+    mockGetByName.mockReturnValue({
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "augustus",
+      enabled: true,
+      connection: { type: "stdio" },
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    const result = await handleDelegateToAgent({
+      agentName: "augustus",
+      task: "Find and fix a bug in the mobile app at /Users/ajjoobandi/.codex/worktrees/23f7/dotagents-mono. Inspect the codebase and fix it.",
+    }, "parent-session-1") as any
+
+    expect(result).toEqual(expect.objectContaining({
+      success: false,
+    }))
+    expect(result.error).toContain("Main Agent should handle local repo/workspace coding or debugging directly")
+    expect(mockAcpService.spawnAgent).not.toHaveBeenCalled()
+  })
+
+  it("allows explicit user requests for a specific specialist agent", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "profile-main-agent",
+      profileName: "main-agent",
+      guidelines: "",
+    })
+
+    mockGetByName.mockReturnValue({
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "augustus",
+      enabled: true,
+      connection: { type: "stdio" },
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    const result = await handleDelegateToAgent({
+      agentName: "augustus",
+      task: "Use augustus to debug /Users/ajjoobandi/.codex/worktrees/23f7/dotagents-mono/apps/mobile and report back.",
+      waitForResult: true,
+    }, "parent-session-1") as any
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      status: "completed",
+      output: "Final user-facing answer",
+    }))
+    expect(mockAcpService.spawnAgent).toHaveBeenCalledWith("augustus", {
+      workingDirectory: undefined,
+    })
   })
 })

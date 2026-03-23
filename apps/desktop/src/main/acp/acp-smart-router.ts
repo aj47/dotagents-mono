@@ -51,7 +51,8 @@ ${agentDescriptions}
 
 ### When to Delegate
 - Use the **research** agent for information gathering, web searches, and fact-finding
-- Use the **coding** agent for complex programming tasks, debugging, or code generation
+- Keep local repo/workspace coding and debugging in the current agent unless the user explicitly asked for a specialist or you are offloading a narrow parallel subtask
+- Use the **coding** agent when it has a clear specialty advantage for non-local work or when the user explicitly asked for it
 - Use the **analysis** agent for data analysis, comparisons, and evaluations
 - Use the **writing** agent for document creation, summarization, and content drafting
 

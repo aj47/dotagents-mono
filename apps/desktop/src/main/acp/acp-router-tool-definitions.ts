@@ -32,7 +32,7 @@ export const acpRouterToolDefinitions = [
   {
     name: 'delegate_to_agent',
     description:
-      'Delegate a sub-task to a specialized ACP agent. The agent will work autonomously and return results. Use this when a task is better suited for a specialist.',
+      'Delegate a sub-task to a specialized ACP agent. Use this when a specialist has a clear advantage or the user explicitly asked for that agent; keep local repo/workspace coding and debugging in the current agent unless delegating a narrow parallel subtask.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -146,7 +146,7 @@ export const acpRouterToolDefinitions = [
   {
     name: 'send_to_agent',
     description:
-      'Send a task to an agent. Alias for delegate_to_agent. The agent will process the task and return results.',
+      'Send a task to an agent. Alias for delegate_to_agent. Use this when a specialist has a clear advantage or the user explicitly asked for that agent; keep local repo/workspace coding and debugging in the current agent unless delegating a narrow parallel subtask.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -208,4 +208,3 @@ export function resolveToolName(toolName: string): string {
 export function isRouterTool(toolName: string): boolean {
   return acpRouterToolDefinitions.some(def => def.name === toolName);
 }
-

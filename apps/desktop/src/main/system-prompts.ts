@@ -246,8 +246,9 @@ export function getAgentsPromptAddition(excludeAgentId?: string): string {
   return `
 DELEGATION RULES (PRIORITY — check BEFORE responding):
   - Prefer doing the work directly when you can answer well with your own available tools, especially for simple questions, local lookups, and small tasks
+  - For local repo/workspace coding or debugging tasks, inspect files and use your own tools first instead of delegating the whole task to an external agent
   - Delegate when the user explicitly asks for a specific agent or when an agent has a clear specialty advantage for the task
-  - Use delegation for substantial specialized work or for independent subtasks that can run in parallel
+  - Use delegation for substantial specialized work or for independent subtasks that can run in parallel; for local coding side work, prefer the internal agent for bounded parallel help
   - Match user intent to agent capabilities — e.g., web browsing tasks go to a web browsing agent
   - After delegating, incorporate the result into a complete answer instead of stopping at raw delegate output
 
