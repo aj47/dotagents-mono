@@ -987,4 +987,45 @@ describe('LLM Fetch with AI SDK', () => {
       )
     ).rejects.toThrow('provider returned malformed chunk')
   })
+
+  it('should retry streaming TLS transport errors even when AI SDK marks them non-retryable', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    let callCount = 0
+    streamTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        const error = new Error('remote error: tls: bad record MAC') as any
+        error.statusCode = 400
+        error.isRetryable = false
+
+        return {
+          fullStream: (async function* () {
+            yield { type: 'error', error }
+          })(),
+        } as any
+      }
+
+      return {
+        fullStream: (async function* () {
+          yield { type: 'text-delta', text: 'Recovered after TLS retry.' }
+          yield { type: 'finish', totalUsage: { inputTokens: 10, outputTokens: 5 } }
+        })(),
+      } as any
+    })
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+    const onChunk = vi.fn()
+
+    const result = await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'test' }],
+      onChunk,
+      'openai',
+    )
+
+    expect(callCount).toBe(2)
+    expect(onChunk).toHaveBeenCalledWith('Recovered after TLS retry.', 'Recovered after TLS retry.')
+    expect(result.content).toBe('Recovered after TLS retry.')
+  })
 })
