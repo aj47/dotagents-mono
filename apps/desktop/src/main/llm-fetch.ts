@@ -323,6 +323,33 @@ function isEmptyResponseError(error: unknown): boolean {
   return false
 }
 
+function isRetryableTlsTransportMessage(message: string): boolean {
+  if (!message.includes("tls")) {
+    return false
+  }
+
+  const nonRetryableTlsPatterns = [
+    "certificate",
+    "self signed",
+    "unknown ca",
+    "hostname",
+    "expired",
+    "not yet valid",
+    "bad certificate",
+    "wrong version number",
+  ]
+
+  if (nonRetryableTlsPatterns.some(pattern => message.includes(pattern))) {
+    return false
+  }
+
+  return (
+    message.includes("bad record mac") ||
+    message.includes("alert internal error") ||
+    message.includes("internal error")
+  )
+}
+
 /**
  * Check if an error is retryable.
  * Uses AI SDK structured error fields (statusCode, isRetryable) when available,
@@ -380,6 +407,10 @@ function isRetryableError(error: unknown): boolean {
     // Fallback: message-based detection for transient network issues
     // NOTE: empty response/content removed - handled separately without backoff
     const message = error.message.toLowerCase()
+    if (isRetryableTlsTransportMessage(message)) {
+      return true
+    }
+
     return (
       message.includes("rate limit") ||
       message.includes("429") ||

@@ -887,6 +887,67 @@ describe('LLM Fetch with AI SDK', () => {
     shouldStopSpy.mockRestore()
   })
 
+  it('retries transient TLS stream errors such as bad record MAC and succeeds on the next attempt', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    let callCount = 0
+    streamTextMock.mockImplementation(() => {
+      callCount++
+
+      if (callCount === 1) {
+        return {
+          fullStream: (async function* () {
+            yield { type: 'error', error: { message: 'remote error: tls: bad record MAC', type: 'server_error' } }
+          })(),
+        } as any
+      }
+
+      return {
+        fullStream: (async function* () {
+          yield { type: 'text-delta', text: 'Recovered after retry.' }
+          yield { type: 'finish', totalUsage: { inputTokens: 5, outputTokens: 3 } }
+        })(),
+      } as any
+    })
+
+    const onChunk = vi.fn()
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    const result = await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'test' }],
+      onChunk,
+      'openai'
+    )
+
+    expect(callCount).toBe(2)
+    expect(result.content).toBe('Recovered after retry.')
+    expect(onChunk).toHaveBeenCalledWith('Recovered after retry.', 'Recovered after retry.')
+  })
+
+  it('does not retry non-transient TLS certificate failures', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'error', error: { message: 'tls: self signed certificate', type: 'server_error' } }
+      })(),
+    } as any)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreamingAndTools(
+        [{ role: 'user', content: 'test' }],
+        vi.fn(),
+        'openai'
+      )
+    ).rejects.toThrow('tls: self signed certificate')
+
+    expect(streamTextMock).toHaveBeenCalledTimes(1)
+  })
+
   it('should surface string stream errors instead of "Unknown error"', async () => {
     const { streamText } = await import('ai')
     const streamTextMock = vi.mocked(streamText)
