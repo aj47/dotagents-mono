@@ -56,7 +56,10 @@ export function buildChatMessagesFromHistory(
           continue;
         }
 
-        if (isSyntheticToolFailureSummary(historyMsg.content)) {
+        if (
+          isSyntheticToolFailureSummary(historyMsg.content)
+          && (lastMessage.toolResults?.length ?? 0) > 0
+        ) {
           continue;
         }
       }

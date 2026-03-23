@@ -43,6 +43,34 @@ describe('chat-history-utils', () => {
     });
   });
 
+  it('keeps synthetic tool failure summaries when they are the only failure signal', () => {
+    const messages = buildChatMessagesFromHistory([
+      { role: 'user', content: 'Open the missing file', timestamp: 1 },
+      {
+        role: 'assistant',
+        content: '',
+        timestamp: 2,
+        toolCalls: [{ name: 'read_file', arguments: { path: 'package.json.missing' } }],
+      },
+      {
+        role: 'tool',
+        content: 'TOOL FAILED: read_file (attempt 1/3)\nError: ENOENT: package.json.missing',
+        timestamp: 3,
+      },
+    ]);
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        role: 'assistant',
+        toolCalls: [{ name: 'read_file', arguments: { path: 'package.json.missing' } }],
+      }),
+      expect.objectContaining({
+        role: 'assistant',
+        content: 'TOOL FAILED: read_file (attempt 1/3)\nError: ENOENT: package.json.missing',
+      }),
+    ]);
+  });
+
   it('keeps user messages when requested', () => {
     const messages = buildChatMessagesFromHistory(
       [
