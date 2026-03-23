@@ -19,6 +19,7 @@ function createHookRuntime() {
     default: {} as any,
     useState,
     useCallback: (fn: any) => fn,
+    forwardRef: (render: any) => (props: any) => render(props, null),
   }
   reactMock.default = reactMock
 
@@ -79,7 +80,17 @@ function findTextareaById(node: any, id: string) {
   return findNode(node, (candidate) => candidate.type === "Textarea" && candidate.props?.id === id)
 }
 
-async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) {
+function findSelectByTestId(node: any, testId: string) {
+  return findNode(node, (candidate) => candidate.type === "Select" && findNode(
+    candidate.props?.children,
+    (child) => child.type === "SelectTrigger" && child.props?.["data-testid"] === testId,
+  ))
+}
+
+async function loadSettingsLoops(
+  runtime: ReturnType<typeof createHookRuntime>,
+  options: { agentProfiles?: any[] } = {},
+) {
   vi.resetModules()
 
   const saveLoop = vi.fn(async () => undefined)
@@ -89,27 +100,31 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
   const error = vi.fn()
   const invalidateQueries = vi.fn()
   const Null = () => null
-
-  vi.doMock("react", () => runtime.reactMock)
-  vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("@renderer/components/ui/label", () => ({ Label: (props: any) => ({ type: "Label", props }) }))
-  vi.doMock("@renderer/components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
-  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
-  vi.doMock("@renderer/components/ui/card", () => ({
+  const buttonMock = { Button: (props: any) => ({ type: "Button", props }) }
+  const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
+  const labelMock = { Label: (props: any) => ({ type: "Label", props }) }
+  const selectMock = {
+    Select: (props: any) => ({ type: "Select", props }),
+    SelectContent: (props: any) => ({ type: "SelectContent", props }),
+    SelectItem: (props: any) => ({ type: "SelectItem", props }),
+    SelectTrigger: (props: any) => ({ type: "SelectTrigger", props }),
+    SelectValue: (props: any) => ({ type: "SelectValue", props }),
+  }
+  const switchMock = { Switch: (props: any) => ({ type: "Switch", props }) }
+  const textareaMock = { Textarea: (props: any) => ({ type: "Textarea", props }) }
+  const cardMock = {
     Card: (props: any) => ({ type: "Card", props }),
     CardContent: (props: any) => ({ type: "CardContent", props }),
     CardDescription: (props: any) => ({ type: "CardDescription", props }),
     CardHeader: (props: any) => ({ type: "CardHeader", props }),
     CardTitle: (props: any) => ({ type: "CardTitle", props }),
-  }))
-  vi.doMock("@renderer/components/ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
-  vi.doMock("@renderer/lib/tipc-client", () => ({
+  }
+  const badgeMock = { Badge: (props: any) => ({ type: "Badge", props }) }
+  const tipcClientMock = {
     tipcClient: {
       getLoops: vi.fn(async () => []),
       getLoopStatuses: vi.fn(async () => []),
+      getAgentProfiles: vi.fn(async () => options.agentProfiles || []),
       saveLoop,
       startLoop,
       stopLoop,
@@ -117,9 +132,44 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
       triggerLoop: vi.fn(async () => ({ success: true })),
       openLoopTaskFile: vi.fn(async () => ({ success: true })),
     },
-  }))
+  }
+  const buttonModulePath = new URL("../components/ui/button.tsx", import.meta.url).pathname
+  const inputModulePath = new URL("../components/ui/input.tsx", import.meta.url).pathname
+  const labelModulePath = new URL("../components/ui/label.tsx", import.meta.url).pathname
+  const selectModulePath = new URL("../components/ui/select.tsx", import.meta.url).pathname
+  const switchModulePath = new URL("../components/ui/switch.tsx", import.meta.url).pathname
+  const textareaModulePath = new URL("../components/ui/textarea.tsx", import.meta.url).pathname
+  const cardModulePath = new URL("../components/ui/card.tsx", import.meta.url).pathname
+  const badgeModulePath = new URL("../components/ui/badge.tsx", import.meta.url).pathname
+  const tipcClientModulePath = new URL("../lib/tipc-client.ts", import.meta.url).pathname
+
+  vi.doMock("react", () => runtime.reactMock)
+  vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("@renderer/components/ui/button", () => buttonMock)
+  vi.doMock(buttonModulePath, () => buttonMock)
+  vi.doMock("@renderer/components/ui/input", () => inputMock)
+  vi.doMock(inputModulePath, () => inputMock)
+  vi.doMock("@renderer/components/ui/label", () => labelMock)
+  vi.doMock(labelModulePath, () => labelMock)
+  vi.doMock("@renderer/components/ui/select", () => selectMock)
+  vi.doMock(selectModulePath, () => selectMock)
+  vi.doMock("@renderer/components/ui/switch", () => switchMock)
+  vi.doMock(switchModulePath, () => switchMock)
+  vi.doMock("@renderer/components/ui/textarea", () => textareaMock)
+  vi.doMock(textareaModulePath, () => textareaMock)
+  vi.doMock("@renderer/components/ui/card", () => cardMock)
+  vi.doMock(cardModulePath, () => cardMock)
+  vi.doMock("@renderer/components/ui/badge", () => badgeMock)
+  vi.doMock(badgeModulePath, () => badgeMock)
+  vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)
+  vi.doMock(tipcClientModulePath, () => tipcClientMock)
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? [] : [] }),
+    useQuery: ({ queryKey }: any) => ({
+      data: queryKey?.[0] === "loop-agent-profiles"
+        ? (options.agentProfiles || [])
+        : [],
+    }),
     useQueryClient: () => ({ invalidateQueries }),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
@@ -168,7 +218,9 @@ describe("desktop repeat-task interval editing", () => {
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "" } })
 
     tree = runtime.render(Component, {} as any)
@@ -187,7 +239,9 @@ describe("desktop repeat-task interval editing", () => {
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "60" } })
 
     tree = runtime.render(Component, {} as any)
@@ -204,5 +258,45 @@ describe("desktop repeat-task interval editing", () => {
     })
     expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
     expect(success).toHaveBeenCalledWith("Task created")
+  })
+
+  it("persists a dedicated agent profile selection when saving", async () => {
+    const runtime = createHookRuntime()
+    const { Component, saveLoop } = await loadSettingsLoops(runtime, {
+      agentProfiles: [
+        {
+          id: "budget-monitor",
+          name: "budget-monitor",
+          displayName: "Budget Monitor",
+          enabled: true,
+        },
+      ],
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Add Task").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "name").props.onChange({ target: { value: "Langfuse Monitor" } })
+    tree = runtime.render(Component, {} as any)
+    findTextareaById(tree, "prompt").props.onChange({ target: { value: "Review recent Langfuse failures" } })
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "interval").props.onChange({ target: { value: "120" } })
+
+    tree = runtime.render(Component, {} as any)
+    const select = findSelectByTestId(tree, "loop-profile-select-trigger")
+    select.props.onValueChange("budget-monitor")
+
+    tree = runtime.render(Component, {} as any)
+    await findButtonWithText(tree, "Save").props.onClick()
+
+    expect(saveLoop).toHaveBeenCalledWith({
+      loop: expect.objectContaining({
+        name: "Langfuse Monitor",
+        prompt: "Review recent Langfuse failures",
+        intervalMinutes: 120,
+        profileId: "budget-monitor",
+      }),
+    })
   })
 })

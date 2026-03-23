@@ -2,6 +2,13 @@ import { useState } from "react"
 import { Button } from "@renderer/components/ui/button"
 import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 
@@ -11,7 +18,7 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig } from "@shared/types"
+import type { AgentProfile, LoopConfig } from "@shared/types"
 import { toast } from "sonner"
 
 interface EditingLoop {
@@ -20,6 +27,7 @@ interface EditingLoop {
   prompt: string
   intervalMinutesDraft: string
   enabled: boolean
+  profileId: string
   runOnStartup: boolean
 }
 
@@ -35,6 +43,7 @@ const emptyLoop: EditingLoop = {
   prompt: "",
   intervalMinutesDraft: "15",
   enabled: true,
+  profileId: "",
   runOnStartup: false,
 }
 
@@ -105,7 +114,16 @@ export function SettingsLoops() {
     refetchInterval: 5000,
   })
 
+  const agentProfilesQuery = useQuery({
+    queryKey: ["loop-agent-profiles"],
+    queryFn: async () => tipcClient.getAgentProfiles() as Promise<AgentProfile[]>,
+  })
+
   const loops: LoopConfig[] = loopsQuery.data || []
+  const availableAgentProfiles = (agentProfilesQuery.data || []).filter((profile) => profile.enabled)
+  const profileById = new Map(
+    availableAgentProfiles.map((profile) => [profile.id, profile] as const)
+  )
   const statusByLoopId = new Map(
     (loopStatusesQuery.data || []).map((s) => [s.id, s] as const)
   )
@@ -128,6 +146,7 @@ export function SettingsLoops() {
       prompt: loop.prompt,
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
+      profileId: loop.profileId ?? "",
       runOnStartup: loop.runOnStartup ?? false,
     })
   }
@@ -163,6 +182,7 @@ export function SettingsLoops() {
       prompt: editing.prompt.trim(),
       intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
+      profileId: editing.profileId.trim() || undefined,
       runOnStartup: editing.runOnStartup,
     }
 
@@ -242,6 +262,8 @@ export function SettingsLoops() {
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
         const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
+        const assignedProfile = loop.profileId ? profileById.get(loop.profileId) : undefined
+        const assignedProfileLabel = assignedProfile?.displayName || assignedProfile?.name || loop.profileId
         return (
           <div
             key={loop.id}
@@ -263,6 +285,18 @@ export function SettingsLoops() {
                 <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                   {loop.prompt}
                 </p>
+                {assignedProfileLabel && (
+                  <div className="mt-2">
+                    <Badge
+                      variant="outline"
+                      className="h-5 max-w-full truncate text-[11px] font-normal"
+                      data-testid={`loop-profile-badge-${loop.id}`}
+                      title={`Runs as ${assignedProfileLabel}`}
+                    >
+                      Agent: {assignedProfileLabel}
+                    </Badge>
+                  </div>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button
@@ -334,6 +368,7 @@ export function SettingsLoops() {
 
   const renderEditForm = () => {
     if (!editing) return null
+    const selectedProfile = editing.profileId ? profileById.get(editing.profileId) : undefined
     return (
       <Card className="max-w-3xl">
         <CardHeader className="space-y-1 pb-2">
@@ -359,6 +394,34 @@ export function SettingsLoops() {
               placeholder="Enter the prompt to send to the agent..."
               rows={4}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="loop-profile-trigger">Agent</Label>
+            <Select
+              value={editing.profileId || "__default__"}
+              onValueChange={(value) => setEditing({ ...editing, profileId: value === "__default__" ? "" : value })}
+            >
+              <SelectTrigger
+                id="loop-profile-trigger"
+                data-testid="loop-profile-select-trigger"
+                className="w-full sm:max-w-sm"
+              >
+                <SelectValue placeholder="No dedicated agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">No dedicated agent</SelectItem>
+                {availableAgentProfiles.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {profile.displayName || profile.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {selectedProfile
+                ? `This task will run as ${selectedProfile.displayName || selectedProfile.name}, so it can use that agent's model and tools instead of the default active agent.`
+                : "Use the default active agent, or pick a dedicated agent if this repeat task should run with a cheaper model or different tools."}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="interval">Interval</Label>
