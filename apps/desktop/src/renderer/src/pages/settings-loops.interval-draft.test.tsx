@@ -33,7 +33,7 @@ describe("desktop repeat-task interval editing", () => {
     expect(handleSaveSection).toContain("const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)")
     expect(handleSaveSection).toContain('toast.error("Interval must be a positive whole number of minutes")')
     expect(handleSaveSection).toContain("const parsedMaxIterations = parseLoopMaxIterationsDraft(editing.maxIterationsDraft)")
-    expect(handleSaveSection).toContain('toast.error(`Max iterations must be a whole number between ${LOOP_MAX_ITERATIONS_MIN} and ${LOOP_MAX_ITERATIONS_MAX}`)')
+    expect(handleSaveSection).toContain('toast.error("Max iterations must be a positive whole number")')
   })
 
   it("persists explicit max-iteration overrides alongside interval updates", () => {
@@ -47,5 +47,10 @@ describe("desktop repeat-task interval editing", () => {
     expect(settingsLoopsSource).toContain("{typeof loop.maxIterations === \"number\" && (")
     expect(settingsLoopsSource).toContain("<div>Max {loop.maxIterations} iterations</div>")
     expect(settingsLoopsSource).toContain('id="maxIterations"')
+  })
+
+  it("does not hard-cap task-specific max iterations in the desktop editor", () => {
+    expect(settingsLoopsSource).not.toContain("LOOP_MAX_ITERATIONS_MAX")
+    expect(settingsLoopsSource).not.toContain("max={LOOP_MAX_ITERATIONS_MAX}")
   })
 })

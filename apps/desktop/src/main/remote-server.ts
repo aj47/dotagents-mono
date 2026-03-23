@@ -3134,6 +3134,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (
         body.maxIterations !== undefined
+        && body.maxIterations !== null
         && (
           typeof body.maxIterations !== "number"
           || !Number.isFinite(body.maxIterations)
@@ -3155,7 +3156,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const maxIterations =
-        typeof body.maxIterations === "number"
+        body.maxIterations === null
+          ? null
+          : typeof body.maxIterations === "number"
           ? body.maxIterations
           : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
@@ -3165,7 +3168,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(prompt !== undefined && { prompt }),
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
-        ...(maxIterations !== undefined && { maxIterations }),
+        ...(body.maxIterations !== undefined && { maxIterations: maxIterations ?? undefined }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
       }
 

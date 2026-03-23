@@ -19,3 +19,19 @@ test('preserves the inline settings helper when loop editing is unavailable', ()
     /Configure Base URL and API key in Settings to save changes\./
   );
 });
+
+test('surfaces a loop-specific max-iteration field with inherit-default guidance', () => {
+  assert.match(screenSource, /maxIterationsDraft:\s*string/);
+  assert.match(screenSource, /maxIterationsDraft:\s*''/);
+  assert.match(screenSource, /formatMaxIterationsDraft\(loopFromRoute\.maxIterations\)/);
+  assert.match(screenSource, /formatMaxIterationsDraft\(loop\.maxIterations\)/);
+  assert.match(screenSource, /Max Iterations \(optional\)/);
+  assert.match(screenSource, /Leave blank to inherit the desktop default\./);
+});
+
+test('sends explicit mobile max-iteration overrides and can clear them on update', () => {
+  assert.match(screenSource, /const parsedMaxIterations = parseMaxIterationsDraft\(formData\.maxIterationsDraft\)/);
+  assert.match(screenSource, /setError\('Max iterations must be a positive whole number'\)/);
+  assert.match(screenSource, /maxIterations:\s*parsedMaxIterations \?\? null/);
+  assert.match(screenSource, /\.\.\.\(parsedMaxIterations !== undefined && \{ maxIterations: parsedMaxIterations \}\)/);
+});

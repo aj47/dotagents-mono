@@ -1138,7 +1138,7 @@ function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (typeof value.prompt !== "string") return false
   if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
   if (typeof value.enabled !== "boolean") return false
-  if (value.maxIterations !== undefined && (!isNonNegativeFiniteNumber(value.maxIterations) || value.maxIterations < 1)) return false
+  if (value.maxIterations !== undefined && (typeof value.maxIterations !== "number" || !Number.isInteger(value.maxIterations) || value.maxIterations < 1)) return false
   return value.runOnStartup === undefined || typeof value.runOnStartup === "boolean"
 }
 

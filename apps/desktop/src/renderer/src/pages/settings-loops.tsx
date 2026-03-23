@@ -50,7 +50,6 @@ const INTERVAL_PRESETS = [
 ]
 
 const LOOP_MAX_ITERATIONS_MIN = 1
-const LOOP_MAX_ITERATIONS_MAX = 100
 
 function formatLastRun(timestamp?: number): string {
   if (!timestamp) return "Never"
@@ -110,11 +109,7 @@ function parseLoopMaxIterationsDraft(draft: string): number | null | undefined {
   if (!/^[0-9]+$/.test(trimmedDraft)) return null
 
   const parsed = Number(trimmedDraft)
-  if (
-    !Number.isInteger(parsed)
-    || parsed < LOOP_MAX_ITERATIONS_MIN
-    || parsed > LOOP_MAX_ITERATIONS_MAX
-  ) {
+  if (!Number.isInteger(parsed) || parsed < LOOP_MAX_ITERATIONS_MIN) {
     return null
   }
 
@@ -191,7 +186,7 @@ export function SettingsLoops() {
 
     const parsedMaxIterations = parseLoopMaxIterationsDraft(editing.maxIterationsDraft)
     if (parsedMaxIterations === null) {
-      toast.error(`Max iterations must be a whole number between ${LOOP_MAX_ITERATIONS_MIN} and ${LOOP_MAX_ITERATIONS_MAX}`)
+      toast.error("Max iterations must be a positive whole number")
       return
     }
 
@@ -437,7 +432,6 @@ export function SettingsLoops() {
                 id="maxIterations"
                 type="number"
                 min={LOOP_MAX_ITERATIONS_MIN}
-                max={LOOP_MAX_ITERATIONS_MAX}
                 value={editing.maxIterationsDraft}
                 onChange={(e) => setEditing({ ...editing, maxIterationsDraft: e.target.value })}
                 className="h-8 w-28"

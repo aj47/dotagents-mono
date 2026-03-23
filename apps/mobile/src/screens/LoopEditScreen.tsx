@@ -28,6 +28,7 @@ type LoopFormData = {
   name: string;
   prompt: string;
   intervalMinutes: string;
+  maxIterationsDraft: string;
   enabled: boolean;
   profileId: string;
 };
@@ -36,9 +37,29 @@ const defaultFormData: LoopFormData = {
   name: '',
   prompt: '',
   intervalMinutes: '60',
+  maxIterationsDraft: '',
   enabled: true,
   profileId: '',
 };
+
+function formatMaxIterationsDraft(maxIterations?: number): string {
+  const normalizedMaxIterations = typeof maxIterations === 'number' && Number.isFinite(maxIterations)
+    ? Math.floor(maxIterations)
+    : 0;
+
+  return normalizedMaxIterations >= 1 ? String(normalizedMaxIterations) : '';
+}
+
+function parseMaxIterationsDraft(draft: string): number | null | undefined {
+  const trimmedDraft = draft.trim();
+  if (!trimmedDraft) return undefined;
+  if (!/^\d+$/.test(trimmedDraft)) return null;
+
+  const parsed = Number(trimmedDraft);
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
+
+  return parsed;
+}
 
 export default function LoopEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -56,6 +77,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         name: loopFromRoute.name,
         prompt: loopFromRoute.prompt,
         intervalMinutes: String(loopFromRoute.intervalMinutes),
+        maxIterationsDraft: formatMaxIterationsDraft(loopFromRoute.maxIterations),
         enabled: loopFromRoute.enabled,
         profileId: loopFromRoute.profileId || '',
       }
@@ -128,6 +150,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           name: loop.name,
           prompt: loop.prompt,
           intervalMinutes: String(loop.intervalMinutes),
+          maxIterationsDraft: formatMaxIterationsDraft(loop.maxIterations),
           enabled: loop.enabled,
           profileId: loop.profileId || '',
         });
@@ -158,12 +181,17 @@ export default function LoopEditScreen({ navigation, route }: any) {
     const prompt = formData.prompt.trim();
     const intervalInput = formData.intervalMinutes.trim();
     const intervalMinutes = Number(intervalInput);
+    const parsedMaxIterations = parseMaxIterationsDraft(formData.maxIterationsDraft);
     if (!name || !prompt) {
       setError('Name and prompt are required');
       return;
     }
     if (!/^\d+$/.test(intervalInput) || !Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
       setError('Interval must be a positive whole number of minutes');
+      return;
+    }
+    if (parsedMaxIterations === null) {
+      setError('Max iterations must be a positive whole number');
       return;
     }
 
@@ -176,6 +204,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           prompt,
           intervalMinutes,
           enabled: formData.enabled,
+          maxIterations: parsedMaxIterations ?? null,
           profileId: formData.profileId || undefined,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
@@ -185,6 +214,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           prompt,
           intervalMinutes,
           enabled: formData.enabled,
+          ...(parsedMaxIterations !== undefined && { maxIterations: parsedMaxIterations }),
           profileId: formData.profileId || undefined,
         };
         await settingsClient.createLoop(createPayload);
@@ -252,6 +282,17 @@ export default function LoopEditScreen({ navigation, route }: any) {
         placeholderTextColor={theme.colors.mutedForeground}
         keyboardType="numeric"
       />
+
+      <Text style={styles.label}>Max Iterations (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.maxIterationsDraft}
+        onChangeText={v => updateField('maxIterationsDraft', v)}
+        placeholder="Use desktop default"
+        placeholderTextColor={theme.colors.mutedForeground}
+        keyboardType="numeric"
+      />
+      <Text style={styles.helperText}>Leave blank to inherit the desktop default.</Text>
 
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Enabled</Text>
