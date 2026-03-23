@@ -12,9 +12,24 @@ import {
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
-import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
+import {
+  Trash2,
+  Plus,
+  Edit2,
+  Save,
+  X,
+  Play,
+  Clock,
+  FileText,
+} from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -81,9 +96,10 @@ function formatInterval(minutes: number): string {
 }
 
 function formatLoopIntervalDraft(minutes?: number): string {
-  const normalizedMinutes = typeof minutes === "number" && Number.isFinite(minutes)
-    ? Math.floor(minutes)
-    : 0
+  const normalizedMinutes =
+    typeof minutes === "number" && Number.isFinite(minutes)
+      ? Math.floor(minutes)
+      : 0
 
   return normalizedMinutes >= 1 ? String(normalizedMinutes) : "1"
 }
@@ -98,6 +114,27 @@ function parseLoopIntervalDraft(draft: string): number | null {
   return parsed
 }
 
+const NO_DEDICATED_AGENT_VALUE = "none"
+
+function encodeProfileSelectValue(profileId?: string): string {
+  return profileId ? `profile:${profileId}` : NO_DEDICATED_AGENT_VALUE
+}
+
+function decodeProfileSelectValue(value: string): string {
+  return value === NO_DEDICATED_AGENT_VALUE
+    ? ""
+    : value.startsWith("profile:")
+      ? value.slice("profile:".length)
+      : value
+}
+
+function getAgentProfileLabel(
+  profile?: Pick<AgentProfile, "id" | "name" | "displayName">,
+  fallbackId?: string,
+): string {
+  return profile?.displayName || profile?.name || fallbackId || ""
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
@@ -110,22 +147,27 @@ export function SettingsLoops() {
 
   const loopStatusesQuery = useQuery({
     queryKey: ["loop-statuses"],
-    queryFn: async () => tipcClient.getLoopStatuses() as Promise<LoopRuntimeStatus[]>,
+    queryFn: async () =>
+      tipcClient.getLoopStatuses() as Promise<LoopRuntimeStatus[]>,
     refetchInterval: 5000,
   })
 
   const agentProfilesQuery = useQuery({
     queryKey: ["loop-agent-profiles"],
-    queryFn: async () => tipcClient.getAgentProfiles() as Promise<AgentProfile[]>,
+    queryFn: async () =>
+      tipcClient.getAgentProfiles() as Promise<AgentProfile[]>,
   })
 
   const loops: LoopConfig[] = loopsQuery.data || []
-  const availableAgentProfiles = (agentProfilesQuery.data || []).filter((profile) => profile.enabled)
+  const allAgentProfiles = agentProfilesQuery.data || []
+  const availableAgentProfiles = allAgentProfiles.filter(
+    (profile) => profile.enabled,
+  )
   const profileById = new Map(
-    availableAgentProfiles.map((profile) => [profile.id, profile] as const)
+    allAgentProfiles.map((profile) => [profile.id, profile] as const),
   )
   const statusByLoopId = new Map(
-    (loopStatusesQuery.data || []).map((s) => [s.id, s] as const)
+    (loopStatusesQuery.data || []).map((s) => [s.id, s] as const),
   )
 
   const handleCreate = () => {
@@ -169,13 +211,21 @@ export function SettingsLoops() {
       return
     }
 
-    const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)
+    const parsedIntervalMinutes = parseLoopIntervalDraft(
+      editing.intervalMinutesDraft,
+    )
     if (parsedIntervalMinutes === null) {
       toast.error("Interval must be a positive whole number of minutes")
       return
     }
 
-    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
+    const slugify = (s: string) =>
+      s
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
@@ -262,13 +312,18 @@ export function SettingsLoops() {
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
         const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
-        const assignedProfile = loop.profileId ? profileById.get(loop.profileId) : undefined
-        const assignedProfileLabel = assignedProfile?.displayName || assignedProfile?.name || loop.profileId
+        const assignedProfile = loop.profileId
+          ? profileById.get(loop.profileId)
+          : undefined
+        const assignedProfileLabel = getAgentProfileLabel(
+          assignedProfile,
+          loop.profileId,
+        )
         return (
           <div
             key={loop.id}
             className={cn(
-              "rounded-lg border bg-card px-3 py-2",
+              "bg-card rounded-lg border px-3 py-2",
               !loop.enabled && "opacity-60",
             )}
           >
@@ -282,7 +337,7 @@ export function SettingsLoops() {
                     <Badge variant="outline">Disabled</Badge>
                   ) : null}
                 </div>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                <p className="text-muted-foreground mt-1 line-clamp-1 text-xs">
                   {loop.prompt}
                 </p>
                 {assignedProfileLabel && (
@@ -305,7 +360,8 @@ export function SettingsLoops() {
                   className="h-7 gap-1.5 px-2"
                   onClick={() => handleRunNow(loop)}
                 >
-                  <Play className="h-3.5 w-3.5" />Run
+                  <Play className="h-3.5 w-3.5" />
+                  Run
                 </Button>
                 <Button
                   variant="outline"
@@ -313,7 +369,8 @@ export function SettingsLoops() {
                   className="h-7 gap-1.5 px-2"
                   onClick={() => handleOpenTaskFile(loop)}
                 >
-                  <FileText className="h-3.5 w-3.5" />File
+                  <FileText className="h-3.5 w-3.5" />
+                  File
                 </Button>
                 <Button
                   variant="ghost"
@@ -336,7 +393,7 @@ export function SettingsLoops() {
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <div className="text-muted-foreground mt-2 flex flex-wrap gap-3 text-xs">
               <div className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
                 Every {formatInterval(loop.intervalMinutes)}
@@ -353,13 +410,15 @@ export function SettingsLoops() {
                 checked={loop.enabled}
                 onCheckedChange={() => handleToggleEnabled(loop)}
               />
-              <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
+              <Label className="text-xs">
+                {loop.enabled ? "Enabled" : "Disabled"}
+              </Label>
             </div>
           </div>
         )
       })}
       {loops.length === 0 && (
-        <div className="py-8 text-center text-muted-foreground">
+        <div className="text-muted-foreground py-8 text-center">
           No repeat tasks configured. Click &quot;Add Task&quot; to create one.
         </div>
       )}
@@ -368,12 +427,31 @@ export function SettingsLoops() {
 
   const renderEditForm = () => {
     if (!editing) return null
-    const selectedProfile = editing.profileId ? profileById.get(editing.profileId) : undefined
+    const selectedProfile = editing.profileId
+      ? profileById.get(editing.profileId)
+      : undefined
+    const selectedProfileLabel = getAgentProfileLabel(
+      selectedProfile,
+      editing.profileId,
+    )
+    const selectedProfileValue = encodeProfileSelectValue(editing.profileId)
+    const selectedProfileIsDisabled =
+      !!selectedProfile && !selectedProfile.enabled
+    const selectedProfileIsMissing = !!editing.profileId && !selectedProfile
+    const selectedProfileIsUnavailable =
+      selectedProfileIsDisabled || selectedProfileIsMissing
+    const unavailableProfileLabel = selectedProfileIsMissing
+      ? `Missing agent (${editing.profileId})`
+      : `${selectedProfileLabel} (disabled)`
     return (
       <Card className="max-w-3xl">
         <CardHeader className="space-y-1 pb-2">
-          <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
-          <CardDescription>Set the prompt, interval, and startup behavior.</CardDescription>
+          <CardTitle className="text-lg">
+            {isCreating ? "Add Repeat Task" : "Edit Repeat Task"}
+          </CardTitle>
+          <CardDescription>
+            Set the prompt, interval, and startup behavior.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -390,7 +468,9 @@ export function SettingsLoops() {
             <Textarea
               id="prompt"
               value={editing.prompt}
-              onChange={(e) => setEditing({ ...editing, prompt: e.target.value })}
+              onChange={(e) =>
+                setEditing({ ...editing, prompt: e.target.value })
+              }
               placeholder="Enter the prompt to send to the agent..."
               rows={4}
             />
@@ -398,8 +478,13 @@ export function SettingsLoops() {
           <div className="space-y-2">
             <Label htmlFor="loop-profile-trigger">Agent</Label>
             <Select
-              value={editing.profileId || "__default__"}
-              onValueChange={(value) => setEditing({ ...editing, profileId: value === "__default__" ? "" : value })}
+              value={selectedProfileValue}
+              onValueChange={(value) =>
+                setEditing({
+                  ...editing,
+                  profileId: decodeProfileSelectValue(value),
+                })
+              }
             >
               <SelectTrigger
                 id="loop-profile-trigger"
@@ -409,18 +494,32 @@ export function SettingsLoops() {
                 <SelectValue placeholder="No dedicated agent" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__default__">No dedicated agent</SelectItem>
+                {selectedProfileIsUnavailable && (
+                  <SelectItem value={selectedProfileValue}>
+                    {unavailableProfileLabel}
+                  </SelectItem>
+                )}
+                <SelectItem value={NO_DEDICATED_AGENT_VALUE}>
+                  No dedicated agent
+                </SelectItem>
                 {availableAgentProfiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.displayName || profile.name}
+                  <SelectItem
+                    key={profile.id}
+                    value={encodeProfileSelectValue(profile.id)}
+                  >
+                    {getAgentProfileLabel(profile)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              {selectedProfile
-                ? `This task will run as ${selectedProfile.displayName || selectedProfile.name}, so it can use that agent's model and tools instead of the default active agent.`
-                : "Use the default active agent, or pick a dedicated agent if this repeat task should run with a cheaper model or different tools."}
+            <p className="text-muted-foreground text-xs">
+              {selectedProfileIsMissing
+                ? `This task still references agent "${editing.profileId}", but it is no longer available. Keeping this selection preserves the saved agent until you choose another agent or no dedicated agent.`
+                : selectedProfileIsDisabled
+                  ? `This task still references ${selectedProfileLabel}, but that agent is currently disabled. Keeping this selection preserves the saved agent until you choose another agent or no dedicated agent.`
+                  : selectedProfile
+                    ? `This task will run as ${selectedProfileLabel}, so it can use that agent's model and tools instead of the default active agent.`
+                    : "Use the default active agent, or pick a dedicated agent if this repeat task should run with a cheaper model or different tools."}
             </p>
           </div>
           <div className="space-y-2">
@@ -431,19 +530,36 @@ export function SettingsLoops() {
                 type="number"
                 min={1}
                 value={editing.intervalMinutesDraft}
-                onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    intervalMinutesDraft: e.target.value,
+                  })
+                }
                 className="h-8 w-20"
               />
-              <span className="self-center text-xs text-muted-foreground">minutes</span>
+              <span className="text-muted-foreground self-center text-xs">
+                minutes
+              </span>
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {INTERVAL_PRESETS.map((preset) => (
                 <Button
                   key={preset.value}
-                  variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                  variant={
+                    parseLoopIntervalDraft(editing.intervalMinutesDraft) ===
+                    preset.value
+                      ? "secondary"
+                      : "ghost"
+                  }
                   size="sm"
                   className="h-7 px-2 text-xs"
-                  onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      intervalMinutesDraft: String(preset.value),
+                    })
+                  }
                 >
                   {preset.label}
                 </Button>
@@ -463,17 +579,26 @@ export function SettingsLoops() {
               <Switch
                 id="runOnStartup"
                 checked={editing.runOnStartup}
-                onCheckedChange={(v) => setEditing({ ...editing, runOnStartup: v })}
+                onCheckedChange={(v) =>
+                  setEditing({ ...editing, runOnStartup: v })
+                }
               />
               <Label htmlFor="runOnStartup">Run on Startup</Label>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-3">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCancel}>
-              <X className="h-4 w-4" />Cancel
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleCancel}
+            >
+              <X className="h-4 w-4" />
+              Cancel
             </Button>
             <Button size="sm" className="gap-1.5" onClick={handleSave}>
-              <Save className="h-4 w-4" />Save
+              <Save className="h-4 w-4" />
+              Save
             </Button>
           </div>
         </CardContent>
@@ -485,7 +610,8 @@ export function SettingsLoops() {
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <Button size="sm" className="gap-1.5" onClick={handleCreate}>
-          <Plus className="h-3.5 w-3.5" />Add Task
+          <Plus className="h-3.5 w-3.5" />
+          Add Task
         </Button>
       </div>
       {editing ? renderEditForm() : renderLoopList()}
