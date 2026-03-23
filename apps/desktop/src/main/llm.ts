@@ -43,7 +43,8 @@ import {
   INTERNAL_COMPLETION_NUDGE_TEXT,
 } from "../shared/runtime-tool-names"
 import {
-  appendAgentStopNote,
+  appendAgentStopNoteForReason,
+  getAgentStopMessage,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
@@ -541,6 +542,7 @@ export async function processTranscriptWithAgentMode(
       sessionId: currentConversationId,  // Groups all agent sessions in this conversation
       metadata: {
         maxIterations,
+        sessionCostLimitUsd: config.mcpSessionCostLimitUsd ?? 1,
         hasHistory: !!previousConversationHistory?.length,
         profileId: effectiveProfileSnapshot?.profileId,
         profileName: effectiveProfileSnapshot?.profileName,
@@ -1106,7 +1108,8 @@ export async function processTranscriptWithAgentMode(
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
-    finalContent = appendAgentStopNote(finalContent)
+    const stopReason = agentSessionStateManager.getStopReason(currentSessionId) ?? "kill_switch"
+    finalContent = appendAgentStopNoteForReason(finalContent, stopReason)
 
     const lastMessage = conversationHistory[conversationHistory.length - 1]
     if (
@@ -1510,13 +1513,14 @@ export async function processTranscriptWithAgentMode(
 
     // Check for stop signal (session-specific or global)
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
-      logLLM(`Agent session ${currentSessionId} stopped by kill switch`)
+      const stopMessage = getAgentStopMessage(agentSessionStateManager.getStopReason(currentSessionId))
+      logLLM(`Agent session ${currentSessionId} stopped`, { stopMessage })
 
       // Add emergency stop step
       const stopStep = createProgressStep(
         "completion",
         "Agent stopped",
-        "Agent mode was stopped by emergency kill switch",
+        stopMessage,
         "error",
       )
       progressSteps.push(stopStep)
@@ -1623,7 +1627,7 @@ export async function processTranscriptWithAgentMode(
       logLLM(`Agent session ${currentSessionId} stopped during context shrink`)
       thinkingStep.status = "completed"
       thinkingStep.title = "Agent stopped"
-      thinkingStep.description = "Emergency stop triggered"
+      thinkingStep.description = getAgentStopMessage(agentSessionStateManager.getStopReason(currentSessionId))
       finalizeEmergencyStop(progressSteps.slice(-3))
       break
     }
@@ -1680,7 +1684,7 @@ export async function processTranscriptWithAgentMode(
         logLLM(`Agent session ${currentSessionId} stopped right after LLM response`)
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
-        thinkingStep.description = "Emergency stop triggered"
+        thinkingStep.description = getAgentStopMessage(agentSessionStateManager.getStopReason(currentSessionId))
         finalizeEmergencyStop(progressSteps.slice(-3))
         break
       }
@@ -1689,7 +1693,7 @@ export async function processTranscriptWithAgentMode(
         logLLM(`LLM call aborted for session ${currentSessionId} due to emergency stop`)
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
-        thinkingStep.description = "Emergency stop triggered"
+        thinkingStep.description = getAgentStopMessage(agentSessionStateManager.getStopReason(currentSessionId))
         finalizeEmergencyStop(progressSteps.slice(-3))
         break
       }
@@ -3032,6 +3036,7 @@ export async function processTranscriptWithAgentMode(
         metadata: {
           totalIterations: iteration,
           wasAborted,
+          estimatedCostUsd: agentSessionStateManager.getEstimatedCostUsd(currentSessionId),
           ...(lastContextBudgetInfo && {
             contextBudget: {
               estTokensAfter: lastContextBudgetInfo.estTokensAfter,

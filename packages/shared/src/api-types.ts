@@ -66,6 +66,7 @@ export interface Settings {
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
   mcpUnlimitedIterations?: boolean;
+  mcpSessionCostLimitUsd?: number;
   mainAgentMode?: 'api' | 'acp';
   mainAgentName?: string;
   acpInjectRuntimeTools?: boolean;
@@ -148,6 +149,7 @@ export interface SettingsUpdate {
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
   mcpUnlimitedIterations?: boolean;
+  mcpSessionCostLimitUsd?: number;
   mainAgentMode?: 'api' | 'acp';
   mainAgentName?: string;
   acpInjectRuntimeTools?: boolean;

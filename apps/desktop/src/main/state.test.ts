@@ -25,6 +25,20 @@ describe("agentSessionStateManager", () => {
     expect(toolApprovalManager.getPendingApprovalCount()).toBe(0)
   })
 
+  it("tracks stop reasons and estimated session cost", async () => {
+    const { agentSessionStateManager } = await import("./state")
+
+    agentSessionStateManager.startSessionRun("session-budget")
+    expect(agentSessionStateManager.getEstimatedCostUsd("session-budget")).toBe(0)
+
+    const totalCost = agentSessionStateManager.addEstimatedCostUsd("session-budget", 0.42)
+    expect(totalCost).toBe(0.42)
+    expect(agentSessionStateManager.getEstimatedCostUsd("session-budget")).toBe(0.42)
+
+    agentSessionStateManager.stopSession("session-budget", "session_cost_limit")
+    expect(agentSessionStateManager.getStopReason("session-budget")).toBe("session_cost_limit")
+  })
+
   it("cleanupSession aborts and unregisters controllers, cancels approvals, and preserves run id", async () => {
     const { agentSessionStateManager, state, toolApprovalManager } = await import("./state")
 

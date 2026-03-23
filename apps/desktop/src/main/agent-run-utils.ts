@@ -1,5 +1,6 @@
 import type { SessionProfileSnapshot } from "../shared/types"
 import { RESPOND_TO_USER_TOOL } from "../shared/runtime-tool-names"
+import type { AgentSessionStopReason } from "./state"
 import {
   extractRespondToUserContentFromArgs,
   resolveLatestUserFacingResponse,
@@ -8,6 +9,8 @@ import {
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
+export const AGENT_SESSION_COST_LIMIT_STOP_NOTE =
+  "(Agent mode was stopped after reaching the session cost limit)"
 
 export interface AgentIterationLimits {
   loopMaxIterations: number
@@ -92,14 +95,38 @@ export function resolveAgentIterationLimits(
 }
 
 export function appendAgentStopNote(content: string): string {
+  return appendAgentStopNoteForReason(content, "kill_switch")
+}
+
+export function getAgentStopMessage(
+  stopReason: AgentSessionStopReason = "kill_switch",
+): string {
+  return stopReason === "session_cost_limit"
+    ? "Agent mode was stopped after reaching the session cost limit"
+    : "Agent mode was stopped by emergency kill switch"
+}
+
+export function getAgentStopNote(
+  stopReason: AgentSessionStopReason = "kill_switch",
+): string {
+  return stopReason === "session_cost_limit"
+    ? AGENT_SESSION_COST_LIMIT_STOP_NOTE
+    : AGENT_STOP_NOTE
+}
+
+export function appendAgentStopNoteForReason(
+  content: string,
+  stopReason: AgentSessionStopReason = "kill_switch",
+): string {
   const normalizedContent = typeof content === "string" ? content.trimEnd() : ""
-  if (normalizedContent.includes(AGENT_STOP_NOTE)) {
+  const stopNote = getAgentStopNote(stopReason)
+  if (normalizedContent.includes(stopNote)) {
     return normalizedContent
   }
 
   return normalizedContent.length > 0
-    ? `${normalizedContent}\n\n${AGENT_STOP_NOTE}`
-    : AGENT_STOP_NOTE
+    ? `${normalizedContent}\n\n${stopNote}`
+    : stopNote
 }
 
 export function getLatestAssistantMessageContent(

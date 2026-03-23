@@ -1286,6 +1286,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         whatsappEnabled: cfg.whatsappEnabled ?? false,
         // Agent settings
         mcpMaxIterations: cfg.mcpMaxIterations ?? 10,
+        mcpSessionCostLimitUsd: cfg.mcpSessionCostLimitUsd ?? 1,
         // Streamer Mode
         streamerModeEnabled: cfg.streamerModeEnabled ?? false,
         // Speech-to-Text
@@ -1376,6 +1377,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.mcpMaxIterations === "number" && body.mcpMaxIterations >= 1 && body.mcpMaxIterations <= 100) {
         // Coerce to integer to avoid surprising iteration counts with floats
         updates.mcpMaxIterations = Math.floor(body.mcpMaxIterations)
+      }
+      if (typeof body.mcpSessionCostLimitUsd === "number" && body.mcpSessionCostLimitUsd > 0 && body.mcpSessionCostLimitUsd <= 100) {
+        updates.mcpSessionCostLimitUsd = Math.round(body.mcpSessionCostLimitUsd * 100) / 100
       }
       // Model settings
       const validProviders = ["openai", "groq", "gemini"]

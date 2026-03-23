@@ -37,6 +37,9 @@ const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const MCP_MAX_ITERATIONS_MIN = 1
 const MCP_MAX_ITERATIONS_MAX = 50
 const MCP_MAX_ITERATIONS_DEFAULT = 10
+const MCP_SESSION_COST_LIMIT_MIN = 0.01
+const MCP_SESSION_COST_LIMIT_MAX = 100
+const MCP_SESSION_COST_LIMIT_DEFAULT = 1
 
 type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
 
@@ -55,6 +58,20 @@ function parseMcpMaxIterationsDraft(value: string) {
   return parsedValue
 }
 
+function formatMcpSessionCostLimitDraft(value: number | undefined) {
+  const normalizedValue = typeof value === "number" && value > 0
+    ? value
+    : MCP_SESSION_COST_LIMIT_DEFAULT
+  return normalizedValue.toFixed(2)
+}
+
+function parseMcpSessionCostLimitDraft(value: string) {
+  const parsedValue = Number.parseFloat(value)
+  if (Number.isNaN(parsedValue)) return null
+  if (parsedValue < MCP_SESSION_COST_LIMIT_MIN || parsedValue > MCP_SESSION_COST_LIMIT_MAX) return null
+  return Math.round(parsedValue * 100) / 100
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
@@ -70,6 +87,10 @@ export function Component() {
     () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
   )
   const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [mcpSessionCostLimitDraft, setMcpSessionCostLimitDraft] = useState(
+    () => formatMcpSessionCostLimitDraft(cfg?.mcpSessionCostLimitUsd),
+  )
+  const mcpSessionCostLimitSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Defer audio device enumeration until the user expands the Audio Devices section
   const [audioSectionOpen, setAudioSectionOpen] = useState(false)
@@ -211,6 +232,10 @@ export function Component() {
   }, [cfg?.mcpMaxIterations])
 
   useEffect(() => {
+    setMcpSessionCostLimitDraft(formatMcpSessionCostLimitDraft(cfg?.mcpSessionCostLimitUsd))
+  }, [cfg?.mcpSessionCostLimitUsd])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(langfuseSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
@@ -222,6 +247,10 @@ export function Component() {
 
       if (mcpMaxIterationsSaveTimeoutRef.current) {
         clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      }
+
+      if (mcpSessionCostLimitSaveTimeoutRef.current) {
+        clearTimeout(mcpSessionCostLimitSaveTimeoutRef.current)
       }
     }
   }, [])
@@ -315,6 +344,41 @@ export function Component() {
     setMcpMaxIterationsDraft(value)
     scheduleMcpMaxIterationsSave(value)
   }, [scheduleMcpMaxIterationsSave])
+
+  const flushMcpSessionCostLimitSave = useCallback((value: string) => {
+    if (mcpSessionCostLimitSaveTimeoutRef.current) {
+      clearTimeout(mcpSessionCostLimitSaveTimeoutRef.current)
+      mcpSessionCostLimitSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpSessionCostLimitDraft(value)
+    if (parsedValue === null) {
+      setMcpSessionCostLimitDraft(formatMcpSessionCostLimitDraft(cfgRef.current?.mcpSessionCostLimitUsd))
+      return
+    }
+
+    saveConfig({ mcpSessionCostLimitUsd: parsedValue })
+  }, [saveConfig])
+
+  const scheduleMcpSessionCostLimitSave = useCallback((value: string) => {
+    if (mcpSessionCostLimitSaveTimeoutRef.current) {
+      clearTimeout(mcpSessionCostLimitSaveTimeoutRef.current)
+      mcpSessionCostLimitSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpSessionCostLimitDraft(value)
+    if (parsedValue === null) return
+
+    mcpSessionCostLimitSaveTimeoutRef.current = setTimeout(() => {
+      mcpSessionCostLimitSaveTimeoutRef.current = null
+      saveConfig({ mcpSessionCostLimitUsd: parsedValue })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateMcpSessionCostLimitDraft = useCallback((value: string) => {
+    setMcpSessionCostLimitDraft(value)
+    scheduleMcpSessionCostLimitSave(value)
+  }, [scheduleMcpSessionCostLimitSave])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -465,6 +529,25 @@ export function Component() {
               />
             </Control>
           )}
+
+          <Control label={<ControlLabel label="Session Cost Limit (USD)" tooltip="Estimated LLM spend ceiling for a single agent session. Lower values stop runaway sessions sooner." />} className="px-3">
+            <div className="space-y-2">
+              <Input
+                type="number"
+                min={String(MCP_SESSION_COST_LIMIT_MIN)}
+                max={String(MCP_SESSION_COST_LIMIT_MAX)}
+                step="0.01"
+                value={mcpSessionCostLimitDraft}
+                onChange={(e) => updateMcpSessionCostLimitDraft(e.currentTarget.value)}
+                onBlur={(e) => flushMcpSessionCostLimitSave(e.currentTarget.value)}
+                placeholder={formatMcpSessionCostLimitDraft(MCP_SESSION_COST_LIMIT_DEFAULT)}
+                className="w-32"
+              />
+              <p className="text-xs text-muted-foreground">
+                Estimated from model pricing and token usage. Default: $1.00 per session.
+              </p>
+            </div>
+          </Control>
 
           <Control label={<ControlLabel label="Emergency Kill Switch" tooltip="Provides a global hotkey to immediately stop agent mode and kill all agent-created processes" />} className="px-3">
             <div className="space-y-3">

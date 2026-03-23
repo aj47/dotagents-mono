@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { getPromptCachingConfigMock } = vi.hoisted(() => ({
+const { getPromptCachingConfigMock, stateMocks } = vi.hoisted(() => ({
   getPromptCachingConfigMock: vi.fn<any, any>(() => undefined),
+  stateMocks: {
+    isSessionRegistered: vi.fn(() => false),
+    shouldStopSession: vi.fn(() => false),
+    getStopReason: vi.fn(() => undefined),
+    stopSession: vi.fn(),
+    addEstimatedCostUsd: vi.fn((_, amountUsd: number) => amountUsd),
+    registerAbortController: vi.fn(),
+    unregisterAbortController: vi.fn(),
+  },
 }))
 
 // Mock dependencies
@@ -15,6 +24,7 @@ vi.mock('./config', () => ({
       openaiBaseUrl: 'https://api.openai.com/v1',
       mcpToolsOpenaiModel: 'gpt-4.1-mini',
       mcpToolsProviderId: 'openai',
+      mcpSessionCostLimitUsd: 1,
     }),
   },
 }))
@@ -39,10 +49,13 @@ vi.mock('./state', () => ({
     agentIterationCount: 0,
   },
   agentSessionStateManager: {
-    isSessionRegistered: () => false,
-    shouldStopSession: () => false,
-    registerAbortController: vi.fn(),
-    unregisterAbortController: vi.fn(),
+    isSessionRegistered: stateMocks.isSessionRegistered,
+    shouldStopSession: stateMocks.shouldStopSession,
+    getStopReason: stateMocks.getStopReason,
+    stopSession: stateMocks.stopSession,
+    addEstimatedCostUsd: stateMocks.addEstimatedCostUsd,
+    registerAbortController: stateMocks.registerAbortController,
+    unregisterAbortController: stateMocks.unregisterAbortController,
   },
   llmRequestAbortManager: {
     register: vi.fn(),
@@ -81,12 +94,33 @@ vi.mock('./context-budget', () => ({
   recordActualTokenUsage: vi.fn(),
 }))
 
+vi.mock('./models-dev-service', () => ({
+  getModelFromModelsDevByProviderId: vi.fn(() => ({
+    id: 'gpt-4.1-mini',
+    cost: {
+      input: 1,
+      output: 3,
+    },
+  })),
+}))
+
 describe('LLM Fetch with AI SDK', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
     getPromptCachingConfigMock.mockReset()
     getPromptCachingConfigMock.mockReturnValue(undefined)
+    stateMocks.isSessionRegistered.mockReset()
+    stateMocks.isSessionRegistered.mockReturnValue(false)
+    stateMocks.shouldStopSession.mockReset()
+    stateMocks.shouldStopSession.mockReturnValue(false)
+    stateMocks.getStopReason.mockReset()
+    stateMocks.getStopReason.mockReturnValue(undefined)
+    stateMocks.stopSession.mockReset()
+    stateMocks.addEstimatedCostUsd.mockReset()
+    stateMocks.addEstimatedCostUsd.mockImplementation((_, amountUsd: number) => amountUsd)
+    stateMocks.registerAbortController.mockReset()
+    stateMocks.unregisterAbortController.mockReset()
   })
 
   it('passes prompt-caching provider options through to generateText when available', async () => {
@@ -778,7 +812,7 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('Success after rate limit retry')
   })
 
-  it('should not retry and throw "Session stopped by kill switch" when session stopped after API failure', async () => {
+  it('should not retry and throw the kill-switch stop message when session stopped after API failure', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
     const { agentSessionStateManager } = await import('./state')
@@ -806,7 +840,7 @@ describe('LLM Fetch with AI SDK', () => {
         undefined,
         'test-session-id'
       )
-    ).rejects.toThrow('Session stopped by kill switch')
+    ).rejects.toThrow('Agent mode was stopped by emergency kill switch')
 
     // Should be called exactly once (no retry attempted because session was stopped)
     expect(callCount).toBe(1)
@@ -815,7 +849,7 @@ describe('LLM Fetch with AI SDK', () => {
     shouldStopSpy.mockRestore()
   })
 
-  it('should throw "Session stopped by kill switch" (not API error) when stopped mid-retry', async () => {
+  it('should throw the kill-switch stop message (not API error) when stopped mid-retry', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
     const { agentSessionStateManager } = await import('./state')
@@ -837,7 +871,7 @@ describe('LLM Fetch with AI SDK', () => {
         undefined,
         'test-session-id'
       )
-    ).rejects.toThrow('Session stopped by kill switch')
+    ).rejects.toThrow('Agent mode was stopped by emergency kill switch')
 
     // withRetry checks session stop at the top of each loop iteration,
     // so when session is already stopped, the API is never even called.
@@ -847,7 +881,7 @@ describe('LLM Fetch with AI SDK', () => {
     shouldStopSpy.mockRestore()
   })
 
-  it('should interrupt backoff delay and throw "Session stopped by kill switch" when session stopped during wait', async () => {
+  it('should interrupt backoff delay and throw the kill-switch stop message when session stopped during wait', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
     const { agentSessionStateManager } = await import('./state')
@@ -878,13 +912,60 @@ describe('LLM Fetch with AI SDK', () => {
         undefined,
         'test-session-id'
       )
-    ).rejects.toThrow('Session stopped by kill switch')
+    ).rejects.toThrow('Agent mode was stopped by emergency kill switch')
 
     // Only one API call should have been made (backoff was interrupted before retry)
     expect(callCount).toBe(1)
 
     isRegisteredSpy.mockRestore()
     shouldStopSpy.mockRestore()
+  })
+
+  it('stops a session when estimated spend reaches the configured budget', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: 'Budget reached',
+      finishReason: 'stop',
+      usage: { inputTokens: 1_000_000, completionTokens: 0 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'test' }],
+      'openai',
+      undefined,
+      'cost-budget-session'
+    )
+
+    expect(stateMocks.addEstimatedCostUsd).toHaveBeenCalledWith('cost-budget-session', 1)
+    expect(stateMocks.stopSession).toHaveBeenCalledWith('cost-budget-session', 'session_cost_limit')
+  })
+
+  it('does not stop a session when estimated spend stays below the configured budget', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: 'Still within budget',
+      finishReason: 'stop',
+      usage: { inputTokens: 500_000, completionTokens: 0 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'test' }],
+      'openai',
+      undefined,
+      'cost-budget-session'
+    )
+
+    expect(stateMocks.addEstimatedCostUsd).toHaveBeenCalledWith('cost-budget-session', 0.5)
+    expect(stateMocks.stopSession).not.toHaveBeenCalled()
+
   })
 
   it('should surface string stream errors instead of "Unknown error"', async () => {

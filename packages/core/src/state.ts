@@ -16,11 +16,15 @@ export function setHeadlessMode(value: boolean): void {
   isHeadlessMode = value
 }
 
+export type AgentSessionStopReason = "kill_switch" | "session_cost_limit"
+
 export interface AgentSessionState {
   sessionId: string
   runId: number
   shouldStop: boolean
+  stopReason?: AgentSessionStopReason
   iterationCount: number
+  estimatedCostUsd: number
   abortControllers: Set<AbortController>
   processes: Set<ChildProcess>
   /**
@@ -206,7 +210,9 @@ export const agentSessionStateManager = {
         sessionId,
         runId: previousRunId,
         shouldStop: false,
+        stopReason: undefined,
         iterationCount: 0,
+        estimatedCostUsd: 0,
         abortControllers: new Set(),
         processes: new Set(),
         profileSnapshot,
@@ -236,6 +242,8 @@ export const agentSessionStateManager = {
     const session = state.agentSessions.get(sessionId)!
     session.runId += 1
     session.shouldStop = false
+    session.stopReason = undefined
+    session.estimatedCostUsd = 0
     rememberSessionRunId(sessionId, session.runId)
     return session.runId
   },
@@ -257,11 +265,18 @@ export const agentSessionStateManager = {
     return session?.shouldStop ?? state.shouldStopAgent // Fallback to global flag
   },
 
+  getStopReason(sessionId: string): AgentSessionStopReason | undefined {
+    const session = state.agentSessions.get(sessionId)
+    if (session?.stopReason) return session.stopReason
+    return state.shouldStopAgent ? "kill_switch" : undefined
+  },
+
   // Mark session for stop and kill its processes
-  stopSession(sessionId: string): void {
+  stopSession(sessionId: string, reason: AgentSessionStopReason = "kill_switch"): void {
     const session = state.agentSessions.get(sessionId)
     if (session) {
       session.shouldStop = true
+      session.stopReason = reason
 
       abortAndUnregisterSessionControllers(session.abortControllers)
       killSessionProcesses(session.processes)
@@ -270,10 +285,25 @@ export const agentSessionStateManager = {
     toolApprovalManager.cancelSessionApprovals(sessionId)
   },
 
+  addEstimatedCostUsd(sessionId: string, amountUsd: number): number {
+    const session = state.agentSessions.get(sessionId)
+    if (!session || !Number.isFinite(amountUsd) || amountUsd <= 0) {
+      return session?.estimatedCostUsd ?? 0
+    }
+
+    session.estimatedCostUsd += amountUsd
+    return session.estimatedCostUsd
+  },
+
+  getEstimatedCostUsd(sessionId: string): number {
+    const session = state.agentSessions.get(sessionId)
+    return session?.estimatedCostUsd ?? 0
+  },
+
   // Stop all sessions
-  stopAllSessions(): void {
+  stopAllSessions(reason: AgentSessionStopReason = "kill_switch"): void {
     for (const [sessionId] of state.agentSessions) {
-      this.stopSession(sessionId)
+      this.stopSession(sessionId, reason)
     }
     // Also set legacy global flag
     state.shouldStopAgent = true

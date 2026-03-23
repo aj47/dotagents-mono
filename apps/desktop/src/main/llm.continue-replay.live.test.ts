@@ -69,6 +69,9 @@ vi.mock("./state", () => ({
   agentSessionStateManager: {
     isSessionRegistered: () => false,
     shouldStopSession: () => false,
+    getStopReason: () => undefined,
+    stopSession: vi.fn(),
+    addEstimatedCostUsd: vi.fn((_, amountUsd: number) => amountUsd),
     registerAbortController: vi.fn(),
     unregisterAbortController: vi.fn(),
   },
@@ -76,6 +79,13 @@ vi.mock("./state", () => ({
     register: vi.fn(),
     unregister: vi.fn(),
   },
+}))
+
+vi.mock("./models-dev-service", () => ({
+  getModelFromModelsDevByProviderId: vi.fn(() => ({
+    id: liveReplayConfig.model || "gpt-4.1-mini",
+    cost: { input: 1, output: 3 },
+  })),
 }))
 
 function loadReplayFixtures(inputPath: string): ContinueReplayFixture[] {

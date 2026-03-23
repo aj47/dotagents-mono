@@ -79,7 +79,7 @@ export {
   agentSessionStateManager,
   toolApprovalManager,
 } from './state';
-export type { AgentSessionState } from './state';
+export type { AgentSessionState, AgentSessionStopReason } from './state';
 
 // Debug module
 export {

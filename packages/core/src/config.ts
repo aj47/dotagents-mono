@@ -180,6 +180,7 @@ const getConfig = (): LoadedConfig => {
     mcpAutoPasteDelay: 1000, // 1 second delay by default
     mcpMaxIterations: 10, // Default max iterations for agent mode
     mcpUnlimitedIterations: true, // Default to unlimited iterations
+    mcpSessionCostLimitUsd: 1, // Default to a $1/session estimated LLM spend ceiling
     textInputEnabled: true,
 
     // Text input: On Windows, use Ctrl+Shift+T to avoid browser new tab conflict

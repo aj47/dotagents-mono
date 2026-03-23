@@ -29,6 +29,8 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared"
+import { getModelFromModelsDevByProviderId } from "./models-dev-service"
+import { getAgentStopMessage } from "./agent-run-utils"
 import {
   createLLMGeneration,
   endLLMGeneration,
@@ -58,6 +60,103 @@ function buildTokenUsage(usage?: { inputTokens?: number; outputTokens?: number }
     completionTokens: outputTokens,
     totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0),
   }
+}
+
+const DEFAULT_SESSION_COST_LIMIT_USD = 1
+const TOKENS_PER_MILLION = 1_000_000
+
+function parsePositiveNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+
+  return undefined
+}
+
+function resolveSessionCostLimitUsd(): number | undefined {
+  const envOverride = parsePositiveNumber(process.env.DOTAGENTS_AGENT_SESSION_COST_LIMIT_USD)
+  if (envOverride !== undefined) {
+    return envOverride
+  }
+
+  const savedValue = parsePositiveNumber(configStore.get().mcpSessionCostLimitUsd)
+  return savedValue ?? DEFAULT_SESSION_COST_LIMIT_USD
+}
+
+function mapToModelsDevProviderId(providerId: ProviderType): string {
+  const cfg = configStore.get()
+  if (providerId === "openai" && cfg.openaiBaseUrl?.includes("openrouter.ai")) {
+    return "openrouter"
+  }
+
+  if (providerId === "gemini") {
+    return "google"
+  }
+
+  return providerId
+}
+
+function estimateUsageCostUsd(
+  providerId: ProviderType,
+  modelName: string,
+  usage?: { inputTokens?: number; outputTokens?: number },
+): number | undefined {
+  const inputTokens = usage?.inputTokens ?? 0
+  const outputTokens = usage?.outputTokens ?? 0
+
+  if (inputTokens <= 0 && outputTokens <= 0) {
+    return undefined
+  }
+
+  const pricedModel = getModelFromModelsDevByProviderId(
+    modelName,
+    mapToModelsDevProviderId(providerId),
+  )
+  if (!pricedModel?.cost) {
+    return undefined
+  }
+
+  const inputCostUsd = inputTokens * ((pricedModel.cost.input ?? 0) / TOKENS_PER_MILLION)
+  const outputCostUsd = outputTokens * ((pricedModel.cost.output ?? 0) / TOKENS_PER_MILLION)
+  const totalCostUsd = inputCostUsd + outputCostUsd
+
+  return totalCostUsd > 0 ? totalCostUsd : undefined
+}
+
+function enforceSessionCostLimit(
+  sessionId: string | undefined,
+  providerId: ProviderType,
+  modelName: string,
+  usage?: { inputTokens?: number; outputTokens?: number },
+): void {
+  if (!sessionId) return
+  if (agentSessionStateManager.getStopReason(sessionId) === "session_cost_limit") return
+
+  const costLimitUsd = resolveSessionCostLimitUsd()
+  if (costLimitUsd === undefined) return
+
+  const estimatedUsageCostUsd = estimateUsageCostUsd(providerId, modelName, usage)
+  if (estimatedUsageCostUsd === undefined) return
+
+  const totalEstimatedCostUsd = agentSessionStateManager.addEstimatedCostUsd(sessionId, estimatedUsageCostUsd)
+  if (totalEstimatedCostUsd < costLimitUsd) return
+
+  logLLM("Stopping session after reaching estimated cost limit", {
+    sessionId,
+    providerId,
+    modelName,
+    estimatedUsageCostUsd,
+    totalEstimatedCostUsd,
+    costLimitUsd,
+  })
+  agentSessionStateManager.stopSession(sessionId, "session_cost_limit")
 }
 
 /**
@@ -272,10 +371,10 @@ async function interruptibleDelay(delay: number, sessionId?: string): Promise<vo
   const getStopReason = (): string | null => {
     // Check session-specific stop first (only when session ID is known and registered)
     if (sessionId != null && agentSessionStateManager.isSessionRegistered(sessionId) && agentSessionStateManager.shouldStopSession(sessionId)) {
-      return "Session stopped by kill switch"
+      return getAgentStopMessage(agentSessionStateManager.getStopReason(sessionId))
     }
     if (state.shouldStopAgent) {
-      return "Aborted by emergency stop"
+      return getAgentStopMessage("kill_switch")
     }
     return null
   }
@@ -435,10 +534,10 @@ async function withRetry<T>(
       agentSessionStateManager.isSessionRegistered(options.sessionId) &&
       agentSessionStateManager.shouldStopSession(options.sessionId)
     ) {
-      return "Session stopped by kill switch"
+      return getAgentStopMessage(agentSessionStateManager.getStopReason(options.sessionId))
     }
     if (state.shouldStopAgent) {
-      return "Aborted by emergency stop"
+      return getAgentStopMessage("kill_switch")
     }
     return null
   }
@@ -783,6 +882,7 @@ export async function makeLLMCallWithFetch(
           if (sessionId && result.usage?.inputTokens) {
             recordActualTokenUsage(sessionId, result.usage.inputTokens, result.usage.outputTokens ?? 0)
           }
+          enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, result.usage)
 
           return {
             content: text || undefined,
@@ -837,6 +937,7 @@ export async function makeLLMCallWithFetch(
               usage: buildTokenUsage(result.usage),
             })
           }
+          enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, result.usage)
           return response
         }
 
@@ -854,6 +955,7 @@ export async function makeLLMCallWithFetch(
             usage: buildTokenUsage(result.usage),
           })
         }
+        enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, result.usage)
 
         if (hasToolMarkers) {
           // Return raw text (with markers) so the caller's own marker detection
@@ -1103,6 +1205,7 @@ export async function makeLLMCallWithStreamingAndTools(
         if (sessionId && finishUsage?.inputTokens) {
           recordActualTokenUsage(sessionId, finishUsage.inputTokens, finishUsage.outputTokens ?? 0)
         }
+        enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, finishUsage)
 
         if (!accumulated && collectedToolCalls.length === 0) {
           throw new Error("LLM returned empty response")
@@ -1196,6 +1299,7 @@ export async function makeTextCompletionWithFetch(
             usage: buildTokenUsage(result.usage),
           })
         }
+        enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, result.usage)
 
         return text
       } catch (error) {
@@ -1302,6 +1406,7 @@ export async function verifyCompletionWithFetch(
               usage: buildTokenUsage(result.usage),
             })
           }
+          enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, result.usage)
           return normalizedVerification as CompletionVerification
         }
 
@@ -1314,6 +1419,7 @@ export async function verifyCompletionWithFetch(
             statusMessage: "Failed to parse verification response as JSON",
           })
         }
+        enforceSessionCostLimit(sessionId, effectiveProviderId, modelName, result.usage)
 
         // Conservative default
         return {

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest"
 
 import {
   AGENT_STOP_NOTE,
+  AGENT_SESSION_COST_LIMIT_STOP_NOTE,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
   appendAgentStopNote,
+  appendAgentStopNoteForReason,
   buildProfileContext,
+  getAgentStopMessage,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
@@ -47,6 +50,23 @@ describe("appendAgentStopNote", () => {
   it("does not duplicate the emergency stop note", () => {
     expect(appendAgentStopNote(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(
       `Finished work\n\n${AGENT_STOP_NOTE}`,
+    )
+  })
+
+  it("uses the session cost limit note when requested", () => {
+    expect(appendAgentStopNoteForReason("Finished work", "session_cost_limit")).toBe(
+      `Finished work\n\n${AGENT_SESSION_COST_LIMIT_STOP_NOTE}`,
+    )
+  })
+})
+
+describe("getAgentStopMessage", () => {
+  it("maps stop reasons to user-facing copy", () => {
+    expect(getAgentStopMessage("kill_switch")).toBe(
+      "Agent mode was stopped by emergency kill switch",
+    )
+    expect(getAgentStopMessage("session_cost_limit")).toBe(
+      "Agent mode was stopped after reaching the session cost limit",
     )
   })
 })

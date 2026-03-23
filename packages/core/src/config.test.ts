@@ -94,4 +94,15 @@ describe("config", () => {
       expect(config.mcpVerifyCompletionEnabled).toBe(true)
     })
   })
+
+  describe("mcpSessionCostLimitUsd default (regression)", () => {
+    it("defaults to a one-dollar session budget for agent runs", () => {
+      if (!container.has(ServiceTokens.PathResolver)) {
+        container.register(ServiceTokens.PathResolver, new MockPathResolver("/test/app"))
+      }
+      const store = configModule.getConfigStore()
+      const config = store.get()
+      expect(config.mcpSessionCostLimitUsd).toBe(1)
+    })
+  })
 })
