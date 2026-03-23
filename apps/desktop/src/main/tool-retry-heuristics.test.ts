@@ -53,11 +53,35 @@ describe("tool retry heuristics", () => {
     })
   })
 
+  it("does not emit browser recovery guidance for non-browser tools", () => {
+    expect(getToolRetryHeuristic(
+      {
+        name: "filesystem:read_file",
+        arguments: { selector: "@e59" },
+      } as any,
+      {
+        isError: true,
+        content: [{ type: "text", text: 'Timeout: @e59 is blocked, still loading, or not interactable.' }],
+      } as any,
+    )).toEqual({
+      shouldAutoRetry: true,
+    })
+  })
+
   it("ignores selectors that only appear in error or recovery messages", () => {
     const history = [
       { role: "assistant", content: "The submit button is @e41." },
       { role: "tool", content: "[browser:click] ERROR: Timeout while clicking @e59." },
       { role: "user", content: "Browser interaction using @e59 failed. Do not retry the same selector blindly. Take a fresh browser snapshot before the next browser tool call, and only reuse @e59 if the refreshed page confirms it is still valid.", ephemeral: true },
+    ] as const
+
+    expect(extractLatestReusableSelectorRef(history as any, 0)).toBe("@e41")
+  })
+
+  it("keeps successful selector references even when they say selector", () => {
+    const history = [
+      { role: "assistant", content: "The selector is @e41. Reuse it if the page stays the same." },
+      { role: "tool", content: '[browser:click] ERROR: Unsupported token "@e59" while parsing css selector.' },
     ] as const
 
     expect(extractLatestReusableSelectorRef(history as any, 0)).toBe("@e41")

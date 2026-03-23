@@ -5,7 +5,7 @@ const SELECTOR_FAILURE_REGEX = /\b(timeout|unsupported token|not interactable|st
 const INFRA_RETRY_REGEX = /\b(timeout|connection|network|temporary|busy|econnreset|socket hang up|gateway timeout|service unavailable)\b/i
 const INFRA_ONLY_REGEX = /\b(connection|network|temporary|busy|econnreset|socket hang up|gateway timeout|service unavailable)\b/i
 const INTERNAL_RECOVERY_SIGNAL = "Take a fresh browser snapshot"
-const ERROR_CONTEXT_REGEX = /\b(error|failed|timeout|unsupported token|not interactable|still loading|locator\.|selector)\b/i
+const ERROR_CONTEXT_REGEX = /\b(error|failed|timeout|unsupported token|not interactable|still loading|locator\.|stale element|element is detached)\b/i
 
 type SelectorHistoryEntry = {
   role?: "user" | "assistant" | "tool"
@@ -50,6 +50,10 @@ function getToolErrorText(result: Pick<MCPToolResult, "content" | "isError">): s
   return result.content?.map((item) => item.text).join(" ").trim() || ""
 }
 
+function isBrowserToolName(name: string): boolean {
+  return name.toLowerCase().startsWith("browser:")
+}
+
 function buildRecoveryMessage(selectorRef?: string): string {
   if (selectorRef) {
     return `Browser interaction using ${selectorRef} failed. Do not retry the same selector blindly. Take a fresh browser snapshot before the next browser tool call, and only reuse ${selectorRef} if the refreshed page confirms it is still valid.`
@@ -71,8 +75,12 @@ export function getToolRetryHeuristic(
   }
 
   const normalizedError = errorText.toLowerCase()
-  const selectorRef = extractSelectorRefFromUnknown(toolCall.arguments)
-    ?? errorText.match(SELECTOR_REF_REGEX)?.[0]
+  const selectorRef = isBrowserToolName(toolCall.name)
+    ? (
+        extractSelectorRefFromUnknown(toolCall.arguments)
+        ?? errorText.match(SELECTOR_REF_REGEX)?.[0]
+      )
+    : undefined
 
   const hasSelectorSpecificFailure =
     Boolean(selectorRef) &&
