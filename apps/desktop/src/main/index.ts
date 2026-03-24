@@ -192,8 +192,11 @@ let gotSingleInstanceLock = true
 if (shouldEnforceSingleInstance) {
   try {
     gotSingleInstanceLock = app.requestSingleInstanceLock()
-  } catch {
-    gotSingleInstanceLock = true
+  } catch (err) {
+    // If the lock throws (e.g. corrupted lock file during rapid dev restarts),
+    // refuse to start rather than running a duplicate instance.
+    logApp("Failed to acquire single instance lock:", err)
+    gotSingleInstanceLock = false
   }
 }
 
@@ -803,8 +806,11 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     logApp(`Received ${signal}, forcing exit`)
     releaseAppSingleInstanceLock()
     destroyTray()
+    // Synchronously kill MCP server processes to prevent orphans
+    mcpService.emergencyStopAllProcesses()
     app.quit()
-    // Force exit after a short grace period in case before-quit cleanup hangs
-    setTimeout(() => process.exit(0), 3000).unref()
+    // Short grace period — electron-vite --watch spawns a new process quickly,
+    // so the old one must die fast to avoid duplicate Electron processes.
+    setTimeout(() => process.exit(0), 500).unref()
   })
 }
