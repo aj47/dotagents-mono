@@ -198,13 +198,13 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   },
   {
     name: "load_skill_instructions",
-    description: "Load the full instructions for an agent skill. Skills are listed in the system prompt with just name and description. Call this tool to get the complete instructions when you need to use a skill.",
+    description: "Load the full instructions for a skill. Pass the exact skill id shown in the Available Skills list (the value inside backticks before the dash).",
     inputSchema: {
       type: "object",
       properties: {
         skillId: {
           type: "string",
-          description: "The skill ID to load instructions for. Get skill IDs from the Available Skills section in the system prompt.",
+          description: "Exact skill id from the Available Skills list, e.g. \"api-testing\".",
         },
       },
       required: ["skillId"],

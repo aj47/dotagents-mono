@@ -957,10 +957,10 @@ class SkillsService {
       return ""
     }
 
-    // Progressive disclosure: Only show name + description initially
-    // The LLM must call load_skill_instructions to get the full instructions
+    // Progressive disclosure: Only show ID + description initially.
+    // Format is ID-first so the LLM unambiguously knows the value to pass to load_skill_instructions.
     const skillsContent = enabledSkills.map(skill => {
-      return `- **${skill.name}** (ID: \`${skill.id}\`): ${skill.description || 'No description'}`
+      return `- \`${skill.id}\` — ${skill.description || 'No description'}`
     }).join("\n")
 
     const { globalLayer, workspaceLayer } = this.getLayers()
@@ -969,18 +969,13 @@ class SkillsService {
 
 
     return `
-# Available Agent Skills
+# Available Skills
 
-To use a skill:
-1) Call \`load_skill_instructions\` with its ID
-2) Follow the loaded instructions exactly (do not guess from name/description)
+When a task matches a skill below, call \`load_skill_instructions({ skillId: "<id>" })\` using the exact \`id\` shown before the dash.
 
 ${skillsContent}
 
-## Skills Folders
-- Active layer: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsDir ? `\n- Global fallback: \`${globalSkillsDir}\`` : ""}
-
-Tip: Use \`execute_command\` with \`skillId\` to run commands in that skill's directory.
+Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsDir ? ` (global fallback: \`${globalSkillsDir}\`)` : ""}
 `
   }
 

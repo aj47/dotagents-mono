@@ -152,15 +152,18 @@ function extractSkillsIndexForMinimalPrompt(skillsInstructions?: string): string
   const skillLines = lines
     .map((l) => l.trimEnd())
     // Match the canonical index format from skills-service:
-    // - **Name** (ID: `skill-id`): description
-    .filter((l) => l.trim().startsWith("- **") && l.includes("(ID:"))
+    // - `skill-id` — description
+    .filter((l) => {
+      const t = l.trim()
+      return t.startsWith("- `") && t.includes("` —")
+    })
 
   if (skillLines.length > 0) {
     return skillLines.slice(0, 50).join("\n")
   }
 
-  // Fallback: keep the top portion (drop folder paths/tips) and cap length.
-  const marker = "\n## Skills Folders"
+  // Fallback: keep the top portion (drop folder paths/directory info) and cap length.
+  const marker = "\nSkills directory:"
   const idx = text.indexOf(marker)
   const cut = (idx >= 0 ? text.slice(0, idx) : text).trim()
   if (!cut) return undefined

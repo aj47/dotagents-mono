@@ -416,8 +416,8 @@ export function constructMinimalSystemPrompt(
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
   if (skillsIndex?.trim()) {
     prompt +=
-      " Skills are optional instruction modules. Before using a skill, call load_skill_instructions with { skillId }."
-    prompt += `\n\nAVAILABLE AGENT SKILLS (IDs):\n${skillsIndex.trim()}`
+      " Skills are optional instruction modules. Call load_skill_instructions({ skillId: \"<id>\" }) using the exact id shown before the dash."
+    prompt += `\n\nAVAILABLE SKILLS:\n${skillsIndex.trim()}`
   }
 
   const list = (tools: Array<{ name: string; inputSchema?: any }>) =>
