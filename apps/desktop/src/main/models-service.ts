@@ -139,57 +139,20 @@ async function fetchOpenAIOAuthModels(): Promise<ModelInfo[]> {
     ...(session.accountId ? { "chatgpt-account-id": session.accountId } : {}),
   }
 
-  console.log(`[OpenAI OAuth Models] Fetching from ${url}, hasAccountId=${!!session.accountId}`)
-
   const response = await fetch(url, { headers })
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error(`[OpenAI OAuth Models] API failed: HTTP ${response.status}`, errorText.slice(0, 500))
     throw new Error(`HTTP ${response.status}: ${errorText}`)
   }
 
-  const rawText = await response.text()
-  let data: Record<string, unknown>
-  try {
-    data = JSON.parse(rawText) as Record<string, unknown>
-  } catch {
-    console.error(`[OpenAI OAuth Models] Failed to parse response:`, rawText.slice(0, 500))
-    throw new Error("Failed to parse OpenAI OAuth models response as JSON")
-  }
-
-  // Log the raw response structure to aid debugging
-  const topLevelKeys = Object.keys(data)
-  console.log(`[OpenAI OAuth Models] Response keys: ${topLevelKeys.join(", ")}`)
-  console.log(`[OpenAI OAuth Models] Is models array: ${Array.isArray(data.models)}, count: ${Array.isArray(data.models) ? data.models.length : "N/A"}`)
-
-  if (Array.isArray(data.models)) {
-    const allSlugs = data.models.map((m: any) => m?.slug || m?.id || `[no-slug: keys=${Object.keys(m || {}).join(",")}]`)
-    console.log(`[OpenAI OAuth Models] All slugs from API:`, JSON.stringify(allSlugs))
-  } else {
-    console.log(`[OpenAI OAuth Models] Raw response snippet:`, rawText.slice(0, 2000))
-  }
-
+  const data = await response.json() as { models?: Array<Record<string, unknown>> }
   if (!Array.isArray(data.models)) {
     throw new Error("Missing 'models' in OpenAI OAuth models response")
   }
 
-  const allModels = data.models as Array<Record<string, unknown>>
-  const filtered = allModels.filter(
-    (model): model is Record<string, unknown> & { slug: string } =>
-      typeof model.slug === "string" && model.slug.length > 0,
-  )
-
-  if (filtered.length < allModels.length) {
-    const dropped = allModels
-      .filter((m) => typeof m.slug !== "string" || m.slug.length === 0)
-      .map((m) => ({ slug: m.slug, id: m.id, keys: Object.keys(m) }))
-    console.warn(`[OpenAI OAuth Models] Dropped ${dropped.length} models without slug:`, JSON.stringify(dropped))
-  }
-
-  console.log(`[OpenAI OAuth Models] Final: ${filtered.length} models -> ${filtered.map(m => m.slug).join(", ")}`)
-
-  return filtered
+  return data.models
+    .filter((model): model is Record<string, unknown> & { slug: string } => typeof model.slug === "string" && model.slug.length > 0)
     .map((model) => ({
       id: model.slug,
       name: typeof model.display_name === "string" && model.display_name.length > 0 ? model.display_name : formatModelName(model.slug),
@@ -628,7 +591,12 @@ export async function fetchAvailableModels(
   const cacheKey = cacheKeyParts.join("|")
   const cached = modelsCache.get(cacheKey)
   const now = Date.now()
+  // Don't use cache if accountId is missing for openai-oauth — we need to
+  // call ensureOpenAIOAuthSession so it can discover the accountId from /me.
+  const skipCacheDueToMissingAccount =
+    providerId === "openai-oauth" && !config.openaiOauthAccountId
   const cacheValid =
+    !skipCacheDueToMissingAccount &&
     !!cached &&
     now - cached.timestamp < CACHE_DURATION &&
     cached.models.length > 0

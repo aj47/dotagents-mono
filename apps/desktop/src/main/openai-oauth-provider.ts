@@ -265,9 +265,12 @@ async function fetchAndPersistAccountId(accessToken: string): Promise<string | u
     const first = data.accounts[0] as Record<string, unknown> | undefined
     accountId = typeof first?.account_id === "string" ? first.account_id : undefined
   }
-  // Fallback: top-level account_user_id or id
+  // Fallback: top-level account_user_id or chatgpt_account_id
   if (!accountId && typeof data.account_user_id === "string") {
     accountId = data.account_user_id
+  }
+  if (!accountId && typeof data.chatgpt_account_id === "string") {
+    accountId = data.chatgpt_account_id
   }
 
   if (accountId) {
