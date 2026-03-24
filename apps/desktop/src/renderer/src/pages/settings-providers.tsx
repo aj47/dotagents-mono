@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Button } from "@renderer/components/ui/button"
+import { ModelPresetManager } from "@renderer/components/model-preset-manager"
 import {
   useConfigQuery,
   useDisconnectOpenAIOAuthMutation,
@@ -873,8 +874,22 @@ export function Component() {
 
               <div className="px-3 py-2">
                 <p className="text-sm text-muted-foreground">
-                  OpenAI-compatible presets, agent models, and transcript cleanup models are now managed on the Models page.
+                  Manage OpenAI-compatible presets here, including custom API base URLs and API keys. The selected preset is then used by
+                  Agent/MCP Tools and Transcript Processing when they choose OpenAI Compatible.
                 </p>
+              </div>
+
+              <div className="px-3 py-3 border-t">
+                <div className="pb-3">
+                  <span className="text-sm font-medium">OpenAI-Compatible Presets</span>
+                  <p className="text-xs text-muted-foreground">
+                    Add custom OpenAI-compatible endpoints like OpenRouter or self-hosted gateways, then select the preset from the Models page.
+                  </p>
+                </div>
+                <ModelPresetManager
+                  showAgentModel={false}
+                  showTranscriptCleanupModel={false}
+                />
               </div>
             </div>
           )}
