@@ -3970,6 +3970,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               } : undefined,
             },
           })
+        } else if (message.content.trim().length > 0 && !respondToUserContents.has(message.content.trim())) {
+          // All tool calls were completion-control (respond_to_user / mark_work_complete).
+          // Render the assistant message content as a regular message so it's still visible
+          // when restoring old sessions where MidTurnUserResponseBubble may not render.
+          items.push({
+            kind: "message",
+            id: `msg-assistant-${assistantIndex}`,
+            data: {
+              ...message,
+              responseEvent: responseEventByMessageIndex.get(i),
+            },
+          })
         }
 
         if (next && next.role === "tool" && next.toolResults) {
