@@ -17,6 +17,7 @@
   <a href="https://electronjs.org/"><img src="https://img.shields.io/badge/Electron-31.0.2-47848f.svg" alt="Electron"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.6.3-blue.svg" alt="TypeScript"></a>
   <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.3.1-61dafb.svg" alt="React"></a>
+[![Hypercommit](https://img.shields.io/badge/Hypercommit-DB2475)](https://hypercommit.com/dotagents-mono)
 </p>
 
 ---
