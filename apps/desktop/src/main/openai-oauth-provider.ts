@@ -224,10 +224,62 @@ export async function ensureOpenAIOAuthSession(): Promise<OpenAIOAuthSession> {
   }
 
   const config = configStore.get()
+  let accountId = config.openaiOauthAccountId || undefined
+
+  // If accountId is missing (e.g. id_token didn't contain it), fetch from /me endpoint
+  if (!accountId) {
+    try {
+      accountId = await fetchAndPersistAccountId(tokens.access_token)
+    } catch {
+      // best-effort: continue without accountId
+    }
+  }
+
   return {
     accessToken: tokens.access_token,
-    accountId: config.openaiOauthAccountId || undefined,
+    accountId,
   }
+}
+
+/**
+ * Fetch account info from /me and persist the accountId to config.
+ * This covers cases where the id_token JWT didn't include chatgpt_account_id.
+ */
+async function fetchAndPersistAccountId(accessToken: string): Promise<string | undefined> {
+  const response = await fetch(`${OPENAI_CHATGPT_BASE_URL}/me`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    return undefined
+  }
+
+  const data = await response.json() as Record<string, unknown>
+
+  // /me returns accounts array; pick the first one
+  let accountId: string | undefined
+  if (Array.isArray(data.accounts)) {
+    const first = data.accounts[0] as Record<string, unknown> | undefined
+    accountId = typeof first?.account_id === "string" ? first.account_id : undefined
+  }
+  // Fallback: top-level account_user_id or id
+  if (!accountId && typeof data.account_user_id === "string") {
+    accountId = data.account_user_id
+  }
+
+  if (accountId) {
+    const account: OpenAIOAuthAccount = {
+      email: typeof data.email === "string" ? data.email : undefined,
+      accountId,
+      planType: typeof data.plan_type === "string" ? data.plan_type : undefined,
+    }
+    persistAccountMetadata(account)
+  }
+
+  return accountId
 }
 
 function rewriteResponsesUrl(url: string): string {
