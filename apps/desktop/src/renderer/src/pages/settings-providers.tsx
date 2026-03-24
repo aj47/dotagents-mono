@@ -21,7 +21,7 @@ import {
 } from "@renderer/lib/query-client"
 import { Config } from "@shared/types"
 
-import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
+import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2, Trash2 } from "lucide-react"
 
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
@@ -234,6 +234,7 @@ function ParakeetProviderSection({
 function KittenModelDownload() {
   const queryClient = useQueryClient()
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
 
   const modelStatusQuery = useQuery({
@@ -260,6 +261,18 @@ function KittenModelDownload() {
     }
   }
 
+  const handleRemove = async () => {
+    setIsRemoving(true)
+    try {
+      await window.electron.ipcRenderer.invoke("uninstallKittenModel")
+    } catch (error) {
+      console.error("Failed to remove Kitten model:", error)
+    } finally {
+      setIsRemoving(false)
+      queryClient.invalidateQueries({ queryKey: ["kittenModelStatus"] })
+    }
+  }
+
   const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
 
   if (modelStatusQuery.isLoading) {
@@ -268,10 +281,20 @@ function KittenModelDownload() {
 
   if (status?.downloaded) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Ready
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Ready
+        </span>
+        <Button size="sm" variant="outline" onClick={handleRemove} disabled={isRemoving}>
+          {isRemoving ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          Remove
+        </Button>
+      </div>
     )
   }
 
@@ -435,6 +458,7 @@ function KittenProviderSection({
 function SupertonicModelDownload() {
   const queryClient = useQueryClient()
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
 
   const modelStatusQuery = useQuery({
@@ -459,6 +483,18 @@ function SupertonicModelDownload() {
     }
   }
 
+  const handleRemove = async () => {
+    setIsRemoving(true)
+    try {
+      await window.electron.ipcRenderer.invoke("uninstallSupertonicModel")
+    } catch (error) {
+      console.error("Failed to remove Supertonic model:", error)
+    } finally {
+      setIsRemoving(false)
+      queryClient.invalidateQueries({ queryKey: ["supertonicModelStatus"] })
+    }
+  }
+
   const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
 
   if (modelStatusQuery.isLoading) {
@@ -467,10 +503,20 @@ function SupertonicModelDownload() {
 
   if (status?.downloaded) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Ready
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Ready
+        </span>
+        <Button size="sm" variant="outline" onClick={handleRemove} disabled={isRemoving}>
+          {isRemoving ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          Remove
+        </Button>
+      </div>
     )
   }
 

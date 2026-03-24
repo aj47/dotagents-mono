@@ -1460,6 +1460,12 @@ export const router = {
     return { success: true }
   }),
 
+  uninstallKittenModel: t.procedure.action(async () => {
+    const { uninstallKittenModel } = await import('./kitten-tts')
+    uninstallKittenModel()
+    return { success: true }
+  }),
+
   synthesizeWithKitten: t.procedure
     .input<{
       text: string
@@ -1492,6 +1498,12 @@ export const router = {
         }
       })
     })
+    return { success: true }
+  }),
+
+  uninstallSupertonicModel: t.procedure.action(async () => {
+    const { uninstallSupertonicModel } = await import('./supertonic-tts')
+    uninstallSupertonicModel()
     return { success: true }
   }),
 
