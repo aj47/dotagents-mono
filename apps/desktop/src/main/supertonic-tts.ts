@@ -275,6 +275,8 @@ export function uninstallSupertonicModel(): void {
   }
 
   ttsEngine = null
+  ortModule = null
+  ortLoadError = null
   downloadState.progress = 0
   downloadState.error = undefined
 

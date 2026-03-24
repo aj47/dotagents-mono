@@ -77,7 +77,8 @@ function decryptOAuthStorage(encryptedData, encryptionKey) {
   }
 
   if (parsed.method === "aes") {
-    const decipher = crypto.createDecipher("aes-256-gcm", encryptionKey)
+    const iv = Buffer.from(parsed.iv, "hex")
+    const decipher = crypto.createDecipheriv("aes-256-gcm", encryptionKey, iv)
     decipher.setAuthTag(Buffer.from(parsed.authTag, "hex"))
     let decrypted = decipher.update(parsed.data, "hex", "utf8")
     decrypted += decipher.final("utf8")

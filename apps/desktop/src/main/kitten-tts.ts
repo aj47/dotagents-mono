@@ -575,6 +575,9 @@ export function uninstallKittenModel(): void {
   }
 
   ttsInstance = null
+  sherpaModule = null
+  nativeAddon = null
+  sherpaLoadError = null
   downloadState.progress = 0
   downloadState.error = undefined
 
