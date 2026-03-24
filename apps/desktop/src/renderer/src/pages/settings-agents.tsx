@@ -917,14 +917,15 @@ export function SettingsAgents() {
                       if (v === "__global__") {
                         setEditing({ ...editing, modelConfig: undefined })
                       } else {
-                        updateModelConfig({ mcpToolsProviderId: v as "openai" | "groq" | "gemini" })
+                        updateModelConfig({ mcpToolsProviderId: v as "openai" | "openai-oauth" | "groq" | "gemini" })
                       }
                     }}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__global__">Use global default</SelectItem>
-                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="openai">OpenAI Compatible</SelectItem>
+                      <SelectItem value="openai-oauth">OpenAI OAuth</SelectItem>
                       <SelectItem value="groq">Groq</SelectItem>
                       <SelectItem value="gemini">Gemini</SelectItem>
                     </SelectContent>
@@ -935,12 +936,14 @@ export function SettingsAgents() {
                     providerId={editing.modelConfig.mcpToolsProviderId}
                     value={
                       editing.modelConfig.mcpToolsProviderId === "openai" ? editing.modelConfig.mcpToolsOpenaiModel :
+                      editing.modelConfig.mcpToolsProviderId === "openai-oauth" ? editing.modelConfig.mcpToolsOpenaiOauthModel :
                       editing.modelConfig.mcpToolsProviderId === "groq" ? editing.modelConfig.mcpToolsGroqModel :
                       editing.modelConfig.mcpToolsGeminiModel
                     }
                     onValueChange={model => {
                       const p = editing.modelConfig?.mcpToolsProviderId
                       if (p === "openai") updateModelConfig({ mcpToolsOpenaiModel: model })
+                      else if (p === "openai-oauth") updateModelConfig({ mcpToolsOpenaiOauthModel: model })
                       else if (p === "groq") updateModelConfig({ mcpToolsGroqModel: model })
                       else if (p === "gemini") updateModelConfig({ mcpToolsGeminiModel: model })
                     }}

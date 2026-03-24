@@ -70,6 +70,7 @@ function printStatus() {
   const provider = cfg.mcpToolsProviderId || "openai"
   let modelName = "default"
   if (provider === "openai") modelName = cfg.mcpToolsOpenaiModel || "gpt-4.1-mini"
+  else if (provider === "openai-oauth") modelName = cfg.mcpToolsOpenaiOauthModel || "gpt-5.4-mini"
   else if (provider === "groq") modelName = cfg.mcpToolsGroqModel || "openai/gpt-oss-120b"
   else if (provider === "gemini") modelName = cfg.mcpToolsGeminiModel || "gemini-2.5-flash"
 

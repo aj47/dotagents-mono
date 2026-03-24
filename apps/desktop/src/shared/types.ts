@@ -82,6 +82,20 @@ export interface OAuthConfig {
   }
 }
 
+export interface OpenAIOAuthUsageBucket {
+  label: string
+  used?: number | null
+  limit?: number | null
+  unit?: string | null
+  resetsAt?: string | null
+}
+
+export interface OpenAIOAuthUsageSnapshot {
+  fetchedAt: number
+  buckets: OpenAIOAuthUsageBucket[]
+  raw?: Record<string, unknown>
+}
+
 export interface MCPServerConfig {
   // Transport configuration
   transport?: MCPTransportType // defaults to "stdio" for backward compatibility
@@ -253,8 +267,9 @@ export type ProfileMcpServerConfig = {
 
 export type ProfileModelConfig = {
   // Agent/MCP Tools settings
-  mcpToolsProviderId?: "openai" | "groq" | "gemini"
+  mcpToolsProviderId?: "openai" | "openai-oauth" | "groq" | "gemini"
   mcpToolsOpenaiModel?: string
+  mcpToolsOpenaiOauthModel?: string
   mcpToolsGroqModel?: string
   mcpToolsGeminiModel?: string
   currentModelPresetId?: string
@@ -263,8 +278,9 @@ export type ProfileModelConfig = {
   openaiSttModel?: string
   groqSttModel?: string
   // Transcript Post-Processing settings
-  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini"
+  transcriptPostProcessingProviderId?: "openai" | "openai-oauth" | "groq" | "gemini"
   transcriptPostProcessingOpenaiModel?: string
+  transcriptPostProcessingOpenaiOauthModel?: string
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
   // TTS Provider settings
@@ -1081,8 +1097,15 @@ export type Config = {
   transcriptPostProcessingProviderId?: CHAT_PROVIDER_ID
   transcriptPostProcessingPrompt?: string
   transcriptPostProcessingOpenaiModel?: string
+  transcriptPostProcessingOpenaiOauthModel?: string
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
+
+  openaiOauthEmail?: string
+  openaiOauthAccountId?: string
+  openaiOauthPlanType?: string
+  openaiOauthConnectedAt?: number
+  openaiOauthUsage?: OpenAIOAuthUsageSnapshot
 
   // Audio Device Selection
   audioInputDeviceId?: string   // Microphone device ID (from enumerateDevices)
@@ -1115,6 +1138,7 @@ export type Config = {
   customMcpToolsShortcutMode?: "hold" | "toggle" // Mode for custom MCP tools shortcut
   mcpToolsProviderId?: CHAT_PROVIDER_ID
   mcpToolsOpenaiModel?: string
+  mcpToolsOpenaiOauthModel?: string
   mcpToolsGroqModel?: string
   mcpToolsGeminiModel?: string
   /** @deprecated Kept for backward compatibility but ignored */
@@ -1152,6 +1176,7 @@ export type Config = {
 
   // Provider Section Collapse Configuration
   providerSectionCollapsedOpenai?: boolean
+  providerSectionCollapsedOpenaiOauth?: boolean
   providerSectionCollapsedGroq?: boolean
   providerSectionCollapsedGemini?: boolean
   providerSectionCollapsedParakeet?: boolean

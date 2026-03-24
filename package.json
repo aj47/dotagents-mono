@@ -10,6 +10,7 @@
     "build:shared": "pnpm --filter @dotagents/shared build",
     "build:core": "pnpm --filter @dotagents/core build",
     "test": "pnpm -r test",
+    "test:openai-oauth": "pnpm --filter @dotagents/desktop test:openai-oauth",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format"

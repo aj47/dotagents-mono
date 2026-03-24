@@ -568,6 +568,8 @@ export async function processTranscriptWithAgentMode(
   const providerId = config.mcpToolsProviderId || "openai"
   const modelName = providerId === "openai"
     ? config.mcpToolsOpenaiModel || "gpt-4.1-mini"
+    : providerId === "openai-oauth"
+    ? config.mcpToolsOpenaiOauthModel || "gpt-5.4-mini"
     : providerId === "groq"
     ? config.mcpToolsGroqModel || "openai/gpt-oss-120b"
     : providerId === "gemini"
@@ -576,6 +578,8 @@ export async function processTranscriptWithAgentMode(
   // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
   const providerDisplayName = providerId === "openai"
     ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)
+    : providerId === "openai-oauth"
+    ? "OpenAI OAuth"
     : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId
   const modelInfoRef = { provider: providerDisplayName, model: modelName }
   // Seed lastEmittedUserResponse with the latest respond_to_user content from

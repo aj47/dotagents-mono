@@ -62,7 +62,7 @@ const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
 // ============================================================================
 
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
-const VALID_PROVIDER_IDS = ["openai", "groq", "gemini"]
+const VALID_PROVIDER_IDS = ["openai", "openai-oauth", "groq", "gemini"]
 const VALID_STT_PROVIDER_IDS = ["openai", "groq", "parakeet"]
 const VALID_TTS_PROVIDER_IDS = ["openai", "groq", "gemini", "kitten", "supertonic"]
 
@@ -130,7 +130,7 @@ function isValidModelConfig(config: unknown): boolean {
   }
   if (c.sttProviderId !== undefined && (typeof c.sttProviderId !== "string" || !VALID_STT_PROVIDER_IDS.includes(c.sttProviderId as string))) return false
   if (c.ttsProviderId !== undefined && (typeof c.ttsProviderId !== "string" || !VALID_TTS_PROVIDER_IDS.includes(c.ttsProviderId as string))) return false
-  for (const field of ["mcpToolsOpenaiModel", "mcpToolsGroqModel", "mcpToolsGeminiModel", "currentModelPresetId", "openaiSttModel", "groqSttModel", "transcriptPostProcessingOpenaiModel", "transcriptPostProcessingGroqModel", "transcriptPostProcessingGeminiModel"]) {
+  for (const field of ["mcpToolsOpenaiModel", "mcpToolsOpenaiOauthModel", "mcpToolsGroqModel", "mcpToolsGeminiModel", "currentModelPresetId", "openaiSttModel", "groqSttModel", "transcriptPostProcessingOpenaiModel", "transcriptPostProcessingOpenaiOauthModel", "transcriptPostProcessingGroqModel", "transcriptPostProcessingGeminiModel"]) {
     if (c[field] !== undefined && typeof c[field] !== "string") return false
   }
   return true
@@ -880,6 +880,7 @@ class AgentProfileService {
       ...(profile.modelConfig ?? {}),
       ...(modelConfig.mcpToolsProviderId !== undefined && { mcpToolsProviderId: modelConfig.mcpToolsProviderId }),
       ...(modelConfig.mcpToolsOpenaiModel !== undefined && { mcpToolsOpenaiModel: modelConfig.mcpToolsOpenaiModel }),
+      ...(modelConfig.mcpToolsOpenaiOauthModel !== undefined && { mcpToolsOpenaiOauthModel: modelConfig.mcpToolsOpenaiOauthModel }),
       ...(modelConfig.mcpToolsGroqModel !== undefined && { mcpToolsGroqModel: modelConfig.mcpToolsGroqModel }),
       ...(modelConfig.mcpToolsGeminiModel !== undefined && { mcpToolsGeminiModel: modelConfig.mcpToolsGeminiModel }),
       ...(modelConfig.currentModelPresetId !== undefined && { currentModelPresetId: modelConfig.currentModelPresetId }),
@@ -888,6 +889,7 @@ class AgentProfileService {
       ...(modelConfig.groqSttModel !== undefined && { groqSttModel: modelConfig.groqSttModel }),
       ...(modelConfig.transcriptPostProcessingProviderId !== undefined && { transcriptPostProcessingProviderId: modelConfig.transcriptPostProcessingProviderId }),
       ...(modelConfig.transcriptPostProcessingOpenaiModel !== undefined && { transcriptPostProcessingOpenaiModel: modelConfig.transcriptPostProcessingOpenaiModel }),
+      ...(modelConfig.transcriptPostProcessingOpenaiOauthModel !== undefined && { transcriptPostProcessingOpenaiOauthModel: modelConfig.transcriptPostProcessingOpenaiOauthModel }),
       ...(modelConfig.transcriptPostProcessingGroqModel !== undefined && { transcriptPostProcessingGroqModel: modelConfig.transcriptPostProcessingGroqModel }),
       ...(modelConfig.transcriptPostProcessingGeminiModel !== undefined && { transcriptPostProcessingGeminiModel: modelConfig.transcriptPostProcessingGeminiModel }),
       ...(modelConfig.ttsProviderId !== undefined && { ttsProviderId: modelConfig.ttsProviderId }),

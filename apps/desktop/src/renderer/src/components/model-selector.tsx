@@ -414,7 +414,8 @@ export function ProviderModelSelector({
   disabled = false,
 }: ProviderModelSelectorProps) {
   const providerNames: Record<string, string> = {
-    openai: "OpenAI",
+    openai: "OpenAI Compatible",
+    "openai-oauth": "OpenAI OAuth",
     groq: "Groq",
     gemini: "Gemini",
   }

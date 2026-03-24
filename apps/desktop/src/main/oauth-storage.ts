@@ -56,7 +56,7 @@ export class OAuthStorage {
       })
     } else {
       const iv = crypto.randomBytes(16)
-      const cipher = crypto.createCipher('aes-256-gcm', this.encryptionKey!)
+      const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey!, iv)
       let encrypted = cipher.update(data, 'utf8', 'hex')
       encrypted += cipher.final('hex')
       const authTag = cipher.getAuthTag()
@@ -78,7 +78,8 @@ export class OAuthStorage {
         const buffer = Buffer.from(parsed.data, 'base64')
         return safeStorage.decryptString(buffer)
       } else if (parsed.method === 'aes') {
-        const decipher = crypto.createDecipher('aes-256-gcm', this.encryptionKey!)
+        const iv = Buffer.from(parsed.iv, 'hex')
+        const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey!, iv)
         decipher.setAuthTag(Buffer.from(parsed.authTag, 'hex'))
         let decrypted = decipher.update(parsed.data, 'hex', 'utf8')
         decrypted += decipher.final('utf8')

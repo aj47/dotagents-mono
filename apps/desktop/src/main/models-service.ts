@@ -4,6 +4,11 @@ import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-
 import type { ModelsDevModel } from "./models-dev-service"
 import { isKnownSttModel, KNOWN_STT_MODEL_IDS } from "@dotagents/shared"
 import type { ModelInfo, EnhancedModelInfo } from "../shared/types"
+import {
+  ensureOpenAIOAuthSession,
+  getOpenAIOAuthBaseUrl,
+  getOpenAIOAuthOriginator,
+} from "./openai-oauth-provider"
 
 // Re-export ModelInfo for backward compatibility
 export type { ModelInfo, EnhancedModelInfo } from "../shared/types"
@@ -103,6 +108,58 @@ function enhanceModelWithModelsDevData(
   }
 
   return enhanced
+}
+
+function getOpenAIOAuthModels(): ModelInfo[] {
+  const models: ModelInfo[] = [
+    { id: "gpt-5.4", name: "gpt-5.4", context_length: 272000 },
+    { id: "gpt-5.4-mini", name: "GPT-5.4-Mini", context_length: 272000 },
+    { id: "gpt-5.3-codex", name: "gpt-5.3-codex", context_length: 272000 },
+    { id: "gpt-5.2-codex", name: "gpt-5.2-codex", context_length: 272000 },
+    { id: "gpt-5.2", name: "gpt-5.2", context_length: 272000 },
+    { id: "gpt-5.1-codex-max", name: "gpt-5.1-codex-max", context_length: 272000 },
+    { id: "gpt-5.1-codex", name: "gpt-5.1-codex", context_length: 272000 },
+    { id: "gpt-5.1", name: "gpt-5.1", context_length: 272000 },
+    { id: "gpt-5-codex", name: "gpt-5-codex", context_length: 272000 },
+    { id: "gpt-5", name: "gpt-5", context_length: 272000 },
+    { id: "gpt-5.1-codex-mini", name: "gpt-5.1-codex-mini", context_length: 272000 },
+    { id: "gpt-5-codex-mini", name: "gpt-5-codex-mini", context_length: 272000 },
+  ]
+
+  return models.map((model) => enhanceModelWithModelsDevData(model, "openai"))
+}
+
+async function fetchOpenAIOAuthModels(): Promise<ModelInfo[]> {
+  const session = await ensureOpenAIOAuthSession()
+  const url = `${getOpenAIOAuthBaseUrl()}/codex/models`
+  const headers = {
+    Authorization: `Bearer ${session.accessToken}`,
+    Accept: "application/json",
+    originator: getOpenAIOAuthOriginator(),
+    ...(session.accountId ? { "chatgpt-account-id": session.accountId } : {}),
+  }
+
+  const response = await fetch(url, { headers })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`HTTP ${response.status}: ${errorText}`)
+  }
+
+  const data = await response.json() as { models?: Array<Record<string, unknown>> }
+  if (!Array.isArray(data.models)) {
+    throw new Error("Missing 'models' in OpenAI OAuth models response")
+  }
+
+  return data.models
+    .filter((model): model is Record<string, unknown> & { slug: string } => typeof model.slug === "string" && model.slug.length > 0)
+    .map((model) => ({
+      id: model.slug,
+      name: typeof model.display_name === "string" && model.display_name.length > 0 ? model.display_name : formatModelName(model.slug),
+      description: typeof model.description === "string" ? model.description : undefined,
+      context_length: typeof model.context_window === "number" ? model.context_window : undefined,
+    }))
+    .map((model) => enhanceModelWithModelsDevData(model, "openai"))
 }
 
 async function fetchOpenAIModels(
@@ -527,12 +584,19 @@ export async function fetchAvailableModels(
     if (apiKey) {
       cacheKeyParts.push(apiKey.slice(0, 8))
     }
+  } else if (providerId === "openai-oauth") {
+    cacheKeyParts.push(config.openaiOauthAccountId || "no-account")
   }
 
   const cacheKey = cacheKeyParts.join("|")
   const cached = modelsCache.get(cacheKey)
   const now = Date.now()
+  // Don't use cache if accountId is missing for openai-oauth — we need to
+  // call ensureOpenAIOAuthSession so it can discover the accountId from /me.
+  const skipCacheDueToMissingAccount =
+    providerId === "openai-oauth" && !config.openaiOauthAccountId
   const cacheValid =
+    !skipCacheDueToMissingAccount &&
     !!cached &&
     now - cached.timestamp < CACHE_DURATION &&
     cached.models.length > 0
@@ -582,6 +646,17 @@ export async function fetchAvailableModels(
       case "openai":
         baseUrl = config.openaiBaseUrl
         models = await fetchOpenAIModels(baseUrl, config.openaiApiKey)
+        break
+      case "openai-oauth":
+        try {
+          models = await fetchOpenAIOAuthModels()
+        } catch (error) {
+          diagnosticsService.logWarning(
+            "models-service",
+            `Falling back to static OpenAI OAuth model list: ${error instanceof Error ? error.message : String(error)}`,
+          )
+          models = getOpenAIOAuthModels()
+        }
         break
       case "groq":
         baseUrl = config.groqBaseUrl
@@ -691,6 +766,9 @@ const HARDCODED_FALLBACK_MODELS: Record<string, ModelInfo[]> = {
   openrouter: [
     { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini (OpenAI)" },
     { id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4 (Anthropic)" },
+  ],
+  "openai-oauth": [
+    { id: "gpt-5.4-mini", name: "GPT-5.4-Mini", context_length: 272000 },
   ],
   groq: [
     { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B (OpenAI)" },

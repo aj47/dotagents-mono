@@ -10,7 +10,7 @@ import { getRuntimeToolNames } from "./runtime-tool-definitions"
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
 
 // Valid provider IDs that are supported by the application
-const VALID_PROVIDER_IDS = ["openai", "groq", "gemini"]
+const VALID_PROVIDER_IDS = ["openai", "openai-oauth", "groq", "gemini"]
 // STT supports openai, groq, and parakeet (local)
 const VALID_STT_PROVIDER_IDS = ["openai", "groq", "parakeet"]
 // TTS supports openai, groq, gemini, kitten (local), and supertonic (local)
@@ -223,12 +223,14 @@ function isValidModelConfig(config: unknown): boolean {
   // Other string fields that don't need enum validation
   const stringFields = [
     "mcpToolsOpenaiModel",
+    "mcpToolsOpenaiOauthModel",
     "mcpToolsGroqModel",
     "mcpToolsGeminiModel",
     "currentModelPresetId",
     "openaiSttModel",
     "groqSttModel",
     "transcriptPostProcessingOpenaiModel",
+    "transcriptPostProcessingOpenaiOauthModel",
     "transcriptPostProcessingGroqModel",
     "transcriptPostProcessingGeminiModel",
   ]
@@ -525,6 +527,7 @@ class ProfileService {
       // Agent/MCP Tools settings
       ...(modelConfig.mcpToolsProviderId !== undefined && { mcpToolsProviderId: modelConfig.mcpToolsProviderId }),
       ...(modelConfig.mcpToolsOpenaiModel !== undefined && { mcpToolsOpenaiModel: modelConfig.mcpToolsOpenaiModel }),
+      ...(modelConfig.mcpToolsOpenaiOauthModel !== undefined && { mcpToolsOpenaiOauthModel: modelConfig.mcpToolsOpenaiOauthModel }),
       ...(modelConfig.mcpToolsGroqModel !== undefined && { mcpToolsGroqModel: modelConfig.mcpToolsGroqModel }),
       ...(modelConfig.mcpToolsGeminiModel !== undefined && { mcpToolsGeminiModel: modelConfig.mcpToolsGeminiModel }),
       ...(modelConfig.currentModelPresetId !== undefined && { currentModelPresetId: modelConfig.currentModelPresetId }),
@@ -535,6 +538,7 @@ class ProfileService {
       // Transcript Post-Processing settings
       ...(modelConfig.transcriptPostProcessingProviderId !== undefined && { transcriptPostProcessingProviderId: modelConfig.transcriptPostProcessingProviderId }),
       ...(modelConfig.transcriptPostProcessingOpenaiModel !== undefined && { transcriptPostProcessingOpenaiModel: modelConfig.transcriptPostProcessingOpenaiModel }),
+      ...(modelConfig.transcriptPostProcessingOpenaiOauthModel !== undefined && { transcriptPostProcessingOpenaiOauthModel: modelConfig.transcriptPostProcessingOpenaiOauthModel }),
       ...(modelConfig.transcriptPostProcessingGroqModel !== undefined && { transcriptPostProcessingGroqModel: modelConfig.transcriptPostProcessingGroqModel }),
       ...(modelConfig.transcriptPostProcessingGeminiModel !== undefined && { transcriptPostProcessingGeminiModel: modelConfig.transcriptPostProcessingGeminiModel }),
       // TTS Provider settings

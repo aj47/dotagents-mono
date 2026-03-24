@@ -418,6 +418,7 @@ function getConnectableBaseUrlForMobilePairing(
 function resolveActiveModelId(cfg: any): string {
   const provider = cfg.mcpToolsProviderId || "openai"
   if (provider === "openai") return cfg.mcpToolsOpenaiModel || "openai"
+  if (provider === "openai-oauth") return cfg.mcpToolsOpenaiOauthModel || "gpt-5.4-mini"
   if (provider === "groq") return cfg.mcpToolsGroqModel || "groq"
   if (provider === "gemini") return cfg.mcpToolsGeminiModel || "gemini"
   return String(provider)
@@ -1262,6 +1263,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Model settings
         mcpToolsProviderId: cfg.mcpToolsProviderId || "openai",
         mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
+        mcpToolsOpenaiOauthModel: cfg.mcpToolsOpenaiOauthModel,
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
         // OpenAI compatible preset settings
@@ -1326,6 +1328,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ttsProviderId: cfg.ttsProviderId || "openai",
         transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || "openai",
         transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || "",
+        transcriptPostProcessingOpenaiOauthModel: cfg.transcriptPostProcessingOpenaiOauthModel || "",
         transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || "",
         transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || "",
         // ACP Agent settings
@@ -1378,12 +1381,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.mcpMaxIterations = Math.floor(body.mcpMaxIterations)
       }
       // Model settings
-      const validProviders = ["openai", "groq", "gemini"]
+      const validProviders = ["openai", "openai-oauth", "groq", "gemini"]
       if (typeof body.mcpToolsProviderId === "string" && validProviders.includes(body.mcpToolsProviderId)) {
-        updates.mcpToolsProviderId = body.mcpToolsProviderId as "openai" | "groq" | "gemini"
+        updates.mcpToolsProviderId = body.mcpToolsProviderId as "openai" | "openai-oauth" | "groq" | "gemini"
       }
       if (typeof body.mcpToolsOpenaiModel === "string") {
         updates.mcpToolsOpenaiModel = body.mcpToolsOpenaiModel
+      }
+      if (typeof body.mcpToolsOpenaiOauthModel === "string") {
+        updates.mcpToolsOpenaiOauthModel = body.mcpToolsOpenaiOauthModel
       }
       if (typeof body.mcpToolsGroqModel === "string") {
         updates.mcpToolsGroqModel = body.mcpToolsGroqModel
@@ -1509,12 +1515,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.ttsProviderId = body.ttsProviderId as "openai" | "groq" | "gemini" | "kitten" | "supertonic"
       }
       // Transcript Post-Processing Provider
-      const validPostProcessingProviders = ["openai", "groq", "gemini"]
+      const validPostProcessingProviders = ["openai", "openai-oauth", "groq", "gemini"]
       if (typeof body.transcriptPostProcessingProviderId === "string" && validPostProcessingProviders.includes(body.transcriptPostProcessingProviderId)) {
-        updates.transcriptPostProcessingProviderId = body.transcriptPostProcessingProviderId as "openai" | "groq" | "gemini"
+        updates.transcriptPostProcessingProviderId = body.transcriptPostProcessingProviderId as "openai" | "openai-oauth" | "groq" | "gemini"
       }
       if (typeof body.transcriptPostProcessingOpenaiModel === "string") {
         updates.transcriptPostProcessingOpenaiModel = body.transcriptPostProcessingOpenaiModel
+      }
+      if (typeof body.transcriptPostProcessingOpenaiOauthModel === "string") {
+        updates.transcriptPostProcessingOpenaiOauthModel = body.transcriptPostProcessingOpenaiOauthModel
       }
       if (typeof body.transcriptPostProcessingGroqModel === "string") {
         updates.transcriptPostProcessingGroqModel = body.transcriptPostProcessingGroqModel

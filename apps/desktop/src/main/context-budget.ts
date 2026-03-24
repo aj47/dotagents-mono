@@ -740,6 +740,8 @@ export function getProviderAndModel(): { providerId: string; model: string } {
   let model = "gpt-4.1-mini"
   if (providerId === "openai") {
     model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
+  } else if (providerId === "openai-oauth") {
+    model = config.mcpToolsOpenaiOauthModel || "gpt-5.4-mini"
   } else if (providerId === "groq") {
     model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
   } else if (providerId === "gemini") {

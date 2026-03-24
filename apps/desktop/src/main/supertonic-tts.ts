@@ -266,6 +266,29 @@ export async function downloadSupertonicModel(
   }
 }
 
+/**
+ * Remove the downloaded Supertonic model and reset any loaded engine state.
+ */
+export function uninstallSupertonicModel(): void {
+  if (downloadState.downloading) {
+    throw new Error("Cannot remove Supertonic model while download is in progress")
+  }
+
+  ttsEngine = null
+  ortModule = null
+  ortLoadError = null
+  downloadState.progress = 0
+  downloadState.error = undefined
+
+  try {
+    fs.rmSync(getModelsPath(), { recursive: true, force: true })
+  } catch (error) {
+    throw new Error(
+      `Failed to remove Supertonic model: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
 // --- ONNX Runtime loading ---
 
 async function loadOrt(): Promise<OrtModule> {

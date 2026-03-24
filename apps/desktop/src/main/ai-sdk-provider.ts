@@ -9,13 +9,23 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import type { LanguageModel } from "ai"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
+import {
+  createOpenAIOAuthFetch,
+  ensureOpenAIOAuthSession,
+  getOpenAIOAuthBaseUrl,
+  getOpenAIOAuthOriginator,
+} from "./openai-oauth-provider"
 
-export type ProviderType = "openai" | "groq" | "gemini"
+export type ProviderType = "openai" | "openai-oauth" | "groq" | "gemini"
 
 const DEFAULT_CHAT_MODELS = {
   openai: {
     mcp: "gpt-4.1-mini",
     transcript: "gpt-4.1-mini",
+  },
+  "openai-oauth": {
+    mcp: "gpt-5.4-mini",
+    transcript: "gpt-5.4-mini",
   },
   groq: {
     mcp: "openai/gpt-oss-120b",
@@ -36,6 +46,7 @@ interface ProviderConfig {
   apiKey: string
   baseURL?: string
   model: string
+  headers?: Record<string, string>
 }
 
 export interface PromptCachingConfig {
@@ -122,6 +133,18 @@ function getProviderConfig(
             : config.transcriptPostProcessingGeminiModel || DEFAULT_CHAT_MODELS.gemini.transcript,
       }
 
+    case "openai-oauth": {
+      const model = modelContext === "mcp"
+        ? config.mcpToolsOpenaiOauthModel || DEFAULT_CHAT_MODELS["openai-oauth"].mcp
+        : config.transcriptPostProcessingOpenaiOauthModel || DEFAULT_CHAT_MODELS["openai-oauth"].transcript
+
+      return {
+        apiKey: "oauth-session",
+        baseURL: getOpenAIOAuthBaseUrl(),
+        model,
+      }
+    }
+
     default:
       throw new Error(`Unknown provider: ${providerId}`)
   }
@@ -152,6 +175,10 @@ export function createLanguageModel(
   }
 
   switch (effectiveProviderId) {
+    case "openai-oauth": {
+      throw new Error("OpenAI OAuth provider requires async model creation")
+    }
+
     case "openai":
     case "groq": {
       // Both OpenAI and Groq use OpenAI-compatible API
@@ -176,6 +203,35 @@ export function createLanguageModel(
     default:
       throw new Error(`Unknown provider: ${effectiveProviderId}`)
   }
+}
+
+export async function createLanguageModelAsync(
+  providerId?: ProviderType,
+  modelContext: "mcp" | "transcript" = "mcp",
+): Promise<LanguageModel> {
+  const config = configStore.get()
+  const effectiveProviderId =
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+
+  if (effectiveProviderId !== "openai-oauth") {
+    return createLanguageModel(effectiveProviderId, modelContext)
+  }
+
+  const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
+  const session = await ensureOpenAIOAuthSession()
+
+  const openai = createOpenAI({
+    apiKey: session.accessToken,
+    baseURL: providerConfig.baseURL,
+    fetch: createOpenAIOAuthFetch(),
+    headers: {
+      ...(session.accountId ? { "chatgpt-account-id": session.accountId } : {}),
+      originator: getOpenAIOAuthOriginator(),
+      ...(providerConfig.headers || {}),
+    },
+  })
+
+  return openai.responses(providerConfig.model)
 }
 
 /**
@@ -230,6 +286,12 @@ export function getPromptCachingConfig(
   }
 
   if (effectiveProviderId === "openai" && (!normalizedBaseURL || normalizedBaseURL.includes("api.openai.com"))) {
+    return {
+      strategy: "openai-implicit-prefix",
+    }
+  }
+
+  if (effectiveProviderId === "openai-oauth") {
     return {
       strategy: "openai-implicit-prefix",
     }

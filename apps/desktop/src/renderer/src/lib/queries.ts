@@ -98,6 +98,17 @@ export const useAvailableModelsQuery = (
     retry: 1,
   })
 
+export const useOpenAIOAuthStatusQuery = () =>
+  useQuery({
+    queryKey: ["openai-oauth-status"],
+    queryFn: async () => {
+      return tipcClient.getOpenAIOAuthStatus()
+    },
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+
 export const useSaveConversationMutation = () =>
   useMutation({
     mutationFn: async ({ conversation }: { conversation: any }) => {
@@ -197,6 +208,35 @@ export const useUpdateConfigMutation = () =>
       queryClient.invalidateQueries({ queryKey: ["config"] })
     },
     onError: reportConfigSaveError,
+  })
+
+export const useStartOpenAIOAuthMutation = () =>
+  useMutation({
+    mutationFn: async () => tipcClient.startOpenAIOAuth(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["config"] })
+      queryClient.invalidateQueries({ queryKey: ["openai-oauth-status"] })
+      queryClient.invalidateQueries({ queryKey: ["available-models", "openai-oauth"] })
+    },
+  })
+
+export const useDisconnectOpenAIOAuthMutation = () =>
+  useMutation({
+    mutationFn: async () => tipcClient.disconnectOpenAIOAuth(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["config"] })
+      queryClient.invalidateQueries({ queryKey: ["openai-oauth-status"] })
+      queryClient.invalidateQueries({ queryKey: ["available-models", "openai-oauth"] })
+    },
+  })
+
+export const useRefreshOpenAIOAuthUsageMutation = () =>
+  useMutation({
+    mutationFn: async () => tipcClient.refreshOpenAIOAuthUsage(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["config"] })
+      queryClient.invalidateQueries({ queryKey: ["openai-oauth-status"] })
+    },
   })
 
 export const useLoadMcpConfigFile = () =>

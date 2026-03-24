@@ -14,7 +14,7 @@ import { generateText, streamText, tool as aiTool } from "ai"
 import { jsonSchema } from "ai"
 import { randomUUID } from "crypto"
 import {
-  createLanguageModel,
+  createLanguageModelAsync,
   getCurrentProviderId,
   getCurrentModelName,
   getPromptCachingConfig,
@@ -682,7 +682,7 @@ export async function makeLLMCallWithFetch(
 
   return withRetry(
     async () => {
-      const model = createLanguageModel(effectiveProviderId)
+      const model = await createLanguageModelAsync(effectiveProviderId)
       const { system, messages: convertedMessages } = convertMessages(messages)
       const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const abortController = createSessionAbortController(sessionId)
@@ -886,7 +886,7 @@ export async function makeLLMCallWithStreaming(
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
-  const model = createLanguageModel(effectiveProviderId)
+  const model = await createLanguageModelAsync(effectiveProviderId)
   const { system, messages: convertedMessages } = convertMessages(messages)
   const promptCaching = getPromptCachingConfig(effectiveProviderId)
 
@@ -993,7 +993,7 @@ export async function makeLLMCallWithStreamingAndTools(
 
   return withRetry(
     async () => {
-      const model = createLanguageModel(effectiveProviderId)
+      const model = await createLanguageModelAsync(effectiveProviderId)
       const { system, messages: convertedMessages } = convertMessages(messages)
       const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const abortController = createSessionAbortController(sessionId)
@@ -1170,7 +1170,7 @@ export async function makeTextCompletionWithFetch(
           abortController.abort()
         }
 
-        const model = createLanguageModel(effectiveProviderId, "transcript")
+        const model = await createLanguageModelAsync(effectiveProviderId, "transcript")
         const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
 
         if (isDebugLLM()) {
@@ -1242,7 +1242,7 @@ export async function verifyCompletionWithFetch(
           abortController.abort()
         }
 
-        const model = createLanguageModel(effectiveProviderId)
+        const model = await createLanguageModelAsync(effectiveProviderId)
         const modelName = getCurrentModelName(effectiveProviderId)
         const { system, messages: convertedMessages } = convertMessages(messages)
 

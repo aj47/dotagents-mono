@@ -158,6 +158,8 @@ export function Component() {
     (config.dualModelEnabled ?? false)
   const transcriptProcessingModel = transcriptProcessingProviderId === "openai"
     ? config.transcriptPostProcessingOpenaiModel
+    : transcriptProcessingProviderId === "openai-oauth"
+      ? config.transcriptPostProcessingOpenaiOauthModel
     : transcriptProcessingProviderId === "groq"
       ? config.transcriptPostProcessingGroqModel
       : config.transcriptPostProcessingGeminiModel
@@ -243,7 +245,9 @@ export function Component() {
                     providerId={transcriptProcessingProviderId}
                     value={transcriptProcessingModel}
                     onValueChange={(value) => {
-                      if (transcriptProcessingProviderId === "groq") {
+                      if (transcriptProcessingProviderId === "openai-oauth") {
+                        saveConfig({ transcriptPostProcessingOpenaiOauthModel: value })
+                      } else if (transcriptProcessingProviderId === "groq") {
                         saveConfig({ transcriptPostProcessingGroqModel: value })
                       } else {
                         saveConfig({ transcriptPostProcessingGeminiModel: value })
@@ -495,12 +499,24 @@ export function Component() {
             </div>
           )}
 
-          {(agentProviderId === "groq" || agentProviderId === "gemini") && (
+          {(agentProviderId === "openai-oauth" || agentProviderId === "groq" || agentProviderId === "gemini") && (
             <div className="px-3 py-2">
               <ProviderModelSelector
                 providerId={agentProviderId}
-                mcpModel={agentProviderId === "groq" ? config.mcpToolsGroqModel : config.mcpToolsGeminiModel}
-                onMcpModelChange={(value) => saveConfig(agentProviderId === "groq" ? { mcpToolsGroqModel: value } : { mcpToolsGeminiModel: value })}
+                mcpModel={
+                  agentProviderId === "openai-oauth"
+                    ? config.mcpToolsOpenaiOauthModel
+                    : agentProviderId === "groq"
+                      ? config.mcpToolsGroqModel
+                      : config.mcpToolsGeminiModel
+                }
+                onMcpModelChange={(value) => saveConfig(
+                  agentProviderId === "openai-oauth"
+                    ? { mcpToolsOpenaiOauthModel: value }
+                    : agentProviderId === "groq"
+                      ? { mcpToolsGroqModel: value }
+                      : { mcpToolsGeminiModel: value }
+                )}
                 showMcpModel={true}
                 showTranscriptModel={false}
               />

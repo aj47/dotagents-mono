@@ -567,6 +567,30 @@ export async function downloadKittenModel(
 }
 
 /**
+ * Remove the downloaded Kitten model and reset any loaded engine state.
+ */
+export function uninstallKittenModel(): void {
+  if (downloadState.downloading) {
+    throw new Error("Cannot remove Kitten model while download is in progress")
+  }
+
+  ttsInstance = null
+  sherpaModule = null
+  nativeAddon = null
+  sherpaLoadError = null
+  downloadState.progress = 0
+  downloadState.error = undefined
+
+  try {
+    fs.rmSync(getModelsPath(), { recursive: true, force: true })
+  } catch (error) {
+    throw new Error(
+      `Failed to remove Kitten model: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+/**
  * Initialize the TTS instance with the downloaded model
  */
 async function initializeTts(): Promise<OfflineTtsType> {
