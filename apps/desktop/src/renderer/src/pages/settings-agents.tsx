@@ -924,7 +924,7 @@ export function SettingsAgents() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__global__">Use global default</SelectItem>
-                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="openai">OpenAI Compatible</SelectItem>
                       <SelectItem value="openai-oauth">OpenAI OAuth</SelectItem>
                       <SelectItem value="groq">Groq</SelectItem>
                       <SelectItem value="gemini">Gemini</SelectItem>
