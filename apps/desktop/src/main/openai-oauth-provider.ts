@@ -378,6 +378,85 @@ export function getOpenAIOAuthOriginator(): string {
   return OPENAI_OAUTH_ORIGINATOR
 }
 
+function normalizeResetValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    return value
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value * 1000).toISOString()
+  }
+
+  return null
+}
+
+function normalizeResetAfterSeconds(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(Date.now() + value * 1000).toISOString()
+  }
+
+  return null
+}
+
+function pushUsageBucket(
+  buckets: OpenAIOAuthUsageBucket[],
+  label: string,
+  used: number | null,
+  limit: number | null,
+  unit?: string | null,
+  resetsAt?: string | null,
+): void {
+  buckets.push({
+    label,
+    used,
+    limit,
+    unit: unit ?? null,
+    resetsAt: resetsAt ?? null,
+  })
+}
+
+function extractRateLimitBuckets(
+  labelPrefix: string,
+  rateLimit: unknown,
+  buckets: OpenAIOAuthUsageBucket[],
+): void {
+  if (!rateLimit || typeof rateLimit !== "object" || Array.isArray(rateLimit)) {
+    return
+  }
+
+  const record = rateLimit as Record<string, unknown>
+  const windows: Array<{ key: "primary_window" | "secondary_window"; label: string }> = [
+    { key: "primary_window", label: "Primary" },
+    { key: "secondary_window", label: "Secondary" },
+  ]
+
+  for (const windowInfo of windows) {
+    const windowValue = record[windowInfo.key]
+    if (!windowValue || typeof windowValue !== "object" || Array.isArray(windowValue)) {
+      continue
+    }
+
+    const windowRecord = windowValue as Record<string, unknown>
+    const usedPercent = typeof windowRecord.used_percent === "number"
+      ? windowRecord.used_percent
+      : null
+    const resetAt = normalizeResetValue(windowRecord.reset_at) || normalizeResetAfterSeconds(windowRecord.reset_after_seconds)
+
+    if (usedPercent === null && !resetAt) {
+      continue
+    }
+
+    pushUsageBucket(
+      buckets,
+      `${labelPrefix} ${windowInfo.label}`.trim(),
+      usedPercent,
+      usedPercent !== null ? 100 : null,
+      "%",
+      resetAt,
+    )
+  }
+}
+
 function tryExtractUsageBuckets(value: unknown, buckets: OpenAIOAuthUsageBucket[], path: string[] = []): void {
   if (Array.isArray(value)) {
     value.forEach((entry, index) => tryExtractUsageBuckets(entry, buckets, [...path, String(index)]))
@@ -436,6 +515,35 @@ function tryExtractUsageBuckets(value: unknown, buckets: OpenAIOAuthUsageBucket[
 
 function normalizeUsageSnapshot(payload: Record<string, unknown>): OpenAIOAuthUsageSnapshot {
   const buckets: OpenAIOAuthUsageBucket[] = []
+
+  extractRateLimitBuckets("Usage", payload.rate_limit, buckets)
+
+  if (Array.isArray(payload.additional_rate_limits)) {
+    for (const additional of payload.additional_rate_limits) {
+      if (!additional || typeof additional !== "object" || Array.isArray(additional)) {
+        continue
+      }
+
+      const record = additional as Record<string, unknown>
+      const label =
+        (typeof record.display_label === "string" && record.display_label) ||
+        (typeof record.limit_name === "string" && record.limit_name) ||
+        (typeof record.metered_feature === "string" && record.metered_feature) ||
+        "Additional"
+
+      extractRateLimitBuckets(label, record.rate_limit, buckets)
+    }
+  }
+
+  if (payload.credits && typeof payload.credits === "object" && !Array.isArray(payload.credits)) {
+    const credits = payload.credits as Record<string, unknown>
+    if (typeof credits.balance === "string" && credits.balance) {
+      pushUsageBucket(buckets, "Credits", null, null, credits.balance, null)
+    } else if (typeof credits.unlimited === "boolean") {
+      pushUsageBucket(buckets, "Credits", credits.unlimited ? 1 : 0, 1, credits.unlimited ? "unlimited" : "limited", null)
+    }
+  }
+
   tryExtractUsageBuckets(payload, buckets)
 
   const uniqueBuckets = buckets.filter((bucket, index) => {
