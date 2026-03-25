@@ -89,12 +89,6 @@ The app works with any OpenAI-compatible API endpoint:
 
 The API key is sent as `Authorization: Bearer <API_KEY>`.
 
-## Screenshots
-
-<img src="./assets/screenshot1.png" width="40%" alt="Screenshot 1" />
-<img src="./assets/screenshot2.png" width="40%" alt="Screenshot 2" />
-
-
 ## Important: Development Build Required
 
 This app uses `expo-speech-recognition`, which is a native module **not included in Expo Go**. You must use a **development build** to run the app on Android or iOS devices.
