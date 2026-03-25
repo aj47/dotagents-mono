@@ -72,3 +72,6 @@ apps/desktop/tmp/
 node-compile-cache/
 tmp/
 .worktrees/
+
+# Local .agents backup snapshots
+.agents/.backups/
