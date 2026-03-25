@@ -75,3 +75,6 @@ tmp/
 
 # Local .agents backup snapshots
 .agents/.backups/
+
+# Local factory/agent scaffolding
+.factory/
