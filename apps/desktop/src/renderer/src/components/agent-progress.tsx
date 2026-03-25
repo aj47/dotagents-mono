@@ -225,29 +225,17 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
   const configQuery = useConfigQuery()
 
-  // Cleanup copy timeout and in-flight TTS key on unmount
+  // Cleanup copy timeout on unmount
+  // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
+  // The module-level tracking set must persist across remounts (e.g., when
+  // switching between single-session and multi-session views in the panel)
+  // to prevent double TTS playback. Keys are removed only:
+  // - On generation failure (by the .catch() handler)
+  // - On session dismiss (by clearSessionTTSTracking)
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
-      }
-      // If we're unmounting while TTS generation is in-flight, remove the key(s)
-      // from the tracking set so future mounts can retry generation.
-      const inFlightKeysAtUnmount = [...inFlightTtsKeysRef.current]
-      if (inFlightKeysAtUnmount.length > 0) {
-        // IMPORTANT: defer cleanup to a microtask.
-        // If generation has already completed, its `.then()` handler will run
-        // before this microtask and clear `inFlightTtsKeysRef`, preventing us
-        // from accidentally deleting a "success" key during a view switch.
-        queueMicrotask(() => {
-          if (
-            inFlightTtsKeysRef.current.length === inFlightKeysAtUnmount.length &&
-            inFlightTtsKeysRef.current.every((key) => inFlightKeysAtUnmount.includes(key))
-          ) {
-            inFlightKeysAtUnmount.forEach((key) => removeTTSKey(key))
-            inFlightTtsKeysRef.current = []
-          }
-        })
       }
     }
   }, [])
@@ -2963,23 +2951,9 @@ const MidTurnUserResponseBubble: React.FC<{
       })
   }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
 
-  // Cleanup in-flight TTS key on unmount
-  useEffect(() => {
-    return () => {
-      const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
-      const completionKeysAtUnmount = inFlightCompletionTTSKeysRef.current
-      if (inFlightKeyAtUnmount) {
-        queueMicrotask(() => {
-          if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
-            removeTTSKey(inFlightKeyAtUnmount)
-            completionKeysAtUnmount.forEach((key) => removeTTSKey(key))
-            inFlightTtsKeyRef.current = null
-            inFlightCompletionTTSKeysRef.current = []
-          }
-        })
-      }
-    }
-  }, [])
+  // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
+  // See CompactMessage cleanup comment for rationale — removing keys on unmount
+  // causes double TTS when the component remounts during view switches.
 
   if (!userResponse) return null
 
