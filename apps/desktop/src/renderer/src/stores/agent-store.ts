@@ -283,6 +283,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({
       agentProgressById: new Map(),
       focusedSessionId: null,
+      expandedSessionId: null,
     })
   },
 
@@ -310,6 +311,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return {
         agentProgressById: newMap,
         focusedSessionId: newFocusedSessionId,
+        expandedSessionId:
+          state.expandedSessionId === sessionId ? null : state.expandedSessionId,
       }
     })
   },
@@ -348,6 +351,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return {
         agentProgressById: newMap,
         focusedSessionId: newFocusedSessionId,
+        expandedSessionId:
+          state.expandedSessionId && !newMap.has(state.expandedSessionId)
+            ? null
+            : state.expandedSessionId,
       }
     })
   },
