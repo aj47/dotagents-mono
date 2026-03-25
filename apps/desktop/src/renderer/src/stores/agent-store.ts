@@ -25,6 +25,7 @@ export type SessionSortBy = 'recent' | 'oldest' | 'status'
 interface AgentState {
   agentProgressById: Map<string, AgentProgressUpdate>
   focusedSessionId: string | null
+  expandedSessionId: string | null
   scrollToSessionId: string | null
   messageQueuesByConversation: Map<string, QueuedMessage[]> // Message queues per conversation
   pausedQueueConversations: Set<string> // Conversations with paused queues
@@ -40,6 +41,7 @@ interface AgentState {
   clearSessionProgress: (sessionId: string) => void
   clearInactiveSessions: () => void
   setFocusedSessionId: (sessionId: string | null) => void
+  setExpandedSessionId: (sessionId: string | null) => void
   setScrollToSessionId: (sessionId: string | null) => void
   setSessionSnoozed: (sessionId: string, isSnoozed: boolean) => void
   getAgentProgress: () => AgentProgressUpdate | null
@@ -66,6 +68,7 @@ interface AgentState {
 export const useAgentStore = create<AgentState>((set, get) => ({
   agentProgressById: new Map(),
   focusedSessionId: null,
+  expandedSessionId: null,
   scrollToSessionId: null,
   messageQueuesByConversation: new Map(),
   pausedQueueConversations: new Set(),
@@ -351,6 +354,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   setFocusedSessionId: (sessionId: string | null) => {
     set({ focusedSessionId: sessionId })
+  },
+
+  setExpandedSessionId: (sessionId: string | null) => {
+    set({ expandedSessionId: sessionId })
   },
 
   setScrollToSessionId: (sessionId: string | null) => {

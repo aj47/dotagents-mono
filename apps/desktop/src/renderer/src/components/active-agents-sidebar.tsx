@@ -170,6 +170,8 @@ export function ActiveAgentsSidebar({
 
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
+  const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
+  const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
@@ -360,6 +362,12 @@ export function ActiveAgentsSidebar({
     // Navigate to sessions page and focus this session
     navigate("/")
     setFocusedSessionId(sessionId)
+    // Toggle expanded state: collapse if already expanded, expand otherwise
+    if (expandedSessionId === sessionId) {
+      setExpandedSessionId(null)
+    } else {
+      setExpandedSessionId(sessionId)
+    }
     // Trigger scroll to the session tile
     setScrollToSessionId(sessionId)
   }
@@ -753,6 +761,7 @@ export function ActiveAgentsSidebar({
         >
           {sidebarSessions.map(({ session, isPast, key }) => {
             const isFocused = focusedSessionId === session.id
+            const isSessionExpanded = expandedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
             const conversationTimestamp =
               sessionProgress?.conversationHistory &&
@@ -879,9 +888,11 @@ export function ActiveAgentsSidebar({
                   "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-16 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
-                    : isFocused
-                      ? "bg-blue-500/10"
-                      : "hover:bg-accent/50",
+                    : isSessionExpanded
+                      ? "bg-blue-500/15 border-l-2 border-blue-500"
+                      : isFocused
+                        ? "bg-blue-500/10"
+                        : "hover:bg-accent/50",
                 )}
               >
                 {/* Status dot */}
@@ -930,7 +941,7 @@ export function ActiveAgentsSidebar({
                     "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
                     "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
                     "focus-within:pointer-events-auto focus-within:opacity-100",
-                    isFocused && "pointer-events-auto opacity-100",
+                    (isFocused || isSessionExpanded) && "pointer-events-auto opacity-100",
                   )}
                 >
                   {session.conversationId && (

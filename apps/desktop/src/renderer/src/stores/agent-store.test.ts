@@ -18,6 +18,7 @@ describe('agent-store delegation merge', () => {
     useAgentStore.setState({
       agentProgressById: new Map(),
       focusedSessionId: null,
+      expandedSessionId: null,
       scrollToSessionId: null,
       messageQueuesByConversation: new Map(),
       pausedQueueConversations: new Set(),
