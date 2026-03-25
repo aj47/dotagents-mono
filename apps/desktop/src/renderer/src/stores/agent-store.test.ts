@@ -115,5 +115,45 @@ describe('agent-store delegation merge', () => {
     expect(useAgentStore.getState().focusedSessionId).toBe('session-2')
     expect(useAgentStore.getState().agentProgressById.get('session-1')?.isSnoozed).toBe(true)
   })
-})
 
+  it('clears expanded session when removing that session directly', () => {
+    useAgentStore.setState({
+      agentProgressById: new Map([
+        ['session-1', createBaseUpdate()],
+      ]),
+      expandedSessionId: 'session-1',
+    })
+
+    useAgentStore.getState().clearSessionProgress('session-1')
+
+    expect(useAgentStore.getState().expandedSessionId).toBeNull()
+  })
+
+  it('clears expanded session when clearing inactive sessions removes it', () => {
+    useAgentStore.setState({
+      agentProgressById: new Map([
+        ['session-1', { ...createBaseUpdate(), isComplete: true }],
+        ['session-2', { ...createBaseUpdate(), sessionId: 'session-2', conversationId: 'conversation-2' }],
+      ]),
+      expandedSessionId: 'session-1',
+    })
+
+    useAgentStore.getState().clearInactiveSessions()
+
+    expect(useAgentStore.getState().agentProgressById.has('session-1')).toBe(false)
+    expect(useAgentStore.getState().expandedSessionId).toBeNull()
+  })
+
+  it('clears expanded session when clearing all progress', () => {
+    useAgentStore.setState({
+      agentProgressById: new Map([
+        ['session-1', createBaseUpdate()],
+      ]),
+      expandedSessionId: 'session-1',
+    })
+
+    useAgentStore.getState().clearAllProgress()
+
+    expect(useAgentStore.getState().expandedSessionId).toBeNull()
+  })
+})
