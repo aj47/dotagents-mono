@@ -641,7 +641,7 @@ export function Component() {
     })
   }, [openSessionActionDialog])
 
-  const handleClearInactiveSessions = async () => {
+  const handleClearInactiveSessions = useCallback(async () => {
     const inactiveSessions = allProgressEntries.filter(([_, p]) => p?.isComplete).map(([id]) => id)
     logUI('[Sessions] Clear all inactive sessions clicked:', {
       count: inactiveSessions.length,
@@ -653,7 +653,7 @@ export function Component() {
     } catch (error) {
       toast.error("Failed to clear inactive sessions")
     }
-  }
+  }, [allProgressEntries])
 
   // Count inactive (completed) sessions - for clear inactive button
   const inactiveSessionCount = useMemo(() => {
@@ -672,8 +672,8 @@ export function Component() {
 
   const visibleSessionId = useMemo(() => {
     if (hasPendingTile && pendingSessionId) return pendingSessionId
-    if (expandedSessionId && agentProgressById.has(expandedSessionId)) return expandedSessionId
     if (focusedSessionId && agentProgressById.has(focusedSessionId)) return focusedSessionId
+    if (expandedSessionId && agentProgressById.has(expandedSessionId)) return expandedSessionId
     return allProgressEntries[0]?.[0] ?? null
   }, [hasPendingTile, pendingSessionId, expandedSessionId, agentProgressById, focusedSessionId, allProgressEntries])
 
@@ -687,7 +687,7 @@ export function Component() {
     return () => {
       window.removeEventListener(CLEAR_INACTIVE_EVENT, handleClearInactive)
     }
-  }, [inactiveSessionCount])
+  }, [inactiveSessionCount, handleClearInactiveSessions])
 
   // Safety guard: if the expanded session is no longer in the progress map, clear it.
   useEffect(() => {

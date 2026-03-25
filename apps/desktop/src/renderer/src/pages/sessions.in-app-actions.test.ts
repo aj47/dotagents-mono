@@ -25,6 +25,16 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).not.toContain("calculateAdaptiveColumns")
   })
 
+  it("prefers focused sessions over stale expanded selection and refreshes clear-inactive handlers", () => {
+    expect(
+      sessionsSource.indexOf("if (focusedSessionId && agentProgressById.has(focusedSessionId)) return focusedSessionId")
+    ).toBeLessThan(
+      sessionsSource.indexOf("if (expandedSessionId && agentProgressById.has(expandedSessionId)) return expandedSessionId")
+    )
+    expect(sessionsSource).toContain("const handleClearInactiveSessions = useCallback(async () => {")
+    expect(sessionsSource).toContain("}, [inactiveSessionCount, handleClearInactiveSessions])")
+  })
+
   it("keeps sidebar session clicks always selecting the expanded session", () => {
     expect(sidebarSource).toContain("setExpandedSessionId(sessionId)")
     expect(sidebarSource).not.toContain("setExpandedSessionId(null)")

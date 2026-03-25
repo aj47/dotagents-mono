@@ -121,39 +121,3 @@ export function getTileLayoutLabel(layoutMode: TileLayoutMode) {
 export function getTileGridRowSpan(tileHeight: number, gap: number) {
   return Math.max(1, Math.ceil((tileHeight + gap) / (COLLAPSED_TILE_ROW_HEIGHT + gap)))
 }
-
-/**
- * Auto-calculate the optimal number of columns for an adaptive grid layout.
- * Ensures all compact cards fit in the viewport without scrolling.
- *
- * @param sessionCount - number of sessions to display
- * @param containerHeight - available container height in px
- * @param compactCardHeight - height of a single compact card in px (default 72)
- * @param gap - gap between grid items in px
- * @returns optimal number of columns
- */
-export function calculateAdaptiveColumns(
-  sessionCount: number,
-  containerHeight: number,
-  compactCardHeight: number = 72,
-  gap: number = 12,
-): number {
-  if (sessionCount <= 0) return 1
-  if (sessionCount <= 2) return 1
-  if (containerHeight <= 0) return Math.min(sessionCount, 2)
-
-  // Calculate how many rows fit in the viewport for a given number of columns
-  const maxRowsForViewport = Math.max(1, Math.floor((containerHeight + gap) / (compactCardHeight + gap)))
-
-  // Find minimum columns needed so all cards fit
-  let columns = 1
-  while (Math.ceil(sessionCount / columns) > maxRowsForViewport && columns < 4) {
-    columns++
-  }
-
-  // Apply session-count-based rules as well
-  if (sessionCount <= 2) return 1
-  if (sessionCount <= 4) return Math.min(columns, 2)
-  if (sessionCount <= 8) return Math.min(Math.max(columns, 2), 3)
-  return Math.min(Math.max(columns, 3), 4)
-}
