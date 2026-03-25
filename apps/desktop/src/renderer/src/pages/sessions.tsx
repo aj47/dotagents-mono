@@ -422,15 +422,7 @@ export function Component() {
         }
         return true
       })
-      // Filter out completed sessions that are NOT pinned
-      .filter(([_, progress]) => {
-        if (progress?.isComplete) {
-          const convId = progress.conversationId
-          if (convId && pinnedSessionIds.has(convId)) return true
-          return false
-        }
-        return true
-      })
+
 
     let orderedEntries: [string, AgentProgressUpdate | null | undefined][]
 

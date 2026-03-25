@@ -49,8 +49,8 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).toContain("adaptiveLayoutMode")
   })
 
-  it("filters completed non-pinned sessions from the main view", () => {
-    expect(sessionsSource).toContain("pinnedSessionIds.has(convId)")
+  it("does NOT filter completed sessions — they persist until explicitly dismissed", () => {
+    expect(sessionsSource).not.toContain("pinnedSessionIds.has(convId)")
   })
 
   it("keeps pinned tiles at the top of the active sessions grid and exposes a tile pin control", () => {
