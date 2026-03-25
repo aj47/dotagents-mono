@@ -18,12 +18,16 @@ describe("sessions in-app actions", () => {
     expect(appLayoutSource).not.toContain("await tipcClient.triggerMcpRecording({})")
   })
 
-  it("resets persisted maximized tile width when entering the 1x1 layout", () => {
-    expect(sessionsSource).toContain('clearPersistedSize("session-tile")')
+  it("uses adaptive grid layout with compact cards for session overview", () => {
+    expect(sessionsSource).toContain("calculateAdaptiveColumns")
+    expect(sessionsSource).toContain("SessionCompactCard")
+    expect(sessionsSource).toContain("expandedSessionId")
   })
 
-  it("always passes the tile layout toggle handler into AgentProgress", () => {
-    expect(sessionsSource).toContain("onExpand={handleMaximize}")
+  it("handles expand/collapse of session cards", () => {
+    expect(sessionsSource).toContain("handleExpandSession")
+    expect(sessionsSource).toContain("handleCollapseExpanded")
+    expect(sessionsSource).toContain("onCollapse={handleCollapseExpanded}")
   })
 
   it("routes start and prompt controls through the sidebar instead of the sessions top bar", () => {
@@ -40,14 +44,13 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).not.toContain('aria-label="Cycle tile layout"')
   })
 
-  it("does not reserve a sessions-only top toolbar above the tile grid", () => {
+  it("uses adaptive grid layout with SessionGrid", () => {
     expect(sessionsSource).toContain('className="px-3 py-3"')
-    expect(sessionsSource).toContain('window.addEventListener(CYCLE_LAYOUT_EVENT, handleCycleLayout)')
-    expect(sessionsSource).not.toContain('aria-label="Cycle tile layout"')
+    expect(sessionsSource).toContain("adaptiveLayoutMode")
   })
 
-  it("preserves an explicitly restored tile layout if it remains viable at the minimum tile size", () => {
-    expect(sessionsSource).toContain('isTileLayoutModeViable(gridMetrics.width, gridMetrics.height, gridMetrics.gap, tileLayoutMode, "min")')
+  it("filters completed non-pinned sessions from the main view", () => {
+    expect(sessionsSource).toContain("pinnedSessionIds.has(convId)")
   })
 
   it("keeps pinned tiles at the top of the active sessions grid and exposes a tile pin control", () => {
