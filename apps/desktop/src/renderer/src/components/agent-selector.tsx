@@ -6,7 +6,7 @@
 import React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { Bot, ChevronDown, Check } from "lucide-react"
+import { Bot, Check } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProfile } from "../../../shared/types"
 import {
@@ -16,7 +16,20 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu"
-import { Button } from "./ui/button"
+import { Facehash } from "facehash"
+
+// Curated palette of vivid colors to pick from deterministically
+const AVATAR_PALETTE = [
+  "#ef4444","#f97316","#eab308","#22c55e","#14b8a6",
+  "#3b82f6","#8b5cf6","#ec4899","#06b6d4","#84cc16",
+  "#f43f5e","#a855f7","#0ea5e9","#10b981","#f59e0b",
+  "#e11d48","#7c3aed","#0891b2","#059669","#d97706",
+]
+function agentColors(seed: string): string[] {
+  let h = 5381
+  for (let i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0
+  return [0, 7, 13].map(offset => AVATAR_PALETTE[(h + offset) % AVATAR_PALETTE.length])
+}
 
 const STORAGE_KEY = "dotagents-selected-agent"
 const STORAGE_EVENT = "dotagents-selected-agent-changed"
@@ -80,10 +93,11 @@ export function useSelectedAgentId(): [string | null, (id: string | null) => voi
 interface AgentSelectorProps {
   selectedAgentId: string | null
   onSelectAgent: (agentId: string | null) => void
+  /** @deprecated No longer used — the selector is always a single icon */
   compact?: boolean
 }
 
-export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false }: AgentSelectorProps) {
+export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorProps) {
   const { data: agents = [] } = useQuery<AgentProfile[]>({
     queryKey: ["agentProfilesSelector"],
     queryFn: () => tipcClient.getAgentProfiles(),
@@ -91,6 +105,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
 
   const enabledAgents = agents.filter((a) => a.enabled)
   const selectedAgent = enabledAgents.find((a) => a.id === selectedAgentId)
+  const defaultAgent = enabledAgents.find((a) => a.isDefault) ?? enabledAgents[0]
 
   // If the selected agent was disabled/deleted, reset to default
   React.useEffect(() => {
@@ -103,26 +118,27 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
     return null
   }
 
-  const displayName = selectedAgent?.displayName || selectedAgent?.name || "Default Agent"
+  // When no agent is explicitly selected, show the default agent's avatar
+  const displayAgent = selectedAgent ?? defaultAgent
+  const displayName = displayAgent?.displayName || displayAgent?.name || "Default Agent"
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "min-w-0 justify-between gap-1.5 text-xs font-normal",
-            compact
-              ? "h-7 w-full max-w-none px-2"
-              : "max-w-[min(13rem,calc(100vw-2rem))]",
-          )}
+        <button
+          type="button"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input bg-background shadow-sm overflow-hidden hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           title={displayName}
+          aria-label={`Selected agent: ${displayName}`}
         >
-          <Bot className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
-          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-        </Button>
+          {displayAgent?.avatarDataUrl ? (
+            <img src={displayAgent.avatarDataUrl} alt={displayName} className="h-full w-full object-cover" />
+          ) : displayAgent ? (
+            <Facehash name={displayAgent.id} size={28} colors={agentColors(displayAgent.id)} />
+          ) : (
+            <Bot className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
@@ -131,15 +147,19 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
         {/* Default (no specific agent) */}
         <DropdownMenuItem
           onClick={() => onSelectAgent(null)}
-          className="min-w-0 items-start gap-2"
+          className="min-w-0 items-center gap-2"
         >
-          <Check className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", selectedAgentId === null ? "opacity-100" : "opacity-0")} />
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <span className="truncate text-sm font-medium">Default Agent</span>
-            <span className="line-clamp-2 text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
-              Use the default agent profile
-            </span>
+          <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
+            {defaultAgent?.avatarDataUrl ? (
+              <img src={defaultAgent.avatarDataUrl} alt={defaultAgent?.displayName || "Default Agent"} className="h-full w-full object-cover" />
+            ) : defaultAgent ? (
+              <Facehash name={defaultAgent.id} size={20} colors={agentColors(defaultAgent.id)} />
+            ) : (
+              <Bot className="h-4 w-4 text-muted-foreground" />
+            )}
           </div>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">Default Agent</span>
+          <Check className={cn("h-3.5 w-3.5 shrink-0", selectedAgentId === null ? "opacity-100" : "opacity-0")} />
         </DropdownMenuItem>
 
         {enabledAgents.length > 0 && <DropdownMenuSeparator />}
@@ -148,17 +168,17 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
           <DropdownMenuItem
             key={agent.id}
             onClick={() => onSelectAgent(agent.id)}
-            className="min-w-0 items-start gap-2"
+            className="min-w-0 items-center gap-2"
           >
-            <Check className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <span className="truncate text-sm font-medium">{agent.displayName || agent.name}</span>
-              {agent.description && (
-                <span className="line-clamp-2 text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
-                  {agent.description}
-                </span>
+            <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
+              {agent.avatarDataUrl ? (
+                <img src={agent.avatarDataUrl} alt={agent.displayName || agent.name} className="h-full w-full object-cover" />
+              ) : (
+                <Facehash name={agent.id} size={20} colors={agentColors(agent.id)} />
               )}
             </div>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.displayName || agent.name}</span>
+            <Check className={cn("h-3.5 w-3.5 shrink-0", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

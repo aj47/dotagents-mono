@@ -113,6 +113,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             isSnoozed: update.isSnoozed ?? existingProgress.isSnoozed,
             sessionStartIndex: update.sessionStartIndex ?? existingProgress.sessionStartIndex,
           }
+        } else if (existingProgress.isComplete && !update.isComplete && !isNewRun) {
+          // Same run: never revert isComplete from true → false.
+          // This prevents late/stale non-complete updates (e.g. from ACP delegation
+          // callbacks or throttled progress updates) from overwriting the kill-switch
+          // completion state and making a stopped tile appear active again.
+          return state
         } else {
           const hasEmptyHistory = !update.conversationHistory || update.conversationHistory.length === 0
           const hasEmptySteps = !update.steps || update.steps.length === 0

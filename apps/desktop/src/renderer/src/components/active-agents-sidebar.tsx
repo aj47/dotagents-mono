@@ -80,7 +80,15 @@ function getSessionLastMessageTimestamp(
 function formatMinutesAgo(timestamp: number): string | null {
   if (!timestamp || !Number.isFinite(timestamp)) return null
   const minutesAgo = Math.max(Math.floor((Date.now() - timestamp) / 60_000), 0)
-  return minutesAgo === 1 ? "1m ago" : `${minutesAgo}m ago`
+  if (minutesAgo < 60) {
+    return minutesAgo === 1 ? "1m" : `${minutesAgo}m`
+  }
+
+  const hours = Math.floor(minutesAgo / 60)
+  const remainderMinutes = minutesAgo % 60
+  const hourLabel = `${hours}h`
+  const minuteLabel = remainderMinutes > 0 ? ` ${remainderMinutes}m` : ""
+  return `${hourLabel}${minuteLabel}`
 }
 
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
@@ -676,21 +684,14 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && hasLaunchControls && (
         <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
-          {onSelectAgent && (
-            <div className="min-w-0 w-full">
+          <div className="flex w-full flex-wrap items-center justify-start gap-2">
+            {onSelectAgent && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={onSelectAgent}
                 compact
               />
-            </div>
-          )}
-          <div
-            className={cn(
-              "flex w-full items-center justify-end gap-2",
-              onSelectAgent && "mt-2",
             )}
-          >
             {onStartPromptSession && (
               <PredefinedPromptsMenu
                 onSelectPrompt={onStartPromptSession}
@@ -756,7 +757,7 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && (
         <div
-          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
+          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1 scrollbar-none"
           onScroll={handleSidebarSessionsScroll}
         >
           {sidebarSessions.map(({ session, isPast, key }) => {
@@ -808,8 +809,8 @@ export function ActiveAgentsSidebar({
                       navigate(`/${session.conversationId}`)
                     }
                   }}
-                  className={cn(
-                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-8 text-xs transition-all",
+                className={cn(
+                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
@@ -819,12 +820,12 @@ export function ActiveAgentsSidebar({
                       "h-1.5 w-1.5 shrink-0 rounded-full",
                       session.status === "error"
                         ? "bg-red-500"
-                        : "bg-green-500",
+                        : "bg-muted-foreground",
                     )}
                   />
                   {renderEditableTitle(session, "flex-1")}
                   {lastMessageMinutesAgo && (
-                    <span className="text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
                       {lastMessageMinutesAgo}
                     </span>
                   )}
@@ -863,16 +864,14 @@ export function ActiveAgentsSidebar({
             }
 
             // Active session row
-            // Status colors: amber for pending approval, blue for active, gray for snoozed
+            // Status colors: amber for pending approval, green for active, gray for idle/snoozed
             const statusDotColor = hasPendingApproval
               ? "bg-amber-500"
               : conversationState === "blocked"
                 ? "bg-red-500"
-                : conversationState === "complete"
+                : conversationState === "running"
                   ? "bg-green-500"
-                  : isSnoozed
-                    ? "bg-muted-foreground"
-                    : "bg-blue-500"
+                  : "bg-muted-foreground"
 
             // Get agent/profile name from progress data
             const agentName = sessionProgress?.profileName
@@ -885,7 +884,7 @@ export function ActiveAgentsSidebar({
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-16 text-xs transition-all",
+                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isSessionExpanded

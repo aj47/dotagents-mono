@@ -139,46 +139,12 @@ export function Component() {
   // Note: focused session exception is handled separately in anyVisibleSessions below
   const visibleSessionCount = Array.from(agentProgressById?.values() ?? [])
     .filter(progress => progress && !progress.isSnoozed).length
-  const hasMultipleSessions = visibleSessionCount > 1
-
   // Aggregate session state helpers
   // Only consider non-snoozed AND non-completed sessions as "active" for mode switching
   const anyActiveNonSnoozed = activeSessionCount > 0
   // Any non-snoozed session (including completed) should show the overlay
   // Also show overlay if there's a focused session (user explicitly selected it, even if snoozed)
   const anyVisibleSessions = visibleSessionCount > 0 || (focusedSessionId && agentProgressById?.has(focusedSessionId))
-  const displayProgress = useMemo(() => {
-    // If user has explicitly focused a session, show it regardless of snoozed state
-    // This fixes the bug where clicking a completed snoozed session in kanban shows blank panel
-    if (agentProgress) return agentProgress
-    // Pick the most recently active visible session when focused one is missing.
-    const candidates = Array.from(agentProgressById?.values() ?? []).filter(
-      (p): p is NonNullable<typeof p> => !!p && !p.isSnoozed,
-    )
-    if (candidates.length === 0) return null
-
-    const activityTs = (p: NonNullable<typeof candidates[number]>) => {
-      const historyTs =
-        p.conversationHistory && p.conversationHistory.length > 0
-          ? p.conversationHistory[p.conversationHistory.length - 1]?.timestamp || 0
-          : 0
-      const stepTs =
-        p.steps && p.steps.length > 0
-          ? p.steps[p.steps.length - 1]?.timestamp || 0
-          : 0
-      return Math.max(historyTs, stepTs, 0)
-    }
-
-    candidates.sort((a, b) => {
-      // Prefer active sessions over completed when both are visible.
-      if (!!a.isComplete !== !!b.isComplete) {
-        return a.isComplete ? 1 : -1
-      }
-      return activityTs(b) - activityTs(a)
-    })
-
-    return candidates[0]
-  }, [agentProgress, agentProgressById])
 
   const configQuery = useConfigQuery()
   const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? true
@@ -1171,22 +1137,15 @@ export function Component() {
 
             <div className={cn("relative flex grow items-center", !recording && "overflow-hidden")}>
               {/* Agent progress overlay - left-aligned and full coverage */}
+              {/* Always use MultiAgentProgressView to prevent destructive remount
+                  when session count changes (1→2 or 2→1). It handles single sessions
+                  gracefully by hiding the tab bar. */}
               {/* Hide overlay when recording to show waveform instead */}
               {anyVisibleSessions && !recording && (
-                hasMultipleSessions ? (
-                  <MultiAgentProgressView
-                    variant="overlay"
-                    className="absolute inset-0 z-20"
-                  />
-                ) : (
-                  displayProgress && (
-                    <AgentProgress
-                      progress={displayProgress}
-                      variant="overlay"
-                      className="absolute inset-0 z-20"
-                    />
-                  )
-                )
+                <MultiAgentProgressView
+                  variant="overlay"
+                  className="absolute inset-0 z-20"
+                />
               )}
 
               {/* Waveform visualization and submit controls - show when recording is active */}

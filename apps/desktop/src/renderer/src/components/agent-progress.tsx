@@ -148,7 +148,7 @@ function extractRespondToUserResponsesFromMessages(
 
 const COLLAPSED_USER_RESPONSE_SCAN_LIMIT = 2048
 const COLLAPSED_USER_RESPONSE_PREVIEW_LIMIT = 160
-const TILE_PREVIEW_ITEM_LIMIT = 12
+
 
 function messageStableId(message: { timestamp: number; role: string }): string {
   return `${message.timestamp}-${message.role}`
@@ -225,29 +225,17 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
   const configQuery = useConfigQuery()
 
-  // Cleanup copy timeout and in-flight TTS key on unmount
+  // Cleanup copy timeout on unmount
+  // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
+  // The module-level tracking set must persist across remounts (e.g., when
+  // switching between single-session and multi-session views in the panel)
+  // to prevent double TTS playback. Keys are removed only:
+  // - On generation failure (by the .catch() handler)
+  // - On session dismiss (by clearSessionTTSTracking)
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
-      }
-      // If we're unmounting while TTS generation is in-flight, remove the key(s)
-      // from the tracking set so future mounts can retry generation.
-      const inFlightKeysAtUnmount = [...inFlightTtsKeysRef.current]
-      if (inFlightKeysAtUnmount.length > 0) {
-        // IMPORTANT: defer cleanup to a microtask.
-        // If generation has already completed, its `.then()` handler will run
-        // before this microtask and clear `inFlightTtsKeysRef`, preventing us
-        // from accidentally deleting a "success" key during a view switch.
-        queueMicrotask(() => {
-          if (
-            inFlightTtsKeysRef.current.length === inFlightKeysAtUnmount.length &&
-            inFlightTtsKeysRef.current.every((key) => inFlightKeysAtUnmount.includes(key))
-          ) {
-            inFlightKeysAtUnmount.forEach((key) => removeTTSKey(key))
-            inFlightTtsKeysRef.current = []
-          }
-        })
       }
     }
   }, [])
@@ -591,7 +579,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 isGenerating={isGeneratingAudio}
                 error={ttsError}
                 compact={true}
-                autoPlay={(isLast || !!message.responseEvent) ? ((configQuery.data?.ttsAutoPlay ?? true) && !isSnoozed) : false}
+                autoPlay={
+                  variant === "overlay" &&
+                  (isLast || !!message.responseEvent) &&
+                  (configQuery.data?.ttsAutoPlay ?? true) &&
+                  !isSnoozed
+                }
                 onPlayStateChange={setIsTTSPlaying}
                 audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
               />
@@ -1556,6 +1549,16 @@ const SubAgentConversationMessage: React.FC<{
 
   const isLongContent = message.content.length > 300
   const shouldShowToggle = isLongContent
+  const toolContent = useMemo(() => {
+    if (message.role !== "tool") return null
+
+    const raw = (message.content ?? "").trim()
+    const normalized = raw.replace(/^tool result:\s*/i, "").trim()
+    return {
+      summary: normalized || raw || "Tool activity",
+      rawContent: raw,
+    }
+  }, [message.content, message.role, message.toolInput])
   const roleMeta = (() => {
     switch (message.role) {
       case "user":
@@ -1614,14 +1617,47 @@ const SubAgentConversationMessage: React.FC<{
               </span>
             )}
           </div>
-          <div
-            className={cn(
-              "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
-              !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
-            )}
-          >
-            {message.content}
-          </div>
+          {message.role === "tool" ? (
+            <div className="space-y-2">
+              <div
+                className={cn(
+                  "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                  !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+                )}
+              >
+                {toolContent?.summary}
+              </div>
+              {message.toolInput && (
+                <div className="space-y-1.5 rounded-md border border-amber-200/70 bg-white/60 p-2 dark:border-amber-800/60 dark:bg-black/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">
+                    Tool Input
+                  </div>
+                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-50/80 p-2 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                    {JSON.stringify(message.toolInput, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {isExpanded && toolContent?.rawContent && toolContent.rawContent !== toolContent.summary && (
+                <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 p-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Raw Payload
+                  </div>
+                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-[11px] text-foreground/90">
+                    {toolContent.rawContent}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+              )}
+            >
+              {message.content}
+            </div>
+          )}
           {shouldShowToggle && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
@@ -2725,7 +2761,7 @@ const ResponseHistoryPanel: React.FC<{
       {/* Response list */}
       {displayState !== "collapsed" && (
         <div className={cn(
-          "overflow-y-auto scrollbar-hide-until-hover",
+          "overflow-y-auto scrollbar-none",
           displayState === "expanded" && "max-h-[200px]",
           displayState === "full" && "flex-1 min-h-0",
         )}>
@@ -2915,23 +2951,9 @@ const MidTurnUserResponseBubble: React.FC<{
       })
   }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
 
-  // Cleanup in-flight TTS key on unmount
-  useEffect(() => {
-    return () => {
-      const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
-      const completionKeysAtUnmount = inFlightCompletionTTSKeysRef.current
-      if (inFlightKeyAtUnmount) {
-        queueMicrotask(() => {
-          if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
-            removeTTSKey(inFlightKeyAtUnmount)
-            completionKeysAtUnmount.forEach((key) => removeTTSKey(key))
-            inFlightTtsKeyRef.current = null
-            inFlightCompletionTTSKeysRef.current = []
-          }
-        })
-      }
-    }
-  }, [])
+  // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
+  // See CompactMessage cleanup comment for rationale — removing keys on unmount
+  // causes double TTS when the component remounts during view switches.
 
   if (!userResponse) return null
 
@@ -3216,7 +3238,7 @@ const MidTurnUserResponseBubble: React.FC<{
             isGenerating={isGeneratingAudio}
             error={ttsError}
             compact={true}
-            autoPlay={!isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
+            autoPlay={variant === "overlay" && !isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
             onPlayStateChange={setIsTTSPlaying}
           />
           {isExpanded && ttsError && (
@@ -3920,14 +3942,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     }
 
-    // Build a set of respond_to_user content strings that are not already
-    // represented by later plain assistant messages in the timeline.
-    const respondToUserContents = new Set<string>()
-    if (currentResponseEvent) respondToUserContents.add(currentResponseEvent.text.trim())
-    if (pastResponseEvents) {
-      for (const event of pastResponseEvents) respondToUserContents.add(event.text.trim())
-    }
-
     const items: DisplayItem[] = []
     const roleCounters: Record<'user' | 'assistant' | 'tool', number> = { user: 0, assistant: 0, tool: 0 }
 
@@ -3970,10 +3984,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               } : undefined,
             },
           })
-        } else if (message.content.trim().length > 0 && !respondToUserContents.has(message.content.trim())) {
+        } else if (message.content.trim().length > 0) {
           // All tool calls were completion-control (respond_to_user / mark_work_complete).
-          // Render the assistant message content as a regular message so it's still visible
-          // when restoring old sessions where MidTurnUserResponseBubble may not render.
+          // Always render the assistant message content so previous agent responses
+          // are visible inline in the conversation timeline.
           items.push({
             kind: "message",
             id: `msg-assistant-${assistantIndex}`,
@@ -3999,17 +4013,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           data: { timestamp: message.timestamp, calls: [], results: message.toolResults },
         })
       } else {
-        // Skip plain assistant messages that duplicate respond_to_user content.
-        // The backend appends these to conversationHistory on completion but
-        // the same content is already shown in the MidTurnUserResponseBubble.
-        if (
-          message.role === "assistant" &&
-          !message.toolCalls?.length &&
-          respondToUserContents.size > 0 &&
-          respondToUserContents.has(message.content.trim())
-        ) {
-          continue
-        }
+
         const roleIndex = ++roleCounters[message.role]
         items.push({
           kind: "message",
@@ -4157,12 +4161,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return grouped
   }, [currentResponseEvent, messages, pastResponseEvents, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
-  const visibleDisplayItems = useMemo(
-    () => variant === "tile" && !isFocused && !isExpanded
-      ? displayItems.slice(-TILE_PREVIEW_ITEM_LIMIT)
-      : displayItems,
-    [displayItems, isExpanded, isFocused, variant],
-  )
+  const visibleDisplayItems = displayItems
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
@@ -4543,7 +4542,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover"
+                className="flex-1 min-h-0 overflow-y-auto scrollbar-none"
               >
                 {visibleDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">
