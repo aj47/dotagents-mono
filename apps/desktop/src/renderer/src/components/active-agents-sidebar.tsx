@@ -80,7 +80,15 @@ function getSessionLastMessageTimestamp(
 function formatMinutesAgo(timestamp: number): string | null {
   if (!timestamp || !Number.isFinite(timestamp)) return null
   const minutesAgo = Math.max(Math.floor((Date.now() - timestamp) / 60_000), 0)
-  return minutesAgo === 1 ? "1m ago" : `${minutesAgo}m ago`
+  if (minutesAgo < 60) {
+    return minutesAgo === 1 ? "1m ago" : `${minutesAgo}m ago`
+  }
+
+  const hours = Math.floor(minutesAgo / 60)
+  const remainderMinutes = minutesAgo % 60
+  const hourLabel = `${hours}h`
+  const minuteLabel = remainderMinutes > 0 ? ` ${remainderMinutes}m` : ""
+  return `${hourLabel}${minuteLabel} ago`
 }
 
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
@@ -799,8 +807,8 @@ export function ActiveAgentsSidebar({
                       navigate(`/${session.conversationId}`)
                     }
                   }}
-                  className={cn(
-                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-8 text-xs transition-all",
+                className={cn(
+                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
@@ -815,7 +823,7 @@ export function ActiveAgentsSidebar({
                   />
                   {renderEditableTitle(session, "flex-1")}
                   {lastMessageMinutesAgo && (
-                    <span className="text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
+                    <span className="shrink-0 pr-5 text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
                       {lastMessageMinutesAgo}
                     </span>
                   )}
@@ -876,7 +884,7 @@ export function ActiveAgentsSidebar({
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-16 text-xs transition-all",
+                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isFocused
@@ -917,7 +925,7 @@ export function ActiveAgentsSidebar({
                 {lastMessageMinutesAgo && (
                   <span
                     className={cn(
-                      "shrink-0 text-[10px] tabular-nums text-muted-foreground",
+                      "shrink-0 pr-10 text-[10px] tabular-nums text-muted-foreground",
                       "group-hover:hidden group-focus-within:hidden",
                     )}
                   >
