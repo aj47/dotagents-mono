@@ -289,6 +289,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({
       agentProgressById: new Map(),
       focusedSessionId: null,
+      expandedSessionId: null,
     })
   },
 
@@ -313,9 +314,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         newFocusedSessionId = candidates[0]?.[0] || null
       }
 
+      // If the cleared session was expanded, collapse back to grid view
+      let newExpandedSessionId = state.expandedSessionId
+      if (state.expandedSessionId === sessionId) {
+        newExpandedSessionId = null
+      }
+
       return {
         agentProgressById: newMap,
         focusedSessionId: newFocusedSessionId,
+        expandedSessionId: newExpandedSessionId,
       }
     })
   },
@@ -351,9 +359,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         newFocusedSessionId = candidates[0]?.[0] || null
       }
 
+      // If the expanded session was cleared, collapse back to grid view
+      let newExpandedSessionId = state.expandedSessionId
+      if (state.expandedSessionId && !newMap.has(state.expandedSessionId)) {
+        newExpandedSessionId = null
+      }
+
       return {
         agentProgressById: newMap,
         focusedSessionId: newFocusedSessionId,
+        expandedSessionId: newExpandedSessionId,
       }
     })
   },

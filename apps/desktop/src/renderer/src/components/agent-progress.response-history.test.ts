@@ -227,7 +227,12 @@ async function loadAgentProgress(
     },
   }
   const storesMock = {
-    useAgentStore: (selector: any) => selector({ setFocusedSessionId: vi.fn(), setSessionSnoozed: vi.fn() }),
+    useAgentStore: (selector: any) => selector({
+      pinnedSessionIds: new Set<string>(),
+      togglePinSession: vi.fn(),
+      setFocusedSessionId: vi.fn(),
+      setSessionSnoozed: vi.fn(),
+    }),
     useMessageQueue: () => [],
     useIsQueuePaused: () => false,
   }
@@ -268,6 +273,7 @@ async function loadAgentProgress(
     Wrench: icon("Wrench"),
     Play: icon("Play"),
     Pause: icon("Pause"),
+    Pin: icon("Pin"),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ") }))
   vi.doMock("@renderer/components/markdown-renderer", () => ({ MarkdownRenderer: ({ content }: any) => ({ type: "MarkdownRenderer", props: { content, children: content } }) }))
@@ -711,10 +717,9 @@ describe("agent progress response history", () => {
     expect(tipcMock.tipcClient.generateSpeech).toHaveBeenCalledWith({ text: "Mid-conversation answer" })
   })
 
-  it("maximizes a running tile from pointer-down without waiting for click", async () => {
+  it("removes tile maximize controls from the simplified session layout", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
-    const onExpand = vi.fn()
     const progress = {
       sessionId: "session-5",
       conversationId: "conversation-5",
@@ -724,131 +729,14 @@ describe("agent progress response history", () => {
       isComplete: false,
       finalContent: "",
       conversationHistory: [],
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
-    const maximizeButton = findElementByTitle(tree, "Maximize tile")
-
-    maximizeButton.props.onPointerDown({
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(onExpand).toHaveBeenCalledTimes(1)
-  })
-
-  it("exposes maximize for snoozed in-progress tiles without a separate restore button", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-5b",
-      conversationId: "conversation-5b",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      isSnoozed: true,
-      finalContent: "",
-      conversationHistory: [],
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: false })
-    expect(findElementByTitle(tree, "Maximize tile")).toBeTruthy()
-    expect(findAll(tree, (value) => value?.props?.title === "Restore session")).toHaveLength(0)
-  })
-
-  it("shows a restore tile layout button when the tile is already maximized", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-5c",
-      conversationId: "conversation-5c",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: true })
-    expect(findElementByTitle(tree, "Restore tile layout")).toBeTruthy()
-  })
-
-  it("maximizes the running latest-response bubble once per pointer interaction while preserving keyboard click support", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const onExpand = vi.fn()
-    const progress = {
-      sessionId: "session-6",
-      conversationId: "conversation-6",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
       userResponse: "Need your confirmation",
     }
 
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
-    const maximizeButton = findElementByTitle(tree, "Maximize")
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: true })
 
-    maximizeButton.props.onPointerDown({
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-    maximizeButton.props.onClick({
-      detail: 1,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-    maximizeButton.props.onClick({
-      detail: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-
-    expect(onExpand).toHaveBeenCalledTimes(2)
-  })
-
-  it("clears the latest-response pointer-down maximize guard when the pointer interaction is canceled", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const onExpand = vi.fn()
-    const progress = {
-      sessionId: "session-7",
-      conversationId: "conversation-7",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Still waiting on you",
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
-    const maximizeButton = findElementByTitle(tree, "Maximize")
-
-    maximizeButton.props.onPointerDown({
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-    maximizeButton.props.onPointerCancel()
-    maximizeButton.props.onClick({
-      detail: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-
-    expect(onExpand).toHaveBeenCalledTimes(2)
+    expect(findAll(tree, (value) => value?.props?.title === "Maximize tile")).toHaveLength(0)
+    expect(findAll(tree, (value) => value?.props?.title === "Restore tile layout")).toHaveLength(0)
+    expect(findAll(tree, (value) => value?.props?.title === "Maximize")).toHaveLength(0)
   })
 
   it("plays response history newest-to-oldest from the header playback control", async () => {

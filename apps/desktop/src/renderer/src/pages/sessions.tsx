@@ -3,9 +3,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useParams, useOutletContext } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
-import { SessionGrid, SessionTileWrapper } from "@renderer/components/session-grid"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { SessionCompactCard } from "@renderer/components/session-compact-card"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
@@ -20,7 +18,6 @@ import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
-import { calculateAdaptiveColumns } from "@renderer/components/session-grid-layout"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
 
 const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
@@ -66,16 +63,6 @@ const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
 type SessionAgentTileProps = {
   sessionId: string
-  index: number
-  isCollapsed: boolean
-  isDragTarget: boolean
-  isDragging: boolean
-  isExpanded: boolean
-  onCollapsedChange: (sessionId: string, collapsed: boolean) => void
-  onDragStart: (sessionId: string, index: number) => void
-  onDragOver: (index: number) => void
-  onDragEnd: () => void
-  onCollapse: () => void
   onVoiceContinue: (options: {
     conversationId?: string
     sessionId?: string
@@ -84,23 +71,11 @@ type SessionAgentTileProps = {
     agentName?: string
     onSubmitted?: () => void
   }) => void
-  scrollRef?: React.Ref<HTMLDivElement>
 }
 
 const SessionAgentTile = React.memo(function SessionAgentTile({
   sessionId,
-  index,
-  isCollapsed,
-  isDragTarget,
-  isDragging,
-  isExpanded,
-  onCollapsedChange,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-  onCollapse,
   onVoiceContinue,
-  scrollRef,
 }: SessionAgentTileProps) {
   const progress = useAgentSessionProgress(sessionId)
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
@@ -131,40 +106,20 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
     queryClient.invalidateQueries({ queryKey: ["agentSessions"] })
   }, [queryClient, sessionId])
 
-  const handleCollapsedChange = useCallback((collapsed: boolean) => {
-    onCollapsedChange(sessionId, collapsed)
-  }, [onCollapsedChange, sessionId])
-
   if (!progress) {
     return null
   }
 
   return (
-    <SessionTileWrapper
-      sessionId={sessionId}
-      index={index}
-      isCollapsed={isCollapsed}
-      isDraggable={true}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      isDragTarget={isDragTarget}
-      isDragging={isDragging}
-      scrollRef={scrollRef}
-    >
-      <AgentProgress
-        progress={progress}
-        variant="tile"
-        isFocused={isFocused}
-        onFocus={handleFocusSession}
-        onDismiss={handleDismissSession}
-        isCollapsed={isCollapsed}
-        onCollapsedChange={handleCollapsedChange}
-        onExpand={onCollapse}
-        isExpanded={isExpanded}
-        onVoiceContinue={onVoiceContinue}
-      />
-    </SessionTileWrapper>
+    <AgentProgress
+      progress={progress}
+      variant="tile"
+      className="h-full"
+      isFocused={isFocused}
+      onFocus={handleFocusSession}
+      onDismiss={handleDismissSession}
+      onVoiceContinue={onVoiceContinue}
+    />
   )
 })
 
@@ -320,7 +275,6 @@ export function Component() {
   const layoutContext = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const {
     onOpenPastSessionsDialog,
-    sidebarWidth,
     selectedAgentId = null,
     setSelectedAgentId = () => {},
     onStartTextSession = async () => {},
@@ -332,8 +286,6 @@ export function Component() {
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
-  const scrollToSessionId = useAgentStore((s) => s.scrollToSessionId)
-  const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   // Get config for shortcut displays
   const configQuery = useConfigQuery()
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
@@ -341,21 +293,8 @@ export function Component() {
   const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
 
   const [sessionOrder, setSessionOrder] = useState<string[]>([])
-  const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null)
-  const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null)
-  const [collapsedSessions, setCollapsedSessions] = useState<Record<string, boolean>>({})
   const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
   const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
-  const [gridMetrics, setGridMetrics] = useState({ width: 0, height: 0, gap: 12 })
-
-  const sessionRefs = useRef<Record<string, HTMLDivElement | null>>({})
-
-  const handleCollapsedChange = useCallback((sessionId: string, collapsed: boolean) => {
-    setCollapsedSessions(prev => ({
-      ...prev,
-      [sessionId]: collapsed
-    }))
-  }, [])
 
   /**
    * Returns the timestamp of the most recent activity in a session.
@@ -506,10 +445,7 @@ export function Component() {
       )
       if (activeSession) {
         setFocusedSessionId(activeSession[0])
-        // Scroll to the session tile
-        setTimeout(() => {
-          sessionRefs.current[activeSession[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 100)
+        setExpandedSessionId(activeSession[0])
       } else {
         // It's a past session or completed session - load fresh data from disk
         setPendingConversationId(routeHistoryItemId)
@@ -518,20 +454,7 @@ export function Component() {
       // Using window.history.replaceState instead of navigate() to avoid clearing local state
       window.history.replaceState(null, "", "/")
     }
-  }, [routeHistoryItemId, agentProgressById, setFocusedSessionId])
-
-  // Handle scroll-to-session requests from sidebar navigation
-  useEffect(() => {
-    if (scrollToSessionId) {
-      const targetSessionId = scrollToSessionId
-      // Use a small delay to ensure the DOM has rendered the tile
-      setTimeout(() => {
-        sessionRefs.current[targetSessionId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        // Clear the scroll request after attempting scroll to avoid race conditions
-        setScrollToSessionId(null)
-      }, 100)
-    }
-  }, [scrollToSessionId, setScrollToSessionId])
+  }, [routeHistoryItemId, agentProgressById, setExpandedSessionId, setFocusedSessionId])
 
   // Load the pending conversation data when one is selected
   const pendingConversationQuery = useQuery({
@@ -610,10 +533,7 @@ export function Component() {
     if (existingSession) {
       // Focus the existing session tile instead of creating a duplicate
       setFocusedSessionId(existingSession[0])
-      // Scroll to the session tile
-      setTimeout(() => {
-        sessionRefs.current[existingSession[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 100)
+      setExpandedSessionId(existingSession[0])
     } else {
       // No active session exists, create a pending tile
       setPendingContinuationStartedAt(null)
@@ -721,36 +641,6 @@ export function Component() {
     })
   }, [openSessionActionDialog])
 
-  // Drag and drop handlers
-  const handleDragStart = useCallback((sessionId: string, _index: number) => {
-    setDraggedSessionId(sessionId)
-  }, [])
-
-  const handleDragOver = useCallback((targetIndex: number) => {
-    setDragTargetIndex(targetIndex)
-  }, [])
-
-  const handleDragEnd = useCallback(() => {
-    if (draggedSessionId && dragTargetIndex !== null) {
-      // Reorder the sessions
-      setSessionOrder(prev => {
-        const currentOrder = prev.length > 0 ? prev : allProgressEntries.map(([id]) => id)
-        const draggedIndex = currentOrder.indexOf(draggedSessionId)
-
-        if (draggedIndex === -1 || draggedIndex === dragTargetIndex) {
-          return currentOrder
-        }
-
-        const newOrder = [...currentOrder]
-        newOrder.splice(draggedIndex, 1)
-        newOrder.splice(dragTargetIndex, 0, draggedSessionId)
-        return newOrder
-      })
-    }
-    setDraggedSessionId(null)
-    setDragTargetIndex(null)
-  }, [draggedSessionId, dragTargetIndex, allProgressEntries])
-
   const handleClearInactiveSessions = async () => {
     const inactiveSessions = allProgressEntries.filter(([_, p]) => p?.isComplete).map(([id]) => id)
     logUI('[Sessions] Clear all inactive sessions clicked:', {
@@ -780,42 +670,12 @@ export function Component() {
 
   const hasSessions = allProgressEntries.length > 0 || hasPendingTile
 
-  // Calculate adaptive column count based on session count and viewport
-  const totalSessionCount = allProgressEntries.length + (hasPendingTile ? 1 : 0)
-  const adaptiveColumns = useMemo(
-    () => calculateAdaptiveColumns(totalSessionCount, gridMetrics.height, 72, gridMetrics.gap),
-    [totalSessionCount, gridMetrics.height, gridMetrics.gap],
-  )
-
-  // Adaptive layout mode derived from column count (for SessionGrid compatibility)
-  const adaptiveLayoutMode = useMemo(() => {
-    if (expandedSessionId) return "1x1" as const
-    const rows = Math.max(1, Math.ceil(totalSessionCount / adaptiveColumns))
-    return `${rows}x${adaptiveColumns}` as const
-  }, [expandedSessionId, totalSessionCount, adaptiveColumns])
-
-  // Handle expanding a compact card
-  const handleExpandSession = useCallback((sessionId: string) => {
-    // Toggle: collapse if already expanded, otherwise expand
-    const current = useAgentStore.getState().expandedSessionId
-    setExpandedSessionId(current === sessionId ? null : sessionId)
-    setFocusedSessionId(sessionId)
-  }, [setExpandedSessionId, setFocusedSessionId])
-
-  // Handle collapsing expanded card back to compact
-  const handleCollapseExpanded = useCallback(() => {
-    setExpandedSessionId(null)
-  }, [setExpandedSessionId])
-
-  // Handle stopping a session from compact card
-  const handleStopSession = useCallback(async (sessionId: string) => {
-    try {
-      await tipcClient.stopAgentSession({ sessionId })
-    } catch (error) {
-      console.error("Failed to stop session:", error)
-      toast.error("Failed to stop session")
-    }
-  }, [])
+  const visibleSessionId = useMemo(() => {
+    if (hasPendingTile && pendingSessionId) return pendingSessionId
+    if (expandedSessionId && agentProgressById.has(expandedSessionId)) return expandedSessionId
+    if (focusedSessionId && agentProgressById.has(focusedSessionId)) return focusedSessionId
+    return allProgressEntries[0]?.[0] ?? null
+  }, [hasPendingTile, pendingSessionId, expandedSessionId, agentProgressById, focusedSessionId, allProgressEntries])
 
   useEffect(() => {
     const handleClearInactive = () => {
@@ -828,6 +688,20 @@ export function Component() {
       window.removeEventListener(CLEAR_INACTIVE_EVENT, handleClearInactive)
     }
   }, [inactiveSessionCount])
+
+  // Safety guard: if the expanded session is no longer in the progress map, clear it.
+  useEffect(() => {
+    if (expandedSessionId && !agentProgressById.has(expandedSessionId)) {
+      setExpandedSessionId(null)
+    }
+  }, [expandedSessionId, agentProgressById, setExpandedSessionId])
+
+  useEffect(() => {
+    if (hasPendingTile) return
+    if (visibleSessionId && visibleSessionId !== expandedSessionId) {
+      setExpandedSessionId(visibleSessionId)
+    }
+  }, [hasPendingTile, visibleSessionId, expandedSessionId, setExpandedSessionId])
 
   return (
     <div className="group/tile flex h-full flex-col">
@@ -847,106 +721,22 @@ export function Component() {
             selectedAgentId={selectedAgentId}
             onSelectAgent={setSelectedAgentId}
           />
-        ) : expandedSessionId ? (
-          /* Expanded view: compact strip + expanded session */
-          <div className="flex h-full flex-col">
-            {/* Compact strip of other sessions at top */}
-            {(allProgressEntries.length + (hasPendingTile ? 1 : 0)) > 1 && (
-              <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-border/50 px-3 py-2 scrollbar-hide-until-hover">
-                {/* Pending tile in compact strip */}
-                {pendingProgress && pendingSessionId && pendingSessionId !== expandedSessionId && (
-                  <div className="min-w-[200px] max-w-[300px] shrink-0">
-                    <SessionCompactCard
-                      progress={pendingProgress}
-                      sessionId={pendingSessionId}
-                      onClick={() => handleExpandSession(pendingSessionId)}
-                    />
-                  </div>
-                )}
-                {allProgressEntries
-                  .filter(([sid]) => sid !== expandedSessionId)
-                  .map(([sessionId, progress]) => (
-                    <div key={sessionId} className="min-w-[200px] max-w-[300px] shrink-0"
-                      ref={(el) => { sessionRefs.current[sessionId] = el }}>
-                      <SessionCompactCard
-                        progress={progress!}
-                        sessionId={sessionId}
-                        onClick={() => handleExpandSession(sessionId)}
-                        onStop={() => handleStopSession(sessionId)}
-                      />
-                    </div>
-                  ))}
-              </div>
-            )}
-            {/* Expanded session - full AgentProgress tile */}
-            <div className="flex-1 min-h-0">
-              <SessionGrid
-                sessionCount={1}
-                layoutMode="1x1"
-                layoutChangeKey={sidebarWidth}
-                onMetricsChange={setGridMetrics}
-                className="px-3 py-3"
-              >
-                <SessionAgentTile
-                  key={expandedSessionId}
-                  sessionId={expandedSessionId}
-                  index={0}
-                  isCollapsed={collapsedSessions[expandedSessionId] ?? false}
-                  isDragTarget={false}
-                  isDragging={false}
-                  isExpanded={true}
-                  onCollapsedChange={handleCollapsedChange}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                  onCollapse={handleCollapseExpanded}
-                  onVoiceContinue={handleOpenVoiceContinuation}
-                  scrollRef={(el) => { sessionRefs.current[expandedSessionId] = el }}
-                />
-              </SessionGrid>
-            </div>
-          </div>
         ) : (
-          /* Compact card grid view - all sessions as compact cards */
-          <SessionGrid
-            sessionCount={totalSessionCount}
-            layoutMode={adaptiveLayoutMode}
-            layoutChangeKey={sidebarWidth}
-            onMetricsChange={setGridMetrics}
-            className="px-3 py-3"
-          >
-            {/* Pending continuation tile */}
-            {pendingProgress && pendingSessionId && (
-              <SessionTileWrapper
-                key={pendingSessionId}
-                sessionId={pendingSessionId}
-                index={0}
-                isCollapsed={false}
-                isDraggable={false}
-                onDragStart={() => {}}
-                onDragOver={() => {}}
-                onDragEnd={() => {}}
-                isDragTarget={false}
-                isDragging={false}
-              >
-                <AgentProgress
-                  progress={pendingProgress}
-                  variant="tile"
-                  isFocused={true}
-                  onFocus={() => {}}
-                  onDismiss={handleDismissPendingContinuation}
-                  onFollowUpSent={handlePendingContinuationStarted}
-                  isCollapsed={false}
-                  onCollapsedChange={(collapsed) => handleCollapsedChange(pendingSessionId, collapsed)}
-                  onExpand={() => handleExpandSession(pendingSessionId)}
-                  isExpanded={false}
-                  isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
-                  onVoiceContinue={handleOpenVoiceContinuation}
-                />
-              </SessionTileWrapper>
-            )}
-            {showPendingLoadingTile && pendingSessionId && (
-              <div className="flex flex-col rounded-xl border border-border bg-card p-4">
+          <div className="flex h-full min-h-0 flex-col p-3">
+            {pendingProgress && pendingSessionId ? (
+              <AgentProgress
+                progress={pendingProgress}
+                variant="tile"
+                className="h-full"
+                isFocused={true}
+                onFocus={() => {}}
+                onDismiss={handleDismissPendingContinuation}
+                onFollowUpSent={handlePendingContinuationStarted}
+                isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
+                onVoiceContinue={handleOpenVoiceContinuation}
+              />
+            ) : showPendingLoadingTile ? (
+              <div className="flex h-full flex-col rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 border-b border-border/60 pb-3">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   <div className="h-4 w-40 animate-pulse rounded bg-muted" />
@@ -956,42 +746,14 @@ export function Component() {
                   <div className="h-3 w-5/6 animate-pulse rounded bg-muted/70" />
                 </div>
               </div>
-            )}
-            {/* Regular sessions as compact cards */}
-            {allProgressEntries.map(([sessionId, progress], index) => {
-              const adjustedIndex = hasPendingTile ? index + 1 : index
-              return (
-                <div
-                  key={sessionId}
-                  ref={(el) => { sessionRefs.current[sessionId] = el }}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = "move"
-                    e.dataTransfer.setData("text/plain", sessionId)
-                    handleDragStart(sessionId, adjustedIndex)
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    e.dataTransfer.dropEffect = "move"
-                    handleDragOver(adjustedIndex)
-                  }}
-                  onDragEnd={handleDragEnd}
-                  className={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId
-                    ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg"
-                    : draggedSessionId === sessionId ? "opacity-50" : ""}
-                >
-                  <SessionCompactCard
-                    progress={progress!}
-                    sessionId={sessionId}
-                    onClick={() => handleExpandSession(sessionId)}
-                    onStop={() => handleStopSession(sessionId)}
-                    isDragTarget={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId}
-                    isDragging={draggedSessionId === sessionId}
-                  />
-                </div>
-              )
-            })}
-          </SessionGrid>
+            ) : visibleSessionId ? (
+              <SessionAgentTile
+                key={visibleSessionId}
+                sessionId={visibleSessionId}
+                onVoiceContinue={handleOpenVoiceContinuation}
+              />
+            ) : null}
+          </div>
         )}
 
       </div>

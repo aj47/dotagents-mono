@@ -18,16 +18,16 @@ describe("sessions in-app actions", () => {
     expect(appLayoutSource).not.toContain("await tipcClient.triggerMcpRecording({})")
   })
 
-  it("uses adaptive grid layout with compact cards for session overview", () => {
-    expect(sessionsSource).toContain("calculateAdaptiveColumns")
-    expect(sessionsSource).toContain("SessionCompactCard")
-    expect(sessionsSource).toContain("expandedSessionId")
+  it("renders a single full-height session view instead of the old card grid", () => {
+    expect(sessionsSource).toContain("const visibleSessionId = useMemo(() => {")
+    expect(sessionsSource).toContain('className="flex h-full min-h-0 flex-col p-3"')
+    expect(sessionsSource).not.toContain("SessionCompactCard")
+    expect(sessionsSource).not.toContain("calculateAdaptiveColumns")
   })
 
-  it("handles expand/collapse of session cards", () => {
-    expect(sessionsSource).toContain("handleExpandSession")
-    expect(sessionsSource).toContain("handleCollapseExpanded")
-    expect(sessionsSource).toContain("onCollapse={handleCollapseExpanded}")
+  it("keeps sidebar session clicks always selecting the expanded session", () => {
+    expect(sidebarSource).toContain("setExpandedSessionId(sessionId)")
+    expect(sidebarSource).not.toContain("setExpandedSessionId(null)")
   })
 
   it("routes start and prompt controls through the sidebar instead of the sessions top bar", () => {
@@ -35,18 +35,20 @@ describe("sessions in-app actions", () => {
     expect(sidebarSource).toContain("<PredefinedPromptsMenu")
     expect(sidebarSource).toContain("onStartTextSession")
     expect(sidebarSource).toContain("onStartVoiceSession")
-    expect(sidebarSource).toContain("onCycleTileLayout")
+    expect(sidebarSource).toContain('className="ml-auto flex items-center gap-2"')
     expect(sidebarSource).toContain('aria-label="Start text session"')
     expect(sidebarSource).toContain('aria-label="Start voice session"')
-    expect(sidebarSource).toContain('aria-label="Cycle tile layout"')
+    expect(sidebarSource).not.toContain('aria-label="Cycle tile layout"')
+    expect(appLayoutSource).not.toContain("onCycleTileLayout")
     expect(sidebarSource).not.toContain("<span>Start Text</span>")
     expect(sidebarSource).not.toContain("<span>Start Voice</span>")
     expect(sessionsSource).not.toContain('aria-label="Cycle tile layout"')
   })
 
-  it("uses adaptive grid layout with SessionGrid", () => {
-    expect(sessionsSource).toContain('className="px-3 py-3"')
-    expect(sessionsSource).toContain("adaptiveLayoutMode")
+  it("shows sidebar session previews and removes sidebar minimize controls", () => {
+    expect(sidebarSource).toContain("getSidebarSessionPreview")
+    expect(sidebarSource).toContain('className="line-clamp-2 text-[11px] leading-4 text-muted-foreground"')
+    expect(sidebarSource).not.toContain("Minimize - run in background")
   })
 
   it("does NOT filter completed sessions — they persist until explicitly dismissed", () => {
