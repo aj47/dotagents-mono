@@ -81,14 +81,14 @@ function formatMinutesAgo(timestamp: number): string | null {
   if (!timestamp || !Number.isFinite(timestamp)) return null
   const minutesAgo = Math.max(Math.floor((Date.now() - timestamp) / 60_000), 0)
   if (minutesAgo < 60) {
-    return minutesAgo === 1 ? "1m ago" : `${minutesAgo}m ago`
+    return minutesAgo === 1 ? "1m" : `${minutesAgo}m`
   }
 
   const hours = Math.floor(minutesAgo / 60)
   const remainderMinutes = minutesAgo % 60
   const hourLabel = `${hours}h`
   const minuteLabel = remainderMinutes > 0 ? ` ${remainderMinutes}m` : ""
-  return `${hourLabel}${minuteLabel} ago`
+  return `${hourLabel}${minuteLabel}`
 }
 
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
@@ -756,7 +756,7 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && (
         <div
-          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
+          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1 scrollbar-none"
           onScroll={handleSidebarSessionsScroll}
         >
           {sidebarSessions.map(({ session, isPast, key }) => {
@@ -823,7 +823,7 @@ export function ActiveAgentsSidebar({
                   />
                   {renderEditableTitle(session, "flex-1")}
                   {lastMessageMinutesAgo && (
-                    <span className="shrink-0 pr-5 text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
                       {lastMessageMinutesAgo}
                     </span>
                   )}
@@ -925,7 +925,7 @@ export function ActiveAgentsSidebar({
                 {lastMessageMinutesAgo && (
                   <span
                     className={cn(
-                      "shrink-0 pr-10 text-[10px] tabular-nums text-muted-foreground",
+                      "shrink-0 text-[10px] tabular-nums text-muted-foreground",
                       "group-hover:hidden group-focus-within:hidden",
                     )}
                   >
