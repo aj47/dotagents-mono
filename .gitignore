@@ -78,3 +78,7 @@ tmp/
 
 # Local factory/agent scaffolding
 .factory/
+
+# Local editor/tool workspace metadata
+.vscode/
+.intent/
