@@ -2725,7 +2725,7 @@ const ResponseHistoryPanel: React.FC<{
       {/* Response list */}
       {displayState !== "collapsed" && (
         <div className={cn(
-          "overflow-y-auto scrollbar-hide-until-hover",
+          "overflow-y-auto scrollbar-none",
           displayState === "expanded" && "max-h-[200px]",
           displayState === "full" && "flex-1 min-h-0",
         )}>
@@ -4543,7 +4543,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover"
+                className="flex-1 min-h-0 overflow-y-auto scrollbar-none"
               >
                 {visibleDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">

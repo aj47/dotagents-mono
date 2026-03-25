@@ -857,7 +857,7 @@ export function Component() {
   return (
     <div className="group/tile flex h-full flex-col">
       {/* Scrollable content area - flex-1 min-h-0 so it fills remaining height without overflow */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
         {/* Show empty state when no sessions and no pending */}
         {!hasSessions ? (
           <EmptyState
@@ -880,7 +880,7 @@ export function Component() {
               layoutMode={tileLayoutMode}
               layoutChangeKey={sidebarWidth}
               onMetricsChange={setGridMetrics}
-              className="px-3 py-3"
+              className="px-3 pt-1 pb-3"
             >
               {/* Pending continuation tile first */}
               {pendingProgress && pendingSessionId && (
