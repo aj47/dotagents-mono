@@ -818,7 +818,7 @@ export function ActiveAgentsSidebar({
                       "h-1.5 w-1.5 shrink-0 rounded-full",
                       session.status === "error"
                         ? "bg-red-500"
-                        : "bg-green-500",
+                        : "bg-muted-foreground",
                     )}
                   />
                   {renderEditableTitle(session, "flex-1")}
@@ -862,16 +862,14 @@ export function ActiveAgentsSidebar({
             }
 
             // Active session row
-            // Status colors: amber for pending approval, blue for active, gray for snoozed
+            // Status colors: amber for pending approval, green for active, gray for idle/snoozed
             const statusDotColor = hasPendingApproval
               ? "bg-amber-500"
               : conversationState === "blocked"
                 ? "bg-red-500"
-                : conversationState === "complete"
+                : conversationState === "running"
                   ? "bg-green-500"
-                  : isSnoozed
-                    ? "bg-muted-foreground"
-                    : "bg-blue-500"
+                  : "bg-muted-foreground"
 
             // Get agent/profile name from progress data
             const agentName = sessionProgress?.profileName
