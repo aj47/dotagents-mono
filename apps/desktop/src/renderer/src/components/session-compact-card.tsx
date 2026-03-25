@@ -122,6 +122,11 @@ export const SessionCompactCard = React.memo(function SessionCompactCard({
     onStop?.()
   }, [onStop])
 
+  const handleExpand = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick()
+  }, [onClick])
+
   return (
     <div
       role="button"
@@ -159,7 +164,7 @@ export const SessionCompactCard = React.memo(function SessionCompactCard({
         )}
         {/* Hover actions */}
         <div className="hidden items-center gap-0.5 group-hover/card:flex">
-          <button type="button" onClick={onClick} className="rounded p-0.5 hover:bg-muted" title="Expand">
+          <button type="button" onClick={handleExpand} className="rounded p-0.5 hover:bg-muted" title="Expand">
             <Maximize2 className="h-3 w-3 text-muted-foreground" />
           </button>
           {!isComplete && onStop && (
@@ -172,4 +177,3 @@ export const SessionCompactCard = React.memo(function SessionCompactCard({
     </div>
   )
 })
-
