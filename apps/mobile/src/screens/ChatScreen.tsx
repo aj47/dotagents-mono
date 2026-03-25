@@ -3085,15 +3085,29 @@ export default function ChatScreen({ route, navigation }: any) {
                 result: NonNullable<ChatMessage['toolResults']>[number] | undefined;
               }>
             );
-            const displayToolCallCount = displayToolEntries.length;
+            const fallbackToolEntries =
+              displayToolEntries.length === 0 && toolResults.length > 0
+                ? toolResults.map((result, idx) => ({
+                    toolCall: {
+                      name: 'tool_call',
+                      arguments: {},
+                    },
+                    origIdx: idx,
+                    result,
+                  }))
+                : [];
+            const renderedToolEntries = fallbackToolEntries.length > 0
+              ? fallbackToolEntries
+              : displayToolEntries;
+            const displayToolCallCount = renderedToolEntries.length;
             const toolResultCount = toolResults.length;
-            const hasToolResults = displayToolEntries.some(entry => !!entry.result);
+            const hasToolResults = renderedToolEntries.some(entry => !!entry.result);
             const allSuccess =
-              hasToolResults && displayToolEntries.every(entry => entry.result?.success === true);
-            const hasErrors = displayToolEntries.some(entry => entry.result?.success === false);
+              hasToolResults && renderedToolEntries.every(entry => entry.result?.success === true);
+            const hasErrors = renderedToolEntries.some(entry => entry.result?.success === false);
             // isPending is true when any displayed tool call has not received its result yet.
             const isPending =
-              displayToolEntries.some(entry => !entry.result && entry.origIdx >= toolResultCount);
+              renderedToolEntries.some(entry => !entry.result && entry.origIdx >= toolResultCount);
 
             // Skip empty messages: no visible content AND no tool calls to display
             // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
@@ -3240,7 +3254,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               pressed && styles.toolCallCompactPressed,
                             ]}
                           >
-                            {displayToolEntries.map(({ toolCall, origIdx, result: tcResult }, tcIdx) => {
+                            {renderedToolEntries.map(({ toolCall, origIdx, result: tcResult }, tcIdx) => {
                               const tcPending = !tcResult && origIdx >= toolResultCount;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
@@ -3300,7 +3314,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             allSuccess && styles.toolExecutionSuccess,
                             hasErrors && styles.toolExecutionError,
                           ]}>
-                            {displayToolEntries.map(({ toolCall, origIdx, result }, idx) => {
+                            {renderedToolEntries.map(({ toolCall, origIdx, result }, idx) => {
                               const isResultPending = !result && origIdx >= toolResultCount;
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
