@@ -148,7 +148,7 @@ function extractRespondToUserResponsesFromMessages(
 
 const COLLAPSED_USER_RESPONSE_SCAN_LIMIT = 2048
 const COLLAPSED_USER_RESPONSE_PREVIEW_LIMIT = 160
-const TILE_PREVIEW_ITEM_LIMIT = 12
+
 
 function messageStableId(message: { timestamp: number; role: string }): string {
   return `${message.timestamp}-${message.role}`
@@ -3920,14 +3920,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     }
 
-    // Build a set of respond_to_user content strings that are not already
-    // represented by later plain assistant messages in the timeline.
-    const respondToUserContents = new Set<string>()
-    if (currentResponseEvent) respondToUserContents.add(currentResponseEvent.text.trim())
-    if (pastResponseEvents) {
-      for (const event of pastResponseEvents) respondToUserContents.add(event.text.trim())
-    }
-
     const items: DisplayItem[] = []
     const roleCounters: Record<'user' | 'assistant' | 'tool', number> = { user: 0, assistant: 0, tool: 0 }
 
@@ -3970,10 +3962,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               } : undefined,
             },
           })
-        } else if (message.content.trim().length > 0 && !respondToUserContents.has(message.content.trim())) {
+        } else if (message.content.trim().length > 0) {
           // All tool calls were completion-control (respond_to_user / mark_work_complete).
-          // Render the assistant message content as a regular message so it's still visible
-          // when restoring old sessions where MidTurnUserResponseBubble may not render.
+          // Always render the assistant message content so previous agent responses
+          // are visible inline in the conversation timeline.
           items.push({
             kind: "message",
             id: `msg-assistant-${assistantIndex}`,
@@ -3999,17 +3991,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           data: { timestamp: message.timestamp, calls: [], results: message.toolResults },
         })
       } else {
-        // Skip plain assistant messages that duplicate respond_to_user content.
-        // The backend appends these to conversationHistory on completion but
-        // the same content is already shown in the MidTurnUserResponseBubble.
-        if (
-          message.role === "assistant" &&
-          !message.toolCalls?.length &&
-          respondToUserContents.size > 0 &&
-          respondToUserContents.has(message.content.trim())
-        ) {
-          continue
-        }
+
         const roleIndex = ++roleCounters[message.role]
         items.push({
           kind: "message",
@@ -4157,12 +4139,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return grouped
   }, [currentResponseEvent, messages, pastResponseEvents, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
-  const visibleDisplayItems = useMemo(
-    () => variant === "tile" && !isFocused && !isExpanded
-      ? displayItems.slice(-TILE_PREVIEW_ITEM_LIMIT)
-      : displayItems,
-    [displayItems, isExpanded, isFocused, variant],
-  )
+  const visibleDisplayItems = displayItems
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
