@@ -344,7 +344,8 @@ export function Component() {
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null)
   const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null)
   const [collapsedSessions, setCollapsedSessions] = useState<Record<string, boolean>>({})
-  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
+  const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
+  const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
   const [gridMetrics, setGridMetrics] = useState({ width: 0, height: 0, gap: 12 })
 
   const sessionRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -803,14 +804,16 @@ export function Component() {
 
   // Handle expanding a compact card
   const handleExpandSession = useCallback((sessionId: string) => {
-    setExpandedSessionId(prev => prev === sessionId ? null : sessionId)
+    // Toggle: collapse if already expanded, otherwise expand
+    const current = useAgentStore.getState().expandedSessionId
+    setExpandedSessionId(current === sessionId ? null : sessionId)
     setFocusedSessionId(sessionId)
-  }, [setFocusedSessionId])
+  }, [setExpandedSessionId, setFocusedSessionId])
 
   // Handle collapsing expanded card back to compact
   const handleCollapseExpanded = useCallback(() => {
     setExpandedSessionId(null)
-  }, [])
+  }, [setExpandedSessionId])
 
   // Handle stopping a session from compact card
   const handleStopSession = useCallback(async (sessionId: string) => {
