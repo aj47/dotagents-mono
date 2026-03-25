@@ -676,21 +676,14 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && hasLaunchControls && (
         <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
-          {onSelectAgent && (
-            <div className="min-w-0 w-full">
+          <div className="flex w-full flex-wrap items-center justify-start gap-2">
+            {onSelectAgent && (
               <AgentSelector
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={onSelectAgent}
                 compact
               />
-            </div>
-          )}
-          <div
-            className={cn(
-              "flex w-full items-center justify-end gap-2",
-              onSelectAgent && "mt-2",
             )}
-          >
             {onStartPromptSession && (
               <PredefinedPromptsMenu
                 onSelectPrompt={onStartPromptSession}
