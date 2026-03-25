@@ -1556,6 +1556,16 @@ const SubAgentConversationMessage: React.FC<{
 
   const isLongContent = message.content.length > 300
   const shouldShowToggle = isLongContent
+  const toolContent = useMemo(() => {
+    if (message.role !== "tool") return null
+
+    const raw = (message.content ?? "").trim()
+    const normalized = raw.replace(/^tool result:\s*/i, "").trim()
+    return {
+      summary: normalized || raw || "Tool activity",
+      rawContent: raw,
+    }
+  }, [message.content, message.role, message.toolInput])
   const roleMeta = (() => {
     switch (message.role) {
       case "user":
@@ -1614,14 +1624,47 @@ const SubAgentConversationMessage: React.FC<{
               </span>
             )}
           </div>
-          <div
-            className={cn(
-              "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
-              !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
-            )}
-          >
-            {message.content}
-          </div>
+          {message.role === "tool" ? (
+            <div className="space-y-2">
+              <div
+                className={cn(
+                  "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                  !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+                )}
+              >
+                {toolContent?.summary}
+              </div>
+              {message.toolInput && (
+                <div className="space-y-1.5 rounded-md border border-amber-200/70 bg-white/60 p-2 dark:border-amber-800/60 dark:bg-black/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">
+                    Tool Input
+                  </div>
+                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-50/80 p-2 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                    {JSON.stringify(message.toolInput, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {isExpanded && toolContent?.rawContent && toolContent.rawContent !== toolContent.summary && (
+                <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 p-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Raw Payload
+                  </div>
+                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-[11px] text-foreground/90">
+                    {toolContent.rawContent}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+              )}
+            >
+              {message.content}
+            </div>
+          )}
           {shouldShowToggle && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleExpand() }}

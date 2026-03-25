@@ -65,4 +65,50 @@ describe('createDelegationProgressMessages', () => {
     expect(messages[1].content).toContain('Delegated to Research · Failed');
     expect(messages[1].content).toContain('Timeout');
   });
+
+  it('maps delegated tool messages to structured tool metadata', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-tools',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 300,
+        delegation: {
+          runId: 'run-tools',
+          agentName: 'Worker',
+          task: 'Inspect files',
+          status: 'running',
+          startTime: 300,
+          conversation: [
+            {
+              role: 'tool',
+              toolName: 'read_file',
+              toolInput: { path: 'README.md' },
+              content: 'Using tool: read_file\nInput: {"path":"README.md"}',
+              timestamp: 301,
+            },
+            {
+              role: 'tool',
+              toolName: 'read_file',
+              content: 'Tool result: {"ok":true}',
+              timestamp: 302,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].content).toBe('Delegated to Worker · Running');
+    expect(messages[0].toolCalls).toEqual([
+      { name: 'read_file', arguments: { path: 'README.md' } },
+      { name: 'read_file', arguments: {} },
+    ]);
+    expect(messages[0].toolResults).toEqual([
+      { success: true, content: 'Using tool: read_file\nInput: {"path":"README.md"}' },
+      { success: true, content: '{"ok":true}' },
+    ]);
+  });
 });

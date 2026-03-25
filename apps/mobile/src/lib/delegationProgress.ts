@@ -32,6 +32,39 @@ const summarizeDelegation = (delegation: ACPDelegationProgress): string => {
   return delegation.progressMessage || conversationSnippet || delegation.task;
 };
 
+const TOOL_RESULT_PREFIX = /^tool result:\s*/i;
+
+const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<ChatMessage, 'toolCalls' | 'toolResults'> => {
+  const toolCalls: NonNullable<ChatMessage['toolCalls']> = [];
+  const toolResults: NonNullable<ChatMessage['toolResults']> = [];
+
+  for (const message of delegation.conversation ?? []) {
+    if (message.role !== 'tool' || !message.toolName) {
+      continue;
+    }
+
+    toolCalls.push({
+      name: message.toolName,
+      arguments: (message.toolInput && typeof message.toolInput === 'object')
+        ? message.toolInput as Record<string, unknown>
+        : {},
+    });
+
+    const normalizedContent = (message.content ?? '').replace(TOOL_RESULT_PREFIX, '').trim();
+    if (normalizedContent.length > 0) {
+      toolResults.push({
+        success: true,
+        content: normalizedContent,
+      });
+    }
+  }
+
+  return {
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    toolResults: toolResults.length > 0 ? toolResults : undefined,
+  };
+};
+
 export const createDelegationProgressMessages = (steps?: AgentProgressStep[]): ChatMessage[] => {
   if (!steps || steps.length === 0) {
     return [];
@@ -57,11 +90,20 @@ export const createDelegationProgressMessages = (steps?: AgentProgressStep[]): C
 
   return Array.from(latestDelegationsByRunId.values())
     .sort((a, b) => a.timestamp - b.timestamp)
-    .map(({ delegation, timestamp }) => ({
-      id: `delegation-${delegation.runId}`,
-      role: 'assistant' as const,
-      variant: 'delegation' as const,
-      timestamp,
-      content: `Delegated to ${delegation.agentName} · ${formatStatus(delegation.status)}\n${summarizeDelegation(delegation)}`,
-    }));
+    .map(({ delegation, timestamp }) => {
+      const summary = summarizeDelegation(delegation);
+      const hasConversation = (delegation.conversation?.length ?? 0) > 0;
+      const fallbackContent = hasConversation
+        ? `Delegated to ${delegation.agentName} · ${formatStatus(delegation.status)}`
+        : `Delegated to ${delegation.agentName} · ${formatStatus(delegation.status)}\n${summary}`;
+
+      return {
+        id: `delegation-${delegation.runId}`,
+        role: 'assistant' as const,
+        variant: 'delegation' as const,
+        timestamp,
+        content: fallbackContent,
+        ...getDelegationToolMetadata(delegation),
+      };
+    });
 };
