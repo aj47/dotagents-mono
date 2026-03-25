@@ -82,3 +82,10 @@ tmp/
 # Local editor/tool workspace metadata
 .vscode/
 .intent/
+# Local temporary planning notes
+bug-fix.md
+compact-ui.md
+knowledge-notes-spec.md
+langfuse-bug-fix.md
+mobile-app-improvement.md
+ui-audit.md
