@@ -591,7 +591,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 isGenerating={isGeneratingAudio}
                 error={ttsError}
                 compact={true}
-                autoPlay={(isLast || !!message.responseEvent) ? ((configQuery.data?.ttsAutoPlay ?? true) && !isSnoozed) : false}
+                autoPlay={
+                  variant === "overlay" &&
+                  (isLast || !!message.responseEvent) &&
+                  (configQuery.data?.ttsAutoPlay ?? true) &&
+                  !isSnoozed
+                }
                 onPlayStateChange={setIsTTSPlaying}
                 audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
               />
@@ -3259,7 +3264,7 @@ const MidTurnUserResponseBubble: React.FC<{
             isGenerating={isGeneratingAudio}
             error={ttsError}
             compact={true}
-            autoPlay={!isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
+            autoPlay={variant === "overlay" && !isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
             onPlayStateChange={setIsTTSPlaying}
           />
           {isExpanded && ttsError && (
