@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React, { useEffect, useMemo } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import { AgentProgressUpdate } from "../../../shared/types"
@@ -14,16 +14,17 @@ interface MultiAgentProgressViewProps {
   showBackgroundSpinner?: boolean
 }
 
-const getSessionActivityTimestamp = (progress: AgentProgressUpdate): number => {
-  const historyTs =
-    progress.conversationHistory && progress.conversationHistory.length > 0
-      ? progress.conversationHistory[progress.conversationHistory.length - 1]?.timestamp || 0
-      : 0
-  const stepTs =
-    progress.steps && progress.steps.length > 0
-      ? progress.steps[progress.steps.length - 1]?.timestamp || 0
-      : 0
-  return Math.max(historyTs, stepTs, 0)
+/**
+ * Extract creation timestamp from session ID format: `session_{timestamp}_{random}`
+ * Falls back to 0 if parsing fails.
+ */
+const getSessionCreationTime = (sessionId: string): number => {
+  const parts = sessionId.split("_")
+  if (parts.length >= 2) {
+    const ts = Number(parts[1])
+    if (Number.isFinite(ts)) return ts
+  }
+  return 0
 }
 
 export function MultiAgentProgressView({
@@ -36,15 +37,49 @@ export function MultiAgentProgressView({
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
 
+  // Derive a stable key from the set of visible session IDs so the tab list
+  // only recomputes when sessions are added/removed/snoozed, NOT on every
+  // progress tick (which would cause tab reordering while the user is reading).
+  const visibleSessionIds = useMemo(() => {
+    return Array.from(agentProgressById?.entries() ?? [])
+      .filter(([_, progress]) => progress && !progress.isSnoozed)
+      .map(([id]) => id)
+      .sort() // deterministic order for key comparison
+      .join(",")
+  }, [agentProgressById])
+
   const activeSessions = useMemo(() => {
     return Array.from(agentProgressById?.entries() ?? [])
       .filter(([_, progress]) => progress && !progress.isSnoozed)
       .sort((a, b) => {
-        const timeA = getSessionActivityTimestamp(a[1])
-        const timeB = getSessionActivityTimestamp(b[1])
-        return timeB - timeA
+        // Sort by session creation time (embedded in ID), newest first.
+        // This is stable across progress updates, preventing tab reordering.
+        return getSessionCreationTime(b[0]) - getSessionCreationTime(a[0])
       })
-  }, [agentProgressById])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed by visibleSessionIds
+  }, [visibleSessionIds])
+
+  // Auto-set focusedSessionId when there's no valid focus.
+  // This prevents focus stealing: once set, focusedSessionId stays pinned
+  // to the user's current session even when new sessions arrive.
+  useEffect(() => {
+    if (activeSessions.length === 0) return
+
+    // Already focused on a valid, visible session — nothing to do
+    if (
+      focusedSessionId &&
+      agentProgressById?.get(focusedSessionId) &&
+      !agentProgressById.get(focusedSessionId)!.isSnoozed
+    ) {
+      return
+    }
+
+    // Pin focus to the first (newest) visible session
+    const firstSessionId = activeSessions[0]?.[0]
+    if (firstSessionId) {
+      setFocusedSessionId(firstSessionId)
+    }
+  }, [activeSessions, focusedSessionId, agentProgressById, setFocusedSessionId])
 
   if (activeSessions.length === 0) {
     return null
@@ -90,7 +125,10 @@ export function MultiAgentProgressView({
       {activeSessions.length > 1 && (
         <div className="flex shrink-0 items-center gap-1 border-b border-border bg-background/95 px-2 py-1.5 backdrop-blur-sm">
           <div className="flex flex-1 gap-1 overflow-x-auto">
-            {activeSessions.map(([sessionId, progress]) => {
+            {activeSessions.map(([sessionId]) => {
+              // Read fresh progress from live map for up-to-date titles
+              const progress = agentProgressById?.get(sessionId)
+              if (!progress) return null
               const isActive = sessionId === (displaySessionId || focusedSessionId)
 
               return (
@@ -128,8 +166,9 @@ export function MultiAgentProgressView({
 
       {/* Active session progress panel */}
       <div className="relative flex-1 overflow-hidden">
-        {focusedProgress && (
+        {focusedProgress && displaySessionId && (
           <AgentProgress
+            key={displaySessionId}
             progress={focusedProgress}
             variant={variant}
             className="h-full w-full"
