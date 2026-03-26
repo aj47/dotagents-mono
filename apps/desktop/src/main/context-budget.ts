@@ -858,6 +858,7 @@ const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
 function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
   const content = message.content || ""
   return message.role === "tool"
+    || /^\[[a-zA-Z0-9_-]+\]/.test(content.trim()) // Tool results mapped to user role
     || content.includes('"url":')
     || content.includes('"id":')
     || content.includes("```json")
@@ -1350,28 +1351,27 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     }
   }
 
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
-    if (isDebugLLM()) logLLM("ContextBudget: after microcompact", { estTokens: tokens, count: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
-  }
-
   // Tier 0b: Truncate large payload-like messages before any LLM summarization.
-  // This keeps bulky tool outputs from triggering expensive per-message summaries.
+  // We run this BEFORE the targetTokens early return so context never inflates needlessly.
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
     if (msg.role === "system" || !msg.content) continue
 
     const isPayloadLike = isLikelyPayloadLikeMessage(msg)
-    const shouldTruncateToolResult = msg.role === "tool" && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
+
+    // NOTE: tool messages are mapped to 'user' role by llm.ts but have a '[toolName] ' prefix
+    const isToolResultLike = msg.role === "tool" || (msg.role === "user" && /^\[[a-zA-Z0-9_-]+\]/.test(msg.content.trim()))
+
+    const shouldTruncateToolResult = isToolResultLike && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
     const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
 
     if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload) continue
 
-    const marker = msg.role === "tool" ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
-    const keepChars = msg.role === "tool" ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
+    const marker = isToolResultLike ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
+    const keepChars = isToolResultLike ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
     const { toolName } = parseToolNameFromContent(msg.content)
     const contextRef = registerContextRef(opts.sessionId, {
-      kind: msg.role === "tool" ? "truncated_tool" : "truncated_payload",
+      kind: isToolResultLike ? "truncated_tool" : "truncated_payload",
       role: msg.role,
       content: msg.content,
       toolName: toolName !== "unknown" ? toolName : undefined,
@@ -1386,13 +1386,21 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
         ...msg,
         content: truncatedContent,
       }
-      applied.push("aggressive_truncate")
-      tokens = estimateTokensFromMessages(messages)
-      if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
-        if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
-        return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+      if (!applied.includes("aggressive_truncate")) {
+        applied.push("aggressive_truncate")
       }
     }
+  }
+
+  tokens = estimateTokensFromMessages(messages)
+  if (actualTokens !== undefined) {
+    // Re-estimate since we changed content; scale actual tokens proportionally
+    tokens = Math.max(tokens, Math.floor(actualTokens * (tokens / estimateTokensFromMessages(opts.messages))))
+  }
+
+  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
+    if (isDebugLLM()) logLLM("ContextBudget: after microcompact and aggressive_truncate", { estTokens: tokens, count: messages.length })
+    return { messages, appliedStrategies: applied, estTokensBefore: opts.actualInputTokens || tokens, estTokensAfter: tokens, maxTokens }
   }
 
   // Recalculate after Tier 0 truncation
