@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, LayoutGrid, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -3493,44 +3493,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const conversationId = progress?.conversationId
   const isPinned = !!conversationId && pinnedSessionIds.has(conversationId)
 
-  // Handle snooze/minimize
-  const handleSnooze = async (e?: React.MouseEvent) => {
-    e?.stopPropagation() // Prevent event bubbling
-    if (!progress?.sessionId) return
-
-    logUI('🔴 [AgentProgress OVERLAY] Minimize button clicked in OVERLAY (not sidebar):', {
-      sessionId: progress.sessionId,
-      currentlySnoozed: progress.isSnoozed
-    })
-
-    // Update local store first so UI reflects the change immediately
-    setSessionSnoozed(progress.sessionId, true)
-
-    try {
-      // Snooze the session in backend
-      await tipcClient.snoozeAgentSession({ sessionId: progress.sessionId })
-    } catch (error) {
-      // Rollback local state only when the API call fails to keep UI and backend in sync
-      setSessionSnoozed(progress.sessionId, false)
-      logUI('🔴 [AgentProgress OVERLAY] Failed to snooze, rolled back local state')
-      console.error("Failed to snooze session:", error)
-      return
-    }
-
-    // UI updates after successful API call - don't rollback if these fail
-    try {
-      // Unfocus this session so the overlay hides
-      setFocusedSessionId(null)
-      // Hide the panel window completely
-      await tipcClient.hidePanelWindow({})
-      logUI('🔴 [AgentProgress OVERLAY] Session snoozed, unfocused, and panel hidden')
-    } catch (error) {
-      // Log UI errors but don't rollback - the backend state is already updated
-      logUI('🔴 [AgentProgress OVERLAY] Session snoozed but UI update failed')
-      console.error("Failed to update UI after snooze:", error)
-    }
-  }
-
   // Close button handler for completed agent view
   const handleClose = async () => {
     try {
@@ -4408,7 +4370,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Tile variant rendering
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
-    const isSnoozed = progress.isSnoozed
+    const canCollapseTile = typeof onCollapsedChange === "function"
     return (
       <div
         onClick={onFocus}
@@ -4418,27 +4380,29 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           WebkitAppRegion: "no-drag"
         } as React.CSSProperties}
       >
-        {/* Tile Header - clickable to toggle collapse */}
+        {/* Tile Header */}
         <div
           className={cn(
-            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 cursor-pointer",
+            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0",
+            canCollapseTile && "cursor-pointer",
             isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2",
           )}
-          onClick={handleToggleCollapse}
+          onClick={canCollapseTile ? handleToggleCollapse : undefined}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <div className="shrink-0">
               {getStatusIndicator()}
             </div>
-            <span className={cn("truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
+            <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
               {getTitle()}
             </span>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-            {/* Collapse/Expand toggle */}
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
-              {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            </Button>
+            {canCollapseTile && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
+                {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+              </Button>
+            )}
 
             {conversationId && (
               <Button
@@ -4454,36 +4418,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 aria-pressed={isPinned}
               >
                 <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
-              </Button>
-            )}
-
-            {onExpand && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onPointerDown={(e) => {
-                  if (e.button !== 0) return
-                  e.preventDefault()
-                  e.stopPropagation()
-                  void handleExpandTile()
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (e.detail === 0) {
-                    e.preventDefault()
-                    void handleExpandTile()
-                  }
-                }}
-                title={isExpanded ? "Restore tile layout" : "Maximize tile"}
-              >
-                {isExpanded ? <LayoutGrid className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-              </Button>
-            )}
-
-            {!isSnoozed && !isComplete && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
-                <Minimize2 className="h-3 w-3" />
               </Button>
             )}
             {/* Combined close button: stops agent if running, dismisses if complete */}
@@ -4615,7 +4549,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isComplete={isComplete}
                             isExpanded={expandedItems[itemKey] ?? false}
                             onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? false)}
-                            onMaximize={handleExpandTile}
+                            onMaximize={undefined}
                           />
                         )
                       } else if (item.kind === "delegation") {
@@ -4728,23 +4662,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-center gap-x-2">
                     {profileName && (
-                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]" title={`Agent: ${profileName}`}>
+                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
                         {profileName}
                       </span>
                     )}
                     {modelInfo && (
                       <>
                         {profileName && <span className="text-muted-foreground/50">•</span>}
-                        <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+                        <span className="min-w-0 max-w-full truncate text-[10px]">
                           {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
                         </span>
                       </>
                     )}
                     {contextInfo && contextInfo.maxTokens > 0 && (
-                      <div
-                        className="flex shrink-0 items-center gap-1"
-                        title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
-                      >
+                      <div className="flex shrink-0 items-center gap-1">
                         <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
                           <div
                             className={cn(
@@ -4840,7 +4771,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
           {/* Profile/agent name */}
           {profileName && (
-            <span className="text-[10px] text-primary/70 truncate max-w-[80px]" title={`Agent: ${profileName}`}>
+            <span className="text-[10px] text-primary/70 truncate max-w-[80px]">
               {profileName}
             </span>
           )}
@@ -4848,17 +4779,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           {!isComplete && modelInfo && (
             <>
               {profileName && <span className="text-muted-foreground/50">•</span>}
-              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]">
                 {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 20)}
               </span>
             </>
           )}
           {/* Context fill indicator */}
           {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-            <div
-              className="flex items-center gap-1.5"
-              title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
-            >
+            <div className="flex items-center gap-1.5">
               <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className={cn(
@@ -4883,17 +4811,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
               {`${currentIteration}/${isFinite(maxIterations) ? maxIterations : "∞"}`}
             </span>
-          )}
-          {!isComplete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-              onClick={handleSnooze}
-              title="Minimize - run in background without showing progress"
-            >
-              <Minimize2 className="h-3 w-3" />
-            </Button>
           )}
           {!isComplete ? (
             <Button

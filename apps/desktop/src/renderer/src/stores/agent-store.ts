@@ -25,6 +25,7 @@ export type SessionSortBy = 'recent' | 'oldest' | 'status'
 interface AgentState {
   agentProgressById: Map<string, AgentProgressUpdate>
   focusedSessionId: string | null
+  expandedSessionId: string | null
   scrollToSessionId: string | null
   messageQueuesByConversation: Map<string, QueuedMessage[]> // Message queues per conversation
   pausedQueueConversations: Set<string> // Conversations with paused queues
@@ -40,6 +41,7 @@ interface AgentState {
   clearSessionProgress: (sessionId: string) => void
   clearInactiveSessions: () => void
   setFocusedSessionId: (sessionId: string | null) => void
+  setExpandedSessionId: (sessionId: string | null) => void
   setScrollToSessionId: (sessionId: string | null) => void
   setSessionSnoozed: (sessionId: string, isSnoozed: boolean) => void
   getAgentProgress: () => AgentProgressUpdate | null
@@ -66,6 +68,7 @@ interface AgentState {
 export const useAgentStore = create<AgentState>((set, get) => ({
   agentProgressById: new Map(),
   focusedSessionId: null,
+  expandedSessionId: null,
   scrollToSessionId: null,
   messageQueuesByConversation: new Map(),
   pausedQueueConversations: new Set(),
@@ -286,6 +289,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({
       agentProgressById: new Map(),
       focusedSessionId: null,
+      expandedSessionId: null,
     })
   },
 
@@ -310,9 +314,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         newFocusedSessionId = candidates[0]?.[0] || null
       }
 
+      // If the cleared session was expanded, collapse back to grid view
+      let newExpandedSessionId = state.expandedSessionId
+      if (state.expandedSessionId === sessionId) {
+        newExpandedSessionId = null
+      }
+
       return {
         agentProgressById: newMap,
         focusedSessionId: newFocusedSessionId,
+        expandedSessionId: newExpandedSessionId,
       }
     })
   },
@@ -348,15 +359,26 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         newFocusedSessionId = candidates[0]?.[0] || null
       }
 
+      // If the expanded session was cleared, collapse back to grid view
+      let newExpandedSessionId = state.expandedSessionId
+      if (state.expandedSessionId && !newMap.has(state.expandedSessionId)) {
+        newExpandedSessionId = null
+      }
+
       return {
         agentProgressById: newMap,
         focusedSessionId: newFocusedSessionId,
+        expandedSessionId: newExpandedSessionId,
       }
     })
   },
 
   setFocusedSessionId: (sessionId: string | null) => {
     set({ focusedSessionId: sessionId })
+  },
+
+  setExpandedSessionId: (sessionId: string | null) => {
+    set({ expandedSessionId: sessionId })
   },
 
   setScrollToSessionId: (sessionId: string | null) => {
