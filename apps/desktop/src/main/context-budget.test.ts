@@ -97,6 +97,25 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(String(readResult.excerpt)).toContain('x'.repeat(50))
   })
 
+  it('keeps actual-token scaling after aggressive truncation and preserves the original budget baseline', async () => {
+    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      actualInputTokens: 2000,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    expect(result.appliedStrategies).toContain('minimal_system_prompt')
+    expect(result.estTokensBefore).toBe(2000)
+    expect(result.estTokensAfter).toBeGreaterThan(600)
+  })
+
   it('batch-summarizes contiguous oversized conversational messages in one call', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('condensed findings and decisions')
 
