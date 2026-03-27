@@ -161,4 +161,29 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
 
     expect(result).toBeNull()
   })
+
+  it("returns null when ACP main-agent mode is enabled without a configured main agent name", () => {
+    const result = resolvePreferredTopLevelAcpAgentSelection({
+      currentProfile: {
+        id: "main-profile",
+        name: "main-agent",
+        displayName: "Main Agent",
+        enabled: true,
+        connection: { type: "internal" },
+      } as any,
+      mainAgentMode: "acp",
+      mainAgentName: "   ",
+      profileAgents: [
+        {
+          id: "augustus-profile",
+          name: "augustus",
+          displayName: "Augustus",
+          enabled: true,
+          connection: { type: "acp", command: "auggie", args: ["--acp"] },
+        } as any,
+      ],
+    })
+
+    expect(result).toBeNull()
+  })
 })

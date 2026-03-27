@@ -80,6 +80,18 @@ class StuckChildProcess extends FakeChildProcess {
   })
 }
 
+class FalseForceKillChildProcess extends FakeChildProcess {
+  override kill = vi.fn((signal?: NodeJS.Signals) => {
+    this.signalCode = signal ?? null
+    if (signal === "SIGKILL") {
+      return false
+    }
+
+    this.killed = true
+    return true
+  })
+}
+
 describe("keyboard listener lifecycle", () => {
   beforeEach(() => {
     vi.resetModules()
@@ -147,6 +159,27 @@ describe("keyboard listener lifecycle", () => {
 
     expect(stuckChild.kill).toHaveBeenNthCalledWith(1, "SIGTERM")
     expect(stuckChild.kill).toHaveBeenNthCalledWith(2, "SIGKILL")
+    expect(mockSpawn).toHaveBeenCalledTimes(2)
+  })
+
+  it("resolves stop when the force-kill attempt returns false", async () => {
+    vi.useFakeTimers()
+
+    const stubbornChild = new FalseForceKillChildProcess()
+    const replacementChild = new FakeChildProcess()
+    mockSpawn.mockReturnValueOnce(stubbornChild).mockReturnValueOnce(replacementChild)
+
+    const { listenToKeyboardEvents, stopListeningToKeyboardEvents } = await import("./keyboard")
+
+    listenToKeyboardEvents()
+    const stopPromise = stopListeningToKeyboardEvents()
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await stopPromise
+    listenToKeyboardEvents()
+
+    expect(stubbornChild.kill).toHaveBeenNthCalledWith(1, "SIGTERM")
+    expect(stubbornChild.kill).toHaveBeenNthCalledWith(2, "SIGKILL")
     expect(mockSpawn).toHaveBeenCalledTimes(2)
   })
 })

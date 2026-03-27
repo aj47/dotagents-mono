@@ -1469,7 +1469,11 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
       }
 
       try {
-        child.kill("SIGKILL")
+        const forceKillSent = child.kill("SIGKILL")
+        if (!forceKillSent) {
+          finish()
+          return
+        }
       } catch {
         finish()
         return
@@ -1477,7 +1481,10 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
 
       if (child.exitCode !== null || child.killed) {
         finish()
+        return
       }
+
+      finish()
     }, KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS)
 
     if (typeof forceKillTimer.unref === "function") {
@@ -1485,7 +1492,11 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     }
 
     try {
-      child.kill("SIGTERM")
+      const terminateSent = child.kill("SIGTERM")
+      if (!terminateSent) {
+        finish()
+        return
+      }
     } catch {
       finish()
       return

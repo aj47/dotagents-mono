@@ -108,6 +108,10 @@ export function resolvePreferredTopLevelAcpAgentSelection({
     return null
   }
 
+  if (!mainAgentName?.trim()) {
+    return null
+  }
+
   const selection = resolveMainAcpAgentSelection(mainAgentName ?? "", profileAgents, legacyAgents)
   if ("error" in selection) {
     return selection

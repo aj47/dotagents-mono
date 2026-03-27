@@ -45,4 +45,20 @@ describe("acp-session-state persistence", () => {
 
     rmSync(dataFolder, { recursive: true, force: true })
   })
+
+  it("ignores persisted state when conversationSessions is not an array", async () => {
+    writeFileSync(
+      join(dataFolder, "acp-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        conversationSessions: { broken: true },
+      }),
+    )
+
+    const sessionState = await loadAcpSessionState(dataFolder)
+
+    expect(sessionState.getAllSessions().size).toBe(0)
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
 })
