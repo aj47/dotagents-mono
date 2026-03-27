@@ -2,31 +2,43 @@ import { describe, expect, it } from "vitest"
 import {
   buildHubBundleInstallUrl,
   resolveStartupMainWindowDecision,
-  shouldShowOnboarding,
 } from "./startup-routing"
 
 describe("startup routing", () => {
   it("shows onboarding for fresh installs without model configuration", () => {
-    expect(shouldShowOnboarding({})).toBe(true)
+    expect(resolveStartupMainWindowDecision({})).toEqual({
+      url: "/onboarding",
+      consumedPendingHubBundle: false,
+      reason: "onboarding",
+    })
   })
 
   it("skips onboarding for users who already completed it", () => {
-    expect(shouldShowOnboarding({ onboardingCompleted: true })).toBe(false)
+    expect(resolveStartupMainWindowDecision({ onboardingCompleted: true })).toEqual({
+      consumedPendingHubBundle: false,
+      reason: "default",
+    })
   })
 
   it("skips onboarding for pre-onboarding installs with saved model presets", () => {
-    expect(shouldShowOnboarding({
+    expect(resolveStartupMainWindowDecision({
       modelPresets: [{
         id: "preset-1",
         name: "Starter",
         baseUrl: "https://api.example.com",
         apiKey: "test-key",
       }],
-    })).toBe(false)
+    })).toEqual({
+      consumedPendingHubBundle: false,
+      reason: "default",
+    })
   })
 
   it("skips onboarding for pre-onboarding installs with a selected preset", () => {
-    expect(shouldShowOnboarding({ currentModelPresetId: "preset-1" })).toBe(false)
+    expect(resolveStartupMainWindowDecision({ currentModelPresetId: "preset-1" })).toEqual({
+      consumedPendingHubBundle: false,
+      reason: "default",
+    })
   })
 
   it("keeps onboarding higher priority than queued Hub installs", () => {
