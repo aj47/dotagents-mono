@@ -216,8 +216,13 @@ function normalizeAcpToolName(name: string | undefined): string | undefined {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
 
-  if (normalized.endsWith(RESPOND_TO_USER_TOOL)) return RESPOND_TO_USER_TOOL
-  if (normalized.endsWith(MARK_WORK_COMPLETE_TOOL)) return MARK_WORK_COMPLETE_TOOL
+  const matchesRuntimeToolAlias = (toolName: string) =>
+    normalized === toolName ||
+    normalized.startsWith(`${toolName}_`) ||
+    normalized.endsWith(`_${toolName}`)
+
+  if (matchesRuntimeToolAlias(RESPOND_TO_USER_TOOL)) return RESPOND_TO_USER_TOOL
+  if (matchesRuntimeToolAlias(MARK_WORK_COMPLETE_TOOL)) return MARK_WORK_COMPLETE_TOOL
 
   return withoutToolPrefix
 }

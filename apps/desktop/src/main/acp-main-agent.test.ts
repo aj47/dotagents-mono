@@ -604,6 +604,53 @@ describe("acp-main-agent", () => {
     )
   })
 
+  it("recognizes injected runtime-tool aliases for respond_to_user final rendering", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-runtime-alias-response",
+          title: "respond_to_user_dotagents-runtime-tools",
+          status: "completed",
+          rawInput: { text: "Rendered from runtime tool alias" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "Internal fallback" }
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result.response).toBe("Rendered from runtime tool alias")
+
+    const completedUpdate = updates.at(-1)
+    expect(completedUpdate).toEqual(expect.objectContaining({
+      finalContent: "Rendered from runtime tool alias",
+    }))
+    expect(completedUpdate?.responseEvents).toEqual([
+      expect.objectContaining({ text: "Rendered from runtime tool alias" }),
+    ])
+    expect(completedUpdate?.conversationHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "assistant",
+          toolCalls: [expect.objectContaining({ name: "respond_to_user" })],
+        }),
+      ]),
+    )
+  })
+
   it("persists only the final assistant response back to the conversation", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
 
