@@ -73,25 +73,6 @@ export const darkColors = {
 } as const;
 
 /**
- * Type for color palette keys
- */
-export type ColorKey = keyof typeof lightColors;
-
-/**
- * Type for color palette (mutable version for runtime use)
- */
-export type ColorPalette = {
-  [K in ColorKey]: string;
-};
-
-/**
- * Get colors for a specific color scheme
- */
-export function getColors(colorScheme: 'light' | 'dark'): ColorPalette {
-  return colorScheme === 'dark' ? { ...darkColors } : { ...lightColors };
-}
-
-/**
  * Convert hex color to rgba with opacity
  * Useful for creating semi-transparent versions of theme colors
  *
@@ -185,4 +166,3 @@ export const typography = {
   label: { fontSize: 15, lineHeight: 20, fontWeight: '500' as const },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' as const },
 } as const;
-
