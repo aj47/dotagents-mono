@@ -1,5 +1,12 @@
-import type { CHAT_PROVIDER_ID, STT_PROVIDER_ID, TTS_PROVIDER_ID, OPENAI_COMPATIBLE_PRESET_ID } from "."
-import type { ToolCall, ToolResult, AgentConversationState } from '@dotagents/shared'
+import type {
+  CHAT_PROVIDER_ID,
+  STT_PROVIDER_ID,
+  TTS_PROVIDER_ID,
+  OPENAI_COMPATIBLE_PRESET_ID,
+  ToolCall,
+  ToolResult,
+  AgentConversationState,
+} from '@dotagents/shared'
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState } from '@dotagents/shared'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'

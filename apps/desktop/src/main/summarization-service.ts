@@ -9,7 +9,7 @@ import { generateText } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
 import { configStore } from "./config"
 import { logLLM, isDebugLLM } from "./debug"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "../shared/index"
+import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
 import type { LanguageModel } from "ai"
 import type { AgentStepSummary, ModelPreset } from "../shared/types"
 
@@ -368,4 +368,3 @@ class SummarizationService {
 }
 
 export const summarizationService = new SummarizationService()
-

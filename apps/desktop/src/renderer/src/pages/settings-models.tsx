@@ -34,7 +34,7 @@ import {
   SUPERTONIC_TTS_VOICES,
   DEFAULT_MODEL_PRESET_ID,
   getBuiltInModelPresets,
-} from "@shared/index"
+} from "@dotagents/shared"
 import { getDefaultSttModel } from "@dotagents/shared/stt-models"
 import { Mic, FileText, Volume2, Bot, Zap, BookOpen, Settings2 } from "lucide-react"
 

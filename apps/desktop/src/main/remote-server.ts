@@ -1239,7 +1239,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.get("/v1/settings", async (_req, reply) => {
     try {
       const cfg = configStore.get()
-      const { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } = await import("../shared/index")
+      const { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } = await import("@dotagents/shared")
       const builtInPresets = getBuiltInModelPresets()
       const savedPresets = cfg.modelPresets || []
 
@@ -1393,7 +1393,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {
-        const { getBuiltInModelPresets } = await import("../shared/index")
+        const { getBuiltInModelPresets } = await import("@dotagents/shared")
         const builtInPresets = getBuiltInModelPresets()
         const savedPresets = cfg.modelPresets || []
         const builtInIds = new Set(builtInPresets.map(p => p.id))
