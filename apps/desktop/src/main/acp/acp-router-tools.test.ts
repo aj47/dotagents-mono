@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 let sessionUpdateHandler: ((event: any) => void) | undefined
 const mockGetByName = vi.fn((): any => undefined)
+const mockGetById = vi.fn((): any => undefined)
 const mockGetSessionProfileSnapshot = vi.fn((): any => undefined)
 
 const mockAcpService = {
@@ -79,6 +80,7 @@ vi.mock("../acp-session-state", () => ({
 vi.mock("../agent-profile-service", () => ({
   agentProfileService: {
     getByName: mockGetByName,
+    getById: mockGetById,
     getAll: vi.fn(() => []),
   },
 }))
@@ -103,6 +105,7 @@ describe("handleDelegateToAgent", () => {
     vi.clearAllMocks()
     sessionUpdateHandler = undefined
     mockGetByName.mockReturnValue(undefined)
+    mockGetById.mockReturnValue(undefined)
     mockGetSessionProfileSnapshot.mockReturnValue(undefined)
   })
 
@@ -155,6 +158,12 @@ describe("handleDelegateToAgent", () => {
       guidelines: "",
     })
 
+    mockGetById.mockReturnValue({
+      id: "profile-main-agent",
+      name: "main-agent",
+      displayName: "Main Agent",
+    })
+
     mockGetByName.mockReturnValue({
       id: "augustus-profile",
       name: "augustus",
@@ -184,6 +193,12 @@ describe("handleDelegateToAgent", () => {
       profileId: "profile-main-agent",
       profileName: "Main Agent",
       guidelines: "",
+    })
+
+    mockGetById.mockReturnValue({
+      id: "profile-main-agent",
+      name: "main-agent",
+      displayName: "Main Agent",
     })
 
     mockGetByName.mockReturnValue({
@@ -219,6 +234,12 @@ describe("handleDelegateToAgent", () => {
       profileId: "profile-main-agent",
       profileName: "Main Agent",
       guidelines: "",
+    })
+
+    mockGetById.mockReturnValue({
+      id: "profile-main-agent",
+      name: "main-agent",
+      displayName: "Main Agent",
     })
 
     mockGetByName.mockReturnValue({

@@ -303,7 +303,16 @@ function isMainAgentSession(parentSessionId?: string): boolean {
   if (!parentSessionId) return false;
 
   const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(parentSessionId);
-  return normalizeProfileName(profileSnapshot?.profileName) === MAIN_AGENT_PROFILE_NAME;
+  if (!profileSnapshot) return false;
+
+  if (profileSnapshot.profileId) {
+    const profile = agentProfileService.getById(profileSnapshot.profileId);
+    if (profile) {
+      return profile.name === MAIN_AGENT_PROFILE_NAME;
+    }
+  }
+
+  return normalizeProfileName(profileSnapshot.profileName) === MAIN_AGENT_PROFILE_NAME;
 }
 
 function looksLikeLocalWorkspaceCodingTask(args: {
