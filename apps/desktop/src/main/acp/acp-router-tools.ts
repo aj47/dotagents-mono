@@ -1799,11 +1799,3 @@ export async function handleCancelAgentRun(args: { runId: string }): Promise<obj
     };
   }
 }
-
-/**
- * Get the current recursion depth for a session.
- * Useful for debugging and UI display.
- */
-export function getCurrentSessionDepth(sessionId: string): number {
-  return getSessionDepth(sessionId);
-}
