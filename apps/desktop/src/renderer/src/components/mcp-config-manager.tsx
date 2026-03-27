@@ -72,7 +72,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES, getOAuthExample } from "@shared/oauth-examples"
-import { parseShellCommand } from "@shared/shell-parse"
+import { parseShellCommand } from "@dotagents/shared"
 
 
 
