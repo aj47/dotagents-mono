@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# DotAgents Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash
+# DotAgents installer for macOS, Linux, and Windows shells with Bash available.
+# Preferred usage:
+#   macOS / Linux: curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash
+#   Windows: use scripts/install.ps1 with PowerShell for the native one-line install flow.
 #
 # Options (via env vars):
-#   DOTAGENTS_FROM_SOURCE=1   Force build from source instead of downloading a release
+#   DOTAGENTS_FROM_SOURCE=1   Build from source instead of downloading a release
 #   DOTAGENTS_DIR=~/mydir     Custom install directory (default: ~/.dotagents)
+#   DOTAGENTS_RELEASE_TAG=v1  Install a specific GitHub release tag
 
 set -euo pipefail
 
-# ── Colors ──────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 
@@ -17,187 +19,305 @@ ok()    { printf "${GREEN}✔${NC} %s\n" "$*"; }
 warn()  { printf "${YELLOW}⚠${NC} %s\n" "$*"; }
 err()   { printf "${RED}✘${NC} %s\n" "$*" >&2; }
 die()   { err "$*"; exit 1; }
-
-# ── Detect OS & Arch ────────────────────────────────────────
-detect_platform() {
-  OS="$(uname -s)"
-  ARCH="$(uname -m)"
-
-  case "$OS" in
-    Darwin) PLATFORM="mac" ;;
-    Linux)  PLATFORM="linux" ;;
-    MINGW*|MSYS*|CYGWIN*) PLATFORM="win" ;;
-    *) die "Unsupported OS: $OS" ;;
-  esac
-
-  case "$ARCH" in
-    x86_64|amd64)  ARCH="x64" ;;
-    arm64|aarch64) ARCH="arm64" ;;
-    *) die "Unsupported architecture: $ARCH" ;;
-  esac
-}
-
-# ── Helpers ─────────────────────────────────────────────────
-has() { command -v "$1" &>/dev/null; }
+has()   { command -v "$1" >/dev/null 2>&1; }
 
 ensure_cmd() {
-  has "$1" || die "Required command '$1' not found. Please install it first."
+  local command="$1"
+  local help_text="${2:-Install '$command' and try again.}"
+  has "$command" || die "Required command '$command' not found. $help_text"
 }
 
 INSTALL_DIR="${DOTAGENTS_DIR:-$HOME/.dotagents}"
 REPO="aj47/dotagents-mono"
 REPO_URL="https://github.com/$REPO"
+API_BASE_URL="https://api.github.com/repos/$REPO/releases"
 FROM_SOURCE="${DOTAGENTS_FROM_SOURCE:-0}"
+RELEASE_TAG="${DOTAGENTS_RELEASE_TAG:-latest}"
+TAG=""
+ASSET_URLS=""
+PNPM_CMD=()
 
-# ── Download latest release ─────────────────────────────────
-install_release() {
-  info "Fetching latest release from GitHub..."
+detect_platform() {
+  local os arch
+  os="$(uname -s)"
+  arch="$(uname -m)"
 
-  RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest")
-  TAG=$(echo "$RELEASE_JSON" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+  case "$os" in
+    Darwin) PLATFORM="mac" ;;
+    Linux) PLATFORM="linux" ;;
+    MINGW*|MSYS*|CYGWIN*) PLATFORM="win" ;;
+    *) die "Unsupported OS: $os" ;;
+  esac
 
-  if [ -z "$TAG" ]; then
-    warn "Could not find a release. Falling back to building from source."
-    install_from_source
-    return
+  case "$arch" in
+    x86_64|amd64) ARCH="x64" ;;
+    arm64|aarch64) ARCH="arm64" ;;
+    *) die "Unsupported architecture: $arch" ;;
+  esac
+}
+
+extract_tag_name() {
+  printf '%s' "$1" | grep -Eo '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"/\1/'
+}
+
+extract_download_urls() {
+  printf '%s' "$1" | grep -Eo '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]+"' | sed -E 's/.*"([^"]+)"/\1/'
+}
+
+fetch_release_metadata() {
+  ensure_cmd curl "Install curl first."
+
+  local api_url release_json
+  if [ "$RELEASE_TAG" = "latest" ]; then
+    api_url="$API_BASE_URL/latest"
+  else
+    api_url="$API_BASE_URL/tags/$RELEASE_TAG"
   fi
 
-  info "Latest release: $TAG"
+  info "Fetching release metadata from GitHub..."
+  release_json="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url")" || die "Failed to fetch release metadata from GitHub."
+  TAG="$(extract_tag_name "$release_json")"
+  ASSET_URLS="$(extract_download_urls "$release_json")"
 
-  # Find the right asset for this platform
-  ASSET_URL=""
+  [ -n "$TAG" ] || die "Could not determine the release tag from GitHub."
+  [ -n "$ASSET_URLS" ] || die "No downloadable assets were found on release $TAG."
+}
+
+find_asset_url() {
+  local pattern="$1"
+  local url
+
+  while IFS= read -r url; do
+    [ -n "$url" ] || continue
+    if [[ "$url" == $pattern ]]; then
+      printf '%s\n' "$url"
+      return 0
+    fi
+  done <<< "$ASSET_URLS"
+
+  return 1
+}
+
+select_release_asset_url() {
+  local asset_arch="$ARCH"
+  local asset_url=""
+
   case "$PLATFORM" in
     mac)
-      ASSET_URL=$(echo "$RELEASE_JSON" | grep '"browser_download_url"' | grep -i '\.dmg' | head -1 | sed 's/.*"\(https[^"]*\)".*/\1/')
-      EXT="dmg"
+      asset_url="$(find_asset_url "*/DotAgents-*-${asset_arch}.dmg" || true)"
       ;;
     linux)
-      ASSET_URL=$(echo "$RELEASE_JSON" | grep '"browser_download_url"' | grep -i '\.AppImage' | head -1 | sed 's/.*"\(https[^"]*\)".*/\1/')
-      EXT="AppImage"
+      asset_url="$(find_asset_url "*/DotAgents-*-${asset_arch}.AppImage" || true)"
       ;;
     win)
-      ASSET_URL=$(echo "$RELEASE_JSON" | grep '"browser_download_url"' | grep -i '\.exe' | head -1 | sed 's/.*"\(https[^"]*\)".*/\1/')
-      EXT="exe"
+      if [ "$asset_arch" != "x64" ]; then
+        warn "Windows releases are currently published as x64 installers. Falling back to x64."
+        asset_arch="x64"
+      fi
+      asset_url="$(find_asset_url '*/DotAgents-*-setup.exe' || true)"
+      if [ -z "$asset_url" ]; then
+        asset_url="$(find_asset_url "*/DotAgents-*-${asset_arch}-portable.exe" || true)"
+      fi
       ;;
   esac
 
-  if [ -z "$ASSET_URL" ]; then
-    warn "No pre-built binary for $PLATFORM/$ARCH. Building from source."
-    install_from_source
-    return
-  fi
+  [ -n "$asset_url" ] || die "No matching release asset found for $PLATFORM/$ARCH on $TAG."
+  printf '%s\n' "$asset_url"
+}
 
-  FILENAME="DotAgents.$EXT"
-  mkdir -p "$INSTALL_DIR"
+download_file() {
+  local url="$1"
+  local destination="$2"
 
-  info "Downloading $FILENAME..."
-  curl -fSL --progress-bar -o "$INSTALL_DIR/$FILENAME" "$ASSET_URL"
+  mkdir -p "$(dirname "$destination")"
+  info "Downloading $(basename "$destination")..."
+  curl -fL --retry 3 --progress-bar -o "$destination" "$url"
+}
 
+ensure_release_requirements() {
+  ensure_cmd curl "Install curl first."
   case "$PLATFORM" in
     mac)
-      info "Mounting DMG..."
-      MOUNT_DIR=$(hdiutil attach "$INSTALL_DIR/$FILENAME" -nobrowse -noverify | tail -1 | awk '{print $3}')
-      APP_NAME=$(ls "$MOUNT_DIR" | grep -i '\.app$' | head -1)
-      if [ -n "$APP_NAME" ]; then
-        info "Installing $APP_NAME to /Applications..."
-        cp -R "$MOUNT_DIR/$APP_NAME" /Applications/
-        hdiutil detach "$MOUNT_DIR" -quiet
-        rm "$INSTALL_DIR/$FILENAME"
-        ok "DotAgents installed to /Applications/$APP_NAME"
-        info "Open it from Applications or run: open /Applications/$APP_NAME"
-      else
-        hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
-        die "No .app found in DMG"
-      fi
+      ensure_cmd hdiutil "hdiutil is required on macOS."
+      ensure_cmd ditto "ditto is required on macOS."
       ;;
     linux)
-      chmod +x "$INSTALL_DIR/$FILENAME"
-      # Symlink to ~/.local/bin if it exists
-      if [ -d "$HOME/.local/bin" ]; then
-        ln -sf "$INSTALL_DIR/$FILENAME" "$HOME/.local/bin/dotagents"
-        ok "DotAgents installed! Run: dotagents"
-      else
-        ok "DotAgents installed to $INSTALL_DIR/$FILENAME"
-        info "Run: $INSTALL_DIR/$FILENAME"
-      fi
+      ensure_cmd chmod "chmod is required on Linux."
       ;;
     win)
-      ok "Installer downloaded to $INSTALL_DIR/$FILENAME"
-      info "Run the installer to complete setup."
+      ensure_cmd cygpath "Git Bash / MSYS with cygpath is required for the Bash-based Windows path conversion."
+      ensure_cmd powershell.exe "Use PowerShell or run the native installer via scripts/install.ps1."
       ;;
   esac
 }
 
-# ── Build from source ───────────────────────────────────────
+install_release_mac() {
+  local asset_url="$1"
+  local dmg_path mount_dir app_name target_dir app_src app_dest
+
+  dmg_path="$INSTALL_DIR/$(basename "$asset_url")"
+  download_file "$asset_url" "$dmg_path"
+
+  info "Mounting DMG..."
+  mount_dir="$(hdiutil attach "$dmg_path" -nobrowse -noverify | tail -1 | awk '{print $3}')"
+  app_name="$(find "$mount_dir" -maxdepth 1 -type d -name '*.app' -print | head -n 1 | xargs -I{} basename '{}')"
+
+  [ -n "$app_name" ] || {
+    hdiutil detach "$mount_dir" -quiet 2>/dev/null || true
+    die "No .app bundle found inside $(basename "$dmg_path")."
+  }
+
+  if [ -w /Applications ]; then
+    target_dir="/Applications"
+  else
+    target_dir="$HOME/Applications"
+    mkdir -p "$target_dir"
+  fi
+
+  app_src="$mount_dir/$app_name"
+  app_dest="$target_dir/$app_name"
+  rm -rf "$app_dest"
+
+  info "Installing $app_name to $target_dir..."
+  ditto "$app_src" "$app_dest"
+  hdiutil detach "$mount_dir" -quiet
+  rm -f "$dmg_path"
+
+  ok "DotAgents installed to $app_dest"
+  info "Launch it with: open '$app_dest'"
+}
+
+install_release_linux() {
+  local asset_url="$1"
+  local app_path launcher_path user_bin
+
+  app_path="$INSTALL_DIR/$(basename "$asset_url")"
+  launcher_path="$INSTALL_DIR/dotagents"
+  user_bin="$HOME/.local/bin"
+
+  download_file "$asset_url" "$app_path"
+  chmod +x "$app_path"
+
+  cat > "$launcher_path" <<EOF
+#!/usr/bin/env bash
+exec "$app_path" "\$@"
+EOF
+  chmod +x "$launcher_path"
+
+  mkdir -p "$user_bin"
+  ln -sf "$launcher_path" "$user_bin/dotagents"
+
+  ok "DotAgents installed to $app_path"
+  info "Launcher created at $user_bin/dotagents"
+  if [[ ":$PATH:" != *":$user_bin:"* ]]; then
+    warn "$user_bin is not currently on your PATH."
+    info 'Add it with: export PATH="$HOME/.local/bin:$PATH"'
+  else
+    info "Run: dotagents"
+  fi
+}
+
+install_release_windows() {
+  local asset_url="$1"
+  local installer_path win_installer_path
+
+  installer_path="$INSTALL_DIR/$(basename "$asset_url")"
+  download_file "$asset_url" "$installer_path"
+  win_installer_path="$(cygpath -w "$installer_path")"
+
+  info "Starting the Windows installer..."
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Wait -FilePath '$win_installer_path' -ArgumentList '/S'"
+  ok "DotAgents installer finished."
+}
+
+install_release() {
+  ensure_release_requirements
+  fetch_release_metadata
+  info "Using release: $TAG"
+
+  local asset_url
+  asset_url="$(select_release_asset_url)"
+
+  case "$PLATFORM" in
+    mac) install_release_mac "$asset_url" ;;
+    linux) install_release_linux "$asset_url" ;;
+    win) install_release_windows "$asset_url" ;;
+  esac
+}
+
+resolve_pnpm() {
+  if has pnpm; then
+    PNPM_CMD=(pnpm)
+    return 0
+  fi
+
+  if has corepack; then
+    info "Enabling pnpm via corepack..."
+    corepack enable >/dev/null 2>&1 || true
+    if corepack pnpm --version >/dev/null 2>&1; then
+      PNPM_CMD=(corepack pnpm)
+      return 0
+    fi
+  fi
+
+  if has npm; then
+    info "Installing pnpm with npm..."
+    npm install -g pnpm >/dev/null
+    PNPM_CMD=(pnpm)
+    return 0
+  fi
+
+  die "pnpm is required for DOTAGENTS_FROM_SOURCE=1, and neither pnpm, corepack, nor npm was found."
+}
+
+run_pnpm() {
+  if [ "${#PNPM_CMD[@]}" -eq 2 ]; then
+    "${PNPM_CMD[0]}" "${PNPM_CMD[1]}" "$@"
+  else
+    "${PNPM_CMD[0]}" "$@"
+  fi
+}
+
 install_from_source() {
-  info "Installing from source..."
+  info "Installing DotAgents from source..."
+  ensure_cmd git "Install Git first."
+  ensure_cmd node "Install Node.js 20.19.4+ first."
 
-  # Check prerequisites
-  ensure_cmd git
-  ensure_cmd node
+  local node_major
+  node_major="$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || true)"
+  [ -n "$node_major" ] || die "Failed to determine the installed Node.js version."
+  [ "$node_major" -ge 20 ] || die "Node.js 20.19.4+ is required for source installs."
 
-  NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
-  if [ "$NODE_VERSION" -lt 20 ]; then
-    die "Node.js 20+ required (found v$(node -v)). Install via: https://nodejs.org"
-  fi
+  resolve_pnpm
 
-  if ! has pnpm; then
-    info "Installing pnpm..."
-    npm install -g pnpm
-  fi
-
-  # Clone or update
-  if [ -d "$INSTALL_DIR/repo" ]; then
+  mkdir -p "$INSTALL_DIR"
+  if [ -d "$INSTALL_DIR/repo/.git" ]; then
     info "Updating existing repo..."
-    cd "$INSTALL_DIR/repo"
-    git pull --ff-only origin main
+    (cd "$INSTALL_DIR/repo" && git pull --ff-only origin main)
   else
     info "Cloning $REPO..."
-    mkdir -p "$INSTALL_DIR"
     git clone --depth 1 "$REPO_URL.git" "$INSTALL_DIR/repo"
-    cd "$INSTALL_DIR/repo"
   fi
 
+  cd "$INSTALL_DIR/repo"
   info "Installing dependencies..."
-  pnpm install
+  run_pnpm install --frozen-lockfile
+  info "Building shared workspace package..."
+  run_pnpm build:shared
 
-  info "Building shared packages..."
-  pnpm build:shared
-
-  # Build Rust binary if Rust is available
   if has cargo; then
-    info "Building Rust native binary..."
-    pnpm build-rs 2>/dev/null || warn "Rust build failed (optional — voice input may not work)"
+    info "Building Rust desktop binary..."
+    run_pnpm --filter @dotagents/desktop build-rs
   else
-    warn "Rust not found. Skipping native binary build (voice input may not work)."
-    warn "Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    warn "Cargo was not found. Voice-native features may be unavailable in source mode."
+    warn "Install Rust from https://rustup.rs if you need the native desktop binary."
   fi
 
-  # Create launcher script
-  LAUNCHER="$INSTALL_DIR/dotagents"
-  cat > "$LAUNCHER" << 'EOF'
-#!/usr/bin/env bash
-cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/repo" && exec pnpm dev "$@"
-EOF
-  chmod +x "$LAUNCHER"
-
-  # Symlink to PATH
-  if [ -d "$HOME/.local/bin" ]; then
-    ln -sf "$LAUNCHER" "$HOME/.local/bin/dotagents"
-    ok "DotAgents built from source! Run: dotagents"
-  else
-    mkdir -p "$HOME/.local/bin"
-    ln -sf "$LAUNCHER" "$HOME/.local/bin/dotagents"
-    ok "DotAgents built from source!"
-    warn "Add ~/.local/bin to your PATH if 'dotagents' command is not found:"
-    info '  export PATH="$HOME/.local/bin:$PATH"'
-  fi
-
-  info "Source directory: $INSTALL_DIR/repo"
-  info "To update later: cd $INSTALL_DIR/repo && git pull && pnpm install && pnpm build:shared"
+  ok "Source checkout is ready at $INSTALL_DIR/repo"
+  info "Start the desktop app with:"
+  info "  cd $INSTALL_DIR/repo && $(printf '%s ' "${PNPM_CMD[@]}")dev"
 }
 
-# ── Main ────────────────────────────────────────────────────
 main() {
   printf "\n${BOLD}${CYAN}"
   printf "  ┌──────────────────────────────────┐\n"
@@ -213,8 +333,7 @@ main() {
     install_release
   fi
 
-  printf "\n${GREEN}${BOLD}Done!${NC} "
-  printf "Documentation: ${CYAN}https://docs.dotagents.app${NC}\n\n"
+  printf "\n${GREEN}${BOLD}Done!${NC} Documentation: ${CYAN}https://docs.dotagents.app${NC}\n\n"
 }
 
 main "$@"

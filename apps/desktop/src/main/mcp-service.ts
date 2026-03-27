@@ -109,14 +109,6 @@ export function getInternalWhatsAppServerPath(): string {
   return getInternalWhatsAppServerPaths().scriptPath
 }
 
-/**
- * Check if a server is an internally-managed server
- * Internal servers have their paths managed by DotAgents, not user config
- */
-export function isInternalServer(serverName: string): boolean {
-  return serverName === WHATSAPP_SERVER_NAME
-}
-
 export interface MCPTool {
   name: string
   description: string
@@ -214,17 +206,9 @@ export class MCPService {
       // Check if current profile has allServersDisabledByDefault enabled
       // If so, derive runtimeDisabledServers directly from enabledServers to avoid config/profile drift
       // This handles newly-added MCP servers and ensures servers in enabledServers are not disabled
-      const profilesPath = path.join(
-        app.getPath("appData"),
-        process.env.APP_ID,
-        "profiles.json"
-      )
-      if (existsSync(profilesPath)) {
-        const profilesData = JSON.parse(readFileSync(profilesPath, "utf8")) as ProfilesData
-        const currentProfile = profilesData.profiles?.find(
-          (p) => p.id === profilesData.currentProfileId
-        )
-        const mcpServerConfig = currentProfile?.mcpServerConfig
+      const currentProfile = agentProfileService.getCurrentProfile()
+      if (currentProfile) {
+        const mcpServerConfig = currentProfile?.toolConfig
         if (mcpServerConfig?.allServersDisabledByDefault) {
           // Get all configured MCP server names
           const allServerNames = Object.keys(config?.mcpConfig?.mcpServers || {})
@@ -2971,7 +2955,7 @@ export class MCPService {
       }
 
       // Set auth directory to DotAgents data folder
-      environment.WHATSAPP_AUTH_DIR = path.join(app.getPath("appData"), process.env.APP_ID || "dotagents", "whatsapp-auth")
+      environment.WHATSAPP_AUTH_DIR = path.join(dataFolder, "whatsapp-auth")
     }
 
     return environment

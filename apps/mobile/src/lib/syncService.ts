@@ -146,6 +146,21 @@ export async function syncConversations(
       }
     });
 
+    // Build a content-based lookup for dedup: find server conversations that
+    // match an unlinked local session by (createdAt, title). This prevents
+    // duplicate server conversations when the local serverConversationId
+    // mapping is lost (e.g. app restart before AsyncStorage save completes).
+    // Key: "createdAt|title" → most recently updated ServerConversation
+    const serverByContentKey = new Map<string, ServerConversation>();
+    for (const sc of serverList) {
+      const key = `${sc.createdAt}|${sc.title}`;
+      const existing = serverByContentKey.get(key);
+      // Keep the most recently updated match
+      if (!existing || sc.updatedAt > existing.updatedAt) {
+        serverByContentKey.set(key, sc);
+      }
+    }
+
     // Step 2: Process local sessions
     for (let i = 0; i < updatedSessions.length; i++) {
       const session = updatedSessions[i];
@@ -198,24 +213,43 @@ export async function syncConversations(
           continue;
         }
 
-        // Local-only session with messages - push to server
-        try {
-          const created = await client.createConversation({
-            title: session.title,
-            messages: session.messages.map(toServerMessage),
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-          });
+        // Before creating a new server conversation, check if one already
+        // exists with the same createdAt + title (content-based dedup).
+        // This handles the case where a previous sync pushed this session
+        // but the serverConversationId mapping was lost locally.
+        const contentKey = `${session.createdAt}|${session.title}`;
+        const existingMatch = serverByContentKey.get(contentKey);
 
-          // Update local session with server ID and updatedAt
+        if (existingMatch && !localByServerId.has(existingMatch.id)) {
+          // Found a matching server conversation — re-link instead of creating a duplicate
           updatedSessions[i] = {
             ...session,
-            serverConversationId: created.id,
-            updatedAt: created.updatedAt,
+            serverConversationId: existingMatch.id,
+            updatedAt: existingMatch.updatedAt,
           };
-          result.pushed++;
-        } catch (err: any) {
-          result.errors.push(`Failed to create on server: ${err.message}`);
+          // Mark this server ID as claimed so Step 3 won't pull it as a new stub
+          localByServerId.set(existingMatch.id, { session: updatedSessions[i], index: i });
+          result.updated++;
+        } else {
+          // Truly new local-only session - push to server
+          try {
+            const created = await client.createConversation({
+              title: session.title,
+              messages: session.messages.map(toServerMessage),
+              createdAt: session.createdAt,
+              updatedAt: session.updatedAt,
+            });
+
+            // Update local session with server ID and updatedAt
+            updatedSessions[i] = {
+              ...session,
+              serverConversationId: created.id,
+              updatedAt: created.updatedAt,
+            };
+            result.pushed++;
+          } catch (err: any) {
+            result.errors.push(`Failed to create on server: ${err.message}`);
+          }
         }
       }
       // Empty sessions without serverConversationId are ignored

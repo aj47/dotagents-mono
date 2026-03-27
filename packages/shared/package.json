@@ -1,6 +1,6 @@
 {
   "name": "@dotagents/shared",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Shared design tokens, types, and utilities for DotAgents apps",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

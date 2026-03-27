@@ -1,4 +1,4 @@
-import { parseShellCommand } from './shell-parse'
+import { parseShellCommand } from '@dotagents/shared'
 
 describe('parseShellCommand', () => {
   it('should parse simple command without arguments', () => {
@@ -96,4 +96,3 @@ describe('parseShellCommand', () => {
     })
   })
 })
-

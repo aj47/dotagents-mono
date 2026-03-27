@@ -19,6 +19,7 @@ import * as path from "path"
 import { fileURLToPath } from "url"
 
 const FORCE_KILL_TIMEOUT_MS = 5000
+const WORKSPACE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 
 type WindowsProcessTreeTerminator = (pid: number) => {
   status: number | null
@@ -39,6 +40,18 @@ export function getDevCommand(userArgs: string[]): {
   return {
     command: process.platform === "win32" ? "pnpm.cmd" : "pnpm",
     args: ["exec", "electron-vite", "dev", "--watch", "--", ...userArgs],
+  }
+}
+
+export function getSharedWatchCommand(): {
+  command: string
+  args: string[]
+  cwd: string
+} {
+  return {
+    command: process.platform === "win32" ? "pnpm.cmd" : "pnpm",
+    args: ["--filter", "@dotagents/shared", "dev"],
+    cwd: WORKSPACE_ROOT,
   }
 }
 
@@ -215,6 +228,16 @@ function main(): void {
   }
 
   const { command, args } = getDevCommand(userArgs)
+  const sharedWatch = getSharedWatchCommand()
+
+  console.log(`[dev-with-sherpa] Running shared watch: ${sharedWatch.command} ${sharedWatch.args.join(" ")}`)
+  const sharedChild = spawn(sharedWatch.command, sharedWatch.args, {
+    cwd: sharedWatch.cwd,
+    env,
+    stdio: "inherit",
+    detached: process.platform !== "win32",
+    shell: process.platform === "win32",
+  })
 
   console.log(`[dev-with-sherpa] Running: ${command} ${args.join(" ")}`)
 
@@ -232,14 +255,16 @@ function main(): void {
     if (shutdownSignal) return
 
     shutdownSignal = signal
-    console.log(`[dev-with-sherpa] Received ${signal}; stopping desktop dev process tree...`)
+    console.log(`[dev-with-sherpa] Received ${signal}; stopping desktop + shared watch process trees...`)
 
+    terminateChildProcessTree(sharedChild, signal)
     terminateChildProcessTree(child, signal)
 
     forceKillTimer = setTimeout(() => {
       console.warn(
-        `[dev-with-sherpa] Child process tree still alive after ${FORCE_KILL_TIMEOUT_MS}ms; sending SIGKILL`,
+        `[dev-with-sherpa] Process trees still alive after ${FORCE_KILL_TIMEOUT_MS}ms; sending SIGKILL`,
       )
+      terminateChildProcessTree(sharedChild, "SIGKILL")
       terminateChildProcessTree(child, "SIGKILL")
     }, FORCE_KILL_TIMEOUT_MS)
     forceKillTimer.unref()
@@ -252,6 +277,10 @@ function main(): void {
   child.on("close", (code, signal) => {
     if (forceKillTimer) {
       clearTimeout(forceKillTimer)
+    }
+
+    if (!shutdownSignal) {
+      terminateChildProcessTree(sharedChild, "SIGTERM")
     }
 
     if (code !== null) {
@@ -271,6 +300,13 @@ function main(): void {
 
   child.on("error", (err) => {
     console.error("[dev-with-sherpa] Failed to start:", err)
+    terminateChildProcessTree(sharedChild, "SIGTERM")
+    process.exit(1)
+  })
+
+  sharedChild.on("error", (err) => {
+    console.error("[dev-with-sherpa] Failed to start shared watch:", err)
+    terminateChildProcessTree(child, "SIGTERM")
     process.exit(1)
   })
 }

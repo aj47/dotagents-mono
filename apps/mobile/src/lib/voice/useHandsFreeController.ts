@@ -190,18 +190,53 @@ export function resolveHandsFreeUtterance({
   }
 
   if (state.phase === 'processing' || state.phase === 'speaking') {
+    const sleepMatch = matchSleepPhrase(normalizedTranscript, sleepPhrase);
+    if (sleepMatch.matched) {
+      return {
+        nextState: {
+          ...transitionToSleeping(state),
+          lastTranscript: sleepMatch.normalizedTranscript,
+        },
+        action: { type: 'none' },
+        matchedWake: false,
+        matchedSleep: true,
+      };
+    }
+
     const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
-    if (wakeMatch.matched && wakeMatch.remainder) {
+    if (wakeMatch.matched) {
+      if (wakeMatch.remainder) {
+        return {
+          nextState: {
+            ...state,
+            lastTranscript: wakeMatch.remainder,
+          },
+          action: { type: 'send', text: wakeMatch.remainder },
+          matchedWake: true,
+          matchedSleep: false,
+        };
+      }
+
       return {
         nextState: {
           ...state,
-          lastTranscript: wakeMatch.remainder,
+          lastTranscript: wakeMatch.normalizedTranscript,
         },
-        action: { type: 'send', text: wakeMatch.remainder },
+        action: { type: 'none' },
         matchedWake: true,
         matchedSleep: false,
       };
     }
+
+    return {
+      nextState: {
+        ...state,
+        lastTranscript: normalizedTranscript,
+      },
+      action: { type: 'send', text: normalizedTranscript },
+      matchedWake: false,
+      matchedSleep: false,
+    };
   }
 
   return {
@@ -472,7 +507,10 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     () => enabled
       && runtimeActive
       && state.pauseReason !== 'user'
-      && (state.phase === 'sleeping' || state.phase === 'waking' || state.phase === 'listening'),
+      && (state.phase === 'sleeping'
+        || state.phase === 'waking'
+        || state.phase === 'listening'
+        || state.phase === 'processing'),
     [enabled, runtimeActive, state.phase, state.pauseReason],
   );
 

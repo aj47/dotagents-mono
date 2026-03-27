@@ -846,12 +846,11 @@ export default function SessionListScreen({ navigation }: Props) {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
     const rawPreview = (item.searchPreview ?? item.preview) || 'No messages yet';
-    let sessionPreviewText = rawPreview;
-    if (rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')) {
-      sessionPreviewText = 'Used a tool';
-    } else if (rawPreview.includes('{"')) {
-      sessionPreviewText = rawPreview.replace(/\{.*\}/g, '{...}').trim();
-    }
+    const sessionPreviewText = rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')
+      ? 'Used a tool'
+      : rawPreview.includes('{"')
+        ? rawPreview.replace(/\{.*\}/g, '{...}').trim()
+        : rawPreview;
     const sessionMetaLabel = `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`;
 
     return (
@@ -1260,7 +1259,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 2,
+      marginBottom: 0,
     },
     sessionTitleRow: {
       flexDirection: 'row',
@@ -1276,8 +1275,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginLeft: spacing.sm,
     },
     sessionTitle: {
-      ...theme.typography.body,
+      fontSize: 15,
+      lineHeight: 20,
       fontWeight: '600',
+      color: theme.colors.foreground,
       flex: 1,
       minWidth: 0,
     },
@@ -1309,11 +1310,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
     },
     sessionPreview: {
-      ...theme.typography.body,
+      ...theme.typography.caption,
       color: theme.colors.mutedForeground,
     },
     sessionPreviewMeta: {
-      ...theme.typography.body,
+      ...theme.typography.caption,
       color: theme.colors.mutedForeground,
       fontWeight: '500',
     },

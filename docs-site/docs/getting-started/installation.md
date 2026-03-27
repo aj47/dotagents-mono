@@ -14,19 +14,33 @@ Get DotAgents running on your machine in minutes.
 The fastest way to get DotAgents on any machine:
 
 ```bash
+# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash
 ```
 
-This auto-detects your OS and architecture, downloads the latest release (macOS `.dmg`, Linux `.AppImage`, Windows `.exe`), and installs it. If no pre-built binary exists for your platform, it falls back to building from source.
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex
+```
+
+These installers auto-detect your OS and architecture, download the correct release artifact, and install DotAgents without assuming Git, Node, pnpm, or Rust are already installed. Building from source is still available, but it is now an explicit opt-in.
 
 **Options:**
 
 ```bash
-# Force build from source instead of downloading a binary
+# Force a source install instead of downloading a release (macOS / Linux)
 curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | DOTAGENTS_FROM_SOURCE=1 bash
 
 # Custom install directory (default: ~/.dotagents)
 curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | DOTAGENTS_DIR=~/my-agents bash
+```
+
+```powershell
+# Force a source install on Windows
+$env:DOTAGENTS_FROM_SOURCE = '1'; irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex
+
+# Custom install directory on Windows
+$env:DOTAGENTS_DIR = "$HOME\dotagents"; irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex
 ```
 
 ---
@@ -41,7 +55,8 @@ Alternatively, download manually:
 
 | Platform | Architecture | Format |
 |----------|-------------|--------|
-| **macOS** | Apple Silicon (M1/M2/M3/M4) + Intel | `.dmg` (universal) |
+| **macOS** | Apple Silicon (M1/M2/M3/M4) | `.dmg` |
+| **macOS** | Intel | `.dmg` |
 | **Windows** | x64 | `.exe` installer |
 | **Linux** | x64 | `.AppImage`, `.deb` |
 | **Linux** | ARM64 | `.AppImage`, `.deb` |

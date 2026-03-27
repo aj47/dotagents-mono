@@ -102,7 +102,7 @@ export function appendAgentStopNote(content: string): string {
     : AGENT_STOP_NOTE
 }
 
-export function getLatestAssistantMessageContent(
+function getLatestAssistantMessageContent(
   conversation?: ConversationMessageLike[],
 ): string | undefined {
   if (!Array.isArray(conversation)) return undefined

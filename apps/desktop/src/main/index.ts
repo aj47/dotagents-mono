@@ -92,7 +92,7 @@ const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   : findHubBundleInstallBundleUrl(process.argv)
 const shouldEnforceSingleInstance = !isQRMode && !isHeadlessMode
 const CLEANUP_TIMEOUT_MS = 5000
-const GUI_SIGNAL_FORCE_EXIT_DELAY_MS = CLEANUP_TIMEOUT_MS + 2000
+const GUI_SIGNAL_FORCE_EXIT_DELAY_MS = 500
 
 function releaseAppSingleInstanceLock() {
   if (!shouldEnforceSingleInstance) return
@@ -194,8 +194,11 @@ let gotSingleInstanceLock = true
 if (shouldEnforceSingleInstance) {
   try {
     gotSingleInstanceLock = app.requestSingleInstanceLock()
-  } catch {
-    gotSingleInstanceLock = true
+  } catch (err) {
+    // If the lock throws (e.g. corrupted lock file during rapid dev restarts),
+    // refuse to start rather than running a duplicate instance.
+    logApp("Failed to acquire single instance lock:", err)
+    gotSingleInstanceLock = false
   }
 }
 
@@ -657,12 +660,24 @@ if (!gotSingleInstanceLock) {
       optimizer.watchWindowShortcuts(window)
     })
 
-    app.on("activate", function () {
+    const MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS = 250
+    let lastMacAppActivationAt = 0
+
+    const handleAppActivation = (reason: "app.activate" | "app.did-become-active") => {
       const mainWin = WINDOWS.get("main")
       const cfg = configStore.get()
 
-      if (process.platform === "darwin" && !cfg.hideDockIcon) {
-        ensureAppSwitcherPresence("app.activate")
+      if (process.platform === "darwin") {
+        const now = Date.now()
+        if (now - lastMacAppActivationAt < MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS) {
+          logApp(`[${reason}] Skipping duplicate macOS activation pulse`)
+          return
+        }
+        lastMacAppActivationAt = now
+
+        if (!cfg.hideDockIcon) {
+          ensureAppSwitcherPresence(reason)
+        }
       }
 
       if (accessibilityGranted) {
@@ -690,6 +705,16 @@ if (!gotSingleInstanceLock) {
           createSetupWindow()
         }
       }
+    }
+
+    // macOS app switcher activation (Cmd+Tab) does not reliably emit `activate`.
+    // Electron provides `did-become-active` specifically for all activation paths.
+    app.on("activate", function () {
+      handleAppActivation("app.activate")
+    })
+
+    app.on("did-become-active", function () {
+      handleAppActivation("app.did-become-active")
     })
 
     // Track if we're already cleaning up to prevent re-entry
@@ -782,8 +807,11 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     logApp(`Received ${signal}, forcing exit`)
     releaseAppSingleInstanceLock()
     destroyTray()
+    // Synchronously kill MCP server processes to prevent orphans
+    mcpService.emergencyStopAllProcesses()
     app.quit()
-    // Force exit after a short grace period in case before-quit cleanup hangs
+    // Short grace period — electron-vite --watch spawns a new process quickly,
+    // so the old one must die fast to avoid duplicate Electron processes.
     setTimeout(() => process.exit(0), GUI_SIGNAL_FORCE_EXIT_DELAY_MS).unref()
   })
 }

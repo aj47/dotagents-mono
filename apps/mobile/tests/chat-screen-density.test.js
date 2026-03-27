@@ -53,16 +53,40 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
   assert.match(screenSource, /looksLikeToolPayloadContent\(message\.content\)/);
   assert.match(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = \/\^\(\?:using tool:\|tool result:\)\/i;/);
+  assert.match(screenSource, /if \(stripped\.length > 0\) \{\s+return stripped;\s+\}\s+return stripped === rawContent \? rawContent : '';/);
   assert.doesNotMatch(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = .*input:\|output:/);
   assert.doesNotMatch(screenSource, /const looksLikeToolPayloadContent = \(content\?: string\): boolean => \{[\s\S]*?JSON\.parse\(trimmedContent\)/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ historyMsg\.content/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ msg\.content/);
+  assert.doesNotMatch(screenSource, /return stripped \|\| rawContent;/);
 });
 
 test('bases assistant collapse decisions on visible content instead of raw tool payload metadata', () => {
-  assert.match(screenSource, /const visibleMessageContent = getVisibleMessageContent\(m\);\s+const shouldCollapse = m\.role === 'assistant'\s+\? shouldCollapseMessage\(visibleMessageContent\)\s+: shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
+  assert.match(screenSource, /const visibleMessageContent = getVisibleMessageContent\(m\);/);
+  assert.match(screenSource, /const shouldCollapse = m\.role === 'assistant'\s+\? shouldCollapseMessage\(visibleMessageContent\)\s+: shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
+  assert.match(screenSource, /const effectiveShouldCollapse = hasRespondToUserContent \? false : shouldCollapse;/);
   assert.doesNotMatch(screenSource, /const shouldCollapse = shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
-  assert.match(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0 &&\s+!isExpanded &&\s+shouldCollapse;/);
+  assert.match(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0 &&\s+!isExpanded &&\s+effectiveShouldCollapse;/);
+});
+
+test('derives tool execution card status from displayed non-meta tool entries', () => {
+  assert.match(screenSource, /const displayToolEntries = toolCalls\.reduce\(/);
+  assert.match(screenSource, /const allSuccess =\s+hasToolResults && displayToolEntries\.every\(entry => entry\.result\?\.success === true\);/);
+  assert.match(screenSource, /const hasErrors = displayToolEntries\.some\(entry => entry\.result\?\.success === false\);/);
+  assert.match(screenSource, /const isPending =\s+displayToolEntries\.some\(entry => !entry\.result && entry\.origIdx >= toolResultCount\);/);
+  assert.match(screenSource, /\{displayToolEntries\.map\(\(\{ toolCall, origIdx, result: tcResult \}, tcIdx\) => \{/);
+  assert.match(screenSource, /\{displayToolEntries\.map\(\(\{ toolCall, origIdx, result \}, idx\) => \{/);
+  assert.doesNotMatch(screenSource, /const allSuccess = hasToolResults && m\.toolResults!\.every\(r => r\.success\);/);
+  assert.doesNotMatch(screenSource, /const hasErrors = hasToolResults && m\.toolResults!\.some\(r => !r\.success\);/);
+});
+
+test('uses tool activities wording consistently for grouped tool activity labels', () => {
+  assert.match(screenSource, /accessibilityLabel=\{`\$\{group\.count\} tool activities, collapsed\. Tap to expand\.`\}/);
+  assert.match(screenSource, /▶ \{group\.count\} tool \{group\.count === 1 \? 'activity' : 'activities'\}/);
+  assert.match(screenSource, /accessibilityLabel=\{`Collapse \$\{group!\.count\} tool activities`\}/);
+  assert.match(screenSource, /▼ \{group!\.count\} tool \{group!\.count === 1 \? 'activity' : 'activities'\}/);
+  assert.match(screenSource, /▲ Collapse \{group!\.count\} tool \{group!\.count === 1 \? 'activity' : 'activities'\}/);
+  assert.doesNotMatch(screenSource, /▶ \{group\.count\} tool \{group\.count === 1 \? 'call' : 'calls'\}/);
 });
 
 test('keeps the TTS control inline with assistant message text instead of on a detached row', () => {

@@ -72,6 +72,8 @@ async function loadIndexForHubInstall(
     optimizer: { watchWindowShortcuts: vi.fn() },
   }))
   vi.doMock("@egoist/tipc/main", () => ({ registerIpcMain: vi.fn() }))
+  const windows = new Map()
+
   vi.doMock("./window", () => ({
     createMainWindow,
     createPanelWindow,
@@ -79,7 +81,7 @@ async function loadIndexForHubInstall(
     makePanelWindowClosable: vi.fn(),
     setAppQuitting: vi.fn(),
     showMainWindow,
-    WINDOWS: new Map(),
+    WINDOWS: windows,
   }))
   vi.doMock("./keyboard", () => ({
     listenToKeyboardEvents: vi.fn(),
@@ -164,6 +166,7 @@ async function loadIndexForHubInstall(
     handlers,
     createMainWindow,
     showMainWindow,
+    windows,
     downloadHubBundleToTempFile,
     requestSingleInstanceLock,
     releaseSingleInstanceLock,
@@ -291,5 +294,41 @@ describe("Hub install handoff routing", () => {
     expect(showMainWindow).toHaveBeenCalledWith(
       `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
     )
+  })
+
+  it("reopens the main window when the app becomes active via the macOS app switcher", async () => {
+    const { handlers, showMainWindow, windows } = await loadIndexForHubInstall(["electron"])
+    const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+
+    expect(didBecomeActiveHandler).toBeTypeOf("function")
+
+    windows.set("main", { id: "main" })
+    showMainWindow.mockClear()
+
+    didBecomeActiveHandler?.()
+
+    expect(showMainWindow).toHaveBeenCalledTimes(1)
+  })
+
+  it("dedupes paired macOS activate pulses so the main window is only reopened once", async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.setSystemTime(new Date("2026-03-20T12:00:00Z"))
+
+      const { handlers, showMainWindow, windows } = await loadIndexForHubInstall(["electron"])
+      const activateHandler = handlers.get("activate")?.[0] as (() => void) | undefined
+      const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+
+      windows.set("main", { id: "main" })
+      showMainWindow.mockClear()
+
+      activateHandler?.()
+      didBecomeActiveHandler?.()
+
+      expect(showMainWindow).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

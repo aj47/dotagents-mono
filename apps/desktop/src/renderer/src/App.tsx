@@ -4,12 +4,14 @@ import { lazy, Suspense } from "react"
 import { Toaster } from "sonner"
 import { ThemeProvider } from "./contexts/theme-context"
 import { useStoreSync } from "./hooks/use-store-sync"
+import { useAudioInputDeviceFallback } from "./hooks/use-audio-input-device-fallback"
 
 const McpElicitationDialog = lazy(() => import("./components/mcp-elicitation-dialog"))
 const McpSamplingDialog = lazy(() => import("./components/mcp-sampling-dialog"))
 
 function StoreInitializer({ children }: { children: React.ReactNode }) {
   useStoreSync()
+  useAudioInputDeviceFallback()
   return <>{children}</>
 }
 

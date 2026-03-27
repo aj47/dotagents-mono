@@ -98,30 +98,3 @@ export async function preprocessTextForTTSWithLLM(
   }
 }
 
-/**
- * Checks if LLM-based TTS preprocessing is enabled and available.
- * Returns true if the feature is enabled and API keys are configured.
- */
-export function isLLMPreprocessingAvailable(): boolean {
-  const config = configStore.get()
-  
-  if (!config.ttsUseLLMPreprocessing) {
-    return false
-  }
-  
-  // Check if the provider has API keys configured
-  const providerId = config.ttsLLMPreprocessingProviderId || config.transcriptPostProcessingProviderId || "openai"
-  
-  switch (providerId) {
-    case "openai":
-      return !!config.openaiApiKey
-    case "groq":
-      return !!config.groqApiKey
-    case "gemini":
-      return !!config.geminiApiKey
-    default:
-      // For unknown providers, return false rather than assuming OpenAI availability
-      return false
-  }
-}
-

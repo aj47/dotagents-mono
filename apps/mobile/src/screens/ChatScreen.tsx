@@ -47,15 +47,19 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
+  formatArgumentsPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
   RESPOND_TO_USER_TOOL,
   isToolOnlyMessage,
   normalizeAgentConversationState,
+  groupToolActivity,
   type AgentConversationState,
   type AgentUserResponseEvent,
+  type HandsFreePhase,
   type PredefinedPromptSummary,
+  type ToolActivityGroup,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -78,6 +82,7 @@ import {
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import { createDelegationProgressMessages } from '../lib/delegationProgress';
 
 interface PendingImageAttachment {
   id: string;
@@ -89,6 +94,8 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
+const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
+const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 
@@ -208,6 +215,9 @@ const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.tes
 
 const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
 
+/** Meta-tools whose results are already shown as visible message content or are purely internal */
+const HIDDEN_META_TOOLS = new Set([RESPOND_TO_USER_TOOL, 'mark_work_complete']);
+
 const sanitizeMessageContentForModel = (content: string) =>
   content.replace(INLINE_DATA_IMAGE_MARKDOWN_REGEX, (_match, altText: string) => {
     const cleanedAlt = altText?.trim();
@@ -314,6 +324,15 @@ const getRespondToUserContentFromMessage = (message: ChatMessage): string | null
   return null;
 };
 
+const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
+
+// Match [tool_name] {json...} or [tool_name] [...] patterns anywhere in text
+// Used to strip raw tool call / tool result text that leaks into visible content
+const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
+
+// Match garbled tool-call-as-text patterns (model hallucinating tool call syntax)
+const GARBLED_TOOL_CALL_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.)/i;
+
 const looksLikeToolPayloadContent = (content?: string): boolean => {
   const trimmedContent = content?.trim();
   if (!trimmedContent) {
@@ -328,10 +347,46 @@ const looksLikeToolPayloadContent = (content?: string): boolean => {
     return true;
   }
 
+  // Catch raw tool result content like "[tool_name] { json }" or "[tool_name] # markdown"
+  if (TOOL_RESULT_BRACKET_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
+  // Catch garbled tool call text
+  if (GARBLED_TOOL_CALL_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
   return false;
 };
 
+/**
+ * Strip raw tool call / tool result text that leaks into visible message content.
+ * Removes patterns like "[execute_command] {"command":"ls"}" or
+ * "[tool_name] [{"key":"value"}]" that backends sometimes include as text.
+ */
+const stripRawToolTextFromContent = (content: string): string => {
+  if (!content) return content;
+
+  // Remove [tool_name] {json} or [tool_name] [array] patterns
+  let cleaned = content.replace(INLINE_TOOL_BRACKET_REGEX, '');
+
+  // Remove tool marker tags like <|tool_call_begin|> etc.
+  cleaned = cleaned.replace(/<\|[^|]*\|>/g, '');
+
+  // Remove garbled multi_tool_use patterns
+  cleaned = cleaned.replace(/(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.)[\s\S]*$/i, '');
+
+  return cleaned.trim();
+};
+
 const getVisibleMessageContent = (message: ChatMessage): string => {
+  // Tool role messages are raw tool results — always hide their content
+  // (they should have been merged into the preceding assistant message)
+  if (message.role === 'tool') {
+    return '';
+  }
+
   if (message.role !== 'assistant') {
     return message.content || '';
   }
@@ -353,13 +408,32 @@ const getVisibleMessageContent = (message: ChatMessage): string => {
     return '';
   }
 
-  return message.content || '';
+  // Hide standalone messages that are raw tool results (no structured metadata
+  // but content looks like "[tool_name] { json }" from unmerged tool responses)
+  if (looksLikeToolPayloadContent(message.content)) {
+    return '';
+  }
+
+  // Strip any remaining inline tool call text (e.g. "[execute_command] {json}")
+  // that might be embedded within otherwise valid content
+  const rawContent = message.content || '';
+  const stripped = stripRawToolTextFromContent(rawContent);
+  if (stripped.length > 0) {
+    return stripped;
+  }
+
+  return stripped === rawContent ? rawContent : '';
 };
 
 const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
   const hasToolMetadata =
     (message.toolCalls?.length ?? 0) > 0 ||
     (message.toolResults?.length ?? 0) > 0;
+
+  // Also treat standalone raw tool result messages as tool-only
+  if (looksLikeToolPayloadContent(message.content)) {
+    return true;
+  }
 
   return hasToolMetadata && getVisibleMessageContent(message).trim().length === 0;
 };
@@ -439,6 +513,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
+  const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
   const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
@@ -800,6 +875,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_CHAT_MESSAGES);
   // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
   const messagesRef = useRef<ChatMessage[]>(messages);
   // Track progress messages so we can merge them with final conversationHistory
@@ -823,6 +899,8 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
+  // Track which tool-activity groups are expanded (keyed by "startIndex-endIndex")
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const [willCancel, setWillCancel] = useState(false);
@@ -841,6 +919,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		sleepPhrase: handsFreeSleepPhrase,
 		log: voiceLog,
 	  });
+  useEffect(() => {
+    handsFreePhaseRef.current = handsFreeController.state.phase;
+  }, [handsFreeController.state.phase]);
 
 	  const {
 		listening,
@@ -1196,6 +1277,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     // Consider "at bottom" if within 50 pixels of the bottom
     const isAtBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
+    const isNearTop = contentOffset.y <= 120;
 
     if (isAtBottom && !shouldAutoScroll) {
       // User scrolled back to bottom, resume auto-scroll
@@ -1204,7 +1286,22 @@ export default function ChatScreen({ route, navigation }: any) {
       // Only pause auto-scroll when user is actively dragging (not programmatic scroll)
       setShouldAutoScroll(false);
     }
-  }, [shouldAutoScroll]);
+    if (isNearTop && visibleMessageCount < messages.length) {
+      setVisibleMessageCount((current) => Math.min(messages.length, current + VISIBLE_CHAT_MESSAGES_INCREMENT));
+    }
+  }, [messages.length, shouldAutoScroll, visibleMessageCount]);
+
+  useEffect(() => {
+    setVisibleMessageCount(INITIAL_VISIBLE_CHAT_MESSAGES);
+  }, [sessionStore.currentSessionId]);
+
+  useEffect(() => {
+    setVisibleMessageCount((current) => {
+      if (messages.length === 0) return INITIAL_VISIBLE_CHAT_MESSAGES;
+      const next = Math.max(INITIAL_VISIBLE_CHAT_MESSAGES, current);
+      return Math.min(messages.length, next);
+    });
+  }, [messages.length]);
 
   // Scroll to bottom when messages change and auto-scroll is enabled
   // Uses debouncing to handle rapid streaming updates efficiently
@@ -1337,6 +1434,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // "final response expanded" behavior per chat and prevent stale UI state from leaking.
       setExpandedMessages({});
       setExpandedToolCalls({});
+      setExpandedGroups({});
       // Clear respond_to_user history for the new session
 	      replaceResponseHistory([]);
       playedResponseEventIdsRef.current = new Set();
@@ -1526,6 +1624,15 @@ export default function ChatScreen({ route, navigation }: any) {
     setExpandedToolCalls(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
+  // Compute tool-activity groups for consecutive connected tool-call messages
+  const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
+
+  // Toggle expansion of a tool-activity group (keyed by "startIndex-endIndex")
+  const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
+    const key = `${group.startIndex}-${group.endIndex}`;
+    setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
   // Auto-expand logic matching desktop behavior (#32, #33):
   // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
   // - Messages with tool metadata and visible user-facing content can still expand normally
@@ -1575,6 +1682,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const convertProgressToMessages = useCallback((update: AgentProgressUpdate): ChatMessage[] => {
     const messages: ChatMessage[] = [];
+    const delegationMessages = createDelegationProgressMessages(update.steps);
     console.log('[convertProgressToMessages] Processing update, steps:', update.steps?.length || 0, 'history:', update.conversationHistory?.length || 0, 'isComplete:', update.isComplete);
 
     if (update.steps && update.steps.length > 0) {
@@ -1657,7 +1765,11 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (update.streamingContent?.text) {
-      if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+      if (
+        messages.length > 0
+        && messages[messages.length - 1].role === 'assistant'
+        && messages[messages.length - 1].variant !== 'delegation'
+      ) {
         messages[messages.length - 1].content = update.streamingContent.text;
       } else {
         messages.push({
@@ -1667,7 +1779,11 @@ export default function ChatScreen({ route, navigation }: any) {
       }
     }
 
-    return applyUserResponseToMessages(messages, update.userResponse || update.spokenContent);
+    const messagesWithUserResponse = applyUserResponseToMessages(
+      messages,
+      update.userResponse || update.spokenContent,
+    );
+    return [...messagesWithUserResponse, ...delegationMessages];
   }, []);
 
   // Get the current conversation ID for queue operations
@@ -2261,13 +2377,16 @@ export default function ChatScreen({ route, navigation }: any) {
         }, 5000);
 
         // Process next queued message if any
-        if (messageQueueEnabled) {
+        if (messageQueueEnabled && (!handsFree || handsFreePhaseRef.current !== 'paused')) {
           const nextMessage = messageQueue.peek(currentConversationId);
           if (nextMessage) {
             console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
-            messageQueue.markProcessing(currentConversationId, nextMessage.id);
             // Use setTimeout to avoid recursive call stack issues
             setTimeout(() => {
+              if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+                return;
+              }
+              messageQueue.markProcessing(currentConversationId, nextMessage.id);
               processQueuedMessage(nextMessage);
             }, 100);
           }
@@ -2499,10 +2618,13 @@ export default function ChatScreen({ route, navigation }: any) {
 
         // Process next queued message if any
         const nextMessage = messageQueue.peek(currentConversationId);
-        if (nextMessage) {
+        if (nextMessage && (!handsFree || handsFreePhaseRef.current !== 'paused')) {
           console.log('[ChatScreen] Processing next queued message:', nextMessage.id);
-          messageQueue.markProcessing(currentConversationId, nextMessage.id);
           setTimeout(() => {
+            if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+              return;
+            }
+            messageQueue.markProcessing(currentConversationId, nextMessage.id);
             processQueuedMessage(nextMessage);
           }, 100);
         }
@@ -2516,12 +2638,17 @@ export default function ChatScreen({ route, navigation }: any) {
     const nextMessage = messageQueue.peek(currentConversationId);
     if (!nextMessage) return;
 
+    if (handsFree && handsFreeController.state.phase === 'paused') return;
+
     console.log('[ChatScreen] Processing queue while idle, next message:', nextMessage.id);
-    messageQueue.markProcessing(currentConversationId, nextMessage.id);
     setTimeout(() => {
+      if (handsFreeRef.current && handsFreePhaseRef.current === 'paused') {
+        return;
+      }
+      messageQueue.markProcessing(currentConversationId, nextMessage.id);
       processQueuedMessage(nextMessage);
     }, 100);
-  }, [currentConversationId, messageQueue, processQueuedMessage, responding]);
+  }, [currentConversationId, handsFree, handsFreeController.state.phase, messageQueue, processQueuedMessage, responding]);
 
 	// Keep sendRef in sync with the latest send() implementation for speech callbacks.
 	// IMPORTANT: This must live outside send() so voice callbacks can send even before any manual send() occurs.
@@ -2780,6 +2907,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
 		: (listening ? '...' : 'Hold');
 
+  const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
+  const visibleMessages = messages.slice(firstVisibleMessageIndex);
+  const canLoadOlderMessages = firstVisibleMessageIndex > 0;
 
 
 
@@ -2852,46 +2982,171 @@ export default function ChatScreen({ route, navigation }: any) {
               ))}
             </View>
           )}
-          {messages.map((m, i) => {
+          {canLoadOlderMessages && (
+            <View style={styles.loadOlderContainer}>
+              <Text style={styles.loadOlderText}>
+                Showing latest {visibleMessages.length} of {messages.length} messages. Scroll up to load older messages.
+              </Text>
+            </View>
+          )}
+          {visibleMessages.map((m, visibleIndex) => {
+            const i = firstVisibleMessageIndex + visibleIndex;
+            // --- Tool-activity group handling ---
+            const group = toolActivityGroups.groupByIndex.get(i);
+            if (group) {
+              const groupKey = `${group.startIndex}-${group.endIndex}`;
+              const isGroupExpanded = expandedGroups[groupKey] ?? false;
+
+              // Non-first message in a collapsed group: skip rendering
+              if (i !== group.startIndex && !isGroupExpanded) {
+                return null;
+              }
+
+              // First message in a collapsed group: render the group header
+              if (i === group.startIndex && !isGroupExpanded) {
+                return (
+                  <Pressable
+                    key={`group-${groupKey}`}
+                    onPress={() => toggleGroupExpansion(group)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${group.count} tool activities, collapsed. Tap to expand.`}
+                    accessibilityState={{ expanded: false }}
+                    aria-expanded={false}
+                    style={({ pressed }) => [
+                      styles.toolActivityGroupCollapsed,
+                      pressed && styles.toolActivityGroupPressed,
+                    ]}
+                  >
+                    <Text style={styles.toolActivityGroupHeader}>
+                      ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
+                    </Text>
+                    {group.previewLines.map((line, lineIdx) => (
+                      <Text
+                        key={lineIdx}
+                        style={styles.toolActivityGroupPreviewLine}
+                        numberOfLines={1}
+                      >
+                        {line}
+                      </Text>
+                    ))}
+                  </Pressable>
+                );
+              }
+
+              // First message in an expanded group: render a collapse header before the message
+              // (non-first messages in expanded groups fall through to normal rendering below)
+            }
+
             const visibleMessageContent = getVisibleMessageContent(m);
+            // Messages whose visible content comes from respond_to_user should
+            // never be collapsed — they ARE the assistant's response to the user
+            const hasRespondToUserContent = !!getRespondToUserContentFromMessage(m);
             const shouldCollapse = m.role === 'assistant'
               ? shouldCollapseMessage(visibleMessageContent)
               : shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
+            const effectiveShouldCollapse = hasRespondToUserContent ? false : shouldCollapse;
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = expandedMessages[i] ?? false;
             const hasToolMetadata =
               (m.toolCalls?.length ?? 0) > 0 ||
               (m.toolResults?.length ?? 0) > 0;
-            const shouldShowExpandedContent = visibleMessageContent.length > 0 && (isExpanded || !shouldCollapse);
+            const shouldShowExpandedContent = visibleMessageContent.length > 0 && (isExpanded || !effectiveShouldCollapse);
             const shouldShowCollapsedTextPreview =
               visibleMessageContent.length > 0 &&
               !isExpanded &&
-              shouldCollapse;
+              effectiveShouldCollapse;
             const canSpeakVisibleContent =
               m.role === 'assistant' &&
               visibleMessageContent.trim().length > 0 &&
               config.ttsEnabled !== false &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
 
-            const toolCallCount = m.toolCalls?.length ?? 0;
-            const toolResultCount = m.toolResults?.length ?? 0;
-            const hasToolResults = toolResultCount > 0;
-            const allSuccess = hasToolResults && m.toolResults!.every(r => r.success);
-            const hasErrors = hasToolResults && m.toolResults!.some(r => !r.success);
-            // isPending is true when there are more tool calls than results (including partial completion)
-            const isPending = toolCallCount > 0 && toolCallCount > toolResultCount;
+            const toolCalls = m.toolCalls ?? [];
+            const toolResults = m.toolResults ?? [];
+            // Filter out meta-tools from display (respond_to_user, mark_work_complete)
+            // since their content is already shown as visible message text
+            const displayToolEntries = toolCalls.reduce(
+              (entries, toolCall, origIdx) => {
+                if (HIDDEN_META_TOOLS.has(toolCall.name)) {
+                  return entries;
+                }
+
+                entries.push({
+                  toolCall,
+                  origIdx,
+                  result: toolResults[origIdx],
+                });
+                return entries;
+              },
+              [] as Array<{
+                toolCall: NonNullable<ChatMessage['toolCalls']>[number];
+                origIdx: number;
+                result: NonNullable<ChatMessage['toolResults']>[number] | undefined;
+              }>
+            );
+            const fallbackToolEntries =
+              displayToolEntries.length === 0 && toolResults.length > 0
+                ? toolResults.map((result, idx) => ({
+                    toolCall: {
+                      name: 'tool_call',
+                      arguments: {},
+                    },
+                    origIdx: idx,
+                    result,
+                  }))
+                : [];
+            const renderedToolEntries = fallbackToolEntries.length > 0
+              ? fallbackToolEntries
+              : displayToolEntries;
+            const displayToolCallCount = renderedToolEntries.length;
+            const toolResultCount = toolResults.length;
+            const hasToolResults = renderedToolEntries.some(entry => !!entry.result);
+            const allSuccess =
+              hasToolResults && renderedToolEntries.every(entry => entry.result?.success === true);
+            const hasErrors = renderedToolEntries.some(entry => entry.result?.success === false);
+            // isPending is true when any displayed tool call has not received its result yet.
+            const isPending =
+              renderedToolEntries.some(entry => !entry.result && entry.origIdx >= toolResultCount);
+
+            // Skip empty messages: no visible content AND no tool calls to display
+            // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
+            if (visibleMessageContent.trim().length === 0 && displayToolCallCount === 0) {
+              return null;
+            }
+
+            // Determine if this message needs group expand/collapse chrome
+            const isFirstInExpandedGroup = group && i === group.startIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
+            const isLastInExpandedGroup = group && i === group.endIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
 
             return (
+              <View key={i}>
+                {/* Expanded group collapse header */}
+                {isFirstInExpandedGroup && (
+                  <Pressable
+                    onPress={() => toggleGroupExpansion(group!)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Collapse ${group!.count} tool activities`}
+                    accessibilityState={{ expanded: true }}
+                    aria-expanded={true}
+                    style={({ pressed }) => [
+                      styles.toolActivityGroupCollapsed,
+                      pressed && styles.toolActivityGroupPressed,
+                    ]}
+                  >
+                    <Text style={styles.toolActivityGroupHeader}>
+                      ▼ {group!.count} tool {group!.count === 1 ? 'activity' : 'activities'}
+                    </Text>
+                  </Pressable>
+                )}
               <View
-                key={i}
                 style={[
                   styles.msg,
                   m.role === 'user' ? styles.user : styles.assistant,
                 ]}
               >
-                {/* Compact message header - no role labels, just tap to expand */}
-                {shouldCollapse && (
+                {/* Compact message header - only for non-tool-only messages (tool-only uses the tool compact row) */}
+                {shouldCollapse && !shouldTreatMessageAsToolOnly(m) && (
                   <Pressable
                     onPress={() => toggleMessageExpansion(i)}
                     accessibilityRole="button"
@@ -2982,10 +3237,10 @@ export default function ChatScreen({ route, navigation }: any) {
                       </View>
                     ) : null}
 
-                    {/* Unified Tool Execution Display - show when there are toolCalls OR toolResults */}
-                    {((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0) && (
+                    {/* Unified Tool Execution Display - only show when there are displayable tool calls */}
+                    {displayToolCallCount > 0 && (
                       <>
-                        {/* Collapsed view - single line summary for all tools */}
+                        {/* Collapsed view - one line per tool call with useful info */}
                         {!isExpanded && (
                           <Pressable
                             onPress={() => toggleMessageExpansion(i)}
@@ -2995,66 +3250,76 @@ export default function ChatScreen({ route, navigation }: any) {
                             accessibilityState={{ expanded: false }}
                             aria-expanded={false}
                             style={({ pressed }) => [
-                              styles.toolCallCompactRow,
-                              isPending && styles.toolCallCompactPending,
-                              allSuccess && styles.toolCallCompactSuccess,
-                              hasErrors && styles.toolCallCompactError,
+                              styles.toolCallCompactContainer,
                               pressed && styles.toolCallCompactPressed,
                             ]}
                           >
-                            <Text style={[
-                              styles.toolCallCompactIcon,
-                              isPending && styles.toolCallCompactIconPending,
-                              allSuccess && styles.toolCallCompactIconSuccess,
-                              hasErrors && styles.toolCallCompactIconError,
-                            ]}>🔧</Text>
-                            <Text
-                              style={[
-                                styles.toolCallCompactName,
-                                isPending && styles.toolCallCompactNamePending,
-                                allSuccess && styles.toolCallCompactNameSuccess,
-                                hasErrors && styles.toolCallCompactNameError,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {(m.toolCalls?.map(tc => tc.name) ?? []).join(', ')}
-                            </Text>
-                            <Text style={[
-                              styles.toolCallCompactStatus,
-                              isPending && styles.toolCallCompactStatusPending,
-                              allSuccess && styles.toolCallCompactStatusSuccess,
-                              hasErrors && styles.toolCallCompactStatusError,
-                            ]}>
-                              {isPending ? '⏳' : allSuccess ? '✓' : '✗'}
-                            </Text>
-                            {/* Result preview - show truncated result content like desktop */}
-                            {!isPending && m.toolResults && m.toolResults.length > 0 && (
-                              <Text
-                                style={styles.toolCallCompactPreview}
-                                numberOfLines={1}
-                              >
-                                {getToolResultsSummary(m.toolResults)}
-                              </Text>
-                            )}
-                            <Text style={styles.toolCallCompactChevron}>▶</Text>
+                            {renderedToolEntries.map(({ toolCall, origIdx, result: tcResult }, tcIdx) => {
+                              const tcPending = !tcResult && origIdx >= toolResultCount;
+                              const tcSuccess = tcResult?.success === true;
+                              const tcError = tcResult?.success === false;
+                              const argPreview = formatArgumentsPreview(toolCall.arguments);
+                              return (
+                                <View key={tcIdx} style={styles.toolCallCompactLine}>
+                                  <Text style={[
+                                    styles.toolCallCompactStatus,
+                                    tcPending && styles.toolCallCompactStatusPending,
+                                    tcSuccess && styles.toolCallCompactStatusSuccess,
+                                    tcError && styles.toolCallCompactStatusError,
+                                  ]}>
+                                    {tcPending ? '⏳' : tcSuccess ? '✓' : '✗'}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.toolCallCompactName,
+                                      tcPending && styles.toolCallCompactNamePending,
+                                      tcSuccess && styles.toolCallCompactNameSuccess,
+                                      tcError && styles.toolCallCompactNameError,
+                                    ]}
+                                    numberOfLines={1}
+                                  >
+                                    {toolCall.name}{argPreview ? ` · ${argPreview}` : ''}
+                                  </Text>
+                                </View>
+                              );
+                            })}
                           </Pressable>
                         )}
 
                         {/* Expanded view - each tool call with its own params + result */}
                         {isExpanded && (
                           <View style={[
+                            { position: 'relative' as const },
+                          ]}>
+                          {/* Collapse button at top of expanded view */}
+                          <Pressable
+                            onPress={() => toggleMessageExpansion(i)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Collapse tool execution details"
+                            accessibilityHint="Collapse back to compact view"
+                            style={({ pressed }) => [
+                              styles.toolCallCompactContainer,
+                              pressed && styles.toolCallCompactPressed,
+                              { marginBottom: 4 },
+                            ]}
+                          >
+                            <Text style={styles.toolCallCompactStatus}>▲</Text>
+                            <Text style={styles.toolCallCompactName}>
+                              Collapse {displayToolCallCount} tool {displayToolCallCount === 1 ? 'call' : 'calls'}
+                            </Text>
+                          </Pressable>
+                          <View style={[
                             styles.toolExecutionCard,
                             isPending && styles.toolExecutionPending,
                             allSuccess && styles.toolExecutionSuccess,
                             hasErrors && styles.toolExecutionError,
                           ]}>
-                            {m.toolCalls?.map((toolCall, idx) => {
-                              const result = m.toolResults?.[idx];
-                              const isResultPending = !result && idx >= (m.toolResults?.length ?? 0);
+                            {renderedToolEntries.map(({ toolCall, origIdx, result }, idx) => {
+                              const isResultPending = !result && origIdx >= toolResultCount;
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
                               const stableMessageKey = m.id ?? String(i);
-                              const toolCallKey = `${stableMessageKey}-${idx}`;
+                              const toolCallKey = `${stableMessageKey}-${origIdx}`;
                               const isToolCallFullyExpanded = expandedToolCalls[toolCallKey] ?? false;
                               return (
                                 <View key={idx} style={styles.toolCallSection}>
@@ -3128,15 +3393,50 @@ export default function ChatScreen({ route, navigation }: any) {
                                 </View>
                               );
                             })}
-                            {/* Show message if no tool calls */}
-                            {(m.toolCalls?.length ?? 0) === 0 && (
+                            {/* Show message if no displayable tool calls */}
+                            {displayToolCallCount === 0 && (
                               <Text style={styles.toolResponsePendingText}>No tool calls</Text>
                             )}
+                          </View>
+                          {/* Collapse button at bottom of expanded view for easy access */}
+                          <Pressable
+                            onPress={() => toggleMessageExpansion(i)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Collapse tool execution details"
+                            accessibilityHint="Collapse back to compact view"
+                            style={({ pressed }) => [
+                              styles.toolCallCompactContainer,
+                              pressed && styles.toolCallCompactPressed,
+                              { marginTop: 4 },
+                            ]}
+                          >
+                            <Text style={styles.toolCallCompactStatus}>▲</Text>
+                            <Text style={styles.toolCallCompactName}>
+                              Collapse
+                            </Text>
+                          </Pressable>
                           </View>
                         )}
                       </>
                     )}
                   </>
+                )}
+              </View>
+                {/* Expanded group collapse footer */}
+                {isLastInExpandedGroup && (
+                  <Pressable
+                    onPress={() => toggleGroupExpansion(group!)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Collapse ${group!.count} tool activities`}
+                    style={({ pressed }) => [
+                      styles.toolActivityGroupCollapsed,
+                      pressed && styles.toolActivityGroupPressed,
+                    ]}
+                  >
+                    <Text style={styles.toolActivityGroupHeader}>
+                      ▲ Collapse {group!.count} tool {group!.count === 1 ? 'activity' : 'activities'}
+                    </Text>
+                  </Pressable>
                 )}
               </View>
             );
@@ -3428,6 +3728,25 @@ export default function ChatScreen({ route, navigation }: any) {
                     <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
                   </TouchableOpacity>
                 )}
+                <TouchableOpacity
+                  style={styles.handsFreeControlButton}
+                  onPress={() => {
+                    if (handsFreeController.state.phase === 'paused') {
+                      handsFreeController.resumeByUser();
+                      setDebugInfo('Handsfree resumed.');
+                      return;
+                    }
+                    handsFreeController.pauseByUser();
+                    Speech.stop();
+                    void stopRecognitionOnly();
+                    setDebugInfo('Handsfree paused.');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.handsFreeControlButtonText}>
+                    {handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </>
           )}
@@ -3678,6 +3997,15 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerPinButtonTextActive: {
       color: theme.colors.primary,
+    },
+    loadOlderContainer: {
+      alignItems: 'center',
+      paddingVertical: spacing.xs,
+    },
+    loadOlderText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
     },
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {
@@ -4106,43 +4434,27 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderLeftColor: hexToRgba(theme.colors.destructive, 0.5),
       backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
     },
-    toolCallCompactRow: {
+    toolCallCompactContainer: {
+      paddingVertical: 1,
+      paddingHorizontal: 2,
+      borderRadius: radius.sm,
+      gap: 1,
+    },
+    toolCallCompactLine: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 2,
-      paddingHorizontal: 3,
-      borderRadius: radius.sm,
-      gap: 3,
-    },
-    toolCallCompactPending: {
-      backgroundColor: hexToRgba(theme.colors.info, 0.05),
-    },
-    toolCallCompactSuccess: {
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.03),
-    },
-    toolCallCompactError: {
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.03),
+      gap: 4,
+      paddingVertical: 1,
     },
     toolCallCompactPressed: {
       opacity: 0.7,
-    },
-    toolCallCompactIcon: {
-      fontSize: 8,
-    },
-    toolCallCompactIconPending: {
-      // uses default
-    },
-    toolCallCompactIconSuccess: {
-      color: theme.colors.mutedForeground,
-    },
-    toolCallCompactIconError: {
-      color: theme.colors.mutedForeground,
     },
     toolCallCompactName: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       fontWeight: '500',
       flexShrink: 1,
+      color: theme.colors.mutedForeground,
     },
     toolCallCompactNamePending: {
       color: theme.colors.info,
@@ -4155,7 +4467,6 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolCallCompactStatus: {
       fontSize: 9,
-      marginLeft: 1,
     },
     toolCallCompactStatusPending: {
       color: theme.colors.info,
@@ -4166,18 +4477,30 @@ function createStyles(theme: Theme, screenHeight: number) {
     toolCallCompactStatusError: {
       color: theme.colors.mutedForeground,
     },
-    toolCallCompactChevron: {
-      fontSize: 8,
-      color: theme.colors.mutedForeground,
-      opacity: 0.4,
-      marginLeft: 'auto',
+    // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
+    toolActivityGroupCollapsed: {
+      paddingVertical: 4,
+      paddingHorizontal: spacing.xs,
+      borderRadius: radius.sm,
+      borderLeftWidth: 2,
+      borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.3),
+      marginBottom: 2,
     },
-    toolCallCompactPreview: {
-      fontSize: 9,
+    toolActivityGroupPressed: {
+      opacity: 0.7,
+    },
+    toolActivityGroupHeader: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 10,
+      fontWeight: '600',
       color: theme.colors.mutedForeground,
-      opacity: 0.6,
-      flex: 1,
-      marginLeft: 2,
+      marginBottom: 2,
+    },
+    toolActivityGroupPreviewLine: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 10,
+      color: theme.colors.mutedForeground,
+      paddingLeft: 8,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.xs,

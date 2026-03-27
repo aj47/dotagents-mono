@@ -271,5 +271,3 @@ export function clearAcpToAppSessionMapping(acpSessionId: string): void {
     logApp(`[ACP Session] Cleared ACP → app session mapping for ${acpSessionId}`)
   }
 }
-
-

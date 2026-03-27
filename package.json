@@ -1,6 +1,6 @@
 {
   "name": "dotagents-monorepo",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "description": "DotAgents — Your AI team. One voice away. Voice-first agent orchestrator built on the .agents open standard.",
   "scripts": {

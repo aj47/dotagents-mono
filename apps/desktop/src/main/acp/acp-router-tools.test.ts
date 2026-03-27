@@ -33,6 +33,8 @@ const mockAcpService = {
   }),
 }
 
+const mockSetAcpToAppSessionMapping = vi.fn()
+
 vi.mock("../acp-service", () => ({
   acpService: mockAcpService,
 }))
@@ -64,6 +66,11 @@ vi.mock("../state", () => ({
   agentSessionStateManager: {
     getSessionRunId: vi.fn(() => 7),
   },
+}))
+
+vi.mock("../acp-session-state", () => ({
+  setAcpToAppSessionMapping: mockSetAcpToAppSessionMapping,
+  clearAcpToAppSessionMapping: vi.fn(),
 }))
 
 vi.mock("../agent-profile-service", () => ({
@@ -116,5 +123,23 @@ describe("handleDelegateToAgent", () => {
         content: "Final user-facing answer",
       }),
     ]))
+  })
+
+  it("links delegated ACP sessions back to the parent app session", async () => {
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    await handleDelegateToAgent({
+      agentName: "test-agent",
+      task: "Rename the session",
+      waitForResult: true,
+    }, "parent-session-1")
+
+    expect(mockAcpService.getOrCreateSession).toHaveBeenCalledWith(
+      "test-agent",
+      false,
+      undefined,
+      { appSessionId: "parent-session-1" },
+    )
+    expect(mockSetAcpToAppSessionMapping).toHaveBeenCalledWith("acp-session-1", "parent-session-1", 7)
   })
 })

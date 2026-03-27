@@ -154,6 +154,7 @@ describe("TextInputPanel submit behavior", () => {
     const textarea = findTextarea(tree)
     expect(onSubmit).toHaveBeenCalledOnce()
     expect(textarea.props.value).toBe("Keep me")
+    expect(textarea.props.autoFocus).toBe(true)
   })
 
   it("disables the composer and suppresses duplicate sends while a submit is in flight", async () => {

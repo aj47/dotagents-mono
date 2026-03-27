@@ -9,16 +9,6 @@ export function inferTransportType(config: MCPServerConfig): MCPTransportType {
   return "streamableHttp"
 }
 
-export function normalizeMcpServerConfig(config: MCPServerConfig): {
-  normalized: MCPServerConfig
-  changed: boolean
-} {
-  const inferredTransport = inferTransportType(config)
-  const changed = config.transport !== inferredTransport
-  if (!changed) return { normalized: config, changed: false }
-  return { normalized: { ...config, transport: inferredTransport }, changed: true }
-}
-
 export function normalizeMcpConfig(mcpConfig: MCPConfig): {
   normalized: MCPConfig
   changed: boolean
@@ -27,7 +17,11 @@ export function normalizeMcpConfig(mcpConfig: MCPConfig): {
 
   const normalizedServers = Object.fromEntries(
     Object.entries(mcpConfig.mcpServers || {}).map(([name, serverConfig]) => {
-      const { normalized, changed: serverChanged } = normalizeMcpServerConfig(serverConfig)
+      const inferredTransport = inferTransportType(serverConfig)
+      const serverChanged = serverConfig.transport !== inferredTransport
+      const normalized = serverChanged
+        ? { ...serverConfig, transport: inferredTransport }
+        : serverConfig
       if (serverChanged) changed = true
       return [name, normalized]
     }),

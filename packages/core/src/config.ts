@@ -15,6 +15,8 @@ import {
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
 import { getErrorMessage, normalizeError } from "./error-utils"
 
+const DEFAULT_APP_ID = "app.dotagents"
+
 // ============================================================================
 // Path resolution — uses PathResolver from the service container
 // ============================================================================
@@ -28,7 +30,7 @@ function getPathResolver(): PathResolver {
  * Uses PathResolver.getAppDataPath() + APP_ID instead of Electron's app.getPath('appData').
  */
 export function getDataFolder(): string {
-  return path.join(getPathResolver().getAppDataPath(), process.env.APP_ID || "dotagents")
+  return path.join(getPathResolver().getAppDataPath(), process.env.APP_ID || DEFAULT_APP_ID)
 }
 
 export function getRecordingsFolder(): string {

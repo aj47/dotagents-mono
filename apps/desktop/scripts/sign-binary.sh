@@ -12,8 +12,17 @@ fi
 
 # Check if we have a signing identity
 if [ -n "$APPLE_DEVELOPER_ID" ]; then
-    echo "🔐 Signing binary with Developer ID: $APPLE_DEVELOPER_ID"
-    codesign --force --sign "$APPLE_DEVELOPER_ID" --timestamp --options runtime "$BINARY_PATH"
+    SIGNING_IDENTITY="$APPLE_DEVELOPER_ID"
+
+    if [[ "$SIGNING_IDENTITY" != Developer\ ID\ Application:* ]]; then
+        PREFERRED_IDENTITY="Developer ID Application: $SIGNING_IDENTITY"
+        if security find-identity -v -p codesigning | grep -Fq "$PREFERRED_IDENTITY"; then
+            SIGNING_IDENTITY="$PREFERRED_IDENTITY"
+        fi
+    fi
+
+    echo "🔐 Signing binary with Developer ID: $SIGNING_IDENTITY"
+    codesign --force --sign "$SIGNING_IDENTITY" --timestamp --options runtime "$BINARY_PATH"
     
     if [ $? -eq 0 ]; then
         echo "✅ Binary signed successfully"

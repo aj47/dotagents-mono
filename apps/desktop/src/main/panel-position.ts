@@ -41,7 +41,7 @@ export function calculatePanelPosition(
   return calculatePositionForPreset(position, screenSize, size)
 }
 
-export function calculatePositionForPreset(
+function calculatePositionForPreset(
   position: PanelPosition,
   screenSize: { x: number; y: number; width: number; height: number },
   size: PanelSize,

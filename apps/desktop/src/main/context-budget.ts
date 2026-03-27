@@ -396,7 +396,7 @@ async function fetchGroqContextWindow(model: string): Promise<number | undefined
   return undefined
 }
 
-export async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
+async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
   const cfg = configStore.get()
   const override = cfg.mcpMaxContextTokensOverride
   if (override && typeof override === "number" && override > 0) return override
@@ -446,7 +446,7 @@ export function recordActualTokenUsage(sessionId: string, inputTokens: number, o
  * Get the last known actual input token count for a session.
  * Returns undefined if no actual usage has been recorded.
  */
-export function getActualInputTokens(sessionId?: string): number | undefined {
+function getActualInputTokens(sessionId?: string): number | undefined {
   if (!sessionId) return undefined
   return actualTokenUsageBySession.get(sessionId)?.inputTokens
 }
@@ -519,7 +519,7 @@ export function clearArchiveFrontier(sessionId: string): void {
   archiveHistoryRefBySession.delete(sessionId)
 }
 
-export function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
+function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
   if (!sessionId) return undefined
   return contextRefRegistryBySession.get(sessionId)?.get(contextRef)
 }
@@ -721,20 +721,13 @@ export function readMoreContext(
 const iterativeSummaryCache = new Map<string, string>()
 
 /**
- * Get the current iterative summary for a session.
- */
-export function getIterativeSummary(sessionId: string): string | undefined {
-  return iterativeSummaryCache.get(sessionId)
-}
-
-/**
  * Clear iterative summary for a session (call on session end).
  */
 export function clearIterativeSummary(sessionId: string): void {
   iterativeSummaryCache.delete(sessionId)
 }
 
-export function getProviderAndModel(): { providerId: string; model: string } {
+function getProviderAndModel(): { providerId: string; model: string } {
   const config = configStore.get()
   const providerId = config.mcpToolsProviderId || "openai"
   let model = "gpt-4.1-mini"
@@ -850,19 +843,40 @@ const TOOL_RESULT_TRUNCATE_THRESHOLD = 3000
 const TOOL_RESULT_KEEP_CHARS = 1800
 const BATCH_SUMMARY_MAX_INPUT_CHARS = 12000
 const BATCH_SUMMARY_MAX_MESSAGES = 8
-const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 12
-const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 24
-const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.65
-const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 4
+const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 20
+const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
+const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
+const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
+const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
+
+function parseMappedToolResultContent(content: string): { toolName: string; resultContent: string } | null {
+  const trimmed = content.trimStart()
+  const match = trimmed.match(MAPPED_TOOL_RESULT_PREFIX_RE)
+  if (!match) return null
+
+  return {
+    toolName: match[1],
+    resultContent: trimmed.slice(match[0].length),
+  }
+}
+
+function hasMappedToolResultPrefix(content: string): boolean {
+  return parseMappedToolResultContent(content) !== null
+}
+
+function startsWithJsonLikeArray(content: string): boolean {
+  return /^\[\s*(?:\{|\[|"|-?\d|true\b|false\b|null\b)/.test(content.trim())
+}
 
 function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
   const content = message.content || ""
   return message.role === "tool"
+    || hasMappedToolResultPrefix(content) // Tool results mapped to user role
     || content.includes('"url":')
     || content.includes('"id":')
     || content.includes("```json")
     || content.trim().startsWith("{")
-    || content.trim().startsWith("[")
+    || startsWithJsonLikeArray(content)
 }
 
 function truncateWithMarker(content: string, keepChars: number, marker: string): string {
@@ -1002,14 +1016,23 @@ function buildArchiveEligibleIndices(messages: LLMMessage[], systemIdx: number, 
   return indices
 }
 
-function shouldApplyArchiveFrontier(
+interface ArchiveFrontierState {
+  systemIdx: number
+  firstUserIdx: number
+  eligibleIndices: number[]
+  archivedCount: number
+  liveCount: number
+  keepLiveCount: number
+  overflowCount: number
+  hasArchiveState: boolean
+}
+
+function getArchiveFrontierState(
   messages: LLMMessage[],
   sessionId: string | undefined,
-  tokens: number,
-  targetTokens: number,
   lastN: number,
-): boolean {
-  if (!sessionId) return false
+): ArchiveFrontierState | null {
+  if (!sessionId) return null
 
   const systemIdx = messages.findIndex((m) => m.role === "system")
   const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
@@ -1017,15 +1040,42 @@ function shouldApplyArchiveFrontier(
   const archivedCount = Math.min(archiveFrontierCountBySession.get(sessionId) ?? 0, eligibleIndices.length)
   const liveCount = Math.max(0, eligibleIndices.length - archivedCount)
   const keepLiveCount = Math.max(lastN, ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES)
+  const overflowCount = Math.max(0, liveCount - keepLiveCount)
 
-  if (archivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
-    return true
+  return {
+    systemIdx,
+    firstUserIdx,
+    eligibleIndices,
+    archivedCount,
+    liveCount,
+    keepLiveCount,
+    overflowCount,
+    hasArchiveState: archivedCount > 0 || iterativeSummaryCache.has(sessionId),
   }
+}
 
-  return liveCount > keepLiveCount && (
-    messages.length > ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT
-      || tokens > Math.floor(targetTokens * ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO)
-  )
+function shouldAdvanceArchiveFrontier(
+  state: ArchiveFrontierState | null,
+  messagesLength: number,
+  tokens: number,
+  targetTokens: number,
+): boolean {
+  if (!state) return false
+  if (state.overflowCount < ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH) return false
+
+  return messagesLength > ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT
+    || tokens > targetTokens
+    || tokens > Math.floor(targetTokens * ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO)
+}
+
+function shouldApplyArchiveFrontier(
+  state: ArchiveFrontierState | null,
+  messagesLength: number,
+  tokens: number,
+  targetTokens: number,
+): boolean {
+  if (!state) return false
+  return state.hasArchiveState || shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
 }
 
 async function updateIterativeSummaryForDroppedMessages(
@@ -1139,15 +1189,12 @@ function buildContextFromSummaries(sessionId: string): string | null {
 }
 
 /**
- * Parse tool name from content that uses format: [toolName] content...
- * Returns { toolName, content } where content is the part after the tool name prefix
+ * Parse tool name from llm.ts mapped tool-result content:
+ * [toolName] content... or [toolName] ERROR: content...
  */
 function parseToolNameFromContent(content: string): { toolName: string; resultContent: string } {
-  // Match format: [toolName] content... or [toolName] ERROR: content...
-  const match = content.match(/^\[([^\]]+)\]\s*(?:ERROR:\s*)?(.*)$/s)
-  if (match) {
-    return { toolName: match[1], resultContent: match[2] }
-  }
+  const parsed = parseMappedToolResultContent(content)
+  if (parsed) return parsed
   return { toolName: 'unknown', resultContent: content }
 }
 
@@ -1256,15 +1303,25 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const targetTokens = Math.floor(maxTokens * targetRatio)
 
   let messages = [...opts.messages]
-  let tokens = estimateTokensFromMessages(messages)
+  const estimatedTokensBefore = estimateTokensFromMessages(messages)
 
   // Use actual API-reported token count when available (more accurate than chars/4)
   const actualTokens = opts.actualInputTokens ?? getActualInputTokens(opts.sessionId)
+  const scaleTokensWithActual = (estimatedTokens: number): number => {
+    if (actualTokens === undefined || actualTokens <= 0) return estimatedTokens
+    if (estimatedTokensBefore <= 0) return Math.max(estimatedTokens, actualTokens)
+
+    const scaledActualTokens = Math.floor(actualTokens * (estimatedTokens / estimatedTokensBefore))
+    return Math.max(estimatedTokens, scaledActualTokens)
+  }
+
+  let tokens = scaleTokensWithActual(estimatedTokensBefore)
+  const estTokensBefore = tokens
+
   if (actualTokens !== undefined && actualTokens > 0) {
     // Use the higher of estimate vs actual to be conservative
-    tokens = Math.max(tokens, actualTokens)
     if (isDebugLLM()) {
-      logLLM("ContextBudget: using actual token count", { estimated: estimateTokensFromMessages(messages), actual: actualTokens, used: tokens })
+      logLLM("ContextBudget: using actual token count", { estimated: estimatedTokensBefore, actual: actualTokens, used: tokens })
     }
   }
 
@@ -1307,35 +1364,30 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
     }
     applied.push("microcompact")
-    tokens = estimateTokensFromMessages(messages)
-    if (actualTokens !== undefined) {
-      // Re-estimate since we changed content; scale actual tokens proportionally
-      tokens = Math.max(tokens, Math.floor(actualTokens * (tokens / estimateTokensFromMessages(opts.messages))))
-    }
-  }
-
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
-    if (isDebugLLM()) logLLM("ContextBudget: after microcompact", { estTokens: tokens, count: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
   }
 
   // Tier 0b: Truncate large payload-like messages before any LLM summarization.
-  // This keeps bulky tool outputs from triggering expensive per-message summaries.
+  // We run this BEFORE the targetTokens early return so context never inflates needlessly.
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
     if (msg.role === "system" || !msg.content) continue
 
     const isPayloadLike = isLikelyPayloadLikeMessage(msg)
-    const shouldTruncateToolResult = msg.role === "tool" && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
+
+    // NOTE: tool messages are mapped to 'user' role by llm.ts with a '[toolName] ' prefix.
+    const isToolResultLike = msg.role === "tool" || (msg.role === "user" && hasMappedToolResultPrefix(msg.content))
+
+    const shouldTruncateToolResult = isToolResultLike && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
     const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
 
     if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload) continue
 
-    const marker = msg.role === "tool" ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
-    const keepChars = msg.role === "tool" ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
+    const marker = isToolResultLike ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
+    const keepChars = isToolResultLike ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
     const { toolName } = parseToolNameFromContent(msg.content)
     const contextRef = registerContextRef(opts.sessionId, {
-      kind: msg.role === "tool" ? "truncated_tool" : "truncated_payload",
+      kind: isToolResultLike ? "truncated_tool" : "truncated_payload",
       role: msg.role,
       content: msg.content,
       toolName: toolName !== "unknown" ? toolName : undefined,
@@ -1350,61 +1402,57 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
         ...msg,
         content: truncatedContent,
       }
-      applied.push("aggressive_truncate")
-      tokens = estimateTokensFromMessages(messages)
-      if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
-        if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
-        return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+      if (!applied.includes("aggressive_truncate")) {
+        applied.push("aggressive_truncate")
       }
     }
   }
 
-  // Recalculate after Tier 0 truncation
-  tokens = estimateTokensFromMessages(messages)
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
-    if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+  tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
+
+  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
+    if (isDebugLLM()) logLLM("ContextBudget: after microcompact and aggressive_truncate", { estTokens: tokens, count: messages.length })
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 0c: Archive older raw history behind a rolling summary frontier.
   // This keeps a bounded live tail even when token count is technically under target.
-  if (opts.sessionId && shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
-    const systemIdx = messages.findIndex((m) => m.role === "system")
-    const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
-    const eligibleIndices = buildArchiveEligibleIndices(messages, systemIdx, firstUserIdx)
-    const previousArchivedCount = Math.min(archiveFrontierCountBySession.get(opts.sessionId) ?? 0, eligibleIndices.length)
-    const keepLiveCount = Math.max(lastN, ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES)
+  const sessionId = opts.sessionId
+  const archiveFrontierState = getArchiveFrontierState(messages, sessionId, lastN)
+  if (sessionId && shouldApplyArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
+    const systemIdx = archiveFrontierState!.systemIdx
+    const firstUserIdx = archiveFrontierState!.firstUserIdx
+    const eligibleIndices = archiveFrontierState!.eligibleIndices
+    const previousArchivedCount = archiveFrontierState!.archivedCount
     const unarchivedIndices = eligibleIndices.slice(previousArchivedCount)
-    const overflowCount = Math.max(0, unarchivedIndices.length - keepLiveCount)
+    const overflowCount = archiveFrontierState!.overflowCount
 
     let nextArchivedCount = previousArchivedCount
     let newlyArchivedMessages: LLMMessage[] = []
 
-    if (overflowCount > 0 && (overflowCount >= ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH || tokens > targetTokens)) {
+    if (shouldAdvanceArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
       const archiveIndices = unarchivedIndices.slice(0, overflowCount)
       newlyArchivedMessages = archiveIndices.map((index) => messages[index])
 
       if (newlyArchivedMessages.length > 0) {
-        await updateIterativeSummaryForDroppedMessages(opts.sessionId, newlyArchivedMessages, opts.onSummarizationProgress)
-        upsertArchiveHistoryRef(opts.sessionId, newlyArchivedMessages)
+        await updateIterativeSummaryForDroppedMessages(sessionId, newlyArchivedMessages, opts.onSummarizationProgress)
+        upsertArchiveHistoryRef(sessionId, newlyArchivedMessages)
         nextArchivedCount = Math.min(eligibleIndices.length, previousArchivedCount + newlyArchivedMessages.length)
-        archiveFrontierCountBySession.set(opts.sessionId, nextArchivedCount)
+        archiveFrontierCountBySession.set(sessionId, nextArchivedCount)
       }
     }
 
-    if (nextArchivedCount > 0 || iterativeSummaryCache.has(opts.sessionId)) {
+    if (nextArchivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
       const ordered: LLMMessage[] = []
       if (systemIdx >= 0) ordered.push(messages[systemIdx])
       if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) ordered.push(messages[firstUserIdx])
 
-      const summaryMessage = buildSessionProgressSummaryMessage(opts.sessionId)
+      const summaryMessage = buildSessionProgressSummaryMessage(sessionId)
       if (summaryMessage) ordered.push(summaryMessage)
 
-      if (opts.sessionId) {
-        const progressSummary = buildContextFromSummaries(opts.sessionId)
-        if (progressSummary) {
-          ordered.push({ role: "assistant", content: progressSummary })
-        }
+      const progressSummary = buildContextFromSummaries(sessionId)
+      if (progressSummary) {
+        ordered.push({ role: "assistant", content: progressSummary })
       }
 
       for (const index of eligibleIndices.slice(nextArchivedCount)) {
@@ -1412,14 +1460,14 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
 
       messages = ordered
-      applied.push("archive_frontier")
-      tokens = estimateTokensFromMessages(messages)
+      if (!applied.includes("archive_frontier")) applied.push("archive_frontier")
+      tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
     }
   }
 
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+  if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after archive_frontier", { estTokens: tokens, kept: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 1: Batch-summarize oversized conversational messages.
@@ -1486,13 +1534,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     indexOffset -= deleteCount - 1
 
     applied.push("batch_summarize")
-    tokens = estimateTokensFromMessages(messages)
+    tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
     if (tokens <= targetTokens) break
   }
 
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(messages, opts.sessionId, tokens, targetTokens, lastN)) {
+  if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after batch_summarize", { estTokens: tokens })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 2: Remove middle messages (keep system, first user, last N)
@@ -1569,11 +1617,11 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   messages = ordered
   applied.push("drop_middle")
-  tokens = estimateTokensFromMessages(messages)
+  tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
 
   if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after drop_middle", { estTokens: tokens, kept: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
   }
 
   // Tier 3: Minimal system prompt
@@ -1590,10 +1638,9 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     messages.unshift({ role: "system", content: minimal })
   }
   applied.push("minimal_system_prompt")
-  tokens = estimateTokensFromMessages(messages)
+  tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
 
   if (isDebugLLM()) logLLM("ContextBudget: after minimal_system_prompt", { estTokens: tokens })
 
-  return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
+  return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
 }
-

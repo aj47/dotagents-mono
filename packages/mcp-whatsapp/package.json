@@ -1,6 +1,6 @@
 {
   "name": "@dotagents/mcp-whatsapp",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "WhatsApp MCP server for DotAgents - enables WhatsApp messaging via Model Context Protocol",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

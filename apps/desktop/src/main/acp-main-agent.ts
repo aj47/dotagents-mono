@@ -9,7 +9,6 @@ import { acpService, ACPContentBlock, ACPToolCallStatus, ACPToolCallUpdate } fro
 import {
   getSessionForConversation,
   setSessionForConversation,
-  clearSessionForConversation,
   touchSession,
   setAcpToAppSessionMapping,
 } from "./acp-session-state"
@@ -840,12 +839,4 @@ export async function processTranscriptWithACPAgent(
       error: errorMessage,
     }
   }
-}
-
-/**
- * Start a new session for a conversation, discarding previous context.
- */
-export function startNewACPSession(conversationId: string): void {
-  clearSessionForConversation(conversationId)
-  logApp(`[ACP Main] Cleared session for conversation ${conversationId}`)
 }

@@ -1,6 +1,6 @@
 {
   "name": "@dotagents/core",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Core agent engine for DotAgents — platform-agnostic services extracted from the desktop app",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

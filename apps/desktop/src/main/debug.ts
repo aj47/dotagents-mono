@@ -4,10 +4,7 @@ export {
   isDebugLLM,
   isDebugTools,
   isDebugKeybinds,
-  isDebugApp,
   isDebugUI,
-  isDebugMCP,
-  isDebugACP,
   logLLM,
   logTools,
   logKeybinds,
@@ -17,4 +14,3 @@ export {
   logACP,
   getDebugFlags,
 } from "@dotagents/core"
-export type { DebugFlags } from "@dotagents/core"

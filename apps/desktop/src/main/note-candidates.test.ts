@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { AgentStepSummary } from "@shared/types"
 
+let mockConfig: Record<string, unknown> = {
+  dualModelEnabled: false,
+  modelPresets: [],
+}
+
 vi.mock("electron", () => ({
   app: {
     getPath: vi.fn(() => "/tmp"),
@@ -10,10 +15,7 @@ vi.mock("electron", () => ({
 // Avoid importing the real configStore (it touches disk + electron paths at module init).
 vi.mock("./config", () => ({
   configStore: {
-    get: () => ({
-      dualModelEnabled: false,
-      modelPresets: [],
-    }),
+    get: () => mockConfig,
   },
   globalAgentsFolder: "/tmp/.agents",
   resolveWorkspaceAgentsFolder: () => null,
@@ -35,14 +37,36 @@ vi.mock("@ai-sdk/openai", () => ({
   })),
 }))
 
-describe("parseSummaryResponse", () => {
+function enableSummarization() {
+  mockConfig = {
+    dualModelEnabled: true,
+    currentModelPresetId: "test-preset",
+    modelPresets: [
+      {
+        id: "test-preset",
+        name: "Test Preset",
+        apiKey: "test-key",
+        baseUrl: "https://api.example.com/v1",
+        isBuiltIn: false,
+      },
+    ],
+  }
+}
+
+describe("summarizeAgentStep", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
+    mockConfig = {
+      dualModelEnabled: false,
+      modelPresets: [],
+    }
   })
 
   it("extracts and sanitizes noteCandidates (single-line, max 5)", async () => {
-    const { parseSummaryResponse } = await import("./summarization-service")
+    enableSummarization()
+    const { generateText } = await import("ai")
+    const { summarizeAgentStep } = await import("./summarization-service")
 
     const input = {
       sessionId: "sess_1",
@@ -66,11 +90,13 @@ describe("parseSummaryResponse", () => {
       importance: "high",
     })
 
-    const summary = parseSummaryResponse(response, input as any)
+    vi.mocked(generateText).mockResolvedValue({ text: response } as any)
 
-    expect(summary.actionSummary).toBe("did stuff")
-    expect(summary.importance).toBe("high")
-    expect(summary.noteCandidates).toEqual([
+    const summary = await summarizeAgentStep(input as any)
+
+    expect(summary?.actionSummary).toBe("did stuff")
+    expect(summary?.importance).toBe("high")
+    expect(summary?.noteCandidates).toEqual([
       "preference: user likes pnpm and hates npm",
       "constraint: don't run installs without permission",
       "fact: repo uses tipc",
@@ -79,7 +105,9 @@ describe("parseSummaryResponse", () => {
   })
 
   it("truncates noteCandidates to 240 chars", async () => {
-    const { parseSummaryResponse } = await import("./summarization-service")
+    enableSummarization()
+    const { generateText } = await import("ai")
+    const { summarizeAgentStep } = await import("./summarization-service")
 
     const long = `fact: ${"a".repeat(500)}`
     const response = JSON.stringify({
@@ -88,24 +116,30 @@ describe("parseSummaryResponse", () => {
       importance: "medium",
     })
 
-    const summary = parseSummaryResponse(response, { sessionId: "s", stepNumber: 1 } as any)
-    expect(summary.noteCandidates).toHaveLength(1)
-    expect(summary.noteCandidates?.[0]).toHaveLength(240)
-    expect(summary.noteCandidates?.[0].startsWith("fact: ")).toBe(true)
+    vi.mocked(generateText).mockResolvedValue({ text: response } as any)
+
+    const summary = await summarizeAgentStep({ sessionId: "s", stepNumber: 1 } as any)
+    expect(summary?.noteCandidates).toHaveLength(1)
+    expect(summary?.noteCandidates?.[0]).toHaveLength(240)
+    expect(summary?.noteCandidates?.[0].startsWith("fact: ")).toBe(true)
   })
 
   it("returns empty noteCandidates on parse failure", async () => {
-    const { parseSummaryResponse } = await import("./summarization-service")
+    enableSummarization()
+    const { generateText } = await import("ai")
+    const { summarizeAgentStep } = await import("./summarization-service")
 
-    const summary = parseSummaryResponse("not json", {
+    vi.mocked(generateText).mockResolvedValue({ text: "not json" } as any)
+
+    const summary = await summarizeAgentStep({
       sessionId: "sess",
       stepNumber: 2,
       assistantResponse: "hello world",
     } as any)
 
-    expect(summary.noteCandidates).toEqual([])
-    expect(summary.actionSummary).toBe("hello world")
-    expect(summary.importance).toBe("medium")
+    expect(summary?.noteCandidates).toEqual([])
+    expect(summary?.actionSummary).toBe("hello world")
+    expect(summary?.importance).toBe("medium")
   })
 })
 

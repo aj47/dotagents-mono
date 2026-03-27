@@ -1,5 +1,12 @@
-import type { CHAT_PROVIDER_ID, STT_PROVIDER_ID, TTS_PROVIDER_ID, OPENAI_COMPATIBLE_PRESET_ID } from "."
-import type { ToolCall, ToolResult, AgentConversationState } from '@dotagents/shared'
+import type {
+  CHAT_PROVIDER_ID,
+  STT_PROVIDER_ID,
+  TTS_PROVIDER_ID,
+  OPENAI_COMPATIBLE_PRESET_ID,
+  ToolCall,
+  ToolResult,
+  AgentConversationState,
+} from '@dotagents/shared'
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState } from '@dotagents/shared'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'
@@ -114,12 +121,10 @@ export interface ServerLogEntry {
   message: string
 }
 
-export type DetailedToolSourceKind = "mcp" | "runtime"
-
 export interface DetailedToolInfo {
   name: string
   description: string
-  sourceKind: DetailedToolSourceKind
+  sourceKind: "mcp" | "runtime"
   sourceName: string
   sourceLabel: string
   serverName?: string
@@ -129,25 +134,6 @@ export interface DetailedToolInfo {
 }
 
 // Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
-
-// Dual-Model Agent Mode Configuration
-export interface DualModelConfig {
-  enabled: boolean
-
-  // Strong model (planning & execution) - uses a preset ID
-  // If not set, falls back to the current model preset
-  strongModelPresetId?: string
-  strongModelName?: string  // Model name within the preset
-
-  // Weak model (summarization) - uses a preset ID
-  weakModelPresetId?: string
-  weakModelName?: string  // Model name within the preset
-
-  // Summarization settings
-  summarizationFrequency?: "every_response" | "major_steps_only"
-  summaryDetailLevel?: "compact" | "detailed"
-  autoSaveImportantFindings?: boolean
-}
 
 // AgentStepSummary — re-exported from @dotagents/shared (see above)
 
@@ -199,16 +185,6 @@ export interface ConversationCompactionMetadata {
    * be fully recovered.
    */
   partialReason?: "legacy_summary_without_raw_messages"
-}
-
-export interface ConversationMetadata {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messageCount: number
-  lastMessage?: string
-  tags?: string[]
 }
 
 export interface Conversation {
@@ -326,7 +302,7 @@ export type SessionProfileSnapshot = {
  * MCP server and tool access configuration for an agent.
  * Controls which MCP servers and tools the agent can access.
  */
-export type PersonaMcpServerConfig = {
+type PersonaMcpServerConfig = {
   /** MCP servers enabled for this agent */
   enabledServers: string[]
   /** Specific tools disabled within enabled servers */
@@ -343,7 +319,7 @@ export type PersonaMcpServerConfig = {
  * @deprecated Use ProfileModelConfig instead for full preset support.
  * Kept for backward compatibility with existing agent data.
  */
-export type PersonaModelConfig = {
+type PersonaModelConfig = {
   /** LLM provider for this agent */
   providerId: "openai" | "groq" | "gemini"
   /** Model name/identifier */
@@ -358,7 +334,7 @@ export type PersonaModelConfig = {
  * Skills configuration for an agent.
  * Defines which skills are enabled for this agent.
  */
-export type PersonaSkillsConfig = {
+type PersonaSkillsConfig = {
   /** Skill IDs enabled for this agent */
   enabledSkillIds: string[]
 }
@@ -371,7 +347,7 @@ export type PersonaSkillsConfig = {
  * 1. Built-in agent (type: "internal") - Uses DotAgents' internal agent with agent's model config
  * 2. External ACP agent (type: "acp-agent") - Delegates to a configured ACP agent by name
  */
-export type PersonaConnectionConfig = {
+type PersonaConnectionConfig = {
   /**
    * Connection type:
    * - "internal": Uses built-in DotAgents agent (model config from agent)
@@ -395,13 +371,6 @@ export type PersonaConnectionConfig = {
 }
 
 /**
- * Dynamic properties for an agent.
- * Key-value pairs that are exposed in the system prompt.
- * Example: { "expertise": "Python, TypeScript", "style": "Concise and technical" }
- */
-export type PersonaProperties = Record<string, string>
-
-/**
  * Legacy Persona definition (kept for backward compatibility / migration).
  * An agent represents a specialized AI assistant with specific capabilities,
  * system prompts, and tool access configurations.
@@ -423,7 +392,7 @@ export type Persona = {
    * Dynamic properties for this agent.
    * Exposed in the system prompt as "Property Name: Value" format.
    */
-  properties?: PersonaProperties
+  properties?: Record<string, string>
   /** MCP server and tool access configuration */
   mcpServerConfig: PersonaMcpServerConfig
   /**
@@ -600,22 +569,6 @@ export type AgentProfile = {
 export type AgentProfilesData = {
   profiles: AgentProfile[]
   currentProfileId?: string
-}
-
-// ============================================================================
-// Slug Utility
-// ============================================================================
-
-/**
- * Convert a display name to a slug suitable for the `name` field.
- * e.g. "My Cool Agent!" → "my-cool-agent"
- */
-export function toAgentSlug(displayName: string): string {
-  return displayName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    || "agent"
 }
 
 // ============================================================================
@@ -925,7 +878,7 @@ export interface EnhancedModelInfo extends ModelInfo {
 }
 
 // ACP Agent Configuration Types
-export type ACPConnectionType = "stdio" | "remote" | "internal"
+type ACPConnectionType = "stdio" | "remote" | "internal"
 
 // ACPConfigOptionValue and ACPConfigOption — re-exported from @dotagents/shared (see above)
 

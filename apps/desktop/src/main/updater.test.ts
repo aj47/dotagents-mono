@@ -10,7 +10,9 @@ vi.mock("electron", () => ({
   },
 }))
 
-import { MANUAL_RELEASES_URL, checkForUpdatesMenuItem } from "./updater"
+import { checkForUpdatesMenuItem } from "./updater"
+
+const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
 
 describe("disabled updater", () => {
   beforeEach(() => {

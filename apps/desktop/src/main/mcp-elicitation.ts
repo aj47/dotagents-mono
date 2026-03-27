@@ -140,10 +140,3 @@ export function cancelAllElicitations(serverName?: string): void {
   }
 }
 
-/**
- * Get pending elicitation count (for debugging/status)
- */
-export function getPendingElicitationCount(): number {
-  return pendingElicitations.size
-}
-

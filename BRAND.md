@@ -107,5 +107,33 @@ The `.a` monospace mark on a `#0d0d0d` rounded-rect with `#262626` stroke.
 
 ---
 
+## Potential Alternative Brand Directions
+
+If DotAgents needs to pivot or expand its visual identity, here are three potential brand directions to consider:
+
+### 1. Neo-Brutalist / High Contrast
+- **Concept:** Raw, disruptive, and unapologetically bold.
+- **Palette:** Stark white (`#ffffff`) or pitch black (`#000000`) backgrounds with highly saturated accents like electric yellow (`#ffe600`), hot magenta (`#ff00ff`), and cyan (`#00ffff`).
+- **Typography:** Heavy, oversized sans-serifs (like `Space Grotesk` or `Syne`) mixed with rigid monospaces.
+- **Components:** Thick, high-contrast borders (e.g., `2px solid #000`), harsh drop shadows (`box-shadow: 4px 4px 0px #000`), and flat, unrounded corners (`rounded-none`).
+- **Vibe:** Anti-design, developer-hacker culture, energetic, and fast-moving.
+
+### 2. Ethereal / Glassmorphic
+- **Concept:** Futuristic, lightweight, and "magical AI".
+- **Palette:** Deep space backgrounds (midnight blues and dark indigos like `#0b0f19`) with soft glowing accents in violet (`#8b5cf6`), pink (`#ec4899`), and teal (`#14b8a6`).
+- **Typography:** Elegant, geometric sans-serifs (like `Outfit` or `Plus Jakarta Sans`) with very light weights for an airy feel.
+- **Components:** Extensive use of `backdrop-blur` (glassmorphism), semi-transparent surfaces (`bg-white/5`), soft, multi-layered drop shadows, and subtle gradient borders.
+- **Vibe:** Next-generation technology, intelligent, smooth, and highly polished.
+
+### 3. Clean Editorial / Print Inspired
+- **Concept:** Sophisticated, minimalist, and enterprise-ready.
+- **Palette:** Soft, muted tones. Off-white or warm grey backgrounds (`#faf9f6`), charcoal text (`#1c1c1c`), with organic accents like sage green (`#7fb069`) or terracotta (`#e07a5f`).
+- **Typography:** Classic serif pairings for headings (like `Merriweather` or `Playfair Display`) contrasted with highly legible, clean sans-serifs (like `Inter` or `Geist`) for body text.
+- **Components:** Generous whitespace, fine hairline dividers (`1px solid #e5e5e5`), minimal borders on cards, and subtle, realistic shadows.
+- **Vibe:** Trustworthy, academic, stable, and focused on documentation and clarity.
+
+---
+
 Source of truth: `dotagentsprotocol-website/src/styles/global.css` and component files.
+
 

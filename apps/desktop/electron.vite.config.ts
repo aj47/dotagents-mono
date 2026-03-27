@@ -5,6 +5,7 @@ import tsconfigPaths from "vite-tsconfig-paths"
 import pkg from "./package.json"
 
 const builderConfig = require("./electron-builder.config.cjs")
+const sharedSrcRoot = resolve(__dirname, "../../packages/shared/src")
 
 const define = {
   "process.env.APP_ID": JSON.stringify(builderConfig.appId),
@@ -44,11 +45,16 @@ export default defineConfig({
     define,
     plugins: [react()],
     resolve: {
-      alias: {
-        "@renderer": resolve(__dirname, "src/renderer/src"),
-        "~": resolve(__dirname, "src/renderer/src"),
-        "@shared": resolve(__dirname, "src/shared"),
-      },
+      alias: [
+        { find: "@renderer", replacement: resolve(__dirname, "src/renderer/src") },
+        { find: "~", replacement: resolve(__dirname, "src/renderer/src") },
+        { find: "@shared", replacement: resolve(__dirname, "src/shared") },
+        // In desktop renderer dev, resolve the shared workspace package directly to source.
+        // This avoids stale export errors from Vite serving cached transforms of the built
+        // package under node_modules after shared constants/helpers change.
+        { find: /^@dotagents\/shared$/, replacement: resolve(sharedSrcRoot, "index.ts") },
+        { find: /^@dotagents\/shared\/(.+)$/, replacement: `${sharedSrcRoot}/$1.ts` },
+      ],
       dedupe: ["react", "react-dom"],
       preserveSymlinks: true,
     },

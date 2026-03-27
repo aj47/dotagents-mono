@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest"
 import {
   filterEphemeralMessages,
   isInternalNudgeContent,
-  isEphemeralMessage,
   type ConversationMessage,
 } from "./conversation-history-utils"
 
@@ -329,47 +328,6 @@ describe("conversation-history-utils", () => {
           ],
         },
       ])
-    })
-  })
-
-  describe("isEphemeralMessage", () => {
-    it("should return true for ephemeral messages", () => {
-      const msg: ConversationMessage = {
-        role: "user",
-        content: "Ephemeral",
-        ephemeral: true,
-      }
-
-      expect(isEphemeralMessage(msg)).toBe(true)
-    })
-
-    it("should return false for non-ephemeral messages", () => {
-      const msg: ConversationMessage = {
-        role: "user",
-        content: "Regular",
-      }
-
-      expect(isEphemeralMessage(msg)).toBe(false)
-    })
-
-    it("should return false for messages with ephemeral: false", () => {
-      const msg: ConversationMessage = {
-        role: "user",
-        content: "Regular",
-        ephemeral: false,
-      }
-
-      expect(isEphemeralMessage(msg)).toBe(false)
-    })
-
-    it("should return false for messages with undefined ephemeral", () => {
-      const msg: ConversationMessage = {
-        role: "user",
-        content: "Regular",
-        ephemeral: undefined,
-      }
-
-      expect(isEphemeralMessage(msg)).toBe(false)
     })
   })
 

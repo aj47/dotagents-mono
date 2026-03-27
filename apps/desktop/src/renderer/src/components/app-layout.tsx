@@ -8,6 +8,8 @@ import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
 import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
 import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
+import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
+import { useSelectedAgentId } from "@renderer/components/agent-selector"
 
 import { PastSessionsDialog } from "@renderer/components/past-sessions-dialog"
 import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
@@ -16,6 +18,7 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
 import { ttsManager } from "@renderer/lib/tts-manager"
+import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { useAgentStore } from "@renderer/stores"
 import {
   Clock,
@@ -26,6 +29,8 @@ import {
   OctagonX,
   Loader2,
   Plug2,
+  Plus,
+  Mic,
 } from "lucide-react"
 
 type NavLinkItem = {
@@ -36,13 +41,28 @@ type NavLinkItem = {
 
 interface AgentSession {
   id: string
+  conversationId?: string
   conversationTitle?: string
   status: "active" | "completed" | "error" | "stopped"
+  startTime?: number
+  endTime?: number
   isSnoozed?: boolean
 }
 
 interface AgentSessionsResponse {
   activeSessions: AgentSession[]
+  recentSessions: AgentSession[]
+}
+
+type SessionActionDialogState = {
+  mode: SessionActionDialogMode
+  initialText?: string
+  conversationId?: string
+  sessionId?: string
+  fromTile?: boolean
+  continueConversationTitle?: string
+  agentName?: string
+  onSubmitted?: () => void
 }
 
 export const Component = () => {
@@ -51,6 +71,8 @@ export const Component = () => {
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
+  const [sessionActionDialog, setSessionActionDialog] = useState<SessionActionDialogState | null>(null)
+  const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
   const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
     useSidebar()
   const configQuery = useConfigQuery()
@@ -81,10 +103,112 @@ export const Component = () => {
 
   const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
-  const collapsedActiveSessions = sessionData?.activeSessions ?? []
+  const trackedActiveSessions = sessionData?.activeSessions ?? []
+  const recentSessions = sessionData?.recentSessions ?? []
+  const collapsedActiveSessions = useMemo(() => {
+    const recentStatusById = new Map(
+      recentSessions.map((session) => [session.id, session.status] as const),
+    )
+    const mergedSessions = new Map(
+      trackedActiveSessions.map((session) => [session.id, session] as const),
+    )
+
+    for (const [sessionId, progress] of agentProgressById.entries()) {
+      const recentStatus = recentStatusById.get(sessionId)
+      if (recentStatus === "stopped" || recentStatus === "error") {
+        continue
+      }
+
+      const existingSession = mergedSessions.get(sessionId)
+      const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
+      const lastHistoryTimestamp = progress.conversationHistory?.[
+        progress.conversationHistory.length - 1
+      ]?.timestamp
+
+      mergedSessions.set(sessionId, {
+        id: sessionId,
+        conversationId: progress.conversationId ?? existingSession?.conversationId,
+        conversationTitle:
+          progress.conversationTitle ?? existingSession?.conversationTitle,
+        status: "active",
+        startTime:
+          existingSession?.startTime ??
+          firstHistoryTimestamp ??
+          lastHistoryTimestamp ??
+          Date.now(),
+        endTime: existingSession?.endTime,
+        isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
+      })
+    }
+
+    return Array.from(mergedSessions.values()).sort((a, b) => {
+      const aProgress = agentProgressById.get(a.id)
+      const bProgress = agentProgressById.get(b.id)
+      const aTimestamp =
+        aProgress?.conversationHistory?.[aProgress.conversationHistory.length - 1]
+          ?.timestamp ??
+        a.endTime ??
+        a.startTime ??
+        0
+      const bTimestamp =
+        bProgress?.conversationHistory?.[bProgress.conversationHistory.length - 1]
+          ?.timestamp ??
+        b.endTime ??
+        b.startTime ??
+        0
+      return bTimestamp - aTimestamp
+    })
+  }, [trackedActiveSessions, recentSessions, agentProgressById])
   const collapsedPreviewSessions = useMemo(
     () => collapsedActiveSessions.slice(0, 3),
     [collapsedActiveSessions],
+  )
+  const clearInactiveSessions = useCallback(() => {
+    navigate("/")
+    window.dispatchEvent(new Event("sessions:clear-inactive"))
+  }, [navigate])
+
+  const applySelectedAgentToNextSession = useCallback(
+    async (options?: { silent?: boolean }) => {
+      return applySelectedAgentForNextSession({
+        selectedAgentId,
+        setSelectedAgentId,
+        silent: options?.silent,
+      })
+    },
+    [selectedAgentId, setSelectedAgentId],
+  )
+
+  useEffect(() => {
+    void applySelectedAgentToNextSession({ silent: true })
+  }, [applySelectedAgentToNextSession])
+
+  const openSessionActionDialog = useCallback(
+    (dialogState: SessionActionDialogState) => {
+      setSessionActionDialog(dialogState)
+    },
+    [],
+  )
+
+  const handleStartTextSession = useCallback(async () => {
+    const applied = await applySelectedAgentToNextSession()
+    if (!applied) return
+    openSessionActionDialog({ mode: "text" })
+  }, [applySelectedAgentToNextSession, openSessionActionDialog])
+
+  const handleStartVoiceSession = useCallback(async () => {
+    const applied = await applySelectedAgentToNextSession()
+    if (!applied) return
+    openSessionActionDialog({ mode: "voice" })
+  }, [applySelectedAgentToNextSession, openSessionActionDialog])
+
+  const handleStartPromptSession = useCallback(
+    async (content: string) => {
+      const applied = await applySelectedAgentToNextSession()
+      if (!applied) return
+      openSessionActionDialog({ mode: "text", initialText: content })
+    },
+    [applySelectedAgentToNextSession, openSessionActionDialog],
   )
 
   const saveConfig = useCallback(
@@ -428,6 +552,32 @@ export const Component = () => {
                   <Clock className="h-4 w-4" />
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => void handleStartTextSession()}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Start with text"
+                  aria-label="Start with text"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleStartVoiceSession()}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Start with voice"
+                  aria-label="Start with voice"
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+
                 <NavLink
                   to="/"
                   end
@@ -474,10 +624,11 @@ export const Component = () => {
                   const hasPendingApproval =
                     !!sessionProgress?.pendingToolApproval
                   const isSnoozed =
-                    sessionProgress?.isSnoozed ?? session.isSnoozed ?? false
+                    sessionProgress?.isSnoozed ?? false
+                  const isVisiblyActive = isFocused || !isSnoozed
                   const statusDotColor = hasPendingApproval
                     ? "bg-amber-500"
-                    : isSnoozed
+                    : !isVisiblyActive
                       ? "bg-muted-foreground"
                       : "bg-blue-500"
                   const title =
@@ -503,7 +654,7 @@ export const Component = () => {
                         className={cn(
                           "border-background absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border",
                           statusDotColor,
-                          !isSnoozed && !hasPendingApproval && "animate-pulse",
+                          isVisiblyActive && !hasPendingApproval && "animate-pulse",
                         )}
                       />
                     </button>
@@ -568,6 +719,13 @@ export const Component = () => {
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
                 onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={setSelectedAgentId}
+                onStartTextSession={handleStartTextSession}
+                onStartVoiceSession={handleStartVoiceSession}
+                onStartPromptSession={handleStartPromptSession}
+                onClearInactiveSessions={isSessionsActive ? clearInactiveSessions : undefined}
+                inactiveSessionCount={0}
               />
 
               {/* Agents Section - capability management */}
@@ -647,11 +805,38 @@ export const Component = () => {
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
                 sidebarWidth,
+                selectedAgentId,
+                setSelectedAgentId,
+                onStartTextSession: handleStartTextSession,
+                onStartVoiceSession: handleStartVoiceSession,
+                onStartPromptSession: handleStartPromptSession,
+                openSessionActionDialog,
               }}
             />
           </div>
         </div>
       </div>
+
+      {sessionActionDialog && (
+        <SessionActionDialog
+          open={true}
+          mode={sessionActionDialog.mode}
+          initialText={sessionActionDialog.initialText}
+          conversationId={sessionActionDialog.conversationId}
+          sessionId={sessionActionDialog.sessionId}
+          fromTile={sessionActionDialog.fromTile}
+          continueConversationTitle={sessionActionDialog.continueConversationTitle}
+          agentName={sessionActionDialog.agentName}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
+          onSubmitted={sessionActionDialog.onSubmitted}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setSessionActionDialog(null)
+            }
+          }}
+        />
+      )}
     </>
   )
 }

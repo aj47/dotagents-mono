@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
+import { tipcClient } from "@renderer/lib/tipc-client"
 import { AgentProcessingView } from "./agent-processing-view"
 import { AgentProgressUpdate } from "../../../shared/types"
 import { useTheme } from "@renderer/contexts/theme-context"
@@ -80,6 +81,21 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
     }
     return undefined
   }, [isBusy])
+
+  // Re-establish window focus when the user clicks anywhere in this panel.
+  // The panel window can lose keyboard focus on macOS (e.g. after ensurePanelZOrder
+  // fires on the "focus" event), so we mirror the OverlayFollowUpInput pattern:
+  // make the window focusable+focused, then re-point focus at the textarea.
+  const handleMouseDown = async () => {
+    try {
+      await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 50)
+    } catch {
+      // Ignore — the textarea may still work
+    }
+  }
 
   const handleSubmit = async () => {
     const message = buildMessageWithImages(text, imageAttachments)
@@ -175,10 +191,13 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }
 
   return (
-    <div className={cn(
-      "text-input-panel modern-text-strong flex h-full w-full flex-col gap-2.5 rounded-xl p-3",
-      isDark ? "dark" : ""
-    )}>
+    <div
+      className={cn(
+        "text-input-panel modern-text-strong flex h-full w-full flex-col gap-2.5 rounded-xl p-3",
+        isDark ? "dark" : ""
+      )}
+      onMouseDown={handleMouseDown}
+    >
       {/* Show agent progress if available */}
       {isProcessing && agentProgress ? (
         <AgentProcessingView
@@ -257,6 +276,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message here..."
+            autoFocus
             className={cn(
               "modern-input modern-text-strong min-h-0 flex-1 resize-none border-0",
               "bg-transparent focus:border-ring focus:ring-1 focus:ring-ring",

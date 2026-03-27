@@ -15,7 +15,7 @@ export function buildHubBundleInstallUrl(filePath: string): string {
   return `/settings/agents?installBundle=${encodeURIComponent(filePath)}`
 }
 
-export function shouldShowOnboarding(config: OnboardingConfig): boolean {
+function shouldShowOnboarding(config: OnboardingConfig): boolean {
   const hasCustomPresets = !!config.modelPresets?.length
   const hasSelectedPreset = config.currentModelPresetId !== undefined
   return !config.onboardingCompleted && !hasCustomPresets && !hasSelectedPreset

@@ -1,6 +1,6 @@
 import { dialog, type MenuItem } from "electron"
 
-export const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
+const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
 
 /**
  * Auto-updater is disabled - updates are manual via GitHub releases.
@@ -35,14 +35,5 @@ export async function checkForUpdatesAndDownload() {
 }
 
 export function quitAndInstall() {
-  // No-op - auto-updater is disabled
-}
-
-export async function downloadUpdate() {
-  // No-op - auto-updater is disabled
-  return null
-}
-
-export function cancelDownloadUpdate() {
   // No-op - auto-updater is disabled
 }

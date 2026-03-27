@@ -158,6 +158,48 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.nextState.phase).toBe('processing');
   });
 
+  it('queues another utterance while already processing', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'also draft a summary email',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 250,
+    });
+
+    expect(result.action).toEqual({ type: 'send', text: 'also draft a summary email' });
+    expect(result.nextState.phase).toBe('processing');
+    expect(result.nextState.lastTranscript).toBe('also draft a summary email');
+  });
+
+  it('honors sleep phrase while processing', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'go to sleep',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 260,
+    });
+
+    expect(result.action).toEqual({ type: 'none' });
+    expect(result.nextState.phase).toBe('sleeping');
+    expect(result.matchedSleep).toBe(true);
+  });
+
+  it('does not send a bare wake phrase while already processing', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'hey dot agents',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 270,
+    });
+
+    expect(result.action).toEqual({ type: 'none' });
+    expect(result.nextState.phase).toBe('processing');
+    expect(result.matchedWake).toBe(true);
+  });
+
   it('resets controller state when hands-free is disabled after waking up', async () => {
     const runtime = createHookRuntime();
     const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
@@ -188,5 +230,28 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(controller.state).toEqual(createInitialHandsFreeState());
     expect(controller.shouldKeepRecognizerActive).toBe(false);
+  });
+
+  it('keeps the recognizer active while processing so overlapping utterances can be queued', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, { ...options, enabled: true });
+    runtime.commitEffects();
+    controller = runtime.render(useHook, { ...options, enabled: true });
+
+    expect(controller.handleFinalTranscript('hey dot agents what is the weather')).toEqual({
+      type: 'send',
+      text: 'what is the weather',
+    });
+
+    controller = runtime.render(useHook, { ...options, enabled: true });
+    expect(controller.state.phase).toBe('processing');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 });

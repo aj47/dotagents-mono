@@ -7,8 +7,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import { STT_PROVIDER_ID } from "@shared/index"
-import { SUPPORTED_LANGUAGES } from "@shared/languages"
+import { STT_PROVIDER_ID, SUPPORTED_LANGUAGES } from "@dotagents/shared"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"

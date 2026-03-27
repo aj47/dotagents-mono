@@ -9,7 +9,7 @@ export interface HubCatalogCompatibility {
   notes?: string[]
 }
 
-export interface HubCatalogComponentCounts {
+interface HubCatalogComponentCounts {
   agentProfiles: number
   mcpServers: number
   skills: number
@@ -17,13 +17,13 @@ export interface HubCatalogComponentCounts {
   knowledgeNotes: number
 }
 
-export interface HubCatalogArtifact {
+interface HubCatalogArtifact {
   url: string
   fileName: string
   sizeBytes: number
 }
 
-export interface HubCatalogItem {
+interface HubCatalogItem {
   id: string
   name: string
   summary: string
@@ -50,7 +50,7 @@ export interface HubPublishSubmission {
   payload: HubPublishPayload
 }
 
-export const DEFAULT_HUB_BASE_URL = "https://hub.dotagentsprotocol.com"
+const DEFAULT_HUB_BASE_URL = "https://hub.dotagentsprotocol.com"
 
 export function slugifyHubCatalogId(value: string): string {
   return value

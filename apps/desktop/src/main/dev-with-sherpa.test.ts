@@ -4,6 +4,7 @@ import { describe, expect, it, vi, afterEach } from "vitest"
 
 import {
   getDevCommand,
+  getSharedWatchCommand,
   getSignalExitCode,
   isDirectExecution,
   terminateChildProcessTree,
@@ -26,6 +27,14 @@ describe("dev-with-sherpa launcher helpers", () => {
       "--",
       "--debug-app",
     ])
+  })
+
+  it("builds the shared watch command through pnpm filter", () => {
+    const result = getSharedWatchCommand()
+
+    expect(result.command === "pnpm" || result.command === "pnpm.cmd").toBe(true)
+    expect(result.args).toEqual(["--filter", "@dotagents/shared", "dev"])
+    expect(result.cwd).toContain("dotagents-mono")
   })
 
   it("detects direct execution when argv[1] is a relative script path", () => {

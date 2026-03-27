@@ -135,7 +135,7 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       <div
         ref={containerRef}
         className={cn(
-          "grid min-h-full w-full grid-flow-row-dense content-start gap-3 p-3",
+          "grid w-full grid-flow-row-dense content-start gap-3 p-3",
           className
         )}
         style={{

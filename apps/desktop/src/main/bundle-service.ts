@@ -136,12 +136,6 @@ export interface DotAgentsBundle {
   knowledgeNotes: BundleKnowledgeNote[]
 }
 
-export interface ExportBundleResult {
-  success: boolean
-  bundle?: DotAgentsBundle
-  error?: string
-}
-
 export interface ExportBundleToFileResult {
   success: boolean
   filePath: string | null

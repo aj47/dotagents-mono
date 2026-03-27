@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, LayoutGrid, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -24,10 +24,14 @@ import {
   getAgentConversationStateLabel,
   getToolResultsSummary,
   normalizeAgentConversationState,
+  TOOL_GROUP_PREVIEW_COUNT,
+  TOOL_GROUP_MIN_SIZE,
+  getToolActivitySummaryLine,
 } from "@dotagents/shared"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
+import { LoadingSpinner } from "./ui/loading-spinner"
 import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
@@ -78,6 +82,7 @@ type DisplayItem =
       isThinking: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
+      responseEvent?: AgentUserResponseEvent
     } }
   | { kind: "tool_execution"; id: string; data: {
       timestamp: number
@@ -89,7 +94,7 @@ type DisplayItem =
       timestamp: number
       isComplete: boolean
       calls: Array<{ name: string; arguments: any }>
-      results: Array<{ success: boolean; content: string; error?: string }>
+      results: Array<{ success: boolean; content: string; error?: string } | undefined>
       executionStats?: {
         durationMs?: number
         totalTokens?: number
@@ -118,8 +123,18 @@ type DisplayItem =
       currentResponse: AgentUserResponseEvent
       pastResponses?: AgentUserResponseEvent[]
     } }
+  | { kind: "tool_activity_group"; id: string; data: {
+      /** The original DisplayItems that were collapsed into this group. */
+      items: DisplayItem[]
+      /** Short single-line preview strings for the trailing pending tool group only. */
+      previewLines: string[]
+    } }
 
 const MID_TURN_RESPONSE_ITEM_ID = "mid-turn-response"
+
+function isCompletionControlTool(toolName: string): boolean {
+  return toolName === RESPOND_TO_USER_TOOL || toolName === MARK_WORK_COMPLETE_TOOL
+}
 
 function extractRespondToUserResponsesFromMessages(
   messages: Array<{
@@ -133,7 +148,7 @@ function extractRespondToUserResponsesFromMessages(
 
 const COLLAPSED_USER_RESPONSE_SCAN_LIMIT = 2048
 const COLLAPSED_USER_RESPONSE_PREVIEW_LIMIT = 160
-const TILE_PREVIEW_ITEM_LIMIT = 12
+
 
 function messageStableId(message: { timestamp: number; role: string }): string {
   return `${message.timestamp}-${message.role}`
@@ -143,6 +158,22 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim()
   if (typeof error === "string" && error.trim()) return error.trim()
   return fallback
+}
+
+function hasActiveTextSelection(container?: HTMLElement | null): boolean {
+  if (typeof window === "undefined") return false
+
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return false
+  }
+
+  if (!container) return true
+
+  return (
+    (!!selection.anchorNode && container.contains(selection.anchorNode)) ||
+    (!!selection.focusNode && container.contains(selection.focusNode))
+  )
 }
 
 function buildCollapsedUserResponsePreview(userResponse: string): string {
@@ -178,6 +209,7 @@ type CompactMessageProps = {
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     timestamp: number
+    responseEvent?: AgentUserResponseEvent
   }
   ttsText?: string
   isLast: boolean
@@ -203,32 +235,23 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const [isCopied, setIsCopied] = useState(false)
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Track the ttsKey that's currently being generated, so we can clean it up on unmount
-  const inFlightTtsKeyRef = useRef<string | null>(null)
+  // Track the TTS keys currently being generated, so we can clean them up on unmount.
+  const inFlightTtsKeysRef = useRef<string[]>([])
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
   const configQuery = useConfigQuery()
 
-  // Cleanup copy timeout and in-flight TTS key on unmount
+  // Cleanup copy timeout on unmount
+  // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
+  // The module-level tracking set must persist across remounts (e.g., when
+  // switching between single-session and multi-session views in the panel)
+  // to prevent double TTS playback. Keys are removed only:
+  // - On generation failure (by the .catch() handler)
+  // - On session dismiss (by clearSessionTTSTracking)
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
-      }
-      // If we're unmounting while TTS generation is in-flight, remove the key
-      // from the tracking set so future mounts can retry generation
-      const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
-      if (inFlightKeyAtUnmount) {
-        // IMPORTANT: defer cleanup to a microtask.
-        // If generation has already completed, its `.then()` handler will run
-        // before this microtask and clear `inFlightTtsKeyRef`, preventing us
-        // from accidentally deleting a "success" key during a view switch.
-        queueMicrotask(() => {
-          if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
-            removeTTSKey(inFlightKeyAtUnmount)
-            inFlightTtsKeyRef.current = null
-          }
-        })
       }
     }
   }, [])
@@ -261,7 +284,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
   // Track the computed ttsSource (ttsText || message.content) since that's what determines the
   // ttsKey and should also gate async state updates.
-  const ttsSource = sanitizeMessageContentForSpeech(ttsText || message.content)
+  const ttsSource = sanitizeMessageContentForSpeech(ttsText || message.responseEvent?.text || message.content)
   const latestTtsSourceRef = useRef(ttsSource)
   latestTtsSourceRef.current = ttsSource
   const ttsGenerationIdRef = useRef(0)
@@ -343,9 +366,14 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   }, [ttsSource])
 
   // Check if TTS button should be shown for this message (any completed assistant message with content)
-  const shouldShowTTSButton = message.role === "assistant" && isComplete && configQuery.data?.ttsEnabled && !!(message.content?.trim())
-  // Auto-play TTS only on the last message
-  const shouldAutoPlayTTS = shouldShowTTSButton && isLast
+  const shouldShowTTSButton =
+    message.role === "assistant" &&
+    configQuery.data?.ttsEnabled &&
+    !!ttsSource &&
+    (isComplete || !!message.responseEvent)
+  // Auto-play the final assistant message and any assistant message representing
+  // a respond_to_user response event.
+  const shouldAutoPlayTTS = shouldShowTTSButton && (isLast || !!message.responseEvent)
 
   // Auto-play TTS when assistant message completes (but NOT if agent was stopped by kill switch)
   //
@@ -374,20 +402,20 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       return
     }
 
-    // Create a key to track TTS playback for this specific session + content combination
-    // Use ttsSource (computed above) to ensure consistency with audioData invalidation
-    const ttsKey = buildContentTTSKey(sessionId, ttsSource, "final")
+    const ttsKeys = [
+      message.responseEvent ? buildResponseEventTTSKey(sessionId, message.responseEvent.id, "final") : null,
+      buildContentTTSKey(sessionId, ttsSource, "final"),
+    ].filter((key, index, arr): key is string => Boolean(key) && arr.indexOf(key) === index)
 
-    // If we have a session key and TTS has already played for this content, skip
-    if (ttsKey && hasTTSPlayed(ttsKey)) {
+    // If this response was already spoken from a mid-turn card or an earlier render, skip.
+    if (ttsKeys.some((key) => hasTTSPlayed(key))) {
       return
     }
 
     // Mark as playing before starting generation to prevent race conditions
-    if (ttsKey) {
-      markTTSPlayed(ttsKey)
-      // Track in-flight key so we can clean up on unmount
-      inFlightTtsKeyRef.current = ttsKey
+    if (ttsKeys.length > 0) {
+      ttsKeys.forEach((key) => markTTSPlayed(key))
+      inFlightTtsKeysRef.current = ttsKeys
     }
 
     // Track the source we're auto-playing to prevent replay on follow-up
@@ -395,16 +423,20 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
     generateAudio()
       .then(() => {
-        // Generation succeeded, clear the in-flight ref (key stays in set permanently)
-        inFlightTtsKeyRef.current = null
+        // Generation succeeded, clear the in-flight ref (keys stay in the set permanently)
+        inFlightTtsKeysRef.current = []
       })
       .catch((error) => {
         // If generation fails, remove from the set so user can retry
-        // Only remove if this is still the in-flight key (prevents race condition where
-        // a new mount re-added the key and this old catch handler would delete it)
-        if (ttsKey && inFlightTtsKeyRef.current === ttsKey) {
-          removeTTSKey(ttsKey)
-          inFlightTtsKeyRef.current = null
+        // Only remove if these are still the in-flight keys (prevents race conditions
+        // where a newer render re-added the keys and this old catch handler would delete them).
+        if (
+          ttsKeys.length > 0 &&
+          inFlightTtsKeysRef.current.length === ttsKeys.length &&
+          inFlightTtsKeysRef.current.every((key) => ttsKeys.includes(key))
+        ) {
+          ttsKeys.forEach((key) => removeTTSKey(key))
+          inFlightTtsKeysRef.current = []
         }
         // Clear the auto-played source so the user can retry
         if (lastAutoPlayedSourceRef.current === ttsSource) {
@@ -412,7 +444,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         }
         // Error is already handled in generateAudio function
       })
-  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, wasStopped, variant, sessionId, ttsSource])
+  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
 
   const getRoleStyle = () => {
     switch (message.role) {
@@ -429,10 +461,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }
 
-  const handleToggleExpand = () => {
-    if (shouldCollapse) {
-      onToggleExpand()
+  const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
+      return
     }
+
+    onToggleExpand()
   }
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -552,7 +586,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             </div>
           )}
 
-          {/* TTS Audio Player - show for all completed assistant messages with content */}
+          {/* TTS Audio Player - show for completed assistant messages and response-linked assistant messages */}
           {shouldShowTTSButton && (
             <div className="mt-2 min-w-0 space-y-1">
               <AudioPlayer
@@ -563,7 +597,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 isGenerating={isGeneratingAudio}
                 error={ttsError}
                 compact={true}
-                autoPlay={isLast ? ((configQuery.data?.ttsAutoPlay ?? true) && !isSnoozed) : false}
+                autoPlay={
+                  variant === "overlay" &&
+                  (isLast || !!message.responseEvent) &&
+                  (configQuery.data?.ttsAutoPlay ?? true) &&
+                  !isSnoozed
+                }
                 onPlayStateChange={setIsTTSPlaying}
                 audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
               />
@@ -660,7 +699,8 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.isExpanded === next.isExpanded &&
   prev.variant === next.variant &&
   prev.sessionId === next.sessionId &&
-  prev.isSnoozed === next.isSnoozed
+  prev.isSnoozed === next.isSnoozed &&
+  prev.message.responseEvent?.id === next.message.responseEvent?.id
 ))
 
 // Helper to extract execute_command display info
@@ -851,7 +891,7 @@ const AssistantWithToolsBubble: React.FC<{
     timestamp: number
     isComplete: boolean
     calls: Array<{ name: string; arguments: any }>
-    results: Array<{ success: boolean; content: string; error?: string }>
+    results: Array<{ success: boolean; content: string; error?: string } | undefined>
     executionStats?: {
       durationMs?: number
       totalTokens?: number
@@ -863,16 +903,18 @@ const AssistantWithToolsBubble: React.FC<{
 }> = ({ data, isExpanded, onToggleExpand }) => {
   const [showToolDetails, setShowToolDetails] = useState(false)
 
-  const isPending = data.results.length === 0
-  const allSuccess = data.results.length > 0 && data.results.every(r => r.success)
+  const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
+  const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
+  const isPending = toolCallEntries.some(({ result }) => !result)
+  const allSuccess = resolvedResults.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
-  const shouldCollapse = (data.thought?.length ?? 0) > 100 || data.calls.length > 0
+  const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
     if (isExpanded || isPending) return null
-    if (data.results.length === 0) return null
-    const toolResults = data.results.map(r => ({
+    if (resolvedResults.length === 0) return null
+    const toolResults = resolvedResults.map(r => ({
       success: r.success,
       content: r.content,
       error: r.error,
@@ -880,10 +922,12 @@ const AssistantWithToolsBubble: React.FC<{
     return getToolResultsSummary(toolResults)
   })()
 
-  const handleToggleExpand = () => {
-    if (shouldCollapse) {
-      onToggleExpand()
+  const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
+      return
     }
+
+    onToggleExpand()
   }
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -927,8 +971,7 @@ const AssistantWithToolsBubble: React.FC<{
             hasThought ? "mt-1" : "",
             "space-y-0.5"
           )}>
-            {data.calls.map((call, idx) => {
-              const result = data.results[idx]
+            {toolCallEntries.map(({ call, result }, idx) => {
               const callIsPending = !result
               const callSuccess = result?.success
               const callResultSummary = result ? getToolResultsSummary([result]) : null
@@ -992,8 +1035,7 @@ const AssistantWithToolsBubble: React.FC<{
           {/* Expanded tool details */}
           {showToolDetails && (
             <div className="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2">
-              {data.calls.map((call, idx) => {
-                const result = data.results[idx]
+              {toolCallEntries.map(({ call, result }, idx) => {
                 return (
                   <div key={idx} className="text-[10px] space-y-1">
                     <div className="font-medium opacity-70 break-words">Parameters:</div>
@@ -1071,6 +1113,77 @@ const formatArgumentsPreview = (args: any): string => {
   }
   return preview
 }
+
+// Collapsed group of consecutive tool-call activity.
+// Only the trailing in-flight group shows tool preview lines; historical
+// groups collapse to a count-only header.
+const ToolActivityGroupBubble: React.FC<{
+  group: {
+    items: DisplayItem[]
+    previewLines: string[]
+  }
+  isExpanded: boolean
+  onToggleExpand: () => void
+  /** Render a single child DisplayItem when the group is expanded. */
+  renderItem: (item: DisplayItem, index: number) => React.ReactNode
+}> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
+  const totalCount = group.items.length
+
+  return (
+    <div className={cn(
+      "rounded-md text-xs transition-all duration-200",
+      "border border-border/40 bg-muted/20",
+      !isExpanded && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer",
+    )}>
+      {/* Collapsed header */}
+      <div
+        className="flex items-center gap-1.5 px-2.5 py-1.5"
+        onClick={() => !isExpanded && onToggleExpand()}
+      >
+        <Wrench className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+        <span className="text-[11px] font-medium text-muted-foreground">
+          {totalCount} tool step{totalCount === 1 ? "" : "s"}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
+          className="ml-auto p-0.5 rounded hover:bg-muted/30 transition-colors"
+          aria-label={isExpanded ? "Collapse tool group" : "Expand tool group"}
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-3 w-3 text-muted-foreground/60" />
+          ) : (
+            <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
+          )}
+        </button>
+      </div>
+
+      {/* Preview lines (collapsed) */}
+      {!isExpanded && group.previewLines.length > 0 && (
+        <div
+          className="px-2.5 pb-1.5 space-y-0.5 cursor-pointer"
+          onClick={onToggleExpand}
+        >
+          {group.previewLines.map((line, idx) => (
+            <div
+              key={idx}
+              className="truncate text-[10px] text-muted-foreground/70 font-mono"
+            >
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Expanded: render all child items */}
+      {isExpanded && (
+        <div className="px-1.5 pb-1.5 space-y-1">
+          {group.items.map((item, idx) => renderItem(item, idx))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 
 // Inline Tool Approval bubble - appears in the conversation flow
 const ToolApprovalBubble: React.FC<{
@@ -1456,6 +1569,16 @@ const SubAgentConversationMessage: React.FC<{
 
   const isLongContent = message.content.length > 300
   const shouldShowToggle = isLongContent
+  const toolContent = useMemo(() => {
+    if (message.role !== "tool") return null
+
+    const raw = (message.content ?? "").trim()
+    const normalized = raw.replace(/^tool result:\s*/i, "").trim()
+    return {
+      summary: normalized || raw || "Tool activity",
+      rawContent: raw,
+    }
+  }, [message.content, message.role, message.toolInput])
   const roleMeta = (() => {
     switch (message.role) {
       case "user":
@@ -1514,14 +1637,47 @@ const SubAgentConversationMessage: React.FC<{
               </span>
             )}
           </div>
-          <div
-            className={cn(
-              "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
-              !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
-            )}
-          >
-            {message.content}
-          </div>
+          {message.role === "tool" ? (
+            <div className="space-y-2">
+              <div
+                className={cn(
+                  "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                  !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+                )}
+              >
+                {toolContent?.summary}
+              </div>
+              {message.toolInput && (
+                <div className="space-y-1.5 rounded-md border border-amber-200/70 bg-white/60 p-2 dark:border-amber-800/60 dark:bg-black/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">
+                    Tool Input
+                  </div>
+                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-50/80 p-2 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                    {JSON.stringify(message.toolInput, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {isExpanded && toolContent?.rawContent && toolContent.rawContent !== toolContent.summary && (
+                <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 p-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Raw Payload
+                  </div>
+                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-[11px] text-foreground/90">
+                    {toolContent.rawContent}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+              )}
+            >
+              {message.content}
+            </div>
+          )}
           {shouldShowToggle && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
@@ -1747,21 +1903,21 @@ const DelegationBubble: React.FC<{
 
   // Track live elapsed time only while running
   const [liveElapsed, setLiveElapsed] = useState(0)
-  
+
   useEffect(() => {
     // Only run timer while the delegation is actively running
     if (!isRunning) {
       return undefined
     }
-    
+
     // Update immediately
     setLiveElapsed(Math.round((Date.now() - delegation.startTime) / 1000))
-    
+
     // Update every second
     const interval = setInterval(() => {
       setLiveElapsed(Math.round((Date.now() - delegation.startTime) / 1000))
     }, 1000)
-    
+
     return () => clearInterval(interval)
   }, [isRunning, delegation.startTime])
 
@@ -2166,7 +2322,7 @@ const StreamingContentBubble: React.FC<{
 
   const contentNode = streamingContent.isStreaming
     ? (
-      <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      <div className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {streamingContent.text}
       </div>
     )
@@ -2625,7 +2781,7 @@ const ResponseHistoryPanel: React.FC<{
       {/* Response list */}
       {displayState !== "collapsed" && (
         <div className={cn(
-          "overflow-y-auto scrollbar-hide-until-hover",
+          "overflow-y-auto scrollbar-none",
           displayState === "expanded" && "max-h-[200px]",
           displayState === "full" && "flex-1 min-h-0",
         )}>
@@ -2815,23 +2971,9 @@ const MidTurnUserResponseBubble: React.FC<{
       })
   }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
 
-  // Cleanup in-flight TTS key on unmount
-  useEffect(() => {
-    return () => {
-      const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
-      const completionKeysAtUnmount = inFlightCompletionTTSKeysRef.current
-      if (inFlightKeyAtUnmount) {
-        queueMicrotask(() => {
-          if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
-            removeTTSKey(inFlightKeyAtUnmount)
-            completionKeysAtUnmount.forEach((key) => removeTTSKey(key))
-            inFlightTtsKeyRef.current = null
-            inFlightCompletionTTSKeysRef.current = []
-          }
-        })
-      }
-    }
-  }, [])
+  // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
+  // See CompactMessage cleanup comment for rationale — removing keys on unmount
+  // causes double TTS when the component remounts during view switches.
 
   if (!userResponse) return null
 
@@ -2869,6 +3011,11 @@ const MidTurnUserResponseBubble: React.FC<{
     if (target?.closest("button, a, input, textarea, select, [role='button']")) {
       return
     }
+
+    if (hasActiveTextSelection(e.currentTarget)) {
+      return
+    }
+
     onToggleExpand()
   }, [onToggleExpand])
 
@@ -3116,7 +3263,7 @@ const MidTurnUserResponseBubble: React.FC<{
             isGenerating={isGeneratingAudio}
             error={ttsError}
             compact={true}
-            autoPlay={!isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
+            autoPlay={variant === "overlay" && !isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
             onPlayStateChange={setIsTTSPlaying}
           />
           {isExpanded && ttsError && (
@@ -3276,6 +3423,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
+  const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
+  const togglePinSession = useAgentStore((s) => s.togglePinSession)
 
   // Get queued messages for this conversation (used in overlay variant)
   const queuedMessages = useMessageQueue(progress?.conversationId)
@@ -3366,43 +3515,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     onExpand()
   }, [handleRestoreSession, onExpand, progress?.isSnoozed])
 
-  // Handle snooze/minimize
-  const handleSnooze = async (e?: React.MouseEvent) => {
-    e?.stopPropagation() // Prevent event bubbling
-    if (!progress?.sessionId) return
-
-    logUI('🔴 [AgentProgress OVERLAY] Minimize button clicked in OVERLAY (not sidebar):', {
-      sessionId: progress.sessionId,
-      currentlySnoozed: progress.isSnoozed
-    })
-
-    // Update local store first so UI reflects the change immediately
-    setSessionSnoozed(progress.sessionId, true)
-
-    try {
-      // Snooze the session in backend
-      await tipcClient.snoozeAgentSession({ sessionId: progress.sessionId })
-    } catch (error) {
-      // Rollback local state only when the API call fails to keep UI and backend in sync
-      setSessionSnoozed(progress.sessionId, false)
-      logUI('🔴 [AgentProgress OVERLAY] Failed to snooze, rolled back local state')
-      console.error("Failed to snooze session:", error)
-      return
-    }
-
-    // UI updates after successful API call - don't rollback if these fail
-    try {
-      // Unfocus this session so the overlay hides
-      setFocusedSessionId(null)
-      // Hide the panel window completely
-      await tipcClient.hidePanelWindow({})
-      logUI('🔴 [AgentProgress OVERLAY] Session snoozed, unfocused, and panel hidden')
-    } catch (error) {
-      // Log UI errors but don't rollback - the backend state is already updated
-      logUI('🔴 [AgentProgress OVERLAY] Session snoozed but UI update failed')
-      console.error("Failed to update UI after snooze:", error)
-    }
-  }
+  const conversationId = progress?.conversationId
+  const isPinned = !!conversationId && pinnedSessionIds.has(conversationId)
 
   // Close button handler for completed agent view
   const handleClose = async () => {
@@ -3678,7 +3792,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const legacyResponseEvents = useMemo<AgentUserResponseEvent[]>(() => {
     if (!progress.userResponse) return []
     const orderedTexts = [...(progress.userResponseHistory || []), progress.userResponse]
-    const fallbackTimestamp = messages[messages.length - 1]?.timestamp ?? Date.now()
+    const fallbackTimestamp = messages[messages.length - 1]?.timestamp ?? steps[steps.length - 1]?.timestamp ?? 0
 
     return orderedTexts.map((text, index) => ({
       id: `legacy-${progress.sessionId}-${progress.runId ?? "run"}-${index + 1}`,
@@ -3688,7 +3802,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       text,
       timestamp: fallbackTimestamp + index,
     }))
-  }, [messages, progress.runId, progress.sessionId, progress.userResponse, progress.userResponseHistory])
+  }, [messages, progress.runId, progress.sessionId, progress.userResponse, progress.userResponseHistory, steps])
   const fallbackRespondToUserEvents = useMemo(
     () => (progress.userResponse || (progress.responseEvents?.length ?? 0) > 0
       ? []
@@ -3700,20 +3814,64 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     if (legacyResponseEvents.length > 0) return legacyResponseEvents
     return fallbackRespondToUserEvents
   }, [fallbackRespondToUserEvents, legacyResponseEvents, progress.responseEvents])
-  const currentResponseEvent = useMemo(
+  const latestResponseEvent = useMemo(
     () => effectiveResponseEvents[effectiveResponseEvents.length - 1],
     [effectiveResponseEvents],
   )
-  const pastResponseEvents = useMemo(
+  const priorResponseEvents = useMemo(
     () => effectiveResponseEvents.length > 1 ? effectiveResponseEvents.slice(0, -1) : undefined,
     [effectiveResponseEvents],
   )
-  const effectiveUserResponse = currentResponseEvent?.text
+  const effectiveUserResponse = latestResponseEvent?.text
   const effectiveUserResponseHistory = useMemo(
-    () => pastResponseEvents?.map((event) => event.text),
-    [pastResponseEvents],
+    () => priorResponseEvents?.map((event) => event.text),
+    [priorResponseEvents],
   )
-  const hasResponseHistoryEntries = !!(effectiveUserResponse || effectiveUserResponseHistory?.length)
+  const { displayResponseEvents, responseEventByMessageIndex } = useMemo(() => {
+    const representedEvents = new Map<number, AgentUserResponseEvent>()
+    if (effectiveResponseEvents.length === 0) {
+      return { displayResponseEvents: [] as AgentUserResponseEvent[], responseEventByMessageIndex: representedEvents }
+    }
+
+    const assistantMessages = messages
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) =>
+        message.role === "assistant" &&
+        !message.toolCalls?.length &&
+        !message.toolResults?.length &&
+        message.content.trim().length > 0,
+      )
+
+    const matchedAssistantMessageIndexes = new Set<number>()
+    const displayEvents: AgentUserResponseEvent[] = []
+
+    for (const event of effectiveResponseEvents) {
+      const trimmedEventText = event.text.trim()
+      const assistantMatch = assistantMessages.find(({ message, index }) =>
+        !matchedAssistantMessageIndexes.has(index) &&
+        message.content.trim() === trimmedEventText &&
+        message.timestamp >= event.timestamp,
+      )
+
+      if (!assistantMatch) {
+        displayEvents.push(event)
+        continue
+      }
+
+      matchedAssistantMessageIndexes.add(assistantMatch.index)
+      representedEvents.set(assistantMatch.index, event)
+    }
+
+    return { displayResponseEvents: displayEvents, responseEventByMessageIndex: representedEvents }
+  }, [effectiveResponseEvents, messages])
+  const currentResponseEvent = useMemo(
+    () => displayResponseEvents[displayResponseEvents.length - 1],
+    [displayResponseEvents],
+  )
+  const pastResponseEvents = useMemo(
+    () => displayResponseEvents.length > 1 ? displayResponseEvents.slice(0, -1) : undefined,
+    [displayResponseEvents],
+  )
   const primaryAgentLabel = useMemo(
     () => acpSessionInfo?.agentTitle ?? acpSessionInfo?.agentName ?? profileName ?? "Agent",
     [acpSessionInfo?.agentName, acpSessionInfo?.agentTitle, profileName],
@@ -3762,19 +3920,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           return item.data.startTime
         case "retry_status":
           return item.data.startedAt
+        case "mid_turn_response":
+          return item.data.currentResponse.timestamp
         case "tool_approval":
         case "streaming":
-        case "mid_turn_response":
+        case "tool_activity_group":
           return null
       }
-    }
-
-    // Build a set of all respond_to_user content strings so we can suppress
-    // duplicate plain assistant messages the backend appends to conversationHistory.
-    const respondToUserContents = new Set<string>()
-    if (effectiveUserResponse) respondToUserContents.add(effectiveUserResponse.trim())
-    if (effectiveUserResponseHistory) {
-      for (const r of effectiveUserResponseHistory) respondToUserContents.add(r.trim())
     }
 
     const items: DisplayItem[] = []
@@ -3789,30 +3941,49 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         const execTimestamp = next?.timestamp ?? message.timestamp
         const toolExecId = generateToolExecutionId(message.toolCalls, execTimestamp)
         const toolCallNames = message.toolCalls.map((call) => call.name)
-        const matchingStep = toolCallSteps.find(
-          (step) => step.title?.includes(toolCallNames[0]) || toolCallNames.some((name) => step.title?.includes(name)),
-        )
-        const hasCompletionTool = message.toolCalls.some(
-          (call) => call.name === RESPOND_TO_USER_TOOL || call.name === MARK_WORK_COMPLETE_TOOL,
-        )
+        const visibleToolCalls = message.toolCalls
+          .map((call, index) => ({ call, result: results[index] }))
+          .filter(({ call }) => !isCompletionControlTool(call.name))
+        const visibleToolNames = visibleToolCalls.map(({ call }) => call.name)
+        const hasCompletionTool = visibleToolCalls.length !== message.toolCalls.length
         const suppressThought = hasCompletionTool && !!effectiveUserResponse
 
-        items.push({
-          kind: "assistant_with_tools",
-          id: `assistant-tools-${assistantIndex}-${toolExecId}`,
-          data: {
-            thought: suppressThought ? "" : (message.content || ""),
-            timestamp: message.timestamp,
-            isComplete: message.isComplete,
-            calls: message.toolCalls,
-            results,
-            executionStats: matchingStep?.executionStats ? {
-              durationMs: matchingStep.executionStats.durationMs,
-              totalTokens: matchingStep.executionStats.totalTokens,
-              model: matchingStep.subagentId,
-            } : undefined,
-          },
-        })
+        if (visibleToolCalls.length > 0) {
+          const matchingStep = toolCallSteps.find(
+            (step) => step.title?.includes(visibleToolNames[0]) || visibleToolNames.some((name) => step.title?.includes(name)),
+          )
+
+          items.push({
+            kind: "assistant_with_tools",
+            id: `assistant-tools-${assistantIndex}-${toolExecId}`,
+            data: {
+              thought: suppressThought ? "" : (message.content || ""),
+              timestamp: message.timestamp,
+              isComplete: message.isComplete,
+              calls: visibleToolCalls.map(({ call }) => call),
+              // Preserve per-call result alignment after hiding completion-control tools.
+              // Some visible calls may still be pending while later visible calls already have results.
+              results: visibleToolCalls.map(({ result }) => result),
+              executionStats: matchingStep?.executionStats ? {
+                durationMs: matchingStep.executionStats.durationMs,
+                totalTokens: matchingStep.executionStats.totalTokens,
+                model: matchingStep.subagentId,
+              } : undefined,
+            },
+          })
+        } else if (message.content.trim().length > 0) {
+          // All tool calls were completion-control (respond_to_user / mark_work_complete).
+          // Always render the assistant message content so previous agent responses
+          // are visible inline in the conversation timeline.
+          items.push({
+            kind: "message",
+            id: `msg-assistant-${assistantIndex}`,
+            data: {
+              ...message,
+              responseEvent: responseEventByMessageIndex.get(i),
+            },
+          })
+        }
 
         if (next && next.role === "tool" && next.toolResults) {
           i++
@@ -3829,19 +4000,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           data: { timestamp: message.timestamp, calls: [], results: message.toolResults },
         })
       } else {
-        // Skip plain assistant messages that duplicate respond_to_user content.
-        // The backend appends these to conversationHistory on completion but
-        // the same content is already shown in the MidTurnUserResponseBubble.
-        if (
-          message.role === "assistant" &&
-          !message.toolCalls?.length &&
-          respondToUserContents.size > 0 &&
-          respondToUserContents.has(message.content.trim())
-        ) {
-          continue
-        }
+
         const roleIndex = ++roleCounters[message.role]
-        items.push({ kind: "message", id: `msg-${message.role}-${roleIndex}`, data: message })
+        items.push({
+          kind: "message",
+          id: `msg-${message.role}-${roleIndex}`,
+          data: {
+            ...message,
+            responseEvent: message.role === "assistant" ? responseEventByMessageIndex.get(i) : undefined,
+          },
+        })
       }
     }
 
@@ -3915,15 +4083,72 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const currentStateItems = items.filter((item) => getItemTimestamp(item) === null)
 
     timestampedItems.sort((a, b) => (getItemTimestamp(a) ?? 0) - (getItemTimestamp(b) ?? 0))
-    return [...timestampedItems, ...currentStateItems]
-  }, [currentResponseEvent, effectiveUserResponse, effectiveUserResponseHistory, messages, pastResponseEvents, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
+    const sortedItems = [...timestampedItems, ...currentStateItems]
 
-  const visibleDisplayItems = useMemo(
-    () => variant === "tile" && !isFocused && !isExpanded
-      ? displayItems.slice(-TILE_PREVIEW_ITEM_LIMIT)
-      : displayItems,
-    [displayItems, isExpanded, isFocused, variant],
-  )
+    // --- Group consecutive tool-activity DisplayItems ---
+    // assistant_with_tools items that contain respond_to_user must stay visible
+    // because they represent user-facing output, not background tool churn.
+    const isToolActivityItem = (item: DisplayItem): boolean => {
+      if (item.kind === "tool_execution") return true
+      if (item.kind !== "assistant_with_tools") return false
+      return !item.data.calls.some((call) => isCompletionControlTool(call.name))
+    }
+
+    const grouped: DisplayItem[] = []
+    let runStart: number | null = null
+
+    const flushToolRun = (runEnd: number) => {
+      if (runStart === null) return
+      const count = runEnd - runStart + 1
+      if (count < TOOL_GROUP_MIN_SIZE) {
+        // Too small to group — emit items individually
+        for (let j = runStart; j <= runEnd; j++) grouped.push(sortedItems[j])
+        runStart = null
+        return
+      }
+      const runItems = sortedItems.slice(runStart, runEnd + 1)
+      const previewLines: string[] = []
+      const shouldShowPreviewLines = runEnd === sortedItems.length - 1
+
+      if (shouldShowPreviewLines) {
+        const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
+        for (let j = previewStart; j < runItems.length; j++) {
+          const it = runItems[j]
+          if (it.kind === "assistant_with_tools") {
+            previewLines.push(getToolActivitySummaryLine({
+              role: "assistant",
+              toolCalls: it.data.calls,
+            }))
+          } else if (it.kind === "tool_execution") {
+            previewLines.push(getToolActivitySummaryLine({
+              role: "tool",
+              toolResults: it.data.results,
+            }))
+          }
+        }
+      }
+      grouped.push({
+        kind: "tool_activity_group",
+        id: `tool-group-${runStart}-${runEnd}`,
+        data: { items: runItems, previewLines },
+      })
+      runStart = null
+    }
+
+    for (let i = 0; i < sortedItems.length; i++) {
+      if (isToolActivityItem(sortedItems[i])) {
+        if (runStart === null) runStart = i
+      } else {
+        flushToolRun(i - 1)
+        grouped.push(sortedItems[i])
+      }
+    }
+    if (runStart !== null) flushToolRun(sortedItems.length - 1)
+
+    return grouped
+  }, [currentResponseEvent, messages, pastResponseEvents, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
+
+  const visibleDisplayItems = displayItems
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
@@ -4116,7 +4341,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
     }
     if (conversationState === "running") {
-      return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
+      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-4 [&_img]:w-4" />
     }
     if (isSnoozed) {
       return <Moon className="h-4 w-4 text-muted-foreground" />
@@ -4170,7 +4395,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Tile variant rendering
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
-    const isSnoozed = progress.isSnoozed
+    const canCollapseTile = typeof onCollapsedChange === "function"
     return (
       <div
         onClick={onFocus}
@@ -4180,55 +4405,44 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           WebkitAppRegion: "no-drag"
         } as React.CSSProperties}
       >
-        {/* Tile Header - clickable to toggle collapse */}
+        {/* Tile Header */}
         <div
           className={cn(
-            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 cursor-pointer",
+            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0",
+            canCollapseTile && "cursor-pointer",
             isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2",
           )}
-          onClick={handleToggleCollapse}
+          onClick={canCollapseTile ? handleToggleCollapse : undefined}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <div className="shrink-0">
               {getStatusIndicator()}
             </div>
-            <span className={cn("truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
+            <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
               {getTitle()}
             </span>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-            {/* Collapse/Expand toggle */}
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
-              {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            </Button>
+            {canCollapseTile && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
+                {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+              </Button>
+            )}
 
-            {onExpand && (
+            {conversationId && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 shrink-0"
-                onPointerDown={(e) => {
-                  if (e.button !== 0) return
-                  e.preventDefault()
-                  e.stopPropagation()
-                  void handleExpandTile()
-                }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (e.detail === 0) {
-                    e.preventDefault()
-                    void handleExpandTile()
-                  }
+                  togglePinSession(conversationId)
                 }}
-                title={isExpanded ? "Restore tile layout" : "Maximize tile"}
+                title={isPinned ? "Unpin session" : "Pin session"}
+                aria-label={isPinned ? "Unpin session" : "Pin session"}
+                aria-pressed={isPinned}
               >
-                {isExpanded ? <LayoutGrid className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-              </Button>
-            )}
-
-            {!isSnoozed && !isComplete && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
-                <Minimize2 className="h-3 w-3" />
+                <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
               </Button>
             )}
             {/* Combined close button: stops agent if running, dismisses if complete */}
@@ -4287,7 +4501,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 min-h-0 overflow-y-auto scrollbar-hide-until-hover"
+                className="flex-1 min-h-0 overflow-y-auto scrollbar-none"
               >
                 {visibleDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">
@@ -4312,7 +4526,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           <CompactMessage
                             key={itemKey}
                             message={item.data}
-                            ttsText={isLastAssistant ? effectiveUserResponse : undefined}
+                            ttsText={item.data.responseEvent?.text ?? (isLastAssistant ? effectiveUserResponse : undefined)}
                             isLast={isLastAssistant}
                             isComplete={isComplete}
                             hasErrors={hasErrors}
@@ -4360,7 +4574,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isComplete={isComplete}
                             isExpanded={expandedItems[itemKey] ?? false}
                             onToggleExpand={() => toggleItemExpansion(itemKey, expandedItems[itemKey] ?? false)}
-                            onMaximize={handleExpandTile}
+                            onMaximize={undefined}
                           />
                         )
                       } else if (item.kind === "delegation") {
@@ -4371,6 +4585,37 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             delegation={item.data}
                             isExpanded={delegationExpanded}
                             onToggleExpand={() => toggleItemExpansion(itemKey, false)}
+                          />
+                        )
+                      } else if (item.kind === "tool_activity_group") {
+                        return (
+                          <ToolActivityGroupBubble
+                            key={itemKey}
+                            group={item.data}
+                            isExpanded={isExpanded}
+                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                            renderItem={(child, childIdx) => {
+                              const childKey = child.id || `group-child-${childIdx}`
+                              const childExpanded = expandedItems[childKey] ?? false
+                              if (child.kind === "assistant_with_tools") {
+                                return (
+                                  <AssistantWithToolsBubble
+                                    key={childKey}
+                                    data={child.data}
+                                    isExpanded={childExpanded}
+                                    onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                                  />
+                                )
+                              }
+                              return (
+                                <ToolExecutionBubble
+                                  key={childKey}
+                                  execution={(child as any).data}
+                                  isExpanded={childExpanded}
+                                  onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                                />
+                              )
+                            }}
                           />
                         )
                       } else {
@@ -4442,23 +4687,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-center gap-x-2">
                     {profileName && (
-                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]" title={`Agent: ${profileName}`}>
+                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
                         {profileName}
                       </span>
                     )}
                     {modelInfo && (
                       <>
                         {profileName && <span className="text-muted-foreground/50">•</span>}
-                        <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+                        <span className="min-w-0 max-w-full truncate text-[10px]">
                           {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
                         </span>
                       </>
                     )}
                     {contextInfo && contextInfo.maxTokens > 0 && (
-                      <div
-                        className="flex shrink-0 items-center gap-1"
-                        title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
-                      >
+                      <div className="flex shrink-0 items-center gap-1">
                         <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
                           <div
                             className={cn(
@@ -4554,7 +4796,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
           {/* Profile/agent name */}
           {profileName && (
-            <span className="text-[10px] text-primary/70 truncate max-w-[80px]" title={`Agent: ${profileName}`}>
+            <span className="text-[10px] text-primary/70 truncate max-w-[80px]">
               {profileName}
             </span>
           )}
@@ -4562,17 +4804,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           {!isComplete && modelInfo && (
             <>
               {profileName && <span className="text-muted-foreground/50">•</span>}
-              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]">
                 {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 20)}
               </span>
             </>
           )}
           {/* Context fill indicator */}
           {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-            <div
-              className="flex items-center gap-1.5"
-              title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
-            >
+            <div className="flex items-center gap-1.5">
               <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className={cn(
@@ -4597,17 +4836,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
               {`${currentIteration}/${isFinite(maxIterations) ? maxIterations : "∞"}`}
             </span>
-          )}
-          {!isComplete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-              onClick={handleSnooze}
-              title="Minimize - run in background without showing progress"
-            >
-              <Minimize2 className="h-3 w-3" />
-            </Button>
           )}
           {!isComplete ? (
             <Button
@@ -4709,7 +4937,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     <CompactMessage
                       key={itemKey}
                       message={item.data}
-                      ttsText={isLastAssistant ? effectiveUserResponse : undefined}
+                      ttsText={item.data.responseEvent?.text ?? (isLastAssistant ? effectiveUserResponse : undefined)}
                       isLast={isLastAssistant}
                       isComplete={isComplete}
                       hasErrors={hasErrors}
@@ -4778,6 +5006,37 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       isExpanded={delegationExpanded}
                       onToggleExpand={() => toggleItemExpansion(itemKey, false)}
                       onOpenDetails={setSelectedDelegationRunId}
+                    />
+                  )
+                } else if (item.kind === "tool_activity_group") {
+                  return (
+                    <ToolActivityGroupBubble
+                      key={itemKey}
+                      group={item.data}
+                      isExpanded={isExpanded}
+                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                      renderItem={(child, childIdx) => {
+                        const childKey = child.id || `group-child-${childIdx}`
+                        const childExpanded = expandedItems[childKey] ?? false
+                        if (child.kind === "assistant_with_tools") {
+                          return (
+                            <AssistantWithToolsBubble
+                              key={childKey}
+                              data={child.data}
+                              isExpanded={childExpanded}
+                              onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                            />
+                          )
+                        }
+                        return (
+                          <ToolExecutionBubble
+                            key={childKey}
+                            execution={(child as any).data}
+                            isExpanded={childExpanded}
+                            onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                          />
+                        )
+                      }}
                     />
                   )
                 } else {

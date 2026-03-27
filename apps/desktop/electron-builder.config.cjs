@@ -176,7 +176,10 @@ module.exports = {
     ],
     artifactName: "${productName}-${version}-${arch}.${ext}",
     entitlementsInherit: "build/entitlements.mac.plist",
-    identity: process.env.CSC_NAME || "Apple Development",
+    identity:
+      process.env.CSC_IDENTITY_AUTO_DISCOVERY === "false"
+        ? null
+        : (process.env.CSC_NAME || "Apple Development"),
     // Disable hardened runtime and timestamp for development builds to avoid timestamp service errors
     // For production builds, set ENABLE_HARDENED_RUNTIME=true environment variable
     hardenedRuntime: process.env.ENABLE_HARDENED_RUNTIME === 'true',
@@ -219,13 +222,17 @@ module.exports = {
       ],
     },
     notarize:
-      process.env.APPLE_TEAM_ID &&
-      process.env.APPLE_ID &&
-      process.env.APPLE_APP_SPECIFIC_PASSWORD
-        ? {
-            teamId: process.env.APPLE_TEAM_ID,
-          }
-        : undefined,
+      process.env.APPLE_API_KEY &&
+      process.env.APPLE_API_KEY_ID &&
+      process.env.APPLE_API_ISSUER
+        ? true
+        : process.env.APPLE_TEAM_ID &&
+            process.env.APPLE_ID &&
+            process.env.APPLE_APP_SPECIFIC_PASSWORD
+          ? {
+              teamId: process.env.APPLE_TEAM_ID,
+            }
+          : undefined,
   },
   mas: {
     artifactName: "${productName}-${version}-mas.${ext}",

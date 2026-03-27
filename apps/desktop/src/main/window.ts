@@ -838,8 +838,20 @@ export function createPanelWindow(): BrowserWindow | undefined {
     // This prevents stale state if user manually shows panel while main is focused.
     clearPanelHiddenByMainFocus()
   })
-  win.on("blur", () => ensurePanelZOrder(win))
-  win.on("focus", () => ensurePanelZOrder(win))
+  win.on("blur", () => {
+    // Skip z-order reassertion in textInput mode.
+    // On macOS, calling setAlwaysOnTop during a focus/blur event while the
+    // panel is the active keyboard target causes the window to lose keyboard
+    // focus, so the textarea never receives it (Ctrl+T) or loses it on click.
+    if (getCurrentPanelMode() !== "textInput") {
+      ensurePanelZOrder(win)
+    }
+  })
+  win.on("focus", () => {
+    if (getCurrentPanelMode() !== "textInput") {
+      ensurePanelZOrder(win)
+    }
+  })
   win.on("move", () => ensurePanelZOrder(win))
   win.on("resize", () => ensurePanelZOrder(win))
 
@@ -972,6 +984,10 @@ export async function showPanelWindowAndShowTextInput(initialText?: string, conv
   resizePanelForTextInput()
 
   showPanelWindow() // This will now use textInput mode positioning
+  // Ensure the panel can actually receive keyboard input when opened by the global
+  // hotkey. On macOS in particular, the window can be visible without becoming the
+  // active/focused recipient for the renderer's textarea.focus() call.
+  setPanelFocusable(true, true)
   // Guard against early IPC loss right after app launch (mirrors recording start paths)
   whenPanelReady(() => {
     getWindowRendererHandlers("panel")?.showTextInput.send({ initialText, conversationId, conversationTitle })

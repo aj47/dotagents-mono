@@ -112,11 +112,19 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
+        <div className={styles.eyebrowRow}>
+          <span className={styles.eyebrow}>{siteConfig.title}</span>
+          <span className={styles.eyebrowDetail}>Desktop and mobile agent runtime</span>
+        </div>
+        <Heading as="h1" className={clsx('hero__title', styles.heroTitle)}>
+          Agents that do real work in the background.
         </Heading>
-        <p className="hero__subtitle">
-          {siteConfig.tagline} Your assistant. Your machine. Your rules.
+        <p className={clsx('hero__subtitle', styles.heroSubtitle)}>
+          Free, transparent, and works with any agent provider.
+        </p>
+        <p className={styles.heroBody}>
+          Talk to agents naturally, give them tools and context, and let them keep
+          going without babysitting every step.
         </p>
         <div className={styles.buttons}>
           <Link
@@ -130,6 +138,20 @@ function HomepageHeader() {
             to="/getting-started/installation">
             Install
           </Link>
+        </div>
+        <div className={styles.signalGrid}>
+          <div className={styles.signalCard}>
+            <strong>Free to use</strong>
+            <span>Bring your own providers, tools, and local workflows.</span>
+          </div>
+          <div className={styles.signalCard}>
+            <strong>Transparent by default</strong>
+            <span>See agent progress, tool calls, artifacts, and handoffs as they happen.</span>
+          </div>
+          <div className={styles.signalCard}>
+            <strong>Provider-agnostic</strong>
+            <span>Open standards like <code>.agents</code>, MCP, and ACP keep you out of lock-in.</span>
+          </div>
         </div>
       </div>
     </header>

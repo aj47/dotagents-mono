@@ -71,8 +71,8 @@ import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@shared/runtime-tool-names"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
-import { OAUTH_MCP_EXAMPLES, getOAuthExample } from "@shared/oauth-examples"
-import { parseShellCommand } from "@shared/shell-parse"
+import { OAUTH_MCP_EXAMPLES } from "@shared/oauth-examples"
+import { parseShellCommand } from "@dotagents/shared"
 
 
 
@@ -1547,7 +1547,7 @@ export function MCPConfigManager({
   }
 
   const handleAddOAuthExample = (exampleKey: string) => {
-    const example = getOAuthExample(exampleKey)
+    const example = OAUTH_MCP_EXAMPLES[exampleKey]
     if (example) {
       handleAddServer(example.name, example.config)
       setShowExamples(false)

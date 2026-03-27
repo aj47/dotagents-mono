@@ -49,13 +49,6 @@ type KnowledgeOrigin = {
   assetFilePaths: string[]
 }
 
-export type ConsolidateKnowledgeNotesResult = {
-  reorganizedCount: number
-  skippedCount: number
-  errorCount: number
-  errors: string[]
-}
-
 function stripLegacyEmbeddedMetadata(body: string): string {
   const trimmed = body.trim()
   const prefixIndex = trimmed.lastIndexOf(LEGACY_NOTE_META_PREFIX)

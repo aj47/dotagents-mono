@@ -58,12 +58,3 @@ export function filterEphemeralMessages<T extends WithEphemeralFlag>(
       return rest as Omit<T, "ephemeral">
     })
 }
-
-/**
- * Check if a message is ephemeral.
- */
-export function isEphemeralMessage<T extends WithEphemeralFlag>(
-  msg: T,
-): msg is T & { ephemeral: true } {
-  return msg.ephemeral === true
-}

@@ -27,6 +27,7 @@ import {
 } from './internal-agent';
 import { agentProfileService } from '../agent-profile-service';
 import type { AgentProfile } from '../../shared/types';
+import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 
 // ============================================================================
 // Consolidated Delegation State
@@ -72,6 +73,7 @@ function cleanupDelegationMappings(runId: string, agentName: string): void {
   for (const [sessionId, mappedRunId] of sessionToRunId.entries()) {
     if (mappedRunId === runId) {
       sessionToRunId.delete(sessionId);
+      clearAcpToAppSessionMapping(sessionId);
     }
   }
 }
@@ -1123,6 +1125,13 @@ async function executeACPAgent(
       if (resolvedSessionId) {
         subAgentState.acpSessionId = resolvedSessionId;
         sessionToRunId.set(resolvedSessionId, subAgentState.runId);
+        if (parentSessionId) {
+          setAcpToAppSessionMapping(
+            resolvedSessionId,
+            parentSessionId,
+            agentSessionStateManager.getSessionRunId(parentSessionId),
+          );
+        }
       }
     };
 
@@ -1131,6 +1140,7 @@ async function executeACPAgent(
         args.agentName,
         false,
         args.workingDirectory,
+        parentSessionId ? { appSessionId: parentSessionId } : undefined,
       );
       registerSessionMapping(sessionId);
       return sessionId;
@@ -1731,7 +1741,7 @@ export function cleanupOldDelegatedRuns(maxAgeMs: number = 60 * 60 * 1000): void
  * @param args - Arguments containing the run ID
  * @returns Object with cancellation result
  */
-export async function handleCancelAgentRun(args: { runId: string }): Promise<object> {
+async function handleCancelAgentRun(args: { runId: string }): Promise<object> {
   const state = delegatedRuns.get(args.runId);
   if (!state) {
     return {
@@ -1788,12 +1798,4 @@ export async function handleCancelAgentRun(args: { runId: string }): Promise<obj
       error: error instanceof Error ? error.message : String(error),
     };
   }
-}
-
-/**
- * Get the current recursion depth for a session.
- * Useful for debugging and UI display.
- */
-export function getCurrentSessionDepth(sessionId: string): number {
-  return getSessionDepth(sessionId);
 }

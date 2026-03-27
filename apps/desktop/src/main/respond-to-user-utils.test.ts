@@ -3,10 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   extractRespondToUserContentFromArgs,
-  getLatestRespondToUserEventFromResponseEvents,
   getLatestRespondToUserContentFromConversationHistory,
-  getRespondToUserHistoryFromResponseEvents,
-  getLatestRespondToUserContentFromToolCalls,
   resolveLatestUserFacingResponse,
 } from "./respond-to-user-utils"
 
@@ -36,14 +33,6 @@ describe("respond-to-user-utils", () => {
     })).toBe("![Preview](data:image/png;base64,ZmFrZQ==)")
   })
 
-  it("returns the latest respond_to_user content from tool calls", () => {
-    expect(getLatestRespondToUserContentFromToolCalls([
-      { name: "web_search", arguments: { query: "ignore" } },
-      { name: "respond_to_user", arguments: { text: "First update" } },
-      { name: "respond_to_user", arguments: { text: "Final answer" } },
-    ])).toBe("Final answer")
-  })
-
   it("falls back to the latest respond_to_user entry in conversation history", () => {
     expect(getLatestRespondToUserContentFromConversationHistory([
       { role: "assistant", toolCalls: [{ name: "respond_to_user", arguments: { text: "Earlier" } }] },
@@ -59,14 +48,13 @@ describe("respond-to-user-utils", () => {
     ], 1)).toBe("Current")
   })
 
-  it("derives latest and history from ordered response events", () => {
+  it("uses the latest ordered response event as the visible answer", () => {
     const responseEvents = [
       { id: "evt-1", sessionId: "session-1", runId: 2, ordinal: 1, text: "Draft", timestamp: 1 },
       { id: "evt-2", sessionId: "session-1", runId: 2, ordinal: 2, text: "Final", timestamp: 2 },
     ]
 
-    expect(getLatestRespondToUserEventFromResponseEvents(responseEvents)?.text).toBe("Final")
-    expect(getRespondToUserHistoryFromResponseEvents(responseEvents)).toEqual(["Draft"])
+    expect(resolveLatestUserFacingResponse({ responseEvents })).toBe("Final")
   })
 
   it("prefers the current iteration's planned respond_to_user over a stale stored response", () => {

@@ -2,27 +2,36 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import {
-  Archive,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
+  MoreHorizontal,
   X,
-  Minimize2,
-  Maximize2,
   Clock,
-  Pin,
+  Mic,
+  Plus,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import {
   filterPastSessionsAgainstActiveSessions,
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
 import { useNavigate } from "react-router-dom"
-import {
-  normalizeAgentConversationState,
-} from "@dotagents/shared"
+import { AgentSelector } from "./agent-selector"
+import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { Button } from "./ui/button"
+import { normalizeAgentConversationState } from "@dotagents/shared"
+import type { AgentProgressUpdate } from "@shared/types"
 
 interface AgentSession {
   id: string
@@ -55,15 +64,125 @@ interface SidebarSession {
   key: string
 }
 
+function getSessionLastMessageTimestamp(
+  session: AgentSession,
+  conversationTimestamp?: number,
+): number {
+  return Math.max(
+    conversationTimestamp ?? 0,
+    session.endTime ?? 0,
+    session.startTime ?? 0,
+  )
+}
+
+function formatMinutesAgo(timestamp: number): string | null {
+  if (!timestamp || !Number.isFinite(timestamp)) return null
+  const minutesAgo = Math.max(Math.floor((Date.now() - timestamp) / 60_000), 0)
+  if (minutesAgo < 60) {
+    return minutesAgo === 1 ? "1m" : `${minutesAgo}m`
+  }
+
+  const hours = Math.floor(minutesAgo / 60)
+  const remainderMinutes = minutesAgo % 60
+  const hourLabel = `${hours}h`
+  const minuteLabel = remainderMinutes > 0 ? ` ${remainderMinutes}m` : ""
+  return `${hourLabel}${minuteLabel}`
+}
+
+function getSidebarSessionPreview(progress?: AgentProgressUpdate | null): string | null {
+  if (!progress) return null
+  if (progress.userResponse) return progress.userResponse
+  if (progress.latestSummary?.actionSummary) return progress.latestSummary.actionSummary
+
+  const latestStep = progress.steps?.[progress.steps.length - 1]
+  if (latestStep?.description) return latestStep.description
+  if (latestStep?.title) return latestStep.title
+
+  if (progress.conversationHistory?.length) {
+    for (let index = progress.conversationHistory.length - 1; index >= 0; index -= 1) {
+      const message = progress.conversationHistory[index]
+      if (message.role !== "assistant" || !message.content) continue
+      return typeof message.content === "string" ? message.content : JSON.stringify(message.content)
+    }
+  }
+
+  if (progress.streamingContent?.text) return progress.streamingContent.text
+  return null
+}
+
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 
+function SessionOverflowMenu({
+  sessionTitle,
+  isPinned,
+  canRename,
+  onRename,
+  onTogglePin,
+  onArchive,
+}: {
+  sessionTitle: string
+  isPinned: boolean
+  canRename: boolean
+  onRename?: () => void
+  onTogglePin: () => void
+  onArchive: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="hover:bg-accent focus-visible:ring-ring shrink-0 rounded p-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          aria-label={`Session actions for ${sessionTitle}`}
+          title="Session actions"
+        >
+          <MoreHorizontal className="h-3 w-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {canRename && onRename && (
+          <>
+            <DropdownMenuItem onSelect={() => onRename()}>
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuItem onSelect={() => onTogglePin()}>
+          {isPinned ? "Unpin" : "Pin"}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onArchive()}>
+          Archive
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function ActiveAgentsSidebar({
   onOpenPastSessionsDialog,
+  selectedAgentId = null,
+  onSelectAgent,
+  onStartTextSession,
+  onStartVoiceSession,
+  onStartPromptSession,
+  inactiveSessionCount = 0,
+  onClearInactiveSessions,
 }: {
   onOpenPastSessionsDialog?: () => void
+  selectedAgentId?: string | null
+  onSelectAgent?: (id: string | null) => void
+  onStartTextSession?: () => void | Promise<void>
+  onStartVoiceSession?: () => void | Promise<void>
+  onStartPromptSession?: (content: string) => void | Promise<void>
+  inactiveSessionCount?: number
+  onClearInactiveSessions?: () => void | Promise<void>
 }) {
   const [isExpanded, setIsExpanded] = useState(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -78,15 +197,17 @@ export function ActiveAgentsSidebar({
 
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
-  const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
-  const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
+  const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
+  const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const togglePinSession = useAgentStore((s) => s.togglePinSession)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
   const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
-  const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
+  const [editingConversationId, setEditingConversationId] = useState<
+    string | null
+  >(null)
   const [editingTitle, setEditingTitle] = useState("")
   const skipTitleSaveOnBlurRef = useRef(false)
   const navigate = useNavigate()
@@ -109,11 +230,69 @@ export function ActiveAgentsSidebar({
     return unlisten
   }, [refetch])
 
-  const activeSessions = data?.activeSessions || []
+  const trackedActiveSessions = data?.activeSessions || []
   const recentSessions = data?.recentSessions || []
   const conversationHistory =
     (conversationHistoryQuery.data as ConversationHistoryItem[] | undefined) ||
     []
+
+  const activeSessions = useMemo<AgentSession[]>(() => {
+    const recentStatusById = new Map(
+      recentSessions.map((session) => [session.id, session.status] as const),
+    )
+    const mergedSessions = new Map(
+      trackedActiveSessions.map((session) => [session.id, session] as const),
+    )
+
+    for (const [sessionId, progress] of agentProgressById.entries()) {
+      const recentStatus = recentStatusById.get(sessionId)
+      if (recentStatus === "stopped" || recentStatus === "error") {
+        continue
+      }
+
+      const existingSession = mergedSessions.get(sessionId)
+      const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
+      const lastHistoryTimestamp = progress.conversationHistory?.[
+        progress.conversationHistory.length - 1
+      ]?.timestamp
+
+      mergedSessions.set(sessionId, {
+        id: sessionId,
+        conversationId: progress.conversationId ?? existingSession?.conversationId,
+        conversationTitle:
+          progress.conversationTitle ?? existingSession?.conversationTitle,
+        status: "active",
+        startTime:
+          existingSession?.startTime ??
+          firstHistoryTimestamp ??
+          lastHistoryTimestamp ??
+          Date.now(),
+        endTime: existingSession?.endTime,
+        currentIteration:
+          progress.currentIteration ?? existingSession?.currentIteration,
+        maxIterations: progress.maxIterations ?? existingSession?.maxIterations,
+        lastActivity: existingSession?.lastActivity,
+        errorMessage: existingSession?.errorMessage,
+        isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
+      })
+    }
+
+    return Array.from(mergedSessions.values()).sort((a, b) => {
+      const aProgress = agentProgressById.get(a.id)
+      const bProgress = agentProgressById.get(b.id)
+      const aTimestamp =
+        aProgress?.conversationHistory?.[aProgress.conversationHistory.length - 1]
+          ?.timestamp ??
+        a.endTime ??
+        a.startTime
+      const bTimestamp =
+        bProgress?.conversationHistory?.[bProgress.conversationHistory.length - 1]
+          ?.timestamp ??
+        b.endTime ??
+        b.startTime
+      return bTimestamp - aTimestamp
+    })
+  }, [trackedActiveSessions, recentSessions, agentProgressById])
 
   const allPastSessions = useMemo(() => {
     const items: SidebarSession[] = []
@@ -122,7 +301,9 @@ export function ActiveAgentsSidebar({
         .map((session) => session.conversationId)
         .filter((id): id is string => !!id),
     )
-    const seenFallbackIds = new Set<string>(activeSessions.map((session) => session.id))
+    const seenFallbackIds = new Set<string>(
+      activeSessions.map((session) => session.id),
+    )
 
     const addPastSession = (session: AgentSession, keyPrefix: string) => {
       const conversationId = session.conversationId
@@ -173,22 +354,25 @@ export function ActiveAgentsSidebar({
   )
 
   const { sidebarSessions, hasMorePastSessions } = useMemo(() => {
-    const orderedActiveSessions = orderActiveSessionsByPinnedFirst(
+    const orderedActiveSessions = orderActiveSessionsByPinnedFirst<AgentSession>(
       activeSessions,
       pinnedSessionIds,
     )
-    const activeItems: SidebarSession[] = orderedActiveSessions.map((session) => ({
-      session,
-      isPast: false,
-      key: `active:${session.id}`,
-    }))
-    const dedupedPastSessions = filterPastSessionsAgainstActiveSessions<SidebarSession>(
-      allPastSessions,
-      orderedActiveSessions,
-    ).filter((item) => {
-      const cid = item.session.conversationId
-      return !cid || !archivedSessionIds.has(cid)
-    })
+    const activeItems: SidebarSession[] = orderedActiveSessions.map(
+      (session) => ({
+        session,
+        isPast: false,
+        key: `active:${session.id}`,
+      }),
+    )
+    const dedupedPastSessions =
+      filterPastSessionsAgainstActiveSessions<SidebarSession>(
+        allPastSessions,
+        orderedActiveSessions,
+      ).filter((item) => {
+        const cid = item.session.conversationId
+        return !cid || !archivedSessionIds.has(cid)
+      })
 
     // Ensure pinned past sessions always appear, even if beyond the visible count.
     // Split into pinned (always shown) and unpinned (paginated).
@@ -203,7 +387,10 @@ export function ActiveAgentsSidebar({
       }
     }
 
-    const unpinnedSliceCount = Math.max(displayedPastSessionCount - pinnedPast.length, 0)
+    const unpinnedSliceCount = Math.max(
+      displayedPastSessionCount - pinnedPast.length,
+      0,
+    )
 
     return {
       sidebarSessions: [
@@ -214,7 +401,13 @@ export function ActiveAgentsSidebar({
       // "Has more" is based on unpinned sessions only since pinned are always shown
       hasMorePastSessions: unpinnedPast.length > unpinnedSliceCount,
     }
-  }, [activeSessions, allPastSessions, displayedPastSessionCount, pinnedSessionIds, archivedSessionIds])
+  }, [
+    activeSessions,
+    allPastSessions,
+    displayedPastSessionCount,
+    pinnedSessionIds,
+    archivedSessionIds,
+  ])
 
   const hasAnySessions = sidebarSessions.length > 0
 
@@ -252,8 +445,7 @@ export function ActiveAgentsSidebar({
     // Navigate to sessions page and focus this session
     navigate("/")
     setFocusedSessionId(sessionId)
-    // Trigger scroll to the session tile
-    setScrollToSessionId(sessionId)
+    setExpandedSessionId(sessionId)
   }
 
   const handleStopSession = async (sessionId: string, e: React.MouseEvent) => {
@@ -267,89 +459,6 @@ export function ActiveAgentsSidebar({
       }
     } catch (error) {
       console.error("Failed to stop session:", error)
-    }
-  }
-
-  const handleToggleSnooze = async (
-    sessionId: string,
-    isSnoozed: boolean,
-    e: React.MouseEvent,
-  ) => {
-    e.stopPropagation() // Prevent session focus when clicking snooze
-    logUI("[ActiveAgentsSidebar] Toggle snooze clicked", {
-      sessionId,
-      sidebarSaysIsSnoozed: isSnoozed,
-      action: isSnoozed ? "unsnooze" : "snooze",
-      focusedSessionId,
-      allSessions: activeSessions.map((s) => ({
-        id: s.id,
-        snoozed: s.isSnoozed,
-      })),
-    })
-
-    if (isSnoozed) {
-      // Unsnoozing: restore the session to foreground
-      logUI("[ActiveAgentsSidebar] Unsnoozing session")
-
-      // Update local store first so panel shows content immediately
-      setSessionSnoozed(sessionId, false)
-
-      // Focus the session
-      setFocusedSessionId(sessionId)
-
-      try {
-        // Unsnooze the session in backend
-        await tipcClient.unsnoozeAgentSession({ sessionId })
-      } catch (error) {
-        // Rollback local state only when the API call fails to keep UI and backend in sync
-        setSessionSnoozed(sessionId, true)
-        setFocusedSessionId(null)
-        console.error("Failed to unsnooze session:", error)
-        return
-      }
-
-      // UI updates after successful API call - don't rollback if these fail
-      try {
-        // Keep panel context synced to the restored session and explicitly reopen the
-        // floating panel. After a manual minimize, this button is the intentional restore path.
-        await tipcClient.focusAgentSession({ sessionId })
-        await tipcClient.setPanelMode({ mode: "agent" })
-        await tipcClient.showPanelWindow({})
-        logUI("[ActiveAgentsSidebar] Session unsnoozed and focused")
-      } catch (error) {
-        // Log UI errors but don't rollback - the backend state is already updated
-        console.error("Failed to update UI after unsnooze:", error)
-      }
-    } else {
-      // Snoozing: move session to background
-      logUI("[ActiveAgentsSidebar] Snoozing session")
-      // Update local store first
-      setSessionSnoozed(sessionId, true)
-
-      try {
-        await tipcClient.snoozeAgentSession({ sessionId })
-      } catch (error) {
-        // Rollback local state only when the API call fails to keep UI and backend in sync
-        setSessionSnoozed(sessionId, false)
-        console.error("Failed to snooze session:", error)
-        return
-      }
-
-      // UI updates after successful API call - don't rollback if these fail
-      try {
-        // Unfocus if this was the focused session
-        if (focusedSessionId === sessionId) {
-          setFocusedSessionId(null)
-        }
-        // Hide the panel window
-        await tipcClient.hidePanelWindow({})
-        logUI(
-          "[ActiveAgentsSidebar] Session snoozed, unfocused, and panel hidden",
-        )
-      } catch (error) {
-        // Log UI errors but don't rollback - the backend state is already updated
-        console.error("Failed to update UI after snooze:", error)
-      }
     }
   }
 
@@ -368,39 +477,50 @@ export function ActiveAgentsSidebar({
     setEditingTitle("")
   }, [])
 
-  const startTitleEditing = useCallback((conversationId?: string, title?: string) => {
-    if (!conversationId) return
-    setEditingConversationId(conversationId)
-    setEditingTitle(title || "Untitled session")
-  }, [])
+  const startTitleEditing = useCallback(
+    (conversationId?: string, title?: string) => {
+      if (!conversationId) return
+      setEditingConversationId(conversationId)
+      setEditingTitle(title || "Untitled session")
+    },
+    [],
+  )
 
-  const saveTitleEdit = useCallback(async (conversationId?: string, currentTitle?: string) => {
-    if (!conversationId) {
-      clearTitleEditing()
-      return
-    }
+  const saveTitleEdit = useCallback(
+    async (conversationId?: string, currentTitle?: string) => {
+      if (!conversationId) {
+        clearTitleEditing()
+        return
+      }
 
-    const nextTitle = editingTitle.trim()
-    const previousTitle = (currentTitle || "Untitled session").trim()
+      const nextTitle = editingTitle.trim()
+      const previousTitle = (currentTitle || "Untitled session").trim()
 
-    if (!nextTitle || nextTitle === previousTitle) {
-      clearTitleEditing()
-      return
-    }
+      if (!nextTitle || nextTitle === previousTitle) {
+        clearTitleEditing()
+        return
+      }
 
-    try {
-      await tipcClient.renameConversationTitle({ conversationId, title: nextTitle })
-      clearTitleEditing()
+      try {
+        await tipcClient.renameConversationTitle({
+          conversationId,
+          title: nextTitle,
+        })
+        clearTitleEditing()
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
-        queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
-        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
-      ])
-    } catch (error) {
-      console.error("Failed to rename session title:", error)
-    }
-  }, [clearTitleEditing, editingTitle, queryClient])
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["conversation", conversationId],
+          }),
+        ])
+      } catch (error) {
+        console.error("Failed to rename session title:", error)
+      }
+    },
+    [clearTitleEditing, editingTitle, queryClient],
+  )
 
   const renderEditableTitle = useCallback(
     (session: AgentSession, className: string, prefix?: string) => {
@@ -433,7 +553,7 @@ export function ActiveAgentsSidebar({
             }}
             autoFocus
             className={cn(
-              "h-6 w-full rounded border border-input bg-background px-1.5 text-xs text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring",
+              "border-input bg-background text-foreground focus-visible:border-ring h-6 w-full rounded border px-1.5 text-xs shadow-sm outline-none ring-0",
               className,
             )}
             aria-label="Rename session title"
@@ -442,21 +562,20 @@ export function ActiveAgentsSidebar({
       }
 
       return (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            startTitleEditing(conversationId, title)
-          }}
+        <span
           className={cn("min-w-0 truncate text-left", className)}
-          title={conversationId ? "Rename session title" : title}
-          disabled={!conversationId}
         >
           {prefix ? `${prefix}${title}` : title}
-        </button>
+        </span>
       )
     },
-    [clearTitleEditing, editingConversationId, editingTitle, saveTitleEdit, startTitleEditing],
+    [
+      clearTitleEditing,
+      editingConversationId,
+      editingTitle,
+      saveTitleEdit,
+      startTitleEditing,
+    ],
   )
 
   const handleHeaderClick = () => {
@@ -490,6 +609,9 @@ export function ActiveAgentsSidebar({
     },
     [allPastSessions.length, hasMorePastSessions, minimumPastSessionsNeeded],
   )
+
+  const hasLaunchControls =
+    !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
 
   return (
     <div className="px-2">
@@ -544,14 +666,89 @@ export function ActiveAgentsSidebar({
         )}
       </div>
 
+      {isExpanded && hasLaunchControls && (
+        <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
+          <div className="flex w-full flex-wrap items-center gap-2">
+            {onSelectAgent && (
+              <div className="min-w-0 flex-1">
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onSelectAgent={onSelectAgent}
+                  compact
+                />
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              {onClearInactiveSessions && inactiveSessionCount > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                  onClick={() => void onClearInactiveSessions()}
+                  title={`Clear ${inactiveSessionCount} completed sessions`}
+                  aria-label={`Clear ${inactiveSessionCount} completed sessions`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                </Button>
+              )}
+              {onStartPromptSession && (
+                <PredefinedPromptsMenu
+                  onSelectPrompt={onStartPromptSession}
+                  buttonSize="sm"
+                  className="h-8 w-8 rounded-md border border-input bg-background shadow-sm"
+                />
+              )}
+              {onStartVoiceSession && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                  onClick={() => void onStartVoiceSession()}
+                  title="Start voice session"
+                  aria-label="Start voice session"
+                >
+                  <Mic className="h-3.5 w-3.5 shrink-0" />
+                </Button>
+              )}
+              {onStartTextSession && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                  onClick={() => void onStartTextSession()}
+                  title="Start text session"
+                  aria-label="Start text session"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isExpanded && (
         <div
-          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
+          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1 scrollbar-none"
           onScroll={handleSidebarSessionsScroll}
         >
           {sidebarSessions.map(({ session, isPast, key }) => {
             const isFocused = focusedSessionId === session.id
+            const isSessionExpanded = expandedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
+            const conversationTimestamp =
+              sessionProgress?.conversationHistory &&
+              sessionProgress.conversationHistory.length > 0
+                ? sessionProgress.conversationHistory[
+                    sessionProgress.conversationHistory.length - 1
+                  ]?.timestamp
+                : undefined
+            const lastMessageMinutesAgo = formatMinutesAgo(
+              getSessionLastMessageTimestamp(session, conversationTimestamp),
+            )
             const hasPendingApproval =
               !isPast && !!sessionProgress?.pendingToolApproval
             const conversationState = sessionProgress?.conversationState
@@ -569,10 +766,12 @@ export function ActiveAgentsSidebar({
             // Use store's isSnoozed for active sessions (matches main view), backend for past
             const isSnoozed = isPast
               ? false
-              : (sessionProgress?.isSnoozed ?? session.isSnoozed ?? false)
+              : (sessionProgress?.isSnoozed ?? false)
 
             if (isPast) {
-              const isPinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
+              const isPinned = session.conversationId
+                ? pinnedSessionIds.has(session.conversationId)
+                : false
               return (
                 <div
                   key={key}
@@ -585,166 +784,176 @@ export function ActiveAgentsSidebar({
                       navigate(`/${session.conversationId}`)
                     }
                   }}
-                  className={cn(
-                    "group text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                className={cn(
+                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  <span className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    session.status === "error" ? "bg-red-500" : "bg-green-500",
-                  )} />
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      session.status === "error"
+                        ? "bg-red-500"
+                        : "bg-muted-foreground",
+                    )}
+                  />
                   {renderEditableTitle(session, "flex-1")}
+                  {lastMessageMinutesAgo && (
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
+                      {lastMessageMinutesAgo}
+                    </span>
+                  )}
                   {session.conversationId && (
-                    <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            toggleArchiveSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title="Archive session"
-                        aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
-                      >
-                        <Archive className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            togglePinSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title={isPinned ? "Unpin session" : "Pin session"}
-                        aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                        aria-pressed={isPinned}
-                      >
-                        <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
-                      </button>
+                    <div
+                      className={cn(
+                        "absolute right-1.5 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                        "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                        "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                        "focus-within:pointer-events-auto focus-within:opacity-100",
+                      )}
+                    >
+                      <SessionOverflowMenu
+                        sessionTitle={
+                          session.conversationTitle || "Untitled session"
+                        }
+                        isPinned={isPinned}
+                        canRename={!!session.conversationId}
+                        onRename={() =>
+                          startTitleEditing(
+                            session.conversationId,
+                            session.conversationTitle,
+                          )
+                        }
+                        onTogglePin={() =>
+                          togglePinSession(session.conversationId!)
+                        }
+                        onArchive={() =>
+                          toggleArchiveSession(session.conversationId!)
+                        }
+                      />
                     </div>
                   )}
                 </div>
               )
             }
 
+            const isVisiblyActive = isSessionExpanded || isFocused || !isSnoozed
+
             // Active session row
-            // Status colors: amber for pending approval, blue for active, gray for snoozed
+            // Retained completed turns should stay visually active until the user dismisses them.
             const statusDotColor = hasPendingApproval
               ? "bg-amber-500"
               : conversationState === "blocked"
                 ? "bg-red-500"
-                : conversationState === "complete"
+                : isVisiblyActive
                   ? "bg-green-500"
-              : isSnoozed
-                ? "bg-muted-foreground"
-                : "bg-blue-500"
+                  : "bg-muted-foreground"
 
-            // Get agent/profile name from progress data
-            const agentName = sessionProgress?.profileName
-            const isActivePinned = session.conversationId ? pinnedSessionIds.has(session.conversationId) : false
+            const isActivePinned = session.conversationId
+              ? pinnedSessionIds.has(session.conversationId)
+              : false
+            const sessionPreview = getSidebarSessionPreview(sessionProgress)
 
             return (
               <div
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                  "group relative flex cursor-pointer items-start gap-1 rounded px-1.5 py-1.5 pr-2 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
-                    : isFocused
-                      ? "bg-blue-500/10"
-                      : "hover:bg-accent/50",
+                    : isSessionExpanded
+                      ? "bg-blue-500/15 border-l-2 border-blue-500"
+                      : isFocused
+                        ? "bg-blue-500/10"
+                        : "hover:bg-accent/50",
                 )}
               >
                 {/* Status dot */}
                 <span
                   className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    "mt-1 h-1 w-1 shrink-0 rounded-full",
                     statusDotColor,
-                    !isSnoozed && !hasPendingApproval && "animate-pulse",
+                    isVisiblyActive && !hasPendingApproval && "animate-pulse",
                   )}
                 />
-                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  {renderEditableTitle(
-                    session,
-                    cn(
-                      hasPendingApproval
-                        ? "text-amber-700 dark:text-amber-300"
-                        : isSnoozed
-                          ? "text-muted-foreground"
-                          : "text-foreground",
-                    ),
-                    hasPendingApproval ? "⚠ " : undefined,
-                  )}
-                  {/* Agent name indicator */}
-                  {agentName && (
-                    <span
-                      className="text-[10px] text-primary/60 truncate"
-                      title={`Agent: ${agentName}`}
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div
+                    className="relative z-10 flex min-w-0 items-start pr-11"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      handleSessionClick(session.id)
+                    }}
+                  >
+                    {renderEditableTitle(
+                      session,
+                      cn(
+                        "flex-1 text-[12px] font-medium leading-4",
+                        hasPendingApproval
+                          ? "text-amber-700 dark:text-amber-300"
+                          : !isVisiblyActive
+                            ? "text-muted-foreground"
+                            : "text-foreground",
+                      ),
+                      hasPendingApproval ? "⚠ " : undefined,
+                    )}
+                  </div>
+                  {(sessionPreview || lastMessageMinutesAgo) && (
+                    <div
+                      className={cn(
+                        "flex min-w-0 items-center gap-1.5 pr-11",
+                        !sessionPreview && "justify-end",
+                      )}
                     >
-                      {agentName}
-                    </span>
+                      {sessionPreview && (
+                        <span
+                          className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground"
+                          title={sessionPreview}
+                        >
+                          {sessionPreview}
+                        </span>
+                      )}
+                      {lastMessageMinutesAgo && (
+                      <span
+                        className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80"
+                      >
+                        {lastMessageMinutesAgo}
+                      </span>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div className={cn(
-                  "hidden shrink-0 items-center gap-0.5",
-                  "group-hover:flex group-focus-within:flex",
-                  isFocused && "!flex",
-                )}>
-                  {session.conversationId && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            toggleArchiveSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title="Archive session"
-                        aria-label={`Archive ${session.conversationTitle || "Untitled session"}`}
-                      >
-                        <Archive className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (session.conversationId) {
-                            togglePinSession(session.conversationId)
-                          }
-                        }}
-                        className="shrink-0 rounded p-0.5 hover:bg-accent transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        title={isActivePinned ? "Unpin session" : "Pin session"}
-                        aria-label={`${isActivePinned ? "Unpin" : "Pin"} ${session.conversationTitle || "Untitled session"}`}
-                        aria-pressed={isActivePinned}
-                      >
-                        <Pin className={cn("h-3 w-3", isActivePinned && "fill-current text-foreground")} />
-                      </button>
-                    </>
+                <div
+                  className={cn(
+                    "absolute right-1 top-1 flex z-20 items-center gap-0 opacity-0 transition-opacity",
+                    "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                    "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                    "focus-within:pointer-events-auto focus-within:opacity-100",
+                    (isFocused || isSessionExpanded) && "pointer-events-auto opacity-100",
                   )}
-                  <button
-                    onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
-                    className="hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 transition-all"
-                    title={
-                      isSnoozed
-                        ? "Restore"
-                        : "Minimize - run in background"
-                    }
-                  >
-                    {isSnoozed ? (
-                      <Maximize2 className="h-3 w-3" />
-                    ) : (
-                      <Minimize2 className="h-3 w-3" />
-                    )}
-                  </button>
+                >
+                  {session.conversationId && (
+                    <SessionOverflowMenu
+                      sessionTitle={
+                        session.conversationTitle || "Untitled session"
+                      }
+                      isPinned={isActivePinned}
+                      canRename={!!session.conversationId}
+                      onRename={() =>
+                        startTitleEditing(
+                          session.conversationId,
+                          session.conversationTitle,
+                        )
+                      }
+                      onTogglePin={() =>
+                        togglePinSession(session.conversationId!)
+                      }
+                      onArchive={() =>
+                        toggleArchiveSession(session.conversationId!)
+                      }
+                    />
+                  )}
                   <button
                     onClick={(e) => handleStopSession(session.id, e)}
                     className="hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 transition-all"

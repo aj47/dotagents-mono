@@ -40,6 +40,70 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RELEASE_DIR="$ROOT_DIR/release"
 
+load_env_file() {
+    local env_file="$1"
+
+    if [ -f "$env_file" ]; then
+        echo "🔐 Loading env from $env_file"
+        set -a
+        # shellcheck disable=SC1090
+        . "$env_file"
+        set +a
+    fi
+}
+
+load_release_env() {
+    if [ -n "${DOTAGENTS_RELEASE_ENV_FILE:-}" ]; then
+        load_env_file "$DOTAGENTS_RELEASE_ENV_FILE"
+    else
+        load_env_file "$HOME/.config/dotagents/release.env"
+        load_env_file "$HOME/.dotagents/release.env"
+        load_env_file "$ROOT_DIR/.env"
+        load_env_file "$ROOT_DIR/.env.local"
+        load_env_file "$ROOT_DIR/apps/desktop/.env"
+        load_env_file "$ROOT_DIR/apps/desktop/.env.local"
+    fi
+
+    if [ -z "${APPLE_DEVELOPER_ID:-}" ] && [ -n "${CSC_NAME:-}" ]; then
+        export APPLE_DEVELOPER_ID="$CSC_NAME"
+    fi
+
+}
+
+require_env() {
+    local env_name="$1"
+    if [ -z "${!env_name:-}" ]; then
+        echo "❌ Missing required release env: $env_name"
+        exit 1
+    fi
+}
+
+validate_macos_release_env() {
+    require_env CSC_NAME
+    require_env APPLE_DEVELOPER_ID
+
+    if [ -n "${APPLE_API_KEY:-}" ] && [ -n "${APPLE_API_KEY_ID:-}" ] && [ -n "${APPLE_API_ISSUER:-}" ]; then
+        export ENABLE_HARDENED_RUNTIME="${ENABLE_HARDENED_RUNTIME:-true}"
+        return 0
+    fi
+
+    require_env APPLE_TEAM_ID
+    require_env APPLE_ID
+    require_env APPLE_APP_SPECIFIC_PASSWORD
+    export ENABLE_HARDENED_RUNTIME="${ENABLE_HARDENED_RUNTIME:-true}"
+}
+
+prefer_api_key_notarization() {
+    if [ -n "${APPLE_API_KEY:-}" ] && [ -n "${APPLE_API_KEY_ID:-}" ] && [ -n "${APPLE_API_ISSUER:-}" ]; then
+        unset APPLE_ID
+        unset APPLE_APP_SPECIFIC_PASSWORD
+        echo "🔐 Using App Store Connect API key for notarization"
+    fi
+}
+
+load_release_env
+prefer_api_key_notarization
+
 echo "🚀 DotAgents Release Build Script"
 echo "================================"
 echo "Root directory: $ROOT_DIR"
@@ -60,15 +124,14 @@ build_macos() {
     echo ""
     echo "🍎 Building macOS DMG..."
     echo "------------------------"
+
+    validate_macos_release_env
     
     cd "$ROOT_DIR/apps/desktop"
     
     # Build the Rust binary first
     echo "🦀 Building Rust binary..."
     pnpm run build-rs
-    
-    # Set hardened runtime for production
-    export ENABLE_HARDENED_RUNTIME=true
     
     # Build DMG for both architectures (skip type checking for now)
     echo "📦 Building DMG packages..."

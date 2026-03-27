@@ -2166,12 +2166,17 @@ class ACPService extends EventEmitter {
         }
       }
 
-      // Also check session output collected from notifications
-      const sessionOutput = this.getSessionOutput(sessionId)
-      if (sessionOutput) {
-        for (const block of sessionOutput.contentBlocks) {
-          if (block.type === "text" && block.text && !responseText.includes(block.text)) {
-            responseText += block.text + "\n"
+      // Only fall back to streamed session output when the direct prompt response is empty.
+      // Some ACP agents stream verbose progress text during execution but return a concise
+      // final answer in the session/prompt response. Appending all streamed text here can leak
+      // internal reasoning/progress into delegated results returned to the parent agent.
+      if (!responseText.trim()) {
+        const sessionOutput = this.getSessionOutput(sessionId)
+        if (sessionOutput) {
+          for (const block of sessionOutput.contentBlocks) {
+            if (block.type === "text" && block.text) {
+              responseText += block.text + "\n"
+            }
           }
         }
       }

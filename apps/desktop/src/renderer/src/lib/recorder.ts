@@ -3,6 +3,35 @@ import { playSound } from "./sound"
 
 const MIN_DECIBELS = -45
 
+const isInvalidAudioInputDeviceError = (error: unknown) => {
+  if (!error || typeof error !== "object") return false
+  const name = "name" in error ? error.name : undefined
+  return name === "OverconstrainedError" || name === "NotFoundError"
+}
+
+const getUserMediaAudioStream = async (deviceId?: string) => {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      video: false,
+    })
+  } catch (error) {
+    if (!deviceId || !isInvalidAudioInputDeviceError(error)) {
+      throw error
+    }
+
+    console.warn("[Recorder] Configured audio input device unavailable, falling back to system default", {
+      deviceId,
+      error,
+    })
+
+    return navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false,
+    })
+  }
+}
+
 const calculateRMS = (data: Uint8Array) => {
   let sumSquares = 0
   for (let i = 0; i < data.length; i++) {
@@ -80,10 +109,7 @@ export class Recorder extends EventEmitter<{
   async startRecording(deviceId?: string) {
     this.stopRecording()
 
-    const stream = (this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
-      video: false,
-    }))
+    const stream = (this.stream = await getUserMediaAudioStream(deviceId))
 
     const mediaRecorder = (this.mediaRecorder = new MediaRecorder(stream, {
       audioBitsPerSecond: 128e3,

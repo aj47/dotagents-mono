@@ -37,6 +37,7 @@ export type ChatMessage = {
   timestamp?: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
+  variant?: 'delegation';
 };
 
 export type ChatResponse = ChatApiResponse;

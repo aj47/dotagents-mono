@@ -41,14 +41,14 @@ function formatWorkingNotesForPrompt(notes: KnowledgeNote[], maxNotes: number = 
     .join("\n")
 }
 
-export function getEffectiveSystemPrompt(customSystemPrompt?: string): string {
+function getEffectiveSystemPrompt(customSystemPrompt?: string): string {
   if (customSystemPrompt && customSystemPrompt.trim()) {
     return customSystemPrompt.trim()
   }
   return DEFAULT_SYSTEM_PROMPT
 }
 
-export const AGENT_MODE_ADDITIONS = `
+const AGENT_MODE_ADDITIONS = `
 
 AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.
 
@@ -180,7 +180,7 @@ function formatRuntimeToolInfo(
  * Generate ACP routing prompt addition based on available agents.
  * Returns an empty string if no agents are ready.
  */
-export function getACPRoutingPromptAddition(): string {
+function getACPRoutingPromptAddition(): string {
   // Get agents from acpService which has runtime status
   const agentStatuses = acpService.getAgents()
 
@@ -209,7 +209,7 @@ export function getACPRoutingPromptAddition(): string {
  * Generate prompt addition for the internal agent.
  * This instructs the agent on when and how to use the internal agent for parallel work.
  */
-export function getSubSessionPromptAddition(): string {
+function getSubSessionPromptAddition(): string {
   const info = getInternalAgentInfo()
 
   return `
@@ -279,6 +279,11 @@ export function constructSystemPrompt(
   excludeAgentId?: string,
 ): string {
   let prompt = getEffectiveSystemPrompt(customSystemPrompt)
+
+  // Inject local date/time so the LLM can reason about relative dates and timestamps.
+  const now = new Date()
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  prompt += `\n\nCurrent local time: ${now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: tz })} (${tz})`
 
   if (isAgentMode) {
     prompt += AGENT_MODE_ADDITIONS
@@ -416,8 +421,8 @@ export function constructMinimalSystemPrompt(
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
   if (skillsIndex?.trim()) {
     prompt +=
-      " Skills are optional instruction modules. Before using a skill, call load_skill_instructions with { skillId }."
-    prompt += `\n\nAVAILABLE AGENT SKILLS (IDs):\n${skillsIndex.trim()}`
+      " Skills are optional instruction modules. Call load_skill_instructions({ skillId: \"<id>\" }) using the exact id shown before the dash."
+    prompt += `\n\nAVAILABLE SKILLS:\n${skillsIndex.trim()}`
   }
 
   const list = (tools: Array<{ name: string; inputSchema?: any }>) =>

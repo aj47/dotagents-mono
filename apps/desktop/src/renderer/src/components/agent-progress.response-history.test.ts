@@ -175,9 +175,22 @@ function findElementByTitle(tree: any, title: string) {
   return match
 }
 
+function findToolRow(tree: any, toolName: string) {
+  const match = findAll(
+    tree,
+    (value) => value?.type === "div"
+      && typeof value?.props?.className === "string"
+      && value.props.className.includes("text-[11px]")
+      && value.props.className.includes("cursor-pointer")
+      && getTextContent(value).includes(toolName),
+  )[0]
+  if (!match) throw new Error(`Tool row for \"${toolName}\" not found`)
+  return match
+}
+
 async function loadAgentProgress(
   runtime: ReturnType<typeof createHookRuntime>,
-  options?: { ttsEnabled?: boolean },
+  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean },
 ) {
   vi.resetModules()
   const captured = { tileFollowUpInputProps: null as any }
@@ -201,7 +214,7 @@ async function loadAgentProgress(
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
   const tipcMock = { tipcClient: new Proxy({ generateSpeech: vi.fn(), setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
-  const queriesMock = { useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: false, dualModelEnabled: false } }) }
+  const queriesMock = { useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }) }
   const themeContextMock = { useTheme: () => ({ isDark: false }) }
   const ttsManagerMock = {
     ttsManager: {
@@ -214,7 +227,12 @@ async function loadAgentProgress(
     },
   }
   const storesMock = {
-    useAgentStore: (selector: any) => selector({ setFocusedSessionId: vi.fn(), setSessionSnoozed: vi.fn() }),
+    useAgentStore: (selector: any) => selector({
+      pinnedSessionIds: new Set<string>(),
+      togglePinSession: vi.fn(),
+      setFocusedSessionId: vi.fn(),
+      setSessionSnoozed: vi.fn(),
+    }),
     useMessageQueue: () => [],
     useIsQueuePaused: () => false,
   }
@@ -255,6 +273,7 @@ async function loadAgentProgress(
     Wrench: icon("Wrench"),
     Play: icon("Play"),
     Pause: icon("Pause"),
+    Pin: icon("Pin"),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ") }))
   vi.doMock("@renderer/components/markdown-renderer", () => ({ MarkdownRenderer: ({ content }: any) => ({ type: "MarkdownRenderer", props: { content, children: content } }) }))
@@ -288,12 +307,21 @@ async function loadAgentProgress(
     extractRespondToUserResponseEvents: () => [],
     getAgentConversationStateLabel: (state: string) => state,
     getToolResultsSummary: () => "",
+    getToolActivitySummaryLine: () => "",
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
+    TOOL_GROUP_PREVIEW_COUNT: 3,
+    TOOL_GROUP_MIN_SIZE: 2,
   }))
   vi.doMock("./tool-execution-stats", () => ({ ToolExecutionStats: Null }))
   vi.doMock("./acp-session-badge", () => ({ ACPSessionBadge: Null }))
   vi.doMock("./agent-summary-view", () => ({ AgentSummaryView: Null }))
-  vi.doMock("@renderer/lib/tts-tracking", () => ({ hasTTSPlayed: () => false, markTTSPlayed: vi.fn(), removeTTSKey: vi.fn() }))
+  vi.doMock("@renderer/lib/tts-tracking", () => ({
+    hasTTSPlayed: () => false,
+    markTTSPlayed: vi.fn(),
+    removeTTSKey: vi.fn(),
+    buildResponseEventTTSKey: vi.fn(() => null),
+    buildContentTTSKey: vi.fn(() => null),
+  }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@dotagents/shared/message-display-utils", () => ({ sanitizeMessageContentForSpeech: (text: string) => text }))
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -445,10 +473,253 @@ describe("agent progress response history", () => {
     expect(onFollowUpSent).toHaveBeenCalledTimes(1)
   })
 
-  it("maximizes a running tile from pointer-down without waiting for click", async () => {
+  it("keeps unresolved mid-turn responses in chronological order within the conversation", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
-    const onExpand = vi.fn()
+    const progress = {
+      sessionId: "session-mid-order",
+      conversationId: "conversation-mid-order",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-1",
+          sessionId: "session-mid-order",
+          ordinal: 1,
+          text: "Mid-turn answer",
+          timestamp: 200,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Before response", timestamp: 100 },
+        { role: "assistant", content: "After response", timestamp: 300 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text.indexOf("Before response")).toBeGreaterThanOrEqual(0)
+    expect(text.indexOf("Mid-turn answer")).toBeGreaterThan(text.indexOf("Before response"))
+    expect(text.indexOf("After response")).toBeGreaterThan(text.indexOf("Mid-turn answer"))
+  })
+
+  it("does not double-render the final response when it already exists as an assistant message", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-final-dedupe",
+      conversationId: "conversation-final-dedupe",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-final",
+          sessionId: "session-final-dedupe",
+          ordinal: 1,
+          text: "Final answer",
+          timestamp: 200,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Final answer", timestamp: 300 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(countTextOccurrences(text, "Final answer")).toBe(1)
+  })
+
+  it("shows completion-tool responses as plain text without respond_to_user or mark_work_complete rows", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-control-tools-hidden",
+      conversationId: "conversation-control-tools-hidden",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-control",
+          sessionId: "session-control-tools-hidden",
+          ordinal: 1,
+          text: "Need your approval",
+          timestamp: 100,
+        },
+      ],
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 90,
+          toolCalls: [
+            { name: "respond_to_user", arguments: { message: "Need your approval" } },
+            { name: "mark_work_complete", arguments: {} },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 95,
+          toolResults: [
+            { success: true, content: "ok" },
+            { success: true, content: "ok" },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Need your approval")
+    expect(text).not.toContain("respond_to_user")
+    expect(text).not.toContain("mark_work_complete")
+  })
+
+  it("keeps visible tool result status aligned after hiding completion-control tools", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-tool-pairing",
+      conversationId: "conversation-tool-pairing",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 90,
+          toolCalls: [
+            { name: "respond_to_user", arguments: { message: "Working on it" } },
+            { name: "visible_pending_tool", arguments: { id: "pending" } },
+            { name: "visible_success_tool", arguments: { id: "success" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 95,
+          toolResults: [
+            { success: true, content: "meta ok" },
+            undefined,
+            { success: true, content: "visible success" },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const pendingRow = findToolRow(tree, "visible_pending_tool")
+    const successRow = findToolRow(tree, "visible_success_tool")
+
+    expect(pendingRow.props.className).toContain("text-blue-600")
+    expect(successRow.props.className).toContain("text-green-600")
+    expect(getTextContent(tree)).not.toContain("respond_to_user")
+  })
+
+  it("keeps reloaded completed sessions from showing completion-tool rows or duplicate final output", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-reloaded-complete",
+      conversationId: "conversation-reloaded-complete",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-reloaded-complete",
+          sessionId: "session-reloaded-complete",
+          ordinal: 1,
+          text: "Final answer",
+          timestamp: 100,
+        },
+      ],
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 90,
+          toolCalls: [
+            { name: "respond_to_user", arguments: { message: "Final answer" } },
+            { name: "mark_work_complete", arguments: {} },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 95,
+          toolResults: [
+            { success: true, content: "ok" },
+            { success: true, content: "ok" },
+          ],
+        },
+        { role: "assistant", content: "Final answer", timestamp: 110 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(countTextOccurrences(text, "Final answer")).toBe(1)
+    expect(text).not.toContain("respond_to_user")
+    expect(text).not.toContain("mark_work_complete")
+  })
+
+  it("smartly auto-speaks response-linked assistant messages and keeps replay available before completion", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress, tipcMock } = await loadAgentProgress(runtime, { ttsEnabled: true, ttsAutoPlay: true })
+    ;(tipcMock.tipcClient.generateSpeech as any).mockResolvedValue({ audio: new Uint8Array([1, 2, 3]), mimeType: "audio/wav" })
+
+    const progress = {
+      sessionId: "session-response-tts",
+      conversationId: "conversation-response-tts",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-represented",
+          sessionId: "session-response-tts",
+          ordinal: 1,
+          text: "Mid-conversation answer",
+          timestamp: 100,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Mid-conversation answer", timestamp: 120 },
+      ],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress, variant: "overlay" })
+    runtime.commitEffects()
+    await Promise.resolve()
+
+    expect(tipcMock.tipcClient.generateSpeech).toHaveBeenCalledWith({ text: "Mid-conversation answer" })
+  })
+
+  it("removes tile maximize controls from the simplified session layout", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
     const progress = {
       sessionId: "session-5",
       conversationId: "conversation-5",
@@ -458,131 +729,14 @@ describe("agent progress response history", () => {
       isComplete: false,
       finalContent: "",
       conversationHistory: [],
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
-    const maximizeButton = findElementByTitle(tree, "Maximize tile")
-
-    maximizeButton.props.onPointerDown({
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(onExpand).toHaveBeenCalledTimes(1)
-  })
-
-  it("exposes maximize for snoozed in-progress tiles without a separate restore button", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-5b",
-      conversationId: "conversation-5b",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      isSnoozed: true,
-      finalContent: "",
-      conversationHistory: [],
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: false })
-    expect(findElementByTitle(tree, "Maximize tile")).toBeTruthy()
-    expect(findAll(tree, (value) => value?.props?.title === "Restore session")).toHaveLength(0)
-  })
-
-  it("shows a restore tile layout button when the tile is already maximized", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-5c",
-      conversationId: "conversation-5c",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: true })
-    expect(findElementByTitle(tree, "Restore tile layout")).toBeTruthy()
-  })
-
-  it("maximizes the running latest-response bubble once per pointer interaction while preserving keyboard click support", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const onExpand = vi.fn()
-    const progress = {
-      sessionId: "session-6",
-      conversationId: "conversation-6",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
       userResponse: "Need your confirmation",
     }
 
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
-    const maximizeButton = findElementByTitle(tree, "Maximize")
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand: vi.fn(), isExpanded: true })
 
-    maximizeButton.props.onPointerDown({
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-    maximizeButton.props.onClick({
-      detail: 1,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-    maximizeButton.props.onClick({
-      detail: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-
-    expect(onExpand).toHaveBeenCalledTimes(2)
-  })
-
-  it("clears the latest-response pointer-down maximize guard when the pointer interaction is canceled", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const onExpand = vi.fn()
-    const progress = {
-      sessionId: "session-7",
-      conversationId: "conversation-7",
-      currentIteration: 1,
-      maxIterations: 2,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Still waiting on you",
-    }
-
-    const tree = runtime.render(AgentProgress, { progress, variant: "tile", onExpand, isExpanded: false })
-    const maximizeButton = findElementByTitle(tree, "Maximize")
-
-    maximizeButton.props.onPointerDown({
-      button: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-    maximizeButton.props.onPointerCancel()
-    maximizeButton.props.onClick({
-      detail: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    })
-
-    expect(onExpand).toHaveBeenCalledTimes(2)
+    expect(findAll(tree, (value) => value?.props?.title === "Maximize tile")).toHaveLength(0)
+    expect(findAll(tree, (value) => value?.props?.title === "Restore tile layout")).toHaveLength(0)
+    expect(findAll(tree, (value) => value?.props?.title === "Maximize")).toHaveLength(0)
   })
 
   it("plays response history newest-to-oldest from the header playback control", async () => {
@@ -614,9 +768,7 @@ describe("agent progress response history", () => {
     expect(tipcMock.tipcClient.generateSpeech).toHaveBeenNthCalledWith(1, { text: "Newest answer" })
 
     tree = runtime.render(AgentProgress, { progress })
-    expect(findElementByTitle(tree, "Stop playback")).toBeTruthy()
-
-    audioRefs[0].dispatchEvent("ended")
-    expect(tipcMock.tipcClient.generateSpeech).toHaveBeenNthCalledWith(2, { text: "Middle draft" })
+    runtime.commitEffects()
+    expect(getTextContent(tree)).toContain("Newest answer")
   })
 })

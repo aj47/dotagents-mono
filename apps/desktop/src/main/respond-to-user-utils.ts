@@ -41,7 +41,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | und
   return combined.length > 0 ? combined : undefined
 }
 
-export function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallLike[]): string | undefined {
+function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallLike[]): string | undefined {
   if (!Array.isArray(toolCalls) || toolCalls.length === 0) return undefined
 
   let latestResponse: string | undefined
@@ -74,21 +74,11 @@ export function getLatestRespondToUserContentFromConversationHistory(
   return latestResponse
 }
 
-export function getLatestRespondToUserEventFromResponseEvents(
+function getLatestRespondToUserEventFromResponseEvents(
   responseEvents?: AgentUserResponseEvent[],
 ): AgentUserResponseEvent | undefined {
   if (!Array.isArray(responseEvents) || responseEvents.length === 0) return undefined
   return [...responseEvents].sort((a, b) => a.ordinal - b.ordinal)[responseEvents.length - 1]
-}
-
-export function getRespondToUserHistoryFromResponseEvents(
-  responseEvents?: AgentUserResponseEvent[],
-): string[] {
-  if (!Array.isArray(responseEvents) || responseEvents.length <= 1) return []
-  return [...responseEvents]
-    .sort((a, b) => a.ordinal - b.ordinal)
-    .slice(0, -1)
-    .map((event) => event.text)
 }
 
 export function resolveLatestUserFacingResponse({

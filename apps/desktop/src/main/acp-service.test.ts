@@ -482,9 +482,12 @@ describe("ACP Service", () => {
 
       let injectedClientToken: string | undefined
       const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
-      sendRequestSpy.mockImplementation(async (_agentName: string, method: string, params: {
-        mcpServers?: Array<{ url?: string }>
-      }) => {
+      sendRequestSpy.mockImplementation(async (...args: unknown[]) => {
+        const [, method, params] = args as [
+          string,
+          string,
+          { mcpServers?: Array<{ url?: string }> },
+        ]
         const injectedServerUrl = params.mcpServers?.[0]?.url
         expect(injectedServerUrl).toContain("/mcp/")
         const nextToken = decodeURIComponent(injectedServerUrl!.split("/mcp/")[1]!)
@@ -588,6 +591,70 @@ describe("ACP Service", () => {
       )
 
       rmSync(workspaceDir, { recursive: true, force: true })
+    })
+  })
+
+  describe("sendPrompt", () => {
+    it("prefers direct prompt response content over streamed session/update text", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      vi.spyOn(acpService as any, "sendRequest").mockImplementation(async () => {
+        acpService.emit("notification", {
+          agentName: "test-agent",
+          method: "session/update",
+          params: {
+            sessionId: "session-final-answer",
+            update: {
+              sessionUpdate: "agent_message_chunk",
+              text: "Working through the task with detailed internal progress",
+            },
+          },
+        })
+
+        return {
+          content: [{ type: "text", text: "Concise final answer" }],
+        }
+      })
+
+      const result = await acpService.sendPrompt("test-agent", "session-final-answer", "Do the thing")
+
+      expect(result).toEqual({
+        success: true,
+        response: "Concise final answer",
+        stopReason: undefined,
+      })
+    })
+
+    it("falls back to streamed session/update text when the prompt response has no text", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      vi.spyOn(acpService as any, "sendRequest").mockImplementation(async () => {
+        acpService.emit("notification", {
+          agentName: "test-agent",
+          method: "session/update",
+          params: {
+            sessionId: "session-stream-only",
+            update: {
+              sessionUpdate: "agent_message_chunk",
+              text: "Streamed final answer",
+            },
+          },
+        })
+
+        return {
+          stopReason: "end_turn",
+        }
+      })
+
+      const result = await acpService.sendPrompt("test-agent", "session-stream-only", "Do the thing")
+
+      expect(result).toEqual({
+        success: true,
+        response: "Streamed final answer",
+        stopReason: "end_turn",
+      })
     })
   })
 

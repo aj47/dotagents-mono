@@ -47,7 +47,14 @@ vi.mock('@dotagents/shared', () => ({
   sanitizeMessageContentForDisplay: (content: string) => content,
 }))
 
-import { clearArchiveFrontier, clearContextRefs, readMoreContext, shrinkMessagesForLLM } from './context-budget'
+import {
+  clearActualTokenUsage,
+  clearArchiveFrontier,
+  clearContextRefs,
+  readMoreContext,
+  recordActualTokenUsage,
+  shrinkMessagesForLLM,
+} from './context-budget'
 
 describe('shrinkMessagesForLLM replacement policy', () => {
   beforeEach(() => {
@@ -57,11 +64,22 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-archive')
     clearArchiveFrontier('session-live-tail')
     clearArchiveFrontier('session-protected-tail')
+    clearArchiveFrontier('session-actual-scale')
+    clearArchiveFrontier('session-bracket-log')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
     clearContextRefs('session-live-tail')
     clearContextRefs('session-protected-tail')
+    clearContextRefs('session-actual-scale')
+    clearContextRefs('session-bracket-log')
+    clearActualTokenUsage('session-truncate')
+    clearActualTokenUsage('session-batch')
+    clearActualTokenUsage('session-archive')
+    clearActualTokenUsage('session-live-tail')
+    clearActualTokenUsage('session-protected-tail')
+    clearActualTokenUsage('session-actual-scale')
+    clearActualTokenUsage('session-bracket-log')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -95,6 +113,66 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const readResult = readMoreContext('session-truncate', contextRef!, { mode: 'tail', maxChars: 120 })
     expect(readResult).toEqual(expect.objectContaining({ success: true, contextRef }))
     expect(String(readResult.excerpt)).toContain('x'.repeat(50))
+  })
+
+  it('keeps actual-token scaling after aggressive truncation and preserves the original budget baseline', async () => {
+    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      actualInputTokens: 2000,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    expect(result.appliedStrategies).toContain('minimal_system_prompt')
+    expect(result.estTokensBefore).toBe(2000)
+    expect(result.estTokensAfter).toBeGreaterThan(600)
+  })
+
+  it('preserves the initial token baseline when actual usage comes from session state', async () => {
+    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+    recordActualTokenUsage('session-actual-scale', 2100, 120)
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-actual-scale',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    expect(result.estTokensBefore).toBe(2100)
+    expect(result.estTokensAfter).toBeGreaterThan(600)
+  })
+
+  it('does not treat bracketed user logs as mapped tool results or JSON payloads', async () => {
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 10000,
+    })
+
+    const bracketedLog = `[INFO] ${'x'.repeat(5500)}`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-bracket-log',
+      lastNMessages: 1,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'keep this log verbatim' },
+        { role: 'assistant', content: 'acknowledged' },
+        { role: 'user', content: bracketedLog },
+      ],
+    })
+
+    expect(result.appliedStrategies).not.toContain('aggressive_truncate')
+    expect(result.messages[result.messages.length - 1]?.content).toBe(bracketedLog)
   })
 
   it('batch-summarizes contiguous oversized conversational messages in one call', async () => {
@@ -136,7 +214,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const messages = [
       { role: 'system', content: 'system prompt' },
       { role: 'user', content: 'Original task request' },
-      ...Array.from({ length: 28 }, (_, index) => ({
+      ...Array.from({ length: 48 }, (_, index) => ({
         role: index % 2 === 0 ? 'assistant' : 'user',
         content: `message-${index} ${'z'.repeat(80)}`,
       })),
@@ -193,19 +271,20 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(firstMatch.excerpt).toContain(longQuery)
   })
 
-  it('keeps the live tail when archive frontier has no overflow on a later pass', async () => {
+  it('does not keep updating archived session summary when there is no new overflow', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
     Object.assign(mockConfig, {
       mcpContextSummarizeCharThreshold: 10000,
-      mcpMaxContextTokensOverride: 400,
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
     })
 
     const messages = [
       { role: 'system', content: 'system prompt' },
       { role: 'user', content: 'Original task request' },
-      ...Array.from({ length: 16 }, (_, index) => ({
+      ...Array.from({ length: 44 }, (_, index) => ({
         role: index % 2 === 0 ? 'assistant' : 'user',
-        content: `live-marker-${index} ${'q'.repeat(700)}`,
+        content: `live-marker-${index} ${'q'.repeat(120)}`,
       })),
     ]
 
@@ -222,7 +301,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     })
 
     expect(secondPass.appliedStrategies).toContain('archive_frontier')
-    expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-15'))).toBe(true)
+    expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
+    expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-43'))).toBe(true)
     expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
   })
 
