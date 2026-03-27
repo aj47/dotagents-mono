@@ -37,8 +37,3 @@ export async function checkForUpdatesAndDownload() {
 export function quitAndInstall() {
   // No-op - auto-updater is disabled
 }
-
-export async function downloadUpdate() {
-  // No-op - auto-updater is disabled
-  return null
-}
