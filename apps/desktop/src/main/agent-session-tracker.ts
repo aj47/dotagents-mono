@@ -93,14 +93,37 @@ class AgentSessionTracker {
   }
 
   private getCompletedSessionSortTime(session: AgentSession): number {
-    const endTime = typeof session.endTime === "number" && Number.isFinite(session.endTime)
-      ? session.endTime
-      : undefined
-    const startTime = typeof session.startTime === "number" && Number.isFinite(session.startTime)
-      ? session.startTime
-      : undefined
+    const endTime = this.getFiniteTimestamp(session.endTime)
+    const startTime = this.getFiniteTimestamp(session.startTime)
 
     return endTime ?? startTime ?? 0
+  }
+
+  private getFiniteTimestamp(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined
+  }
+
+  private normalizeRestoredSession(
+    session: AgentSession,
+    options?: {
+      status?: AgentSession["status"]
+      defaultEndTime?: number
+      defaultLastActivity?: string
+    },
+  ): AgentSession {
+    const endTime = this.getFiniteTimestamp(session.endTime) ?? options?.defaultEndTime
+    const startTime = this.getFiniteTimestamp(session.startTime) ?? endTime ?? 0
+    const lastActivity = typeof session.lastActivity === "string" && session.lastActivity.trim().length > 0
+      ? session.lastActivity
+      : options?.defaultLastActivity
+
+    return {
+      ...session,
+      ...(options?.status ? { status: options.status } : {}),
+      startTime,
+      endTime,
+      lastActivity,
+    }
   }
 
   private normalizeCompletedSessions(sessions: AgentSession[]): {
@@ -149,17 +172,19 @@ class AgentSessionTracker {
     }
 
     const restoredCompleted = Array.isArray(persisted.completedSessions)
-      ? persisted.completedSessions.filter((session): session is AgentSession => typeof session?.id === "string")
+      ? persisted.completedSessions
+        .filter((session): session is AgentSession => typeof session?.id === "string")
+        .map((session) => this.normalizeRestoredSession(session))
       : []
 
+    const interruptedAt = Date.now()
     const restoredInterrupted = Array.isArray(persisted.activeSessions)
       ? persisted.activeSessions
         .filter((session): session is AgentSession => typeof session?.id === "string")
-        .map((session) => ({
-          ...session,
-          status: "stopped" as const,
-          endTime: session.endTime || Date.now(),
-          lastActivity: session.lastActivity || "Interrupted by app restart",
+        .map((session) => this.normalizeRestoredSession(session, {
+          status: "stopped",
+          defaultEndTime: interruptedAt,
+          defaultLastActivity: "Interrupted by app restart",
         }))
       : []
 

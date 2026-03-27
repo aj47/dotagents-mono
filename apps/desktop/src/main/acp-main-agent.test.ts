@@ -757,4 +757,32 @@ describe("acp-main-agent", () => {
       expect.any(Function),
     )
   })
+
+  it("does not redundantly touch a reused ACP conversation mapping after persisting it", async () => {
+    const acpSessionState = await import("./acp-session-state")
+    vi.mocked(acpSessionState.getSessionForConversation).mockReturnValue({
+      sessionId: "persisted-acp-session",
+      agentName: "test-agent",
+      createdAt: 1,
+      lastUsedAt: 1,
+    })
+
+    mockGetOrCreateSession.mockResolvedValue("persisted-acp-session")
+
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+    })
+
+    expect(acpSessionState.setSessionForConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      "persisted-acp-session",
+      "test-agent",
+    )
+    expect(acpSessionState.touchSession).not.toHaveBeenCalled()
+  })
 })

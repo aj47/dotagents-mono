@@ -63,6 +63,48 @@ describe("agent-session-tracker persistence", () => {
     rmSync(dataFolder, { recursive: true, force: true })
   })
 
+  it("normalizes malformed interrupted session timestamps during restore", async () => {
+    writeFileSync(
+      join(dataFolder, "agent-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        activeSessions: [
+          {
+            id: "corrupted-active",
+            conversationId: "conversation-2",
+            conversationTitle: "Interrupted run",
+            status: "active",
+            startTime: "bad-start",
+            endTime: "bad-end",
+            lastActivity: 42,
+          },
+        ],
+        completedSessions: [],
+      }),
+      "utf8",
+    )
+
+    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(123456)
+
+    try {
+      const { agentSessionTracker } = await loadTracker(dataFolder)
+
+      expect(agentSessionTracker.getActiveSessions()).toHaveLength(0)
+      expect(agentSessionTracker.findCompletedSession("corrupted-active")).toEqual(
+        expect.objectContaining({
+          id: "corrupted-active",
+          status: "stopped",
+          startTime: 123456,
+          endTime: 123456,
+          lastActivity: "Interrupted by app restart",
+        }),
+      )
+    } finally {
+      dateNowSpy.mockRestore()
+      rmSync(dataFolder, { recursive: true, force: true })
+    }
+  })
+
   it("keeps the newest completed sessions when restoring more than the max persisted count", async () => {
     const completedSessions = Array.from({ length: 20 }, (_, index) => ({
       id: `older-${index + 1}`,

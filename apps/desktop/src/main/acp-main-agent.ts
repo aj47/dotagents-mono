@@ -15,7 +15,6 @@ import {
 import {
   getSessionForConversation,
   setSessionForConversation,
-  touchSession,
   setAcpToAppSessionMapping,
 } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
@@ -612,7 +611,6 @@ export async function processTranscriptWithACPAgent(
 
     setSessionForConversation(conversationId, acpSessionId, agentName)
     if (preferredSessionId && preferredSessionId === acpSessionId) {
-      touchSession(conversationId)
       logApp(`[ACP Main] Reused existing session ${acpSessionId}`)
     } else if (preferredSessionId) {
       logApp(`[ACP Main] Replaced stale session ${preferredSessionId} with ${acpSessionId}`)
