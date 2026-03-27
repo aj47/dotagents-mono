@@ -136,6 +136,8 @@ function SessionOverflowMenu({
         <button
           type="button"
           onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
           className="hover:bg-accent focus-visible:ring-ring shrink-0 rounded p-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           aria-label={`Session actions for ${sessionTitle}`}
           title="Session actions"
@@ -805,7 +807,7 @@ export function ActiveAgentsSidebar({
                   {session.conversationId && (
                     <div
                       className={cn(
-                        "absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                        "absolute right-1.5 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
                         "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
                         "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
                         "focus-within:pointer-events-auto focus-within:opacity-100",
@@ -858,7 +860,7 @@ export function ActiveAgentsSidebar({
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-start gap-1.5 rounded px-1.5 py-1.5 pr-2 text-xs transition-all",
+                  "group relative flex cursor-pointer items-start gap-1 rounded px-1.5 py-1.5 pr-2 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isSessionExpanded
@@ -871,14 +873,14 @@ export function ActiveAgentsSidebar({
                 {/* Status dot */}
                 <span
                   className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    "mt-1 h-1 w-1 shrink-0 rounded-full",
                     statusDotColor,
                     isVisiblyActive && !hasPendingApproval && "animate-pulse",
                   )}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div
-                    className="relative z-10 flex min-w-0 items-start gap-2 pr-14"
+                    className="relative z-10 flex min-w-0 items-start pr-11"
                     onClick={(event) => {
                       event.stopPropagation()
                       handleSessionClick(session.id)
@@ -887,7 +889,7 @@ export function ActiveAgentsSidebar({
                     {renderEditableTitle(
                       session,
                       cn(
-                        "flex-1",
+                        "flex-1 text-[12px] font-medium leading-4",
                         hasPendingApproval
                           ? "text-amber-700 dark:text-amber-300"
                           : !isVisiblyActive
@@ -896,29 +898,35 @@ export function ActiveAgentsSidebar({
                       ),
                       hasPendingApproval ? "⚠ " : undefined,
                     )}
-                    {lastMessageMinutesAgo && (
+                  </div>
+                  {(sessionPreview || lastMessageMinutesAgo) && (
+                    <div
+                      className={cn(
+                        "flex min-w-0 items-center gap-1.5 pr-11",
+                        !sessionPreview && "justify-end",
+                      )}
+                    >
+                      {sessionPreview && (
+                        <span
+                          className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground"
+                          title={sessionPreview}
+                        >
+                          {sessionPreview}
+                        </span>
+                      )}
+                      {lastMessageMinutesAgo && (
                       <span
-                        className={cn(
-                          "shrink-0 text-[10px] tabular-nums text-muted-foreground",
-                          "group-hover:hidden group-focus-within:hidden",
-                        )}
+                        className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80"
                       >
                         {lastMessageMinutesAgo}
                       </span>
-                    )}
-                  </div>
-                  {sessionPreview && (
-                    <span
-                      className="line-clamp-2 text-[11px] leading-4 text-muted-foreground"
-                      title={sessionPreview}
-                    >
-                      {sessionPreview}
-                    </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div
                   className={cn(
-                    "absolute right-1.5 top-1.5 flex items-center gap-0.5 opacity-0 transition-opacity",
+                    "absolute right-1 top-1 flex z-20 items-center gap-0 opacity-0 transition-opacity",
                     "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
                     "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
                     "focus-within:pointer-events-auto focus-within:opacity-100",

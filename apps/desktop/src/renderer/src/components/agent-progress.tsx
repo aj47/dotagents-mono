@@ -160,6 +160,22 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function hasActiveTextSelection(container?: HTMLElement | null): boolean {
+  if (typeof window === "undefined") return false
+
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return false
+  }
+
+  if (!container) return true
+
+  return (
+    (!!selection.anchorNode && container.contains(selection.anchorNode)) ||
+    (!!selection.focusNode && container.contains(selection.focusNode))
+  )
+}
+
 function buildCollapsedUserResponsePreview(userResponse: string): string {
   const boundedResponse = userResponse.slice(0, COLLAPSED_USER_RESPONSE_SCAN_LIMIT)
   const preview = boundedResponse
@@ -445,10 +461,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }
 
-  const handleToggleExpand = () => {
-    if (shouldCollapse) {
-      onToggleExpand()
+  const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
+      return
     }
+
+    onToggleExpand()
   }
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -904,10 +922,12 @@ const AssistantWithToolsBubble: React.FC<{
     return getToolResultsSummary(toolResults)
   })()
 
-  const handleToggleExpand = () => {
-    if (shouldCollapse) {
-      onToggleExpand()
+  const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
+      return
     }
+
+    onToggleExpand()
   }
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -2302,7 +2322,7 @@ const StreamingContentBubble: React.FC<{
 
   const contentNode = streamingContent.isStreaming
     ? (
-      <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      <div className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {streamingContent.text}
       </div>
     )
@@ -2991,6 +3011,11 @@ const MidTurnUserResponseBubble: React.FC<{
     if (target?.closest("button, a, input, textarea, select, [role='button']")) {
       return
     }
+
+    if (hasActiveTextSelection(e.currentTarget)) {
+      return
+    }
+
     onToggleExpand()
   }, [onToggleExpand])
 

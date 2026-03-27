@@ -34,4 +34,14 @@ describe("markdown renderer layout", () => {
       'className="border-b border-r border-border px-3 py-2 align-top last:border-r-0 [overflow-wrap:anywhere]"'
     )
   })
+
+  it("marks rendered markdown as selectable so response text and code can be copied", () => {
+    expect(markdownRendererSource).toContain(
+      'const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"'
+    )
+    expect(markdownRendererSource).toContain(
+      'className={SELECTABLE_MARKDOWN_CLASS_NAME}'
+    )
+    expect(markdownRendererSource).toContain("SELECTABLE_MARKDOWN_CLASS_NAME")
+  })
 })
