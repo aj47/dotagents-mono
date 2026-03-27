@@ -2,7 +2,7 @@
  * Language support types and utilities for DotAgents apps
  */
 
-export interface LanguageOption {
+interface LanguageOption {
   code: string;
   name: string;
   nativeName: string;
