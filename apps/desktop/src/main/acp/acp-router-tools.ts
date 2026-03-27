@@ -1741,7 +1741,7 @@ export function cleanupOldDelegatedRuns(maxAgeMs: number = 60 * 60 * 1000): void
  * @param args - Arguments containing the run ID
  * @returns Object with cancellation result
  */
-export async function handleCancelAgentRun(args: { runId: string }): Promise<object> {
+async function handleCancelAgentRun(args: { runId: string }): Promise<object> {
   const state = delegatedRuns.get(args.runId);
   if (!state) {
     return {
