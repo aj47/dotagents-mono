@@ -113,7 +113,7 @@ function setSessionDepth(sessionId: string, depth: number): void {
  * Check if we can spawn a sub-session from the given parent.
  * Returns an error message if not allowed, undefined if OK.
  */
-export function canSpawnSubSession(parentSessionId: string): string | undefined {
+function canSpawnSubSession(parentSessionId: string): string | undefined {
   const parentDepth = getSessionDepth(parentSessionId);
   
   if (parentDepth >= MAX_RECURSION_DEPTH) {
