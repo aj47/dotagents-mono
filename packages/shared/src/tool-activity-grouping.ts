@@ -23,7 +23,7 @@ import { RESPOND_TO_USER_TOOL, isToolOnlyMessage, getToolCallsSummary } from './
 // ---------------------------------------------------------------------------
 
 /** Minimal message shape accepted by the grouping logic. */
-export interface GroupableMessage {
+interface GroupableMessage {
   role: 'user' | 'assistant' | 'tool'
   content?: string
   toolCalls?: Array<{ name: string; arguments?: unknown }>
@@ -45,17 +45,6 @@ export interface ToolActivityGroup {
    * response has not been received yet.
    */
   previewLines: string[]
-}
-
-/** Result of running the grouping algorithm over a message list. */
-export interface GroupedMessages {
-  /**
-   * Sparse map from message index → the group it belongs to.
-   * Messages that are NOT part of any group will not have an entry.
-   */
-  groupByIndex: Map<number, ToolActivityGroup>
-  /** All detected groups in order. */
-  groups: ToolActivityGroup[]
 }
 
 // ---------------------------------------------------------------------------
@@ -142,11 +131,14 @@ export function getToolActivitySummaryLine(message: GroupableMessage): string {
  * Groups of fewer than {@link TOOL_GROUP_MIN_SIZE} messages are ignored
  * (not worth collapsing a single item).
  *
- * The returned {@link GroupedMessages.groupByIndex} map lets renderers do
+ * The returned `groupByIndex` map lets renderers do
  * an O(1) lookup per message index to decide whether to render normally
  * or as part of a collapsed group.
  */
-export function groupToolActivity(messages: GroupableMessage[]): GroupedMessages {
+export function groupToolActivity(messages: GroupableMessage[]): {
+  groupByIndex: Map<number, ToolActivityGroup>
+  groups: ToolActivityGroup[]
+} {
   const groups: ToolActivityGroup[] = []
   const groupByIndex = new Map<number, ToolActivityGroup>()
 

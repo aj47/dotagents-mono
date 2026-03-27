@@ -4,8 +4,9 @@ import {
   groupToolActivity,
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
-  type GroupableMessage,
 } from './tool-activity-grouping'
+
+type GroupableMessage = Parameters<typeof groupToolActivity>[0][number]
 
 // ---------------------------------------------------------------------------
 // Helpers
