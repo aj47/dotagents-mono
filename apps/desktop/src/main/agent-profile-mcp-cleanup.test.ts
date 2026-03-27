@@ -5,10 +5,7 @@ import path from "path"
 import type { AgentProfile } from "@shared/types"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
-import {
-  cleanupInvalidMcpServerReferencesInLayers,
-  cleanupInvalidMcpServerReferencesInProfiles,
-} from "./agent-profile-mcp-cleanup"
+import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "agent-mcp-cleanup-"))
@@ -41,21 +38,6 @@ describe("agent-profile-mcp-cleanup", () => {
     }
   })
 
-  it("removes invalid MCP server names from in-memory profiles", () => {
-    const profiles = [
-      createProfile("agent-a", ["github", "playwriter"]),
-      createProfile("agent-b", ["exa"]),
-    ]
-
-    const result = cleanupInvalidMcpServerReferencesInProfiles(profiles, ["github", "exa"], 321)
-
-    expect(result.updatedProfileIds).toEqual(["agent-a"])
-    expect(result.removedReferenceCount).toBe(1)
-    expect(result.profiles[0].toolConfig?.enabledServers).toEqual(["github"])
-    expect(result.profiles[0].updatedAt).toBe(321)
-    expect(result.profiles[1].toolConfig?.enabledServers).toEqual(["exa"])
-  })
-
   it("cleans stale MCP server references in persisted layers", () => {
     const globalDir = createTempDir()
     const workspaceDir = createTempDir()
@@ -82,5 +64,8 @@ describe("agent-profile-mcp-cleanup", () => {
     expect(
       loadAgentProfilesLayer(workspaceLayer).profiles.find((profile) => profile.id === "workspace-agent")?.toolConfig?.enabledServers
     ).toEqual(["exa"])
+    expect(
+      loadAgentProfilesLayer(globalLayer).profiles.find((profile) => profile.id === "global-agent")?.updatedAt
+    ).toBe(654)
   })
 })

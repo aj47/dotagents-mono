@@ -11,7 +11,7 @@ function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b))
 }
 
-export function cleanupInvalidMcpServerReferencesInProfiles(
+function cleanupInvalidMcpServerReferencesInProfiles(
   profiles: AgentProfile[],
   validServerNames: Iterable<string>,
   now: number = Date.now(),
