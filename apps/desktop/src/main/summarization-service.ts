@@ -187,7 +187,7 @@ Respond ONLY with valid JSON, no other text.`
 /**
  * Parse the LLM response into a structured summary
  */
-export function parseSummaryResponse(response: string, input: SummarizationInput): AgentStepSummary {
+function parseSummaryResponse(response: string, input: SummarizationInput): AgentStepSummary {
   const id = `summary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
   try {
