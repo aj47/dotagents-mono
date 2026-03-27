@@ -23,7 +23,6 @@ vi.mock("./acp-service", () => ({
 vi.mock("./acp-session-state", () => ({
   getSessionForConversation: vi.fn(() => undefined),
   setSessionForConversation: vi.fn(),
-  clearSessionForConversation: vi.fn(),
   touchSession: vi.fn(),
   setAcpToAppSessionMapping: vi.fn(),
 }))
