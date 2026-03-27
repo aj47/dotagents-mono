@@ -610,22 +610,6 @@ export type AgentProfilesData = {
 }
 
 // ============================================================================
-// Slug Utility
-// ============================================================================
-
-/**
- * Convert a display name to a slug suitable for the `name` field.
- * e.g. "My Cool Agent!" → "my-cool-agent"
- */
-export function toAgentSlug(displayName: string): string {
-  return displayName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    || "agent"
-}
-
-// ============================================================================
 // Migration Utilities
 // ============================================================================
 
