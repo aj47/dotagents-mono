@@ -134,6 +134,25 @@ describe("agent-session-tracker persistence", () => {
     rmSync(dataFolder, { recursive: true, force: true })
   })
 
+  it("clears persisted user responses for every tracked session during clearAllSessions", async () => {
+    const { agentSessionTracker, clearSessionUserResponse } = await loadTracker(dataFolder)
+
+    const activeSessionId = agentSessionTracker.startSession("conversation-active", "Active")
+    const completedSessionId = agentSessionTracker.startSession("conversation-completed", "Completed")
+    agentSessionTracker.completeSession(completedSessionId, "done")
+
+    clearSessionUserResponse.mockClear()
+    agentSessionTracker.clearAllSessions()
+
+    expect(clearSessionUserResponse).toHaveBeenCalledTimes(2)
+    expect(clearSessionUserResponse).toHaveBeenCalledWith(activeSessionId)
+    expect(clearSessionUserResponse).toHaveBeenCalledWith(completedSessionId)
+    expect(agentSessionTracker.getActiveSessions()).toHaveLength(0)
+    expect(agentSessionTracker.getRecentSessions(20)).toHaveLength(0)
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
+
   it("treats malformed persisted timestamps as the oldest completed sessions", async () => {
     const completedSessions = [
       {

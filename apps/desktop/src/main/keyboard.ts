@@ -30,7 +30,7 @@ const KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS = 1000
 const KEYBOARD_LISTENER_FORCE_KILL_WAIT_MS = 250
 
 let keyboardListenerChild: ChildProcess | null = null
-let keyboardListenerStopPromise: Promise<void> | null = null
+let keyboardListenerStopState: { child: ChildProcess; promise: Promise<void> } | null = null
 
 type RdevEvent = {
   event_type: "KeyPress" | "KeyRelease"
@@ -1423,8 +1423,8 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     return
   }
 
-  if (keyboardListenerStopPromise) {
-    await keyboardListenerStopPromise
+  if (keyboardListenerStopState?.child === child) {
+    await keyboardListenerStopState.promise
     return
   }
 
@@ -1432,11 +1432,19 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     if (keyboardListenerChild === child) {
       keyboardListenerChild = null
     }
+    if (keyboardListenerStopState?.child === child) {
+      keyboardListenerStopState = null
+    }
     return
   }
 
-  let stopPromise: Promise<void> | null = null
-  stopPromise = new Promise<void>((resolve) => {
+  const stopState = {
+    child,
+    promise: Promise.resolve(),
+  }
+  keyboardListenerStopState = stopState
+
+  stopState.promise = new Promise<void>((resolve) => {
     let done = false
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined
     let forceKillWaitTimer: ReturnType<typeof setTimeout> | undefined
@@ -1455,8 +1463,8 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
       if (clearChild && keyboardListenerChild === child) {
         keyboardListenerChild = null
       }
-      if (keyboardListenerStopPromise === stopPromise) {
-        keyboardListenerStopPromise = null
+      if (keyboardListenerStopState === stopState) {
+        keyboardListenerStopState = null
       }
       resolve()
     }
@@ -1552,6 +1560,6 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
 
     finishIfExited()
   })
-  keyboardListenerStopPromise = stopPromise
-  await stopPromise
+
+  await stopState.promise
 }

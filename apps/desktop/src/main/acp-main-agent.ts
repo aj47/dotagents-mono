@@ -380,6 +380,19 @@ export async function processTranscriptWithACPAgent(
     )
   }
 
+  const deriveFinalAssistantResponse = (fallbackResponse?: string) => {
+    const { userResponse } = deriveAcpUserResponseState(conversationHistory, {
+      sinceIndex: currentTurnStartIndex,
+      sessionId,
+      runId,
+    })
+
+    return {
+      userResponse,
+      finalResponse: userResponse || fallbackResponse || accumulatedText || undefined,
+    }
+  }
+
   const appendAssistantText = (text: string, timestamp: number) => {
     if (!text) return
     sawAssistantTextBlock = true
@@ -785,13 +798,7 @@ export async function processTranscriptWithACPAgent(
       const promptContext = buildProfileContext(profileSnapshot, ACP_RUNTIME_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
-      const { userResponse } = deriveAcpUserResponseState(conversationHistory, {
-        sinceIndex: currentTurnStartIndex,
-        sessionId,
-        runId,
-      })
-      // Use accumulated text if result.response is empty but we received streaming content
-      const finalResponse = userResponse || result.response || accumulatedText || undefined
+      const { userResponse, finalResponse } = deriveFinalAssistantResponse(result.response)
 
       if (finalResponse && !userResponse && !sawAssistantTextBlock) {
         appendAssistantText(finalResponse, Date.now())
@@ -836,6 +843,7 @@ export async function processTranscriptWithACPAgent(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
+    const { finalResponse } = deriveFinalAssistantResponse()
     logApp(`[ACP Main] Error: ${errorMessage}`)
 
     await emitProgress([
@@ -846,14 +854,15 @@ export async function processTranscriptWithACPAgent(
         description: errorMessage,
         status: "error",
         timestamp: Date.now(),
+        llmContent: finalResponse,
       },
-    ], true, undefined, {
-      text: accumulatedText,
+    ], true, finalResponse, {
+      text: finalResponse || "",
       isStreaming: false,
     })
 
     try {
-      await persistConversationTail()
+      await persistConversationTail(finalResponse)
     } catch (persistError) {
       logApp(`[ACP Main] Failed to persist conversation tail after error: ${persistError}`)
     }

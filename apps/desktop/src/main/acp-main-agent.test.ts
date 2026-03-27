@@ -686,6 +686,48 @@ describe("acp-main-agent", () => {
     )
   })
 
+  it("persists the latest respond_to_user content even when sendPrompt fails afterward", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [{ role: "user", content: "who are you", timestamp: 1 }],
+    })
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-r1",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "Partial final answer" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      throw new Error("stream interrupted")
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      success: false,
+      error: "stream interrupted",
+    }))
+    expect(mockAddMessageToConversation).toHaveBeenCalledTimes(1)
+    expect(mockAddMessageToConversation).toHaveBeenCalledWith(
+      "conversation-1",
+      "Partial final answer",
+      "assistant",
+    )
+  })
+
   it("passes the persisted ACP session id back into getOrCreateSession for restart-safe reuse", async () => {
     const acpSessionState = await import("./acp-session-state")
     vi.mocked(acpSessionState.getSessionForConversation).mockReturnValue({

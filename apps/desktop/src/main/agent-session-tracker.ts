@@ -475,6 +475,15 @@ class AgentSessionTracker {
    * Clear all sessions (for testing/debugging)
    */
   clearAllSessions(): void {
+    const sessionIds = new Set<string>([
+      ...this.sessions.keys(),
+      ...this.completedSessions.map((session) => session.id),
+    ])
+
+    for (const sessionId of sessionIds) {
+      clearSessionUserResponse(sessionId)
+    }
+
     this.sessions.clear()
     this.completedSessions = []
     this.persistState()

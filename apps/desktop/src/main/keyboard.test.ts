@@ -141,6 +141,29 @@ describe("keyboard listener lifecycle", () => {
     expect(mockSpawn).toHaveBeenCalledTimes(2)
   })
 
+  it("does not leave a stale resolved stop promise behind after a replacement listener starts", async () => {
+    const exitingChild = new ExitBeforeHandlerChildProcess()
+    const replacementChild = new FakeChildProcess()
+    const thirdChild = new FakeChildProcess()
+    mockSpawn
+      .mockReturnValueOnce(exitingChild)
+      .mockReturnValueOnce(replacementChild)
+      .mockReturnValueOnce(thirdChild)
+
+    const { listenToKeyboardEvents, stopListeningToKeyboardEvents } = await import("./keyboard")
+
+    listenToKeyboardEvents()
+    await stopListeningToKeyboardEvents()
+
+    listenToKeyboardEvents()
+    await stopListeningToKeyboardEvents()
+
+    listenToKeyboardEvents()
+
+    expect(replacementChild.kill).toHaveBeenCalledWith("SIGTERM")
+    expect(mockSpawn).toHaveBeenCalledTimes(3)
+  })
+
   it("resolves stop after the force-kill timeout without allowing a duplicate restart", async () => {
     vi.useFakeTimers()
 

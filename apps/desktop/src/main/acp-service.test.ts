@@ -439,6 +439,33 @@ describe("ACP Service", () => {
       expect(createSessionSpy).toHaveBeenCalledWith("test-agent", undefined, "persisted-session-1")
     })
 
+    it("ignores stage callback failures while continuing session creation", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+
+      vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-after-stage-error")
+      const onStage = vi.fn(async () => {
+        throw new Error("progress callback failed")
+      })
+
+      const sessionId = await acpService.getOrCreateSession(
+        "test-agent",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        onStage,
+      )
+
+      expect(sessionId).toBe("session-after-stage-error")
+      expect(onStage).toHaveBeenCalledWith("launching")
+      expect(onStage).toHaveBeenCalledWith("creating_session")
+    })
+
     it("loads a preferred persisted session when createSession is asked to reuse one", async () => {
       const { acpService } = await import("./acp-service")
       await acpService.spawnAgent("test-agent")
