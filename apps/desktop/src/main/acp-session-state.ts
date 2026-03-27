@@ -103,15 +103,6 @@ export function clearAllSessions(): void {
 }
 
 /**
- * Get all active sessions.
- * Useful for debugging and UI display.
- * @returns Map of conversation ID to session info
- */
-export function getAllSessions(): Map<string, ACPSessionInfo> {
-  return new Map(conversationSessions)
-}
-
-/**
  * Update the last used timestamp for a session.
  * @param conversationId The DotAgents conversation ID
  */
@@ -231,5 +222,4 @@ export function clearAcpToAppSessionMapping(acpSessionId: string): void {
     logApp(`[ACP Session] Cleared ACP → app session mapping for ${acpSessionId}`)
   }
 }
-
 
