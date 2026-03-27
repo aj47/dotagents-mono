@@ -164,21 +164,6 @@ export function toolConfigToMcpServerConfig(toolConfig?: AgentProfileToolConfig)
 }
 
 /**
- * Convert ProfileMcpServerConfig to AgentProfileToolConfig.
- * Used when importing legacy profile data.
- */
-export function mcpServerConfigToToolConfig(mcpConfig?: ProfileMcpServerConfig): AgentProfileToolConfig | undefined {
-  if (!mcpConfig) return undefined
-  return {
-    disabledServers: mcpConfig.disabledServers,
-    disabledTools: mcpConfig.disabledTools,
-    allServersDisabledByDefault: mcpConfig.allServersDisabledByDefault,
-    enabledServers: mcpConfig.enabledServers,
-    enabledRuntimeTools: mcpConfig.enabledRuntimeTools,
-  }
-}
-
-/**
  * Create a SessionProfileSnapshot from an AgentProfile.
  * Used by session creation code to capture profile state at session start.
  */
