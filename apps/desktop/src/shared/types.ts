@@ -121,12 +121,10 @@ export interface ServerLogEntry {
   message: string
 }
 
-export type DetailedToolSourceKind = "mcp" | "runtime"
-
 export interface DetailedToolInfo {
   name: string
   description: string
-  sourceKind: DetailedToolSourceKind
+  sourceKind: "mcp" | "runtime"
   sourceName: string
   sourceLabel: string
   serverName?: string
@@ -373,13 +371,6 @@ export type PersonaConnectionConfig = {
 }
 
 /**
- * Dynamic properties for an agent.
- * Key-value pairs that are exposed in the system prompt.
- * Example: { "expertise": "Python, TypeScript", "style": "Concise and technical" }
- */
-export type PersonaProperties = Record<string, string>
-
-/**
  * Legacy Persona definition (kept for backward compatibility / migration).
  * An agent represents a specialized AI assistant with specific capabilities,
  * system prompts, and tool access configurations.
@@ -401,7 +392,7 @@ export type Persona = {
    * Dynamic properties for this agent.
    * Exposed in the system prompt as "Property Name: Value" format.
    */
-  properties?: PersonaProperties
+  properties?: Record<string, string>
   /** MCP server and tool access configuration */
   mcpServerConfig: PersonaMcpServerConfig
   /**
