@@ -114,7 +114,7 @@ export const getFocusedAppInfo = () => {
   })
 }
 
-export const restoreFocusToApp = (appInfo: string) => {
+const restoreFocusToApp = (appInfo: string) => {
   return new Promise<void>((resolve, reject) => {
     const child: ChildProcess = spawn(rdevPath, ["restore-focus", appInfo])
 
@@ -142,15 +142,6 @@ export const restoreFocusToApp = (appInfo: string) => {
       }
     })
   })
-}
-
-const captureFocusBeforeRecording = async () => {
-  try {
-    const focusedApp = await getFocusedAppInfo()
-    state.focusedAppBeforeRecording = focusedApp
-  } catch (error) {
-    state.focusedAppBeforeRecording = null
-  }
 }
 
 export const writeTextWithFocusRestore = async (text: string) => {
