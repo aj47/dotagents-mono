@@ -103,10 +103,28 @@ class AgentSessionTracker {
     return endTime ?? startTime ?? 0
   }
 
-  private normalizeCompletedSessions(sessions: AgentSession[]): AgentSession[] {
-    return [...sessions]
+  private normalizeCompletedSessions(sessions: AgentSession[]): {
+    retainedSessions: AgentSession[]
+    evictedSessions: AgentSession[]
+  } {
+    const sortedSessions = [...sessions]
       .sort((a, b) => this.getCompletedSessionSortTime(b) - this.getCompletedSessionSortTime(a))
-      .slice(0, MAX_COMPLETED_SESSIONS)
+
+    return {
+      retainedSessions: sortedSessions.slice(0, MAX_COMPLETED_SESSIONS),
+      evictedSessions: sortedSessions.slice(MAX_COMPLETED_SESSIONS),
+    }
+  }
+
+  private replaceCompletedSessions(sessions: AgentSession[]): boolean {
+    const { retainedSessions, evictedSessions } = this.normalizeCompletedSessions(sessions)
+    this.completedSessions = retainedSessions
+
+    for (const evictedSession of evictedSessions) {
+      clearSessionUserResponse(evictedSession.id)
+    }
+
+    return evictedSessions.length > 0
   }
 
   private persistState(): void {
@@ -146,12 +164,12 @@ class AgentSessionTracker {
       : []
 
     this.sessions.clear()
-    this.completedSessions = this.normalizeCompletedSessions([
+    const didEvictCompletedSessions = this.replaceCompletedSessions([
       ...restoredInterrupted,
       ...restoredCompleted,
     ])
 
-    if (restoredInterrupted.length > 0) {
+    if (restoredInterrupted.length > 0 || didEvictCompletedSessions) {
       this.persistState()
     }
   }
@@ -225,14 +243,7 @@ class AgentSessionTracker {
     if (finalActivity) {
       session.lastActivity = finalActivity
     }
-    // Move to recent list (newest first), cap length
-    this.completedSessions.unshift({ ...session })
-    if (this.completedSessions.length > MAX_COMPLETED_SESSIONS) {
-      const evictedSessions = this.completedSessions.splice(MAX_COMPLETED_SESSIONS)
-      for (const evicted of evictedSessions) {
-        clearSessionUserResponse(evicted.id)
-      }
-    }
+    this.replaceCompletedSessions([{ ...session }, ...this.completedSessions])
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Completing session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
     this.persistState()
@@ -252,13 +263,7 @@ class AgentSessionTracker {
     }
     session.status = "stopped"
     session.endTime = Date.now()
-    this.completedSessions.unshift({ ...session })
-    if (this.completedSessions.length > MAX_COMPLETED_SESSIONS) {
-      const evictedSessions = this.completedSessions.splice(MAX_COMPLETED_SESSIONS)
-      for (const evicted of evictedSessions) {
-        clearSessionUserResponse(evicted.id)
-      }
-    }
+    this.replaceCompletedSessions([{ ...session }, ...this.completedSessions])
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Stopping session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
     this.persistState()
@@ -279,13 +284,7 @@ class AgentSessionTracker {
     session.status = "error"
     session.errorMessage = errorMessage
     session.endTime = Date.now()
-    this.completedSessions.unshift({ ...session })
-    if (this.completedSessions.length > MAX_COMPLETED_SESSIONS) {
-      const evictedSessions = this.completedSessions.splice(MAX_COMPLETED_SESSIONS)
-      for (const evicted of evictedSessions) {
-        clearSessionUserResponse(evicted.id)
-      }
-    }
+    this.replaceCompletedSessions([{ ...session }, ...this.completedSessions])
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Error in session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
     this.persistState()

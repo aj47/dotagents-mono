@@ -237,15 +237,18 @@ const sanitizeMessagesForModel = (messages: ChatMessage[]): ChatMessage[] =>
     };
   });
 
-const resolveConversationStateFromProgress = (update: AgentProgressUpdate): AgentConversationState => {
+const resolveConversationStateFromProgress = (
+  update: AgentProgressUpdate,
+  lifecycleState: 'running' | 'complete' = update.isComplete ? 'complete' : 'running'
+): AgentConversationState => {
   if (update.conversationState) {
-    return normalizeAgentConversationState(update.conversationState, update.isComplete ? 'complete' : 'running');
+    return normalizeAgentConversationState(update.conversationState, lifecycleState);
   }
   const hasPendingApproval = update.steps.some((step) => step.type === 'pending_approval');
   if (hasPendingApproval) {
     return 'needs_input';
   }
-  return update.isComplete ? 'complete' : 'running';
+  return lifecycleState;
 };
 
 type RespondToUserHistorySourceMessage = {
@@ -2014,9 +2017,9 @@ export default function ChatScreen({ route, navigation }: any) {
           console.log('[ChatScreen] Request superseded within same session, skipping onProgress update');
           return;
         }
-	        latestConversationState = resolveConversationStateFromProgress(update);
-	        setConversationState(latestConversationState);
-	        if (update.responseEvents?.length) {
+        latestConversationState = resolveConversationStateFromProgress(update, 'running');
+        setConversationState(latestConversationState);
+        if (update.responseEvents?.length) {
 	          lastResponseEvents = [...update.responseEvents].sort((a, b) => a.ordinal - b.ordinal);
 	          mergeResponseEvents(lastResponseEvents);
 	          enqueueResponseEventsForSpeech(lastResponseEvents);
@@ -2459,9 +2462,9 @@ export default function ChatScreen({ route, navigation }: any) {
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
-        latestConversationState = resolveConversationStateFromProgress(update);
+        latestConversationState = resolveConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
-	        if (update.responseEvents?.length) {
+        if (update.responseEvents?.length) {
 	          lastResponseEvents = [...update.responseEvents].sort((a, b) => a.ordinal - b.ordinal);
 	          mergeResponseEvents(lastResponseEvents);
 	          enqueueResponseEventsForSpeech(lastResponseEvents);

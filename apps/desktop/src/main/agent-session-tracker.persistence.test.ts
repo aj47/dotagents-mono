@@ -5,12 +5,17 @@ import { tmpdir } from "os"
 
 const loadTracker = async (dataFolder: string) => {
   vi.resetModules()
+  const clearSessionUserResponse = vi.fn()
   vi.doMock("./config", () => ({ dataFolder }))
   vi.doMock("./debug", () => ({ logApp: vi.fn() }))
   vi.doMock("./window", () => ({ WINDOWS: new Map() }))
   vi.doMock("@egoist/tipc/main", () => ({ getRendererHandlers: vi.fn(() => ({})) }))
-  vi.doMock("./session-user-response-store", () => ({ clearSessionUserResponse: vi.fn() }))
-  return import("./agent-session-tracker")
+  vi.doMock("./session-user-response-store", () => ({ clearSessionUserResponse }))
+  const mod = await import("./agent-session-tracker")
+  return {
+    ...mod,
+    clearSessionUserResponse,
+  }
 }
 
 describe("agent-session-tracker persistence", () => {
@@ -94,6 +99,37 @@ describe("agent-session-tracker persistence", () => {
     expect(
       agentSessionTracker.getRecentSessions(4).map((session) => session.conversationTitle),
     ).toEqual(["Newest 4", "Newest 3", "Newest 2", "Newest 1"])
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
+
+  it("clears persisted user responses for completed sessions trimmed during restore", async () => {
+    const completedSessions = Array.from({ length: 22 }, (_, index) => ({
+      id: `session-${index + 1}`,
+      conversationId: `conversation-${index + 1}`,
+      conversationTitle: `Session ${index + 1}`,
+      status: "completed" as const,
+      startTime: (index + 1) * 1000,
+      endTime: (index + 1) * 1000,
+      lastActivity: `Activity ${index + 1}`,
+    }))
+
+    writeFileSync(
+      join(dataFolder, "agent-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        activeSessions: [],
+        completedSessions,
+      }),
+      "utf8",
+    )
+
+    const { agentSessionTracker, clearSessionUserResponse } = await loadTracker(dataFolder)
+
+    expect(agentSessionTracker.getRecentSessions(20)).toHaveLength(20)
+    expect(clearSessionUserResponse).toHaveBeenCalledTimes(2)
+    expect(clearSessionUserResponse).toHaveBeenCalledWith("session-1")
+    expect(clearSessionUserResponse).toHaveBeenCalledWith("session-2")
 
     rmSync(dataFolder, { recursive: true, force: true })
   })
