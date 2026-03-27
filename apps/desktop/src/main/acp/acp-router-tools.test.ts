@@ -269,4 +269,106 @@ describe("handleDelegateToAgent", () => {
       workingDirectory: undefined,
     })
   })
+
+  it("blocks local workspace delegation even when the main agent display name is customized", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "profile-main-agent",
+      profileName: "Pair Driver",
+      guidelines: "",
+    })
+
+    mockGetById.mockReturnValue({
+      id: "profile-main-agent",
+      name: "main-agent",
+      displayName: "Pair Driver",
+    })
+
+    mockGetByName.mockReturnValue({
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "augustus",
+      enabled: true,
+      connection: { type: "stdio" },
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    const result = await handleDelegateToAgent({
+      agentName: "augustus",
+      task: "Inspect /Users/dev/dotagents-mono/src/main.ts and fix the bug.",
+    }, "parent-session-1") as any
+
+    expect(result).toEqual(expect.objectContaining({ success: false }))
+    expect(mockAcpService.spawnAgent).not.toHaveBeenCalled()
+  })
+
+  it("blocks local workspace coding tasks that use Linux home paths", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "profile-main-agent",
+      profileName: "Main Agent",
+      guidelines: "",
+    })
+
+    mockGetById.mockReturnValue({
+      id: "profile-main-agent",
+      name: "main-agent",
+      displayName: "Main Agent",
+    })
+
+    mockGetByName.mockReturnValue({
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "augustus",
+      enabled: true,
+      connection: { type: "stdio" },
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    const result = await handleDelegateToAgent({
+      agentName: "augustus",
+      task: "Debug /home/ubuntu/worktree/dotagents-mono/apps/mobile/src/app.tsx and fix the failure.",
+    }, "parent-session-1") as any
+
+    expect(result).toEqual(expect.objectContaining({ success: false }))
+    expect(mockAcpService.spawnAgent).not.toHaveBeenCalled()
+  })
+
+  it("blocks local workspace coding tasks that use Windows-style relative paths", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "profile-main-agent",
+      profileName: "Main Agent",
+      guidelines: "",
+    })
+
+    mockGetById.mockReturnValue({
+      id: "profile-main-agent",
+      name: "main-agent",
+      displayName: "Main Agent",
+    })
+
+    mockGetByName.mockReturnValue({
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "augustus",
+      enabled: true,
+      connection: { type: "stdio" },
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    const result = await handleDelegateToAgent({
+      agentName: "augustus",
+      task: "Fix src\\main\\app.ts in the workspace before the release.",
+    }, "parent-session-1") as any
+
+    expect(result).toEqual(expect.objectContaining({ success: false }))
+    expect(mockAcpService.spawnAgent).not.toHaveBeenCalled()
+  })
 })
