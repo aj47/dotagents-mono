@@ -17,7 +17,6 @@ import {
   DEFAULT_MODEL_PRESET_ID,
   getBuiltInModelPresets,
   getCurrentPresetName,
-  providerHasTts,
   getTtsModelsForProvider,
   getTtsVoicesForProvider,
 } from './providers'
@@ -201,26 +200,6 @@ describe('getCurrentPresetName', () => {
 
   it('falls back to "OpenAI" for unknown preset ID', () => {
     expect(getCurrentPresetName('nonexistent', [])).toBe('OpenAI')
-  })
-})
-
-// ── providerHasTts ───────────────────────────────────────────────────────────
-
-describe('providerHasTts', () => {
-  it('returns true for openai', () => {
-    expect(providerHasTts('openai')).toBe(true)
-  })
-
-  it('returns true for groq', () => {
-    expect(providerHasTts('groq')).toBe(true)
-  })
-
-  it('returns true for gemini', () => {
-    expect(providerHasTts('gemini')).toBe(true)
-  })
-
-  it('returns false for unknown provider', () => {
-    expect(providerHasTts('anthropic')).toBe(false)
   })
 })
 

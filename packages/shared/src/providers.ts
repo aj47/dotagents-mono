@@ -231,11 +231,6 @@ export const getCurrentPresetName = (
   return allPresets.find(p => p.id === presetId)?.name || "OpenAI";
 };
 
-// Helper to check if a provider has TTS support
-export const providerHasTts = (providerId: string): boolean => {
-  return TTS_PROVIDERS.some(p => p.value === providerId);
-};
-
 // Helper to get TTS models for a provider
 export const getTtsModelsForProvider = (providerId: string) => {
   switch (providerId) {
@@ -266,4 +261,3 @@ export const getTtsVoicesForProvider = (providerId: string, ttsModel?: string) =
       return [];
   }
 };
-
