@@ -10,7 +10,7 @@ export const KNOWN_STT_MODEL_IDS = {
 
 type CloudSttProviderId = keyof typeof DEFAULT_STT_MODELS
 
-export function isCloudSttProvider(providerId?: string): providerId is CloudSttProviderId {
+function isCloudSttProvider(providerId?: string): providerId is CloudSttProviderId {
   return providerId === "openai" || providerId === "groq"
 }
 

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_STT_MODELS,
   KNOWN_STT_MODEL_IDS,
-  isCloudSttProvider,
   isKnownSttModel,
   getDefaultSttModel,
   getConfiguredSttModel,
@@ -29,24 +28,6 @@ describe('KNOWN_STT_MODEL_IDS', () => {
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('whisper-large-v3')
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('whisper-large-v3-turbo')
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('distil-whisper-large-v3-en')
-  })
-})
-
-describe('isCloudSttProvider', () => {
-  it('returns true for "openai"', () => {
-    expect(isCloudSttProvider('openai')).toBe(true)
-  })
-
-  it('returns true for "groq"', () => {
-    expect(isCloudSttProvider('groq')).toBe(true)
-  })
-
-  it('returns false for "parakeet"', () => {
-    expect(isCloudSttProvider('parakeet')).toBe(false)
-  })
-
-  it('returns false for undefined', () => {
-    expect(isCloudSttProvider(undefined)).toBe(false)
   })
 })
 
