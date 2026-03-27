@@ -519,7 +519,7 @@ export function clearArchiveFrontier(sessionId: string): void {
   archiveHistoryRefBySession.delete(sessionId)
 }
 
-export function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
+function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
   if (!sessionId) return undefined
   return contextRefRegistryBySession.get(sessionId)?.get(contextRef)
 }
