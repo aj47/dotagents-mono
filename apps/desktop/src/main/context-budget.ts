@@ -854,15 +854,36 @@ const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 20
 const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
 const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
 const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
+const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
+
+function parseMappedToolResultContent(content: string): { toolName: string; resultContent: string } | null {
+  const trimmed = content.trimStart()
+  const match = trimmed.match(MAPPED_TOOL_RESULT_PREFIX_RE)
+  if (!match) return null
+
+  return {
+    toolName: match[1],
+    resultContent: trimmed.slice(match[0].length),
+  }
+}
+
+function hasMappedToolResultPrefix(content: string): boolean {
+  return parseMappedToolResultContent(content) !== null
+}
+
+function startsWithJsonLikeArray(content: string): boolean {
+  return /^\[\s*(?:\{|\[|"|-?\d|true\b|false\b|null\b)/.test(content.trim())
+}
 
 function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
   const content = message.content || ""
   return message.role === "tool"
+    || hasMappedToolResultPrefix(content) // Tool results mapped to user role
     || content.includes('"url":')
     || content.includes('"id":')
     || content.includes("```json")
     || content.trim().startsWith("{")
-    || content.trim().startsWith("[")
+    || startsWithJsonLikeArray(content)
 }
 
 function truncateWithMarker(content: string, keepChars: number, marker: string): string {
@@ -1175,15 +1196,12 @@ function buildContextFromSummaries(sessionId: string): string | null {
 }
 
 /**
- * Parse tool name from content that uses format: [toolName] content...
- * Returns { toolName, content } where content is the part after the tool name prefix
+ * Parse tool name from llm.ts mapped tool-result content:
+ * [toolName] content... or [toolName] ERROR: content...
  */
 function parseToolNameFromContent(content: string): { toolName: string; resultContent: string } {
-  // Match format: [toolName] content... or [toolName] ERROR: content...
-  const match = content.match(/^\[([^\]]+)\]\s*(?:ERROR:\s*)?(.*)$/s)
-  if (match) {
-    return { toolName: match[1], resultContent: match[2] }
-  }
+  const parsed = parseMappedToolResultContent(content)
+  if (parsed) return parsed
   return { toolName: 'unknown', resultContent: content }
 }
 
@@ -1292,15 +1310,25 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const targetTokens = Math.floor(maxTokens * targetRatio)
 
   let messages = [...opts.messages]
-  let tokens = estimateTokensFromMessages(messages)
+  const estimatedTokensBefore = estimateTokensFromMessages(messages)
 
   // Use actual API-reported token count when available (more accurate than chars/4)
   const actualTokens = opts.actualInputTokens ?? getActualInputTokens(opts.sessionId)
+  const scaleTokensWithActual = (estimatedTokens: number): number => {
+    if (actualTokens === undefined || actualTokens <= 0) return estimatedTokens
+    if (estimatedTokensBefore <= 0) return Math.max(estimatedTokens, actualTokens)
+
+    const scaledActualTokens = Math.floor(actualTokens * (estimatedTokens / estimatedTokensBefore))
+    return Math.max(estimatedTokens, scaledActualTokens)
+  }
+
+  let tokens = scaleTokensWithActual(estimatedTokensBefore)
+  const estTokensBefore = tokens
+
   if (actualTokens !== undefined && actualTokens > 0) {
     // Use the higher of estimate vs actual to be conservative
-    tokens = Math.max(tokens, actualTokens)
     if (isDebugLLM()) {
-      logLLM("ContextBudget: using actual token count", { estimated: estimateTokensFromMessages(messages), actual: actualTokens, used: tokens })
+      logLLM("ContextBudget: using actual token count", { estimated: estimatedTokensBefore, actual: actualTokens, used: tokens })
     }
   }
 
@@ -1343,35 +1371,30 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
     }
     applied.push("microcompact")
-    tokens = estimateTokensFromMessages(messages)
-    if (actualTokens !== undefined) {
-      // Re-estimate since we changed content; scale actual tokens proportionally
-      tokens = Math.max(tokens, Math.floor(actualTokens * (tokens / estimateTokensFromMessages(opts.messages))))
-    }
-  }
-
-  if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
-    if (isDebugLLM()) logLLM("ContextBudget: after microcompact", { estTokens: tokens, count: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
   }
 
   // Tier 0b: Truncate large payload-like messages before any LLM summarization.
-  // This keeps bulky tool outputs from triggering expensive per-message summaries.
+  // We run this BEFORE the targetTokens early return so context never inflates needlessly.
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
     if (msg.role === "system" || !msg.content) continue
 
     const isPayloadLike = isLikelyPayloadLikeMessage(msg)
-    const shouldTruncateToolResult = msg.role === "tool" && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
+
+    // NOTE: tool messages are mapped to 'user' role by llm.ts with a '[toolName] ' prefix.
+    const isToolResultLike = msg.role === "tool" || (msg.role === "user" && hasMappedToolResultPrefix(msg.content))
+
+    const shouldTruncateToolResult = isToolResultLike && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
     const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
 
     if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload) continue
 
-    const marker = msg.role === "tool" ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
-    const keepChars = msg.role === "tool" ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
+    const marker = isToolResultLike ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
+    const keepChars = isToolResultLike ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
     const { toolName } = parseToolNameFromContent(msg.content)
     const contextRef = registerContextRef(opts.sessionId, {
-      kind: msg.role === "tool" ? "truncated_tool" : "truncated_payload",
+      kind: isToolResultLike ? "truncated_tool" : "truncated_payload",
       role: msg.role,
       content: msg.content,
       toolName: toolName !== "unknown" ? toolName : undefined,
@@ -1386,20 +1409,17 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
         ...msg,
         content: truncatedContent,
       }
-      applied.push("aggressive_truncate")
-      tokens = estimateTokensFromMessages(messages)
-      if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
-        if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
-        return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+      if (!applied.includes("aggressive_truncate")) {
+        applied.push("aggressive_truncate")
       }
     }
   }
 
-  // Recalculate after Tier 0 truncation
-  tokens = estimateTokensFromMessages(messages)
+  tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
+
   if (tokens <= targetTokens && !shouldApplyArchiveFrontier(getArchiveFrontierState(messages, opts.sessionId, lastN), messages.length, tokens, targetTokens)) {
-    if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    if (isDebugLLM()) logLLM("ContextBudget: after microcompact and aggressive_truncate", { estTokens: tokens, count: messages.length })
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 0c: Archive older raw history behind a rolling summary frontier.
@@ -1448,13 +1468,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
       messages = ordered
       if (!applied.includes("archive_frontier")) applied.push("archive_frontier")
-      tokens = estimateTokensFromMessages(messages)
+      tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
     }
   }
 
   if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after archive_frontier", { estTokens: tokens, kept: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 1: Batch-summarize oversized conversational messages.
@@ -1521,13 +1541,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     indexOffset -= deleteCount - 1
 
     applied.push("batch_summarize")
-    tokens = estimateTokensFromMessages(messages)
+    tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
     if (tokens <= targetTokens) break
   }
 
   if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after batch_summarize", { estTokens: tokens })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 2: Remove middle messages (keep system, first user, last N)
@@ -1604,11 +1624,11 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   messages = ordered
   applied.push("drop_middle")
-  tokens = estimateTokensFromMessages(messages)
+  tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
 
   if (tokens <= targetTokens) {
     if (isDebugLLM()) logLLM("ContextBudget: after drop_middle", { estTokens: tokens, kept: messages.length })
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
+    return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
   }
 
   // Tier 3: Minimal system prompt
@@ -1625,10 +1645,9 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     messages.unshift({ role: "system", content: minimal })
   }
   applied.push("minimal_system_prompt")
-  tokens = estimateTokensFromMessages(messages)
+  tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
 
   if (isDebugLLM()) logLLM("ContextBudget: after minimal_system_prompt", { estTokens: tokens })
 
-  return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
+  return { messages, appliedStrategies: applied, estTokensBefore, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
 }
-
