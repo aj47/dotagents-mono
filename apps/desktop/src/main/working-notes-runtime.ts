@@ -4,7 +4,7 @@ import {
   type KnowledgeNote,
 } from "@dotagents/core"
 
-export function mergeLayeredKnowledgeNotes(
+function mergeLayeredKnowledgeNotes(
   globalNotes: KnowledgeNote[],
   workspaceNotes: KnowledgeNote[],
 ): KnowledgeNote[] {
@@ -21,7 +21,7 @@ export function mergeLayeredKnowledgeNotes(
   return Array.from(byId.values())
 }
 
-export function selectWorkingKnowledgeNotes(
+function selectWorkingKnowledgeNotes(
   notes: KnowledgeNote[],
   maxNotes: number,
 ): KnowledgeNote[] {
