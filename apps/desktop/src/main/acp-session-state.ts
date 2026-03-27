@@ -6,7 +6,10 @@
  * when using an ACP agent as the main agent.
  */
 
+import { join } from "path"
 import { logApp } from "./debug"
+import { dataFolder } from "./config"
+import { loadPersistedJson, savePersistedJson } from "./session-persistence"
 
 /**
  * Information about an active ACP session
@@ -24,6 +27,28 @@ export interface ACPSessionInfo {
 
 // In-memory storage for conversation-to-session mapping
 const conversationSessions: Map<string, ACPSessionInfo> = new Map()
+const ACP_SESSION_STATE_PATH = join(dataFolder, "acp-session-state.json")
+
+type PersistedAcpSessionState = {
+  version: 1
+  conversationSessions: Array<[string, ACPSessionInfo]>
+}
+
+function isPersistedSessionInfo(value: unknown): value is ACPSessionInfo {
+  if (!value || typeof value !== "object") {
+    return false
+  }
+
+  const sessionInfo = value as Partial<ACPSessionInfo>
+  return (
+    typeof sessionInfo.sessionId === "string"
+    && typeof sessionInfo.agentName === "string"
+    && typeof sessionInfo.createdAt === "number"
+    && Number.isFinite(sessionInfo.createdAt)
+    && typeof sessionInfo.lastUsedAt === "number"
+    && Number.isFinite(sessionInfo.lastUsedAt)
+  )
+}
 
 // Mapping from ACP session ID → DotAgents session ID
 // This is needed for routing tool approval requests to the correct UI session
@@ -38,6 +63,40 @@ const acpToAppRunId: Map<string, number> = new Map()
 const acpClientTokenToSession: Map<string, string> = new Map()
 const acpSessionToClientToken: Map<string, string> = new Map()
 const pendingClientTokenToAppSession: Map<string, string> = new Map()
+
+function persistConversationSessions(): void {
+  savePersistedJson(
+    ACP_SESSION_STATE_PATH,
+    {
+      version: 1,
+      conversationSessions: Array.from(conversationSessions.entries()),
+    } satisfies PersistedAcpSessionState,
+    "ACP Session",
+  )
+}
+
+const persistedSessionState = loadPersistedJson<PersistedAcpSessionState>(
+  ACP_SESSION_STATE_PATH,
+  "ACP Session",
+)
+
+if (
+  persistedSessionState?.version === 1
+  && Array.isArray(persistedSessionState.conversationSessions)
+) {
+  for (const entry of persistedSessionState.conversationSessions) {
+    if (!Array.isArray(entry) || entry.length !== 2) {
+      continue
+    }
+
+    const [conversationId, sessionInfo] = entry
+    if (typeof conversationId !== "string" || !isPersistedSessionInfo(sessionInfo)) {
+      continue
+    }
+
+    conversationSessions.set(conversationId, sessionInfo)
+  }
+}
 
 /**
  * Get the ACP session for a conversation (if any).
@@ -78,6 +137,41 @@ export function setSessionForConversation(
     })
     logApp(`[ACP Session] Created session mapping for conversation ${conversationId}: ${sessionId}`)
   }
+
+  persistConversationSessions()
+}
+
+/**
+ * Clear the session for a conversation.
+ * Use when user explicitly requests a new session or when conversation is deleted.
+ * @param conversationId The DotAgents conversation ID
+ */
+export function clearSessionForConversation(conversationId: string): void {
+  if (conversationSessions.has(conversationId)) {
+    conversationSessions.delete(conversationId)
+    logApp(`[ACP Session] Cleared session for conversation ${conversationId}`)
+    persistConversationSessions()
+  }
+}
+
+/**
+ * Clear all sessions.
+ * Use on app shutdown or when ACP agent is restarted.
+ */
+export function clearAllSessions(): void {
+  const count = conversationSessions.size
+  conversationSessions.clear()
+  logApp(`[ACP Session] Cleared all ${count} sessions`)
+  persistConversationSessions()
+}
+
+/**
+ * Get all active sessions.
+ * Useful for debugging and UI display.
+ * @returns Map of conversation ID to session info
+ */
+export function getAllSessions(): Map<string, ACPSessionInfo> {
+  return new Map(conversationSessions)
 }
 
 /**
@@ -88,6 +182,7 @@ export function touchSession(conversationId: string): void {
   const session = conversationSessions.get(conversationId)
   if (session) {
     session.lastUsedAt = Date.now()
+    persistConversationSessions()
   }
 }
 

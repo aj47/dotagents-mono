@@ -4,6 +4,10 @@ export type MainAcpAgentSelection =
   | { resolvedName: string; repairedName?: string }
   | { error: string }
 
+export type PreferredTopLevelAcpAgentSelection =
+  | { resolvedName: string; source: "profile" | "main-agent"; repairedName?: string }
+  | { error: string }
+
 export function resolveMainAcpAgentSelection(
   configuredName: string,
   profileAgents: AgentProfile[] = [],
@@ -66,5 +70,55 @@ export function resolveMainAcpAgentSelection(
       : hasConfiguredName
         ? `ACP main agent "${configuredName}" is not available and no enabled ACP/stdio agents were found.`
         : "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
+  }
+}
+
+export function resolvePreferredTopLevelAcpAgentSelection({
+  currentProfile,
+  sessionProfileId,
+  mainAgentMode,
+  mainAgentName,
+  profileAgents = [],
+  legacyAgents = [],
+}: {
+  currentProfile?: AgentProfile
+  sessionProfileId?: string
+  mainAgentMode?: "api" | "acp"
+  mainAgentName?: string
+  profileAgents?: AgentProfile[]
+  legacyAgents?: ACPAgentConfig[]
+}): PreferredTopLevelAcpAgentSelection | null {
+  const sessionProfile = sessionProfileId
+    ? profileAgents.find((profile) => profile.id === sessionProfileId)
+    : undefined
+  const selectedProfile = sessionProfile ?? currentProfile
+
+  if (
+    selectedProfile
+    && selectedProfile.enabled !== false
+    && (selectedProfile.connection.type === "acp" || selectedProfile.connection.type === "stdio")
+  ) {
+    return {
+      resolvedName: selectedProfile.name,
+      source: "profile",
+    }
+  }
+
+  if (mainAgentMode !== "acp") {
+    return null
+  }
+
+  if (!mainAgentName?.trim()) {
+    return null
+  }
+
+  const selection = resolveMainAcpAgentSelection(mainAgentName ?? "", profileAgents, legacyAgents)
+  if ("error" in selection) {
+    return selection
+  }
+
+  return {
+    ...selection,
+    source: "main-agent",
   }
 }

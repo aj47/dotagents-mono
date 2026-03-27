@@ -9,7 +9,7 @@ import {
   setAppQuitting,
   WINDOWS,
 } from "./window"
-import { listenToKeyboardEvents } from "./keyboard"
+import { listenToKeyboardEvents, stopListeningToKeyboardEvents } from "./keyboard"
 import { registerIpcMain } from "@egoist/tipc/main"
 import { router } from "./tipc"
 import { registerServeProtocol, registerServeSchema } from "./serve"
@@ -91,6 +91,8 @@ const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
 const shouldEnforceSingleInstance = !isQRMode && !isHeadlessMode
+const CLEANUP_TIMEOUT_MS = 5000
+const GUI_SIGNAL_FORCE_EXIT_DELAY_MS = 500
 
 function releaseAppSingleInstanceLock() {
   if (!shouldEnforceSingleInstance) return
@@ -717,8 +719,6 @@ if (!gotSingleInstanceLock) {
 
     // Track if we're already cleaning up to prevent re-entry
     let isCleaningUp = false
-    const CLEANUP_TIMEOUT_MS = 5000 // 5 second timeout for graceful cleanup
-
     app.on("before-quit", async (event) => {
       setAppQuitting()
       releaseAppSingleInstanceLock()
@@ -766,6 +766,7 @@ if (!gotSingleInstanceLock) {
 
       try {
         const cleanupResults = await Promise.allSettled([
+          withCleanupTimeout("keyboard", () => stopListeningToKeyboardEvents()),
           withCleanupTimeout("ACP", () => acpService.shutdown()),
           withCleanupTimeout("MCP", () => mcpService.cleanup()),
         ])
@@ -811,6 +812,6 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     app.quit()
     // Short grace period — electron-vite --watch spawns a new process quickly,
     // so the old one must die fast to avoid duplicate Electron processes.
-    setTimeout(() => process.exit(0), 500).unref()
+    setTimeout(() => process.exit(0), GUI_SIGNAL_FORCE_EXIT_DELAY_MS).unref()
   })
 }

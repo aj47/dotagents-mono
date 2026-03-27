@@ -26,6 +26,12 @@ const rdevPath = path
   )
   .replace("app.asar", "app.asar.unpacked")
 
+const KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS = 1000
+const KEYBOARD_LISTENER_FORCE_KILL_WAIT_MS = 250
+
+let keyboardListenerChild: ChildProcess | null = null
+let keyboardListenerStopState: { child: ChildProcess; promise: Promise<void> } | null = null
+
 type RdevEvent = {
   event_type: "KeyPress" | "KeyRelease"
   data: {
@@ -281,6 +287,13 @@ const showTextInputWithLastConversation = async () => {
 }
 
 export function listenToKeyboardEvents() {
+  if (keyboardListenerChild && keyboardListenerChild.exitCode === null) {
+    if (isDebugKeybinds()) {
+      logKeybinds("Keyboard event listener already running")
+    }
+    return
+  }
+
   let isHoldingCtrlKey = false
   let startRecordingTimer: ReturnType<typeof setTimeout> | undefined
   let isPressedCtrlKey = false
@@ -1331,6 +1344,7 @@ export function listenToKeyboardEvents() {
   }
 
   const child = spawn(rdevPath, ["listen"], {})
+  keyboardListenerChild = child
 
   if (isDebugKeybinds()) {
     logKeybinds("Starting keyboard event listener with rdev path:", rdevPath)
@@ -1366,6 +1380,10 @@ export function listenToKeyboardEvents() {
   })
 
   child.on("exit", (code, signal) => {
+    if (keyboardListenerChild === child) {
+      keyboardListenerChild = null
+    }
+
     if (isDebugKeybinds()) {
       logKeybinds("Keyboard listener process exited:", { code, signal })
     }
@@ -1397,4 +1415,151 @@ export function listenToKeyboardEvents() {
       }
     }
   })
+}
+
+export async function stopListeningToKeyboardEvents(): Promise<void> {
+  const child = keyboardListenerChild
+  if (!child) {
+    return
+  }
+
+  if (keyboardListenerStopState?.child === child) {
+    await keyboardListenerStopState.promise
+    return
+  }
+
+  if (child.exitCode !== null) {
+    if (keyboardListenerChild === child) {
+      keyboardListenerChild = null
+    }
+    if (keyboardListenerStopState?.child === child) {
+      keyboardListenerStopState = null
+    }
+    return
+  }
+
+  const stopState = {
+    child,
+    promise: Promise.resolve(),
+  }
+  keyboardListenerStopState = stopState
+
+  stopState.promise = new Promise<void>((resolve) => {
+    let done = false
+    let forceKillTimer: ReturnType<typeof setTimeout> | undefined
+    let forceKillWaitTimer: ReturnType<typeof setTimeout> | undefined
+
+    const finish = ({ clearChild = true }: { clearChild?: boolean } = {}) => {
+      if (done) return
+      done = true
+      child.off("exit", onExit)
+      child.off("error", onError)
+      if (forceKillTimer !== undefined) {
+        clearTimeout(forceKillTimer)
+      }
+      if (forceKillWaitTimer !== undefined) {
+        clearTimeout(forceKillWaitTimer)
+      }
+      if (clearChild && keyboardListenerChild === child) {
+        keyboardListenerChild = null
+      }
+      if (keyboardListenerStopState === stopState) {
+        keyboardListenerStopState = null
+      }
+      resolve()
+    }
+
+    const onExit = () => {
+      finish()
+    }
+
+    const onError = () => {
+      finish()
+    }
+
+    const finishIfExited = () => {
+      if (child.exitCode !== null) {
+        finish()
+        return true
+      }
+      return false
+    }
+
+    const resolveWithoutClearingChild = () => {
+      if (isDebugKeybinds()) {
+        logKeybinds("Keyboard listener did not confirm exit; preserving child reference to avoid duplicate listeners")
+      }
+      finish({ clearChild: false })
+    }
+
+    child.once("exit", onExit)
+    child.once("error", onError)
+
+    if (finishIfExited()) {
+      return
+    }
+
+    forceKillTimer = setTimeout(() => {
+      if (finishIfExited()) {
+        return
+      }
+
+      try {
+        const forceKillSent = child.kill("SIGKILL")
+        if (!forceKillSent) {
+          if (finishIfExited()) {
+            return
+          }
+          resolveWithoutClearingChild()
+          return
+        }
+      } catch {
+        if (finishIfExited()) {
+          return
+        }
+        resolveWithoutClearingChild()
+        return
+      }
+
+      if (finishIfExited()) {
+        return
+      }
+
+      forceKillWaitTimer = setTimeout(() => {
+        if (finishIfExited()) {
+          return
+        }
+        resolveWithoutClearingChild()
+      }, KEYBOARD_LISTENER_FORCE_KILL_WAIT_MS)
+
+      if (typeof forceKillWaitTimer.unref === "function") {
+        forceKillWaitTimer.unref()
+      }
+    }, KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS)
+
+    if (typeof forceKillTimer.unref === "function") {
+      forceKillTimer.unref()
+    }
+
+    try {
+      const terminateSent = child.kill("SIGTERM")
+      if (!terminateSent) {
+        if (finishIfExited()) {
+          return
+        }
+        resolveWithoutClearingChild()
+        return
+      }
+    } catch {
+      if (finishIfExited()) {
+        return
+      }
+      resolveWithoutClearingChild()
+      return
+    }
+
+    finishIfExited()
+  })
+
+  await stopState.promise
 }

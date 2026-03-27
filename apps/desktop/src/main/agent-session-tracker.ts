@@ -4,11 +4,14 @@
  */
 
 import type { RendererHandlers } from "./renderer-handlers"
+import { join } from "path"
 import { logApp } from "./debug"
 import { WINDOWS } from "./window"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import type { SessionProfileSnapshot } from "../shared/types"
 import { clearSessionUserResponse } from "./session-user-response-store"
+import { dataFolder } from "./config"
+import { loadPersistedJson, savePersistedJson } from "./session-persistence"
 
 export interface AgentSession {
   id: string
@@ -28,6 +31,15 @@ export interface AgentSession {
    */
   profileSnapshot?: SessionProfileSnapshot
 }
+
+type PersistedAgentSessionState = {
+  version: 1
+  activeSessions: AgentSession[]
+  completedSessions: AgentSession[]
+}
+
+const AGENT_SESSION_STATE_PATH = join(dataFolder, "agent-session-state.json")
+const MAX_COMPLETED_SESSIONS = 20
 
 /**
  * Emit session updates to all renderer windows
@@ -76,7 +88,116 @@ class AgentSessionTracker {
     return AgentSessionTracker.instance
   }
 
-  private constructor() {}
+  private constructor() {
+    this.restorePersistedState()
+  }
+
+  private getCompletedSessionSortTime(session: AgentSession): number {
+    const endTime = this.getFiniteTimestamp(session.endTime)
+    const startTime = this.getFiniteTimestamp(session.startTime)
+
+    return endTime ?? startTime ?? 0
+  }
+
+  private getFiniteTimestamp(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined
+  }
+
+  private normalizeRestoredSession(
+    session: AgentSession,
+    options?: {
+      status?: AgentSession["status"]
+      defaultEndTime?: number
+      defaultLastActivity?: string
+    },
+  ): AgentSession {
+    const endTime = this.getFiniteTimestamp(session.endTime) ?? options?.defaultEndTime
+    const startTime = this.getFiniteTimestamp(session.startTime) ?? endTime ?? 0
+    const lastActivity = typeof session.lastActivity === "string" && session.lastActivity.trim().length > 0
+      ? session.lastActivity
+      : options?.defaultLastActivity
+
+    return {
+      ...session,
+      ...(options?.status ? { status: options.status } : {}),
+      startTime,
+      endTime,
+      lastActivity,
+    }
+  }
+
+  private normalizeCompletedSessions(sessions: AgentSession[]): {
+    retainedSessions: AgentSession[]
+    evictedSessions: AgentSession[]
+  } {
+    const sortedSessions = [...sessions]
+      .sort((a, b) => this.getCompletedSessionSortTime(b) - this.getCompletedSessionSortTime(a))
+
+    return {
+      retainedSessions: sortedSessions.slice(0, MAX_COMPLETED_SESSIONS),
+      evictedSessions: sortedSessions.slice(MAX_COMPLETED_SESSIONS),
+    }
+  }
+
+  private replaceCompletedSessions(sessions: AgentSession[]): boolean {
+    const { retainedSessions, evictedSessions } = this.normalizeCompletedSessions(sessions)
+    this.completedSessions = retainedSessions
+
+    for (const evictedSession of evictedSessions) {
+      clearSessionUserResponse(evictedSession.id)
+    }
+
+    return evictedSessions.length > 0
+  }
+
+  private persistState(): void {
+    savePersistedJson(
+      AGENT_SESSION_STATE_PATH,
+      {
+        version: 1,
+        activeSessions: Array.from(this.sessions.values()),
+        completedSessions: this.completedSessions,
+      } satisfies PersistedAgentSessionState,
+      "AgentSessionTracker",
+    )
+  }
+
+  private restorePersistedState(): void {
+    const persisted = loadPersistedJson<PersistedAgentSessionState>(
+      AGENT_SESSION_STATE_PATH,
+      "AgentSessionTracker",
+    )
+    if (!persisted) {
+      return
+    }
+
+    const restoredCompleted = Array.isArray(persisted.completedSessions)
+      ? persisted.completedSessions
+        .filter((session): session is AgentSession => typeof session?.id === "string")
+        .map((session) => this.normalizeRestoredSession(session))
+      : []
+
+    const interruptedAt = Date.now()
+    const restoredInterrupted = Array.isArray(persisted.activeSessions)
+      ? persisted.activeSessions
+        .filter((session): session is AgentSession => typeof session?.id === "string")
+        .map((session) => this.normalizeRestoredSession(session, {
+          status: "stopped",
+          defaultEndTime: interruptedAt,
+          defaultLastActivity: "Interrupted by app restart",
+        }))
+      : []
+
+    this.sessions.clear()
+    const didEvictCompletedSessions = this.replaceCompletedSessions([
+      ...restoredInterrupted,
+      ...restoredCompleted,
+    ])
+
+    if (restoredInterrupted.length > 0 || didEvictCompletedSessions) {
+      this.persistState()
+    }
+  }
 
   /**
    * Start tracking a new agent session
@@ -109,6 +230,7 @@ class AgentSessionTracker {
 
     this.sessions.set(sessionId, session)
     logApp(`[AgentSessionTracker] Started session: ${sessionId}, snoozed: ${startSnoozed}, profile: ${profileSnapshot?.profileName || 'none'}, total sessions: ${this.sessions.size}`)
+    this.persistState()
 
     // Emit update to UI
     emitSessionUpdate()
@@ -126,6 +248,7 @@ class AgentSessionTracker {
     const session = this.sessions.get(sessionId)
     if (session) {
       Object.assign(session, updates)
+      this.persistState()
       // Emit update to UI so sidebar and other components reflect changes (e.g., title updates)
       emitSessionUpdate()
     }
@@ -145,16 +268,10 @@ class AgentSessionTracker {
     if (finalActivity) {
       session.lastActivity = finalActivity
     }
-    // Move to recent list (newest first), cap length
-    this.completedSessions.unshift({ ...session })
-    if (this.completedSessions.length > 20) {
-      const evictedSessions = this.completedSessions.splice(20)
-      for (const evicted of evictedSessions) {
-        clearSessionUserResponse(evicted.id)
-      }
-    }
+    this.replaceCompletedSessions([{ ...session }, ...this.completedSessions])
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Completing session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
+    this.persistState()
 
     // Emit update to UI
     emitSessionUpdate()
@@ -171,15 +288,10 @@ class AgentSessionTracker {
     }
     session.status = "stopped"
     session.endTime = Date.now()
-    this.completedSessions.unshift({ ...session })
-    if (this.completedSessions.length > 20) {
-      const evictedSessions = this.completedSessions.splice(20)
-      for (const evicted of evictedSessions) {
-        clearSessionUserResponse(evicted.id)
-      }
-    }
+    this.replaceCompletedSessions([{ ...session }, ...this.completedSessions])
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Stopping session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
+    this.persistState()
 
     // Emit update to UI
     emitSessionUpdate()
@@ -197,15 +309,10 @@ class AgentSessionTracker {
     session.status = "error"
     session.errorMessage = errorMessage
     session.endTime = Date.now()
-    this.completedSessions.unshift({ ...session })
-    if (this.completedSessions.length > 20) {
-      const evictedSessions = this.completedSessions.splice(20)
-      for (const evicted of evictedSessions) {
-        clearSessionUserResponse(evicted.id)
-      }
-    }
+    this.replaceCompletedSessions([{ ...session }, ...this.completedSessions])
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Error in session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
+    this.persistState()
 
     // Emit update to UI
     emitSessionUpdate()
@@ -226,7 +333,7 @@ class AgentSessionTracker {
   getRecentSessions(limit: number = 4): AgentSession[] {
     return this.completedSessions
       .slice(0, limit)
-      .sort((a, b) => (b.endTime || 0) - (a.endTime || 0))
+      .sort((a, b) => this.getCompletedSessionSortTime(b) - this.getCompletedSessionSortTime(a))
   }
 
   /**
@@ -239,6 +346,7 @@ class AgentSessionTracker {
       session.isSnoozed = true
       this.sessions.set(sessionId, session)
       logApp(`[AgentSessionTracker] Session ${sessionId} is now snoozed: ${session.isSnoozed}`)
+      this.persistState()
 
       // Emit update to UI
       emitSessionUpdate()
@@ -257,6 +365,7 @@ class AgentSessionTracker {
       session.isSnoozed = false
       this.sessions.set(sessionId, session)
       logApp(`[AgentSessionTracker] Session ${sessionId} is now snoozed: ${session.isSnoozed}`)
+      this.persistState()
 
       // Emit update to UI
       emitSessionUpdate()
@@ -286,7 +395,12 @@ class AgentSessionTracker {
    */
   getSessionProfileSnapshot(sessionId: string): SessionProfileSnapshot | undefined {
     const session = this.sessions.get(sessionId)
-    return session?.profileSnapshot
+    if (session?.profileSnapshot) {
+      return session.profileSnapshot
+    }
+
+    const completedSession = this.completedSessions.find((candidate) => candidate.id === sessionId)
+    return completedSession?.profileSnapshot
   }
 
   /**
@@ -361,6 +475,7 @@ class AgentSessionTracker {
     this.sessions.set(sessionId, session)
 
     logApp(`[AgentSessionTracker] Revived session: ${sessionId}, snoozed: ${startSnoozed}`)
+    this.persistState()
     emitSessionUpdate()
     return true
   }
@@ -376,6 +491,7 @@ class AgentSessionTracker {
     this.completedSessions.splice(index, 1)
     clearSessionUserResponse(sessionId)
     logApp(`[AgentSessionTracker] Removed completed session: ${sessionId}`)
+    this.persistState()
     emitSessionUpdate()
     return true
   }
@@ -384,7 +500,18 @@ class AgentSessionTracker {
    * Clear all sessions (for testing/debugging)
    */
   clearAllSessions(): void {
+    const sessionIds = new Set<string>([
+      ...this.sessions.keys(),
+      ...this.completedSessions.map((session) => session.id),
+    ])
+
+    for (const sessionId of sessionIds) {
+      clearSessionUserResponse(sessionId)
+    }
+
     this.sessions.clear()
+    this.completedSessions = []
+    this.persistState()
   }
 
   /**
@@ -406,9 +533,9 @@ class AgentSessionTracker {
 
     logApp(`[AgentSessionTracker] Cleared ${this.completedSessions.length - retainedSessions.length} completed sessions`)
     this.completedSessions = retainedSessions
+    this.persistState()
     emitSessionUpdate()
   }
 }
 
 export const agentSessionTracker = AgentSessionTracker.getInstance()
-

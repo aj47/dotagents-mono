@@ -21,6 +21,7 @@ async function loadIndexForHubInstall(
   const createPanelWindow = vi.fn()
   const createSetupWindow = vi.fn()
   const showMainWindow = vi.fn()
+  const stopListeningToKeyboardEvents = vi.fn(() => Promise.resolve())
   const requestSingleInstanceLock = vi.fn(() => gotSingleInstanceLock)
   const releaseSingleInstanceLock = vi.fn()
   const quit = vi.fn()
@@ -82,7 +83,10 @@ async function loadIndexForHubInstall(
     showMainWindow,
     WINDOWS: windows,
   }))
-  vi.doMock("./keyboard", () => ({ listenToKeyboardEvents: vi.fn() }))
+  vi.doMock("./keyboard", () => ({
+    listenToKeyboardEvents: vi.fn(),
+    stopListeningToKeyboardEvents,
+  }))
   vi.doMock("./tipc", () => ({ router: {} }))
   vi.doMock("./serve", () => ({
     registerServeProtocol: vi.fn(),
@@ -166,6 +170,7 @@ async function loadIndexForHubInstall(
     downloadHubBundleToTempFile,
     requestSingleInstanceLock,
     releaseSingleInstanceLock,
+    stopListeningToKeyboardEvents,
     quit,
   }
 }
@@ -248,6 +253,22 @@ describe("Hub install handoff routing", () => {
     expect(requestSingleInstanceLock).toHaveBeenCalledTimes(1)
     expect(quit).toHaveBeenCalledTimes(1)
     expect(createMainWindow).not.toHaveBeenCalled()
+  })
+
+  it("stops the keyboard listener during before-quit cleanup", async () => {
+    const { handlers, quit, stopListeningToKeyboardEvents } =
+      await loadIndexForHubInstall(["electron"])
+
+    const beforeQuitHandler = handlers.get("before-quit")?.[0] as (
+      event: { preventDefault: () => void },
+    ) => Promise<void>
+    const event = { preventDefault: vi.fn() }
+
+    await beforeQuitHandler(event)
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(stopListeningToKeyboardEvents).toHaveBeenCalledTimes(1)
+    expect(quit).toHaveBeenCalled()
   })
 
   it("downloads Hub install deep links received via open-url and routes them into showMainWindow", async () => {

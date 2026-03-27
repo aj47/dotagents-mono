@@ -751,10 +751,13 @@ export function ActiveAgentsSidebar({
             )
             const hasPendingApproval =
               !isPast && !!sessionProgress?.pendingToolApproval
+            const progressLifecycleState = session.status === "active"
+              ? "running"
+              : (sessionProgress?.isComplete ? "complete" : "running")
             const conversationState = sessionProgress?.conversationState
               ? normalizeAgentConversationState(
                   sessionProgress.conversationState,
-                  sessionProgress.isComplete ? "complete" : "running",
+                  progressLifecycleState,
                 )
               : hasPendingApproval
                 ? "needs_input"

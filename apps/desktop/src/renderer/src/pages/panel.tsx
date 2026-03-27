@@ -10,7 +10,7 @@ import { rendererHandlers, tipcClient } from "~/lib/tipc-client"
 import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-input-panel"
 import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
-import { useConversationQuery, useCreateConversationMutation, useAddMessageToConversationMutation } from "@renderer/lib/queries"
+import { useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
@@ -113,23 +113,12 @@ export function Component() {
   const isConversationActive = !!currentConversation
 
   const createConversationMutation = useCreateConversationMutation()
-  const addMessageMutation = useAddMessageToConversationMutation()
-
   const startNewConversation = async (message: string, role: "user" | "assistant") => {
     const result = await createConversationMutation.mutateAsync({ firstMessage: message, role })
     if (result?.id) {
       setCurrentConversationId(result.id)
     }
     return result
-  }
-
-  const addMessage = async (content: string, role: "user" | "assistant") => {
-    if (!currentConversationId) return
-    await addMessageMutation.mutateAsync({
-      conversationId: currentConversationId,
-      content,
-      role,
-    })
   }
 
   const activeSessionCount = Array.from(agentProgressById?.values() ?? [])
@@ -287,11 +276,6 @@ export function Component() {
       // The session will continue in the tile view
       if (wasFromTile) {
         tipcClient.hidePanelWindow({})
-      }
-
-      // If we have a transcript, start a conversation with it
-      if (transcript && !isConversationActive) {
-        await startNewConversation(transcript, "user")
       }
 
       const result = await tipcClient.createMcpRecording({
@@ -747,13 +731,6 @@ export function Component() {
     // Capture the conversation ID at submit time - if user explicitly continued a conversation
     // from history, currentConversationId will be set. Otherwise it's null for new inputs.
     const conversationIdForMcp = currentConversationId
-
-    // Start new conversation or add to existing one
-    if (!isConversationActive) {
-      await startNewConversation(text, "user")
-    } else {
-      await addMessage(text, "user")
-    }
 
     // Hide the text input immediately and show processing/overlay
     setShowTextInput(false)

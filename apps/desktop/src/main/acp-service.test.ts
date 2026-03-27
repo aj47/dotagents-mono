@@ -93,6 +93,7 @@ vi.mock("./config", () => ({
     get: () => mockConfig,
   },
   // AgentProfileService imports these from ./config
+  dataFolder: process.env.TMPDIR || process.env.TEMP || process.env.TMP || "/tmp",
   globalAgentsFolder: process.env.TMPDIR || process.env.TEMP || process.env.TMP || "/tmp",
   resolveWorkspaceAgentsFolder: () => null,
 }))
@@ -100,6 +101,7 @@ vi.mock("./config", () => ({
 // Mock debug
 vi.mock("./debug", () => ({
   logApp: vi.fn(),
+  logACP: vi.fn(),
 }))
 
 // Keep ACP service tests deterministic: use legacy acpAgents config path directly.
@@ -128,6 +130,10 @@ describe("ACP Service", () => {
     originalWorkspaceEnv = process.env.DOTAGENTS_WORKSPACE_DIR
     delete process.env.DOTAGENTS_WORKSPACE_DIR
     ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = undefined
+    ;(mockConfig as any).remoteServerEnabled = undefined
+    ;(mockConfig as any).remoteServerApiKey = undefined
+    ;(mockConfig as any).remoteServerPort = undefined
+    ;(mockConfig as any).acpInjectRuntimeTools = undefined
 
     // Create mock process
     mockProcess = {
@@ -409,6 +415,250 @@ describe("ACP Service", () => {
       )
 
       rmSync(workspaceDir, { recursive: true, force: true })
+    })
+
+    it("passes a preferred persisted session id through to createSession", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+
+      const createSessionSpy = vi.spyOn(acpService as any, "createSession").mockResolvedValue("persisted-session-1")
+
+      const sessionId = await acpService.getOrCreateSession(
+        "test-agent",
+        false,
+        undefined,
+        undefined,
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("persisted-session-1")
+      expect(createSessionSpy).toHaveBeenCalledWith("test-agent", undefined, "persisted-session-1")
+    })
+
+    it("ignores stage callback failures while continuing session creation", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+
+      vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-after-stage-error")
+      const onStage = vi.fn(async () => {
+        throw new Error("progress callback failed")
+      })
+
+      const sessionId = await acpService.getOrCreateSession(
+        "test-agent",
+        false,
+        undefined,
+        undefined,
+        undefined,
+        onStage,
+      )
+
+      expect(sessionId).toBe("session-after-stage-error")
+      expect(onStage).toHaveBeenCalledWith("launching")
+      expect(onStage).toHaveBeenCalledWith("creating_session")
+    })
+
+    it("loads a preferred persisted session when createSession is asked to reuse one", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+      instance.agentCapabilities = { loadSession: true }
+
+      const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
+      sendRequestSpy.mockResolvedValueOnce({ sessionId: "persisted-session-1" })
+
+      const sessionId = await (acpService as any).createSession(
+        "test-agent",
+        undefined,
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("persisted-session-1")
+      expect(sendRequestSpy).toHaveBeenCalledWith(
+        "test-agent",
+        "session/load",
+        expect.objectContaining({ sessionId: "persisted-session-1" }),
+      )
+    })
+
+    it("falls back to session/new when loading a persisted session fails", async () => {
+      ;(mockConfig as any).remoteServerEnabled = true
+      ;(mockConfig as any).remoteServerApiKey = "test-api-key"
+      ;(mockConfig as any).remoteServerPort = 3210
+      ;(mockConfig as any).acpInjectRuntimeTools = true
+
+      const sessionState = await import("./acp-session-state")
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+      instance.agentCapabilities = { loadSession: true }
+
+      let injectedClientToken: string | undefined
+      const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
+      sendRequestSpy.mockImplementation(async (...args: unknown[]) => {
+        const [, method, params] = args as [
+          string,
+          string,
+          { mcpServers?: Array<{ url?: string }> },
+        ]
+        const injectedServerUrl = params.mcpServers?.[0]?.url
+        expect(injectedServerUrl).toContain("/mcp/")
+        const nextToken = decodeURIComponent(injectedServerUrl!.split("/mcp/")[1]!)
+        injectedClientToken ??= nextToken
+
+        if (method === "session/load") {
+          expect(nextToken).toBe(injectedClientToken)
+          expect(sessionState.getPendingAppSessionForClientSessionToken(nextToken)).toBe("app-session-1")
+          expect(sessionState.getAcpSessionForClientSessionToken(nextToken)).toBeUndefined()
+          throw new Error("session missing")
+        }
+
+        if (method === "session/new") {
+          expect(nextToken).toBe(injectedClientToken)
+          expect(sessionState.getPendingAppSessionForClientSessionToken(nextToken)).toBe("app-session-1")
+          return { sessionId: "fresh-session-1" }
+        }
+
+        throw new Error(`Unexpected ACP method ${method}`)
+      })
+
+      const sessionId = await (acpService as any).createSession(
+        "test-agent",
+        { appSessionId: "app-session-1" },
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("fresh-session-1")
+      expect(injectedClientToken).toBeDefined()
+      expect(sessionState.getPendingAppSessionForClientSessionToken(injectedClientToken!)).toBeUndefined()
+      expect(sessionState.getAcpSessionForClientSessionToken(injectedClientToken!)).toBe("fresh-session-1")
+      expect(sendRequestSpy).toHaveBeenNthCalledWith(
+        1,
+        "test-agent",
+        "session/load",
+        expect.objectContaining({
+          sessionId: "persisted-session-1",
+          mcpServers: [
+            expect.objectContaining({
+              url: expect.stringContaining(`/mcp/${encodeURIComponent(injectedClientToken!)}`),
+            }),
+          ],
+        }),
+      )
+      expect(sendRequestSpy).toHaveBeenNthCalledWith(
+        2,
+        "test-agent",
+        "session/new",
+        expect.objectContaining({
+          mcpServers: [
+            expect.objectContaining({
+              url: expect.stringContaining(`/mcp/${encodeURIComponent(injectedClientToken!)}`),
+            }),
+          ],
+        }),
+      )
+    })
+
+    it("clears stale injected client-token mappings before replacing a mismatched session", async () => {
+      ;(mockConfig as any).remoteServerEnabled = true
+      ;(mockConfig as any).remoteServerApiKey = "test-api-key"
+      ;(mockConfig as any).remoteServerPort = 3210
+      ;(mockConfig as any).acpInjectRuntimeTools = true
+
+      const sessionState = await import("./acp-session-state")
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+      instance.sessionId = "stale-session-1"
+      instance.clientSessionToken = "stale-client-token"
+
+      sessionState.setAcpClientSessionTokenMapping("stale-client-token", "stale-session-1")
+
+      let injectedClientToken: string | undefined
+      const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
+      sendRequestSpy.mockImplementation(async (...args: unknown[]) => {
+        const [, method, params] = args as [
+          string,
+          string,
+          { mcpServers?: Array<{ url?: string }>; sessionId?: string },
+        ]
+
+        expect(sessionState.getAcpSessionForClientSessionToken("stale-client-token")).toBeUndefined()
+
+        if (method === "session/load") {
+          const injectedServerUrl = params.mcpServers?.[0]?.url
+          expect(injectedServerUrl).toContain("/mcp/")
+          injectedClientToken = decodeURIComponent(injectedServerUrl!.split("/mcp/")[1]!)
+          expect(injectedClientToken).not.toBe("stale-client-token")
+          expect(params.sessionId).toBe("persisted-session-1")
+          return { sessionId: "persisted-session-1" }
+        }
+
+        throw new Error(`Unexpected ACP method ${method}`)
+      })
+
+      const sessionId = await (acpService as any).createSession(
+        "test-agent",
+        { appSessionId: "app-session-1" },
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("persisted-session-1")
+      expect(injectedClientToken).toBeDefined()
+      expect(sessionState.getAcpSessionForClientSessionToken("stale-client-token")).toBeUndefined()
+      expect(sessionState.getAcpSessionForClientSessionToken(injectedClientToken!)).toBe("persisted-session-1")
+      expect(sendRequestSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it("clears stale session metadata before loading a replacement session", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+      instance.sessionId = "stale-session-1"
+      instance.sessionInfo = {
+        configOptions: [
+          {
+            id: "mode",
+            name: "Mode",
+            type: "select",
+            currentValue: "code",
+            options: [{ value: "code", name: "Code" }],
+          },
+        ],
+      }
+
+      vi.spyOn(acpService as any, "sendRequest").mockResolvedValue({
+        sessionId: "persisted-session-1",
+      })
+
+      const sessionId = await (acpService as any).createSession(
+        "test-agent",
+        undefined,
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("persisted-session-1")
+      expect(acpService.getAgentInstance("test-agent")?.sessionInfo).toBeUndefined()
     })
   })
 
