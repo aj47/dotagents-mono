@@ -1751,6 +1751,8 @@ class ACPService extends EventEmitter {
       }
     }
 
+    instance.sessionInfo = undefined
+
     try {
       // Build MCP servers list - optionally inject DotAgents runtime tools
       const mcpServers: Array<{

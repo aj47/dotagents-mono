@@ -46,6 +46,47 @@ describe("acp-session-state persistence", () => {
     rmSync(dataFolder, { recursive: true, force: true })
   })
 
+  it("skips persisted entries whose session payload shape is invalid", async () => {
+    writeFileSync(
+      join(dataFolder, "acp-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        conversationSessions: [
+          [
+            "conversation-valid",
+            {
+              sessionId: "acp-session-valid",
+              agentName: "test-agent",
+              createdAt: 1,
+              lastUsedAt: 2,
+            },
+          ],
+          [
+            "conversation-invalid",
+            {
+              sessionId: "acp-session-invalid",
+              agentName: 123,
+              createdAt: "yesterday",
+              lastUsedAt: 2,
+            },
+          ],
+        ],
+      }),
+    )
+
+    const sessionState = await loadAcpSessionState(dataFolder)
+
+    expect(sessionState.getAllSessions().size).toBe(1)
+    expect(sessionState.getSessionForConversation("conversation-valid")).toEqual({
+      sessionId: "acp-session-valid",
+      agentName: "test-agent",
+      createdAt: 1,
+      lastUsedAt: 2,
+    })
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
+
   it("ignores persisted state when conversationSessions is not an array", async () => {
     writeFileSync(
       join(dataFolder, "acp-session-state.json"),

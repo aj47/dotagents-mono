@@ -34,6 +34,22 @@ type PersistedAcpSessionState = {
   conversationSessions: Array<[string, ACPSessionInfo]>
 }
 
+function isPersistedSessionInfo(value: unknown): value is ACPSessionInfo {
+  if (!value || typeof value !== "object") {
+    return false
+  }
+
+  const sessionInfo = value as Partial<ACPSessionInfo>
+  return (
+    typeof sessionInfo.sessionId === "string"
+    && typeof sessionInfo.agentName === "string"
+    && typeof sessionInfo.createdAt === "number"
+    && Number.isFinite(sessionInfo.createdAt)
+    && typeof sessionInfo.lastUsedAt === "number"
+    && Number.isFinite(sessionInfo.lastUsedAt)
+  )
+}
+
 // Mapping from ACP session ID → DotAgents session ID
 // This is needed for routing tool approval requests to the correct UI session
 const acpToAppSession: Map<string, string> = new Map()
@@ -74,7 +90,7 @@ if (
     }
 
     const [conversationId, sessionInfo] = entry
-    if (typeof conversationId !== "string" || typeof sessionInfo?.sessionId !== "string") {
+    if (typeof conversationId !== "string" || !isPersistedSessionInfo(sessionInfo)) {
       continue
     }
 

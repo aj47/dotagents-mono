@@ -599,6 +599,40 @@ describe("ACP Service", () => {
       expect(sessionState.getAcpSessionForClientSessionToken(injectedClientToken!)).toBe("persisted-session-1")
       expect(sendRequestSpy).toHaveBeenCalledTimes(1)
     })
+
+    it("clears stale session metadata before loading a replacement session", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+      instance.sessionId = "stale-session-1"
+      instance.sessionInfo = {
+        configOptions: [
+          {
+            id: "mode",
+            name: "Mode",
+            type: "select",
+            currentValue: "code",
+            options: [{ value: "code", name: "Code" }],
+          },
+        ],
+      }
+
+      vi.spyOn(acpService as any, "sendRequest").mockResolvedValue({
+        sessionId: "persisted-session-1",
+      })
+
+      const sessionId = await (acpService as any).createSession(
+        "test-agent",
+        undefined,
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("persisted-session-1")
+      expect(acpService.getAgentInstance("test-agent")?.sessionInfo).toBeUndefined()
+    })
   })
 
   describe("runTask", () => {
