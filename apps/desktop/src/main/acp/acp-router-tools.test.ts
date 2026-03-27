@@ -213,4 +213,39 @@ describe("handleDelegateToAgent", () => {
       workingDirectory: undefined,
     })
   })
+
+  it("allows delegation for generic snippet tasks that only mention a file extension", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "profile-main-agent",
+      profileName: "Main Agent",
+      guidelines: "",
+    })
+
+    mockGetByName.mockReturnValue({
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "augustus",
+      enabled: true,
+      connection: { type: "stdio" },
+      createdAt: 0,
+      updatedAt: 0,
+    })
+
+    const { handleDelegateToAgent } = await import("./acp-router-tools")
+
+    const result = await handleDelegateToAgent({
+      agentName: "augustus",
+      task: "Debug this .ts snippet and tell me what is wrong.",
+      waitForResult: true,
+    }, "parent-session-1") as any
+
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      status: "completed",
+      output: "Final user-facing answer",
+    }))
+    expect(mockAcpService.spawnAgent).toHaveBeenCalledWith("augustus", {
+      workingDirectory: undefined,
+    })
+  })
 })

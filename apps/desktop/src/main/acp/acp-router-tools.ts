@@ -288,7 +288,7 @@ const MAX_CONVERSATION_SIZE_FOR_UI = 50000;
 
 const MAIN_AGENT_PROFILE_NAME = 'main-agent';
 
-const LOCAL_WORKSPACE_SIGNAL_PATTERN = /(?:\/users\/|[a-z]:\\|(^|[\s"'`])\.\.?(?:\/|\\)|\b(?:repo|repository|codebase|workspace|worktree|local files|source tree|project files)\b|\b(?:apps|packages|src|tests?)\/|\b(?:package\.json|pnpm-lock\.yaml|tsconfig(?:\.[^/\s]+)?\.json|vite\.config(?:\.[^/\s]+)?\.[a-z]+|README\.md)\b|\.(?:ts|tsx|js|jsx|mjs|cjs|json|py|go|rs|java|swift|kt|rb|php|cs)\b)/i;
+const LOCAL_WORKSPACE_SIGNAL_PATTERN = /(?:\/users\/|[a-z]:\\|(^|[\s"'`])\.\.?(?:\/|\\)|\b(?:repo|repository|codebase|workspace|worktree|local files|source tree|project files)\b|\b(?:apps|packages|src|tests?)\/|\b(?:package\.json|pnpm-lock\.yaml|tsconfig(?:\.[^/\s]+)?\.json|vite\.config(?:\.[^/\s]+)?\.[a-z]+|README\.md)\b)/i;
 const LOCAL_CODING_ACTION_PATTERN = /\b(?:fix|debug|diagnose|investigate|inspect|implement|edit|modify|patch|update|refactor|repair|reproduce|run|test|typecheck|lint|build|compile|search|read files?)\b/i;
 
 function normalizeProfileName(profileName?: string): string {
