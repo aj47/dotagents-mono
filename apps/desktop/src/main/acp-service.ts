@@ -115,6 +115,8 @@ export interface ACPSpawnOptions {
   workingDirectory?: string
 }
 
+export type ACPGetOrCreateSessionStage = "launching" | "initializing" | "creating_session"
+
 export interface ACPSpawnResult {
   effectiveWorkingDirectory: string
   reusedExistingProcess: boolean
@@ -2065,10 +2067,12 @@ class ACPService extends EventEmitter {
     workingDirectory?: string,
     pendingInjectedMcpContext?: { appSessionId: string },
     preferredSessionId?: string,
+    onStage?: (stage: ACPGetOrCreateSessionStage) => void | Promise<void>,
   ): Promise<string> {
     // Ensure agent is spawned, ready, and reconciled with the latest working-directory config.
     let instance = this.agents.get(agentName)
     try {
+      await onStage?.("launching")
       await this.spawnAgent(agentName, { workingDirectory })
       instance = this.agents.get(agentName)
     } catch (error) {
@@ -2082,6 +2086,7 @@ class ACPService extends EventEmitter {
 
     // Initialize if not already done
     if (!instance.initialized) {
+      await onStage?.("initializing")
       await this.initializeAgent(agentName)
     }
 
@@ -2092,6 +2097,7 @@ class ACPService extends EventEmitter {
     }
 
     // Create or reuse session
+    await onStage?.("creating_session")
     const sessionId = await this.createSession(agentName, pendingInjectedMcpContext, preferredSessionId)
     if (!sessionId) {
       throw new Error(

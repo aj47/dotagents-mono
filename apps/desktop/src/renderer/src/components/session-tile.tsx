@@ -282,8 +282,11 @@ export function SessionTile({
   const isSnoozed = session.isSnoozed
   const hasPendingApproval = !!progress?.pendingToolApproval
   const hasQueuedMessages = queuedMessages.length > 0
+  const progressLifecycleState = session.status === "active"
+    ? "running"
+    : (progress?.isComplete ? "complete" : "running")
   const conversationState = progress?.conversationState
-    ? normalizeAgentConversationState(progress.conversationState, progress.isComplete ? "complete" : "running")
+    ? normalizeAgentConversationState(progress.conversationState, progressLifecycleState)
     : hasPendingApproval
       ? "needs_input"
       : hasError || isStopped

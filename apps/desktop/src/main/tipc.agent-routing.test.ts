@@ -15,4 +15,8 @@ describe("tipc selected-agent routing", () => {
       "agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)"
     )
   })
+
+  it("lets ACP transcript persistence own the final assistant write", () => {
+    expect(tipcSource).not.toContain("if (conversationId && result.response) {")
+  })
 })

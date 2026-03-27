@@ -5,7 +5,13 @@
  * This allows using agents like Claude Code as the "brain" for DotAgents.
  */
 
-import { acpService, ACPContentBlock, ACPToolCallStatus, ACPToolCallUpdate } from "./acp-service"
+import {
+  acpService,
+  ACPContentBlock,
+  ACPToolCallStatus,
+  ACPToolCallUpdate,
+  type ACPGetOrCreateSessionStage,
+} from "./acp-service"
 import {
   getSessionForConversation,
   setSessionForConversation,
@@ -29,6 +35,21 @@ const ACP_RUNTIME_TOOL_PROMPT_CONTEXT = [
   `When the task is fully complete and "${MARK_WORK_COMPLETE_TOOL}" is available, call "${RESPOND_TO_USER_TOOL}" first with the final user-facing answer, then call "${MARK_WORK_COMPLETE_TOOL}" with a concise completion summary.`,
   `Only fall back to plain assistant text if those runtime tools are unavailable or fail repeatedly.`,
 ].join("\n")
+
+const ACP_SETUP_STAGE_META: Record<ACPGetOrCreateSessionStage, { stepId: string; title: (agentName: string) => string }> = {
+  launching: {
+    stepId: "acp-launching",
+    title: (agentName) => `Starting ${agentName}...`,
+  },
+  initializing: {
+    stepId: "acp-initializing",
+    title: (agentName) => `Initializing ${agentName}...`,
+  },
+  creating_session: {
+    stepId: "acp-session",
+    title: (agentName) => `Preparing ${agentName} session...`,
+  },
+}
 
 export interface ACPMainAgentOptions {
   /** Name of the ACP agent to use */
@@ -346,25 +367,17 @@ export async function processTranscriptWithACPAgent(
   }
 
   const currentTurnStartIndex = conversationHistory.length
-  let persistedConversationLength = conversationHistory.length
 
-  const persistConversationTail = async () => {
-    if (persistedConversationLength >= conversationHistory.length) {
+  const persistConversationTail = async (finalAssistantResponse?: string) => {
+    if (typeof finalAssistantResponse !== "string" || finalAssistantResponse.trim().length === 0) {
       return
     }
 
-    const tail = conversationHistory.slice(persistedConversationLength)
-    for (const message of tail) {
-      await conversationService.addMessageToConversation(
-        conversationId,
-        message.content,
-        message.role,
-        message.toolCalls,
-        message.toolResults,
-      )
-    }
-
-    persistedConversationLength = conversationHistory.length
+    await conversationService.addMessageToConversation(
+      conversationId,
+      finalAssistantResponse,
+      "assistant",
+    )
   }
 
   const appendAssistantText = (text: string, timestamp: number) => {
@@ -549,16 +562,25 @@ export async function processTranscriptWithACPAgent(
   // Note: User message is already added to conversation by createMcpTextInput or processQueuedMessages
   // So we don't add it here - it's already in the loaded conversationHistory
 
-  // Show thinking step
-  await emitProgress([
-    {
-      id: generateStepId("acp-thinking"),
-      type: "thinking",
-      title: `Sending to ${agentName}...`,
-      status: "in_progress",
-      timestamp: Date.now(),
-    },
-  ], false)
+  const emitSetupProgress = async (stage: ACPGetOrCreateSessionStage | "sending_prompt") => {
+    const step = stage === "sending_prompt"
+      ? {
+          id: generateStepId("acp-thinking"),
+          type: "thinking" as const,
+          title: `Sending prompt to ${agentName}...`,
+          status: "in_progress" as const,
+          timestamp: Date.now(),
+        }
+      : {
+          id: generateStepId(ACP_SETUP_STAGE_META[stage].stepId),
+          type: "thinking" as const,
+          title: ACP_SETUP_STAGE_META[stage].title(agentName),
+          status: "in_progress" as const,
+          timestamp: Date.now(),
+        }
+
+    await emitProgress([step], false)
+  }
 
   try {
     // Get or create ACP session
@@ -572,6 +594,7 @@ export async function processTranscriptWithACPAgent(
       undefined,
       { appSessionId: sessionId },
       preferredSessionId,
+      emitSetupProgress,
     )
 
     setSessionForConversation(conversationId, acpSessionId, agentName)
@@ -743,7 +766,7 @@ export async function processTranscriptWithACPAgent(
           timestamp: Date.now(),
           llmContent: accumulatedText,
         }],
-        event.isComplete ?? false,
+        false,
         undefined,
         {
           text: accumulatedText,
@@ -758,6 +781,7 @@ export async function processTranscriptWithACPAgent(
 
     try {
       // Send the prompt
+      await emitSetupProgress("sending_prompt")
       const promptContext = buildProfileContext(profileSnapshot, ACP_RUNTIME_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
@@ -793,7 +817,7 @@ export async function processTranscriptWithACPAgent(
       })
 
       try {
-        await persistConversationTail()
+        await persistConversationTail(finalResponse)
       } catch (persistError) {
         logApp(`[ACP Main] Failed to persist conversation tail: ${persistError}`)
       }

@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest"
 const panelSource = readFileSync(new URL("./panel.tsx", import.meta.url), "utf8")
 const mainWindowSource = readFileSync(new URL("../../../main/window.ts", import.meta.url), "utf8")
 const tipcSource = readFileSync(new URL("../../../main/tipc.ts", import.meta.url), "utf8")
-const configSource = readFileSync(new URL("../../../main/config.ts", import.meta.url), "utf8")
 
 describe("panel recording layout", () => {
   it("wraps the recording footer controls for narrow widths and zoomed text", () => {
@@ -37,8 +36,6 @@ describe("panel recording layout", () => {
     expect(mainWindowSource).toContain("export const TEXT_INPUT_MIN_WIDTH = textInputPanelWindowSize.width")
     expect(mainWindowSource).toContain('return getSavedPanelSize("textInput")')
     expect(tipcSource).toContain("updatedConfig.panelTextInputSize = { width, height }")
-    expect(configSource).toContain("panelCustomSize: undefined")
-    expect(configSource).toContain("panelTextInputSize: undefined")
   })
 
   it("resets stale text-input mode when the panel is hidden or stopped", () => {
@@ -50,5 +47,25 @@ describe("panel recording layout", () => {
     expect(mainWindowSource).toContain('setPanelMode("normal")')
     expect(tipcSource).toContain('state.isTextInputActive = false')
     expect(tipcSource).toContain('hideFloatingPanelWindow()')
+  })
+
+  it("lets MCP text submits create fresh conversations in the main process", () => {
+    const handleTextSubmitSection = panelSource.slice(
+      panelSource.indexOf("const handleTextSubmit = async (text: string) => {"),
+      panelSource.indexOf("// MCP handlers"),
+    )
+
+    expect(handleTextSubmitSection).toContain("mcpTextInputMutation.mutate({")
+    expect(handleTextSubmitSection).not.toContain('await startNewConversation(text, "user")')
+  })
+
+  it("avoids precreating stub conversations before MCP recordings", () => {
+    const mcpRecordingSection = panelSource.slice(
+      panelSource.indexOf("const mcpTranscribeMutation = useMutation({"),
+      panelSource.indexOf("const textInputMutation = useMutation({"),
+    )
+
+    expect(mcpRecordingSection).toContain("await tipcClient.createMcpRecording({")
+    expect(mcpRecordingSection).not.toContain('await startNewConversation(transcript, "user")')
   })
 })

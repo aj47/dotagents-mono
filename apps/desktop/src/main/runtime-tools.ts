@@ -465,9 +465,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const trackedSessionId = getAppSessionForAcpSession(context.sessionId) ?? context.sessionId
+
     // Guard: don't store the response if the session was already stopped/cancelled.
     // This prevents zombie sessions from reappearing after the user stops them.
-    const activeSession = agentSessionTracker.getSession(context.sessionId)
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
     if (!activeSession) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Session is no longer active (was stopped or completed)" }) }],
@@ -476,8 +478,8 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     appendSessionUserResponse({
-      sessionId: context.sessionId,
-      runId: agentSessionStateManager.getSessionRunId(context.sessionId),
+      sessionId: trackedSessionId,
+      runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
       text: responseContent,
     })
 

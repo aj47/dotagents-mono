@@ -708,10 +708,6 @@ async function runAgent(options: RunAgentOptions): Promise<{
           profileSnapshot,
         })
 
-        if (result.response) {
-          await conversationService.addMessageToConversation(conversationId, result.response, "assistant")
-        }
-
         if (result.success) {
           agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
         } else {

@@ -318,16 +318,6 @@ async function processWithAgentMode(
         profileSnapshot,
       })
 
-      // Save assistant response to conversation history if we have a conversation ID
-      // Note: User message is already added by createMcpTextInput or processQueuedMessages
-      if (conversationId && result.response) {
-        await conversationService.addMessageToConversation(
-          conversationId,
-          result.response,
-          "assistant"
-        )
-      }
-
       // Mark session as completed
       if (result.success) {
         logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)

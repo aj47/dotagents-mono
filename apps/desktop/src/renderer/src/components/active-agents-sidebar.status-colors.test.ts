@@ -16,6 +16,12 @@ describe("active agents sidebar status colors", () => {
     expect(sidebarSource).toContain('status: "active"')
   })
 
+  it("keeps active sidebar sessions running even if a stale progress packet claims completion", () => {
+    expect(sidebarSource).toContain('const progressLifecycleState = session.status === "active"')
+    expect(sidebarSource).toContain('? "running"')
+    expect(sidebarSource).toContain(': (sessionProgress?.isComplete ? "complete" : "running")')
+  })
+
   it("uses gray for completed past sessions", () => {
     expect(sidebarSource).toContain('session.status === "error"')
     expect(sidebarSource).toContain(': "bg-muted-foreground"')

@@ -179,6 +179,69 @@ describe("acp-main-agent", () => {
     expect(promptContext).toContain("Guidelines: Stay concise")
   })
 
+  it("emits staged ACP setup progress before prompting the agent", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockGetOrCreateSession.mockImplementation(async (...args: any[]) => {
+      const onStage = args[5] as ((stage: string) => void) | undefined
+      onStage?.("launching")
+      onStage?.("initializing")
+      onStage?.("creating_session")
+      return "acp-session-1"
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(updates.slice(0, 4).map((update) => update.steps?.[0]?.title)).toEqual([
+      "Starting test-agent...",
+      "Initializing test-agent...",
+      "Preparing test-agent session...",
+      "Sending prompt to test-agent...",
+    ])
+    expect(updates.slice(0, 4).every((update) => update.isComplete === false)).toBe(true)
+  })
+
+  it("keeps ACP session/update notifications non-final until sendPrompt resolves", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        content: [{ type: "text", text: "Almost done" }],
+        isComplete: true,
+      })
+
+      return { success: true, response: "Final answer" }
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    const streamedResponseUpdate = updates.find((update) => update.steps?.[0]?.title === "Agent response")
+    expect(streamedResponseUpdate).toEqual(expect.objectContaining({
+      isComplete: false,
+      streamingContent: { text: "Almost done", isStreaming: false },
+    }))
+
+    expect(updates.at(-1)).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: "Final answer",
+    }))
+  })
+
   it("adds ACP content blocks to conversation history progressively instead of only at completion", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<any> = []
@@ -541,7 +604,7 @@ describe("acp-main-agent", () => {
     )
   })
 
-  it("persists ACP tool-call and tool-result history back to the conversation", async () => {
+  it("persists only the final assistant response back to the conversation", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
 
     mockLoadConversation.mockResolvedValue({
@@ -571,19 +634,55 @@ describe("acp-main-agent", () => {
       runId: 1,
     })
 
+    expect(mockAddMessageToConversation).toHaveBeenCalledTimes(1)
     expect(mockAddMessageToConversation).toHaveBeenCalledWith(
       "conversation-1",
-      "",
+      "done",
       "assistant",
-      [expect.objectContaining({ name: "web_search" })],
-      undefined,
     )
+  })
+
+  it("persists the final respond_to_user content instead of streamed internal ACP text", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    mockLoadConversation.mockResolvedValue({
+      messages: [{ role: "user", content: "who are you", timestamp: 1 }],
+    })
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        content: [{ type: "text", text: "**Responding to user prompt**" }],
+        isComplete: false,
+      })
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-r1",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "Clean final answer" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "Internal trailing completion text" }
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+    })
+
+    expect(result.response).toBe("Clean final answer")
+    expect(mockAddMessageToConversation).toHaveBeenCalledTimes(1)
     expect(mockAddMessageToConversation).toHaveBeenCalledWith(
       "conversation-1",
-      '{\n  "content": "Found persisted result"\n}',
-      "tool",
-      undefined,
-      [expect.objectContaining({ success: true, content: '{\n  "content": "Found persisted result"\n}' })],
+      "Clean final answer",
+      "assistant",
     )
   })
 
@@ -613,6 +712,7 @@ describe("acp-main-agent", () => {
       undefined,
       { appSessionId: "ui-session-1" },
       "persisted-acp-session",
+      expect.any(Function),
     )
   })
 })
