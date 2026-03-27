@@ -144,31 +144,6 @@ export function getChildSubSessions(parentSessionId: string): InternalSubSession
     .filter((s): s is InternalSubSession => s !== undefined);
 }
 
-/**
- * Get a sub-session by ID.
- */
-export function getSubSession(subSessionId: string): InternalSubSession | undefined {
-  return activeSubSessions.get(subSessionId);
-}
-
-/**
- * Clean up completed/failed sub-sessions that are older than the threshold.
- */
-export function cleanupOldSubSessions(maxAgeMs: number = 30 * 60 * 1000): void {
-  const now = Date.now();
-  for (const [id, session] of activeSubSessions) {
-    if (session.status === 'completed' || session.status === 'failed' || session.status === 'cancelled') {
-      if (session.endTime && (now - session.endTime) > maxAgeMs) {
-        activeSubSessions.delete(id);
-        sessionDepthMap.delete(id);
-        const children = parentToChildren.get(session.parentSessionId);
-        children?.delete(id);
-        logSubSession(`Cleaned up old sub-session: ${id}`);
-      }
-    }
-  }
-}
-
 // ============================================================================
 // Sub-Session Execution
 // ============================================================================
