@@ -1,25 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
-  COLLAPSE_THRESHOLD,
-  getRoleIcon,
-  getRoleLabel,
   shouldCollapseMessage,
   getToolCallsSummary,
   getToolResultsSummary,
-  generateToolResultPreview,
-  formatRelativeTimestamp,
-  messageHasToolExtras,
-  COLLAPSED_LINES,
-  EXPAND_TEXT,
-  COLLAPSE_TEXT,
-  getExpandCollapseText,
   formatToolArguments,
   formatArgumentsPreview,
-  getToolResultStatusDisplay,
-  pluralize,
-  getToolBadgeText,
-  ROLE_CONFIG,
-  getRoleConfig,
   RESPOND_TO_USER_TOOL,
   extractRespondToUserContentFromArgs,
   extractRespondToUserResponseEvents,
@@ -27,74 +12,6 @@ import {
   resolveMessageTimestamps,
   isToolOnlyMessage,
 } from './chat-utils'
-import type { MessageRole, RoleConfig } from './chat-utils'
-
-// ── Role Config ──────────────────────────────────────────────────────────────
-
-describe('getRoleIcon', () => {
-  it('returns 👤 for user', () => {
-    expect(getRoleIcon('user')).toBe('👤')
-  })
-
-  it('returns 🤖 for assistant', () => {
-    expect(getRoleIcon('assistant')).toBe('🤖')
-  })
-
-  it('returns 🔧 for tool', () => {
-    expect(getRoleIcon('tool')).toBe('🔧')
-  })
-
-  it('returns 💬 for unknown role', () => {
-    expect(getRoleIcon('unknown' as MessageRole)).toBe('💬')
-  })
-})
-
-describe('getRoleLabel', () => {
-  it('returns User for user', () => {
-    expect(getRoleLabel('user')).toBe('User')
-  })
-
-  it('returns Assistant for assistant', () => {
-    expect(getRoleLabel('assistant')).toBe('Assistant')
-  })
-
-  it('returns Tool for tool', () => {
-    expect(getRoleLabel('tool')).toBe('Tool')
-  })
-
-  it('returns Unknown for unknown role', () => {
-    expect(getRoleLabel('unknown' as MessageRole)).toBe('Unknown')
-  })
-})
-
-describe('ROLE_CONFIG', () => {
-  it('has user, assistant, tool, and default entries', () => {
-    expect(ROLE_CONFIG.user).toBeDefined()
-    expect(ROLE_CONFIG.assistant).toBeDefined()
-    expect(ROLE_CONFIG.tool).toBeDefined()
-    expect(ROLE_CONFIG.default).toBeDefined()
-  })
-
-  it('each entry has icon, label, colorClass, and colorClassCompact', () => {
-    for (const key of ['user', 'assistant', 'tool', 'default'] as const) {
-      const config = ROLE_CONFIG[key]
-      expect(config.icon).toBeTruthy()
-      expect(config.label).toBeTruthy()
-      expect(config.colorClass).toBeTruthy()
-      expect(config.colorClassCompact).toBeTruthy()
-    }
-  })
-})
-
-describe('getRoleConfig', () => {
-  it('returns user config for "user"', () => {
-    expect(getRoleConfig('user')).toBe(ROLE_CONFIG.user)
-  })
-
-  it('returns default config for unknown role', () => {
-    expect(getRoleConfig('unknown')).toBe(ROLE_CONFIG.default)
-  })
-})
 
 // ── Collapse Logic ───────────────────────────────────────────────────────────
 
@@ -103,8 +20,8 @@ describe('shouldCollapseMessage', () => {
     expect(shouldCollapseMessage('Hello')).toBe(false)
   })
 
-  it('returns true for content exceeding COLLAPSE_THRESHOLD', () => {
-    const longContent = 'a'.repeat(COLLAPSE_THRESHOLD + 1)
+  it('returns true for content exceeding the collapse threshold', () => {
+    const longContent = 'a'.repeat(201)
     expect(shouldCollapseMessage(longContent)).toBe(true)
   })
 
@@ -120,17 +37,6 @@ describe('shouldCollapseMessage', () => {
     expect(shouldCollapseMessage(undefined)).toBe(false)
   })
 })
-
-describe('getExpandCollapseText', () => {
-  it('returns Collapse when expanded', () => {
-    expect(getExpandCollapseText(true)).toBe(COLLAPSE_TEXT)
-  })
-
-  it('returns Expand when collapsed', () => {
-    expect(getExpandCollapseText(false)).toBe(EXPAND_TEXT)
-  })
-})
-
 // ── Tool Preview ─────────────────────────────────────────────────────────────
 
 describe('getToolCallsSummary', () => {
@@ -152,9 +58,19 @@ describe('getToolResultsSummary', () => {
     expect(getToolResultsSummary([])).toBe('')
   })
 
+  it('surfaces a failed single-result preview', () => {
+    const results = [{ success: false, content: '', error: 'Not found' }]
+    expect(getToolResultsSummary(results)).toBe('⚠️ Not found')
+  })
+
   it('returns success icon for all-success results', () => {
     const results = [{ success: true, content: 'ok' }]
     expect(getToolResultsSummary(results)).toContain('✅')
+  })
+
+  it('extracts a summary from structured successful content', () => {
+    const results = [{ success: true, content: JSON.stringify({ success: true, message: 'Saved' }) }]
+    expect(getToolResultsSummary(results)).toBe('✅ Saved')
   })
 
   it('returns warning icon for mixed results', () => {
@@ -163,33 +79,6 @@ describe('getToolResultsSummary', () => {
       { success: false, content: '', error: 'failed' },
     ]
     expect(getToolResultsSummary(results)).toContain('⚠️')
-  })
-})
-
-describe('generateToolResultPreview', () => {
-  it('returns empty string for null', () => {
-    expect(generateToolResultPreview(null as any)).toBe('')
-  })
-
-  it('returns error text for failed result', () => {
-    const result = { success: false, content: '', error: 'Not found' }
-    expect(generateToolResultPreview(result)).toBe('Not found')
-  })
-
-  it('returns content preview for successful result', () => {
-    const result = { success: true, content: 'File contents here' }
-    expect(generateToolResultPreview(result)).toBe('File contents here')
-  })
-
-  it('handles JSON array content', () => {
-    const result = { success: true, content: JSON.stringify([{ name: 'file.ts' }, { name: 'test.ts' }]) }
-    const preview = generateToolResultPreview(result)
-    expect(preview).toContain('2 items')
-  })
-
-  it('handles JSON object with message field', () => {
-    const result = { success: true, content: JSON.stringify({ success: true, message: 'Saved' }) }
-    expect(generateToolResultPreview(result)).toBe('Saved')
   })
 })
 
@@ -227,42 +116,6 @@ describe('formatArgumentsPreview', () => {
   it('shows +N more for many args', () => {
     const args = { a: '1', b: '2', c: '3', d: '4' }
     expect(formatArgumentsPreview(args)).toContain('+1 more')
-  })
-})
-
-describe('getToolResultStatusDisplay', () => {
-  it('returns success icon and label for true', () => {
-    expect(getToolResultStatusDisplay(true)).toEqual({ icon: '✅', label: 'Success' })
-  })
-
-  it('returns error icon and label for false', () => {
-    expect(getToolResultStatusDisplay(false)).toEqual({ icon: '❌', label: 'Error' })
-  })
-})
-
-// ── Pluralization ────────────────────────────────────────────────────────────
-
-describe('pluralize', () => {
-  it('returns singular for count 1', () => {
-    expect(pluralize(1, 'item')).toBe('item')
-  })
-
-  it('returns default plural for count > 1', () => {
-    expect(pluralize(2, 'item')).toBe('items')
-  })
-
-  it('returns custom plural for count > 1', () => {
-    expect(pluralize(0, 'child', 'children')).toBe('children')
-  })
-})
-
-describe('getToolBadgeText', () => {
-  it('returns correct text for 1 call', () => {
-    expect(getToolBadgeText(1, 'call')).toBe('1 tool call')
-  })
-
-  it('returns correct text for multiple results', () => {
-    expect(getToolBadgeText(3, 'result')).toBe('3 results')
   })
 })
 
@@ -504,33 +357,9 @@ describe('isToolOnlyMessage', () => {
   })
 })
 
-// ── messageHasToolExtras ─────────────────────────────────────────────────────
-
-describe('messageHasToolExtras', () => {
-  it('returns false for plain message', () => {
-    expect(messageHasToolExtras({ role: 'user', content: 'hello' })).toBe(false)
-  })
-
-  it('returns true for message with tool calls', () => {
-    expect(messageHasToolExtras({
-      role: 'assistant',
-      content: '',
-      toolCalls: [{ name: 'search', arguments: {} }],
-    })).toBe(true)
-  })
-})
-
 // ── Constants ────────────────────────────────────────────────────────────────
 
 describe('Constants', () => {
-  it('COLLAPSE_THRESHOLD is a positive number', () => {
-    expect(COLLAPSE_THRESHOLD).toBeGreaterThan(0)
-  })
-
-  it('COLLAPSED_LINES is 3', () => {
-    expect(COLLAPSED_LINES).toBe(3)
-  })
-
   it('RESPOND_TO_USER_TOOL is "respond_to_user"', () => {
     expect(RESPOND_TO_USER_TOOL).toBe('respond_to_user')
   })

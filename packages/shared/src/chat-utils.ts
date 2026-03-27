@@ -6,54 +6,9 @@
  */
 
 import type { AgentUserResponseEvent } from './agent-progress';
-import { BaseChatMessage, ToolCall, ToolResult } from './types';
+import { ToolCall, ToolResult } from './types';
 
-/**
- * Threshold for collapsing long message content.
- * Messages with content length greater than this will be collapsible.
- */
-export const COLLAPSE_THRESHOLD = 200;
-
-/**
- * Role type for chat messages
- */
-export type MessageRole = 'user' | 'assistant' | 'tool';
-
-/**
- * Get the emoji icon for a message role
- * @param role The role of the message sender
- * @returns An emoji string representing the role
- */
-export function getRoleIcon(role: MessageRole): string {
-  switch (role) {
-    case 'user':
-      return '👤';
-    case 'assistant':
-      return '🤖';
-    case 'tool':
-      return '🔧';
-    default:
-      return '💬';
-  }
-}
-
-/**
- * Get the display label for a message role
- * @param role The role of the message sender
- * @returns A capitalized string label for the role
- */
-export function getRoleLabel(role: MessageRole): string {
-  switch (role) {
-    case 'user':
-      return 'User';
-    case 'assistant':
-      return 'Assistant';
-    case 'tool':
-      return 'Tool';
-    default:
-      return 'Unknown';
-  }
-}
+const COLLAPSE_THRESHOLD = 200;
 
 /**
  * Determine if a message should be collapsible based on its content
@@ -118,7 +73,7 @@ export function getToolResultsSummary(toolResults: ToolResult[]): string {
  * @param result Tool result to preview
  * @returns A short preview string or empty string if no meaningful preview
  */
-export function generateToolResultPreview(result: ToolResult): string {
+function generateToolResultPreview(result: ToolResult): string {
   if (!result) return '';
 
   if (!result.success) {
@@ -250,68 +205,6 @@ function truncatePreview(text: string, maxLength: number): string {
   return cleaned.slice(0, maxLength - 3) + '...';
 }
 
-/**
- * Format a timestamp for display relative to current time
- * @param timestamp Unix timestamp in milliseconds
- * @returns A human-readable relative time string
- */
-export function formatRelativeTimestamp(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-
-  if (diff < 60000) {
-    // Less than 1 minute
-    return 'Just now';
-  } else if (diff < 3600000) {
-    // Less than 1 hour
-    return `${Math.floor(diff / 60000)}m ago`;
-  } else if (diff < 86400000) {
-    // Less than 1 day
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  } else {
-    // More than 1 day
-    const date = new Date(timestamp);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + 
-           ', ' + 
-           date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  }
-}
-
-/**
- * Check if a message has tool-related extras (calls or results)
- * @param message A chat message object
- * @returns True if the message has tool calls or results
- */
-export function messageHasToolExtras(message: BaseChatMessage): boolean {
-  return (message.toolCalls?.length ?? 0) > 0 || (message.toolResults?.length ?? 0) > 0;
-}
-
-/**
- * Get the number of lines to display when a message is collapsed
- * For both desktop (line-clamp-3) and mobile (numberOfLines={3})
- */
-export const COLLAPSED_LINES = 3;
-
-// ============================================================================
-// Expand/Collapse Text Helpers
-// ============================================================================
-
-/** UI text for expand button */
-export const EXPAND_TEXT = 'Expand';
-
-/** UI text for collapse button */
-export const COLLAPSE_TEXT = 'Collapse';
-
-/**
- * Get the appropriate expand/collapse text based on current state
- * @param isExpanded Whether the content is currently expanded
- * @returns The text to display on the toggle button
- */
-export function getExpandCollapseText(isExpanded: boolean): string {
-  return isExpanded ? COLLAPSE_TEXT : EXPAND_TEXT;
-}
-
 // ============================================================================
 // Tool Argument Formatting
 // ============================================================================
@@ -357,113 +250,6 @@ export function formatArgumentsPreview(args: unknown): string {
     return preview + ` (+${entries.length - 3} more)`;
   }
   return preview;
-}
-
-// ============================================================================
-// Tool Result Status Formatting
-// ============================================================================
-
-/**
- * Status display info for tool results
- */
-export interface ToolResultStatus {
-  icon: string;
-  label: string;
-}
-
-/**
- * Get display info for a tool result's success/error status
- * @param success Whether the tool execution was successful
- * @returns Object with icon emoji and label text
- */
-export function getToolResultStatusDisplay(success: boolean): ToolResultStatus {
-  return success
-    ? { icon: '✅', label: 'Success' }
-    : { icon: '❌', label: 'Error' };
-}
-
-// ============================================================================
-// Pluralization Helpers
-// ============================================================================
-
-/**
- * Simple pluralization helper
- * @param count The number of items
- * @param singular The singular form of the word
- * @param plural Optional plural form (defaults to singular + 's')
- * @returns The appropriate singular or plural form
- */
-export function pluralize(count: number, singular: string, plural?: string): string {
-  return count === 1 ? singular : (plural ?? singular + 's');
-}
-
-/**
- * Get formatted badge text for tool counts
- * @param count Number of tools
- * @param type Type of tool item ('call' or 'result')
- * @returns Formatted string like "1 tool call" or "2 results"
- */
-export function getToolBadgeText(count: number, type: 'call' | 'result'): string {
-  if (type === 'call') {
-    return `${count} tool ${pluralize(count, 'call')}`;
-  }
-  return `${count} ${pluralize(count, 'result')}`;
-}
-
-// ============================================================================
-// Unified Role Config
-// ============================================================================
-
-/**
- * Role configuration with icon, label, and color classes
- */
-export interface RoleConfig {
-  icon: string;
-  label: string;
-  /** Tailwind classes for background and text color */
-  colorClass: string;
-  /** Tailwind classes for compact/badge variant */
-  colorClassCompact: string;
-}
-
-/**
- * Unified configuration for all chat message roles
- * Includes icons, labels, and color schemes for consistent styling
- */
-export const ROLE_CONFIG: Record<MessageRole | 'default', RoleConfig> = {
-  user: {
-    icon: '👤',
-    label: 'User',
-    colorClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    colorClassCompact: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
-  },
-  assistant: {
-    icon: '🤖',
-    label: 'Assistant',
-    colorClass: 'bg-green-500/10 text-green-600 dark:text-green-400',
-    colorClassCompact: 'bg-green-500/20 text-green-600 dark:text-green-400',
-  },
-  tool: {
-    icon: '🔧',
-    label: 'Tool',
-    colorClass: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-    colorClassCompact: 'bg-orange-500/20 text-orange-600 dark:text-orange-400',
-  },
-  default: {
-    icon: '💬',
-    label: 'Unknown',
-    colorClass: 'bg-gray-500/10 text-gray-600 dark:text-gray-400',
-    colorClassCompact: 'bg-gray-500/20 text-gray-600 dark:text-gray-400',
-  },
-};
-
-/**
- * Get role configuration with fallback to default
- * @param role The message role
- * @returns Role configuration object
- */
-export function getRoleConfig(role: string): RoleConfig {
-  return ROLE_CONFIG[role as MessageRole] ?? ROLE_CONFIG.default;
 }
 
 // ============================================================================
