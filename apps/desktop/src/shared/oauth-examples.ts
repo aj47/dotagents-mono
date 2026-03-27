@@ -32,7 +32,3 @@ export const OAUTH_MCP_EXAMPLES: Record<string, OAuthMCPExample> = {
     documentationUrl: "https://developers.notion.com/docs/authorization",
   },
 }
-
-export function getOAuthExample(key: string): OAuthMCPExample | undefined {
-  return OAUTH_MCP_EXAMPLES[key]
-}
