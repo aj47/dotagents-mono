@@ -727,7 +727,7 @@ export function clearIterativeSummary(sessionId: string): void {
   iterativeSummaryCache.delete(sessionId)
 }
 
-export function getProviderAndModel(): { providerId: string; model: string } {
+function getProviderAndModel(): { providerId: string; model: string } {
   const config = configStore.get()
   const providerId = config.mcpToolsProviderId || "openai"
   let model = "gpt-4.1-mini"
