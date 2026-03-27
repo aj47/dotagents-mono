@@ -191,7 +191,7 @@ let deepLinkHandler: OAuthDeepLinkHandler | null = null
 /**
  * Get or create the OAuth deep link handler
  */
-export function getOAuthDeepLinkHandler(): OAuthDeepLinkHandler {
+function getOAuthDeepLinkHandler(): OAuthDeepLinkHandler {
   if (!deepLinkHandler) {
     deepLinkHandler = new OAuthDeepLinkHandler()
   }

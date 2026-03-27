@@ -81,37 +81,6 @@ export function setSessionForConversation(
 }
 
 /**
- * Clear the session for a conversation.
- * Use when user explicitly requests a new session or when conversation is deleted.
- * @param conversationId The DotAgents conversation ID
- */
-export function clearSessionForConversation(conversationId: string): void {
-  if (conversationSessions.has(conversationId)) {
-    conversationSessions.delete(conversationId)
-    logApp(`[ACP Session] Cleared session for conversation ${conversationId}`)
-  }
-}
-
-/**
- * Clear all sessions.
- * Use on app shutdown or when ACP agent is restarted.
- */
-export function clearAllSessions(): void {
-  const count = conversationSessions.size
-  conversationSessions.clear()
-  logApp(`[ACP Session] Cleared all ${count} sessions`)
-}
-
-/**
- * Get all active sessions.
- * Useful for debugging and UI display.
- * @returns Map of conversation ID to session info
- */
-export function getAllSessions(): Map<string, ACPSessionInfo> {
-  return new Map(conversationSessions)
-}
-
-/**
  * Update the last used timestamp for a session.
  * @param conversationId The DotAgents conversation ID
  */
@@ -231,5 +200,3 @@ export function clearAcpToAppSessionMapping(acpSessionId: string): void {
     logApp(`[ACP Session] Cleared ACP → app session mapping for ${acpSessionId}`)
   }
 }
-
-

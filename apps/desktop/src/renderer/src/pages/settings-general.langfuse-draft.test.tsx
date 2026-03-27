@@ -98,17 +98,30 @@ function findNode(node: any, predicate: (node: any) => boolean): any {
 }
 
 function findInputByPlaceholder(node: any, placeholder: string) {
-  return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === placeholder)
+  return findNode(
+    node,
+    candidate =>
+      (candidate.type === "Input" || candidate.type === "input") &&
+      candidate.props?.placeholder === placeholder,
+  )
 }
 
 function findTextareaByPlaceholder(node: any, placeholder: string) {
-  return findNode(node, candidate => candidate.type === "Textarea" && candidate.props?.placeholder === placeholder)
+  return findNode(
+    node,
+    candidate =>
+      (candidate.type === "Textarea" || candidate.type === "textarea") &&
+      candidate.props?.placeholder === placeholder,
+  )
 }
 
 function findMaxIterationsInput(node: any) {
   return findNode(
     node,
-    candidate => candidate.type === "Input" && candidate.props?.type === "number" && candidate.props?.placeholder === "10",
+    candidate =>
+      (candidate.type === "Input" || candidate.type === "input") &&
+      candidate.props?.type === "number" &&
+      candidate.props?.placeholder === "10",
   )
 }
 
@@ -135,8 +148,26 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     transcriptPostProcessingEnabled: true,
     transcriptPostProcessingPrompt: "Prompt old",
     launchAtLogin: false,
+    mcpUnlimitedIterations: false,
     acpAgents: [],
   }
+  const queryClientMock = {
+    useConfigQuery: () => ({ data: currentConfig }),
+    useSaveConfigMutation: () => ({ mutate }),
+  }
+  const controlMock = {
+    Control: (props: any) => ({ type: "Control", props }),
+    ControlGroup: (props: any) => props.children,
+    ControlLabel: (props: any) => props.label,
+  }
+  const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
+  const switchMock = { Switch: (props: any) => ({ type: "Switch", props }) }
+  const buttonMock = { Button: (props: any) => ({ type: "Button", props }) }
+  const selectMock = { Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }
+  const textareaMock = { Textarea: (props: any) => ({ type: "Textarea", props }) }
+  const dialogMock = { Dialog: PassThrough, DialogContent: PassThrough, DialogHeader: PassThrough, DialogTitle: PassThrough, DialogTrigger: PassThrough }
+  const ttsManagerMock = { ttsManager: { stopAll: vi.fn() } }
+  const tipcClientMock = { tipcClient: { getAgentsFolders: vi.fn(async () => ({})), getExternalAgents: vi.fn(async () => []) } }
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
@@ -156,28 +187,43 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     useMutation: () => ({ mutate: vi.fn() }),
     focusManager: { setEventListener: vi.fn() },
   }))
-  vi.doMock("@renderer/lib/query-client", () => ({
-    useConfigQuery: () => ({ data: currentConfig }),
-    useSaveConfigMutation: () => ({ mutate }),
-  }))
+  vi.doMock("@renderer/lib/query-client", () => queryClientMock)
+  vi.doMock("../lib/query-client", () => queryClientMock)
   vi.doMock("./settings-general-main-agent-options", () => ({ getSelectableMainAcpAgents: () => [] }))
-  vi.doMock("@renderer/lib/tts-manager", () => ({ ttsManager: { stopAll: vi.fn() } }))
-  vi.doMock("@renderer/lib/tipc-client", () => ({ tipcClient: { getAgentsFolders: vi.fn(async () => ({})), getExternalAgents: vi.fn(async () => []) } }))
+  vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
+  vi.doMock("../lib/tts-manager", () => ttsManagerMock)
+  vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)
+  vi.doMock("../lib/tipc-client", () => tipcClientMock)
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
   vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null }))
-  vi.doMock("@shared/index", () => ({ STT_PROVIDER_ID: {} }))
-  vi.doMock("@shared/languages", () => ({ SUPPORTED_LANGUAGES: [] }))
+  vi.doMock("@dotagents/shared", () => ({ __esModule: true, STT_PROVIDER_ID: {}, SUPPORTED_LANGUAGES: [] }))
   vi.doMock("@shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
-  vi.doMock("@renderer/components/ui/control", () => ({ Control: (props: any) => ({ type: "Control", props }), ControlGroup: (props: any) => props.children, ControlLabel: (props: any) => props.label }))
-  vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("@renderer/components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/components/ui/select", () => ({ Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }))
+  vi.doMock("../shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
+  vi.doMock("@renderer/hooks/use-audio-devices", () => ({
+    useAudioDevices: () => ({ inputDevices: [], outputDevices: [], error: null, refresh: vi.fn() }),
+  }))
+  vi.doMock("../hooks/use-audio-devices", () => ({
+    useAudioDevices: () => ({ inputDevices: [], outputDevices: [], error: null, refresh: vi.fn() }),
+  }))
+  vi.doMock("@renderer/components/ui/control", () => controlMock)
+  vi.doMock("../components/ui/control", () => controlMock)
+  vi.doMock("@renderer/components/ui/input", () => inputMock)
+  vi.doMock("../components/ui/input", () => inputMock)
+  vi.doMock("@renderer/components/ui/switch", () => switchMock)
+  vi.doMock("../components/ui/switch", () => switchMock)
+  vi.doMock("@renderer/components/ui/button", () => buttonMock)
+  vi.doMock("../components/ui/button", () => buttonMock)
+  vi.doMock("@renderer/components/ui/select", () => selectMock)
+  vi.doMock("../components/ui/select", () => selectMock)
   vi.doMock("@renderer/components/ui/tooltip", () => ({ Tooltip: Null, TooltipContent: Null, TooltipProvider: Null, TooltipTrigger: Null }))
-  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
-  vi.doMock("@renderer/components/ui/dialog", () => ({ Dialog: PassThrough, DialogContent: PassThrough, DialogHeader: PassThrough, DialogTitle: PassThrough, DialogTrigger: PassThrough }))
+  vi.doMock("@renderer/components/ui/textarea", () => textareaMock)
+  vi.doMock("../components/ui/textarea", () => textareaMock)
+  vi.doMock("@renderer/components/ui/dialog", () => dialogMock)
+  vi.doMock("../components/ui/dialog", () => dialogMock)
   vi.doMock("@renderer/components/model-selector", () => ({ ModelSelector: Null }))
+  vi.doMock("../components/model-selector", () => ({ ModelSelector: Null }))
   vi.doMock("@renderer/components/key-recorder", () => ({ KeyRecorder: Null }))
+  vi.doMock("../components/key-recorder", () => ({ KeyRecorder: Null }))
   vi.doMock("./settings-remote-server", () => ({ RemoteServerSettingsGroups: Null }))
 
   const mod = await import("./settings-general")

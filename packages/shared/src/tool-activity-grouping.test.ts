@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isGroupableToolActivity,
-  hasRespondToUserCall,
   getToolActivitySummaryLine,
   groupToolActivity,
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
-  type GroupableMessage,
 } from './tool-activity-grouping'
+
+type GroupableMessage = Parameters<typeof groupToolActivity>[0][number]
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -30,63 +29,6 @@ const respondToUserMsg = (): GroupableMessage => ({
   content: '',
   toolCalls: [{ name: 'respond_to_user', arguments: { text: 'Hi!' } }],
 })
-
-// ---------------------------------------------------------------------------
-// isGroupableToolActivity
-// ---------------------------------------------------------------------------
-
-describe('isGroupableToolActivity', () => {
-  it('returns false for user messages', () => {
-    expect(isGroupableToolActivity(userMsg())).toBe(false)
-  })
-
-  it('returns false for respond_to_user assistant messages', () => {
-    expect(isGroupableToolActivity(respondToUserMsg())).toBe(false)
-  })
-
-  it('returns true for tool-role messages', () => {
-    expect(isGroupableToolActivity(toolResultMsg())).toBe(true)
-  })
-
-  it('returns true for tool-only assistant messages', () => {
-    expect(isGroupableToolActivity(toolOnlyAssistant(['read_file']))).toBe(true)
-  })
-
-  it('returns false for assistant messages with real content', () => {
-    expect(isGroupableToolActivity(assistantMsg('Here is the code.'))).toBe(false)
-  })
-
-  it('returns true for assistant with placeholder content and tool calls', () => {
-    const msg: GroupableMessage = {
-      role: 'assistant',
-      content: 'Executing tools...',
-      toolCalls: [{ name: 'read_file', arguments: {} }],
-    }
-    expect(isGroupableToolActivity(msg)).toBe(true)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// hasRespondToUserCall
-// ---------------------------------------------------------------------------
-
-describe('hasRespondToUserCall', () => {
-  it('returns true when respond_to_user is present', () => {
-    expect(hasRespondToUserCall(respondToUserMsg())).toBe(true)
-  })
-
-  it('returns false for normal tool calls', () => {
-    expect(hasRespondToUserCall(toolOnlyAssistant(['read_file']))).toBe(false)
-  })
-
-  it('returns false for non-assistant roles', () => {
-    expect(hasRespondToUserCall(userMsg())).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// getToolActivitySummaryLine
-// ---------------------------------------------------------------------------
 
 describe('getToolActivitySummaryLine', () => {
   it('summarises tool calls', () => {

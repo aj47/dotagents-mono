@@ -3,7 +3,6 @@ import {
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
-  createSession,
   sortSessionsByPinnedFirst,
   sanitizeSessionText,
   sessionToListItem,
@@ -70,32 +69,6 @@ describe('generateSessionTitle', () => {
     const title = generateSessionTitle(msg)
     expect(title).toContain('[Image]')
     expect(title).not.toContain('data:image')
-  })
-})
-
-// ── createSession ────────────────────────────────────────────────────────────
-
-describe('createSession', () => {
-  it('creates a session with default title when no message', () => {
-    const session = createSession()
-    expect(session.title).toBe('New Chat')
-    expect(session.id).toMatch(/^session_/)
-    expect(session.messages).toHaveLength(0)
-    expect(session.createdAt).toBeGreaterThan(0)
-    expect(session.updatedAt).toBeGreaterThan(0)
-  })
-
-  it('creates a session with first message', () => {
-    const session = createSession('Hello world')
-    expect(session.title).toBe('Hello world')
-    expect(session.messages).toHaveLength(1)
-    expect(session.messages[0].role).toBe('user')
-    expect(session.messages[0].content).toBe('Hello world')
-  })
-
-  it('sets createdAt and updatedAt to the same time', () => {
-    const session = createSession()
-    expect(session.createdAt).toBe(session.updatedAt)
   })
 })
 

@@ -9,7 +9,6 @@ export {
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
-  createSession,
   sessionToListItem,
   sortSessionsByPinnedFirst,
   isStubSession,
@@ -21,4 +20,3 @@ export type { Session, SessionListItem, SessionChatMessage as ChatMessage } from
 
 // Re-export ToolCall/ToolResult for backward compat
 export type { ToolCall, ToolResult } from '@dotagents/shared';
-

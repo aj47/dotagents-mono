@@ -50,7 +50,7 @@ export function appendSessionUserResponse(params: {
   return event
 }
 
-export function getSessionUserResponseEvents(sessionId: string): AgentUserResponseEvent[] {
+function getSessionUserResponseEvents(sessionId: string): AgentUserResponseEvent[] {
   return sessionUserResponseEvents.get(sessionId) ?? []
 }
 
@@ -60,7 +60,7 @@ export function getSessionRunUserResponseEvents(sessionId: string, runId?: numbe
     .sort((a, b) => a.ordinal - b.ordinal)
 }
 
-export function getLatestSessionUserResponseEvent(sessionId: string, runId?: number): AgentUserResponseEvent | undefined {
+function getLatestSessionUserResponseEvent(sessionId: string, runId?: number): AgentUserResponseEvent | undefined {
   const events = getSessionRunUserResponseEvents(sessionId, runId)
   return events[events.length - 1]
 }
@@ -91,14 +91,3 @@ export function clearSessionUserResponse(sessionId: string): void {
     clearedEvents: events.length,
   })
 }
-
-/**
- * Legacy no-op kept while callers migrate away from the old current/history model.
- */
-export function archiveSessionUserResponse(sessionId: string): void {
-  logApp("[session-user-response-store] archive (no-op with event model)", {
-    sessionId,
-    retainedEvents: getSessionUserResponseEvents(sessionId).length,
-  })
-}
-

@@ -363,21 +363,6 @@ async function loadSherpaModule(): Promise<SherpaOnnxModule | null> {
 }
 
 /**
- * Check if the sherpa-onnx native module is available.
- */
-export async function isSherpaAvailable(): Promise<boolean> {
-  const module = await loadSherpaModule()
-  return module !== null
-}
-
-/**
- * Get the error message if sherpa-onnx failed to load.
- */
-export function getSherpaLoadError(): string | null {
-  return sherpaLoadError
-}
-
-/**
  * Get the base path for model storage
  */
 function getModelsPath(): string {
@@ -679,4 +664,3 @@ export function disposeRecognizer(): void {
   recognizer = null
   recognizerNumThreads = null
 }
-

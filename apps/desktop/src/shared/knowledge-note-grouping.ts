@@ -1,11 +1,5 @@
 import type { KnowledgeNote, KnowledgeNoteEntryType } from "./types"
 
-export type KnowledgeNoteGrouping = {
-  group?: string
-  series?: string
-  entryType?: KnowledgeNoteEntryType
-}
-
 type GroupingInput = Pick<KnowledgeNote, "id" | "title" | "summary" | "tags" | "group" | "series" | "entryType">
 
 function normalizePathLikeValue(value: string | undefined): string | undefined {
@@ -27,7 +21,11 @@ function inferEntryType(group: string | undefined, series: string | undefined, t
   return undefined
 }
 
-export function inferKnowledgeNoteGrouping(note: GroupingInput): KnowledgeNoteGrouping {
+export function inferKnowledgeNoteGrouping(note: GroupingInput): {
+  group?: string
+  series?: string
+  entryType?: KnowledgeNoteEntryType
+} {
   const explicitGroup = normalizePathLikeValue(note.group)
   const explicitSeries = normalizePathLikeValue(note.series)
   const explicitEntryType = note.entryType

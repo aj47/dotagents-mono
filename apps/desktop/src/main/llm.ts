@@ -16,7 +16,7 @@ import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
-import { getCurrentPresetName } from "../shared"
+import { getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
   endAgentTrace,

@@ -97,7 +97,7 @@ Return ONLY JSON with this schema:
 
 Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
 
-export const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
+const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -140,7 +140,7 @@ function assertValidExpectedResult(expected: unknown, source: string): void {
   }
 }
 
-export function buildVerificationJsonRequest(verificationFailCount = 0): string {
+function buildVerificationJsonRequest(verificationFailCount = 0): string {
   if (verificationFailCount <= 0) return VERIFICATION_JSON_REQUEST_BASE
   return `${VERIFICATION_JSON_REQUEST_BASE}\n\nNote: This is verification attempt #${verificationFailCount + 1}. Do NOT lower the bar. If any requested work still remains, return conversationState=running and list the missingItems. Only use complete, needs_input, or blocked when the current run can legitimately stop now.`
 }

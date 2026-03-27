@@ -105,7 +105,7 @@ export function getSessionDepth(sessionId: string): number {
 /**
  * Set the recursion depth for a session.
  */
-export function setSessionDepth(sessionId: string, depth: number): void {
+function setSessionDepth(sessionId: string, depth: number): void {
   sessionDepthMap.set(sessionId, depth);
 }
 
@@ -113,7 +113,7 @@ export function setSessionDepth(sessionId: string, depth: number): void {
  * Check if we can spawn a sub-session from the given parent.
  * Returns an error message if not allowed, undefined if OK.
  */
-export function canSpawnSubSession(parentSessionId: string): string | undefined {
+function canSpawnSubSession(parentSessionId: string): string | undefined {
   const parentDepth = getSessionDepth(parentSessionId);
   
   if (parentDepth >= MAX_RECURSION_DEPTH) {
@@ -142,31 +142,6 @@ export function getChildSubSessions(parentSessionId: string): InternalSubSession
   return Array.from(childIds)
     .map(id => activeSubSessions.get(id))
     .filter((s): s is InternalSubSession => s !== undefined);
-}
-
-/**
- * Get a sub-session by ID.
- */
-export function getSubSession(subSessionId: string): InternalSubSession | undefined {
-  return activeSubSessions.get(subSessionId);
-}
-
-/**
- * Clean up completed/failed sub-sessions that are older than the threshold.
- */
-export function cleanupOldSubSessions(maxAgeMs: number = 30 * 60 * 1000): void {
-  const now = Date.now();
-  for (const [id, session] of activeSubSessions) {
-    if (session.status === 'completed' || session.status === 'failed' || session.status === 'cancelled') {
-      if (session.endTime && (now - session.endTime) > maxAgeMs) {
-        activeSubSessions.delete(id);
-        sessionDepthMap.delete(id);
-        const children = parentToChildren.get(session.parentSessionId);
-        children?.delete(id);
-        logSubSession(`Cleaned up old sub-session: ${id}`);
-      }
-    }
-  }
 }
 
 // ============================================================================

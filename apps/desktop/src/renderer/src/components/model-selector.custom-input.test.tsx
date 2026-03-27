@@ -9,7 +9,20 @@ function createHookRuntime() {
   const useState = <T,>(initial: T | (() => T)) => { const idx = stateIndex++; if (states[idx] === undefined) states[idx] = typeof initial === "function" ? (initial as () => T)() : initial; return [states[idx] as T, (update: T | ((prev: T) => T)) => { states[idx] = typeof update === "function" ? (update as (prev: T) => T)(states[idx]) : update }] as const }
   const useRef = <T,>(initial: T) => { const idx = refIndex++; refs[idx] ??= { current: initial }; return refs[idx] as { current: T } }
   const useEffect = (callback: () => void | (() => void), deps?: any[]) => { const idx = effectIndex++; const record = effects[idx] ?? { hasRun: false }; record.callback = callback; record.nextDeps = deps; effects[idx] = record }
-  const reactMock: any = { __esModule: true, default: {} as any, useState, useRef, useEffect, useCallback: (fn: any) => fn, useMemo: (factory: any) => factory() }
+  const reactMock: any = {
+    __esModule: true,
+    default: {} as any,
+    useState,
+    useRef,
+    useEffect,
+    useCallback: (fn: any) => fn,
+    useMemo: (factory: any) => factory(),
+    forwardRef: (render: any) => {
+      const ForwardRefComponent = (props: any) => render(props, null)
+      ForwardRefComponent.displayName = render.displayName || render.name || "ForwardRef"
+      return ForwardRefComponent
+    },
+  }
   reactMock.default = reactMock
   const Fragment = Symbol.for("react.fragment")
   const invoke = (type: any, props: any) => (type === Fragment ? props?.children ?? null : typeof type === "function" ? type(props ?? {}) : { type, props: props ?? {} })
@@ -23,30 +36,58 @@ function createHookRuntime() {
 
 function findNodes(node: any, predicate: (node: any) => boolean): any[] { if (node == null) return []; if (Array.isArray(node)) return node.flatMap(child => findNodes(child, predicate)); if (typeof node === "object") return [ ...(predicate(node) ? [node] : []), ...findNodes(node.props?.children, predicate) ]; return [] }
 function findNode(node: any, predicate: (node: any) => boolean): any { return findNodes(node, predicate)[0] ?? null }
-function findCustomInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "Enter custom model name (e.g., gpt-4.1, claude-sonnet-4)") }
+function findCustomInput(node: any) {
+  return findNode(
+    node,
+    candidate =>
+      (candidate.type === "Input" || candidate.type === "input") &&
+      candidate.props?.placeholder === "Enter custom model name (e.g., gpt-4.1, claude-sonnet-4)",
+  )
+}
 
 async function loadModelSelector(runtime: ReturnType<typeof createHookRuntime>, models = [{ id: "llama-3.1-70b", name: "Llama 3.1 70B" }]) {
   vi.resetModules()
   const Null = () => null
+  const selectMock = { Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }
+  const labelMock = { Label: (props: any) => ({ type: "Label", props }) }
+  const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
+  const buttonMock = { Button: (props: any) => ({ type: "Button", props }) }
+  const queryClientMock = {
+    useAvailableModelsQuery: () => ({ data: models, isLoading: false, isError: false, refetch: vi.fn() }),
+    useConfigQuery: () => ({ data: { currentModelPresetId: "default" } }),
+  }
+  const debugMock = { logUI: vi.fn(), logFocus: vi.fn(), logStateChange: vi.fn(), logRender: vi.fn() }
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@renderer/components/ui/select", () => ({ Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }))
-  vi.doMock("@renderer/components/ui/label", () => ({ Label: (props: any) => ({ type: "Label", props }) }))
-  vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/lib/query-client", () => ({ useAvailableModelsQuery: () => ({ data: models, isLoading: false, isError: false, refetch: vi.fn() }), useConfigQuery: () => ({ data: { currentModelPresetId: "default" } }) }))
-  vi.doMock("@renderer/lib/debug", () => ({ logUI: vi.fn(), logFocus: vi.fn(), logStateChange: vi.fn(), logRender: vi.fn() }))
+  vi.doMock("@renderer/components/ui/select", () => selectMock)
+  vi.doMock("./ui/select", () => selectMock)
+  vi.doMock("@renderer/components/ui/label", () => labelMock)
+  vi.doMock("./ui/label", () => labelMock)
+  vi.doMock("@renderer/components/ui/input", () => inputMock)
+  vi.doMock("./ui/input", () => inputMock)
+  vi.doMock("@renderer/components/ui/button", () => buttonMock)
+  vi.doMock("./ui/button", () => buttonMock)
+  vi.doMock("@renderer/lib/query-client", () => queryClientMock)
+  vi.doMock("../lib/query-client", () => queryClientMock)
+  vi.doMock("@renderer/lib/debug", () => debugMock)
+  vi.doMock("../lib/debug", () => debugMock)
   vi.doMock("lucide-react", () => ({ AlertCircle: Null, RefreshCw: Null, Search: Null, Edit3: Null }))
-  vi.doMock("@shared/index", () => ({ DEFAULT_MODEL_PRESET_ID: "default" }))
+  vi.doMock("@dotagents/shared", () => ({ __esModule: true, DEFAULT_MODEL_PRESET_ID: "default" }))
   const mod = await import("./model-selector")
   return { ModelSelector: mod.ModelSelector }
 }
 
-afterEach(() => { vi.restoreAllMocks(); vi.resetModules(); vi.unstubAllGlobals() })
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.resetModules()
+  vi.unstubAllGlobals()
+  delete (globalThis as any).window
+})
 
 describe("ModelSelector custom input draft behavior", () => {
   it("keeps custom model edits local until blur", async () => {
+    ;(globalThis as any).window = { electron: { ipcRenderer: { invoke: vi.fn() } } }
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 0 })
     const runtime = createHookRuntime()
     const onValueChange = vi.fn()
@@ -76,6 +117,7 @@ describe("ModelSelector custom input draft behavior", () => {
   })
 
   it("skips blur commits when focus moves to the custom-mode toggle", async () => {
+    ;(globalThis as any).window = { electron: { ipcRenderer: { invoke: vi.fn() } } }
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 0 })
     const runtime = createHookRuntime()
     const onValueChange = vi.fn()

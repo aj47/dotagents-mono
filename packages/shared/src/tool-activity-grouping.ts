@@ -23,7 +23,7 @@ import { RESPOND_TO_USER_TOOL, isToolOnlyMessage, getToolCallsSummary } from './
 // ---------------------------------------------------------------------------
 
 /** Minimal message shape accepted by the grouping logic. */
-export interface GroupableMessage {
+interface GroupableMessage {
   role: 'user' | 'assistant' | 'tool'
   content?: string
   toolCalls?: Array<{ name: string; arguments?: unknown }>
@@ -47,17 +47,6 @@ export interface ToolActivityGroup {
   previewLines: string[]
 }
 
-/** Result of running the grouping algorithm over a message list. */
-export interface GroupedMessages {
-  /**
-   * Sparse map from message index → the group it belongs to.
-   * Messages that are NOT part of any group will not have an entry.
-   */
-  groupByIndex: Map<number, ToolActivityGroup>
-  /** All detected groups in order. */
-  groups: ToolActivityGroup[]
-}
-
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -76,7 +65,7 @@ export const TOOL_GROUP_MIN_SIZE = 2
  * Determine whether a message contains a respond_to_user tool call,
  * which means it carries user-visible output and must NOT be grouped.
  */
-export function hasRespondToUserCall(message: GroupableMessage): boolean {
+function hasRespondToUserCall(message: GroupableMessage): boolean {
   if (message.role !== 'assistant' || !message.toolCalls?.length) return false
   return message.toolCalls.some((tc) => tc.name === RESPOND_TO_USER_TOOL)
 }
@@ -93,7 +82,7 @@ export function hasRespondToUserCall(message: GroupableMessage): boolean {
  *    b. An assistant message that is "tool-only" (has tool calls but no
  *       meaningful user-facing content).
  */
-export function isGroupableToolActivity(message: GroupableMessage): boolean {
+function isGroupableToolActivity(message: GroupableMessage): boolean {
   // User messages are never grouped.
   if (message.role === 'user') return false
 
@@ -142,11 +131,14 @@ export function getToolActivitySummaryLine(message: GroupableMessage): string {
  * Groups of fewer than {@link TOOL_GROUP_MIN_SIZE} messages are ignored
  * (not worth collapsing a single item).
  *
- * The returned {@link GroupedMessages.groupByIndex} map lets renderers do
+ * The returned `groupByIndex` map lets renderers do
  * an O(1) lookup per message index to decide whether to render normally
  * or as part of a collapsed group.
  */
-export function groupToolActivity(messages: GroupableMessage[]): GroupedMessages {
+export function groupToolActivity(messages: GroupableMessage[]): {
+  groupByIndex: Map<number, ToolActivityGroup>
+  groups: ToolActivityGroup[]
+} {
   const groups: ToolActivityGroup[] = []
   const groupByIndex = new Map<number, ToolActivityGroup>()
 
@@ -196,4 +188,3 @@ export function groupToolActivity(messages: GroupableMessage[]): GroupedMessages
 
   return { groups, groupByIndex }
 }
-

@@ -58,7 +58,7 @@ const legacyProfilesPath = path.join(app.getPath("userData"), "profiles.json")
 const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
 
 // ============================================================================
-// Validation Helpers (ported from profile-service.ts)
+// Validation Helpers (ported from the legacy profile service)
 // ============================================================================
 
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
@@ -160,21 +160,6 @@ export function toolConfigToMcpServerConfig(toolConfig?: AgentProfileToolConfig)
     allServersDisabledByDefault: toolConfig.allServersDisabledByDefault,
     enabledServers: toolConfig.enabledServers,
     enabledRuntimeTools: toolConfig.enabledRuntimeTools,
-  }
-}
-
-/**
- * Convert ProfileMcpServerConfig to AgentProfileToolConfig.
- * Used when importing legacy profile data.
- */
-export function mcpServerConfigToToolConfig(mcpConfig?: ProfileMcpServerConfig): AgentProfileToolConfig | undefined {
-  if (!mcpConfig) return undefined
-  return {
-    disabledServers: mcpConfig.disabledServers,
-    disabledTools: mcpConfig.disabledTools,
-    allServersDisabledByDefault: mcpConfig.allServersDisabledByDefault,
-    enabledServers: mcpConfig.enabledServers,
-    enabledRuntimeTools: mcpConfig.enabledRuntimeTools,
   }
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
   type AgentStateReplayFixture,
-  buildVerificationJsonRequest,
   buildVerificationMessagesFromAgentState,
   parseContinueReplayFixture,
   resolveContinueReplayMessages,
@@ -35,10 +34,17 @@ describe("llm-verification-replay", () => {
     expect(messages.map((message) => message.content).join("\n")).toContain("verification attempt #2")
   })
 
-  it("reuses the shared JSON request builder for retry notes", () => {
-    expect(buildVerificationJsonRequest(0)).toContain("Return JSON only")
-    expect(buildVerificationJsonRequest(0)).not.toContain("verification attempt")
-    expect(buildVerificationJsonRequest(2)).toContain("verification attempt #3")
+  it("adds retry notes to the final verifier request only after a failed attempt", () => {
+    const initialRequest = buildVerificationMessagesFromAgentState(
+      makeAgentStateFixture({ verificationFailCount: 0 }),
+    ).at(-1)?.content
+    const retryRequest = buildVerificationMessagesFromAgentState(
+      makeAgentStateFixture({ verificationFailCount: 2 }),
+    ).at(-1)?.content
+
+    expect(initialRequest).toContain("Return JSON only")
+    expect(initialRequest).not.toContain("verification attempt")
+    expect(retryRequest).toContain("verification attempt #3")
   })
 
   it("resolves agent_state fixtures into built verification messages", () => {

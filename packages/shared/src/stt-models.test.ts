@@ -2,12 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_STT_MODELS,
   KNOWN_STT_MODEL_IDS,
-  isCloudSttProvider,
   isKnownSttModel,
   getDefaultSttModel,
   getConfiguredSttModel,
 } from './stt-models'
-import type { CloudSttProviderId, SttModelConfig } from './stt-models'
 
 describe('DEFAULT_STT_MODELS', () => {
   it('has openai default', () => {
@@ -30,24 +28,6 @@ describe('KNOWN_STT_MODEL_IDS', () => {
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('whisper-large-v3')
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('whisper-large-v3-turbo')
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('distil-whisper-large-v3-en')
-  })
-})
-
-describe('isCloudSttProvider', () => {
-  it('returns true for "openai"', () => {
-    expect(isCloudSttProvider('openai')).toBe(true)
-  })
-
-  it('returns true for "groq"', () => {
-    expect(isCloudSttProvider('groq')).toBe(true)
-  })
-
-  it('returns false for "parakeet"', () => {
-    expect(isCloudSttProvider('parakeet')).toBe(false)
-  })
-
-  it('returns false for undefined', () => {
-    expect(isCloudSttProvider(undefined)).toBe(false)
   })
 })
 
@@ -89,32 +69,32 @@ describe('getDefaultSttModel', () => {
 
 describe('getConfiguredSttModel', () => {
   it('returns configured openai model', () => {
-    const config: SttModelConfig = { sttProviderId: 'openai', openaiSttModel: 'gpt-4o-transcribe' }
+    const config = { sttProviderId: 'openai', openaiSttModel: 'gpt-4o-transcribe' }
     expect(getConfiguredSttModel(config)).toBe('gpt-4o-transcribe')
   })
 
   it('falls back to openai default when openaiSttModel is empty', () => {
-    const config: SttModelConfig = { sttProviderId: 'openai', openaiSttModel: '' }
+    const config = { sttProviderId: 'openai', openaiSttModel: '' }
     expect(getConfiguredSttModel(config)).toBe('whisper-1')
   })
 
   it('returns configured groq model', () => {
-    const config: SttModelConfig = { sttProviderId: 'groq', groqSttModel: 'whisper-large-v3' }
+    const config = { sttProviderId: 'groq', groqSttModel: 'whisper-large-v3' }
     expect(getConfiguredSttModel(config)).toBe('whisper-large-v3')
   })
 
   it('falls back to groq default when groqSttModel is empty', () => {
-    const config: SttModelConfig = { sttProviderId: 'groq', groqSttModel: '  ' }
+    const config = { sttProviderId: 'groq', groqSttModel: '  ' }
     expect(getConfiguredSttModel(config)).toBe('whisper-large-v3-turbo')
   })
 
   it('returns undefined for unknown provider', () => {
-    const config: SttModelConfig = { sttProviderId: 'parakeet' }
+    const config = { sttProviderId: 'parakeet' }
     expect(getConfiguredSttModel(config)).toBeUndefined()
   })
 
   it('returns undefined when no provider is set', () => {
-    const config: SttModelConfig = {}
+    const config = {}
     expect(getConfiguredSttModel(config)).toBeUndefined()
   })
 })

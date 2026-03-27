@@ -396,7 +396,7 @@ async function fetchGroqContextWindow(model: string): Promise<number | undefined
   return undefined
 }
 
-export async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
+async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
   const cfg = configStore.get()
   const override = cfg.mcpMaxContextTokensOverride
   if (override && typeof override === "number" && override > 0) return override
@@ -446,7 +446,7 @@ export function recordActualTokenUsage(sessionId: string, inputTokens: number, o
  * Get the last known actual input token count for a session.
  * Returns undefined if no actual usage has been recorded.
  */
-export function getActualInputTokens(sessionId?: string): number | undefined {
+function getActualInputTokens(sessionId?: string): number | undefined {
   if (!sessionId) return undefined
   return actualTokenUsageBySession.get(sessionId)?.inputTokens
 }
@@ -519,7 +519,7 @@ export function clearArchiveFrontier(sessionId: string): void {
   archiveHistoryRefBySession.delete(sessionId)
 }
 
-export function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
+function getContextRefEntry(sessionId: string | undefined, contextRef: string): ContextRefEntry | undefined {
   if (!sessionId) return undefined
   return contextRefRegistryBySession.get(sessionId)?.get(contextRef)
 }
@@ -721,20 +721,13 @@ export function readMoreContext(
 const iterativeSummaryCache = new Map<string, string>()
 
 /**
- * Get the current iterative summary for a session.
- */
-export function getIterativeSummary(sessionId: string): string | undefined {
-  return iterativeSummaryCache.get(sessionId)
-}
-
-/**
  * Clear iterative summary for a session (call on session end).
  */
 export function clearIterativeSummary(sessionId: string): void {
   iterativeSummaryCache.delete(sessionId)
 }
 
-export function getProviderAndModel(): { providerId: string; model: string } {
+function getProviderAndModel(): { providerId: string; model: string } {
   const config = configStore.get()
   const providerId = config.mcpToolsProviderId || "openai"
   let model = "gpt-4.1-mini"

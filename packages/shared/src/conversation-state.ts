@@ -7,7 +7,7 @@ const VALID_AGENT_CONVERSATION_STATES = new Set<AgentConversationState>([
   'blocked',
 ])
 
-export function isAgentConversationState(value: unknown): value is AgentConversationState {
+function isAgentConversationState(value: unknown): value is AgentConversationState {
   return typeof value === 'string' && VALID_AGENT_CONVERSATION_STATES.has(value as AgentConversationState)
 }
 

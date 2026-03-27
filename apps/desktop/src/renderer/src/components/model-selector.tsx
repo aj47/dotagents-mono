@@ -12,7 +12,7 @@ import { useAvailableModelsQuery, useConfigQuery } from "@renderer/lib/query-cli
 import { AlertCircle, Search } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { logUI, logFocus, logStateChange, logRender } from "@renderer/lib/debug"
-import { DEFAULT_MODEL_PRESET_ID } from "@shared/index"
+import { DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
 
 interface ModelSelectorProps {
   providerId: string

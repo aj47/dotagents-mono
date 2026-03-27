@@ -21,7 +21,7 @@ import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-clien
 import { ModelPreset, Config } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Key, Globe, Bot, FileText, Settings2 } from "lucide-react"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@shared/index"
+import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
 import { PresetModelSelector } from "./preset-model-selector"
 
 export function ModelPresetManager({
@@ -568,4 +568,3 @@ export function ModelPresetManager({
     </div>
   )
 }
-

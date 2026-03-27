@@ -2,7 +2,7 @@
  * Language support types and utilities for DotAgents apps
  */
 
-export interface LanguageOption {
+interface LanguageOption {
   code: string;
   name: string;
   nativeName: string;
@@ -49,73 +49,3 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: "lt", name: "Lithuanian", nativeName: "Lietuvių" },
   { code: "mt", name: "Maltese", nativeName: "Malti" },
 ];
-
-export const OPENAI_WHISPER_SUPPORTED_LANGUAGES = [
-  "en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh",
-  "ar", "hi", "tr", "nl", "sv", "no", "da", "fi", "pl", "uk",
-  "el", "he", "th", "vi", "id", "ms", "cs", "sk", "hu", "ro",
-  "bg", "hr", "sr", "sl", "et", "lv", "lt", "mt"
-];
-
-export const GROQ_WHISPER_SUPPORTED_LANGUAGES = [
-  "en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh",
-  "ar", "hi", "tr", "nl", "sv", "no", "da", "fi", "pl", "uk",
-  "el", "he", "th", "vi", "id", "ms", "cs", "sk", "hu", "ro",
-  "bg", "hr", "sr", "sl", "et", "lv", "lt", "mt"
-];
-
-export const getLanguageName = (code: string): string => {
-  const language = SUPPORTED_LANGUAGES.find(lang => lang.code === code);
-  return language ? language.name : code;
-};
-
-export const getLanguageNativeName = (code: string): string => {
-  const language = SUPPORTED_LANGUAGES.find(lang => lang.code === code);
-  return language ? language.nativeName : code;
-};
-
-export const isValidLanguageCode = (code: string): boolean => {
-  if (code === "auto") return true;
-  return SUPPORTED_LANGUAGES.some(lang => lang.code === code);
-};
-
-export const isValidLanguageForProvider = (code: string, provider: string): boolean => {
-  if (code === "auto") return true;
-
-  switch (provider) {
-    case "openai":
-      return OPENAI_WHISPER_SUPPORTED_LANGUAGES.includes(code);
-    case "groq":
-      return GROQ_WHISPER_SUPPORTED_LANGUAGES.includes(code);
-    default:
-      return isValidLanguageCode(code);
-  }
-};
-
-export const getApiLanguageCode = (language: string, provider?: string): string | undefined => {
-  if (language === "auto" || !language) {
-    return undefined;
-  }
-
-  if (provider && !isValidLanguageForProvider(language, provider)) {
-    console.warn(`Language code ${language} may not be supported by ${provider}`);
-  }
-
-  return isValidLanguageCode(language) ? language : undefined;
-};
-
-export const getSupportedLanguagesForProvider = (provider: string): LanguageOption[] => {
-  switch (provider) {
-    case "openai":
-      return SUPPORTED_LANGUAGES.filter(lang =>
-        lang.code === "auto" || OPENAI_WHISPER_SUPPORTED_LANGUAGES.includes(lang.code)
-      );
-    case "groq":
-      return SUPPORTED_LANGUAGES.filter(lang =>
-        lang.code === "auto" || GROQ_WHISPER_SUPPORTED_LANGUAGES.includes(lang.code)
-      );
-    default:
-      return SUPPORTED_LANGUAGES;
-  }
-};
-

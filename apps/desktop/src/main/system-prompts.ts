@@ -41,14 +41,14 @@ function formatWorkingNotesForPrompt(notes: KnowledgeNote[], maxNotes: number = 
     .join("\n")
 }
 
-export function getEffectiveSystemPrompt(customSystemPrompt?: string): string {
+function getEffectiveSystemPrompt(customSystemPrompt?: string): string {
   if (customSystemPrompt && customSystemPrompt.trim()) {
     return customSystemPrompt.trim()
   }
   return DEFAULT_SYSTEM_PROMPT
 }
 
-export const AGENT_MODE_ADDITIONS = `
+const AGENT_MODE_ADDITIONS = `
 
 AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.
 
@@ -180,7 +180,7 @@ function formatRuntimeToolInfo(
  * Generate ACP routing prompt addition based on available agents.
  * Returns an empty string if no agents are ready.
  */
-export function getACPRoutingPromptAddition(): string {
+function getACPRoutingPromptAddition(): string {
   // Get agents from acpService which has runtime status
   const agentStatuses = acpService.getAgents()
 
@@ -209,7 +209,7 @@ export function getACPRoutingPromptAddition(): string {
  * Generate prompt addition for the internal agent.
  * This instructs the agent on when and how to use the internal agent for parallel work.
  */
-export function getSubSessionPromptAddition(): string {
+function getSubSessionPromptAddition(): string {
   const info = getInternalAgentInfo()
 
   return `

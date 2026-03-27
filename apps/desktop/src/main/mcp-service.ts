@@ -109,14 +109,6 @@ export function getInternalWhatsAppServerPath(): string {
   return getInternalWhatsAppServerPaths().scriptPath
 }
 
-/**
- * Check if a server is an internally-managed server
- * Internal servers have their paths managed by DotAgents, not user config
- */
-export function isInternalServer(serverName: string): boolean {
-  return serverName === WHATSAPP_SERVER_NAME
-}
-
 export interface MCPTool {
   name: string
   description: string

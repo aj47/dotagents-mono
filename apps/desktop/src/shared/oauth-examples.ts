@@ -1,6 +1,6 @@
 import { MCPServerConfig } from "./types"
 
-export interface OAuthMCPExample {
+interface OAuthMCPExample {
   name: string
   description: string
   config: MCPServerConfig
@@ -31,12 +31,4 @@ export const OAUTH_MCP_EXAMPLES: Record<string, OAuthMCPExample> = {
     requiredScopes: ["read", "write"],
     documentationUrl: "https://developers.notion.com/docs/authorization",
   },
-}
-
-export function getOAuthExample(key: string): OAuthMCPExample | undefined {
-  return OAUTH_MCP_EXAMPLES[key]
-}
-
-export function getOAuthExampleKeys(): string[] {
-  return Object.keys(OAUTH_MCP_EXAMPLES)
 }
