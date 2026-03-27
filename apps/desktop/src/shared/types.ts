@@ -302,7 +302,7 @@ export type SessionProfileSnapshot = {
  * MCP server and tool access configuration for an agent.
  * Controls which MCP servers and tools the agent can access.
  */
-export type PersonaMcpServerConfig = {
+type PersonaMcpServerConfig = {
   /** MCP servers enabled for this agent */
   enabledServers: string[]
   /** Specific tools disabled within enabled servers */
@@ -319,7 +319,7 @@ export type PersonaMcpServerConfig = {
  * @deprecated Use ProfileModelConfig instead for full preset support.
  * Kept for backward compatibility with existing agent data.
  */
-export type PersonaModelConfig = {
+type PersonaModelConfig = {
   /** LLM provider for this agent */
   providerId: "openai" | "groq" | "gemini"
   /** Model name/identifier */
@@ -334,7 +334,7 @@ export type PersonaModelConfig = {
  * Skills configuration for an agent.
  * Defines which skills are enabled for this agent.
  */
-export type PersonaSkillsConfig = {
+type PersonaSkillsConfig = {
   /** Skill IDs enabled for this agent */
   enabledSkillIds: string[]
 }
@@ -347,7 +347,7 @@ export type PersonaSkillsConfig = {
  * 1. Built-in agent (type: "internal") - Uses DotAgents' internal agent with agent's model config
  * 2. External ACP agent (type: "acp-agent") - Delegates to a configured ACP agent by name
  */
-export type PersonaConnectionConfig = {
+type PersonaConnectionConfig = {
   /**
    * Connection type:
    * - "internal": Uses built-in DotAgents agent (model config from agent)
