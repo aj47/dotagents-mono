@@ -78,7 +78,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
-import { resolveMainAcpAgentSelection } from "./main-agent-selection"
+import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { acpService, ACPRunRequest } from "./acp-service"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
@@ -255,22 +255,34 @@ async function processWithAgentMode(
 ): Promise<string> {
   const config = configStore.get()
   const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  const allProfiles = agentProfileService.getAll()
+  const currentProfile = agentProfileService.getCurrentProfile()
+  const existingProfileSnapshot = existingSessionId
+    ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
+      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
+    : undefined
+  const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
+    currentProfile,
+    sessionProfileId: existingProfileSnapshot?.profileId,
+    mainAgentMode: config.mainAgentMode,
+    mainAgentName: config.mainAgentName,
+    profileAgents: allProfiles,
+    legacyAgents: config.acpAgents || [],
+  })
 
-  // Check if ACP main agent mode is enabled - route to ACP agent instead of LLM API
-  if (config.mainAgentMode === "acp" && config.mainAgentName) {
-    const mainAgentSelection = resolveMainAcpAgentSelection(
-      config.mainAgentName,
-      agentProfileService.getAll(),
-      config.acpAgents || []
-    )
-
-    if ("error" in mainAgentSelection) {
-      logLLM(`[processWithAgentMode] ${mainAgentSelection.error}`)
-      return mainAgentSelection.error
+  // Route via ACP when the selected profile itself is ACP-backed, or when global ACP main-agent mode is enabled.
+  if (topLevelAcpSelection) {
+    if ("error" in topLevelAcpSelection) {
+      logLLM(`[processWithAgentMode] ${topLevelAcpSelection.error}`)
+      return topLevelAcpSelection.error
     }
 
-    const resolvedMainAgentName = mainAgentSelection.resolvedName
-    if (mainAgentSelection.repairedName && mainAgentSelection.repairedName !== config.mainAgentName) {
+    const resolvedMainAgentName = topLevelAcpSelection.resolvedName
+    if (
+      topLevelAcpSelection.source === "main-agent"
+      && topLevelAcpSelection.repairedName
+      && topLevelAcpSelection.repairedName !== config.mainAgentName
+    ) {
       // Persist the repaired selection so future runs don't fail on stale names.
       const saveError = trySaveConfig({ ...config, mainAgentName: resolvedMainAgentName })
       if (saveError) {
@@ -284,19 +296,16 @@ async function processWithAgentMode(
       )
     }
 
-    logLLM(`[processWithAgentMode] ACP mode enabled, routing to agent: ${resolvedMainAgentName}`)
+    logLLM(`[processWithAgentMode] ACP routing via ${topLevelAcpSelection.source}, agent: ${resolvedMainAgentName}`)
 
     // Create conversation title for session tracking
     const conversationTitle = text
+    const profileSnapshot = existingProfileSnapshot
+      ?? (currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined)
 
     // Start tracking this agent session (or reuse existing one)
-    const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed)
-    const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(sessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(sessionId)
-      ?? (() => {
-        const currentProfile = agentProfileService.getCurrentProfile()
-        return currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined
-      })()
+    const sessionId = existingSessionId
+      || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
     const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
 
     try {
@@ -343,20 +352,11 @@ async function processWithAgentMode(
   // Determine profile snapshot for session isolation
   // If reusing an existing session, use its stored snapshot to maintain isolation
   // Only capture a new snapshot from the current global profile when creating a new session
-  let profileSnapshot: SessionProfileSnapshot | undefined
-
-  if (existingSessionId) {
-    // Try to get the stored profile snapshot from the existing session
-    profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
-  }
+  let profileSnapshot: SessionProfileSnapshot | undefined = existingProfileSnapshot
 
   // Only capture a new snapshot if we don't have one from an existing session
-  if (!profileSnapshot) {
-    const currentProfile = agentProfileService.getCurrentProfile()
-    if (currentProfile) {
-      profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-    }
+  if (!profileSnapshot && currentProfile) {
+    profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
   }
 
   // Start tracking this agent session (or reuse existing one)
