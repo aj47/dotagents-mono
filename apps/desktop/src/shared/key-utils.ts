@@ -50,19 +50,7 @@ function normalizeKeyComboToken(token: string): string {
   }
 }
 
-function serializeParsedKeyCombo(parsed: ParsedKeyCombo): string {
-  const parts: string[] = []
-
-  if (parsed.ctrl) parts.push("ctrl")
-  if (parsed.shift) parts.push("shift")
-  if (parsed.alt) parts.push("alt")
-  if (parsed.meta) parts.push("meta")
-  if (parsed.key) parts.push(parsed.key)
-
-  return parts.join("-")
-}
-
-export function parseKeyCombo(combo: string): ParsedKeyCombo {
+function parseKeyCombo(combo: string): ParsedKeyCombo {
   if (!combo) {
     return { ctrl: false, shift: false, alt: false, meta: false, key: "" }
   }
@@ -186,48 +174,6 @@ export function formatKeyComboForDisplay(combo: string): string {
   }
 
   return parts.join(" + ")
-}
-
-export function validateKeyCombo(combo: string): {
-  valid: boolean
-  error?: string
-} {
-  if (!combo.trim()) {
-    return { valid: false, error: "Key combination cannot be empty" }
-  }
-
-  const parsed = parseKeyCombo(combo)
-
-  const hasModifier = parsed.ctrl || parsed.shift || parsed.alt || parsed.meta
-  const isFunctionKey = parsed.key && (parsed.key.match(/^f\d+$/) || parsed.key === "fn")
-
-  if (!hasModifier && !isFunctionKey) {
-    return {
-      valid: false,
-      error:
-        "Key combination must include at least one modifier key (Ctrl, Shift, Alt, Meta) or be a function key",
-    }
-  }
-
-  if (!parsed.key) {
-    return { valid: false, error: "Key combination must include a main key" }
-  }
-
-  const dangerousCombos = [
-    "ctrl-alt-delete", // System shortcut
-    "alt-f4", // Close window
-    "ctrl-w", // Close tab
-    "ctrl-q", // Quit application
-  ]
-
-  if (dangerousCombos.includes(serializeParsedKeyCombo(parsed))) {
-    return {
-      valid: false,
-      error: "This key combination is reserved by the system",
-    }
-  }
-
-  return { valid: true }
 }
 
 export function getEffectiveShortcut(
