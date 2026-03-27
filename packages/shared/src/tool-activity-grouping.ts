@@ -76,7 +76,7 @@ export const TOOL_GROUP_MIN_SIZE = 2
  * Determine whether a message contains a respond_to_user tool call,
  * which means it carries user-visible output and must NOT be grouped.
  */
-export function hasRespondToUserCall(message: GroupableMessage): boolean {
+function hasRespondToUserCall(message: GroupableMessage): boolean {
   if (message.role !== 'assistant' || !message.toolCalls?.length) return false
   return message.toolCalls.some((tc) => tc.name === RESPOND_TO_USER_TOOL)
 }
@@ -196,4 +196,3 @@ export function groupToolActivity(messages: GroupableMessage[]): GroupedMessages
 
   return { groups, groupByIndex }
 }
-

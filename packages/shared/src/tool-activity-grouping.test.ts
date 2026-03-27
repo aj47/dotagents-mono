@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   isGroupableToolActivity,
-  hasRespondToUserCall,
   getToolActivitySummaryLine,
   groupToolActivity,
   TOOL_GROUP_PREVIEW_COUNT,
@@ -65,28 +64,6 @@ describe('isGroupableToolActivity', () => {
     expect(isGroupableToolActivity(msg)).toBe(true)
   })
 })
-
-// ---------------------------------------------------------------------------
-// hasRespondToUserCall
-// ---------------------------------------------------------------------------
-
-describe('hasRespondToUserCall', () => {
-  it('returns true when respond_to_user is present', () => {
-    expect(hasRespondToUserCall(respondToUserMsg())).toBe(true)
-  })
-
-  it('returns false for normal tool calls', () => {
-    expect(hasRespondToUserCall(toolOnlyAssistant(['read_file']))).toBe(false)
-  })
-
-  it('returns false for non-assistant roles', () => {
-    expect(hasRespondToUserCall(userMsg())).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// getToolActivitySummaryLine
-// ---------------------------------------------------------------------------
 
 describe('getToolActivitySummaryLine', () => {
   it('summarises tool calls', () => {
