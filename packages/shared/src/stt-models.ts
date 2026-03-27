@@ -8,7 +8,7 @@ export const KNOWN_STT_MODEL_IDS = {
   groq: ["whisper-large-v3", "whisper-large-v3-turbo", "distil-whisper-large-v3-en"],
 } as const
 
-export type CloudSttProviderId = keyof typeof DEFAULT_STT_MODELS
+type CloudSttProviderId = keyof typeof DEFAULT_STT_MODELS
 
 export function isCloudSttProvider(providerId?: string): providerId is CloudSttProviderId {
   return providerId === "openai" || providerId === "groq"
