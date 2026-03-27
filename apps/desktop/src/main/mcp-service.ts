@@ -214,16 +214,9 @@ export class MCPService {
       // Check if current profile has allServersDisabledByDefault enabled
       // If so, derive runtimeDisabledServers directly from enabledServers to avoid config/profile drift
       // This handles newly-added MCP servers and ensures servers in enabledServers are not disabled
-      const profilesPath = path.join(
-        dataFolder,
-        "profiles.json"
-      )
-      if (existsSync(profilesPath)) {
-        const profilesData = JSON.parse(readFileSync(profilesPath, "utf8")) as ProfilesData
-        const currentProfile = profilesData.profiles?.find(
-          (p) => p.id === profilesData.currentProfileId
-        )
-        const mcpServerConfig = currentProfile?.mcpServerConfig
+      const currentProfile = agentProfileService.getCurrentProfile()
+      if (currentProfile) {
+        const mcpServerConfig = currentProfile?.toolConfig
         if (mcpServerConfig?.allServersDisabledByDefault) {
           // Get all configured MCP server names
           const allServerNames = Object.keys(config?.mcpConfig?.mcpServers || {})
