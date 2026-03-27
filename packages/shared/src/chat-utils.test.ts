@@ -8,7 +8,6 @@ import {
   RESPOND_TO_USER_TOOL,
   extractRespondToUserContentFromArgs,
   extractRespondToUserResponseEvents,
-  extractRespondToUserResponses,
   resolveMessageTimestamps,
   isToolOnlyMessage,
 } from './chat-utils'
@@ -184,40 +183,6 @@ describe('extractRespondToUserContentFromArgs', () => {
 
   it('returns null for empty args', () => {
     expect(extractRespondToUserContentFromArgs({ text: '', images: [] })).toBeNull()
-  })
-})
-
-describe('extractRespondToUserResponses', () => {
-  it('returns empty array for no messages', () => {
-    expect(extractRespondToUserResponses([])).toEqual([])
-  })
-
-  it('extracts respond_to_user content from assistant messages', () => {
-    const messages = [
-      { role: 'user' as const, toolCalls: [] },
-      {
-        role: 'assistant' as const,
-        toolCalls: [
-          { name: 'respond_to_user', arguments: { text: 'Hello there!' } },
-        ],
-      },
-    ]
-    const result = extractRespondToUserResponses(messages)
-    expect(result).toEqual(['Hello there!'])
-  })
-
-  it('deduplicates responses across history', () => {
-    const messages = [
-      {
-        role: 'assistant' as const,
-        toolCalls: [{ name: 'respond_to_user', arguments: { text: 'Hello' } }],
-      },
-      {
-        role: 'assistant' as const,
-        toolCalls: [{ name: 'respond_to_user', arguments: { text: 'Hello' } }],
-      },
-    ]
-    expect(extractRespondToUserResponses(messages)).toEqual(['Hello'])
   })
 })
 

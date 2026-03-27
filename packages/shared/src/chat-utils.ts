@@ -310,38 +310,6 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
 }
 
 /**
- * Extract all respond_to_user content from an array of chat messages.
- * Used to populate the respond_to_user history when reloading saved conversations.
- * @param messages Array of chat messages
- * @returns Array of extracted user-facing response strings (deduplicated across entire history)
- */
-export function extractRespondToUserResponses(
-  messages: Array<{
-    role: 'user' | 'assistant' | 'tool';
-    toolCalls?: Array<{ name: string; arguments: unknown }>;
-  }>,
-): string[] {
-  const responses: string[] = [];
-  const seen = new Set<string>();
-
-  for (const message of messages) {
-    if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
-
-    for (const call of message.toolCalls) {
-      if (call.name !== RESPOND_TO_USER_TOOL) continue;
-      const content = extractRespondToUserContentFromArgs(call.arguments);
-      if (!content) continue;
-      // Deduplicate across entire history (not just consecutive)
-      if (seen.has(content)) continue;
-      seen.add(content);
-      responses.push(content);
-    }
-  }
-
-  return responses;
-}
-
-/**
  * Resolve a monotonic timestamp for each message, filling missing or invalid
  * timestamps relative to neighboring messages when possible.
  */
@@ -379,7 +347,7 @@ export function resolveMessageTimestamps(
 
 /**
  * Extract ordered respond_to_user events from saved chat messages.
- * Unlike `extractRespondToUserResponses`, this preserves duplicates and order.
+ * This preserves duplicates and order from the saved assistant tool calls.
  */
 export function extractRespondToUserResponseEvents(
   messages: Array<{
