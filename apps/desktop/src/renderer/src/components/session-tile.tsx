@@ -48,6 +48,22 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function hasActiveTextSelection(container?: HTMLElement | null): boolean {
+  if (typeof window === "undefined") return false
+
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return false
+  }
+
+  if (!container) return true
+
+  return (
+    (!!selection.anchorNode && container.contains(selection.anchorNode)) ||
+    (!!selection.focusNode && container.contains(selection.focusNode))
+  )
+}
+
 interface SessionTileProps {
   session: {
     id: string
@@ -283,8 +299,24 @@ export function SessionTile({
   // The collapse/expand action is distinct from selecting/focusing a session.
   const handleToggleCollapse = (e?: React.MouseEvent | React.KeyboardEvent) => {
     e?.stopPropagation()
+
+    const container = e && "currentTarget" in e
+      ? e.currentTarget as HTMLElement | null
+      : null
+    if (container && hasActiveTextSelection(container)) {
+      return
+    }
+
     setIsCollapsed(prev => !prev)
   }
+
+  const handleTileClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (hasActiveTextSelection(event.currentTarget)) {
+      return
+    }
+
+    onFocus?.()
+  }, [onFocus])
 
   // Resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -429,7 +461,7 @@ export function SessionTile({
 
   return (
     <div
-      onClick={onFocus}
+      onClick={handleTileClick}
       className={cn(
         "flex flex-col rounded-lg border overflow-hidden transition-all duration-200 cursor-pointer",
         hasPendingApproval
@@ -461,7 +493,7 @@ export function SessionTile({
           title={isCollapsed ? "Click to expand" : "Click to collapse"}
         >
           {getStatusIndicator()}
-          <span className="flex-1 truncate font-medium text-sm">
+          <span className="markdown-selectable flex-1 truncate font-medium text-sm">
             {getTitle()}
           </span>
           {/* Collapse indicator chevron */}
@@ -706,7 +738,7 @@ export function SessionTile({
           )}
 
           {/* Footer with status info */}
-          <div className="px-3 py-2 border-t bg-muted/20 text-xs text-muted-foreground flex-shrink-0 flex items-center gap-2">
+          <div className="markdown-selectable px-3 py-2 border-t bg-muted/20 text-xs text-muted-foreground flex-shrink-0 flex items-center gap-2">
             {progress?.profileName && (
               <span className="text-[10px] truncate max-w-[80px] text-primary/70" title={`Profile: ${progress.profileName}`}>
                 {progress.profileName}
