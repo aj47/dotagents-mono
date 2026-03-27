@@ -446,7 +446,7 @@ export function recordActualTokenUsage(sessionId: string, inputTokens: number, o
  * Get the last known actual input token count for a session.
  * Returns undefined if no actual usage has been recorded.
  */
-export function getActualInputTokens(sessionId?: string): number | undefined {
+function getActualInputTokens(sessionId?: string): number | undefined {
   if (!sessionId) return undefined
   return actualTokenUsageBySession.get(sessionId)?.inputTokens
 }
