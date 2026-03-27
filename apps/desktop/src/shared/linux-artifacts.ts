@@ -1,7 +1,7 @@
 export type LinuxReleaseArch = "x64" | "arm64"
 export type LinuxPackageFormat = "deb" | "AppImage"
 
-export interface LinuxDistroInfo {
+interface LinuxDistroInfo {
   id?: string | null
   idLike?: string[]
 }

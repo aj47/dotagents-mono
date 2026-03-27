@@ -878,7 +878,7 @@ export interface EnhancedModelInfo extends ModelInfo {
 }
 
 // ACP Agent Configuration Types
-export type ACPConnectionType = "stdio" | "remote" | "internal"
+type ACPConnectionType = "stdio" | "remote" | "internal"
 
 // ACPConfigOptionValue and ACPConfigOption — re-exported from @dotagents/shared (see above)
 
