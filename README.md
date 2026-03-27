@@ -146,6 +146,8 @@ nvm use
 pnpm install && pnpm build-rs && pnpm dev
 ```
 
+> **Note:** This repo uses `pnpm` exclusively; do not use npm or yarn.
+
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
 
 For the static marketing site, run:
