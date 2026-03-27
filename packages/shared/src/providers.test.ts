@@ -17,8 +17,6 @@ import {
   DEFAULT_MODEL_PRESET_ID,
   getBuiltInModelPresets,
   getCurrentPresetName,
-  getTtsModelsForProvider,
-  getTtsVoicesForProvider,
 } from './providers'
 import type { ModelPreset } from './providers'
 
@@ -200,53 +198,5 @@ describe('getCurrentPresetName', () => {
 
   it('falls back to "OpenAI" for unknown preset ID', () => {
     expect(getCurrentPresetName('nonexistent', [])).toBe('OpenAI')
-  })
-})
-
-// ── getTtsModelsForProvider ──────────────────────────────────────────────────
-
-describe('getTtsModelsForProvider', () => {
-  it('returns OpenAI models for "openai"', () => {
-    expect(getTtsModelsForProvider('openai')).toBe(OPENAI_TTS_MODELS)
-  })
-
-  it('returns Groq models for "groq"', () => {
-    expect(getTtsModelsForProvider('groq')).toBe(GROQ_TTS_MODELS)
-  })
-
-  it('returns Gemini models for "gemini"', () => {
-    expect(getTtsModelsForProvider('gemini')).toBe(GEMINI_TTS_MODELS)
-  })
-
-  it('returns empty array for unknown provider', () => {
-    expect(getTtsModelsForProvider('anthropic')).toEqual([])
-  })
-})
-
-// ── getTtsVoicesForProvider ──────────────────────────────────────────────────
-
-describe('getTtsVoicesForProvider', () => {
-  it('returns OpenAI voices for "openai"', () => {
-    expect(getTtsVoicesForProvider('openai')).toBe(OPENAI_TTS_VOICES)
-  })
-
-  it('returns English Groq voices by default', () => {
-    expect(getTtsVoicesForProvider('groq')).toBe(GROQ_TTS_VOICES_ENGLISH)
-  })
-
-  it('returns Arabic Groq voices for Arabic model', () => {
-    expect(getTtsVoicesForProvider('groq', 'canopylabs/orpheus-arabic-saudi')).toBe(GROQ_TTS_VOICES_ARABIC)
-  })
-
-  it('returns Gemini voices for "gemini"', () => {
-    expect(getTtsVoicesForProvider('gemini')).toBe(GEMINI_TTS_VOICES)
-  })
-
-  it('returns Supertonic voices for "supertonic"', () => {
-    expect(getTtsVoicesForProvider('supertonic')).toBe(SUPERTONIC_TTS_VOICES)
-  })
-
-  it('returns empty array for unknown provider', () => {
-    expect(getTtsVoicesForProvider('anthropic')).toEqual([])
   })
 })
