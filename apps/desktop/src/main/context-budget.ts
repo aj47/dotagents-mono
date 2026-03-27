@@ -721,13 +721,6 @@ export function readMoreContext(
 const iterativeSummaryCache = new Map<string, string>()
 
 /**
- * Get the current iterative summary for a session.
- */
-export function getIterativeSummary(sessionId: string): string | undefined {
-  return iterativeSummaryCache.get(sessionId)
-}
-
-/**
  * Clear iterative summary for a session (call on session end).
  */
 export function clearIterativeSummary(sessionId: string): void {
@@ -1631,4 +1624,3 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens, toolResultsSummarized }
 }
-
