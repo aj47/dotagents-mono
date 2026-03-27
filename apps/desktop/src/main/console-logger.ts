@@ -59,17 +59,3 @@ export function setupConsoleLogger(win: BrowserWindow, windowId: string) {
     logUI(`[${identifier}] [INFO] Window became responsive again`)
   })
 }
-
-/**
- * Setup console loggers for all windows in the WINDOWS map
- */
-export function setupConsoleLoggersForAllWindows(windows: Map<string, BrowserWindow>) {
-  if (!isDebugUI()) {
-    return
-  }
-
-  windows.forEach((win, id) => {
-    setupConsoleLogger(win, id)
-  })
-}
-
