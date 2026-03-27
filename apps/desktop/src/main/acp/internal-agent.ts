@@ -105,7 +105,7 @@ export function getSessionDepth(sessionId: string): number {
 /**
  * Set the recursion depth for a session.
  */
-export function setSessionDepth(sessionId: string, depth: number): void {
+function setSessionDepth(sessionId: string, depth: number): void {
   sessionDepthMap.set(sessionId, depth);
 }
 
