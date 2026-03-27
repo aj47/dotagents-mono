@@ -524,6 +524,80 @@ describe("bundle-service", () => {
       expect(result?.manifest.components.knowledgeNotes).toBe(0)
     })
 
+    it("accepts legacy Hub bundles that still declare memories", async () => {
+      const legacyHubBundle = {
+        manifest: {
+          version: 1,
+          name: "Legacy Hub Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "dotagents-hub",
+          components: {
+            agentProfiles: 0,
+            mcpServers: 0,
+            skills: 0,
+            repeatTasks: 0,
+            memories: 0,
+          },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "legacy-hub.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(legacyHubBundle))
+
+      const result = previewBundle(bundlePath)
+      expect(result).not.toBeNull()
+      expect(result?.knowledgeNotes).toEqual([])
+      expect(result?.manifest.components.knowledgeNotes).toBe(0)
+    })
+
+    it('accepts public Hub bundles with legacy "assistant" profile roles', async () => {
+      const legacyHubBundle = {
+        manifest: {
+          version: 1,
+          name: "Public Hub Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "dotagents-hub",
+          components: {
+            agentProfiles: 1,
+            mcpServers: 0,
+            skills: 0,
+            repeatTasks: 0,
+            memories: 0,
+          },
+        },
+        agentProfiles: [
+          {
+            id: "personal-assistant",
+            name: "personal-assistant",
+            displayName: "Personal Assistant",
+            enabled: true,
+            role: "assistant",
+            connection: {
+              type: "internal",
+            },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "public-hub.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(legacyHubBundle))
+
+      const result = previewBundle(bundlePath)
+      expect(result).not.toBeNull()
+      expect(result?.agentProfiles[0].role).toBeUndefined()
+      expect(result?.manifest.components.agentProfiles).toBe(1)
+      expect(result?.manifest.components.knowledgeNotes).toBe(0)
+    })
+
     it("handles legacy bundles with metadata-only skills", async () => {
       const oldBundle = {
         manifest: {
@@ -1258,6 +1332,42 @@ describe("bundle-service", () => {
         baseUrl: "https://agents.example.com",
       })
       expect(imported?.connection.env).toBeUndefined()
+    })
+
+    it('imports public Hub bundles that still use the legacy "assistant" profile role', async () => {
+      const bundlePath = path.join(tempDir, "import-public-hub.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify({
+        manifest: {
+          version: 1,
+          name: "Public Hub Import",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "dotagents-hub",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "personal-assistant",
+            name: "personal-assistant",
+            displayName: "Personal Assistant",
+            enabled: true,
+            role: "assistant",
+            connection: { type: "internal" },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const layer = getAgentsLayerPaths(targetDir)
+      const imported = loadAgentProfilesLayer(layer).profiles.find((profile) => profile.id === "personal-assistant")
+
+      expect(result.success).toBe(true)
+      expect(imported).toBeTruthy()
+      expect(imported?.role).toBeUndefined()
+      expect(imported?.connection.type).toBe("internal")
     })
 
     it("respects component selection", async () => {
