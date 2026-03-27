@@ -545,6 +545,60 @@ describe("ACP Service", () => {
         }),
       )
     })
+
+    it("clears stale injected client-token mappings before replacing a mismatched session", async () => {
+      ;(mockConfig as any).remoteServerEnabled = true
+      ;(mockConfig as any).remoteServerApiKey = "test-api-key"
+      ;(mockConfig as any).remoteServerPort = 3210
+      ;(mockConfig as any).acpInjectRuntimeTools = true
+
+      const sessionState = await import("./acp-session-state")
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      const instance = acpService.getAgentInstance("test-agent")!
+      instance.status = "ready"
+      instance.initialized = true
+      instance.sessionId = "stale-session-1"
+      instance.clientSessionToken = "stale-client-token"
+
+      sessionState.setAcpClientSessionTokenMapping("stale-client-token", "stale-session-1")
+
+      let injectedClientToken: string | undefined
+      const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
+      sendRequestSpy.mockImplementation(async (...args: unknown[]) => {
+        const [, method, params] = args as [
+          string,
+          string,
+          { mcpServers?: Array<{ url?: string }>; sessionId?: string },
+        ]
+
+        expect(sessionState.getAcpSessionForClientSessionToken("stale-client-token")).toBeUndefined()
+
+        if (method === "session/load") {
+          const injectedServerUrl = params.mcpServers?.[0]?.url
+          expect(injectedServerUrl).toContain("/mcp/")
+          injectedClientToken = decodeURIComponent(injectedServerUrl!.split("/mcp/")[1]!)
+          expect(injectedClientToken).not.toBe("stale-client-token")
+          expect(params.sessionId).toBe("persisted-session-1")
+          return { sessionId: "persisted-session-1" }
+        }
+
+        throw new Error(`Unexpected ACP method ${method}`)
+      })
+
+      const sessionId = await (acpService as any).createSession(
+        "test-agent",
+        { appSessionId: "app-session-1" },
+        "persisted-session-1",
+      )
+
+      expect(sessionId).toBe("persisted-session-1")
+      expect(injectedClientToken).toBeDefined()
+      expect(sessionState.getAcpSessionForClientSessionToken("stale-client-token")).toBeUndefined()
+      expect(sessionState.getAcpSessionForClientSessionToken(injectedClientToken!)).toBe("persisted-session-1")
+      expect(sendRequestSpy).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe("runTask", () => {

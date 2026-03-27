@@ -59,10 +59,32 @@ class FakeChildProcess extends EventEmitter {
   })
 }
 
+class ExitBeforeHandlerChildProcess extends FakeChildProcess {
+  override once(eventName: string | symbol, listener: (...args: any[]) => void): this {
+    if (eventName === "exit" && this.exitCode === null) {
+      this.exitCode = 0
+      this.emit("exit", 0, null)
+    }
+
+    return super.once(eventName, listener)
+  }
+
+  override kill = vi.fn(() => false)
+}
+
+class StuckChildProcess extends FakeChildProcess {
+  override kill = vi.fn((signal?: NodeJS.Signals) => {
+    this.killed = true
+    this.signalCode = signal ?? null
+    return true
+  })
+}
+
 describe("keyboard listener lifecycle", () => {
   beforeEach(() => {
     vi.resetModules()
     mockSpawn.mockReset()
+    vi.useRealTimers()
   })
 
   it("does not spawn duplicate keyboard listeners while one is active", async () => {
@@ -89,6 +111,42 @@ describe("keyboard listener lifecycle", () => {
     listenToKeyboardEvents()
 
     expect(firstChild.kill).toHaveBeenCalledWith("SIGTERM")
+    expect(mockSpawn).toHaveBeenCalledTimes(2)
+  })
+
+  it("resolves stop when the child exits during shutdown handler registration", async () => {
+    const exitingChild = new ExitBeforeHandlerChildProcess()
+    const replacementChild = new FakeChildProcess()
+    mockSpawn.mockReturnValueOnce(exitingChild).mockReturnValueOnce(replacementChild)
+
+    const { listenToKeyboardEvents, stopListeningToKeyboardEvents } = await import("./keyboard")
+
+    listenToKeyboardEvents()
+    await stopListeningToKeyboardEvents()
+    listenToKeyboardEvents()
+
+    expect(exitingChild.kill).not.toHaveBeenCalled()
+    expect(mockSpawn).toHaveBeenCalledTimes(2)
+  })
+
+  it("resolves stop after the force-kill timeout even if no exit event arrives", async () => {
+    vi.useFakeTimers()
+
+    const stuckChild = new StuckChildProcess()
+    const replacementChild = new FakeChildProcess()
+    mockSpawn.mockReturnValueOnce(stuckChild).mockReturnValueOnce(replacementChild)
+
+    const { listenToKeyboardEvents, stopListeningToKeyboardEvents } = await import("./keyboard")
+
+    listenToKeyboardEvents()
+    const stopPromise = stopListeningToKeyboardEvents()
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await stopPromise
+    listenToKeyboardEvents()
+
+    expect(stuckChild.kill).toHaveBeenNthCalledWith(1, "SIGTERM")
+    expect(stuckChild.kill).toHaveBeenNthCalledWith(2, "SIGKILL")
     expect(mockSpawn).toHaveBeenCalledTimes(2)
   })
 })

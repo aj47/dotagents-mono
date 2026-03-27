@@ -1729,11 +1729,21 @@ class ACPService extends EventEmitter {
       return undefined
     }
 
+    const clearInjectedClientSessionToken = () => {
+      if (!instance.clientSessionToken) {
+        return
+      }
+
+      clearAcpClientSessionTokenMapping(instance.clientSessionToken)
+      instance.clientSessionToken = undefined
+    }
+
     // Reuse existing session if available, but clear previous output to avoid
     // mixing content from different runTask() calls
     if (instance.sessionId) {
       if (preferredSessionId && instance.sessionId !== preferredSessionId) {
         this.clearSessionOutput(instance.sessionId)
+        clearInjectedClientSessionToken()
         instance.sessionId = undefined
       } else {
         this.clearSessionOutput(instance.sessionId)
@@ -1749,7 +1759,7 @@ class ACPService extends EventEmitter {
         url?: string
         headers?: Array<{ name: string; value: string }>
       }> = []
-      instance.clientSessionToken = undefined
+      clearInjectedClientSessionToken()
 
       // Check if we should inject DotAgents runtime tools
       const config = configStore.get()

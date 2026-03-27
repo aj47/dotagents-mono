@@ -64,8 +64,16 @@ const persistedSessionState = loadPersistedJson<PersistedAcpSessionState>(
   "ACP Session",
 )
 
-if (persistedSessionState?.conversationSessions) {
-  for (const [conversationId, sessionInfo] of persistedSessionState.conversationSessions) {
+if (
+  persistedSessionState?.version === 1
+  && Array.isArray(persistedSessionState.conversationSessions)
+) {
+  for (const entry of persistedSessionState.conversationSessions) {
+    if (!Array.isArray(entry) || entry.length !== 2) {
+      continue
+    }
+
+    const [conversationId, sessionInfo] = entry
     if (typeof conversationId !== "string" || typeof sessionInfo?.sessionId !== "string") {
       continue
     }

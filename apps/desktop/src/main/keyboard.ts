@@ -1457,13 +1457,26 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     child.once("exit", onExit)
     child.once("error", onError)
 
+    if (child.exitCode !== null) {
+      finish()
+      return
+    }
+
     forceKillTimer = setTimeout(() => {
-      if (child.exitCode === null) {
-        try {
-          child.kill("SIGKILL")
-        } catch {
-          finish()
-        }
+      if (child.exitCode !== null) {
+        finish()
+        return
+      }
+
+      try {
+        child.kill("SIGKILL")
+      } catch {
+        finish()
+        return
+      }
+
+      if (child.exitCode !== null || child.killed) {
+        finish()
       }
     }, KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS)
 
@@ -1474,6 +1487,11 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     try {
       child.kill("SIGTERM")
     } catch {
+      finish()
+      return
+    }
+
+    if (child.exitCode !== null) {
       finish()
     }
   })

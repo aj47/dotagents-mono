@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { mkdtempSync, rmSync } from "fs"
+import { mkdtempSync, rmSync, writeFileSync } from "fs"
 import { join } from "path"
 import { tmpdir } from "os"
 
@@ -26,6 +26,22 @@ describe("acp-session-state persistence", () => {
     expect(secondLoad.getSessionForConversation("conversation-1")).toEqual(
       expect.objectContaining({ sessionId: "acp-session-1", agentName: "test-agent" }),
     )
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
+
+  it("ignores malformed persisted conversation-session entries on import", async () => {
+    writeFileSync(
+      join(dataFolder, "acp-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        conversationSessions: [{ conversationId: "broken-entry" }],
+      }),
+    )
+
+    const sessionState = await loadAcpSessionState(dataFolder)
+
+    expect(sessionState.getAllSessions().size).toBe(0)
 
     rmSync(dataFolder, { recursive: true, force: true })
   })
