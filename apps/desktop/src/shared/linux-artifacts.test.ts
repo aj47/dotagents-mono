@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  getPreferredLinuxPackageFormat,
   normalizeLinuxArchitecture,
   parseLinuxArtifactName,
   selectLinuxArtifact,
@@ -14,12 +13,6 @@ describe("linux-artifacts", () => {
     expect(normalizeLinuxArchitecture("aarch64")).toBe("arm64")
     expect(normalizeLinuxArchitecture("arm64")).toBe("arm64")
     expect(normalizeLinuxArchitecture("ppc64le")).toBeNull()
-  })
-
-  it("prefers deb packages on Debian-family systems", () => {
-    expect(getPreferredLinuxPackageFormat({ id: "ubuntu" })).toBe("deb")
-    expect(getPreferredLinuxPackageFormat({ idLike: ["debian"] })).toBe("deb")
-    expect(getPreferredLinuxPackageFormat({ id: "fedora" })).toBe("AppImage")
   })
 
   it("parses Linux artifact names by format and architecture", () => {

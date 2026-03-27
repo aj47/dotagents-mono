@@ -45,7 +45,7 @@ function isDebianFamily(distro?: LinuxDistroInfo | null): boolean {
   return values.some(value => DEBIAN_FAMILY_IDS.has(value))
 }
 
-export function getPreferredLinuxPackageFormat(
+function getPreferredLinuxPackageFormat(
   distro?: LinuxDistroInfo | null,
 ): LinuxPackageFormat {
   return isDebianFamily(distro) ? "deb" : "AppImage"
