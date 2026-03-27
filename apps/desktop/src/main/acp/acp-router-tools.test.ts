@@ -151,7 +151,7 @@ describe("handleDelegateToAgent", () => {
   it("blocks main-agent delegation for local workspace coding tasks", async () => {
     mockGetSessionProfileSnapshot.mockReturnValue({
       profileId: "profile-main-agent",
-      profileName: "main-agent",
+      profileName: "Main Agent",
       guidelines: "",
     })
 
@@ -182,7 +182,7 @@ describe("handleDelegateToAgent", () => {
   it("allows explicit user requests for a specific specialist agent", async () => {
     mockGetSessionProfileSnapshot.mockReturnValue({
       profileId: "profile-main-agent",
-      profileName: "main-agent",
+      profileName: "Main Agent",
       guidelines: "",
     })
 
