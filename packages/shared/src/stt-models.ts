@@ -28,7 +28,7 @@ export function getDefaultSttModel(providerId?: string): string | undefined {
 }
 
 /** Minimal config shape needed for STT model resolution */
-export interface SttModelConfig {
+interface SttModelConfig {
   sttProviderId?: string
   openaiSttModel?: string
   groqSttModel?: string
