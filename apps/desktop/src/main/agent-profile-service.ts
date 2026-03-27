@@ -58,7 +58,7 @@ const legacyProfilesPath = path.join(app.getPath("userData"), "profiles.json")
 const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
 
 // ============================================================================
-// Validation Helpers (ported from profile-service.ts)
+// Validation Helpers (ported from the legacy profile service)
 // ============================================================================
 
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
