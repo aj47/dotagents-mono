@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  buildLinuxReleaseManifest,
-  getDebPackageArchitecture,
   getPreferredLinuxPackageFormat,
   normalizeLinuxArchitecture,
   parseLinuxArtifactName,
@@ -16,11 +14,6 @@ describe("linux-artifacts", () => {
     expect(normalizeLinuxArchitecture("aarch64")).toBe("arm64")
     expect(normalizeLinuxArchitecture("arm64")).toBe("arm64")
     expect(normalizeLinuxArchitecture("ppc64le")).toBeNull()
-  })
-
-  it("maps release architectures to deb package architectures", () => {
-    expect(getDebPackageArchitecture("x64")).toBe("amd64")
-    expect(getDebPackageArchitecture("arm64")).toBe("arm64")
   })
 
   it("prefers deb packages on Debian-family systems", () => {
@@ -68,19 +61,5 @@ describe("linux-artifacts", () => {
         distro: { id: "fedora" },
       })?.url,
     ).toBe("deb-arm64")
-  })
-
-  it("builds a machine-readable manifest grouped by architecture", () => {
-    const manifest = buildLinuxReleaseManifest([
-      { name: "DotAgents_1.2.3_amd64.deb", sha256: "deb-x64" },
-      { name: "DotAgents-1.2.3-x64.AppImage", sha256: "app-x64" },
-      { name: "DotAgents_1.2.3_arm64.deb", sha256: "deb-arm64" },
-      { name: "DotAgents-1.2.3-arm64.AppImage", sha256: "app-arm64" },
-    ])
-
-    expect(manifest.x64.deb?.sha256).toBe("deb-x64")
-    expect(manifest.x64.appImage?.sha256).toBe("app-x64")
-    expect(manifest.arm64.deb?.sha256).toBe("deb-arm64")
-    expect(manifest.arm64.appImage?.sha256).toBe("app-arm64")
   })
 })

@@ -35,10 +35,6 @@ export function normalizeLinuxArchitecture(value: string | null | undefined): Li
   return ARCHITECTURE_ALIASES[value.trim().toLowerCase()] ?? null
 }
 
-export function getDebPackageArchitecture(architecture: LinuxReleaseArch): "amd64" | "arm64" {
-  return architecture === "x64" ? "amd64" : "arm64"
-}
-
 function isDebianFamily(distro?: LinuxDistroInfo | null): boolean {
   if (!distro) return false
 
@@ -96,30 +92,4 @@ export function selectLinuxArtifact(
   if (preferredAsset) return preferredAsset
 
   return matchingAssets.find(asset => parseLinuxArtifactName(asset.name).format === fallbackFormat) ?? null
-}
-
-export function buildLinuxReleaseManifest(assets: LinuxReleaseAsset[]): {
-  x64: { deb?: LinuxReleaseAsset; appImage?: LinuxReleaseAsset }
-  arm64: { deb?: LinuxReleaseAsset; appImage?: LinuxReleaseAsset }
-} {
-  const manifest = {
-    x64: {},
-    arm64: {},
-  } as {
-    x64: { deb?: LinuxReleaseAsset; appImage?: LinuxReleaseAsset }
-    arm64: { deb?: LinuxReleaseAsset; appImage?: LinuxReleaseAsset }
-  }
-
-  for (const asset of assets) {
-    const parsed = parseLinuxArtifactName(asset.name)
-    if (!parsed.architecture || !parsed.format) continue
-
-    if (parsed.format === "deb") {
-      manifest[parsed.architecture].deb = asset
-    } else {
-      manifest[parsed.architecture].appImage = asset
-    }
-  }
-
-  return manifest
 }
