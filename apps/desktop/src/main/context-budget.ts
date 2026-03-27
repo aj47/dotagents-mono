@@ -396,7 +396,7 @@ async function fetchGroqContextWindow(model: string): Promise<number | undefined
   return undefined
 }
 
-export async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
+async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
   const cfg = configStore.get()
   const override = cfg.mcpMaxContextTokensOverride
   if (override && typeof override === "number" && override > 0) return override
