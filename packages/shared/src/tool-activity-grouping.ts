@@ -93,7 +93,7 @@ function hasRespondToUserCall(message: GroupableMessage): boolean {
  *    b. An assistant message that is "tool-only" (has tool calls but no
  *       meaningful user-facing content).
  */
-export function isGroupableToolActivity(message: GroupableMessage): boolean {
+function isGroupableToolActivity(message: GroupableMessage): boolean {
   // User messages are never grouped.
   if (message.role === 'user') return false
 
