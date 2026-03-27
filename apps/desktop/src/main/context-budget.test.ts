@@ -47,7 +47,14 @@ vi.mock('@dotagents/shared', () => ({
   sanitizeMessageContentForDisplay: (content: string) => content,
 }))
 
-import { clearArchiveFrontier, clearContextRefs, readMoreContext, shrinkMessagesForLLM } from './context-budget'
+import {
+  clearActualTokenUsage,
+  clearArchiveFrontier,
+  clearContextRefs,
+  readMoreContext,
+  recordActualTokenUsage,
+  shrinkMessagesForLLM,
+} from './context-budget'
 
 describe('shrinkMessagesForLLM replacement policy', () => {
   beforeEach(() => {
@@ -57,11 +64,22 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-archive')
     clearArchiveFrontier('session-live-tail')
     clearArchiveFrontier('session-protected-tail')
+    clearArchiveFrontier('session-actual-scale')
+    clearArchiveFrontier('session-bracket-log')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
     clearContextRefs('session-live-tail')
     clearContextRefs('session-protected-tail')
+    clearContextRefs('session-actual-scale')
+    clearContextRefs('session-bracket-log')
+    clearActualTokenUsage('session-truncate')
+    clearActualTokenUsage('session-batch')
+    clearActualTokenUsage('session-archive')
+    clearActualTokenUsage('session-live-tail')
+    clearActualTokenUsage('session-protected-tail')
+    clearActualTokenUsage('session-actual-scale')
+    clearActualTokenUsage('session-bracket-log')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -114,6 +132,47 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.appliedStrategies).toContain('minimal_system_prompt')
     expect(result.estTokensBefore).toBe(2000)
     expect(result.estTokensAfter).toBeGreaterThan(600)
+  })
+
+  it('preserves the initial token baseline when actual usage comes from session state', async () => {
+    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+    recordActualTokenUsage('session-actual-scale', 2100, 120)
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-actual-scale',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    expect(result.estTokensBefore).toBe(2100)
+    expect(result.estTokensAfter).toBeGreaterThan(600)
+  })
+
+  it('does not treat bracketed user logs as mapped tool results or JSON payloads', async () => {
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 10000,
+    })
+
+    const bracketedLog = `[INFO] ${'x'.repeat(5500)}`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-bracket-log',
+      lastNMessages: 1,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'keep this log verbatim' },
+        { role: 'assistant', content: 'acknowledged' },
+        { role: 'user', content: bracketedLog },
+      ],
+    })
+
+    expect(result.appliedStrategies).not.toContain('aggressive_truncate')
+    expect(result.messages[result.messages.length - 1]?.content).toBe(bracketedLog)
   })
 
   it('batch-summarizes contiguous oversized conversational messages in one call', async () => {

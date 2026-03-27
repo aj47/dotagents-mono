@@ -854,20 +854,36 @@ const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 20
 const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
 const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
 const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
+const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
 
-function hasBracketedToolPrefix(content: string): boolean {
-  return /^\[[^\]]+\]/.test(content.trim())
+function parseMappedToolResultContent(content: string): { toolName: string; resultContent: string } | null {
+  const trimmed = content.trimStart()
+  const match = trimmed.match(MAPPED_TOOL_RESULT_PREFIX_RE)
+  if (!match) return null
+
+  return {
+    toolName: match[1],
+    resultContent: trimmed.slice(match[0].length),
+  }
+}
+
+function hasMappedToolResultPrefix(content: string): boolean {
+  return parseMappedToolResultContent(content) !== null
+}
+
+function startsWithJsonLikeArray(content: string): boolean {
+  return /^\[\s*(?:\{|\[|"|-?\d|true\b|false\b|null\b)/.test(content.trim())
 }
 
 function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
   const content = message.content || ""
   return message.role === "tool"
-    || hasBracketedToolPrefix(content) // Tool results mapped to user role
+    || hasMappedToolResultPrefix(content) // Tool results mapped to user role
     || content.includes('"url":')
     || content.includes('"id":')
     || content.includes("```json")
     || content.trim().startsWith("{")
-    || content.trim().startsWith("[")
+    || startsWithJsonLikeArray(content)
 }
 
 function truncateWithMarker(content: string, keepChars: number, marker: string): string {
@@ -1180,15 +1196,12 @@ function buildContextFromSummaries(sessionId: string): string | null {
 }
 
 /**
- * Parse tool name from content that uses format: [toolName] content...
- * Returns { toolName, content } where content is the part after the tool name prefix
+ * Parse tool name from llm.ts mapped tool-result content:
+ * [toolName] content... or [toolName] ERROR: content...
  */
 function parseToolNameFromContent(content: string): { toolName: string; resultContent: string } {
-  // Match format: [toolName] content... or [toolName] ERROR: content...
-  const match = content.match(/^\[([^\]]+)\]\s*(?:ERROR:\s*)?(.*)$/s)
-  if (match) {
-    return { toolName: match[1], resultContent: match[2] }
-  }
+  const parsed = parseMappedToolResultContent(content)
+  if (parsed) return parsed
   return { toolName: 'unknown', resultContent: content }
 }
 
@@ -1369,8 +1382,8 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
     const isPayloadLike = isLikelyPayloadLikeMessage(msg)
 
-    // NOTE: tool messages are mapped to 'user' role by llm.ts but have a '[toolName] ' prefix
-    const isToolResultLike = msg.role === "tool" || (msg.role === "user" && hasBracketedToolPrefix(msg.content))
+    // NOTE: tool messages are mapped to 'user' role by llm.ts with a '[toolName] ' prefix.
+    const isToolResultLike = msg.role === "tool" || (msg.role === "user" && hasMappedToolResultPrefix(msg.content))
 
     const shouldTruncateToolResult = isToolResultLike && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
     const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
