@@ -92,13 +92,3 @@ export function clearSessionUserResponse(sessionId: string): void {
   })
 }
 
-/**
- * Legacy no-op kept while callers migrate away from the old current/history model.
- */
-export function archiveSessionUserResponse(sessionId: string): void {
-  logApp("[session-user-response-store] archive (no-op with event model)", {
-    sessionId,
-    retainedEvents: getSessionUserResponseEvents(sessionId).length,
-  })
-}
-
