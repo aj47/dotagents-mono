@@ -337,21 +337,3 @@ export async function flushLangfuse(): Promise<void> {
     console.error("[Langfuse] Failed to flush:", error)
   }
 }
-
-/**
- * Shutdown Langfuse gracefully
- */
-export async function shutdownLangfuse(): Promise<void> {
-  if (langfuseInstance) {
-    try {
-      await langfuseInstance.shutdownAsync()
-    } catch (error) {
-      console.error("[Langfuse] Failed to shutdown:", error)
-    }
-    langfuseInstance = null
-  }
-  activeTraces.clear()
-  activeSpans.clear()
-  activeGenerations.clear()
-}
-
