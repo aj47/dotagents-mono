@@ -29,6 +29,8 @@ const COMPACT_PROSE_CLASS_NAME =
 const COMPACT_THINK_PROSE_CLASS_NAME =
   `${COMPACT_PROSE_CLASS_NAME} prose-amber`
 
+const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
+
 const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
   /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
 
@@ -211,7 +213,12 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
           id={`think-content-${uid}`}
           className="px-3 pb-3 text-sm text-amber-900 dark:text-amber-100"
         >
-          <div className={COMPACT_THINK_PROSE_CLASS_NAME}>
+          <div
+            className={cn(
+              COMPACT_THINK_PROSE_CLASS_NAME,
+              SELECTABLE_MARKDOWN_CLASS_NAME,
+            )}
+          >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
@@ -293,56 +300,60 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
           )
         } else {
           return (
-            <ReactMarkdown
+            <div
               key={`text-${index}`}
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
-              urlTransform={markdownUrlTransform}
-              components={{
-                ...sharedMarkdownComponents,
-                // Custom components for better styling
-                h1: ({ children }) => (
-                  <h1 className="mb-3 text-xl font-bold text-foreground">
-                    {children}
-                  </h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="mb-2 text-lg font-semibold text-foreground">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="mb-2 text-base font-medium text-foreground">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="my-1 leading-normal text-foreground">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mb-3 list-outside list-disc space-y-1 pl-5 text-foreground">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="mb-3 list-outside list-decimal space-y-1 pl-5 text-foreground">
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => (
-                  <li className="break-words pl-0.5 text-foreground">{children}</li>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="mb-3 border-l-4 border-muted-foreground pl-4 italic text-muted-foreground">
-                    {children}
-                  </blockquote>
-                ),
-              }}
+              className={SELECTABLE_MARKDOWN_CLASS_NAME}
             >
-              {part.content}
-            </ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                urlTransform={markdownUrlTransform}
+                components={{
+                  ...sharedMarkdownComponents,
+                  // Custom components for better styling
+                  h1: ({ children }) => (
+                    <h1 className="mb-3 text-xl font-bold text-foreground">
+                      {children}
+                    </h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="mb-2 text-lg font-semibold text-foreground">
+                      {children}
+                    </h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="mb-2 text-base font-medium text-foreground">
+                      {children}
+                    </h3>
+                  ),
+                  p: ({ children }) => (
+                    <p className="my-1 leading-normal text-foreground">
+                      {children}
+                    </p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="mb-3 list-outside list-disc space-y-1 pl-5 text-foreground">
+                      {children}
+                    </ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="mb-3 list-outside list-decimal space-y-1 pl-5 text-foreground">
+                      {children}
+                    </ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="break-words pl-0.5 text-foreground">{children}</li>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className="mb-3 border-l-4 border-muted-foreground pl-4 italic text-muted-foreground">
+                      {children}
+                    </blockquote>
+                  ),
+                }}
+              >
+                {part.content}
+              </ReactMarkdown>
+            </div>
           )
         }
       })}

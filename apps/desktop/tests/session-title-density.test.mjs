@@ -39,12 +39,27 @@ test("sidebar keeps session renaming behind an explicit overflow action and pers
   assert.match(source, /SessionOverflowMenu/)
   assert.match(source, /<MoreHorizontal className="h-3 w-3" \/>/)
   assert.match(source, /<DropdownMenuItem onSelect=\{\(\) => onRename\(\)\}>/)
+  assert.match(source, /onMouseDown=\{\(event\) => event\.stopPropagation\(\)\}/)
+  assert.match(source, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/)
   assert.match(source, /group-focus-within:opacity-100/)
+  assert.match(source, /absolute right-1 top-1 flex z-20 items-center gap-0 opacity-0 transition-opacity/)
+  assert.match(source, /text-\[12px\] font-medium leading-4/)
+  assert.match(source, /flex min-w-0 items-center gap-1\.5 pr-11/)
   assert.doesNotMatch(
     source,
     /title=\{conversationId \? "Rename session title" : title\}/,
   )
   assert.doesNotMatch(source, /startTitleEditing\(conversationId, title\)\s*\}/)
+})
+
+test("active session rows prioritize the title while keeping hover actions clickable", () => {
+  const source = read(
+    "apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx",
+  )
+
+  assert.match(source, /absolute right-1\.5 top-1\/2 z-20 flex -translate-y-1\/2 items-center gap-0\.5 opacity-0 transition-opacity/)
+  assert.match(source, /absolute right-1 top-1 flex z-20 items-center gap-0 opacity-0 transition-opacity/)
+  assert.match(source, /min-w-0 flex-1 truncate text-\[11px\] leading-4 text-muted-foreground/)
 })
 
 test("agent selector keeps agent names text-first without internal or ACP badges", () => {

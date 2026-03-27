@@ -85,6 +85,12 @@
     background: rgba(255, 255, 255, 0.05);
   }
 
+  .markdown-selectable,
+  .markdown-selectable * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: rgba(209, 213, 219, 0.8);
     border-radius: 3px;

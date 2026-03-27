@@ -57,7 +57,8 @@ describe("sessions in-app actions", () => {
 
   it("shows sidebar session previews and removes sidebar minimize controls", () => {
     expect(sidebarSource).toContain("getSidebarSessionPreview")
-    expect(sidebarSource).toContain('className="line-clamp-2 text-[11px] leading-4 text-muted-foreground"')
+    expect(sidebarSource).toContain('className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground"')
+    expect(sidebarSource).toContain('className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80"')
     expect(sidebarSource).not.toContain("Minimize - run in background")
   })
 
