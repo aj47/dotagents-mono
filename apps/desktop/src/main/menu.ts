@@ -1,6 +1,6 @@
 import { Menu, shell, type MenuItemConstructorOptions } from "electron"
 
-export const FEEDBACK_URL = "https://github.com/aj47/dotagents-mono/issues/new"
+const FEEDBACK_URL = "https://github.com/aj47/dotagents-mono/issues/new"
 
 const toMenu = (
   items: Array<MenuItemConstructorOptions | null | false | undefined | "">,

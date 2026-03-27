@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+const FEEDBACK_URL = "https://github.com/aj47/dotagents-mono/issues/new"
+
 const { buildFromTemplate, openExternal } = vi.hoisted(() => ({
   buildFromTemplate: vi.fn((template) => template),
   openExternal: vi.fn(),
@@ -14,7 +16,7 @@ vi.mock("electron", () => ({
   },
 }))
 
-import { FEEDBACK_URL, createAppMenu } from "./menu"
+import { createAppMenu } from "./menu"
 
 describe("app menu", () => {
   beforeEach(() => {
