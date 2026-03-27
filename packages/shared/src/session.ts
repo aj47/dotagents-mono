@@ -98,31 +98,6 @@ export function generateSessionTitle(firstMessage: string): string {
 }
 
 /**
- * Create a new session with an optional first message
- */
-export function createSession(firstMessage?: string): Session {
-  const now = Date.now();
-  const session: Session = {
-    id: generateSessionId(),
-    title: firstMessage ? generateSessionTitle(firstMessage) : 'New Chat',
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-  };
-
-  if (firstMessage) {
-    session.messages.push({
-      id: generateMessageId(),
-      role: 'user',
-      content: firstMessage,
-      timestamp: now,
-    });
-  }
-
-  return session;
-}
-
-/**
  * Convert a Session to a SessionListItem for display in list
  */
 export function sessionToListItem(session: Session): SessionListItem {
@@ -163,4 +138,3 @@ export function sessionToListItem(session: Session): SessionListItem {
 export function isStubSession(session: Session): boolean {
   return session.messages.length === 0 && !!session.serverConversationId && !!session.serverMetadata;
 }
-
