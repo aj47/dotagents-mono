@@ -15,6 +15,7 @@ import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
+import { buildChatMessagesFromHistory, isSyntheticToolFailureSummary } from './chat-history-utils';
 import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -93,44 +94,7 @@ export default function SessionListScreen({ navigation }: Props) {
   }, [normalizeVoiceText]);
 
   const rfBuildMessagesFromHistory = useCallback((history: any[]): ChatMessage[] => {
-    if (!history || history.length === 0) return [];
-
-    let currentTurnStartIndex = 0;
-    for (let i = 0; i < history.length; i++) {
-      if (history[i]?.role === 'user') {
-        currentTurnStartIndex = i;
-      }
-    }
-
-    const messages: ChatMessage[] = [];
-    for (let i = currentTurnStartIndex + 1; i < history.length; i++) {
-      const historyMsg = history[i];
-      if (!historyMsg) continue;
-
-      // Merge tool results into the preceding assistant message, matching ChatScreen behavior.
-      if (historyMsg.role === 'tool' && messages.length > 0) {
-        const lastMessage = messages[messages.length - 1];
-        if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-          const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-          if (hasToolResults) {
-            lastMessage.toolResults = [
-              ...(lastMessage.toolResults || []),
-              ...(historyMsg.toolResults || []),
-            ];
-            continue;
-          }
-        }
-      }
-
-      messages.push({
-        role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-        content: historyMsg.content || '',
-        toolCalls: historyMsg.toolCalls,
-        toolResults: historyMsg.toolResults,
-      });
-    }
-
-    return messages;
+    return buildChatMessagesFromHistory(history, { startFromLastUser: true });
   }, []);
 
   const rfRunBackgroundSend = useCallback(async (sessionId: string, userText: string) => {
@@ -846,7 +810,9 @@ export default function SessionListScreen({ navigation }: Props) {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
     const rawPreview = (item.searchPreview ?? item.preview) || 'No messages yet';
-    const sessionPreviewText = rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')
+    const sessionPreviewText = isSyntheticToolFailureSummary(rawPreview)
+      ? 'Tool failed'
+      : rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')
       ? 'Used a tool'
       : rawPreview.includes('{"')
         ? rawPreview.replace(/\{.*\}/g, '{...}').trim()

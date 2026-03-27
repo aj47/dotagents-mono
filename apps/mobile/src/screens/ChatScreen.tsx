@@ -83,6 +83,7 @@ import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
+import { buildChatMessagesFromHistory, isSyntheticToolFailureSummary } from './chat-history-utils';
 
 interface PendingImageAttachment {
   id: string;
@@ -304,6 +305,17 @@ const getCollapsedMessagePreview = (content: string) =>
     .trim();
 
 const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
+
+const shouldHideSyntheticToolFailureSummaryMessage = (
+  message: ChatMessage,
+  previousMessage?: ChatMessage,
+): boolean => (
+  message.role === 'assistant' &&
+  isSyntheticToolFailureSummary(message.content) &&
+  previousMessage?.role === 'assistant' &&
+  (previousMessage.toolCalls?.length ?? 0) > 0 &&
+  (previousMessage.toolResults?.some((result) => result?.success === false) ?? false)
+);
 
 const getRespondToUserContentFromMessage = (message: ChatMessage): string | null => {
   if (message.role !== 'assistant' || !message.toolCalls?.length) {
@@ -1729,38 +1741,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const hasAssistantMessages = currentTurnStartIndex + 1 < update.conversationHistory.length;
       if (hasAssistantMessages) {
         messages.length = 0;
-
-        for (let i = currentTurnStartIndex + 1; i < update.conversationHistory.length; i++) {
-          const historyMsg = update.conversationHistory[i];
-
-          // Merge tool results into the preceding assistant message to avoid duplication
-          // The server sends: assistant (with toolCalls) -> tool (with toolResults)
-          // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-
-              if (hasToolResults) {
-                // Merge toolResults into the existing assistant message
-                lastMessage.toolResults = [
-                  ...(lastMessage.toolResults || []),
-                  ...(historyMsg.toolResults || []),
-                ];
-                // Skip adding this as a separate message only when we merged results
-                continue;
-              }
-              // If tool message has content but no toolResults, fall through to add it as a message
-            }
-          }
-
-          messages.push({
-            role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-            content: historyMsg.content || '',
-            toolCalls: historyMsg.toolCalls,
-            toolResults: historyMsg.toolResults,
-          });
-        }
+        messages.push(...buildChatMessagesFromHistory(update.conversationHistory, { startFromLastUser: true }));
       }
     }
 
@@ -2140,40 +2121,8 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         console.log('[ChatScreen] currentTurnStartIndex:', currentTurnStartIndex);
 
-        const newMessages: ChatMessage[] = [];
-        for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
-          const historyMsg = response.conversationHistory[i];
-          if (historyMsg.role === 'user') continue;
-
-          // Merge tool results into the preceding assistant message to avoid duplication
-          // The server sends: assistant (with toolCalls) -> tool (with toolResults)
-          // We want to display them as a single message with both toolCalls and toolResults
-          if (historyMsg.role === 'tool' && newMessages.length > 0) {
-            const lastMessage = newMessages[newMessages.length - 1];
-            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
-
-              if (hasToolResults) {
-                // Merge toolResults into the existing assistant message
-                lastMessage.toolResults = [
-                  ...(lastMessage.toolResults || []),
-                  ...(historyMsg.toolResults || []),
-                ];
-                // Skip adding this as a separate message only when we merged results
-                continue;
-              }
-              // If tool message has content but no toolResults, fall through to add it as a message
-            }
-          }
-
-          newMessages.push({
-            role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-            content: historyMsg.content || '',
-            toolCalls: historyMsg.toolCalls,
-            toolResults: historyMsg.toolResults,
-          });
-        }
-		        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
+        const newMessages = buildChatMessagesFromHistory(response.conversationHistory, { startFromLastUser: true });
+	        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
 	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
@@ -2547,17 +2496,7 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         }
 
-        const newMessages: ChatMessage[] = [];
-        for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
-          const historyMsg = response.conversationHistory[i];
-          if (historyMsg.role === 'user') continue;
-          newMessages.push({
-            role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
-            content: historyMsg.content || '',
-            toolCalls: historyMsg.toolCalls,
-            toolResults: historyMsg.toolResults,
-          });
-        }
+        const newMessages = buildChatMessagesFromHistory(response.conversationHistory, { startFromLastUser: true });
 	        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalResponseEvent?.text || lastUserResponse);
 
         setMessages((m) => {
@@ -3061,6 +3000,11 @@ export default function ChatScreen({ route, navigation }: any) {
               visibleMessageContent.trim().length > 0 &&
               config.ttsEnabled !== false &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
+
+            const previousMessage = i > 0 ? messages[i - 1] : undefined;
+            if (shouldHideSyntheticToolFailureSummaryMessage(m, previousMessage)) {
+              return null;
+            }
 
             const toolCalls = m.toolCalls ?? [];
             const toolResults = m.toolResults ?? [];
@@ -3604,35 +3548,10 @@ export default function ChatScreen({ route, navigation }: any) {
                           // Update the server conversation ID
                           await sessionStore.setServerConversationId(recoveryConversationId);
 
-                          // Convert server messages to ChatMessage format, filtering out tool messages
-                          // and merging their toolResults into the preceding assistant message
-                          const recoveredMessages: ChatMessage[] = [];
-                          for (const msg of serverMessages) {
-                            // Only include 'user' and 'assistant' roles
-                            if (msg.role === 'user' || msg.role === 'assistant') {
-                              recoveredMessages.push({
-                                id: msg.id,
-                                role: msg.role,
-                                content: msg.content,
-                                toolCalls: msg.toolCalls,
-                                toolResults: msg.toolResults,
-                              });
-                            } else if (msg.role === 'tool' && recoveredMessages.length > 0) {
-                              // Merge tool message toolResults into the preceding assistant message
-                              const lastMessage = recoveredMessages[recoveredMessages.length - 1];
-                              if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
-                                const hasToolResults = msg.toolResults && msg.toolResults.length > 0;
-
-                                if (hasToolResults) {
-                                  // Merge toolResults into the existing assistant message
-                                  lastMessage.toolResults = [
-                                    ...(lastMessage.toolResults || []),
-                                    ...(msg.toolResults || []),
-                                  ];
-                                }
-                              }
-                            }
-                          }
+                          const recoveredMessages = buildChatMessagesFromHistory(serverMessages, {
+                            includeUserMessages: true,
+                            startFromLastUser: false,
+                          });
 
                           // Replace local messages with server state
                           setMessages(recoveredMessages);
