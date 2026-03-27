@@ -37,7 +37,7 @@ function buildDownloadedBundleFileName(bundleUrl: string): string {
   }
 }
 
-export function parseHubBundleInstallDeepLink(candidate: string): { bundleUrl: string } | null {
+function parseHubBundleInstallDeepLink(candidate: string): { bundleUrl: string } | null {
   if (typeof candidate !== "string" || !candidate.startsWith("dotagents://")) {
     return null
   }

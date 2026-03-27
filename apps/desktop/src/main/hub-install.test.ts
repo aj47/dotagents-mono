@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   downloadHubBundleToTempFile,
   findHubBundleInstallBundleUrl,
-  parseHubBundleInstallDeepLink,
 } from "./hub-install"
 
 afterEach(() => {
@@ -13,30 +12,26 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe("parseHubBundleInstallDeepLink", () => {
+describe("findHubBundleInstallBundleUrl", () => {
   it("extracts the remote bundle URL from dotagents install links", () => {
-    const result = parseHubBundleInstallDeepLink(
-      "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffeatured-agent.dotagents",
-    )
-
-    expect(result).toEqual({
-      bundleUrl: "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
-    })
+    expect(
+      findHubBundleInstallBundleUrl([
+        "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffeatured-agent.dotagents",
+      ]),
+    ).toBe("https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents")
   })
 
   it("ignores non-install deep links and non-http bundle targets", () => {
     expect(
-      parseHubBundleInstallDeepLink("dotagents://oauth/callback?code=abc&state=123"),
+      findHubBundleInstallBundleUrl(["dotagents://oauth/callback?code=abc&state=123"]),
     ).toBeNull()
     expect(
-      parseHubBundleInstallDeepLink(
+      findHubBundleInstallBundleUrl([
         "dotagents://install?bundle=file%3A%2F%2F%2Ftmp%2Fbundle.dotagents",
-      ),
+      ]),
     ).toBeNull()
   })
-})
 
-describe("findHubBundleInstallBundleUrl", () => {
   it("returns the first valid install bundle URL from argv-style inputs", () => {
     const deepLink =
       "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffrom-argv.dotagents"
