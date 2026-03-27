@@ -42,7 +42,3 @@ export async function downloadUpdate() {
   // No-op - auto-updater is disabled
   return null
 }
-
-export function cancelDownloadUpdate() {
-  // No-op - auto-updater is disabled
-}
