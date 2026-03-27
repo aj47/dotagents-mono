@@ -92,9 +92,20 @@ class AgentSessionTracker {
     this.restorePersistedState()
   }
 
+  private getCompletedSessionSortTime(session: AgentSession): number {
+    const endTime = typeof session.endTime === "number" && Number.isFinite(session.endTime)
+      ? session.endTime
+      : undefined
+    const startTime = typeof session.startTime === "number" && Number.isFinite(session.startTime)
+      ? session.startTime
+      : undefined
+
+    return endTime ?? startTime ?? 0
+  }
+
   private normalizeCompletedSessions(sessions: AgentSession[]): AgentSession[] {
     return [...sessions]
-      .sort((a, b) => (b.endTime || b.startTime || 0) - (a.endTime || a.startTime || 0))
+      .sort((a, b) => this.getCompletedSessionSortTime(b) - this.getCompletedSessionSortTime(a))
       .slice(0, MAX_COMPLETED_SESSIONS)
   }
 
@@ -298,7 +309,7 @@ class AgentSessionTracker {
   getRecentSessions(limit: number = 4): AgentSession[] {
     return this.completedSessions
       .slice(0, limit)
-      .sort((a, b) => (b.endTime || 0) - (a.endTime || 0))
+      .sort((a, b) => this.getCompletedSessionSortTime(b) - this.getCompletedSessionSortTime(a))
   }
 
   /**

@@ -27,8 +27,10 @@ const rdevPath = path
   .replace("app.asar", "app.asar.unpacked")
 
 const KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS = 1000
+const KEYBOARD_LISTENER_FORCE_KILL_WAIT_MS = 250
 
 let keyboardListenerChild: ChildProcess | null = null
+let keyboardListenerStopPromise: Promise<void> | null = null
 
 type RdevEvent = {
   event_type: "KeyPress" | "KeyRelease"
@@ -1421,6 +1423,11 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     return
   }
 
+  if (keyboardListenerStopPromise) {
+    await keyboardListenerStopPromise
+    return
+  }
+
   if (child.exitCode !== null) {
     if (keyboardListenerChild === child) {
       keyboardListenerChild = null
@@ -1428,11 +1435,13 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     return
   }
 
-  await new Promise<void>((resolve) => {
+  let stopPromise: Promise<void> | null = null
+  stopPromise = new Promise<void>((resolve) => {
     let done = false
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined
+    let forceKillWaitTimer: ReturnType<typeof setTimeout> | undefined
 
-    const finish = () => {
+    const finish = ({ clearChild = true }: { clearChild?: boolean } = {}) => {
       if (done) return
       done = true
       child.off("exit", onExit)
@@ -1440,8 +1449,14 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
       if (forceKillTimer !== undefined) {
         clearTimeout(forceKillTimer)
       }
-      if (keyboardListenerChild === child) {
+      if (forceKillWaitTimer !== undefined) {
+        clearTimeout(forceKillWaitTimer)
+      }
+      if (clearChild && keyboardListenerChild === child) {
         keyboardListenerChild = null
+      }
+      if (keyboardListenerStopPromise === stopPromise) {
+        keyboardListenerStopPromise = null
       }
       resolve()
     }
@@ -1454,37 +1469,64 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
       finish()
     }
 
+    const finishIfExited = () => {
+      if (child.exitCode !== null) {
+        finish()
+        return true
+      }
+      return false
+    }
+
+    const resolveWithoutClearingChild = () => {
+      if (isDebugKeybinds()) {
+        logKeybinds("Keyboard listener did not confirm exit; preserving child reference to avoid duplicate listeners")
+      }
+      finish({ clearChild: false })
+    }
+
     child.once("exit", onExit)
     child.once("error", onError)
 
-    if (child.exitCode !== null) {
-      finish()
+    if (finishIfExited()) {
       return
     }
 
     forceKillTimer = setTimeout(() => {
-      if (child.exitCode !== null) {
-        finish()
+      if (finishIfExited()) {
         return
       }
 
       try {
         const forceKillSent = child.kill("SIGKILL")
         if (!forceKillSent) {
-          finish()
+          if (finishIfExited()) {
+            return
+          }
+          resolveWithoutClearingChild()
           return
         }
       } catch {
-        finish()
+        if (finishIfExited()) {
+          return
+        }
+        resolveWithoutClearingChild()
         return
       }
 
-      if (child.exitCode !== null || child.killed) {
-        finish()
+      if (finishIfExited()) {
         return
       }
 
-      finish()
+      forceKillWaitTimer = setTimeout(() => {
+        if (finishIfExited()) {
+          return
+        }
+        resolveWithoutClearingChild()
+      }, KEYBOARD_LISTENER_FORCE_KILL_WAIT_MS)
+
+      if (typeof forceKillWaitTimer.unref === "function") {
+        forceKillWaitTimer.unref()
+      }
     }, KEYBOARD_LISTENER_SHUTDOWN_TIMEOUT_MS)
 
     if (typeof forceKillTimer.unref === "function") {
@@ -1494,16 +1536,22 @@ export async function stopListeningToKeyboardEvents(): Promise<void> {
     try {
       const terminateSent = child.kill("SIGTERM")
       if (!terminateSent) {
-        finish()
+        if (finishIfExited()) {
+          return
+        }
+        resolveWithoutClearingChild()
         return
       }
     } catch {
-      finish()
+      if (finishIfExited()) {
+        return
+      }
+      resolveWithoutClearingChild()
       return
     }
 
-    if (child.exitCode !== null) {
-      finish()
-    }
+    finishIfExited()
   })
+  keyboardListenerStopPromise = stopPromise
+  await stopPromise
 }

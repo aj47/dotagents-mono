@@ -97,4 +97,55 @@ describe("agent-session-tracker persistence", () => {
 
     rmSync(dataFolder, { recursive: true, force: true })
   })
+
+  it("treats malformed persisted timestamps as the oldest completed sessions", async () => {
+    const completedSessions = [
+      {
+        id: "corrupted-1",
+        conversationId: "corrupted-conversation-1",
+        conversationTitle: "Corrupted 1",
+        status: "completed" as const,
+        startTime: "bad-start" as unknown as number,
+        endTime: "bad-end" as unknown as number,
+        lastActivity: "Corrupted activity 1",
+      },
+      {
+        id: "corrupted-2",
+        conversationId: "corrupted-conversation-2",
+        conversationTitle: "Corrupted 2",
+        status: "completed" as const,
+        startTime: "still-bad" as unknown as number,
+        endTime: "still-bad" as unknown as number,
+        lastActivity: "Corrupted activity 2",
+      },
+      ...Array.from({ length: 22 }, (_, index) => ({
+        id: `valid-${index + 1}`,
+        conversationId: `valid-conversation-${index + 1}`,
+        conversationTitle: `Valid ${index + 1}`,
+        status: "completed" as const,
+        startTime: (index + 1) * 1000,
+        endTime: (index + 1) * 1000,
+        lastActivity: `Valid activity ${index + 1}`,
+      })),
+    ]
+
+    writeFileSync(
+      join(dataFolder, "agent-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        activeSessions: [],
+        completedSessions,
+      }),
+      "utf8",
+    )
+
+    const { agentSessionTracker } = await loadTracker(dataFolder)
+    const restoredIds = agentSessionTracker.getRecentSessions(20).map((session) => session.id)
+
+    expect(restoredIds).not.toContain("corrupted-1")
+    expect(restoredIds).not.toContain("corrupted-2")
+    expect(restoredIds.slice(0, 4)).toEqual(["valid-22", "valid-21", "valid-20", "valid-19"])
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
 })

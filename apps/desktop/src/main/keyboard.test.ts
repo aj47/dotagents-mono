@@ -141,7 +141,7 @@ describe("keyboard listener lifecycle", () => {
     expect(mockSpawn).toHaveBeenCalledTimes(2)
   })
 
-  it("resolves stop after the force-kill timeout even if no exit event arrives", async () => {
+  it("resolves stop after the force-kill timeout without allowing a duplicate restart", async () => {
     vi.useFakeTimers()
 
     const stuckChild = new StuckChildProcess()
@@ -153,12 +153,18 @@ describe("keyboard listener lifecycle", () => {
     listenToKeyboardEvents()
     const stopPromise = stopListeningToKeyboardEvents()
 
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(1250)
     await stopPromise
     listenToKeyboardEvents()
 
     expect(stuckChild.kill).toHaveBeenNthCalledWith(1, "SIGTERM")
     expect(stuckChild.kill).toHaveBeenNthCalledWith(2, "SIGKILL")
+    expect(mockSpawn).toHaveBeenCalledTimes(1)
+
+    stuckChild.exitCode = 0
+    stuckChild.emit("exit", 0, "SIGKILL")
+    listenToKeyboardEvents()
+
     expect(mockSpawn).toHaveBeenCalledTimes(2)
   })
 
@@ -180,6 +186,12 @@ describe("keyboard listener lifecycle", () => {
 
     expect(stubbornChild.kill).toHaveBeenNthCalledWith(1, "SIGTERM")
     expect(stubbornChild.kill).toHaveBeenNthCalledWith(2, "SIGKILL")
+    expect(mockSpawn).toHaveBeenCalledTimes(1)
+
+    stubbornChild.exitCode = 0
+    stubbornChild.emit("exit", 0, null)
+    listenToKeyboardEvents()
+
     expect(mockSpawn).toHaveBeenCalledTimes(2)
   })
 })
