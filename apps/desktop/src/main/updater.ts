@@ -1,6 +1,6 @@
 import { dialog, type MenuItem } from "electron"
 
-export const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
+const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
 
 /**
  * Auto-updater is disabled - updates are manual via GitHub releases.
