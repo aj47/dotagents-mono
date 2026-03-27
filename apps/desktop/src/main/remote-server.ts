@@ -334,7 +334,7 @@ function buildRemoteServerBaseUrl(host: string, port: number): string {
   return `http://${formatHostForHttpUrl(host)}:${port}/v1`
 }
 
-export function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): string {
+function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): string {
   const { warn = true } = options
   const normalizedBind = normalizeHostForComparison(bind)
 
