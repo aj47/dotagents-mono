@@ -1,4 +1,4 @@
-export interface ParsedKeyCombo {
+interface ParsedKeyCombo {
   ctrl: boolean
   shift: boolean
   alt: boolean

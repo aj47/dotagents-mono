@@ -39,7 +39,7 @@ export function getDebPackageArchitecture(architecture: LinuxReleaseArch): "amd6
   return architecture === "x64" ? "amd64" : "arm64"
 }
 
-export function isDebianFamily(distro?: LinuxDistroInfo | null): boolean {
+function isDebianFamily(distro?: LinuxDistroInfo | null): boolean {
   if (!distro) return false
 
   const values = [distro.id, ...(distro.idLike ?? [])]
