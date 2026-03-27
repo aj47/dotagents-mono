@@ -137,25 +137,6 @@ export interface DetailedToolInfo {
 
 // Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
 
-// Dual-Model Agent Mode Configuration
-export interface DualModelConfig {
-  enabled: boolean
-
-  // Strong model (planning & execution) - uses a preset ID
-  // If not set, falls back to the current model preset
-  strongModelPresetId?: string
-  strongModelName?: string  // Model name within the preset
-
-  // Weak model (summarization) - uses a preset ID
-  weakModelPresetId?: string
-  weakModelName?: string  // Model name within the preset
-
-  // Summarization settings
-  summarizationFrequency?: "every_response" | "major_steps_only"
-  summaryDetailLevel?: "compact" | "detailed"
-  autoSaveImportantFindings?: boolean
-}
-
 // AgentStepSummary — re-exported from @dotagents/shared (see above)
 
 // Message Queue Types — re-exported from shared package
@@ -206,16 +187,6 @@ export interface ConversationCompactionMetadata {
    * be fully recovered.
    */
   partialReason?: "legacy_summary_without_raw_messages"
-}
-
-export interface ConversationMetadata {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messageCount: number
-  lastMessage?: string
-  tags?: string[]
 }
 
 export interface Conversation {
