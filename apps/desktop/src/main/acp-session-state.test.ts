@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("electron", () => ({
+  app: {
+    getPath: vi.fn(() => {
+      return process.env.TMPDIR || process.env.TEMP || process.env.TMP || "/tmp"
+    }),
+  },
+}))
+
 vi.mock("./debug", () => ({
   logApp: vi.fn(),
 }))

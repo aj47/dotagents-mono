@@ -130,6 +130,10 @@ describe("ACP Service", () => {
     originalWorkspaceEnv = process.env.DOTAGENTS_WORKSPACE_DIR
     delete process.env.DOTAGENTS_WORKSPACE_DIR
     ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = undefined
+    ;(mockConfig as any).remoteServerEnabled = undefined
+    ;(mockConfig as any).remoteServerApiKey = undefined
+    ;(mockConfig as any).remoteServerPort = undefined
+    ;(mockConfig as any).acpInjectRuntimeTools = undefined
 
     // Create mock process
     mockProcess = {
@@ -462,6 +466,12 @@ describe("ACP Service", () => {
     })
 
     it("falls back to session/new when loading a persisted session fails", async () => {
+      ;(mockConfig as any).remoteServerEnabled = true
+      ;(mockConfig as any).remoteServerApiKey = "test-api-key"
+      ;(mockConfig as any).remoteServerPort = 3210
+      ;(mockConfig as any).acpInjectRuntimeTools = true
+
+      const sessionState = await import("./acp-session-state")
       const { acpService } = await import("./acp-service")
       await acpService.spawnAgent("test-agent")
 
@@ -470,29 +480,66 @@ describe("ACP Service", () => {
       instance.initialized = true
       instance.agentCapabilities = { loadSession: true }
 
+      let injectedClientToken: string | undefined
       const sendRequestSpy = vi.spyOn(acpService as any, "sendRequest")
-      sendRequestSpy
-        .mockRejectedValueOnce(new Error("session missing"))
-        .mockResolvedValueOnce({ sessionId: "fresh-session-1" })
+      sendRequestSpy.mockImplementation(async (_agentName: string, method: string, params: {
+        mcpServers?: Array<{ url?: string }>
+      }) => {
+        const injectedServerUrl = params.mcpServers?.[0]?.url
+        expect(injectedServerUrl).toContain("/mcp/")
+        const nextToken = decodeURIComponent(injectedServerUrl!.split("/mcp/")[1]!)
+        injectedClientToken ??= nextToken
+
+        if (method === "session/load") {
+          expect(nextToken).toBe(injectedClientToken)
+          expect(sessionState.getPendingAppSessionForClientSessionToken(nextToken)).toBe("app-session-1")
+          expect(sessionState.getAcpSessionForClientSessionToken(nextToken)).toBeUndefined()
+          throw new Error("session missing")
+        }
+
+        if (method === "session/new") {
+          expect(nextToken).toBe(injectedClientToken)
+          expect(sessionState.getPendingAppSessionForClientSessionToken(nextToken)).toBe("app-session-1")
+          return { sessionId: "fresh-session-1" }
+        }
+
+        throw new Error(`Unexpected ACP method ${method}`)
+      })
 
       const sessionId = await (acpService as any).createSession(
         "test-agent",
-        undefined,
+        { appSessionId: "app-session-1" },
         "persisted-session-1",
       )
 
       expect(sessionId).toBe("fresh-session-1")
+      expect(injectedClientToken).toBeDefined()
+      expect(sessionState.getPendingAppSessionForClientSessionToken(injectedClientToken!)).toBeUndefined()
+      expect(sessionState.getAcpSessionForClientSessionToken(injectedClientToken!)).toBe("fresh-session-1")
       expect(sendRequestSpy).toHaveBeenNthCalledWith(
         1,
         "test-agent",
         "session/load",
-        expect.objectContaining({ sessionId: "persisted-session-1" }),
+        expect.objectContaining({
+          sessionId: "persisted-session-1",
+          mcpServers: [
+            expect.objectContaining({
+              url: expect.stringContaining(`/mcp/${encodeURIComponent(injectedClientToken!)}`),
+            }),
+          ],
+        }),
       )
       expect(sendRequestSpy).toHaveBeenNthCalledWith(
         2,
         "test-agent",
         "session/new",
-        expect.any(Object),
+        expect.objectContaining({
+          mcpServers: [
+            expect.objectContaining({
+              url: expect.stringContaining(`/mcp/${encodeURIComponent(injectedClientToken!)}`),
+            }),
+          ],
+        }),
       )
     })
   })

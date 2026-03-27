@@ -1855,10 +1855,9 @@ class ACPService extends EventEmitter {
           return storeSessionMetadata(result, preferredSessionId)
         } catch (error) {
           logApp(`[ACP Service] Failed to load existing ACP session ${preferredSessionId} for ${agentName}; falling back to session/new:`, error)
-          if (instance.clientSessionToken) {
-            clearAcpClientSessionTokenMapping(instance.clientSessionToken)
-            instance.clientSessionToken = undefined
-          }
+          // Keep the injected MCP client token alive for the fallback session/new call,
+          // since it reuses the same mcpServers entry and still needs to map back once
+          // the new ACP session ID is known.
         }
       }
 
