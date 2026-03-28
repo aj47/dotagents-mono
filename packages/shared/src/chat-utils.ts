@@ -395,14 +395,13 @@ export function isToolOnlyMessage(message: {
 }): boolean {
   const hasToolCalls = (message.toolCalls?.length ?? 0) > 0;
   const hasToolResults = (message.toolResults?.length ?? 0) > 0;
-  const hasContent = !!(message.content && message.content.trim().length > 0);
+  const trimmedContent = message.content?.trim().toLowerCase() || "";
 
   // A message is "tool-only" if it has tool calls but no meaningful content
   // or only placeholder content like "Executing tools..."
   if (!hasToolCalls && !hasToolResults) return false;
-  if (!hasContent) return true;
+  if (!trimmedContent) return true;
 
-  const trimmedContent = message.content?.trim().toLowerCase() || '';
   const placeholderPhrases = [
     'executing tools...',
     'executing tools',
