@@ -42,8 +42,16 @@ const remoteServerQrSource = readFileSync(
   new URL("./remote-server-qr.ts", import.meta.url),
   "utf8",
 )
+const remoteServerUrlSource = readFileSync(
+  new URL("../shared/remote-server-url.ts", import.meta.url),
+  "utf8",
+)
 const headlessRuntimeSource = readFileSync(
   new URL("./headless-runtime.ts", import.meta.url),
+  "utf8",
+)
+const settingsRemoteServerSource = readFileSync(
+  new URL("../renderer/src/pages/settings-remote-server.tsx", import.meta.url),
   "utf8",
 )
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
@@ -177,6 +185,25 @@ describe("CLI and desktop feature paths", () => {
     expect(indexSource).toContain("initializeSharedRuntimeServices({")
   })
 
+  it("shares remote server pairing URL rules between main and renderer surfaces", () => {
+    expect(remoteServerUrlSource).toContain(
+      "export function buildRemoteServerBaseUrl",
+    )
+    expect(remoteServerUrlSource).toContain(
+      "export function resolveRemoteServerPairingPreview",
+    )
+    expect(remoteServerSource).toContain("../shared/remote-server-url")
+    expect(remoteServerQrSource).toContain("../shared/remote-server-url")
+    expect(headlessRuntimeSource).toContain("../shared/remote-server-url")
+    expect(settingsRemoteServerSource).toContain("@shared/remote-server-url")
+    expect(settingsRemoteServerSource).toContain(
+      "resolveRemoteServerPairingPreview({",
+    )
+    expect(settingsRemoteServerSource).toContain(
+      "REMOTE_SERVER_LAN_BIND_ADDRESS",
+    )
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -189,6 +216,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Shared remote server QR printing")
+    expect(docsSource).toContain("Shared remote server URL rules")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -208,5 +236,9 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI conversation resume selection")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
+    expect(docsSource).toContain("Desktop remote settings pairing preview")
+    expect(docsSource).toContain(
+      "Remote server status + headless pairing defaults",
+    )
   })
 })

@@ -78,6 +78,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helper: `printSharedRemoteServerQrCode(...)`
 - Current callers: `remote-server.ts` startup auto-print and `printQRCodeToTerminal(...)` for GUI/manual/QR-triggered printing
 
+## Shared remote server URL rules
+
+- Shared URL file: `apps/desktop/src/shared/remote-server-url.ts`
+- Shared helpers: `buildRemoteServerBaseUrl(...)` and `resolveRemoteServerPairingPreview(...)`
+- Current callers: `remote-server.ts` status/connectability resolution, `settings-remote-server.tsx` base URL preview and bind warnings, `remote-server-qr.ts` default bind/port fallback, and `headless-runtime.ts` forced LAN bind default
+
 ## Shared runtime shutdown
 
 - Shared shutdown file: `apps/desktop/src/main/app-runtime.ts`
@@ -118,6 +124,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `tipc.ts printRemoteServerQRCode` calls `printQRCodeToTerminal(...)`, which now delegates to `printSharedRemoteServerQrCode(...)` so manual terminal QR output shares the same server/api-key guards and URL normalization path as startup auto-print and `--qr`.
 16. Remote server startup QR auto-print
     `remote-server.ts startRemoteServerInternal(...)` now also calls `printSharedRemoteServerQrCode(...)` in `auto` mode, so headless auto-print and the desktop "Terminal QR Code" setting share one enablement, streamer-mode, and LAN URL-resolution path before printing.
+17. Desktop remote settings pairing preview
+    `settings-remote-server.tsx` now calls `resolveRemoteServerPairingPreview(...)`, so the settings page base URL preview plus wildcard/loopback warnings use the same bind classification and default URL builder that the main-process remote server status path uses.
+18. Remote server status + headless pairing defaults
+    `remote-server.ts` now builds runtime status URLs through `buildRemoteServerBaseUrl(...)`, while `remote-server-qr.ts` and `headless-runtime.ts` reuse the same shared bind/port constants, so desktop pairing previews, remote status payloads, QR fallback URLs, and headless defaults stay aligned.
 
 ## Parity rules
 
@@ -139,6 +149,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Headless CLI intentionally narrows that shared launcher to `SIGTERM` so `headless-cli.ts` keeps owning terminal `SIGINT` / Ctrl+C behavior for stop-or-exit parity instead of racing a global shutdown handler.
 - Cloudflare tunnel startup is decided in one place: `startConfiguredCloudflareTunnel(...)`, so desktop auto-start, headless CLI auto-start, and QR pairing all converge on the same named-vs-quick tunnel logic.
 - Remote server QR printing is decided in one place: `printSharedRemoteServerQrCode(...)`, so startup auto-print, manual terminal QR printing, and QR-mode override URLs all share the same guard and URL-resolution rules before printing.
+- Remote server pairing URL/connectability rules are decided in one place: `apps/desktop/src/shared/remote-server-url.ts`, so desktop settings previews, main-process status payloads, QR defaults, and headless bind defaults stay aligned.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 - Runtime teardown is decided in one place: `shutdownSharedRuntimeServices(...)`, so GUI quit and non-GUI graceful shutdown both stop loops and clean up ACP, MCP, and remote-server state through the same helper.
 
@@ -156,6 +167,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
 - `apps/desktop/src/main/remote-server-qr.test.ts`
   Confirms startup auto-print, manual terminal QR printing, streamer-mode suppression, and QR-mode override URLs all converge on the shared remote-server QR helper.
+- `apps/desktop/src/shared/remote-server-url.test.ts`
+  Confirms loopback/wildcard host classification, IPv6 URL formatting, and desktop pairing preview warnings/base URLs stay aligned across renderer and main-process callers.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared runtime helpers register IPC/serve infrastructure, support awaited headless startup, preserve background desktop startup, and centralize GUI/headless teardown.
 - `apps/desktop/src/main/headless-runtime.test.ts`

@@ -1,9 +1,10 @@
 import QRCode from "qrcode"
+import {
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_PORT,
+} from "../shared/remote-server-url"
 import type { Config } from "../shared/types"
 import { diagnosticsService } from "./diagnostics"
-
-const DEFAULT_REMOTE_SERVER_BIND_ADDRESS = "127.0.0.1"
-const DEFAULT_REMOTE_SERVER_PORT = 3210
 
 type RemoteServerQrConfig = Pick<
   Config,

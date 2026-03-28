@@ -1,4 +1,5 @@
 import { app } from "electron"
+import { REMOTE_SERVER_LAN_BIND_ADDRESS } from "../shared/remote-server-url"
 import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
@@ -9,7 +10,8 @@ import { logApp } from "./debug"
 import { startSharedRemoteAccessRuntime } from "./remote-access-runtime"
 import { setHeadlessMode } from "./state"
 
-const DEFAULT_HEADLESS_REMOTE_SERVER_BIND_ADDRESS = "0.0.0.0"
+const DEFAULT_HEADLESS_REMOTE_SERVER_BIND_ADDRESS =
+  REMOTE_SERVER_LAN_BIND_ADDRESS
 const DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS = [
   "SIGTERM",
   "SIGINT",

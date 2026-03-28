@@ -24,6 +24,16 @@ import { startSharedPromptRun } from "./agent-mode-runner"
 import { agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import {
+  buildRemoteServerBaseUrl,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_PORT,
+  isConnectableRemoteServerIpv6Address as isConnectableIpv6Address,
+  isLoopbackRemoteServerHost as isLoopbackHost,
+  isUnconnectableRemoteServerHostForMobilePairing as isUnconnectableHostForMobilePairing,
+  isWildcardRemoteServerHost as isWildcardBindHost,
+  normalizeRemoteServerHostForComparison as normalizeHostForComparison,
+} from "../shared/remote-server-url"
+import {
   AgentProgressUpdate,
   SessionProfileSnapshot,
   LoopConfig,
@@ -271,63 +281,6 @@ interface ConnectableIpOptions {
   warn?: boolean
 }
 
-function normalizeHostForComparison(host: string): string {
-  const normalized = host.trim().toLowerCase()
-  if (normalized.startsWith("[") && normalized.endsWith("]")) {
-    return normalized.slice(1, -1)
-  }
-  return normalized
-}
-
-function isWildcardBindHost(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  return normalizedHost === "0.0.0.0" || normalizedHost === "::"
-}
-
-function isLoopbackHost(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  return (
-    normalizedHost === "127.0.0.1" ||
-    normalizedHost === "localhost" ||
-    normalizedHost === "::1"
-  )
-}
-
-function isConnectableIpv6Address(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  // Zone-scoped addresses (e.g. fe80::1%en0) are not reliable for QR/deep-link URLs.
-  if (normalizedHost.includes("%")) {
-    return false
-  }
-  // Exclude unspecified/loopback/link-local/multicast ranges.
-  if (
-    normalizedHost === "::" ||
-    normalizedHost === "::1" ||
-    /^fe[89ab]/.test(normalizedHost) ||
-    normalizedHost.startsWith("ff")
-  ) {
-    return false
-  }
-  return true
-}
-
-function formatHostForHttpUrl(host: string): string {
-  const normalizedHost = host.trim()
-  // IPv6 literals must be bracketed in URLs: http://[::1]:3210/v1
-  if (
-    normalizedHost.includes(":") &&
-    !normalizedHost.startsWith("[") &&
-    !normalizedHost.endsWith("]")
-  ) {
-    return `[${normalizedHost}]`
-  }
-  return normalizedHost
-}
-
-function buildRemoteServerBaseUrl(host: string, port: number): string {
-  return `http://${formatHostForHttpUrl(host)}:${port}/v1`
-}
-
 function getConnectableIp(
   bind: string,
   options: ConnectableIpOptions = {},
@@ -398,10 +351,6 @@ function getConnectableIp(
     )
   }
   return normalizedBind
-}
-
-function isUnconnectableHostForMobilePairing(host: string): boolean {
-  return isWildcardBindHost(host) || isLoopbackHost(host)
 }
 
 function getConnectableBaseUrlForMobilePairing(
@@ -695,8 +644,11 @@ async function startRemoteServerInternal(
 
   lastError = undefined
   const logLevel = cfg.remoteServerLogLevel || "info"
-  const bind = bindAddressOverride || cfg.remoteServerBindAddress || "127.0.0.1"
-  const port = cfg.remoteServerPort || 3210
+  const bind =
+    bindAddressOverride ||
+    cfg.remoteServerBindAddress ||
+    DEFAULT_REMOTE_SERVER_BIND_ADDRESS
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
 
   const fastify = Fastify({ logger: { level: logLevel } })
 
@@ -905,11 +857,9 @@ async function startRemoteServerInternal(
 
       const validProviders = ["openai", "groq", "gemini"]
       if (!validProviders.includes(providerId)) {
-        return reply
-          .code(400)
-          .send({
-            error: `Invalid provider: ${providerId}. Valid providers: ${validProviders.join(", ")}`,
-          })
+        return reply.code(400).send({
+          error: `Invalid provider: ${providerId}. Valid providers: ${validProviders.join(", ")}`,
+        })
       }
 
       const { fetchAvailableModels } = await import("./models-service")
@@ -2083,12 +2033,10 @@ async function startRemoteServerInternal(
           !Array.isArray(body.messages) ||
           body.messages.length === 0
         ) {
-          return reply
-            .code(400)
-            .send({
-              error:
-                "Conversation not found and no messages provided to create it",
-            })
+          return reply.code(400).send({
+            error:
+              "Conversation not found and no messages provided to create it",
+          })
         }
 
         // Validate each message object
@@ -2810,11 +2758,9 @@ async function startRemoteServerInternal(
         typeof body.displayName !== "string" ||
         body.displayName.trim() === ""
       ) {
-        return reply
-          .code(400)
-          .send({
-            error: "displayName is required and must be a non-empty string",
-          })
+        return reply.code(400).send({
+          error: "displayName is required and must be a non-empty string",
+        })
       }
 
       // Validate connectionType
@@ -2822,11 +2768,9 @@ async function startRemoteServerInternal(
       if (
         !VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)
       ) {
-        return reply
-          .code(400)
-          .send({
-            error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`,
-          })
+        return reply.code(400).send({
+          error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`,
+        })
       }
 
       const connection: import("@shared/types").AgentProfileConnection =
@@ -2974,11 +2918,9 @@ async function startRemoteServerInternal(
               connectionType as any,
             )
           ) {
-            return reply
-              .code(400)
-              .send({
-                error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`,
-              })
+            return reply.code(400).send({
+              error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`,
+            })
           }
 
           updates.connection = sanitizeAgentProfileConnection(
@@ -3390,11 +3332,9 @@ async function startRemoteServerInternal(
             (ref): ref is string => typeof ref === "string",
           )
         ) {
-          return reply
-            .code(400)
-            .send({
-              error: "references must be an array of strings when provided",
-            })
+          return reply.code(400).send({
+            error: "references must be an array of strings when provided",
+          })
         }
         updates.references = body.references
       }
@@ -3448,11 +3388,9 @@ async function startRemoteServerInternal(
       const name = typeof body.name === "string" ? body.name.trim() : ""
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : ""
       if (!name || !prompt) {
-        return reply
-          .code(400)
-          .send({
-            error: "name and prompt are required and must be non-empty strings",
-          })
+        return reply.code(400).send({
+          error: "name and prompt are required and must be non-empty strings",
+        })
       }
 
       if (
@@ -3462,12 +3400,9 @@ async function startRemoteServerInternal(
           !Number.isInteger(body.intervalMinutes) ||
           body.intervalMinutes < 1)
       ) {
-        return reply
-          .code(400)
-          .send({
-            error:
-              "intervalMinutes must be a finite integer >= 1 when provided",
-          })
+        return reply.code(400).send({
+          error: "intervalMinutes must be a finite integer >= 1 when provided",
+        })
       }
       const intervalMinutes =
         typeof body.intervalMinutes === "number" ? body.intervalMinutes : 60
@@ -3589,12 +3524,9 @@ async function startRemoteServerInternal(
           !Number.isInteger(body.intervalMinutes) ||
           body.intervalMinutes < 1)
       ) {
-        return reply
-          .code(400)
-          .send({
-            error:
-              "intervalMinutes must be a finite integer >= 1 when provided",
-          })
+        return reply.code(400).send({
+          error: "intervalMinutes must be a finite integer >= 1 when provided",
+        })
       }
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply
@@ -3772,8 +3704,8 @@ export async function restartRemoteServer() {
 
 export function getRemoteServerStatus() {
   const cfg = configStore.get()
-  const bind = cfg.remoteServerBindAddress || "127.0.0.1"
-  const port = cfg.remoteServerPort || 3210
+  const bind = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
   const running = !!server
   const url = running ? buildRemoteServerBaseUrl(bind, port) : undefined
   const connectableUrl = running
