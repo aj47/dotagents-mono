@@ -1,7 +1,7 @@
 import {
   getAcpCapableAgentProfiles,
-  getAgentProfileDisplayName,
   isAcpCapableAgentProfile,
+  resolveAgentProfileSelection,
 } from "@dotagents/shared"
 import type { ACPAgentConfig, AgentProfile } from "../shared/types"
 
@@ -12,6 +12,13 @@ export type MainAcpAgentSelection =
 export type PreferredTopLevelAcpAgentSelection =
   | { resolvedName: string; source: "profile" | "main-agent"; repairedName?: string }
   | { error: string }
+
+interface MainAcpAgentCandidate {
+  id: string
+  name: string
+  displayName?: string
+  enabled?: boolean
+}
 
 export function resolveMainAcpAgentSelection(
   configuredName: string,
@@ -27,29 +34,39 @@ export function resolveMainAcpAgentSelection(
     agent.enabled !== false && agent.connection.type === "stdio"
   )
 
-  const configuredProfile = spawnableProfileCandidates.find((profile) =>
-    profile.name.trim().toLowerCase() === normalizedMainAgentName
-    || getAgentProfileDisplayName(profile).trim().toLowerCase() === normalizedMainAgentName
-  )
+  const selectionCandidates: MainAcpAgentCandidate[] = [
+    ...spawnableProfileCandidates.map((profile) => ({
+      id: profile.id || profile.name,
+      name: profile.name,
+      displayName: profile.displayName,
+      enabled: profile.enabled,
+    })),
+    ...fallbackLegacyAgents.map((agent) => ({
+      id: agent.name,
+      name: agent.name,
+      displayName: agent.displayName,
+      enabled: agent.enabled,
+    })),
+  ]
 
-  const legacyAgentMatch = fallbackLegacyAgents.find((agent) =>
-    agent.name.trim().toLowerCase() === normalizedMainAgentName
-    || agent.displayName.trim().toLowerCase() === normalizedMainAgentName
-  )
+  const {
+    ambiguousProfiles: ambiguousCandidates,
+    selectedProfile,
+  } = resolveAgentProfileSelection(selectionCandidates, configuredName)
 
-  if (configuredProfile) {
-    return { resolvedName: configuredProfile.name }
+  if (selectedProfile) {
+    return { resolvedName: selectedProfile.name }
   }
 
-  if (legacyAgentMatch) {
-    return { resolvedName: legacyAgentMatch.name }
+  if (ambiguousCandidates?.length) {
+    const ambiguousNames = [...new Set(ambiguousCandidates.map((agent) => agent.name))]
+    return {
+      error: `ACP main agent "${configuredName}" matches multiple enabled ACP/stdio agents: ${ambiguousNames.join(", ")}. Configure mainAgentName to a more specific agent ID, name, or display name.`,
+    }
   }
 
   const fallbackNames = new Set<string>()
-  const fallbackExternalAgents = [
-    ...spawnableProfileCandidates.map((profile) => ({ name: profile.name })),
-    ...fallbackLegacyAgents.map((agent) => ({ name: agent.name })),
-  ].filter((agent) => {
+  const fallbackExternalAgents = selectionCandidates.filter((agent) => {
     const dedupeKey = agent.name.trim().toLowerCase()
     if (fallbackNames.has(dedupeKey)) return false
     fallbackNames.add(dedupeKey)

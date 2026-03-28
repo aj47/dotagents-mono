@@ -127,7 +127,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Headless CLI session state controls** now let `/pin [conversation-id-prefix]` and `/archive [conversation-id-prefix]` manage the same pinned/archived conversation state the desktop UI uses.
 - **Headless CLI conversation management** now also lets `/rename <title>`, `/delete [conversation-id-prefix]`, and `/delete-all` reuse the same conversation rename/delete path the desktop app uses.
 - **Headless CLI agent selection** now also exposes `/agents` and `/agent <agent-id-or-name>`, and that switch shares one activation helper with desktop agent selection plus remote/mobile profile switching so profile-specific model/audio and MCP runtime config apply the same way everywhere.
-- **Headless CLI and desktop agent pickers** now also share the same enabled/default-profile filtering plus display-name fallback helpers, so terminal `/agents` output, `/agent` matching, the desktop next-session selector, and mobile selector lists all stay aligned before any profile activation happens.
+- **Headless CLI and desktop agent pickers** now also share the same enabled/default-profile filtering plus display-name fallback helpers, so terminal `/agents` output, `/agent` matching, ACP main-agent config matching, the desktop next-session selector, and mobile selector lists all stay aligned before any profile activation happens.
 - **QR headless pairing** starts the app with `--qr`, boots the same non-GUI runtime stack, and then prints a pairing QR code for remote/mobile clients.
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.

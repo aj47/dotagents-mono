@@ -369,6 +369,7 @@ describe("CLI and desktop feature paths", () => {
       "getAcpCapableAgentProfiles(",
     )
     expect(mainAgentSelectionSource).toContain("getAcpCapableAgentProfiles(")
+    expect(mainAgentSelectionSource).toContain("resolveAgentProfileSelection(")
     expect(mainAgentSelectionSource).toContain("isAcpCapableAgentProfile(")
   })
 
