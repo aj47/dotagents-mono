@@ -72,13 +72,19 @@ Run the desktop app without opening the GUI:
 pnpm --filter @dotagents/desktop dev -- --headless
 ```
 
+Inside the CLI, use:
+
+- `/conversations` to list recent sessions
+- `/use <conversation-id-prefix>` to continue a specific session
+- `/show [conversation-id-prefix]` to inspect recent messages before continuing
+
 Use QR-based remote access while staying headless:
 
 ```bash
 pnpm --filter @dotagents/desktop dev -- --qr
 ```
 
-The headless CLI, QR mode, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. Fresh desktop text, voice, CLI, remote, and loop prompts now also share the same launcher and conversation/session bootstrap before entering that runner, while queued desktop follow-ups and ACP parent-resume nudges now share a dedicated resume-only launcher so they do not duplicate persisted or synthetic turns. Legacy active/stop/iteration flags are likewise left to the shared session manager, which prevents one entry point from clearing another still-running session. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
+The headless CLI, QR mode, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. Fresh desktop text, voice, CLI, remote, and loop prompts now also share the same launcher and conversation/session bootstrap before entering that runner, while queued desktop follow-ups and ACP parent-resume nudges now share a dedicated resume-only launcher so they do not duplicate persisted or synthetic turns. Headless CLI conversation browsing now also resolves `/use` and `/show` targets through the same conversation-selection helper every time, so continuing an older session by ID or unique prefix follows one lookup path before it re-enters the shared prompt launcher. Legacy active/stop/iteration flags are likewise left to the shared session manager, which prevents one entry point from clearing another still-running session. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 
 Headless, QR, and GUI startup also share the same runtime bootstrap for MCP, repeat tasks, ACP profile sync, bundled skills, and models.dev initialization, so both `--headless` and `--qr` now boot the same service stack as the desktop app before they diverge into the terminal REPL or QR pairing flow. The two non-GUI modes now also share one top-level launcher for startup failure handling and signal wiring; `--headless` intentionally leaves `SIGINT` / Ctrl+C to the terminal REPL so in-flight runs still stop locally before exiting, while QR mode lets the shared launcher own both `SIGINT` and `SIGTERM`. Remote server startup is likewise shared now: desktop remote access, headless CLI, and QR pairing all pass through the same remote-access bootstrap, which then reuses the same config-aware Cloudflare tunnel helper, with QR mode forcing the same named-to-quick fallback path before printing the pairing URL. Desktop startup and desktop settings reconfiguration now also converge on one config-driven remote-access reconciler, so enabling, disabling, and restarting the desktop remote server follows the same Cloudflare auto-start and teardown rules after launch. GUI quit and non-GUI graceful shutdown now also converge on the same loop/ACP/MCP/remote-server teardown helper, while desktop layers keyboard-listener cleanup on top.
 

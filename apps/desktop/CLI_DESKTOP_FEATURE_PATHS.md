@@ -25,6 +25,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Prepared-context hook: `onPreparedContext(...)`
 - Returned execution handle: `runPromise`
 
+## Shared conversation history selection
+
+- Shared selection file: `apps/desktop/src/main/conversation-history-selection.ts`
+- Selection helper: `resolveConversationHistorySelection(...)`
+- Current callers: `headless-cli.ts` `/use` and `/show`
+
 ## Shared prompt session bootstrap
 
 - Shared bootstrap file: `apps/desktop/src/main/agent-mode-runner.ts`
@@ -100,6 +106,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `index.ts` still handles window/tray bookkeeping locally, then calls `shutdownSharedRuntimeServices(...)` from `before-quit` so keyboard teardown, loop shutdown, ACP cleanup, MCP cleanup, and remote-server shutdown follow one shared runtime path with the same timeout policy every time the desktop app exits.
 13. Headless non-GUI shutdown
     `headless-runtime.ts` logs the mode-specific shutdown banner, then calls `shutdownSharedRuntimeServices(...)` before `process.exit(...)` so `--headless` and `--qr` tear down loops, ACP, MCP, and the remote server through the same helper the GUI uses.
+14. Headless CLI conversation resume selection
+    `headless-cli.ts` now resolves `/use` and `/show` targets through `resolveConversationHistorySelection(...)`, so selecting a prior conversation by full ID or unique prefix goes through one shared lookup path before the next CLI prompt reuses `startSharedPromptRun(...)` with that conversation ID.
 
 ## Parity rules
 
@@ -107,6 +115,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Standard MCP approval flow is inline when the caller requests `approvalMode: "inline"`.
 - Fresh persisted prompt entrypoints share one launcher: `startSharedPromptRun(...)`.
 - Resume-only entrypoints share one launcher: `startSharedResumeRun(...)`.
+- CLI conversation selection is decided in one place: `resolveConversationHistorySelection(...)`.
 - Conversation/session bootstrap is decided in one place: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`.
 - Queued follow-ups and ACP parent-resume nudges intentionally bypass `preparePromptExecutionContext(...)` and reuse `prepareResumeExecutionContext(...)` / `startSharedResumeRun(...)` so they do not duplicate persisted user turns while still sharing session revival and history loading.
 - Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
@@ -128,8 +137,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms session-scoped approval handlers auto-resolve requests and are cleaned up with the session.
 - `apps/desktop/src/main/agent-mode-runner.test.ts`
   Confirms prompt bootstrap, resume bootstrap, inline approval behavior, and ACP routing.
+- `apps/desktop/src/main/conversation-history-selection.test.ts`
+  Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
 - `apps/desktop/src/main/app-runtime.test.ts`

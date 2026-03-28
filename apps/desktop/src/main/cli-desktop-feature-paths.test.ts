@@ -22,6 +22,10 @@ const agentModeRunnerSource = readFileSync(
   new URL("./agent-mode-runner.ts", import.meta.url),
   "utf8",
 )
+const conversationHistorySelectionSource = readFileSync(
+  new URL("./conversation-history-selection.ts", import.meta.url),
+  "utf8",
+)
 const appRuntimeSource = readFileSync(
   new URL("./app-runtime.ts", import.meta.url),
   "utf8",
@@ -74,6 +78,18 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessCliSource).toContain("onPreparedContext:")
     expect(headlessCliSource).toContain("const agentResult = await runPromise")
+  })
+
+  it("shares CLI conversation selection through one helper before continuing a prior conversation", () => {
+    expect(conversationHistorySelectionSource).toContain(
+      "export function resolveConversationHistorySelection",
+    )
+    expect(headlessCliSource).toContain("resolveConversationHistorySelection(")
+    expect(headlessCliSource).toContain('case "/use":')
+    expect(headlessCliSource).toContain('case "/show":')
+    expect(headlessCliSource).toContain(
+      "requestedConversationId: currentConversationId",
+    )
   })
 
   it("routes the remote server through the shared launcher and runner", () => {
@@ -131,7 +147,9 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessRuntimeSource).toContain("cloudflareTunnelActivation")
     expect(headlessRuntimeSource).toContain("startSharedRemoteAccessRuntime({")
-    expect(remoteAccessRuntimeSource).toContain("startConfiguredCloudflareTunnel")
+    expect(remoteAccessRuntimeSource).toContain(
+      "startConfiguredCloudflareTunnel",
+    )
     expect(remoteAccessRuntimeSource).toContain("startRemoteServerForced({")
     expect(remoteAccessRuntimeSource).toContain("return startRemoteServer()")
     expect(headlessRuntimeSource).toContain("shutdownSharedRuntimeServices({")
@@ -152,9 +170,12 @@ describe("CLI and desktop feature paths", () => {
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
+    expect(docsSource).toContain("Shared conversation history selection")
     expect(docsSource).toContain("Shared prompt session bootstrap")
     expect(docsSource).toContain("Shared remote access bootstrap")
-    expect(docsSource).toContain("Shared configured remote access reconciliation")
+    expect(docsSource).toContain(
+      "Shared configured remote access reconciliation",
+    )
     expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Shared runtime shutdown")
@@ -173,5 +194,6 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop remote access reconfiguration")
     expect(docsSource).toContain("Desktop GUI shutdown")
     expect(docsSource).toContain("Headless non-GUI shutdown")
+    expect(docsSource).toContain("Headless CLI conversation resume selection")
   })
 })
