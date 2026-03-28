@@ -775,6 +775,8 @@ export function ActiveAgentsSidebar({
               const isPinned = session.conversationId
                 ? pinnedSessionIds.has(session.conversationId)
                 : false
+              const pastStatusRailColor =
+                session.status === "error" ? "bg-red-500" : "bg-muted-foreground/60"
               return (
                 <div
                   key={key}
@@ -787,7 +789,7 @@ export function ActiveAgentsSidebar({
                       navigate(`/${session.conversationId}`)
                     }
                   }}
-                className={cn(
+                  className={cn(
                     "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
@@ -795,27 +797,25 @@ export function ActiveAgentsSidebar({
                 >
                   <span
                     className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      session.status === "error"
-                        ? "bg-red-500"
-                        : "bg-muted-foreground",
+                      "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
+                      pastStatusRailColor,
                     )}
                   />
-                  {renderEditableTitle(session, "flex-1")}
-                  {lastMessageMinutesAgo && (
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground group-hover:hidden group-focus-within:hidden">
-                      {lastMessageMinutesAgo}
-                    </span>
-                  )}
+                  <div className="min-w-0 flex-1 transition-[padding-right] duration-200 group-hover:pr-20">
+                    {renderEditableTitle(session, "flex-1")}
+                  </div>
                   {session.conversationId && (
                     <div
                       className={cn(
-                        "absolute right-1.5 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity",
+                        "bg-background/90 absolute right-1.5 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1 rounded-sm pl-1 opacity-0 transition-opacity",
                         "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
-                        "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
-                        "focus-within:pointer-events-auto focus-within:opacity-100",
                       )}
                     >
+                      {lastMessageMinutesAgo && (
+                        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                          {lastMessageMinutesAgo}
+                        </span>
+                      )}
                       <SessionOverflowMenu
                         sessionTitle={
                           session.conversationTitle || "Untitled session"
@@ -845,7 +845,7 @@ export function ActiveAgentsSidebar({
 
             // Active session row
             // Retained completed turns should stay visually active until the user dismisses them.
-            const statusDotColor = hasPendingApproval
+            const statusRailColor = hasPendingApproval
               ? "bg-amber-500"
               : conversationState === "blocked"
                 ? "bg-red-500"
@@ -863,27 +863,26 @@ export function ActiveAgentsSidebar({
                 key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-start gap-1 rounded px-1.5 py-1.5 pr-2 text-xs transition-all",
+                  "group relative flex cursor-pointer items-start rounded py-1.5 pl-2 pr-2 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isSessionExpanded
-                      ? "bg-blue-500/15 border-l-2 border-blue-500"
+                      ? "bg-blue-500/15"
                       : isFocused
                         ? "bg-blue-500/10"
                         : "hover:bg-accent/50",
                 )}
               >
-                {/* Status dot */}
                 <span
                   className={cn(
-                    "mt-1 h-1 w-1 shrink-0 rounded-full",
-                    statusDotColor,
+                    "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
+                    statusRailColor,
                     isVisiblyActive && !hasPendingApproval && "animate-pulse",
                   )}
                 />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-14">
                   <div
-                    className="relative z-10 flex min-w-0 items-start pr-11"
+                    className="relative z-10 flex min-w-0 items-start"
                     onClick={(event) => {
                       event.stopPropagation()
                       handleSessionClick(session.id)
@@ -905,7 +904,7 @@ export function ActiveAgentsSidebar({
                   {(sessionPreview || lastMessageMinutesAgo) && (
                     <div
                       className={cn(
-                        "flex min-w-0 items-center gap-1.5 pr-11",
+                        "flex min-w-0 items-center gap-1.5",
                         !sessionPreview && "justify-end",
                       )}
                     >
@@ -929,11 +928,8 @@ export function ActiveAgentsSidebar({
                 </div>
                 <div
                   className={cn(
-                    "absolute right-1 top-1 flex z-20 items-center gap-0 opacity-0 transition-opacity",
+                    "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
                     "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
-                    "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
-                    "focus-within:pointer-events-auto focus-within:opacity-100",
-                    (isFocused || isSessionExpanded) && "pointer-events-auto opacity-100",
                   )}
                 >
                   {session.conversationId && (
