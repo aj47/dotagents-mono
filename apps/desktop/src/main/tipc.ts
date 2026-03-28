@@ -61,9 +61,8 @@ import { RendererHandlers } from "./renderer-handlers"
 import {
   postProcessTranscript,
   processTranscriptWithTools,
-  processTranscriptWithAgentMode,
 } from "./llm"
-import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
+import { mcpService, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
 import {
   saveCustomPosition,
   updatePanelPosition,
@@ -78,9 +77,8 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
-import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { acpService, ACPRunRequest } from "./acp-service"
-import { processTranscriptWithACPAgent } from "./acp-main-agent"
+import { loadPreviousConversationHistory, runTopLevelAgentMode } from "./agent-mode-runner"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
@@ -155,396 +153,47 @@ function getRemoteSttModel(config: Config): string {
   return getConfiguredSttModel(config) || DEFAULT_STT_MODELS.openai
 }
 
-async function initializeMcpWithProgress(config: Config, sessionId: string, runId?: number): Promise<void> {
-  const shouldStop = () => agentSessionStateManager.shouldStopSession(sessionId)
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
-
-  if (shouldStop()) {
-    return
-  }
-
-  const initStatus = mcpService.getInitializationStatus()
-
-  await emitAgentProgress({
-    sessionId,
-    runId,
-    currentIteration: 0,
-    maxIterations: effectiveMaxIterations,
-    steps: [
-      {
-        id: `mcp_init_${Date.now()}`,
-        type: "thinking",
-        title: "Initializing MCP tools",
-        description: initStatus.progress.currentServer
-          ? `Initializing ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
-          : `Initializing MCP servers (${initStatus.progress.current}/${initStatus.progress.total})`,
-        status: "in_progress",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: false,
-  })
-
-  const progressInterval = setInterval(async () => {
-    if (shouldStop()) {
-      clearInterval(progressInterval)
-      return
-    }
-
-    const currentStatus = mcpService.getInitializationStatus()
-    if (currentStatus.isInitializing) {
-      await emitAgentProgress({
-        sessionId,
-        runId,
-        currentIteration: 0,
-        maxIterations: effectiveMaxIterations,
-        steps: [
-          {
-            id: `mcp_init_${Date.now()}`,
-            type: "thinking",
-            title: "Initializing MCP tools",
-            description: currentStatus.progress.currentServer
-              ? `Initializing ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
-              : `Initializing MCP servers (${currentStatus.progress.current}/${currentStatus.progress.total})`,
-            status: "in_progress",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: false,
-      })
-    } else {
-      clearInterval(progressInterval)
-    }
-  }, 500)
-
-  try {
-    await mcpService.initialize()
-  } finally {
-    clearInterval(progressInterval)
-  }
-
-  if (shouldStop()) {
-    return
-  }
-
-  await emitAgentProgress({
-    sessionId,
-    runId,
-    currentIteration: 0,
-    maxIterations: effectiveMaxIterations,
-    steps: [
-      {
-        id: `mcp_init_complete_${Date.now()}`,
-        type: "thinking",
-        title: "MCP tools initialized",
-        description: `Successfully initialized ${mcpService.getAvailableTools().length} tools`,
-        status: "completed",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: false,
-  })
-}
-
 // Unified agent mode processing function
 async function processWithAgentMode(
   text: string,
   conversationId?: string,
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
+  maxIterationsOverride?: number,
 ): Promise<string> {
-  const config = configStore.get()
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
-  const allProfiles = agentProfileService.getAll()
-  const currentProfile = agentProfileService.getCurrentProfile()
-  const existingProfileSnapshot = existingSessionId
-    ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
-    : undefined
-  const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
-    currentProfile,
-    sessionProfileId: existingProfileSnapshot?.profileId,
-    mainAgentMode: config.mainAgentMode,
-    mainAgentName: config.mainAgentName,
-    profileAgents: allProfiles,
-    legacyAgents: config.acpAgents || [],
-  })
+  const normalizedMaxIterationsOverride =
+    typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
+      ? Math.max(1, Math.floor(maxIterationsOverride))
+      : undefined
+  const previousConversationHistory = await loadPreviousConversationHistory(conversationId)
 
-  // Route via ACP when the selected profile itself is ACP-backed, or when global ACP main-agent mode is enabled.
-  if (topLevelAcpSelection) {
-    if ("error" in topLevelAcpSelection) {
-      logLLM(`[processWithAgentMode] ${topLevelAcpSelection.error}`)
-      return topLevelAcpSelection.error
-    }
-
-    const resolvedMainAgentName = topLevelAcpSelection.resolvedName
-    if (
-      topLevelAcpSelection.source === "main-agent"
-      && topLevelAcpSelection.repairedName
-      && topLevelAcpSelection.repairedName !== config.mainAgentName
-    ) {
-      // Persist the repaired selection so future runs don't fail on stale names.
-      const saveError = trySaveConfig({ ...config, mainAgentName: resolvedMainAgentName })
-      if (saveError) {
-        logLLM(
-          `[processWithAgentMode] Failed to persist repaired ACP main agent name "${resolvedMainAgentName}": ${saveError.message}`
-        )
-      }
-      logLLM(
-        `[processWithAgentMode] ACP main agent \"${config.mainAgentName}\" not found. ` +
-        `Auto-switched to \"${resolvedMainAgentName}\".`
-      )
-    }
-
-    logLLM(`[processWithAgentMode] ACP routing via ${topLevelAcpSelection.source}, agent: ${resolvedMainAgentName}`)
-
-    // Create conversation title for session tracking
-    const conversationTitle = text
-    const profileSnapshot = existingProfileSnapshot
-      ?? (currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined)
-
-    // Start tracking this agent session (or reuse existing one)
-    const sessionId = existingSessionId
-      || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-    try {
-      // Process with ACP agent
-      const result = await processTranscriptWithACPAgent(text, {
-        agentName: resolvedMainAgentName,
-        conversationId: conversationId || sessionId,
-        sessionId,
-        runId,
-        profileSnapshot,
-      })
-
-      // Mark session as completed
-      if (result.success) {
-        logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
-        agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
-      } else {
-        logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
-        agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
-      }
-
-      logLLM(`[processWithAgentMode] ACP mode returning, queue processing should trigger in .finally()`)
-      return result.response || result.error || "No response from agent"
-    } finally {
-      agentSessionStateManager.cleanupSession(sessionId)
-    }
-  }
-
-  // NOTE: Don't clear all agent progress here - we support multiple concurrent sessions
-  // Each session manages its own progress lifecycle independently
-
-  // Agent mode state is managed per-session via agentSessionStateManager
-
-  // Determine profile snapshot for session isolation
-  // If reusing an existing session, use its stored snapshot to maintain isolation
-  // Only capture a new snapshot from the current global profile when creating a new session
-  let profileSnapshot: SessionProfileSnapshot | undefined = existingProfileSnapshot
-
-  // Only capture a new snapshot if we don't have one from an existing session
-  if (!profileSnapshot && currentProfile) {
-    profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-  }
-
-  // Start tracking this agent session (or reuse existing one)
-  let conversationTitle = text
-  // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
-  const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-  try {
-    // Initialize MCP with progress feedback
-    await initializeMcpWithProgress(config, sessionId, runId)
-
-    // Register any existing MCP server processes with the agent process manager
-    // This handles the case where servers were already initialized before agent mode was activated
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    // Use agent mode for iterative tool calling
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      // Handle inline tool approval if enabled in config
-      if (config.mcpRequireApprovalBeforeToolCall) {
-        // Request approval and wait for user response via the UI
-        const { approvalId, promise: approvalPromise } = toolApprovalManager.requestApproval(
-          sessionId,
-          toolCall.name,
-          toolCall.arguments
-        )
-
-        // Emit progress update with pending approval to show approve/deny buttons
-        await emitAgentProgress({
-          sessionId,
-          runId,
-          currentIteration: 0, // Will be updated by the agent loop
-          maxIterations: effectiveMaxIterations,
-          steps: [],
-          isComplete: false,
-          pendingToolApproval: {
-            approvalId,
-            toolName: toolCall.name,
-            arguments: toolCall.arguments,
-          },
-        })
-
-        // Wait for user response
-        const approved = await approvalPromise
-
-        // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
-        await emitAgentProgress({
-          sessionId,
-          runId,
-          currentIteration: 0,
-          maxIterations: effectiveMaxIterations,
-          steps: [],
-          isComplete: false,
-          pendingToolApproval: undefined, // Explicitly clear to sync state across all windows
-        })
-
-        if (!approved) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Tool call denied by user: ${toolCall.name}`,
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
-
-      // Execute the tool call (approval either not required or was granted)
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, profileSnapshot?.mcpServerConfig)
-    }
-
-    // Load previous conversation history if continuing a conversation.
-    // IMPORTANT: Load this BEFORE emitting initial progress to ensure consistency.
-    // Do not block follow-up startup on lazy conversation compaction.
-    let previousConversationHistory:
-      | Array<{
-          role: "user" | "assistant" | "tool"
-          content: string
-          toolCalls?: any[]
-          toolResults?: any[]
-          timestamp?: number
-        }>
-      | undefined
-
-    if (conversationId) {
-      logLLM(`[tipc.ts processWithAgentMode] Loading conversation history for conversationId: ${conversationId}`)
-      const conversation = await conversationService.loadConversation(conversationId)
-
-      if (conversation && conversation.messages.length > 0) {
-        logLLM(`[tipc.ts processWithAgentMode] Loaded conversation with ${conversation.messages.length} messages`)
-
-        // Convert conversation messages to the format expected by agent mode
-        // Exclude the last message since it's the current user input that will be added
-        const messagesToConvert = conversation.messages.slice(0, -1)
-        logLLM(`[tipc.ts processWithAgentMode] Converting ${messagesToConvert.length} messages (excluding last message)`)
-        previousConversationHistory = messagesToConvert.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-          toolCalls: msg.toolCalls,
-          timestamp: msg.timestamp,
-          // Convert toolResults from stored format (content as string) to MCPToolResult format (content as array)
-          toolResults: msg.toolResults?.map((tr) => ({
-            content: [
-              {
-                type: "text" as const,
-                // Use content for successful results, error message for failures
-                text: tr.success ? tr.content : (tr.error || tr.content),
-              },
-            ],
-            isError: !tr.success,
-          })),
-        }))
-
-        logLLM(`[tipc.ts processWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
-      } else {
-        logLLM(`[tipc.ts processWithAgentMode] No conversation found or conversation is empty`)
-      }
-    } else {
-      logLLM(`[tipc.ts processWithAgentMode] No conversationId provided, starting fresh conversation`)
-    }
-
-    // Focus interactive sessions in the panel window.
-    // Background/snoozed sessions (e.g. scheduled loops) should not steal focus.
-    if (!startSnoozed) {
+  const result = await runTopLevelAgentMode({
+    text,
+    conversationId,
+    existingSessionId,
+    previousConversationHistory,
+    startSnoozed,
+    maxIterationsOverride: normalizedMaxIterationsOverride,
+    approvalMode: "inline",
+    focusSession: async (sessionId) => {
       try {
         getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
-      } catch (e) {
-        logApp("[tipc] Failed to focus new agent session:", e)
+      } catch (error) {
+        logApp("[tipc] Failed to focus new agent session:", error)
       }
-    }
+    },
+  })
 
-    const agentResult = await processTranscriptWithAgentMode(
-      text,
-      availableTools,
-      executeToolCall,
-      effectiveMaxIterations, // Use configured max iterations or Infinity if unlimited mode
-      previousConversationHistory,
-      conversationId, // Pass conversation ID for linking to conversation history
-      sessionId, // Pass session ID for progress routing and isolation
-      undefined, // onProgress callback (not used here, progress is emitted via emitAgentProgress)
-      profileSnapshot, // Pass profile snapshot for session isolation
-      runId,
-    )
-
-    // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
-
-    return agentResult.content
-  } catch (error) {
-    // Mark session as errored
-    const errorMessage = getErrorMessage(error)
-    agentSessionTracker.errorSession(sessionId, errorMessage)
-
-    // Emit error progress update to the UI so users see the error message
-    await emitAgentProgress({
-      sessionId,
-      runId,
-      conversationId: conversationId || "",
-      conversationTitle: conversationTitle,
-      currentIteration: 1,
-      maxIterations: effectiveMaxIterations,
-      steps: [{
-        id: `error_${Date.now()}`,
-        type: "thinking",
-        title: "Error",
-        description: errorMessage,
-        status: "error",
-        timestamp: Date.now(),
-      }],
-      isComplete: true,
-      finalContent: `Error: ${errorMessage}`,
-      conversationHistory: [
-        { role: "user", content: text, timestamp: Date.now() },
-        { role: "assistant", content: `Error: ${errorMessage}`, timestamp: Date.now() }
-      ],
-    })
-
-    throw error
-  } finally {
-
-  }
+  return result.content
 }
 
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
-  existingSessionId: string
+  existingSessionId: string,
+  maxIterationsOverride?: number,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true)
+  return processWithAgentMode(text, conversationId, existingSessionId, true, maxIterationsOverride)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"

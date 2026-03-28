@@ -13,9 +13,7 @@ import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
-import { processTranscriptWithAgentMode } from "./llm"
-import { processTranscriptWithACPAgent } from "./acp-main-agent"
-import { resolveMainAcpAgentSelection } from "./main-agent-selection"
+import { prepareConversationForPrompt, runTopLevelAgentMode } from "./agent-mode-runner"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
@@ -26,7 +24,7 @@ import { skillsService } from "./skills-service"
 import { knowledgeNotesService } from "./knowledge-notes-service"
 import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
-import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -550,73 +548,16 @@ async function runAgent(options: RunAgentOptions): Promise<{
   state.shouldStopAgent = false
   state.agentIterationCount = 0
 
-  // Load previous conversation history if conversationId is provided
-  let previousConversationHistory: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: any[]
-    toolResults?: any[]
-  }> | undefined
-  let conversationId = inputConversationId
-
-  // Create or continue conversation - matching tipc.ts createMcpTextInput logic
-  if (conversationId) {
-    // Add user message to existing conversation BEFORE processing
-    const updatedConversation = await conversationService.addMessageToConversation(
-      conversationId,
-      prompt,
-      "user"
-    )
-
-    if (updatedConversation) {
-      // Load conversation history excluding the message we just added (the current user input)
-      // This matches tipc.ts processWithAgentMode behavior
-      const messagesToConvert = updatedConversation.messages.slice(0, -1)
-
-
-
-      diagnosticsService.logInfo("remote-server", `Continuing conversation ${conversationId} with ${messagesToConvert.length} previous messages`)
-
-      previousConversationHistory = messagesToConvert.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        toolCalls: msg.toolCalls,
-        // Preserve timestamp for correct ordering in UI (matching tipc.ts)
-        timestamp: msg.timestamp,
-        // Convert toolResults from stored format to MCPToolResult format (matching tipc.ts)
-        toolResults: msg.toolResults?.map((tr) => ({
-          content: [
-            {
-              type: "text" as const,
-              text: tr.success ? tr.content : (tr.error || tr.content),
-            },
-          ],
-          isError: !tr.success,
-        })),
-      }))
-    } else {
-      // Conversation not found - create it with the provided ID to maintain session continuity
-      diagnosticsService.logInfo("remote-server", `Conversation ${conversationId} not found, creating with provided ID`)
-      const newConversation = await conversationService.createConversationWithId(conversationId, prompt, "user")
-      // Update conversationId to use the actual persisted ID (which may be sanitized)
-      // This ensures session lookup and later operations use the correct ID
-      conversationId = newConversation.id
-      // Mark that we've just created the conversation so we don't try to add another message below
-      previousConversationHistory = []
-      diagnosticsService.logInfo("remote-server", `Created new conversation with ID ${newConversation.id}`)
-    }
-  }
-
-  // Create a new conversation if none exists (only when no conversationId was provided at all)
-  if (!conversationId) {
-    const newConversation = await conversationService.createConversationWithId(
-      conversationService.generateConversationIdPublic(),
-      prompt,
-      "user"
-    )
-    conversationId = newConversation.id
-    diagnosticsService.logInfo("remote-server", `Created new conversation ${conversationId}`)
-  }
+  const {
+    conversationId,
+    previousConversationHistory,
+  } = await prepareConversationForPrompt(prompt, inputConversationId)
+  diagnosticsService.logInfo(
+    "remote-server",
+    previousConversationHistory.length > 0
+      ? `Continuing conversation ${conversationId} with ${previousConversationHistory.length} previous messages`
+      : `Prepared conversation ${conversationId} for a new run`,
+  )
 
   // Try to find and revive an existing session for this conversation (matching tipc.ts)
   // Note: We use `conversationId` (which may be newly created) instead of `inputConversationId`
@@ -642,133 +583,30 @@ async function runAgent(options: RunAgentOptions): Promise<{
     }
   }
 
-  // Determine profile snapshot for session isolation
-  // If reusing an existing session, use its stored snapshot to maintain isolation
-  // Only capture a new snapshot when creating a new session
-  let profileSnapshot: SessionProfileSnapshot | undefined
-
-  if (existingSessionId) {
-    // Try to get the stored profile snapshot from the existing session
-    profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
-  }
-
-  // Only capture a new snapshot if we don't have one from an existing session
-  if (!profileSnapshot) {
-    const currentProfile = agentProfileService.getCurrentProfile()
-    if (currentProfile) {
-      profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-    }
-  }
-
-  // Start or reuse agent session
-  const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
-  const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-
   const loadFormattedConversationHistory = async () => {
     const latestConversation = await conversationService.loadConversation(conversationId)
     return formatConversationHistoryForApi(latestConversation?.messages || [])
   }
 
   try {
-    if (cfg.mainAgentMode === "acp" && cfg.mainAgentName) {
-      const mainAgentSelection = resolveMainAcpAgentSelection(
-        cfg.mainAgentName,
-        agentProfileService.getAll(),
-        cfg.acpAgents || []
-      )
-
-      if ("error" in mainAgentSelection) {
-        diagnosticsService.logWarning("remote-server", mainAgentSelection.error)
-        return {
-          content: mainAgentSelection.error,
-          conversationId,
-          conversationHistory: await loadFormattedConversationHistory(),
-        }
-      }
-
-      const resolvedMainAgentName = mainAgentSelection.resolvedName
-      if (mainAgentSelection.repairedName && mainAgentSelection.repairedName !== cfg.mainAgentName) {
-        configStore.save({ ...cfg, mainAgentName: resolvedMainAgentName })
-        diagnosticsService.logInfo(
-          "remote-server",
-          `ACP main agent \"${cfg.mainAgentName}\" not found. Auto-switched to \"${resolvedMainAgentName}\".`
-        )
-      }
-
-      const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-      try {
-        const result = await processTranscriptWithACPAgent(prompt, {
-          agentName: resolvedMainAgentName,
-          conversationId,
-          sessionId,
-          runId,
-          onProgress,
-          profileSnapshot,
-        })
-
-        if (result.success) {
-          agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
-        } else {
-          agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
-        }
-
-        const formattedHistory = await loadFormattedConversationHistory()
-        notifyConversationHistoryChanged()
-
-        return {
-          content: result.response || result.error || "No response from agent",
-          conversationId,
-          conversationHistory: formattedHistory,
-        }
-      } finally {
-        agentSessionStateManager.cleanupSession(sessionId)
-      }
-    }
-
-    await mcpService.initialize()
-
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
-    }
-
-    const agentResult = await processTranscriptWithAgentMode(
-      prompt,
-      availableTools,
-      executeToolCall,
-      cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
-      previousConversationHistory,
+    const agentResult = await runTopLevelAgentMode({
+      text: prompt,
       conversationId,
-      sessionId, // Pass session ID for progress routing
-      onProgress, // Pass progress callback for SSE streaming
-      profileSnapshot, // Pass profile snapshot for session isolation
-    )
-
-    // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+      existingSessionId,
+      previousConversationHistory,
+      startSnoozed,
+      approvalMode: "dialog",
+      onProgress,
+    })
 
     // Format conversation history for API response (convert MCPToolResult to ToolResult format)
-    const formattedHistory = formatConversationHistoryForApi(agentResult.conversationHistory)
+    const formattedHistory = await loadFormattedConversationHistory()
 
     // Notify renderer that conversation history has changed (for sidebar refresh)
     notifyConversationHistoryChanged()
 
     return { content: agentResult.content, conversationId, conversationHistory: formattedHistory }
   } catch (error) {
-    // Mark session as errored
-    const errorMessage = getErrorMessage(error)
-    agentSessionTracker.errorSession(sessionId, errorMessage)
-
     // Conversation was already created/updated before agent execution started.
     // Refresh renderer history even on failure so UI reflects the latest persisted state.
     notifyConversationHistoryChanged()

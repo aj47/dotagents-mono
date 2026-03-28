@@ -4,15 +4,16 @@
  */
 import readline from "readline"
 import { configStore } from "./config"
-import { mcpService, MCPToolResult } from "./mcp-service"
-import { processTranscriptWithAgentMode } from "./llm"
-import { state } from "./state"
+import { mcpService } from "./mcp-service"
+import { toolApprovalManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
-import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import {
+  prepareConversationForPrompt,
+  runTopLevelAgentMode,
+} from "./agent-mode-runner"
 import { emergencyStopAll } from "./emergency-stop"
-import { getErrorMessage } from "./error-utils"
-import { SessionProfileSnapshot, AgentProgressUpdate } from "@shared/types"
+import { AgentProgressUpdate } from "@shared/types"
 
 // ANSI color codes (no external deps)
 const colors = {
@@ -45,6 +46,30 @@ async function requestShutdown(message?: string) {
 
 function printColored(color: string, message: string) {
   console.log(`${color}${message}${colors.reset}`)
+}
+
+function formatApprovalArguments(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
+async function promptForToolApproval(toolName: string, args: unknown): Promise<boolean> {
+  if (!rl) {
+    return false
+  }
+
+  console.log()
+  printColored(colors.yellow, `Approval required for tool: ${toolName}`)
+  console.log(`${colors.dim}${formatApprovalArguments(args)}${colors.reset}`)
+
+  return await new Promise<boolean>((resolve) => {
+    rl?.question(`${colors.yellow}Allow this tool call? [y/N] ${colors.reset}`, (answer) => {
+      resolve(/^(y|yes)$/i.test(answer.trim()))
+    })
+  })
 }
 
 function printHelp() {
@@ -173,81 +198,27 @@ async function runAgentCLI(prompt: string): Promise<void> {
   }
 
   isProcessing = true
-  const cfg = configStore.get()
-
-  // Set agent mode state
-  state.isAgentModeActive = true
-  state.shouldStopAgent = false
-  state.agentIterationCount = 0
-
-  // Load or create conversation
-  let previousConversationHistory: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: any[]
-    toolResults?: any[]
-  }> | undefined
-
-  let conversationId = currentConversationId
-
-  if (conversationId) {
-    const updatedConversation = await conversationService.addMessageToConversation(
-      conversationId,
-      prompt,
-      "user"
-    )
-    if (updatedConversation) {
-      const messagesToConvert = updatedConversation.messages.slice(0, -1)
-      previousConversationHistory = messagesToConvert.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        toolCalls: msg.toolCalls,
-        timestamp: msg.timestamp,
-        toolResults: msg.toolResults?.map((tr) => ({
-          content: [{ type: "text" as const, text: tr.success ? tr.content : (tr.error || tr.content) }],
-          isError: !tr.success,
-        })),
-      }))
-    } else {
-      const newConversation = await conversationService.createConversationWithId(conversationId, prompt, "user")
-      conversationId = newConversation.id
-      previousConversationHistory = []
-    }
-  }
-
-  if (!conversationId) {
-    const newConversation = await conversationService.createConversationWithId(
-      conversationService.generateConversationIdPublic(),
-      prompt,
-      "user"
-    )
-    conversationId = newConversation.id
-  }
-
-  currentConversationId = conversationId
-
-  // Get profile snapshot
-  let profileSnapshot: SessionProfileSnapshot | undefined
-  const currentProfile = agentProfileService.getCurrentProfile()
-  if (currentProfile) {
-    profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-  }
-
-  // Start session
-  const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
-  const sessionId = agentSessionTracker.startSession(conversationId, conversationTitle, true, profileSnapshot)
-
+  let activeSessionId: string | undefined
   try {
-    await mcpService.initialize()
-    mcpService.registerExistingProcessesWithAgentManager()
+    const {
+      conversationId,
+      previousConversationHistory,
+    } = await prepareConversationForPrompt(prompt, currentConversationId)
+    currentConversationId = conversationId
 
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
+    const existingSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
+    if (existingSessionId) {
+      agentSessionTracker.reviveSession(existingSessionId, true)
     }
+
+    const sessionId = existingSessionId
+      || agentSessionTracker.startSession(conversationId, prompt, true)
+    activeSessionId = sessionId
+
+    toolApprovalManager.registerSessionApprovalHandler(
+      sessionId,
+      ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
+    )
 
     // Track last shown step to avoid duplicates
     let lastShownStepId = ""
@@ -281,33 +252,27 @@ async function runAgentCLI(prompt: string): Promise<void> {
 
     console.log(`${colors.dim}Processing...${colors.reset}`)
 
-    const agentResult = await processTranscriptWithAgentMode(
-      prompt,
-      availableTools,
-      executeToolCall,
-      cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
-      previousConversationHistory,
+    const agentResult = await runTopLevelAgentMode({
+      text: prompt,
       conversationId,
-      sessionId,
+      existingSessionId: sessionId,
+      previousConversationHistory,
+      startSnoozed: true,
+      approvalMode: "inline",
       onProgress,
-      profileSnapshot,
-    )
-
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    })
 
     // Print the response
     console.log()
     printColored(colors.green, agentResult.content)
     console.log()
-
   } catch (error) {
-    const errorMessage = getErrorMessage(error)
-    agentSessionTracker.errorSession(sessionId, errorMessage)
+    const errorMessage = error instanceof Error ? error.message : String(error)
     printColored(colors.red, `Error: ${errorMessage}`)
   } finally {
-    state.isAgentModeActive = false
-    state.shouldStopAgent = false
-    state.agentIterationCount = 0
+    if (activeSessionId) {
+      toolApprovalManager.unregisterSessionApprovalHandler(activeSessionId)
+    }
     isProcessing = false
   }
 }

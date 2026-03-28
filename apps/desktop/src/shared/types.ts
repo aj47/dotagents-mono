@@ -937,6 +937,7 @@ export interface LoopConfig {
   intervalMinutes: number  // how often to run (in minutes)
   enabled: boolean         // whether this loop is active
   profileId?: string       // optional profile to use for the agent session
+  maxIterations?: number   // optional per-task override for the agent iteration budget
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
 }
