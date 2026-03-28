@@ -284,6 +284,7 @@ export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProf
       const agentDir = path.join(profilesDir, entry.name)
       const agentMdPath = path.join(agentDir, AGENTS_PROFILE_CANONICAL_FILENAME)
       const configJsonPath = path.join(agentDir, AGENTS_PROFILE_CONFIG_FILENAME)
+      const hasConfigJson = fs.existsSync(configJsonPath)
 
       const raw = readTextFileIfExistsSync(agentMdPath, "utf8")
       if (raw === null) continue
@@ -294,7 +295,7 @@ export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProf
       })
       if (!mdPartial) continue
 
-      const configJson = fs.existsSync(configJsonPath)
+      const configJson = hasConfigJson
         ? readConfigJson(configJsonPath, getAgentProfilesBackupDir(layer))
         : {}
 
@@ -314,7 +315,7 @@ export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProf
 
       originById.set(profile.id, {
         filePath: agentMdPath,
-        configJsonPath: fs.existsSync(configJsonPath) ? configJsonPath : undefined,
+        configJsonPath: hasConfigJson ? configJsonPath : undefined,
       })
     }
   } catch {
