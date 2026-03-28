@@ -27,12 +27,11 @@ import { ensureAppSwitcherPresence } from "./app-switcher"
 import { configStore } from "./config"
 import { startConfiguredCloudflareTunnel } from "./cloudflare-runtime"
 import { startRemoteServer, printQRCodeToTerminal } from "./remote-server"
-import { acpService } from "./acp-service"
 import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
+  shutdownSharedRuntimeServices,
 } from "./app-runtime"
-import { loopService } from "./loop-service"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
   downloadHubBundleToTempFile,
@@ -81,7 +80,7 @@ const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
 const shouldEnforceSingleInstance = !isNoGuiMode
-const CLEANUP_TIMEOUT_MS = 5000
+const SHARED_RUNTIME_CLEANUP_TIMEOUT_MS = 5000
 const GUI_SIGNAL_FORCE_EXIT_DELAY_MS = 500
 
 function releaseAppSingleInstanceLock() {
@@ -214,9 +213,7 @@ if (!gotSingleInstanceLock) {
         cloudflareTunnelActivation: "force",
         onStarted: async ({ cloudflareTunnelUrl }) => {
           // Print QR code to terminal (with tunnel URL if available)
-          const printed = await printQRCodeToTerminal(
-            cloudflareTunnelUrl,
-          )
+          const printed = await printQRCodeToTerminal(cloudflareTunnelUrl)
           if (!printed) {
             console.error(
               "[QR Mode] Failed to print QR code. Ensure remoteServerApiKey is configured.",
@@ -459,7 +456,6 @@ if (!gotSingleInstanceLock) {
       releaseAppSingleInstanceLock()
       destroyTray()
       makePanelWindowClosable()
-      loopService.stopAllLoops()
 
       // Prevent re-entry during cleanup
       if (isCleaningUp) {
@@ -470,47 +466,13 @@ if (!gotSingleInstanceLock) {
       event.preventDefault()
       isCleaningUp = true
 
-      const withCleanupTimeout = async (
-        label: string,
-        cleanup: () => Promise<void>,
-      ): Promise<void> => {
-        let timeoutId: ReturnType<typeof setTimeout> | undefined
-        try {
-          await Promise.race([
-            cleanup(),
-            new Promise<void>((_, reject) => {
-              const id = setTimeout(
-                () => reject(new Error(`${label} cleanup timeout`)),
-                CLEANUP_TIMEOUT_MS,
-              )
-              timeoutId = id
-              // unref() ensures this timer won't keep the event loop alive
-              // if cleanup finishes quickly (only available in Node.js)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (id && typeof (id as any).unref === "function") {
-                ;(id as any).unref()
-              }
-            }),
-          ])
-        } finally {
-          if (timeoutId !== undefined) {
-            clearTimeout(timeoutId)
-          }
-        }
-      }
-
       try {
-        const cleanupResults = await Promise.allSettled([
-          withCleanupTimeout("keyboard", () => stopListeningToKeyboardEvents()),
-          withCleanupTimeout("ACP", () => acpService.shutdown()),
-          withCleanupTimeout("MCP", () => mcpService.cleanup()),
-        ])
-
-        for (const result of cleanupResults) {
-          if (result.status === "rejected") {
-            logApp("Error during service cleanup on quit:", result.reason)
-          }
-        }
+        await shutdownSharedRuntimeServices({
+          label: "desktop-runtime",
+          cleanupTimeoutMs: SHARED_RUNTIME_CLEANUP_TIMEOUT_MS,
+          keyboardCleanup: stopListeningToKeyboardEvents,
+          stopRemoteServer: true,
+        })
       } catch (error) {
         logApp("Unexpected error during service cleanup on quit:", error)
       }

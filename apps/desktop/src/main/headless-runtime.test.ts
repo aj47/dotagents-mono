@@ -4,12 +4,9 @@ const mocks = vi.hoisted(() => ({
   hideDock: vi.fn(),
   initializeSharedRuntimeServices: vi.fn(),
   registerSharedMainProcessInfrastructure: vi.fn(),
+  shutdownSharedRuntimeServices: vi.fn(),
   startConfiguredCloudflareTunnel: vi.fn(),
   startRemoteServerForced: vi.fn(),
-  stopRemoteServer: vi.fn(),
-  stopAllLoops: vi.fn(),
-  acpShutdown: vi.fn(),
-  mcpCleanup: vi.fn(),
   setHeadlessMode: vi.fn(),
   logApp: vi.fn(),
 }))
@@ -26,6 +23,7 @@ vi.mock("./app-runtime", () => ({
   initializeSharedRuntimeServices: mocks.initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure:
     mocks.registerSharedMainProcessInfrastructure,
+  shutdownSharedRuntimeServices: mocks.shutdownSharedRuntimeServices,
 }))
 
 vi.mock("./cloudflare-runtime", () => ({
@@ -34,25 +32,6 @@ vi.mock("./cloudflare-runtime", () => ({
 
 vi.mock("./remote-server", () => ({
   startRemoteServerForced: mocks.startRemoteServerForced,
-  stopRemoteServer: mocks.stopRemoteServer,
-}))
-
-vi.mock("./loop-service", () => ({
-  loopService: {
-    stopAllLoops: mocks.stopAllLoops,
-  },
-}))
-
-vi.mock("./acp-service", () => ({
-  acpService: {
-    shutdown: mocks.acpShutdown,
-  },
-}))
-
-vi.mock("./mcp-service", () => ({
-  mcpService: {
-    cleanup: mocks.mcpCleanup,
-  },
 }))
 
 vi.mock("./state", () => ({
@@ -73,11 +52,9 @@ describe("headless-runtime", () => {
     vi.resetModules()
 
     mocks.initializeSharedRuntimeServices.mockResolvedValue(undefined)
+    mocks.shutdownSharedRuntimeServices.mockResolvedValue(undefined)
     mocks.startConfiguredCloudflareTunnel.mockResolvedValue({ started: false })
     mocks.startRemoteServerForced.mockResolvedValue({ running: true })
-    mocks.stopRemoteServer.mockResolvedValue(undefined)
-    mocks.acpShutdown.mockResolvedValue(undefined)
-    mocks.mcpCleanup.mockResolvedValue(undefined)
   })
 
   it("starts the shared runtime and forces the remote server bind for non-GUI modes", async () => {
@@ -178,10 +155,11 @@ describe("headless-runtime", () => {
     await gracefulShutdown(0)
     await gracefulShutdown(1)
 
-    expect(mocks.stopAllLoops).toHaveBeenCalledTimes(1)
-    expect(mocks.acpShutdown).toHaveBeenCalledTimes(1)
-    expect(mocks.mcpCleanup).toHaveBeenCalledTimes(1)
-    expect(mocks.stopRemoteServer).toHaveBeenCalledTimes(1)
+    expect(mocks.shutdownSharedRuntimeServices).toHaveBeenCalledTimes(1)
+    expect(mocks.shutdownSharedRuntimeServices).toHaveBeenCalledWith({
+      label: "headless-runtime",
+      stopRemoteServer: true,
+    })
     expect(exitSpy).toHaveBeenCalledTimes(1)
     expect(exitSpy).toHaveBeenCalledWith(0)
     expect(consoleSpy).toHaveBeenCalledWith("\n[Headless] Shutting down...")
@@ -214,10 +192,7 @@ describe("headless-runtime", () => {
       "[Headless] Failed to initialize:",
       "cli startup failed",
     )
-    expect(mocks.stopAllLoops).toHaveBeenCalledTimes(1)
-    expect(mocks.acpShutdown).toHaveBeenCalledTimes(1)
-    expect(mocks.mcpCleanup).toHaveBeenCalledTimes(1)
-    expect(mocks.stopRemoteServer).toHaveBeenCalledTimes(1)
+    expect(mocks.shutdownSharedRuntimeServices).toHaveBeenCalledTimes(1)
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
 

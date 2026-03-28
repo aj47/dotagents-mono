@@ -104,6 +104,9 @@ describe("CLI and desktop feature paths", () => {
     expect(appRuntimeSource).toContain(
       "export async function initializeSharedRuntimeServices",
     )
+    expect(appRuntimeSource).toContain(
+      "export async function shutdownSharedRuntimeServices",
+    )
     expect(cloudflareRuntimeSource).toContain(
       "export async function startConfiguredCloudflareTunnel",
     )
@@ -118,11 +121,13 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessRuntimeSource).toContain("cloudflareTunnelActivation")
     expect(headlessRuntimeSource).toContain("startConfiguredCloudflareTunnel({")
+    expect(headlessRuntimeSource).toContain("shutdownSharedRuntimeServices({")
     expect(headlessRuntimeSource).toContain('mcpStrategy: "await"')
     expect(headlessRuntimeSource).toContain('acpStrategy: "await"')
     expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
     expect(indexSource).toContain("startConfiguredCloudflareTunnel({")
     expect(indexSource).toContain("launchSharedHeadlessMode({")
+    expect(indexSource).toContain("shutdownSharedRuntimeServices({")
     expect(indexSource).toContain('cloudflareTunnelActivation: "auto"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "force"')
     expect(indexSource).toContain('terminationSignals: ["SIGTERM"]')
@@ -138,6 +143,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared prompt session bootstrap")
     expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
+    expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
     expect(docsSource).toContain("Headless CLI prompt")
@@ -149,5 +155,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop GUI startup")
     expect(docsSource).toContain("Headless CLI startup")
     expect(docsSource).toContain("QR headless pairing startup")
+    expect(docsSource).toContain("Desktop GUI shutdown")
+    expect(docsSource).toContain("Headless non-GUI shutdown")
   })
 })

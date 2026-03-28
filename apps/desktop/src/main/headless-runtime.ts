@@ -1,21 +1,22 @@
 import { app } from "electron"
-import { acpService } from "./acp-service"
 import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
+  shutdownSharedRuntimeServices,
 } from "./app-runtime"
 import {
   type CloudflareTunnelActivation,
   startConfiguredCloudflareTunnel,
 } from "./cloudflare-runtime"
 import { logApp } from "./debug"
-import { loopService } from "./loop-service"
-import { mcpService } from "./mcp-service"
-import { startRemoteServerForced, stopRemoteServer } from "./remote-server"
+import { startRemoteServerForced } from "./remote-server"
 import { setHeadlessMode } from "./state"
 
 const DEFAULT_HEADLESS_REMOTE_SERVER_BIND_ADDRESS = "0.0.0.0"
-const DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS = ["SIGTERM", "SIGINT"] as const
+const DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS = [
+  "SIGTERM",
+  "SIGINT",
+] as const
 
 export interface SharedHeadlessRuntimeOptions {
   label: string
@@ -33,8 +34,7 @@ export interface SharedHeadlessRuntimeHandle {
 export type SharedHeadlessTerminationSignal =
   (typeof DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS)[number]
 
-export interface LaunchSharedHeadlessModeOptions
-  extends SharedHeadlessRuntimeOptions {
+export interface LaunchSharedHeadlessModeOptions extends SharedHeadlessRuntimeOptions {
   onStarted?: (runtime: SharedHeadlessRuntimeHandle) => Promise<void>
   terminationSignals?: readonly SharedHeadlessTerminationSignal[]
 }
@@ -75,10 +75,10 @@ export async function startSharedHeadlessRuntime(
     if (isShuttingDown) return
     isShuttingDown = true
     console.log(`\n[${shutdownLabel}] Shutting down...`)
-    loopService.stopAllLoops()
-    await acpService.shutdown().catch(() => {})
-    await mcpService.cleanup().catch(() => {})
-    await stopRemoteServer().catch(() => {})
+    await shutdownSharedRuntimeServices({
+      label,
+      stopRemoteServer: true,
+    })
     process.exit(exitCode)
   }
 
