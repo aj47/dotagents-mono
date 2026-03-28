@@ -189,6 +189,66 @@ export function createSessionSnapshotFromProfile(
   }
 }
 
+export function serializeAgentProfileAsLegacyProfile(
+  profile: AgentProfile,
+): Profile {
+  return {
+    id: profile.id,
+    name: profile.displayName,
+    guidelines: profile.guidelines || "",
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+    isDefault: profile.isDefault,
+    mcpServerConfig: toolConfigToMcpServerConfig(profile.toolConfig),
+    modelConfig: profile.modelConfig,
+    skillsConfig: profile.skillsConfig,
+    systemPrompt: profile.systemPrompt,
+  }
+}
+
+export function buildLegacyAgentProfileCreateData(input: {
+  name: string
+  guidelines: string
+  systemPrompt?: string
+  allServerNames: string[]
+  runtimeToolNames: string[]
+}): Omit<AgentProfile, "id" | "createdAt" | "updatedAt"> {
+  return {
+    name: input.name,
+    displayName: input.name,
+    guidelines: input.guidelines,
+    systemPrompt: input.systemPrompt,
+    connection: { type: "internal" },
+    role: "delegation-target",
+    enabled: true,
+    isUserProfile: false,
+    isAgentTarget: true,
+    toolConfig: {
+      disabledServers: input.allServerNames,
+      disabledTools: input.runtimeToolNames,
+      allServersDisabledByDefault: true,
+    },
+  }
+}
+
+export function buildLegacyAgentProfileUpdates(input: {
+  name?: string
+  guidelines?: string
+  systemPrompt?: string
+}): Partial<AgentProfile> {
+  const updates: Partial<AgentProfile> = {}
+  if (Object.prototype.hasOwnProperty.call(input, "name")) {
+    updates.displayName = input.name
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "guidelines")) {
+    updates.guidelines = input.guidelines
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "systemPrompt")) {
+    updates.systemPrompt = input.systemPrompt
+  }
+  return updates
+}
+
 /**
  * Type for agent profile conversations storage.
  */
@@ -1149,7 +1209,7 @@ class AgentProfileService {
    * Returns only user-profile role profiles shaped like the legacy Profile type.
    */
   getProfilesLegacy(): Profile[] {
-    return this.getUserProfiles().map(p => this.agentProfileToLegacyProfile(p))
+    return this.getUserProfiles().map(serializeAgentProfileAsLegacyProfile)
   }
 
   /**
@@ -1158,7 +1218,7 @@ class AgentProfileService {
   getProfileLegacy(id: string): Profile | undefined {
     const profile = this.getById(id)
     if (!profile) return undefined
-    return this.agentProfileToLegacyProfile(profile)
+    return serializeAgentProfileAsLegacyProfile(profile)
   }
 
   /**
@@ -1167,25 +1227,7 @@ class AgentProfileService {
   getCurrentProfileLegacy(): Profile | undefined {
     const profile = this.getCurrentProfile()
     if (!profile) return undefined
-    return this.agentProfileToLegacyProfile(profile)
-  }
-
-  /**
-   * Convert an AgentProfile to legacy Profile format.
-   */
-  private agentProfileToLegacyProfile(p: AgentProfile): Profile {
-    return {
-      id: p.id,
-      name: p.displayName,
-      guidelines: p.guidelines || "",
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      isDefault: p.isDefault,
-      mcpServerConfig: toolConfigToMcpServerConfig(p.toolConfig),
-      modelConfig: p.modelConfig,
-      skillsConfig: p.skillsConfig,
-      systemPrompt: p.systemPrompt,
-    }
+    return serializeAgentProfileAsLegacyProfile(profile)
   }
 
   /**
@@ -1197,22 +1239,15 @@ class AgentProfileService {
     const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
     const runtimeToolNames = getRuntimeToolNames()
 
-    return this.create({
-      name,
-      displayName: name,
-      guidelines,
-      systemPrompt,
-      connection: { type: "internal" },
-      role: "delegation-target",
-      enabled: true,
-      isUserProfile: false,
-      isAgentTarget: true,
-      toolConfig: {
-        disabledServers: allServerNames,
-          disabledTools: runtimeToolNames,
-        allServersDisabledByDefault: true,
-      },
-    })
+    return this.create(
+      buildLegacyAgentProfileCreateData({
+        name,
+        guidelines,
+        systemPrompt,
+        allServerNames,
+        runtimeToolNames,
+      }),
+    )
   }
 
   /**

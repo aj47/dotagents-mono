@@ -3,6 +3,7 @@ import type { AgentProfile } from "@shared/types"
 
 const {
   activateAgentProfileByIdMock,
+  configGetMock,
   createMock,
   deleteMock,
   exportProfileMock,
@@ -13,11 +14,13 @@ const {
   getCurrentProfileMock,
   getEnabledAgentTargetsMock,
   getExternalAgentsMock,
+  getRuntimeToolNamesMock,
   getUserProfilesMock,
   importProfileMock,
   updateMock,
 } = vi.hoisted(() => ({
   activateAgentProfileByIdMock: vi.fn(),
+  configGetMock: vi.fn(),
   createMock: vi.fn(),
   deleteMock: vi.fn(),
   exportProfileMock: vi.fn(),
@@ -28,6 +31,7 @@ const {
   getCurrentProfileMock: vi.fn(),
   getEnabledAgentTargetsMock: vi.fn(),
   getExternalAgentsMock: vi.fn(),
+  getRuntimeToolNamesMock: vi.fn(),
   getUserProfilesMock: vi.fn(),
   importProfileMock: vi.fn(),
   updateMock: vi.fn(),
@@ -37,7 +41,60 @@ vi.mock("./agent-profile-activation", () => ({
   activateAgentProfileById: activateAgentProfileByIdMock,
 }))
 
+vi.mock("./config", () => ({
+  configStore: {
+    get: configGetMock,
+  },
+}))
+
+vi.mock("./runtime-tool-definitions", () => ({
+  getRuntimeToolNames: getRuntimeToolNamesMock,
+}))
+
 vi.mock("./agent-profile-service", () => ({
+  buildLegacyAgentProfileCreateData: ({
+    allServerNames,
+    guidelines,
+    name,
+    runtimeToolNames,
+    systemPrompt,
+  }: {
+    allServerNames: string[]
+    guidelines: string
+    name: string
+    runtimeToolNames: string[]
+    systemPrompt?: string
+  }) => ({
+    name,
+    displayName: name,
+    guidelines,
+    systemPrompt,
+    connection: { type: "internal" as const },
+    role: "delegation-target" as const,
+    enabled: true,
+    isUserProfile: false,
+    isAgentTarget: true,
+    toolConfig: {
+      disabledServers: allServerNames,
+      disabledTools: runtimeToolNames,
+      allServersDisabledByDefault: true,
+    },
+  }),
+  buildLegacyAgentProfileUpdates: (input: {
+    guidelines?: string
+    name?: string
+    systemPrompt?: string
+  }) => ({
+    ...(Object.prototype.hasOwnProperty.call(input, "name") && {
+      displayName: input.name,
+    }),
+    ...(Object.prototype.hasOwnProperty.call(input, "guidelines") && {
+      guidelines: input.guidelines,
+    }),
+    ...(Object.prototype.hasOwnProperty.call(input, "systemPrompt") && {
+      systemPrompt: input.systemPrompt,
+    }),
+  }),
   agentProfileService: {
     create: createMock,
     delete: deleteMock,
@@ -53,23 +110,51 @@ vi.mock("./agent-profile-service", () => ({
     importProfile: importProfileMock,
     update: updateMock,
   },
+  serializeAgentProfileAsLegacyProfile: (profile: AgentProfile) => ({
+    id: profile.id,
+    name: profile.displayName ?? profile.name,
+    guidelines: profile.guidelines || "",
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+    isDefault: profile.isDefault,
+    modelConfig: profile.modelConfig,
+    mcpServerConfig: profile.toolConfig
+      ? {
+          disabledServers: profile.toolConfig.disabledServers,
+          disabledTools: profile.toolConfig.disabledTools,
+          allServersDisabledByDefault:
+            profile.toolConfig.allServersDisabledByDefault,
+          enabledServers: profile.toolConfig.enabledServers,
+          enabledRuntimeTools: profile.toolConfig.enabledRuntimeTools,
+        }
+      : undefined,
+    skillsConfig: profile.skillsConfig,
+    systemPrompt: profile.systemPrompt,
+  }),
 }))
 
 import {
   createManagedAgentProfile,
+  createManagedLegacyProfile,
   deleteManagedAgentProfile,
+  deleteManagedLegacyProfile,
   exportManagedAgentProfile,
   getManagedAgentTargets,
   getManagedAgentProfile,
   getManagedAgentProfiles,
   getManagedCurrentAgentProfile,
+  getManagedCurrentLegacyProfile,
   getManagedEnabledAgentTargets,
   getManagedExternalAgents,
+  getManagedLegacyProfile,
+  getManagedLegacyProfiles,
   getManagedUserAgentProfiles,
   importManagedAgentProfile,
   resolveManagedAgentProfileSelection,
   setManagedCurrentAgentProfile,
+  setManagedCurrentLegacyProfile,
   toggleManagedAgentProfileEnabled,
+  updateManagedLegacyProfile,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
 
@@ -92,6 +177,7 @@ function createProfile(
 describe("agent profile management", () => {
   beforeEach(() => {
     activateAgentProfileByIdMock.mockReset()
+    configGetMock.mockReset()
     createMock.mockReset()
     deleteMock.mockReset()
     exportProfileMock.mockReset()
@@ -102,6 +188,7 @@ describe("agent profile management", () => {
     getCurrentProfileMock.mockReset()
     getEnabledAgentTargetsMock.mockReset()
     getExternalAgentsMock.mockReset()
+    getRuntimeToolNamesMock.mockReset()
     getUserProfilesMock.mockReset()
     importProfileMock.mockReset()
     updateMock.mockReset()
@@ -173,6 +260,101 @@ describe("agent profile management", () => {
     expect(activateAgentProfileByIdMock).toHaveBeenCalledWith(enabledTarget.id)
   })
 
+  it("adapts legacy desktop profile reads and switching through shared helpers", () => {
+    const currentProfile = createProfile("current-agent", {
+      displayName: "Current Agent",
+      guidelines: "Stay current",
+      toolConfig: {
+        disabledServers: ["github"],
+        enabledServers: ["filesystem"],
+      },
+    })
+    const userProfile = createProfile("user-agent", {
+      displayName: "User Agent",
+      guidelines: "Handle inbox",
+      isUserProfile: true,
+    })
+
+    getUserProfilesMock.mockReturnValue([userProfile])
+    getByIdMock.mockImplementation((profileId: string) => {
+      if (profileId === currentProfile.id) {
+        return currentProfile
+      }
+      if (profileId === userProfile.id) {
+        return userProfile
+      }
+      return undefined
+    })
+    getCurrentProfileMock.mockReturnValue(currentProfile)
+    activateAgentProfileByIdMock.mockReturnValue(currentProfile)
+
+    expect(getManagedLegacyProfiles()).toEqual([
+      {
+        id: userProfile.id,
+        name: "User Agent",
+        guidelines: "Handle inbox",
+        createdAt: userProfile.createdAt,
+        updatedAt: userProfile.updatedAt,
+        isDefault: userProfile.isDefault,
+        mcpServerConfig: undefined,
+        modelConfig: undefined,
+        skillsConfig: undefined,
+        systemPrompt: undefined,
+      },
+    ])
+    expect(getManagedLegacyProfile(userProfile.id)).toEqual({
+      id: userProfile.id,
+      name: "User Agent",
+      guidelines: "Handle inbox",
+      createdAt: userProfile.createdAt,
+      updatedAt: userProfile.updatedAt,
+      isDefault: userProfile.isDefault,
+      mcpServerConfig: undefined,
+      modelConfig: undefined,
+      skillsConfig: undefined,
+      systemPrompt: undefined,
+    })
+    expect(getManagedCurrentLegacyProfile()).toEqual({
+      id: currentProfile.id,
+      name: "Current Agent",
+      guidelines: "Stay current",
+      createdAt: currentProfile.createdAt,
+      updatedAt: currentProfile.updatedAt,
+      isDefault: currentProfile.isDefault,
+      mcpServerConfig: {
+        disabledServers: ["github"],
+        disabledTools: undefined,
+        allServersDisabledByDefault: undefined,
+        enabledServers: ["filesystem"],
+        enabledRuntimeTools: undefined,
+      },
+      modelConfig: undefined,
+      skillsConfig: undefined,
+      systemPrompt: undefined,
+    })
+    expect(setManagedCurrentLegacyProfile(currentProfile.id)).toEqual({
+      success: true,
+      profile: {
+        id: currentProfile.id,
+        name: "Current Agent",
+        guidelines: "Stay current",
+        createdAt: currentProfile.createdAt,
+        updatedAt: currentProfile.updatedAt,
+        isDefault: currentProfile.isDefault,
+        mcpServerConfig: {
+          disabledServers: ["github"],
+          disabledTools: undefined,
+          allServersDisabledByDefault: undefined,
+          enabledServers: ["filesystem"],
+          enabledRuntimeTools: undefined,
+        },
+        modelConfig: undefined,
+        skillsConfig: undefined,
+        systemPrompt: undefined,
+      },
+    })
+  })
+
   it("creates agent profiles from flattened payloads with shared defaults", () => {
     createMock.mockImplementation((profile: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">) =>
       createProfile("created-agent", profile),
@@ -229,6 +411,105 @@ describe("agent profile management", () => {
         autoSpawn: true,
       }),
     })
+  })
+
+  it("routes legacy desktop profile create, update, and delete through shared management", () => {
+    configGetMock.mockReturnValue({
+      mcpConfig: {
+        mcpServers: {
+          github: {},
+          filesystem: {},
+        },
+      },
+    })
+    getRuntimeToolNamesMock.mockReturnValue(["respond_to_user", "mark_done"])
+    createMock.mockImplementation(
+      (profile: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">) =>
+        createProfile("legacy-created", profile),
+    )
+
+    expect(
+      createManagedLegacyProfile({
+        name: "  Ops Legacy  ",
+        guidelines: "  Keep scope tight  ",
+        systemPrompt: "  Use logs first  ",
+      }),
+    ).toEqual({
+      success: true,
+      profile: {
+        id: "legacy-created",
+        name: "Ops Legacy",
+        guidelines: "Keep scope tight",
+        createdAt: 1,
+        updatedAt: 2,
+        isDefault: undefined,
+        mcpServerConfig: {
+          disabledServers: ["github", "filesystem"],
+          disabledTools: ["respond_to_user", "mark_done"],
+          allServersDisabledByDefault: true,
+          enabledServers: undefined,
+          enabledRuntimeTools: undefined,
+        },
+        modelConfig: undefined,
+        skillsConfig: undefined,
+        systemPrompt: "Use logs first",
+      },
+    })
+    expect(createMock).toHaveBeenCalledWith({
+      name: "Ops Legacy",
+      displayName: "Ops Legacy",
+      guidelines: "Keep scope tight",
+      systemPrompt: "Use logs first",
+      connection: { type: "internal" },
+      role: "delegation-target",
+      enabled: true,
+      isUserProfile: false,
+      isAgentTarget: true,
+      toolConfig: {
+        disabledServers: ["github", "filesystem"],
+        disabledTools: ["respond_to_user", "mark_done"],
+        allServersDisabledByDefault: true,
+      },
+    })
+
+    const updatedProfile = createProfile("legacy-created", {
+      displayName: "Ops Updated",
+      guidelines: "Use traces",
+      systemPrompt: "Prefer remote tools",
+    })
+    getByIdMock.mockReturnValue(updatedProfile)
+    updateMock.mockReturnValue(updatedProfile)
+
+    expect(
+      updateManagedLegacyProfile("legacy-created", {
+        name: "  Ops Updated  ",
+        guidelines: "  Use traces  ",
+        systemPrompt: "  Prefer remote tools  ",
+      }),
+    ).toEqual({
+      success: true,
+      profile: {
+        id: "legacy-created",
+        name: "Ops Updated",
+        guidelines: "Use traces",
+        createdAt: 1,
+        updatedAt: 2,
+        isDefault: undefined,
+        mcpServerConfig: undefined,
+        modelConfig: undefined,
+        skillsConfig: undefined,
+        systemPrompt: "Prefer remote tools",
+      },
+    })
+    expect(updateMock).toHaveBeenCalledWith("legacy-created", {
+      displayName: "Ops Updated",
+      guidelines: "Use traces",
+      systemPrompt: "Prefer remote tools",
+    })
+
+    deleteMock.mockReturnValue(true)
+    expect(deleteManagedLegacyProfile("legacy-created")).toBe(true)
+    expect(deleteMock).toHaveBeenCalledWith("legacy-created")
   })
 
   it("updates agent profiles with direct connection payloads and normalized fields", () => {

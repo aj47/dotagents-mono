@@ -738,6 +738,39 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsAgentsSource).toContain("tipcClient.deleteAgentProfile(")
   })
 
+  it("shares legacy desktop profile adapters through the managed agent profile path", () => {
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedLegacyProfiles",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedLegacyProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedCurrentLegacyProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function createManagedLegacyProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function updateManagedLegacyProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function deleteManagedLegacyProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function setManagedCurrentLegacyProfile",
+    )
+    expect(tipcSource).toContain("return getManagedLegacyProfiles()")
+    expect(tipcSource).toContain("return getManagedLegacyProfile(input.id)")
+    expect(tipcSource).toContain("return getManagedCurrentLegacyProfile()")
+    expect(tipcSource).toContain("const result = createManagedLegacyProfile(input)")
+    expect(tipcSource).toContain("const result = updateManagedLegacyProfile(")
+    expect(tipcSource).toContain("return deleteManagedLegacyProfile(input.id)")
+    expect(tipcSource).toContain(
+      "const result = setManagedCurrentLegacyProfile(input.id)",
+    )
+  })
+
   it("shares profile skill management across headless, desktop, and remote surfaces", () => {
     expect(profileSkillManagementSource).toContain(
       "export function getManagedSkillsCatalog",
@@ -1333,6 +1366,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared conversation management")
     expect(docsSource).toContain("Shared agent profile activation")
     expect(docsSource).toContain("Shared agent profile management")
+    expect(docsSource).toContain("Shared legacy desktop profile adapters")
     expect(docsSource).toContain("Shared agent selector profiles")
     expect(docsSource).toContain("Shared ACP main-agent options")
     expect(docsSource).toContain("Shared profile skill gating")

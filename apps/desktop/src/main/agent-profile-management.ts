@@ -4,16 +4,24 @@ import type {
   AgentProfileConnection,
   AgentProfileRole,
   AgentProfileToolConfig,
+  Profile,
   ProfileModelConfig,
   ProfileSkillsConfig,
 } from "@shared/types"
-import { agentProfileService } from "./agent-profile-service"
+import { configStore } from "./config"
+import {
+  agentProfileService,
+  buildLegacyAgentProfileCreateData,
+  buildLegacyAgentProfileUpdates,
+  serializeAgentProfileAsLegacyProfile,
+} from "./agent-profile-service"
 import { activateAgentProfileById } from "./agent-profile-activation"
 import {
   sanitizeAgentProfileConnection,
   VALID_AGENT_PROFILE_CONNECTION_TYPES,
   type AgentProfileConnectionTypeValue,
 } from "./agent-profile-connection-sanitize"
+import { getRuntimeToolNames } from "./runtime-tool-definitions"
 
 const VALID_AGENT_PROFILE_ROLES: AgentProfileRole[] = [
   "user-profile",
@@ -86,6 +94,21 @@ export type ManagedAgentProfileExportResult =
 export type ManagedAgentProfileDeleteResult =
   | ManagedAgentProfileFailure
   | ManagedAgentProfileDeleteSuccess
+
+export interface ManagedLegacyProfileInput {
+  name?: unknown
+  guidelines?: unknown
+  systemPrompt?: unknown
+}
+
+type ManagedLegacyProfileMutationSuccess = {
+  success: true
+  profile: Profile
+}
+
+export type ManagedLegacyProfileMutationResult =
+  | ManagedAgentProfileFailure
+  | ManagedLegacyProfileMutationSuccess
 
 export interface ManagedAgentProfileSelectionCandidate {
   id: string
@@ -591,6 +614,126 @@ export function setManagedCurrentAgentProfile(
       message,
     )
   }
+}
+
+export function getManagedLegacyProfiles(): Profile[] {
+  return getManagedUserAgentProfiles().map(serializeAgentProfileAsLegacyProfile)
+}
+
+export function getManagedLegacyProfile(profileId: string): Profile | undefined {
+  const profile = getManagedAgentProfile(profileId)
+  return profile ? serializeAgentProfileAsLegacyProfile(profile) : undefined
+}
+
+export function getManagedCurrentLegacyProfile(): Profile | undefined {
+  const profile = getManagedCurrentAgentProfile()
+  return profile ? serializeAgentProfileAsLegacyProfile(profile) : undefined
+}
+
+export function setManagedCurrentLegacyProfile(
+  profileId: string,
+): ManagedLegacyProfileMutationResult {
+  const result = setManagedCurrentAgentProfile(profileId)
+  if (!result.success) {
+    return result
+  }
+
+  return {
+    success: true,
+    profile: serializeAgentProfileAsLegacyProfile(result.profile),
+  }
+}
+
+export function createManagedLegacyProfile(
+  input: ManagedLegacyProfileInput,
+): ManagedLegacyProfileMutationResult {
+  const name = getRequiredNonEmptyString(input.name, "name")
+  if (name.error) {
+    return createManagedAgentProfileFailure("invalid_input", name.error)
+  }
+
+  const guidelines = getOptionalNormalizedText(input.guidelines, "guidelines", {
+    allowEmpty: true,
+  })
+  if (guidelines.error) {
+    return createManagedAgentProfileFailure("invalid_input", guidelines.error)
+  }
+
+  const systemPrompt = getOptionalNormalizedText(
+    input.systemPrompt,
+    "systemPrompt",
+  )
+  if (systemPrompt.error) {
+    return createManagedAgentProfileFailure("invalid_input", systemPrompt.error)
+  }
+
+  const config = configStore.get()
+  const result = createManagedAgentProfile(
+    buildLegacyAgentProfileCreateData({
+      name: name.value!,
+      guidelines: guidelines.value ?? "",
+      systemPrompt: systemPrompt.value,
+      allServerNames: Object.keys(config.mcpConfig?.mcpServers || {}),
+      runtimeToolNames: getRuntimeToolNames(),
+    }),
+  )
+  if (!result.success) {
+    return result
+  }
+
+  return {
+    success: true,
+    profile: serializeAgentProfileAsLegacyProfile(result.profile),
+  }
+}
+
+export function updateManagedLegacyProfile(
+  profileId: string,
+  input: ManagedLegacyProfileInput,
+): ManagedLegacyProfileMutationResult {
+  const hasName = Object.prototype.hasOwnProperty.call(input, "name")
+  const name = hasName
+    ? getRequiredNonEmptyString(input.name, "name")
+    : { value: undefined as string | undefined }
+  if (name.error) {
+    return createManagedAgentProfileFailure("invalid_input", name.error)
+  }
+
+  const guidelines = getOptionalNormalizedText(input.guidelines, "guidelines", {
+    allowEmpty: true,
+  })
+  if (guidelines.error) {
+    return createManagedAgentProfileFailure("invalid_input", guidelines.error)
+  }
+
+  const systemPrompt = getOptionalNormalizedText(
+    input.systemPrompt,
+    "systemPrompt",
+  )
+  if (systemPrompt.error) {
+    return createManagedAgentProfileFailure("invalid_input", systemPrompt.error)
+  }
+
+  const result = updateManagedAgentProfile(
+    profileId,
+    buildLegacyAgentProfileUpdates({
+      ...(hasName && { name: name.value }),
+      ...(guidelines.provided && { guidelines: guidelines.value ?? "" }),
+      ...(systemPrompt.provided && { systemPrompt: systemPrompt.value }),
+    }),
+  )
+  if (!result.success) {
+    return result
+  }
+
+  return {
+    success: true,
+    profile: serializeAgentProfileAsLegacyProfile(result.profile),
+  }
+}
+
+export function deleteManagedLegacyProfile(profileId: string): boolean {
+  return deleteManagedAgentProfile(profileId).success
 }
 
 function isManagedAgentProfileValidationError(message: string): boolean {

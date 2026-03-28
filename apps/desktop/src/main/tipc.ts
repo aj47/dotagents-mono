@@ -106,17 +106,24 @@ import {
 } from "./agent-profile-service"
 import {
   createManagedAgentProfile,
+  createManagedLegacyProfile,
   deleteManagedAgentProfile,
+  deleteManagedLegacyProfile,
   exportManagedAgentProfile,
   getManagedAgentTargets,
   getManagedAgentProfile,
   getManagedAgentProfiles,
   getManagedCurrentAgentProfile,
+  getManagedCurrentLegacyProfile,
   getManagedEnabledAgentTargets,
   getManagedExternalAgents,
+  getManagedLegacyProfile,
+  getManagedLegacyProfiles,
   getManagedUserAgentProfiles,
   importManagedAgentProfile,
   setManagedCurrentAgentProfile,
+  setManagedCurrentLegacyProfile,
+  updateManagedLegacyProfile,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
 import { acpService, ACPRunRequest } from "./acp-service"
@@ -3073,15 +3080,15 @@ export const router = {
 
   // Profile Management
   getProfiles: t.procedure.action(async () => {
-    return agentProfileService.getProfilesLegacy()
+    return getManagedLegacyProfiles()
   }),
 
   getProfile: t.procedure.input<{ id: string }>().action(async ({ input }) => {
-    return agentProfileService.getProfileLegacy(input.id)
+    return getManagedLegacyProfile(input.id)
   }),
 
   getCurrentProfile: t.procedure.action(async () => {
-    return agentProfileService.getCurrentProfileLegacy()
+    return getManagedCurrentLegacyProfile()
   }),
 
   // Get the default system prompt for restore functionality
@@ -3093,12 +3100,11 @@ export const router = {
   createProfile: t.procedure
     .input<{ name: string; guidelines: string; systemPrompt?: string }>()
     .action(async ({ input }) => {
-      const profile = agentProfileService.createUserProfile(
-        input.name,
-        input.guidelines,
-        input.systemPrompt,
-      )
-      return agentProfileService.getProfileLegacy(profile.id)
+      const result = createManagedLegacyProfile(input)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   updateProfile: t.procedure
@@ -3109,33 +3115,31 @@ export const router = {
       systemPrompt?: string
     }>()
     .action(async ({ input }) => {
-      const updates: Partial<import("@shared/types").AgentProfile> = {}
-      if (input.name !== undefined) {
-        updates.displayName = input.name
+      const result = updateManagedLegacyProfile(input.id, {
+        name: input.name,
+        guidelines: input.guidelines,
+        systemPrompt: input.systemPrompt,
+      })
+      if (!result.success) {
+        throw new Error(result.error)
       }
-      if (input.guidelines !== undefined) updates.guidelines = input.guidelines
-      if (input.systemPrompt !== undefined)
-        updates.systemPrompt = input.systemPrompt
-      agentProfileService.update(input.id, updates)
-
-      return agentProfileService.getProfileLegacy(input.id)
+      return result.profile
     }),
 
   deleteProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.delete(input.id)
+      return deleteManagedLegacyProfile(input.id)
     }),
 
   setCurrentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const result = setManagedCurrentAgentProfile(input.id)
+      const result = setManagedCurrentLegacyProfile(input.id)
       if (!result.success) {
         throw new Error(result.error)
       }
-
-      return agentProfileService.getProfileLegacy(result.profile.id)
+      return result.profile
     }),
 
   exportProfile: t.procedure
