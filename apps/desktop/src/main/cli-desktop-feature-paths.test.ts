@@ -105,6 +105,10 @@ const agentSessionManagementSource = readFileSync(
   new URL("./agent-session-management.ts", import.meta.url),
   "utf8",
 )
+const messageQueueManagementSource = readFileSync(
+  new URL("./message-queue-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedAgentProfilesSource = readFileSync(
   new URL("../../../../packages/shared/src/agent-profiles.ts", import.meta.url),
   "utf8",
@@ -984,6 +988,50 @@ describe("CLI and desktop feature paths", () => {
     expect(loopServiceSource).toContain(
       "maxIterationsOverride: loop.maxIterations",
     )
+  })
+
+  it("shares message-queue inspection and recovery controls across CLI and desktop surfaces", () => {
+    expect(messageQueueManagementSource).toContain(
+      "export function getManagedMessageQueue(",
+    )
+    expect(messageQueueManagementSource).toContain(
+      "export function getManagedMessageQueues(",
+    )
+    expect(messageQueueManagementSource).toContain(
+      "export function resolveManagedQueuedMessageSelection<",
+    )
+    expect(messageQueueManagementSource).toContain(
+      "export function updateManagedQueuedMessageText(",
+    )
+    expect(messageQueueManagementSource).toContain(
+      "export function retryManagedQueuedMessage(",
+    )
+    expect(messageQueueManagementSource).toContain(
+      "export function resumeManagedMessageQueue(",
+    )
+    expect(messageQueueManagementSource).toContain(
+      "export async function processManagedQueuedMessages(",
+    )
+    expect(headlessCliSource).toContain('case "/queues":')
+    expect(headlessCliSource).toContain('case "/queue":')
+    expect(headlessCliSource).toContain('case "/queue-edit":')
+    expect(headlessCliSource).toContain('case "/queue-remove":')
+    expect(headlessCliSource).toContain('case "/queue-retry":')
+    expect(headlessCliSource).toContain('case "/queue-clear":')
+    expect(headlessCliSource).toContain('case "/queue-pause":')
+    expect(headlessCliSource).toContain('case "/queue-resume":')
+    expect(headlessCliSource).toContain("getManagedMessageQueues()")
+    expect(headlessCliSource).toContain("getManagedMessageQueue(")
+    expect(headlessCliSource).toContain("resolveManagedQueuedMessageSelection(")
+    expect(headlessCliSource).toContain("await processManagedQueuedMessages({")
+    expect(headlessCliSource).toContain("startResumeRun: (options) => startCliResumeRun(options)")
+    expect(tipcSource).toContain("return getManagedMessageQueues()")
+    expect(tipcSource).toContain("return getManagedMessageQueue(input.conversationId).messages")
+    expect(tipcSource).toContain("const result = updateManagedQueuedMessageText(")
+    expect(tipcSource).toContain("const result = retryManagedQueuedMessage(")
+    expect(tipcSource).toContain("const result = resumeManagedMessageQueue(input.conversationId)")
+    expect(tipcSource).toContain("await processManagedQueuedMessages({")
+    expect(docsSource).toContain("## Shared message queue management")
   })
 
   it("keeps queued prompts and internal resume nudges on the resume-only runner path", () => {

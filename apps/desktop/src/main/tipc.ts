@@ -192,6 +192,18 @@ import {
 import { toggleManagedSkillForProfile } from "./profile-skill-management"
 import { saveManagedConfig } from "./settings-management"
 import {
+  clearManagedMessageQueue,
+  getManagedMessageQueue,
+  getManagedMessageQueues,
+  pauseManagedMessageQueue,
+  processManagedQueuedMessages,
+  removeManagedMessageFromQueue,
+  reorderManagedMessageQueue,
+  resumeManagedMessageQueue,
+  retryManagedQueuedMessage,
+  updateManagedQueuedMessageText,
+} from "./message-queue-management"
+import {
   exportManagedBundleToFile,
   generateManagedBundlePublishPayload,
   getManagedBundleExportableItems,
@@ -369,172 +381,19 @@ const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
   )
 }
 
-/**
- * Process queued messages for a conversation after the current session completes.
- * This function peeks at messages and only removes them after successful processing.
- * Uses a per-conversation lock to prevent concurrent processing of the same queue.
- */
 async function processQueuedMessages(conversationId: string): Promise<void> {
-  logLLM(
-    `[processQueuedMessages] Starting queue processing for ${conversationId}`,
-  )
-
-  // Try to acquire processing lock - if another processor is already running, skip
-  if (!messageQueueService.tryAcquireProcessingLock(conversationId)) {
-    logLLM(
-      `[processQueuedMessages] Failed to acquire lock for ${conversationId}`,
-    )
-    return
-  }
-  logLLM(`[processQueuedMessages] Acquired lock for ${conversationId}`)
-
-  try {
-    while (true) {
-      // Check if queue is paused (e.g., by kill switch) before processing next message
-      if (messageQueueService.isQueuePaused(conversationId)) {
-        logLLM(
-          `[processQueuedMessages] Queue is paused for ${conversationId}, stopping processing`,
-        )
-        return
-      }
-
-      // Peek at the next message without removing it
-      const queuedMessage = messageQueueService.peek(conversationId)
-      if (!queuedMessage) {
-        logLLM(
-          `[processQueuedMessages] No more pending messages in queue for ${conversationId}`,
-        )
-        // Debug: log the actual queue state
-        const allMessages = messageQueueService.getQueue(conversationId)
-        if (allMessages.length > 0) {
-          logLLM(
-            `[processQueuedMessages] Queue has ${allMessages.length} messages but peek returned null. First message status: ${allMessages[0]?.status}`,
-          )
-        }
-        return // No more messages in queue
-      }
-
+  await processManagedQueuedMessages({
+    conversationId,
+    startResumeRun: (options) => startDesktopResumeRun(options),
+    resolveStartSnoozed: () => {
+      const panelWindow = WINDOWS.get("panel")
+      const isPanelVisible = panelWindow?.isVisible() ?? false
       logLLM(
-        `[processQueuedMessages] Processing queued message ${queuedMessage.id} for ${conversationId}`,
+        `[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${!isPanelVisible}`,
       )
-
-      // Mark as processing - if this fails, the message was removed/modified between peek and now
-      const markingSucceeded = messageQueueService.markProcessing(
-        conversationId,
-        queuedMessage.id,
-      )
-      if (!markingSucceeded) {
-        logLLM(
-          `[processQueuedMessages] Message ${queuedMessage.id} was removed/modified before processing, re-checking queue`,
-        )
-        continue
-      }
-
-      try {
-        // Only add to conversation history if not already added (prevents duplicates on retry)
-        if (!queuedMessage.addedToHistory) {
-          // Add the queued message to the conversation
-          const addResult = await addManagedMessageToConversation(
-            conversationId,
-            queuedMessage.text,
-            "user",
-          )
-          // If adding to history failed (conversation not found/IO error), treat as failure
-          // Don't continue processing since the message wasn't recorded
-          if (!addResult) {
-            throw new Error("Failed to add message to conversation history")
-          }
-          // Mark as added to history so retries don't duplicate
-          messageQueueService.markAddedToHistory(
-            conversationId,
-            queuedMessage.id,
-          )
-        }
-
-        // Determine if we should start snoozed based on panel visibility
-        // If the panel is currently visible, the user is actively watching - don't snooze
-        // If the panel is hidden, process in background to avoid unwanted pop-ups
-        const panelWindow = WINDOWS.get("panel")
-        const isPanelVisible = panelWindow?.isVisible() ?? false
-        const shouldStartSnoozed = !isPanelVisible
-        logLLM(
-          `[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${shouldStartSnoozed}`,
-        )
-
-        // Prefer the exact session captured at enqueue time for strict same-session semantics.
-        // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
-        const fallbackSessionId =
-          agentSessionTracker.findSessionByConversationId(conversationId)
-        const candidateSessionIds = [
-          queuedMessage.sessionId,
-          fallbackSessionId,
-        ].filter(
-          (sessionId, index, list): sessionId is string =>
-            typeof sessionId === "string" &&
-            sessionId.length > 0 &&
-            list.indexOf(sessionId) === index,
-        )
-        const {
-          preparedContext: {
-            sessionId: existingSessionId,
-            reusedExistingSession,
-          },
-          runPromise,
-        } = await startDesktopResumeRun({
-          text: queuedMessage.text,
-          conversationId,
-          candidateSessionIds,
-          startSnoozed: shouldStartSnoozed,
-        })
-
-        if (reusedExistingSession && existingSessionId) {
-          if (
-            queuedMessage.sessionId &&
-            existingSessionId !== queuedMessage.sessionId
-          ) {
-            logLLM(
-              `[processQueuedMessages] Preferred queued session ${queuedMessage.sessionId} could not be revived, reusing fallback session ${existingSessionId}`,
-            )
-          } else {
-            logLLM(
-              `[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${shouldStartSnoozed}`,
-            )
-          }
-        } else if (queuedMessage.sessionId) {
-          logLLM(
-            `[processQueuedMessages] Preferred queued session ${queuedMessage.sessionId} could not be revived, starting a new runtime session`,
-          )
-        }
-
-        // Process with agent mode
-        // If panel is visible, user is watching - show the execution
-        // If panel is hidden, run in background without pop-ups
-        await runPromise
-
-        // Only remove the message after successful processing
-        messageQueueService.markProcessed(conversationId, queuedMessage.id)
-
-        // Continue to check for more queued messages
-      } catch (error) {
-        logLLM(
-          `[processQueuedMessages] Error processing queued message ${queuedMessage.id}:`,
-          error,
-        )
-        // Mark the message as failed so users can see it in the UI
-        const errorMessage = getErrorMessage(error)
-        messageQueueService.markFailed(
-          conversationId,
-          queuedMessage.id,
-          errorMessage,
-        )
-        // Stop processing - user needs to handle the failed message
-        break
-      }
-    }
-  } finally {
-    // Always release the lock when done
-    messageQueueService.releaseProcessingLock(conversationId)
-  }
+      return !isPanelVisible
+    },
+  })
 }
 
 type OpenFileResult = {
@@ -3335,22 +3194,17 @@ export const router = {
   getMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      return messageQueueService.getQueue(input.conversationId)
+      return getManagedMessageQueue(input.conversationId).messages
     }),
 
   getAllMessageQueues: t.procedure.action(async () => {
-    const queues = messageQueueService.getAllQueues()
-    // Include isPaused state for each queue
-    return queues.map((q) => ({
-      ...q,
-      isPaused: messageQueueService.isQueuePaused(q.conversationId),
-    }))
+    return getManagedMessageQueues()
   }),
 
   removeFromMessageQueue: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-      return messageQueueService.removeFromQueue(
+      return removeManagedMessageFromQueue(
         input.conversationId,
         input.messageId,
       )
@@ -3359,13 +3213,13 @@ export const router = {
   clearMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      return messageQueueService.clearQueue(input.conversationId)
+      return clearManagedMessageQueue(input.conversationId)
     }),
 
   reorderMessageQueue: t.procedure
     .input<{ conversationId: string; messageIds: string[] }>()
     .action(async ({ input }) => {
-      return messageQueueService.reorderQueue(
+      return reorderManagedMessageQueue(
         input.conversationId,
         input.messageIds,
       )
@@ -3374,21 +3228,14 @@ export const router = {
   updateQueuedMessageText: t.procedure
     .input<{ conversationId: string; messageId: string; text: string }>()
     .action(async ({ input }) => {
-      // Check if this was a failed message before updating
-      const queue = messageQueueService.getQueue(input.conversationId)
-      const message = queue.find((m) => m.id === input.messageId)
-      const wasFailed = message?.status === "failed"
-
-      const success = messageQueueService.updateMessageText(
+      const result = updateManagedQueuedMessageText(
         input.conversationId,
         input.messageId,
         input.text,
       )
-      if (!success) return false
+      if (!result.success) return false
 
-      // If this was a failed message that's now reset to pending,
-      // check if conversation is idle and trigger queue processing
-      if (wasFailed) {
+      if (result.shouldProcessQueue) {
         const activeSessionId = agentSessionTracker.findSessionByConversationId(
           input.conversationId,
         )
@@ -3400,7 +3247,6 @@ export const router = {
           }
         }
 
-        // Conversation is idle, trigger queue processing
         processQueuedMessages(input.conversationId).catch((err) => {
           logLLM(
             "[updateQueuedMessageText] Error processing queued messages:",
@@ -3415,30 +3261,17 @@ export const router = {
   retryQueuedMessage: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-      // Use resetToPending to reset failed message status without modifying text
-      // This works even for addedToHistory messages since we're not changing the text
-      const success = messageQueueService.resetToPending(
+      const result = retryManagedQueuedMessage(
         input.conversationId,
         input.messageId,
       )
-      if (!success) return false
+      if (!result.success) return false
 
-      // Check if conversation is idle (no active session)
-      const activeSessionId = agentSessionTracker.findSessionByConversationId(
-        input.conversationId,
-      )
-      if (activeSessionId) {
-        const session = agentSessionTracker.getSession(activeSessionId)
-        if (session && session.status === "active") {
-          // Session is active, queue will be processed when it completes
-          return true
-        }
+      if (result.shouldProcessQueue) {
+        processQueuedMessages(input.conversationId).catch((err) => {
+          logLLM("[retryQueuedMessage] Error processing queued messages:", err)
+        })
       }
-
-      // Conversation is idle, trigger queue processing
-      processQueuedMessages(input.conversationId).catch((err) => {
-        logLLM("[retryQueuedMessage] Error processing queued messages:", err)
-      })
 
       return true
     }),
@@ -3446,38 +3279,24 @@ export const router = {
   isMessageQueuePaused: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      return messageQueueService.isQueuePaused(input.conversationId)
+      return getManagedMessageQueue(input.conversationId).isPaused
     }),
 
   pauseMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      messageQueueService.pauseQueue(input.conversationId)
-      return true
+      return pauseManagedMessageQueue(input.conversationId)
     }),
 
   resumeMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      // Resume the queue
-      messageQueueService.resumeQueue(input.conversationId)
-
-      // Check if conversation is idle (no active session) and trigger queue processing
-      const activeSessionId = agentSessionTracker.findSessionByConversationId(
-        input.conversationId,
-      )
-      if (activeSessionId) {
-        const session = agentSessionTracker.getSession(activeSessionId)
-        if (session && session.status === "active") {
-          // Session is active, queue will be processed when it completes
-          return true
-        }
+      const result = resumeManagedMessageQueue(input.conversationId)
+      if (result.shouldProcessQueue) {
+        processQueuedMessages(input.conversationId).catch((err) => {
+          logLLM("[resumeMessageQueue] Error processing queued messages:", err)
+        })
       }
-
-      // Conversation is idle, trigger queue processing
-      processQueuedMessages(input.conversationId).catch((err) => {
-        logLLM("[resumeMessageQueue] Error processing queued messages:", err)
-      })
 
       return true
     }),

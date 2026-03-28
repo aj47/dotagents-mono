@@ -9,7 +9,12 @@ import readline from "readline"
 import { configStore } from "./config"
 import { mcpService } from "./mcp-service"
 import { toolApprovalManager } from "./state"
-import { startSharedPromptRun } from "./agent-mode-runner"
+import {
+  startSharedPromptRun,
+  startSharedResumeRun,
+  type PreparedPromptExecutionContext,
+  type PreparedResumeExecutionContext,
+} from "./agent-mode-runner"
 import type { AgentSession } from "./agent-session-tracker"
 import {
   clearManagedInactiveAgentSessions,
@@ -18,6 +23,19 @@ import {
   stopManagedAgentSession,
 } from "./agent-session-management"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
+import {
+  clearManagedMessageQueue,
+  getManagedMessageQueue,
+  getManagedMessageQueues,
+  pauseManagedMessageQueue,
+  processManagedQueuedMessages,
+  removeManagedMessageFromQueue,
+  resolveManagedQueuedMessageSelection,
+  resumeManagedMessageQueue,
+  retryManagedQueuedMessage,
+  updateManagedQueuedMessageText,
+  type ManagedMessageQueue,
+} from "./message-queue-management"
 import {
   createManagedLoop,
   deleteManagedLoop,
@@ -133,6 +151,7 @@ import type {
   ConversationHistoryItem,
   KnowledgeNote,
   LoopSummary,
+  QueuedMessage,
 } from "@shared/types"
 import type {
   BundleComponentSelection,
@@ -165,6 +184,7 @@ const SHOWN_CONVERSATION_MESSAGE_LIMIT = 12
 const SHOWN_MCP_SERVER_LOG_LIMIT = 20
 const SHOWN_KNOWLEDGE_NOTE_LIST_LIMIT = 25
 const SHOWN_AGENT_SESSION_LIMIT = 8
+const SHOWN_QUEUE_MESSAGE_LIMIT = 12
 let onShutdown: () => Promise<void> = async () => {
   process.exit(0)
 }
@@ -181,6 +201,115 @@ async function requestShutdown(message?: string) {
 
 function printColored(color: string, message: string) {
   console.log(`${color}${message}${colors.reset}`)
+}
+
+function createCliProgressPrinter() {
+  let lastShownStepId = ""
+  let lastShownIteration = 0
+
+  return (update: AgentProgressUpdate) => {
+    if (update.currentIteration > lastShownIteration) {
+      lastShownIteration = update.currentIteration
+      console.log(
+        `${colors.dim}  [Iteration ${update.currentIteration}/${update.maxIterations}]${colors.reset}`,
+      )
+    }
+
+    if (update.steps && update.steps.length > 0) {
+      const lastStep = update.steps[update.steps.length - 1]
+      if (lastStep.id !== lastShownStepId) {
+        lastShownStepId = lastStep.id
+        if (
+          lastStep.type === "tool_call" &&
+          lastStep.status === "in_progress"
+        ) {
+          printColored(colors.cyan, `  → Tool: ${lastStep.title}`)
+        } else if (lastStep.type === "tool_result") {
+          const statusColor =
+            lastStep.status === "completed" ? colors.green : colors.red
+          console.log(`${statusColor}  ✓ ${lastStep.title}${colors.reset}`)
+        } else if (lastStep.type === "completion") {
+          console.log(`${colors.dim}  ${lastStep.title}${colors.reset}`)
+        }
+      }
+    }
+  }
+}
+
+async function startCliPromptRun(prompt: string) {
+  const onProgress = createCliProgressPrinter()
+  let activeSessionId: string | undefined
+
+  const startedRun = await startSharedPromptRun({
+    prompt,
+    requestedConversationId: currentConversationId,
+    startSnoozed: true,
+    approvalMode: "inline",
+    onProgress,
+    onPreparedContext: ({
+      conversationId,
+      sessionId,
+    }: PreparedPromptExecutionContext) => {
+      currentConversationId = conversationId
+      activeSessionId = sessionId
+
+      toolApprovalManager.registerSessionApprovalHandler(
+        sessionId,
+        ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
+      )
+    },
+  })
+
+  return {
+    ...startedRun,
+    runPromise: startedRun.runPromise.finally(() => {
+      if (activeSessionId) {
+        toolApprovalManager.unregisterSessionApprovalHandler(activeSessionId)
+      }
+    }),
+  }
+}
+
+async function startCliResumeRun(options: {
+  text: string
+  conversationId: string
+  candidateSessionIds: string[]
+  startSnoozed: boolean
+}) {
+  const onProgress = createCliProgressPrinter()
+  let activeSessionId: string | undefined
+
+  const startedRun = await startSharedResumeRun({
+    ...options,
+    approvalMode: "inline",
+    onProgress,
+    onPreparedContext: ({
+      conversationId,
+      sessionId,
+    }: PreparedResumeExecutionContext) => {
+      if (conversationId) {
+        currentConversationId = conversationId
+      }
+      if (!sessionId) {
+        return
+      }
+
+      activeSessionId = sessionId
+      toolApprovalManager.registerSessionApprovalHandler(
+        sessionId,
+        ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
+      )
+    },
+  })
+
+  return {
+    ...startedRun,
+    runPromise: startedRun.runPromise.finally(() => {
+      if (activeSessionId) {
+        toolApprovalManager.unregisterSessionApprovalHandler(activeSessionId)
+      }
+    }),
+  }
 }
 
 function formatApprovalArguments(value: unknown): string {
@@ -238,6 +367,14 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/sessions${colors.reset}      - List active and recent tracked agent sessions
   ${colors.cyan}/session-stop <id>${colors.reset} - Stop one tracked agent session by ID or prefix
   ${colors.cyan}/sessions-clear${colors.reset} - Clear inactive sessions without queued follow-ups
+  ${colors.cyan}/queues${colors.reset}        - List conversations with queued messages
+  ${colors.cyan}/queue [id]${colors.reset}    - Show queued messages for the current or selected conversation
+  ${colors.cyan}/queue-edit <message-id> <text>${colors.reset} - Edit one queued message in the current conversation
+  ${colors.cyan}/queue-remove <message-id> [id]${colors.reset} - Remove one queued message
+  ${colors.cyan}/queue-retry <message-id> [id]${colors.reset} - Retry one failed queued message
+  ${colors.cyan}/queue-clear [id]${colors.reset} - Clear a conversation queue
+  ${colors.cyan}/queue-pause [id]${colors.reset} - Pause queue processing for a conversation
+  ${colors.cyan}/queue-resume [id]${colors.reset} - Resume queue processing for a conversation
   ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
   ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
   ${colors.cyan}/mcp${colors.reset}           - List MCP servers with live status and transport
@@ -1974,6 +2111,252 @@ function printSkills() {
   console.log()
 }
 
+function getQueuedMessageStatusColor(status: QueuedMessage["status"]): string {
+  switch (status) {
+    case "processing":
+      return colors.yellow
+    case "failed":
+      return colors.red
+    case "cancelled":
+      return colors.dim
+    case "pending":
+    default:
+      return colors.cyan
+  }
+}
+
+function formatQueuedMessagePreview(text: string, maxLength: number = 72): string {
+  const singleLineText = text.replace(/\s+/g, " ").trim()
+  if (singleLineText.length <= maxLength) {
+    return singleLineText
+  }
+
+  return `${singleLineText.slice(0, Math.max(maxLength - 1, 1))}…`
+}
+
+function formatQueuedMessageSelectionSummary(message: QueuedMessage): string {
+  return `${message.id} (${message.status}, ${formatQueuedMessagePreview(
+    message.text,
+    48,
+  )})`
+}
+
+async function resolveConversationQueueForCli(
+  selection: string | undefined,
+  options: {
+    requireMessages?: boolean
+  } = {},
+): Promise<{
+  conversation: ConversationHistoryItem
+  queue: ManagedMessageQueue
+} | null> {
+  const selectedConversation = await resolveConversationSelectionForCli(
+    selection?.trim() || currentConversationId,
+  )
+  if (!selectedConversation) {
+    return null
+  }
+
+  currentConversationId = selectedConversation.id
+  const queue = getManagedMessageQueue(selectedConversation.id)
+  if (options.requireMessages && queue.messages.length === 0) {
+    printColored(
+      colors.yellow,
+      `No queued messages for conversation ${selectedConversation.id}.`,
+    )
+    return null
+  }
+
+  return {
+    conversation: selectedConversation,
+    queue,
+  }
+}
+
+function resolveQueuedMessageForCli(
+  messages: QueuedMessage[],
+  selection: string,
+): QueuedMessage | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, "A queued message ID or prefix is required.")
+    return null
+  }
+
+  const { selectedMessage, ambiguousMessages } =
+    resolveManagedQueuedMessageSelection(messages, query)
+  if (selectedMessage) {
+    return selectedMessage
+  }
+
+  if (ambiguousMessages?.length) {
+    printColored(
+      colors.yellow,
+      `Queued message selector "${query}" matches multiple messages:`,
+    )
+    for (const message of ambiguousMessages.slice(0, SHOWN_QUEUE_MESSAGE_LIMIT)) {
+      console.log(`  ${formatQueuedMessageSelectionSummary(message)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `Queued message not found: ${query}`)
+  return null
+}
+
+function printMessageQueues(
+  queues: ManagedMessageQueue[],
+  conversationsById: Map<string, ConversationHistoryItem>,
+) {
+  console.log(`\n${colors.bold}Queued Conversations:${colors.reset}`)
+  if (queues.length === 0) {
+    console.log(`  ${colors.dim}(no queued messages)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const queue of queues) {
+    const conversation = conversationsById.get(queue.conversationId)
+    const label = conversation?.title || "(unknown conversation)"
+    const isCurrent = queue.conversationId === currentConversationId
+    const marker = isCurrent ? `${colors.green} *${colors.reset}` : "  "
+    const failedCount = queue.messages.filter(
+      (message) => message.status === "failed",
+    ).length
+    const processingCount = queue.messages.filter(
+      (message) => message.status === "processing",
+    ).length
+    const stateLabels: string[] = []
+    if (queue.isPaused) {
+      stateLabels.push("paused")
+    }
+    if (processingCount > 0) {
+      stateLabels.push(`${processingCount} processing`)
+    }
+    if (failedCount > 0) {
+      stateLabels.push(`${failedCount} failed`)
+    }
+    const stateSummary =
+      stateLabels.length > 0
+        ? ` ${colors.dim}[${stateLabels.join(", ")}]${colors.reset}`
+        : ""
+
+    console.log(
+      `${marker} ${queue.conversationId}: ${label}${stateSummary} ${colors.dim}(${queue.messages.length} queued)${colors.reset}`,
+    )
+  }
+
+  console.log()
+  console.log(
+    `${colors.dim}Use /queue [conversation-id-prefix] to inspect one queue, then /queue-edit, /queue-remove, /queue-retry, /queue-clear, /queue-pause, or /queue-resume to manage it.${colors.reset}`,
+  )
+  console.log()
+}
+
+function printConversationQueue(
+  conversation: ConversationHistoryItem,
+  queue: ManagedMessageQueue,
+) {
+  console.log(`\n${colors.bold}Queued Messages:${colors.reset}`)
+  console.log(`  ${conversation.title}`)
+  console.log(
+    `  ${colors.dim}${conversation.id}${colors.reset}${queue.isPaused ? ` ${colors.dim}[paused]${colors.reset}` : ""}`,
+  )
+
+  if (queue.messages.length === 0) {
+    console.log(`  ${colors.dim}(no queued messages)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  console.log()
+  for (const message of queue.messages.slice(0, SHOWN_QUEUE_MESSAGE_LIMIT)) {
+    const statusColor = getQueuedMessageStatusColor(message.status)
+    const statusLabel = `${statusColor}${message.status}${colors.reset}`
+    const historyLabel = message.addedToHistory
+      ? ` ${colors.dim}[history added]${colors.reset}`
+      : ""
+    console.log(
+      `  ${message.id}: ${statusLabel}${historyLabel} ${colors.dim}(${new Date(message.createdAt).toLocaleString()})${colors.reset}`,
+    )
+    console.log(`    ${message.text}`)
+    if (message.errorMessage) {
+      console.log(`    ${colors.red}Error: ${message.errorMessage}${colors.reset}`)
+    }
+  }
+
+  if (queue.messages.length > SHOWN_QUEUE_MESSAGE_LIMIT) {
+    console.log()
+    console.log(
+      `${colors.dim}Showing the first ${SHOWN_QUEUE_MESSAGE_LIMIT} queued messages.${colors.reset}`,
+    )
+  }
+
+  console.log()
+  console.log(
+    `${colors.dim}Use /queue-edit, /queue-remove, /queue-retry, /queue-clear, /queue-pause, or /queue-resume while this conversation is selected.${colors.reset}`,
+  )
+  console.log()
+}
+
+async function printQueuedConversations(): Promise<void> {
+  const queues = getManagedMessageQueues()
+  const history = await getManagedConversationHistory()
+  const conversationsById = new Map(
+    history.map((conversation) => [conversation.id, conversation]),
+  )
+  printMessageQueues(queues, conversationsById)
+}
+
+async function processCliQueuedMessages(conversationId: string): Promise<void> {
+  if (isProcessing) {
+    printColored(
+      colors.red,
+      "Agent is already processing. Use /stop to cancel before resuming a queue.",
+    )
+    return
+  }
+
+  isProcessing = true
+  try {
+    console.log(`${colors.dim}Processing queued messages...${colors.reset}`)
+    const result = await processManagedQueuedMessages({
+      conversationId,
+      startResumeRun: (options) => startCliResumeRun(options),
+      resolveStartSnoozed: () => true,
+      onQueuedMessageStart: (message) => {
+        printColored(
+          colors.cyan,
+          `Queued message ${message.id}: ${formatQueuedMessagePreview(message.text)}`,
+        )
+      },
+      onQueuedMessageComplete: (_message, result) => {
+        console.log()
+        printColored(colors.green, result.content)
+        console.log()
+      },
+      onQueuedMessageFailure: (message, errorMessage) => {
+        printColored(
+          colors.red,
+          `Queued message ${message.id} failed: ${errorMessage}`,
+        )
+      },
+    })
+
+    if (result.processedCount > 0 && !result.failedMessageId) {
+      printColored(
+        colors.green,
+        `Processed ${result.processedCount} queued message${result.processedCount === 1 ? "" : "s"}.`,
+      )
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    printColored(colors.red, `Error: ${errorMessage}`)
+  } finally {
+    isProcessing = false
+  }
+}
+
 async function printConversations() {
   const history = await getManagedConversationHistory()
   const sessionState = getConfiguredConversationSessionState()
@@ -1999,7 +2382,7 @@ async function printConversations() {
     }
     console.log()
     console.log(
-      `${colors.dim}Use /use, /show, /pin, /archive, or /delete with a conversation ID prefix to manage it.${colors.reset}`,
+      `${colors.dim}Use /use, /show, /queue, /pin, /archive, or /delete with a conversation ID prefix to manage it.${colors.reset}`,
     )
   }
   console.log()
@@ -2051,6 +2434,262 @@ async function resolveConversationSelectionForCli(
 
   printColored(colors.red, `Conversation not found: ${query}`)
   return null
+}
+
+async function handleShowMessageQueue(selection: string): Promise<void> {
+  const resolvedQueue = await resolveConversationQueueForCli(selection, {
+    requireMessages: false,
+  })
+  if (!resolvedQueue) {
+    return
+  }
+
+  printConversationQueue(resolvedQueue.conversation, resolvedQueue.queue)
+}
+
+async function handleEditQueuedMessage(input: string): Promise<void> {
+  const trimmedInput = input.trim()
+  const separatorIndex = trimmedInput.indexOf(" ")
+  if (separatorIndex < 0) {
+    printColored(
+      colors.yellow,
+      "Usage: /queue-edit <message-id-or-prefix> <new-text>",
+    )
+    return
+  }
+
+  const messageSelection = trimmedInput.slice(0, separatorIndex).trim()
+  const nextText = trimmedInput.slice(separatorIndex + 1).trim()
+  if (!messageSelection || !nextText) {
+    printColored(
+      colors.yellow,
+      "Usage: /queue-edit <message-id-or-prefix> <new-text>",
+    )
+    return
+  }
+
+  const resolvedQueue = await resolveConversationQueueForCli(undefined, {
+    requireMessages: true,
+  })
+  if (!resolvedQueue) {
+    return
+  }
+
+  const selectedMessage = resolveQueuedMessageForCli(
+    resolvedQueue.queue.messages,
+    messageSelection,
+  )
+  if (!selectedMessage) {
+    return
+  }
+
+  if (selectedMessage.status === "processing") {
+    printColored(
+      colors.red,
+      "Cannot edit a queued message while it is processing.",
+    )
+    return
+  }
+  if (selectedMessage.addedToHistory) {
+    printColored(
+      colors.red,
+      "Cannot edit a queued message after it was added to conversation history.",
+    )
+    return
+  }
+
+  const wasFailed = selectedMessage.status === "failed"
+  const result = updateManagedQueuedMessageText(
+    resolvedQueue.conversation.id,
+    selectedMessage.id,
+    nextText,
+  )
+  if (!result.success) {
+    printColored(colors.red, "Failed to update queued message.")
+    return
+  }
+
+  if (result.shouldProcessQueue) {
+    await processCliQueuedMessages(resolvedQueue.conversation.id)
+    return
+  }
+
+  if (wasFailed) {
+    printColored(
+      colors.green,
+      `Updated queued message ${selectedMessage.id}. It will retry after the active session completes.`,
+    )
+    return
+  }
+
+  printColored(colors.green, `Updated queued message ${selectedMessage.id}.`)
+}
+
+async function handleRemoveQueuedMessage(input: string): Promise<void> {
+  const [messageSelection, conversationSelection] = input.trim().split(/\s+/, 2)
+  if (!messageSelection) {
+    printColored(
+      colors.yellow,
+      "Usage: /queue-remove <message-id-or-prefix> [conversation-id-or-prefix]",
+    )
+    return
+  }
+
+  const resolvedQueue = await resolveConversationQueueForCli(
+    conversationSelection,
+    {
+      requireMessages: true,
+    },
+  )
+  if (!resolvedQueue) {
+    return
+  }
+
+  const selectedMessage = resolveQueuedMessageForCli(
+    resolvedQueue.queue.messages,
+    messageSelection,
+  )
+  if (!selectedMessage) {
+    return
+  }
+
+  if (selectedMessage.status === "processing") {
+    printColored(
+      colors.red,
+      "Cannot remove a queued message while it is processing.",
+    )
+    return
+  }
+
+  const removed = removeManagedMessageFromQueue(
+    resolvedQueue.conversation.id,
+    selectedMessage.id,
+  )
+  if (!removed) {
+    printColored(colors.red, "Failed to remove queued message.")
+    return
+  }
+
+  printColored(colors.green, `Removed queued message ${selectedMessage.id}.`)
+}
+
+async function handleRetryQueuedMessage(input: string): Promise<void> {
+  const [messageSelection, conversationSelection] = input.trim().split(/\s+/, 2)
+  if (!messageSelection) {
+    printColored(
+      colors.yellow,
+      "Usage: /queue-retry <message-id-or-prefix> [conversation-id-or-prefix]",
+    )
+    return
+  }
+
+  const resolvedQueue = await resolveConversationQueueForCli(
+    conversationSelection,
+    {
+      requireMessages: true,
+    },
+  )
+  if (!resolvedQueue) {
+    return
+  }
+
+  const selectedMessage = resolveQueuedMessageForCli(
+    resolvedQueue.queue.messages,
+    messageSelection,
+  )
+  if (!selectedMessage) {
+    return
+  }
+
+  if (selectedMessage.status !== "failed") {
+    printColored(
+      colors.red,
+      "Only failed queued messages can be retried.",
+    )
+    return
+  }
+
+  const result = retryManagedQueuedMessage(
+    resolvedQueue.conversation.id,
+    selectedMessage.id,
+  )
+  if (!result.success) {
+    printColored(colors.red, "Failed to retry queued message.")
+    return
+  }
+
+  if (result.shouldProcessQueue) {
+    await processCliQueuedMessages(resolvedQueue.conversation.id)
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Queued message ${selectedMessage.id} reset to pending. It will retry after the active session completes.`,
+  )
+}
+
+async function handleClearMessageQueue(selection: string): Promise<void> {
+  const resolvedQueue = await resolveConversationQueueForCli(selection, {
+    requireMessages: true,
+  })
+  if (!resolvedQueue) {
+    return
+  }
+
+  const cleared = clearManagedMessageQueue(resolvedQueue.conversation.id)
+  if (!cleared) {
+    printColored(
+      colors.red,
+      "Cannot clear the queue while a queued message is processing.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Cleared queued messages for ${resolvedQueue.conversation.id}.`,
+  )
+}
+
+async function handlePauseMessageQueue(selection: string): Promise<void> {
+  const resolvedQueue = await resolveConversationQueueForCli(selection, {
+    requireMessages: true,
+  })
+  if (!resolvedQueue) {
+    return
+  }
+
+  pauseManagedMessageQueue(resolvedQueue.conversation.id)
+  printColored(
+    colors.green,
+    `Paused queue for ${resolvedQueue.conversation.id}.`,
+  )
+}
+
+async function handleResumeMessageQueue(selection: string): Promise<void> {
+  const resolvedQueue = await resolveConversationQueueForCli(selection, {
+    requireMessages: true,
+  })
+  if (!resolvedQueue) {
+    return
+  }
+
+  const result = resumeManagedMessageQueue(resolvedQueue.conversation.id)
+  if (!result.success) {
+    printColored(colors.red, "Failed to resume the queue.")
+    return
+  }
+
+  if (result.shouldProcessQueue) {
+    await processCliQueuedMessages(resolvedQueue.conversation.id)
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Resumed queue for ${resolvedQueue.conversation.id}. It will continue after the active session completes.`,
+  )
 }
 
 async function handleUseConversation(selection: string): Promise<void> {
@@ -3499,6 +4138,30 @@ async function handleSlashCommand(input: string): Promise<boolean> {
     case "/sessions-clear":
       handleClearInactiveAgentSessions()
       return true
+    case "/queues":
+      await printQueuedConversations()
+      return true
+    case "/queue":
+      await handleShowMessageQueue(argumentsText)
+      return true
+    case "/queue-edit":
+      await handleEditQueuedMessage(argumentsText)
+      return true
+    case "/queue-remove":
+      await handleRemoveQueuedMessage(argumentsText)
+      return true
+    case "/queue-retry":
+      await handleRetryQueuedMessage(argumentsText)
+      return true
+    case "/queue-clear":
+      await handleClearMessageQueue(argumentsText)
+      return true
+    case "/queue-pause":
+      await handlePauseMessageQueue(argumentsText)
+      return true
+    case "/queue-resume":
+      await handleResumeMessageQueue(argumentsText)
+      return true
     case "/settings":
       printSettings()
       return true
@@ -3722,63 +4385,10 @@ async function runAgentCLI(prompt: string): Promise<void> {
   }
 
   isProcessing = true
-  let activeSessionId: string | undefined
   try {
-    // Track last shown step to avoid duplicates
-    let lastShownStepId = ""
-    let lastShownIteration = 0
-
-    // Progress callback for terminal output
-    const onProgress = (update: AgentProgressUpdate) => {
-      // Show iteration changes
-      if (update.currentIteration > lastShownIteration) {
-        lastShownIteration = update.currentIteration
-        console.log(
-          `${colors.dim}  [Iteration ${update.currentIteration}/${update.maxIterations}]${colors.reset}`,
-        )
-      }
-
-      // Format progress updates for terminal
-      if (update.steps && update.steps.length > 0) {
-        const lastStep = update.steps[update.steps.length - 1]
-        // Only show new steps (avoid duplicates)
-        if (lastStep.id !== lastShownStepId) {
-          lastShownStepId = lastStep.id
-          if (
-            lastStep.type === "tool_call" &&
-            lastStep.status === "in_progress"
-          ) {
-            printColored(colors.cyan, `  → Tool: ${lastStep.title}`)
-          } else if (lastStep.type === "tool_result") {
-            const statusColor =
-              lastStep.status === "completed" ? colors.green : colors.red
-            console.log(`${statusColor}  ✓ ${lastStep.title}${colors.reset}`)
-          } else if (lastStep.type === "completion") {
-            console.log(`${colors.dim}  ${lastStep.title}${colors.reset}`)
-          }
-        }
-      }
-    }
-
     console.log(`${colors.dim}Processing...${colors.reset}`)
 
-    const { runPromise } = await startSharedPromptRun({
-      prompt,
-      requestedConversationId: currentConversationId,
-      startSnoozed: true,
-      approvalMode: "inline",
-      onProgress,
-      onPreparedContext: ({ conversationId, sessionId }) => {
-        currentConversationId = conversationId
-        activeSessionId = sessionId
-
-        toolApprovalManager.registerSessionApprovalHandler(
-          sessionId,
-          ({ toolName, arguments: args }) =>
-            promptForToolApproval(toolName, args),
-        )
-      },
-    })
+    const { runPromise } = await startCliPromptRun(prompt)
     const agentResult = await runPromise
 
     // Print the response
@@ -3789,9 +4399,6 @@ async function runAgentCLI(prompt: string): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : String(error)
     printColored(colors.red, `Error: ${errorMessage}`)
   } finally {
-    if (activeSessionId) {
-      toolApprovalManager.unregisterSessionApprovalHandler(activeSessionId)
-    }
     isProcessing = false
   }
 }

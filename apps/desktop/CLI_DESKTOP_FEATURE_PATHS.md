@@ -102,6 +102,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedAgentSessions(...)`, `resolveManagedAgentSessionSelection(...)`, `clearManagedInactiveAgentSessions(...)`, and `stopManagedAgentSession(...)`
 - Current callers: `headless-cli.ts` `/status`, `/sessions`, `/session-stop`, and `/sessions-clear`; `tipc.ts` `getAgentSessions(...)`, `clearInactiveSessions(...)`, and `stopAgentSession(...)`; plus the renderer session surfaces that reuse those `tipc` handlers
 
+## Shared message queue management
+
+- Shared queue-management file: `apps/desktop/src/main/message-queue-management.ts`
+- Shared helpers: `getManagedMessageQueue(...)`, `getManagedMessageQueues(...)`, `resolveManagedQueuedMessageSelection(...)`, `removeManagedMessageFromQueue(...)`, `clearManagedMessageQueue(...)`, `reorderManagedMessageQueue(...)`, `updateManagedQueuedMessageText(...)`, `retryManagedQueuedMessage(...)`, `pauseManagedMessageQueue(...)`, `resumeManagedMessageQueue(...)`, and `processManagedQueuedMessages(...)`
+- Current callers: `headless-cli.ts` `/queues`, `/queue`, `/queue-edit`, `/queue-remove`, `/queue-retry`, `/queue-clear`, `/queue-pause`, and `/queue-resume`; `tipc.ts` message-queue CRUD/pause/resume handlers plus the desktop queued-follow-up processor; and the renderer `message-queue-panel.tsx` / session-tile queue controls that still route through those `tipc` handlers
+
 ## Shared conversation management
 
 - Shared management file: `apps/desktop/src/main/conversation-management.ts`
@@ -347,6 +353,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `tipc.ts` `getProfiles(...)`, `getProfile(...)`, `getCurrentProfile(...)`, `createProfile(...)`, `updateProfile(...)`, `deleteProfile(...)`, and `setCurrentProfile(...)` now route through the managed legacy-profile adapters in `agent-profile-management.ts`, so the backward-compatible desktop profile surface reuses the same current-profile guard plus shared agent-profile create/update/delete validation path that headless and remote profile management already follow before results get reshaped into the legacy payload format.
 52. Headless CLI + desktop agent session management
     `headless-cli.ts` now routes `/status`, `/sessions`, `/session-stop <session-id-or-prefix>`, and `/sessions-clear` through `agent-session-management.ts`, while `tipc.ts` `getAgentSessions(...)`, `stopAgentSession(...)`, and `clearInactiveSessions(...)` reuse the same tracked-session snapshot plus stop/cleanup helpers, so terminal session inspection and per-session stop/clear flows stay aligned with the desktop Sessions page, sidebar, and stop buttons before presentation diverges.
+53. Headless CLI + desktop message queue controls
+    `headless-cli.ts` now routes `/queues`, `/queue [conversation-id-prefix]`, `/queue-edit <message-id-or-prefix> <text>`, `/queue-remove <message-id-or-prefix> [conversation-id-prefix]`, `/queue-retry <message-id-or-prefix> [conversation-id-prefix]`, `/queue-clear [conversation-id-prefix]`, `/queue-pause [conversation-id-prefix]`, and `/queue-resume [conversation-id-prefix]` through `message-queue-management.ts`, while `tipc.ts` message-queue CRUD/pause/resume handlers plus the desktop queued-follow-up processor now reuse the same queue snapshot, message selection, edit/retry/pause/resume decisions, and shared `processManagedQueuedMessages(...)` loop before the renderer queue panel or terminal formatting diverges.
 
 ## Parity rules
 
@@ -355,6 +363,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Fresh persisted prompt entrypoints share one launcher: `startSharedPromptRun(...)`.
 - Resume-only entrypoints share one launcher: `startSharedResumeRun(...)`.
 - CLI conversation selection is decided in one place: `resolveConversationHistorySelection(...)`.
+- Queued message selection, retry/edit recovery, and queued follow-up replay are decided in one place: `resolveManagedQueuedMessageSelection(...)`, `updateManagedQueuedMessageText(...)`, `retryManagedQueuedMessage(...)`, `resumeManagedMessageQueue(...)`, and `processManagedQueuedMessages(...)`.
 - Conversation/session bootstrap is decided in one place: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`.
 - Queued follow-ups and ACP parent-resume nudges intentionally bypass `preparePromptExecutionContext(...)` and reuse `prepareResumeExecutionContext(...)` / `startSharedResumeRun(...)` so they do not duplicate persisted user turns while still sharing session revival and history loading.
 - Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
@@ -405,9 +414,11 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, tracked agent-session management, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI bundle management, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, tracked agent-session management, headless CLI message-queue controls, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI bundle management, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/agent-session-management.test.ts`
   Confirms shared tracked-session snapshots, exact/prefix selection, queued-follow-up cleanup protection, and per-session stop behavior stay aligned for headless CLI session commands and desktop session actions.
+- `apps/desktop/src/main/message-queue-management.test.ts`
+  Confirms shared queue snapshots, queued-message selection, failed-message retry/edit recovery, and queued follow-up replay stay aligned for headless CLI queue commands and desktop queue handlers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner, routes current-profile catalog/switch endpoints plus knowledge-note CRUD through the shared management helpers, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
 - `apps/desktop/src/main/knowledge-note-management.test.ts`
