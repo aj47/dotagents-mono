@@ -90,6 +90,10 @@ const sandboxManagementSource = readFileSync(
   new URL("./sandbox-management.ts", import.meta.url),
   "utf8",
 )
+const localProviderManagementSource = readFileSync(
+  new URL("./local-provider-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -397,9 +401,13 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("resolveManagedAgentSessionSelection(")
     expect(headlessCliSource).toContain("await stopManagedAgentSession(")
     expect(headlessCliSource).toContain("clearManagedInactiveAgentSessions()")
-    expect(tipcSource).toContain("const { clearedCount } = clearManagedInactiveAgentSessions()")
+    expect(tipcSource).toContain(
+      "const { clearedCount } = clearManagedInactiveAgentSessions()",
+    )
     expect(tipcSource).toContain("return getManagedAgentSessions()")
-    expect(tipcSource).toContain("await stopManagedAgentSession(input.sessionId)")
+    expect(tipcSource).toContain(
+      "await stopManagedAgentSession(input.sessionId)",
+    )
     expect(docsSource).toContain("## Shared agent session management")
     expect(docsSource).toContain("`/sessions`")
     expect(docsSource).toContain("`/session-stop`")
@@ -605,7 +613,9 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/agent-import":')
     expect(headlessCliSource).toContain('case "/agent-import-file":')
     expect(headlessCliSource).toContain("exportManagedAgentProfile(profile.id)")
-    expect(headlessCliSource).toContain("importManagedAgentProfile(profileJson)")
+    expect(headlessCliSource).toContain(
+      "importManagedAgentProfile(profileJson)",
+    )
     expect(tipcSource).toContain(
       "const result = exportManagedAgentProfile(input.id)",
     )
@@ -819,7 +829,9 @@ describe("CLI and desktop feature paths", () => {
     expect(tipcSource).toContain("return getManagedLegacyProfiles()")
     expect(tipcSource).toContain("return getManagedLegacyProfile(input.id)")
     expect(tipcSource).toContain("return getManagedCurrentLegacyProfile()")
-    expect(tipcSource).toContain("const result = createManagedLegacyProfile(input)")
+    expect(tipcSource).toContain(
+      "const result = createManagedLegacyProfile(input)",
+    )
     expect(tipcSource).toContain("const result = updateManagedLegacyProfile(")
     expect(tipcSource).toContain("return deleteManagedLegacyProfile(input.id)")
     expect(tipcSource).toContain(
@@ -978,15 +990,11 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(tipcSource).toContain("return getManagedBundleExportableItems()")
     expect(tipcSource).toContain("return exportManagedBundleToFile(")
-    expect(tipcSource).toContain(
-      "return generateManagedBundlePublishPayload(",
-    )
+    expect(tipcSource).toContain("return generateManagedBundlePublishPayload(")
     expect(tipcSource).toContain(
       "return previewManagedBundleWithConflicts(input.filePath)",
     )
-    expect(tipcSource).toContain(
-      "return importManagedBundle(input.filePath, {",
-    )
+    expect(tipcSource).toContain("return importManagedBundle(input.filePath, {")
     expect(tipcSource).toContain(
       "await refreshRuntimeAfterManagedBundleImport()",
     )
@@ -1033,9 +1041,7 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("saveManagedSandboxBaseline()")
     expect(headlessCliSource).toContain("saveManagedCurrentSandboxSlot(")
     expect(headlessCliSource).toContain("await switchManagedSandboxSlot(")
-    expect(headlessCliSource).toContain(
-      "await restoreManagedSandboxBaseline()",
-    )
+    expect(headlessCliSource).toContain("await restoreManagedSandboxBaseline()")
     expect(headlessCliSource).toContain("deleteManagedSandboxSlot(")
     expect(headlessCliSource).toContain("renameManagedSandboxSlot(")
     expect(headlessCliSource).toContain("await importManagedBundleToSandbox(")
@@ -1100,6 +1106,64 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("`/whatsapp-logout`")
   })
 
+  it("shares local provider model management across headless and desktop surfaces", () => {
+    expect(localProviderManagementSource).toContain(
+      "export async function getManagedParakeetModelStatus()",
+    )
+    expect(localProviderManagementSource).toContain(
+      "export async function downloadManagedParakeetModel(",
+    )
+    expect(localProviderManagementSource).toContain(
+      "export async function getManagedKittenModelStatus()",
+    )
+    expect(localProviderManagementSource).toContain(
+      "export async function downloadManagedKittenModel(",
+    )
+    expect(localProviderManagementSource).toContain(
+      "export async function getManagedSupertonicModelStatus()",
+    )
+    expect(localProviderManagementSource).toContain(
+      "export async function downloadManagedSupertonicModel(",
+    )
+    expect(headlessCliSource).toContain('case "/parakeet-status":')
+    expect(headlessCliSource).toContain('case "/parakeet-download":')
+    expect(headlessCliSource).toContain('case "/kitten-status":')
+    expect(headlessCliSource).toContain('case "/kitten-download":')
+    expect(headlessCliSource).toContain('case "/supertonic-status":')
+    expect(headlessCliSource).toContain('case "/supertonic-download":')
+    expect(headlessCliSource).toContain("getManagedParakeetModelStatus")
+    expect(headlessCliSource).toContain("downloadManagedParakeetModel")
+    expect(headlessCliSource).toContain("getManagedKittenModelStatus")
+    expect(headlessCliSource).toContain("downloadManagedKittenModel")
+    expect(headlessCliSource).toContain("getManagedSupertonicModelStatus")
+    expect(headlessCliSource).toContain("downloadManagedSupertonicModel")
+    expect(tipcSource).toContain("return getManagedParakeetModelStatus()")
+    expect(tipcSource).toContain("return downloadManagedParakeetModel()")
+    expect(tipcSource).toContain("return getManagedKittenModelStatus()")
+    expect(tipcSource).toContain("return downloadManagedKittenModel(")
+    expect(tipcSource).toContain("return getManagedSupertonicModelStatus()")
+    expect(tipcSource).toContain("return downloadManagedSupertonicModel(")
+    expect(settingsProvidersSource).toContain(
+      'invoke("getParakeetModelStatus")',
+    )
+    expect(settingsProvidersSource).toContain('invoke("downloadParakeetModel")')
+    expect(settingsProvidersSource).toContain('invoke("getKittenModelStatus")')
+    expect(settingsProvidersSource).toContain('invoke("downloadKittenModel")')
+    expect(settingsProvidersSource).toContain(
+      'invoke("getSupertonicModelStatus")',
+    )
+    expect(settingsProvidersSource).toContain(
+      'invoke("downloadSupertonicModel")',
+    )
+    expect(docsSource).toContain("## Shared local provider model management")
+    expect(docsSource).toContain("`/parakeet-status`")
+    expect(docsSource).toContain("`/parakeet-download`")
+    expect(docsSource).toContain("`/kitten-status`")
+    expect(docsSource).toContain("`/kitten-download`")
+    expect(docsSource).toContain("`/supertonic-status`")
+    expect(docsSource).toContain("`/supertonic-download`")
+  })
+
   it("shares remote-access management across headless and desktop surfaces", () => {
     expect(remoteAccessManagementSource).toContain(
       "export function getManagedRemoteServerStatus()",
@@ -1132,14 +1196,14 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/cloudflare-stop":')
     expect(headlessCliSource).toContain('case "/cloudflare-list":')
     expect(headlessCliSource).toContain("getManagedRemoteServerStatus()")
-    expect(headlessCliSource).toContain("await printManagedRemoteServerQrCode()")
+    expect(headlessCliSource).toContain(
+      "await printManagedRemoteServerQrCode()",
+    )
     expect(headlessCliSource).toContain(
       "await startManagedConfiguredCloudflareTunnel()",
     )
     expect(headlessCliSource).toContain("await stopManagedCloudflareTunnel()")
-    expect(headlessCliSource).toContain(
-      "await listManagedCloudflareTunnels()",
-    )
+    expect(headlessCliSource).toContain("await listManagedCloudflareTunnels()")
     expect(headlessCliSource).toContain(
       "await checkManagedCloudflaredInstalled()",
     )
@@ -1148,7 +1212,9 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(tipcSource).toContain("return checkManagedCloudflaredInstalled()")
     expect(tipcSource).toContain("return startManagedCloudflareQuickTunnel()")
-    expect(tipcSource).toContain("return startManagedCloudflareNamedTunnel(input)")
+    expect(tipcSource).toContain(
+      "return startManagedCloudflareNamedTunnel(input)",
+    )
     expect(tipcSource).toContain("return stopManagedCloudflareTunnel()")
     expect(tipcSource).toContain("return getManagedCloudflareTunnelStatus()")
     expect(tipcSource).toContain("return listManagedCloudflareTunnels()")
@@ -1215,12 +1281,20 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("getManagedMessageQueue(")
     expect(headlessCliSource).toContain("resolveManagedQueuedMessageSelection(")
     expect(headlessCliSource).toContain("await processManagedQueuedMessages({")
-    expect(headlessCliSource).toContain("startResumeRun: (options) => startCliResumeRun(options)")
+    expect(headlessCliSource).toContain(
+      "startResumeRun: (options) => startCliResumeRun(options)",
+    )
     expect(tipcSource).toContain("return getManagedMessageQueues()")
-    expect(tipcSource).toContain("return getManagedMessageQueue(input.conversationId).messages")
-    expect(tipcSource).toContain("const result = updateManagedQueuedMessageText(")
+    expect(tipcSource).toContain(
+      "return getManagedMessageQueue(input.conversationId).messages",
+    )
+    expect(tipcSource).toContain(
+      "const result = updateManagedQueuedMessageText(",
+    )
     expect(tipcSource).toContain("const result = retryManagedQueuedMessage(")
-    expect(tipcSource).toContain("const result = resumeManagedMessageQueue(input.conversationId)")
+    expect(tipcSource).toContain(
+      "const result = resumeManagedMessageQueue(input.conversationId)",
+    )
     expect(tipcSource).toContain("await processManagedQueuedMessages({")
     expect(docsSource).toContain("## Shared message queue management")
   })
@@ -1325,8 +1399,12 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("getManagedSettingsSnapshot()")
     expect(headlessCliSource).toContain("getManagedSettingsUpdates(payload)")
     expect(headlessCliSource).toContain("await saveManagedConfig(updates, {")
-    expect(remoteServerSource).toContain("return reply.send(getManagedSettingsSnapshot())")
-    expect(remoteServerSource).toContain("const updates = getManagedSettingsUpdates(body)")
+    expect(remoteServerSource).toContain(
+      "return reply.send(getManagedSettingsSnapshot())",
+    )
+    expect(remoteServerSource).toContain(
+      "const updates = getManagedSettingsUpdates(body)",
+    )
     expect(remoteServerSource).toContain("await saveManagedConfig(updates, {")
     expect(tipcSource).toContain("await saveManagedConfig(input.config, {")
   })

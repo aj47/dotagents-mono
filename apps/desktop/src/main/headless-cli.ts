@@ -48,6 +48,15 @@ import {
   type ManagedLoopResult,
 } from "./loop-management"
 import {
+  downloadManagedKittenModel,
+  downloadManagedParakeetModel,
+  downloadManagedSupertonicModel,
+  getManagedKittenModelStatus,
+  getManagedParakeetModelStatus,
+  getManagedSupertonicModelStatus,
+  type ManagedLocalProviderModelStatus,
+} from "./local-provider-management"
+import {
   getManagedMcpServerLogs,
   getManagedMcpServerSummary,
   getManagedMcpServerSummaries,
@@ -285,7 +294,8 @@ async function startCliPromptRun(prompt: string) {
 
       toolApprovalManager.registerSessionApprovalHandler(
         sessionId,
-        ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
+        ({ toolName, arguments: args }) =>
+          promptForToolApproval(toolName, args),
       )
     },
   })
@@ -327,7 +337,8 @@ async function startCliResumeRun(options: {
       activeSessionId = sessionId
       toolApprovalManager.registerSessionApprovalHandler(
         sessionId,
-        ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
+        ({ toolName, arguments: args }) =>
+          promptForToolApproval(toolName, args),
       )
     },
   })
@@ -407,6 +418,12 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/queue-resume [id]${colors.reset} - Resume queue processing for a conversation
   ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
   ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
+  ${colors.cyan}/parakeet-status${colors.reset} - Show the local Parakeet STT model status
+  ${colors.cyan}/parakeet-download${colors.reset} - Download the local Parakeet STT model
+  ${colors.cyan}/kitten-status${colors.reset} - Show the local Kitten TTS model status
+  ${colors.cyan}/kitten-download${colors.reset} - Download the local Kitten TTS model
+  ${colors.cyan}/supertonic-status${colors.reset} - Show the local Supertonic TTS model status
+  ${colors.cyan}/supertonic-download${colors.reset} - Download the local Supertonic TTS model
   ${colors.cyan}/remote-status${colors.reset} - Show remote-server bind, pairing URL, and last error
   ${colors.cyan}/remote-qr${colors.reset}     - Print the remote-server pairing QR code
   ${colors.cyan}/cloudflare-status${colors.reset} - Show Cloudflare install/login/tunnel status
@@ -1533,6 +1550,148 @@ async function handleEditSettings(input: string): Promise<void> {
   printColored(colors.green, `Updated settings: ${updatedKeys.join(", ")}`)
 }
 
+function printLocalProviderModelStatus(
+  label: string,
+  status: ManagedLocalProviderModelStatus,
+): void {
+  console.log(`\n${colors.bold}${label} Model:${colors.reset}`)
+  console.log(
+    `  Downloaded: ${status.downloaded ? colors.green + "yes" : colors.yellow + "no"}${colors.reset}`,
+  )
+  console.log(
+    `  Downloading: ${status.downloading ? colors.yellow + "yes" : colors.dim + "no"}${colors.reset}`,
+  )
+
+  if (status.downloading || status.progress > 0) {
+    console.log(
+      `  Progress: ${colors.cyan}${Math.round(status.progress * 100)}%${colors.reset}`,
+    )
+  }
+
+  if (status.path) {
+    console.log(`  Path: ${colors.cyan}${status.path}${colors.reset}`)
+  }
+
+  if (status.error) {
+    console.log(`  ${colors.yellow}${status.error}${colors.reset}`)
+  }
+
+  console.log()
+}
+
+function createCliModelDownloadProgressReporter(
+  label: string,
+): (progress: number) => void {
+  let lastPrintedBucket = -1
+
+  return (progress: number) => {
+    const percent = Math.max(0, Math.min(100, Math.round(progress * 100)))
+    const bucket = percent === 100 ? 100 : Math.floor(percent / 10) * 10
+    if (bucket === lastPrintedBucket) {
+      return
+    }
+
+    lastPrintedBucket = bucket
+    printColored(colors.dim, `${label} download ${bucket}%`)
+  }
+}
+
+async function handleShowLocalProviderModelStatus(options: {
+  label: string
+  getStatus: () => Promise<ManagedLocalProviderModelStatus>
+}): Promise<void> {
+  const status = await options.getStatus()
+  printLocalProviderModelStatus(options.label, status)
+}
+
+async function handleDownloadLocalProviderModel(options: {
+  label: string
+  getStatus: () => Promise<ManagedLocalProviderModelStatus>
+  download: (
+    onProgress?: (progress: number) => void,
+  ) => Promise<{ success: true }>
+}): Promise<void> {
+  const initialStatus = await options.getStatus()
+  if (initialStatus.downloaded) {
+    printColored(colors.dim, `${options.label} model is already ready.`)
+    if (initialStatus.path) {
+      console.log(`${colors.dim}${initialStatus.path}${colors.reset}`)
+      console.log()
+    }
+    return
+  }
+
+  printColored(colors.cyan, `Downloading ${options.label} model...`)
+
+  try {
+    await options.download(
+      createCliModelDownloadProgressReporter(options.label),
+    )
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+    return
+  }
+
+  const status = await options.getStatus()
+  if (status.downloaded) {
+    printColored(colors.green, `${options.label} model is ready.`)
+  } else {
+    printColored(
+      colors.yellow,
+      `${options.label} download finished without a ready model state.`,
+    )
+  }
+  printLocalProviderModelStatus(options.label, status)
+}
+
+async function handleShowParakeetModelStatus(): Promise<void> {
+  await handleShowLocalProviderModelStatus({
+    label: "Parakeet",
+    getStatus: getManagedParakeetModelStatus,
+  })
+}
+
+async function handleDownloadParakeetModel(): Promise<void> {
+  await handleDownloadLocalProviderModel({
+    label: "Parakeet",
+    getStatus: getManagedParakeetModelStatus,
+    download: downloadManagedParakeetModel,
+  })
+}
+
+async function handleShowKittenModelStatus(): Promise<void> {
+  await handleShowLocalProviderModelStatus({
+    label: "Kitten",
+    getStatus: getManagedKittenModelStatus,
+  })
+}
+
+async function handleDownloadKittenModel(): Promise<void> {
+  await handleDownloadLocalProviderModel({
+    label: "Kitten",
+    getStatus: getManagedKittenModelStatus,
+    download: downloadManagedKittenModel,
+  })
+}
+
+async function handleShowSupertonicModelStatus(): Promise<void> {
+  await handleShowLocalProviderModelStatus({
+    label: "Supertonic",
+    getStatus: getManagedSupertonicModelStatus,
+  })
+}
+
+async function handleDownloadSupertonicModel(): Promise<void> {
+  await handleDownloadLocalProviderModel({
+    label: "Supertonic",
+    getStatus: getManagedSupertonicModelStatus,
+    download: downloadManagedSupertonicModel,
+  })
+}
+
 async function handleShowRemoteServerStatus(): Promise<void> {
   const status = getManagedRemoteServerStatus()
   const tunnelStatus = getManagedCloudflareTunnelStatus()
@@ -1916,10 +2075,7 @@ function formatBundlePreviewComponentSummary(
 
 function printBundlePreviewResult(result: BundlePreviewResult): void {
   if (!result.success || !result.bundle) {
-    printColored(
-      colors.red,
-      result.error || "Failed to preview bundle file.",
-    )
+    printColored(colors.red, result.error || "Failed to preview bundle file.")
     return
   }
 
@@ -2011,7 +2167,9 @@ function printBundleImportResultSection(
         : item.error
           ? ` (${item.error})`
           : ""
-    console.log(`  ${label}${item.action}${colors.reset} ${item.id}: ${item.name}${suffix}`)
+    console.log(
+      `  ${label}${item.action}${colors.reset} ${item.id}: ${item.name}${suffix}`,
+    )
   }
 }
 
@@ -2335,10 +2493,7 @@ async function handleBundleExport(input: string): Promise<void> {
       colors.green,
       `Exported bundle ${bundle.manifest.name} to ${filePath}.`,
     )
-    printColored(
-      colors.dim,
-      formatBundlePreviewComponentSummary(bundle),
-    )
+    printColored(colors.dim, formatBundlePreviewComponentSummary(bundle))
   } catch (error) {
     printColored(
       colors.red,
@@ -2442,7 +2597,7 @@ function getAgentSessionTimestampLabel(session: AgentSession): string {
   const timestamp =
     session.status === "active"
       ? session.startTime
-      : session.endTime ?? session.startTime
+      : (session.endTime ?? session.startTime)
   const prefix = session.status === "active" ? "started" : "updated"
   return `${prefix} ${new Date(timestamp).toLocaleString()}`
 }
@@ -2805,7 +2960,10 @@ function getQueuedMessageStatusColor(status: QueuedMessage["status"]): string {
   }
 }
 
-function formatQueuedMessagePreview(text: string, maxLength: number = 72): string {
+function formatQueuedMessagePreview(
+  text: string,
+  maxLength: number = 72,
+): string {
   const singleLineText = text.replace(/\s+/g, " ").trim()
   if (singleLineText.length <= maxLength) {
     return singleLineText
@@ -2874,7 +3032,10 @@ function resolveQueuedMessageForCli(
       colors.yellow,
       `Queued message selector "${query}" matches multiple messages:`,
     )
-    for (const message of ambiguousMessages.slice(0, SHOWN_QUEUE_MESSAGE_LIMIT)) {
+    for (const message of ambiguousMessages.slice(
+      0,
+      SHOWN_QUEUE_MESSAGE_LIMIT,
+    )) {
       console.log(`  ${formatQueuedMessageSelectionSummary(message)}`)
     }
     return null
@@ -2961,7 +3122,9 @@ function printConversationQueue(
     )
     console.log(`    ${message.text}`)
     if (message.errorMessage) {
-      console.log(`    ${colors.red}Error: ${message.errorMessage}${colors.reset}`)
+      console.log(
+        `    ${colors.red}Error: ${message.errorMessage}${colors.reset}`,
+      )
     }
   }
 
@@ -3282,10 +3445,7 @@ async function handleRetryQueuedMessage(input: string): Promise<void> {
   }
 
   if (selectedMessage.status !== "failed") {
-    printColored(
-      colors.red,
-      "Only failed queued messages can be retried.",
-    )
+    printColored(colors.red, "Only failed queued messages can be retried.")
     return
   }
 
@@ -4727,7 +4887,10 @@ function resolveAgentSessionSelectionForCli(
       colors.yellow,
       `Session selector "${query}" matches multiple active sessions:`,
     )
-    for (const session of ambiguousSessions.slice(0, SHOWN_AGENT_SESSION_LIMIT)) {
+    for (const session of ambiguousSessions.slice(
+      0,
+      SHOWN_AGENT_SESSION_LIMIT,
+    )) {
       console.log(`  ${formatAgentSessionSelectionSummary(session)}`)
     }
     return null
@@ -4847,6 +5010,24 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/settings-edit":
       await handleEditSettings(argumentsText)
+      return true
+    case "/parakeet-status":
+      await handleShowParakeetModelStatus()
+      return true
+    case "/parakeet-download":
+      await handleDownloadParakeetModel()
+      return true
+    case "/kitten-status":
+      await handleShowKittenModelStatus()
+      return true
+    case "/kitten-download":
+      await handleDownloadKittenModel()
+      return true
+    case "/supertonic-status":
+      await handleShowSupertonicModelStatus()
+      return true
+    case "/supertonic-download":
+      await handleDownloadSupertonicModel()
       return true
     case "/remote-status":
       await handleShowRemoteServerStatus()

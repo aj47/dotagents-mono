@@ -79,9 +79,7 @@ import {
 } from "./conversation-management"
 import { RendererHandlers } from "./renderer-handlers"
 import { postProcessTranscript, processTranscriptWithTools } from "./llm"
-import {
-  mcpService,
-} from "./mcp-service"
+import { mcpService } from "./mcp-service"
 import {
   saveCustomPosition,
   updatePanelPosition,
@@ -104,6 +102,14 @@ import {
   getManagedAgentSessions,
   stopManagedAgentSession,
 } from "./agent-session-management"
+import {
+  downloadManagedKittenModel,
+  downloadManagedParakeetModel,
+  downloadManagedSupertonicModel,
+  getManagedKittenModelStatus,
+  getManagedParakeetModelStatus,
+  getManagedSupertonicModelStatus,
+} from "./local-provider-management"
 import {
   agentProfileService,
   createSessionSnapshotFromProfile,
@@ -944,12 +950,11 @@ export const router = {
 
   // Parakeet (local) STT model management
   getParakeetModelStatus: t.procedure.action(async () => {
-    return parakeetStt.getModelStatus()
+    return getManagedParakeetModelStatus()
   }),
 
   downloadParakeetModel: t.procedure.action(async () => {
-    await parakeetStt.downloadModel()
-    return { success: true }
+    return downloadManagedParakeetModel()
   }),
 
   initializeParakeetRecognizer: t.procedure
@@ -961,13 +966,11 @@ export const router = {
 
   // Kitten (local) TTS model management
   getKittenModelStatus: t.procedure.action(async () => {
-    const { getKittenModelStatus } = await import("./kitten-tts")
-    return getKittenModelStatus()
+    return getManagedKittenModelStatus()
   }),
 
   downloadKittenModel: t.procedure.action(async () => {
-    const { downloadKittenModel } = await import("./kitten-tts")
-    await downloadKittenModel((progress) => {
+    return downloadManagedKittenModel((progress) => {
       // Send progress to renderer via webContents, guarding against destroyed windows
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
@@ -975,7 +978,6 @@ export const router = {
         }
       })
     })
-    return { success: true }
   }),
 
   synthesizeWithKitten: t.procedure
@@ -997,20 +999,17 @@ export const router = {
 
   // Supertonic (local) TTS model management
   getSupertonicModelStatus: t.procedure.action(async () => {
-    const { getSupertonicModelStatus } = await import("./supertonic-tts")
-    return getSupertonicModelStatus()
+    return getManagedSupertonicModelStatus()
   }),
 
   downloadSupertonicModel: t.procedure.action(async () => {
-    const { downloadSupertonicModel } = await import("./supertonic-tts")
-    await downloadSupertonicModel((progress) => {
+    return downloadManagedSupertonicModel((progress) => {
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
           win.webContents.send("supertonic-model-download-progress", progress)
         }
       })
     })
-    return { success: true }
   }),
 
   synthesizeWithSupertonic: t.procedure
@@ -3080,10 +3079,7 @@ export const router = {
   reorderMessageQueue: t.procedure
     .input<{ conversationId: string; messageIds: string[] }>()
     .action(async ({ input }) => {
-      return reorderManagedMessageQueue(
-        input.conversationId,
-        input.messageIds,
-      )
+      return reorderManagedMessageQueue(input.conversationId, input.messageIds)
     }),
 
   updateQueuedMessageText: t.procedure

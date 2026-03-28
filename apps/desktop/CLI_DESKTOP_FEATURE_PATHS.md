@@ -247,6 +247,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedWhatsappStatus(...)`, `connectManagedWhatsapp(...)`, `disconnectManagedWhatsapp(...)`, and `logoutManagedWhatsapp(...)`
 - Current callers: `headless-cli.ts` `/whatsapp-status`, `/whatsapp-connect`, `/whatsapp-disconnect`, and `/whatsapp-logout`; plus `tipc.ts` `whatsappGetStatus(...)`, `whatsappConnect(...)`, `whatsappDisconnect(...)`, and `whatsappLogout(...)` used by `settings-whatsapp.tsx`
 
+## Shared local provider model management
+
+- Shared provider-model file: `apps/desktop/src/main/local-provider-management.ts`
+- Shared helpers: `getManagedParakeetModelStatus(...)`, `downloadManagedParakeetModel(...)`, `getManagedKittenModelStatus(...)`, `downloadManagedKittenModel(...)`, `getManagedSupertonicModelStatus(...)`, and `downloadManagedSupertonicModel(...)`
+- Current callers: `headless-cli.ts` `/parakeet-status`, `/parakeet-download`, `/kitten-status`, `/kitten-download`, `/supertonic-status`, and `/supertonic-download`; plus `tipc.ts` `getParakeetModelStatus(...)`, `downloadParakeetModel(...)`, `getKittenModelStatus(...)`, `downloadKittenModel(...)`, `getSupertonicModelStatus(...)`, and `downloadSupertonicModel(...)` used by `settings-providers.tsx`
+
 ## Shared knowledge note management
 
 - Shared knowledge-note file: `apps/desktop/src/main/knowledge-note-management.ts`
@@ -379,6 +385,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now routes `/whatsapp-status`, `/whatsapp-connect`, `/whatsapp-disconnect`, and `/whatsapp-logout` through `whatsapp-management.ts`, while `tipc.ts` reuses the same helper for `settings-whatsapp.tsx`, so WhatsApp MCP-server availability checks, status parsing, QR-required connection responses, and disconnect/logout error handling stay aligned across the terminal and desktop settings UI.
 56. Headless CLI remote access controls
     `headless-cli.ts` now routes `/remote-status`, `/remote-qr`, `/cloudflare-status`, `/cloudflare-start`, `/cloudflare-stop`, and `/cloudflare-list` through `remote-access-management.ts`, while `tipc.ts` reuses the same helper for `settings-remote-server.tsx`, so remote-server status, manual terminal QR printing, Cloudflare install/login checks, named-tunnel listing, and quick/named tunnel lifecycle actions stay aligned across the terminal and desktop remote settings page.
+57. Headless CLI + desktop local provider model management
+    `headless-cli.ts` now routes `/parakeet-status`, `/parakeet-download`, `/kitten-status`, `/kitten-download`, `/supertonic-status`, and `/supertonic-download` through `local-provider-management.ts`, while `tipc.ts` reuses the same helper for `settings-providers.tsx`, so local Parakeet, Kitten, and Supertonic model status reads plus download flows stay aligned across the terminal and desktop provider settings page before progress or status formatting diverges.
 
 ## Parity rules
 
@@ -419,6 +427,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Repeat task summaries and runtime actions are decided in one place: `getManagedLoopSummary(...)`, `getManagedLoopSummaries(...)`, `saveManagedLoop(...)`, `createManagedLoop(...)`, `updateManagedLoop(...)`, `toggleManagedLoopEnabled(...)`, `triggerManagedLoop(...)`, and `deleteManagedLoop(...)`, so headless CLI repeat-task controls, desktop loop summaries, TIPC repeat-task mutations, and remote repeat-task endpoints all reuse the same profile-name enrichment plus create/update/delete/start/stop/trigger behavior before the UI or API response diverges.
 - MCP server selection, summaries, runtime toggles, restart/stop lifecycle actions, and log lookup are decided in one place: `getManagedMcpServerSummaries(...)`, `getManagedMcpServerSummary(...)`, `resolveManagedMcpServerSelection(...)`, `setManagedMcpServerRuntimeEnabled(...)`, `restartManagedMcpServer(...)`, `stopManagedMcpServer(...)`, and `getManagedMcpServerLogs(...)`, so headless CLI MCP controls, the desktop capabilities UI, and the remote MCP status/toggle routes all reuse the same main-process behavior before presentation diverges into terminal output, TIPC responses, or HTTP payloads.
 - WhatsApp MCP-server availability, status parsing, QR-required connection responses, and disconnect/logout error handling are decided in one place: `getManagedWhatsappStatus(...)`, `connectManagedWhatsapp(...)`, `disconnectManagedWhatsapp(...)`, and `logoutManagedWhatsapp(...)`, so headless CLI WhatsApp controls and the desktop WhatsApp settings screen both reuse the same main-process tool-call interpretation before presenting terminal output or GUI state.
+- Local Parakeet, Kitten, and Supertonic model status/download behavior is decided in one place: `getManagedParakeetModelStatus(...)`, `downloadManagedParakeetModel(...)`, `getManagedKittenModelStatus(...)`, `downloadManagedKittenModel(...)`, `getManagedSupertonicModelStatus(...)`, and `downloadManagedSupertonicModel(...)`, so headless CLI local-provider commands and the desktop Providers settings screen both reuse the same main-process model-management helpers before terminal or GUI progress formatting diverges.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -484,6 +493,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared repeat-task selection, summary enrichment, enable/disable persistence, manual trigger conflicts, and delete behavior stay aligned for headless CLI, desktop summaries, and remote loop endpoints.
 - `apps/desktop/src/main/mcp-management.test.ts`
   Confirms shared MCP server summary building, exact/prefix selection, runtime enable/disable behavior, restart/stop helpers, and log lookup stay aligned for headless CLI, desktop capabilities actions, and remote MCP routes.
+- `apps/desktop/src/main/local-provider-management.test.ts`
+  Confirms shared local Parakeet, Kitten, and Supertonic status/download helpers stay aligned for headless CLI and desktop provider settings callers.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`
   Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
 - `apps/desktop/src/renderer/src/lib/apply-selected-agent.test.ts`
