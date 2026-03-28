@@ -12,6 +12,7 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import {
+  formatConversationHistoryMessages,
   resolveChatModelSelection,
   resolveChatProviderId,
   resolveModelPresetId,
@@ -25,7 +26,7 @@ import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
-import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
+import { mcpService, handleWhatsAppToggle } from "./mcp-service"
 import {
   isHeadlessEnvironment,
   printSharedRemoteServerQrCode,
@@ -448,43 +449,6 @@ interface RunAgentOptions {
   onProgress?: (update: AgentProgressUpdate) => void
 }
 
-function formatConversationHistoryForApi(
-  history: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: any[]
-    toolResults?: any[]
-    timestamp?: number
-  }>,
-): Array<{
-  role: "user" | "assistant" | "tool"
-  content: string
-  toolCalls?: Array<{ name: string; arguments: any }>
-  toolResults?: Array<{ success: boolean; content: string; error?: string }>
-  timestamp?: number
-}> {
-  return history.map((entry) => ({
-    role: entry.role,
-    content: entry.content,
-    toolCalls: entry.toolCalls?.map((tc: any) => ({
-      name: tc.name,
-      arguments: tc.arguments,
-    })),
-    toolResults: entry.toolResults?.map((tr: any) => {
-      const contentText = Array.isArray(tr.content)
-        ? tr.content.map((c: any) => c.text || c).join("\n")
-        : String(tr.content || "")
-      const isError = tr.isError ?? tr.success === false
-      return {
-        success: !isError,
-        content: contentText,
-        error: isError ? contentText : undefined,
-      }
-    }),
-    timestamp: entry.timestamp,
-  }))
-}
-
 async function runAgent(options: RunAgentOptions): Promise<{
   content: string
   conversationId: string
@@ -528,7 +492,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
   const loadFormattedConversationHistory = async () => {
     const latestConversation =
       await conversationService.loadConversation(conversationId)
-    return formatConversationHistoryForApi(latestConversation?.messages || [])
+    return formatConversationHistoryMessages(latestConversation?.messages || [])
   }
 
   try {

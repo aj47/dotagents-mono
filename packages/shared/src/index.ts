@@ -20,6 +20,7 @@ export * from './connection-recovery';
 export * from './api-types';
 export * from './hub';
 export * from './conversation-state';
+export * from './conversation-history';
 export * from './agent-progress';
 export * from './message-display-utils';
 export * from './stt-models';

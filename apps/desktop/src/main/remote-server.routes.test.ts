@@ -271,4 +271,13 @@ describe("remote-server route registration", () => {
     expect(listLoopsSection).not.toContain("isRunning:")
     expect(listLoopsSection).not.toContain("nextRunAt:")
   })
+
+  it("shares conversation-history serialization with the desktop runtime", () => {
+    const source = getRemoteServerSource()
+
+    expect(source).toContain("formatConversationHistoryMessages(")
+    expect(source).not.toContain("function formatConversationHistoryForApi(")
+    expect(source).not.toContain("toolCalls: entry.toolCalls?.map(")
+    expect(source).not.toContain("toolResults: entry.toolResults?.map(")
+  })
 })

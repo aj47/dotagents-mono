@@ -54,6 +54,10 @@ const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
 )
+const sharedConversationHistorySource = readFileSync(
+  new URL("../../../../packages/shared/src/conversation-history.ts", import.meta.url),
+  "utf8",
+)
 const sharedSttModelsSource = readFileSync(
   new URL("../../../../packages/shared/src/stt-models.ts", import.meta.url),
   "utf8",
@@ -379,6 +383,25 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsLoopsSource).toContain('queryKey: ["loop-summaries"]')
   })
 
+  it("shares conversation-history serialization across runtime and remote surfaces", () => {
+    expect(sharedConversationHistorySource).toContain(
+      "export function formatConversationHistoryMessages",
+    )
+    expect(sharedConversationHistorySource).toContain(
+      "export function formatConversationToolCalls",
+    )
+    expect(sharedConversationHistorySource).toContain(
+      "export function formatConversationToolResults",
+    )
+    expect(llmSource).toContain("formatConversationHistoryMessages(")
+    expect(llmSource).toContain("formatConversationToolCalls(toolCalls)")
+    expect(llmSource).toContain("formatConversationToolResults(toolResults)")
+    expect(remoteServerSource).toContain("formatConversationHistoryMessages(")
+    expect(remoteServerSource).not.toContain(
+      "function formatConversationHistoryForApi(",
+    )
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -397,6 +420,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
     expect(docsSource).toContain("Shared repeat task summaries")
+    expect(docsSource).toContain("Shared conversation history serialization")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -428,5 +452,8 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("CLI/desktop MCP server status surfaces")
     expect(docsSource).toContain("Preset-aware CLI labels + preset surfaces")
     expect(docsSource).toContain("Desktop repeat task settings + remote loop API")
+    expect(docsSource).toContain(
+      "Desktop progress history + remote API conversation payloads",
+    )
   })
 })

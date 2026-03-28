@@ -61,6 +61,9 @@ import {
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
 import {
+  formatConversationHistoryMessages,
+  formatConversationToolCalls,
+  formatConversationToolResults,
   normalizeAgentConversationState,
   resolveChatModelDisplayInfo,
   type AgentConversationState,
@@ -688,16 +691,7 @@ export async function processTranscriptWithAgentMode(
     }
 
     try {
-      // Convert toolResults from MCPToolResult format to stored format
-      const convertedToolResults = toolResults?.map(tr => ({
-        success: !tr.isError,
-        content: Array.isArray(tr.content)
-          ? tr.content.map(c => c.text).join("\n")
-          : String(tr.content || ""),
-        error: tr.isError
-          ? (Array.isArray(tr.content) ? tr.content.map(c => c.text).join("\n") : String(tr.content || ""))
-          : undefined
-      }))
+      const convertedToolResults = formatConversationToolResults(toolResults)
 
       const updatedConversation = await conversationService.addMessageToConversation(
         currentConversationId,
@@ -771,19 +765,8 @@ export async function processTranscriptWithAgentMode(
     const input: SummarizationInput = {
       sessionId: currentSessionId,
       stepNumber,
-      toolCalls: toolCalls?.map(tc => ({
-        name: tc.name,
-        arguments: tc.arguments,
-      })),
-      toolResults: toolResults?.map(tr => ({
-        success: !tr.isError,
-        content: Array.isArray(tr.content)
-          ? tr.content.map(c => c.text).join("\n")
-          : String(tr.content || ""),
-        error: tr.isError
-          ? (Array.isArray(tr.content) ? tr.content.map(c => c.text).join("\n") : String(tr.content || ""))
-          : undefined,
-      })),
+      toolCalls: formatConversationToolCalls(toolCalls),
+      toolResults: formatConversationToolResults(toolResults),
       assistantResponse,
       recentMessages: conversationHistory.slice(-5).map(m => ({
         role: m.role,
@@ -1072,31 +1055,12 @@ export async function processTranscriptWithAgentMode(
   const formatConversationForProgress = (
     history: typeof conversationHistory,
   ) => {
-    return history
-      .filter((entry) => !entry.ephemeral)
-      .filter((entry) => !(entry.role === "user" && isInternalNudgeContent(entry.content)))
-      .map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-        toolCalls: entry.toolCalls?.map((tc) => ({
-          name: tc.name,
-          arguments: tc.arguments,
-        })),
-        toolResults: entry.toolResults?.map((tr) => {
-          // Safely handle content - it should be an array, but add defensive check
-          const contentText = Array.isArray(tr.content)
-            ? tr.content.map((c) => c.text).join("\n")
-            : String(tr.content || "")
-
-          return {
-            success: !tr.isError,
-            content: contentText,
-            error: tr.isError ? contentText : undefined,
-          }
-        }),
-        // Preserve original timestamp if available, otherwise use current time
-        timestamp: entry.timestamp || Date.now(),
-      }))
+    return formatConversationHistoryMessages(history, {
+      includeEntry: (entry) =>
+        !entry.ephemeral &&
+        !(entry.role === "user" && isInternalNudgeContent(entry.content)),
+      fallbackTimestamp: () => Date.now(),
+    })
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {

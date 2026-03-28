@@ -142,6 +142,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Agent/MCP model resolution** now also shares one provider/model resolver, so the settings page defaults, headless CLI status output, desktop progress metadata, remote API model payloads, MCP sampling defaults, and AI SDK runtime model creation all use the same fallback and OpenAI-compatible provider-label rules.
 - **Speech provider defaults** now also share STT/TTS selectors, so onboarding checks, speech settings pages, provider badges, remote settings payloads, transcript-provider fallbacks, and runtime transcription/TTS defaults all agree on the same effective provider, model, and voice choices.
 - **OpenAI-compatible preset resolution** now also shares one preset resolver, so CLI/provider labels, remote settings payloads, weak summarization preset lookup, preset editors, and preset-scoped model fetches all use the same built-in override, duplicate-filtering, legacy OpenAI-key fallback, and default preset ID rules.
+- **Conversation-history serialization** now also shares one formatter, so persisted tool results, desktop progress history, weak step summaries, and remote API conversation payloads all flatten tool calls/results the same way.
 - **Desktop quit and non-GUI graceful shutdown** now also share the same runtime teardown helper, so loop shutdown plus ACP, MCP, and remote-server cleanup stay aligned while the GUI layers keyboard-listener cleanup on top.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
