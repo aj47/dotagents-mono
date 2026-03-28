@@ -496,6 +496,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
     prompt,
     requestedConversationId: inputConversationId,
     startSnoozed,
+    preserveActiveSessionSnoozeState: true,
     approvalMode: "dialog",
     onProgress,
   })

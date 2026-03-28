@@ -196,7 +196,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 3. Headless CLI prompt
    `headless-cli.ts` calls `startSharedPromptRun(...)`, registers a terminal approval handler in `onPreparedContext(...)`, then awaits the returned `runPromise`.
 4. Remote server prompt
-   `remote-server.ts` calls the same `startSharedPromptRun(...)`, keeps its dialog-based approval policy, and awaits the returned `runPromise`.
+   `remote-server.ts` calls the same `startSharedPromptRun(...)`, keeps its dialog-based approval policy, preserves the snooze state of any already-active watched session when it reuses one, and awaits the returned `runPromise`.
 5. Repeat tasks / loops
    `loop-service.ts` calls `startSharedPromptRun(...)` with the repeat-task session title and loop-specific `maxIterationsOverride`, then awaits the returned `runPromise`.
 6. Queued desktop follow-ups / ACP parent resume
@@ -278,6 +278,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Conversation/session bootstrap is decided in one place: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`.
 - Queued follow-ups and ACP parent-resume nudges intentionally bypass `preparePromptExecutionContext(...)` and reuse `prepareResumeExecutionContext(...)` / `startSharedResumeRun(...)` so they do not duplicate persisted user turns while still sharing session revival and history loading.
 - Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
+- Remote server prompt reuse now also preserves the snooze state of already-active watched sessions through `ensureAgentSessionForConversation(...)`, so background/mobile follow-ups do not unexpectedly hide a session the desktop user is already watching.
 - CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which the shared launcher now wires up via `onPreparedContext(...)` before the run starts so terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
 - Legacy runtime flags stay session-manager-owned: prompt entrypoints do not reset `state.isAgentModeActive`, `state.shouldStopAgent`, or `state.agentIterationCount` directly, so overlapping desktop, CLI, remote, and loop sessions do not clobber each other.

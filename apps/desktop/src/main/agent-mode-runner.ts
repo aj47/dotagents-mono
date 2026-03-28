@@ -5,7 +5,10 @@ import type {
   SessionProfileSnapshot,
 } from "../shared/types"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
-import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import {
+  agentProfileService,
+  createSessionSnapshotFromProfile,
+} from "./agent-profile-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore, trySaveConfig } from "./config"
 import { conversationService } from "./conversation-service"
@@ -37,6 +40,7 @@ export interface EnsureAgentSessionForConversationOptions {
   startSnoozed?: boolean
   profileSnapshot?: SessionProfileSnapshot
   candidateSessionIds?: readonly string[]
+  preserveActiveSessionSnoozeState?: boolean
 }
 
 export interface EnsuredAgentSession {
@@ -51,6 +55,7 @@ export interface PreparePromptExecutionContextOptions {
   startSnoozed?: boolean
   profileSnapshot?: SessionProfileSnapshot
   candidateSessionIds?: readonly string[]
+  preserveActiveSessionSnoozeState?: boolean
 }
 
 export interface PreparedPromptExecutionContext extends PreparedConversationTurn {
@@ -125,12 +130,20 @@ export interface StartedSharedResumeRun {
   runPromise: Promise<RunTopLevelAgentModeResult>
 }
 
-function getEffectiveMaxIterations(config: Config, maxIterationsOverride?: number): number {
-  if (typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)) {
+function getEffectiveMaxIterations(
+  config: Config,
+  maxIterationsOverride?: number,
+): number {
+  if (
+    typeof maxIterationsOverride === "number" &&
+    Number.isFinite(maxIterationsOverride)
+  ) {
     return Math.max(1, Math.floor(maxIterationsOverride))
   }
 
-  return config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  return config.mcpUnlimitedIterations
+    ? Infinity
+    : (config.mcpMaxIterations ?? 10)
 }
 
 function mapStoredConversationMessagesToAgentHistory(
@@ -145,7 +158,9 @@ function mapStoredConversationMessagesToAgentHistory(
       content: [
         {
           type: "text" as const,
-          text: toolResult.success ? toolResult.content : (toolResult.error || toolResult.content),
+          text: toolResult.success
+            ? toolResult.content
+            : toolResult.error || toolResult.content,
         },
       ],
       isError: !toolResult.success,
@@ -159,7 +174,9 @@ function getUniqueSessionCandidates(
 ): string[] {
   return [...candidateSessionIds, fallbackSessionId].filter(
     (sessionId, index, list): sessionId is string =>
-      typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
+      typeof sessionId === "string" &&
+      sessionId.length > 0 &&
+      list.indexOf(sessionId) === index,
   )
 }
 
@@ -284,7 +301,8 @@ async function requestInlineToolApproval(
           id: `tool_approval_${approvalId}`,
           type: "tool_approval",
           title: `Awaiting approval for ${toolCall.name}`,
-          description: "Approve or deny this tool call before execution continues.",
+          description:
+            "Approve or deny this tool call before execution continues.",
           status: "awaiting_approval",
           timestamp: Date.now(),
           approvalRequest: {
@@ -316,7 +334,9 @@ async function requestInlineToolApproval(
         {
           id: `tool_approval_result_${approvalId}`,
           type: "tool_approval",
-          title: approved ? `Approved ${toolCall.name}` : `Denied ${toolCall.name}`,
+          title: approved
+            ? `Approved ${toolCall.name}`
+            : `Denied ${toolCall.name}`,
           description: approved
             ? "Tool execution approved."
             : "Tool execution was denied.",
@@ -340,18 +360,20 @@ export async function prepareConversationForPrompt(
   let conversationId = requestedConversationId
 
   if (conversationId) {
-    const updatedConversation = await conversationService.addMessageToConversation(
-      conversationId,
-      prompt,
-      "user",
-    )
+    const updatedConversation =
+      await conversationService.addMessageToConversation(
+        conversationId,
+        prompt,
+        "user",
+      )
 
     if (updatedConversation) {
       return {
         conversationId: updatedConversation.id,
-        previousConversationHistory: mapStoredConversationMessagesToAgentHistory(
-          updatedConversation.messages.slice(0, -1),
-        ),
+        previousConversationHistory:
+          mapStoredConversationMessagesToAgentHistory(
+            updatedConversation.messages.slice(0, -1),
+          ),
       }
     }
 
@@ -386,17 +408,31 @@ export function ensureAgentSessionForConversation(
     startSnoozed = true,
     profileSnapshot,
     candidateSessionIds = [],
+    preserveActiveSessionSnoozeState = false,
   } = options
 
-  const existingSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-  const sessionCandidates = getUniqueSessionCandidates(candidateSessionIds, existingSessionId)
+  const existingSessionId =
+    agentSessionTracker.findSessionByConversationId(conversationId)
+  const sessionCandidates = getUniqueSessionCandidates(
+    candidateSessionIds,
+    existingSessionId,
+  )
 
   for (const sessionId of sessionCandidates) {
-    if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
+    const revivedStartSnoozed = preserveActiveSessionSnoozeState
+      ? (() => {
+          const existingSession = agentSessionTracker.getSession(sessionId)
+          return existingSession?.status === "active"
+            ? (existingSession.isSnoozed ?? false)
+            : startSnoozed
+        })()
+      : startSnoozed
+
+    if (agentSessionTracker.reviveSession(sessionId, revivedStartSnoozed)) {
       agentSessionTracker.updateSession(sessionId, {
         conversationId,
         conversationTitle,
-        isSnoozed: startSnoozed,
+        isSnoozed: revivedStartSnoozed,
         ...(profileSnapshot ? { profileSnapshot } : {}),
       })
       return {
@@ -427,22 +463,20 @@ export async function preparePromptExecutionContext(
     startSnoozed = true,
     profileSnapshot,
     candidateSessionIds = [],
+    preserveActiveSessionSnoozeState = false,
   } = options
 
-  const {
-    conversationId,
-    previousConversationHistory,
-  } = await prepareConversationForPrompt(prompt, requestedConversationId)
-  const {
-    sessionId,
-    reusedExistingSession,
-  } = ensureAgentSessionForConversation({
-    conversationId,
-    conversationTitle,
-    startSnoozed,
-    profileSnapshot,
-    candidateSessionIds,
-  })
+  const { conversationId, previousConversationHistory } =
+    await prepareConversationForPrompt(prompt, requestedConversationId)
+  const { sessionId, reusedExistingSession } =
+    ensureAgentSessionForConversation({
+      conversationId,
+      conversationTitle,
+      startSnoozed,
+      profileSnapshot,
+      candidateSessionIds,
+      preserveActiveSessionSnoozeState,
+    })
 
   return {
     conversationId,
@@ -462,6 +496,7 @@ export async function startSharedPromptRun(
     startSnoozed = true,
     profileSnapshot,
     candidateSessionIds = [],
+    preserveActiveSessionSnoozeState = false,
     maxIterationsOverride,
     approvalMode = "inline",
     onProgress,
@@ -476,6 +511,7 @@ export async function startSharedPromptRun(
     startSnoozed,
     profileSnapshot,
     candidateSessionIds,
+    preserveActiveSessionSnoozeState,
   })
 
   if (onPreparedContext) {
@@ -506,7 +542,8 @@ export async function loadPreviousConversationHistory(
     return undefined
   }
 
-  const conversation = await conversationService.loadConversation(conversationId)
+  const conversation =
+    await conversationService.loadConversation(conversationId)
   if (!conversation?.messages?.length) {
     return undefined
   }
@@ -531,8 +568,9 @@ export async function prepareResumeExecutionContext(
     if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
       return {
         conversationId,
-        previousConversationHistory: previousConversationHistory
-          ?? await loadPreviousConversationHistory(conversationId),
+        previousConversationHistory:
+          previousConversationHistory ??
+          (await loadPreviousConversationHistory(conversationId)),
         sessionId,
         reusedExistingSession: true,
       }
@@ -541,8 +579,9 @@ export async function prepareResumeExecutionContext(
 
   return {
     conversationId,
-    previousConversationHistory: previousConversationHistory
-      ?? await loadPreviousConversationHistory(conversationId),
+    previousConversationHistory:
+      previousConversationHistory ??
+      (await loadPreviousConversationHistory(conversationId)),
     sessionId: undefined,
     reusedExistingSession: false,
   }
@@ -610,13 +649,18 @@ export async function runTopLevelAgentMode(
   } = options
 
   const config = configStore.get()
-  const effectiveMaxIterations = getEffectiveMaxIterations(config, maxIterationsOverride)
+  const effectiveMaxIterations = getEffectiveMaxIterations(
+    config,
+    maxIterationsOverride,
+  )
   const allProfiles = agentProfileService.getAll()
   const currentProfile = agentProfileService.getCurrentProfile()
-  const existingProfileSnapshot = explicitProfileSnapshot
-    ?? (existingSessionId
-      ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-        ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
+  const existingProfileSnapshot =
+    explicitProfileSnapshot ??
+    (existingSessionId
+      ? (agentSessionStateManager.getSessionProfileSnapshot(
+          existingSessionId,
+        ) ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId))
       : undefined)
 
   const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
@@ -628,19 +672,29 @@ export async function runTopLevelAgentMode(
     legacyAgents: config.acpAgents || [],
   })
 
-  let profileSnapshot: SessionProfileSnapshot | undefined = existingProfileSnapshot
+  let profileSnapshot: SessionProfileSnapshot | undefined =
+    existingProfileSnapshot
   if (!profileSnapshot && currentProfile) {
     profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
   }
 
   const conversationTitle = text
-  const sessionId = existingSessionId
-    || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+  const sessionId =
+    existingSessionId ||
+    agentSessionTracker.startSession(
+      conversationId,
+      conversationTitle,
+      startSnoozed,
+      profileSnapshot,
+    )
   agentSessionTracker.updateSession(sessionId, {
     maxIterations: effectiveMaxIterations,
     ...(profileSnapshot ? { profileSnapshot } : {}),
   })
-  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
+  const runId = agentSessionStateManager.startSessionRun(
+    sessionId,
+    profileSnapshot,
+  )
 
   if (topLevelAcpSelection) {
     if ("error" in topLevelAcpSelection) {
@@ -656,9 +710,9 @@ export async function runTopLevelAgentMode(
     }
 
     if (
-      topLevelAcpSelection.source === "main-agent"
-      && topLevelAcpSelection.repairedName
-      && topLevelAcpSelection.repairedName !== config.mainAgentName
+      topLevelAcpSelection.source === "main-agent" &&
+      topLevelAcpSelection.repairedName &&
+      topLevelAcpSelection.repairedName !== config.mainAgentName
     ) {
       trySaveConfig({
         ...config,
@@ -677,9 +731,15 @@ export async function runTopLevelAgentMode(
       })
 
       if (result.success) {
-        agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
+        agentSessionTracker.completeSession(
+          sessionId,
+          "ACP agent completed successfully",
+        )
       } else {
-        agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
+        agentSessionTracker.errorSession(
+          sessionId,
+          result.error || "Unknown error",
+        )
       }
 
       return {
@@ -716,8 +776,8 @@ export async function runTopLevelAgentMode(
       toolProgress?: (message: string) => void,
     ): Promise<MCPToolResult> => {
       if (
-        config.mcpRequireApprovalBeforeToolCall
-        && approvalMode === "inline"
+        config.mcpRequireApprovalBeforeToolCall &&
+        approvalMode === "inline"
       ) {
         const approved = await requestInlineToolApproval(
           sessionId,
@@ -767,7 +827,10 @@ export async function runTopLevelAgentMode(
       runId,
     )
 
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    agentSessionTracker.completeSession(
+      sessionId,
+      "Agent completed successfully",
+    )
 
     return {
       content: agentResult.content,
@@ -802,7 +865,11 @@ export async function runTopLevelAgentMode(
         finalContent: `Error: ${errorMessage}`,
         conversationHistory: [
           { role: "user", content: text, timestamp: Date.now() },
-          { role: "assistant", content: `Error: ${errorMessage}`, timestamp: Date.now() },
+          {
+            role: "assistant",
+            content: `Error: ${errorMessage}`,
+            timestamp: Date.now(),
+          },
         ],
       },
       onProgress,

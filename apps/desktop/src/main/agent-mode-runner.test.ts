@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   startSession: vi.fn(),
   findSessionByConversationId: vi.fn(),
   reviveSession: vi.fn(),
+  getSession: vi.fn(),
   updateSession: vi.fn(),
   completeSession: vi.fn(),
   errorSession: vi.fn(),
@@ -52,6 +53,7 @@ vi.mock("./agent-session-tracker", () => ({
     startSession: mocks.startSession,
     findSessionByConversationId: mocks.findSessionByConversationId,
     reviveSession: mocks.reviveSession,
+    getSession: mocks.getSession,
     updateSession: mocks.updateSession,
     completeSession: mocks.completeSession,
     errorSession: mocks.errorSession,
@@ -75,7 +77,8 @@ vi.mock("./mcp-service", () => ({
   mcpService: {
     getInitializationStatus: mocks.getInitializationStatus,
     initialize: mocks.initialize,
-    registerExistingProcessesWithAgentManager: mocks.registerExistingProcessesWithAgentManager,
+    registerExistingProcessesWithAgentManager:
+      mocks.registerExistingProcessesWithAgentManager,
     getAvailableTools: mocks.getAvailableTools,
     getAvailableToolsForProfile: mocks.getAvailableToolsForProfile,
     executeToolCall: mocks.executeToolCall,
@@ -91,7 +94,8 @@ vi.mock("./acp-main-agent", () => ({
 }))
 
 vi.mock("./main-agent-selection", () => ({
-  resolvePreferredTopLevelAcpAgentSelection: mocks.resolvePreferredTopLevelAcpAgentSelection,
+  resolvePreferredTopLevelAcpAgentSelection:
+    mocks.resolvePreferredTopLevelAcpAgentSelection,
 }))
 
 vi.mock("./emit-agent-progress", () => ({
@@ -132,6 +136,7 @@ describe("agent-mode-runner", () => {
     mocks.startSession.mockReturnValue("session-new")
     mocks.findSessionByConversationId.mockReturnValue(undefined)
     mocks.reviveSession.mockReturnValue(false)
+    mocks.getSession.mockReturnValue(undefined)
     mocks.startSessionRun.mockReturnValue(7)
     mocks.shouldStopSession.mockReturnValue(false)
     mocks.getInitializationStatus.mockReturnValue({
@@ -161,7 +166,9 @@ describe("agent-mode-runner", () => {
           role: "assistant",
           content: "Earlier answer",
           timestamp: 10,
-          toolCalls: [{ name: "respond_to_user", arguments: { text: "Earlier answer" } }],
+          toolCalls: [
+            { name: "respond_to_user", arguments: { text: "Earlier answer" } },
+          ],
           toolResults: [{ success: true, content: "saved tool output" }],
         },
         {
@@ -175,7 +182,10 @@ describe("agent-mode-runner", () => {
     })
 
     const { prepareConversationForPrompt } = await import("./agent-mode-runner")
-    const result = await prepareConversationForPrompt("Current prompt", "conv-1")
+    const result = await prepareConversationForPrompt(
+      "Current prompt",
+      "conv-1",
+    )
 
     expect(result).toEqual({
       conversationId: "conv-1",
@@ -184,7 +194,9 @@ describe("agent-mode-runner", () => {
           role: "assistant",
           content: "Earlier answer",
           timestamp: 10,
-          toolCalls: [{ name: "respond_to_user", arguments: { text: "Earlier answer" } }],
+          toolCalls: [
+            { name: "respond_to_user", arguments: { text: "Earlier answer" } },
+          ],
           toolResults: [
             {
               content: [{ type: "text", text: "saved tool output" }],
@@ -219,7 +231,8 @@ describe("agent-mode-runner", () => {
     mocks.findSessionByConversationId.mockReturnValue("session-existing")
     mocks.reviveSession.mockReturnValue(true)
 
-    const { preparePromptExecutionContext } = await import("./agent-mode-runner")
+    const { preparePromptExecutionContext } =
+      await import("./agent-mode-runner")
     const result = await preparePromptExecutionContext({
       prompt: "Current prompt",
       requestedConversationId: "conv-1",
@@ -249,6 +262,52 @@ describe("agent-mode-runner", () => {
     })
   })
 
+  it("preserves an active session's snooze state when the shared prompt launcher requests it", async () => {
+    mocks.addMessageToConversation.mockResolvedValue({
+      id: "conv-1",
+      messages: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+        {
+          role: "user",
+          content: "Current prompt",
+          timestamp: 20,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+    })
+    mocks.findSessionByConversationId.mockReturnValue("session-existing")
+    mocks.getSession.mockReturnValue({
+      id: "session-existing",
+      status: "active",
+      isSnoozed: false,
+    })
+    mocks.reviveSession.mockReturnValue(true)
+
+    const { preparePromptExecutionContext } =
+      await import("./agent-mode-runner")
+    const result = await preparePromptExecutionContext({
+      prompt: "Current prompt",
+      requestedConversationId: "conv-1",
+      startSnoozed: true,
+      preserveActiveSessionSnoozeState: true,
+    })
+
+    expect(mocks.reviveSession).toHaveBeenCalledWith("session-existing", false)
+    expect(mocks.updateSession).toHaveBeenCalledWith("session-existing", {
+      conversationId: "conv-1",
+      conversationTitle: "Current prompt",
+      isSnoozed: false,
+    })
+    expect(result.reusedExistingSession).toBe(true)
+  })
+
   it("starts shared prompt runs only after the prepared-session hook resolves", async () => {
     mocks.addMessageToConversation.mockResolvedValue({
       id: "conv-1",
@@ -274,8 +333,18 @@ describe("agent-mode-runner", () => {
 
     const events: string[] = []
     mocks.processTranscriptWithAgentMode.mockImplementation(
-      async (_text, _tools, _executeToolCall, _maxIterations, previousConversationHistory, _conversationId, sessionId) => {
-        events.push(`run:${sessionId}:${previousConversationHistory?.length ?? 0}`)
+      async (
+        _text,
+        _tools,
+        _executeToolCall,
+        _maxIterations,
+        previousConversationHistory,
+        _conversationId,
+        sessionId,
+      ) => {
+        events.push(
+          `run:${sessionId}:${previousConversationHistory?.length ?? 0}`,
+        )
         return {
           content: "done",
           conversationHistory: [],
@@ -283,9 +352,13 @@ describe("agent-mode-runner", () => {
       },
     )
 
-    const onPreparedContext = vi.fn(async ({ conversationId, sessionId, previousConversationHistory }) => {
-      events.push(`prepared:${conversationId}:${sessionId}:${previousConversationHistory.length}`)
-    })
+    const onPreparedContext = vi.fn(
+      async ({ conversationId, sessionId, previousConversationHistory }) => {
+        events.push(
+          `prepared:${conversationId}:${sessionId}:${previousConversationHistory.length}`,
+        )
+      },
+    )
 
     const { startSharedPromptRun } = await import("./agent-mode-runner")
     const { preparedContext, runPromise } = await startSharedPromptRun({
@@ -331,7 +404,8 @@ describe("agent-mode-runner", () => {
     })
     mocks.reviveSession.mockReturnValue(true)
 
-    const { prepareResumeExecutionContext } = await import("./agent-mode-runner")
+    const { prepareResumeExecutionContext } =
+      await import("./agent-mode-runner")
     const result = await prepareResumeExecutionContext({
       conversationId: "conv-1",
       candidateSessionIds: ["session-existing"],
@@ -380,8 +454,18 @@ describe("agent-mode-runner", () => {
 
     const events: string[] = []
     mocks.processTranscriptWithAgentMode.mockImplementation(
-      async (_text, _tools, _executeToolCall, _maxIterations, previousConversationHistory, _conversationId, sessionId) => {
-        events.push(`run:${sessionId}:${previousConversationHistory?.length ?? 0}`)
+      async (
+        _text,
+        _tools,
+        _executeToolCall,
+        _maxIterations,
+        previousConversationHistory,
+        _conversationId,
+        sessionId,
+      ) => {
+        events.push(
+          `run:${sessionId}:${previousConversationHistory?.length ?? 0}`,
+        )
         return {
           content: "done",
           conversationHistory: [],
@@ -389,9 +473,13 @@ describe("agent-mode-runner", () => {
       },
     )
 
-    const onPreparedContext = vi.fn(async ({ conversationId, sessionId, previousConversationHistory }) => {
-      events.push(`prepared:${conversationId}:${sessionId}:${previousConversationHistory?.length ?? 0}`)
-    })
+    const onPreparedContext = vi.fn(
+      async ({ conversationId, sessionId, previousConversationHistory }) => {
+        events.push(
+          `prepared:${conversationId}:${sessionId}:${previousConversationHistory?.length ?? 0}`,
+        )
+      },
+    )
 
     const { startSharedResumeRun } = await import("./agent-mode-runner")
     const { preparedContext, runPromise } = await startSharedResumeRun({
@@ -420,7 +508,8 @@ describe("agent-mode-runner", () => {
     mocks.findSessionByConversationId.mockReturnValue("session-old")
     mocks.reviveSession.mockReturnValue(false)
 
-    const { ensureAgentSessionForConversation } = await import("./agent-mode-runner")
+    const { ensureAgentSessionForConversation } =
+      await import("./agent-mode-runner")
     const result = ensureAgentSessionForConversation({
       conversationId: "conv-new",
       conversationTitle: "Prompt title",

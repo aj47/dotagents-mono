@@ -256,6 +256,9 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessCliSource).toContain("startSharedPromptRun({")
     expect(remoteServerSource).toContain("startSharedPromptRun({")
+    expect(remoteServerSource).toContain(
+      "preserveActiveSessionSnoozeState: true",
+    )
     expect(tipcSource).toContain("return startSharedPromptRun({")
     expect(tipcSource).toContain("ensureAgentSessionForConversation({")
     expect(loopServiceSource).toContain("await startSharedPromptRun({")
