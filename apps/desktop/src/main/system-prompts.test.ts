@@ -50,6 +50,8 @@ describe("constructSystemPrompt", () => {
   it("teaches the knowledge note storage contract in the default prompt", async () => {
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts")
 
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("check relevant knowledge notes and prior conversations first")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("user-specific facts are still missing after checking relevant notes/conversations")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("~/.agents/knowledge/")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("./.agents/knowledge/")
     expect(DEFAULT_SYSTEM_PROMPT).toContain(".agents/knowledge/<slug>/<slug>.md")
@@ -89,6 +91,8 @@ describe("constructSystemPrompt", () => {
 
     const prompt = constructMinimalSystemPrompt([], true)
 
+    expect(prompt).toContain("check relevant knowledge notes and prior conversations first")
+    expect(prompt).toContain("generic checklist")
     expect(prompt).toContain("~/.agents/knowledge/")
     expect(prompt).toContain(".agents/knowledge/<slug>/<slug>.md")
     expect(prompt).toContain("context: search-only")
