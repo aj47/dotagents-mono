@@ -169,7 +169,14 @@ import {
   setManagedMcpToolSourceEnabled,
 } from "./mcp-tool-management"
 import {
+  completeManagedMcpOAuthFlow,
+  getManagedMcpOAuthStatus,
+  revokeManagedMcpOAuthTokens,
+  startManagedMcpOAuthFlow,
+} from "./mcp-oauth-management"
+import {
   mcpManagementStore,
+  mcpOAuthManagementStore,
   mcpToolManagementStore,
 } from "./mcp-management-store"
 import {
@@ -874,29 +881,43 @@ export const router = {
   initiateOAuthFlow: t.procedure
     .input<string>()
     .action(async ({ input: serverName }) => {
-      return mcpService.initiateOAuthFlow(serverName)
+      const result = await startManagedMcpOAuthFlow(
+        serverName,
+        mcpOAuthManagementStore,
+      )
+      if (!result.success || !result.authorizationUrl || !result.state) {
+        throw new Error(
+          result.error || `Failed to initiate OAuth for ${serverName}`,
+        )
+      }
+
+      return {
+        authorizationUrl: result.authorizationUrl,
+        state: result.state,
+      }
     }),
 
   completeOAuthFlow: t.procedure
     .input<{ serverName: string; code: string; state: string }>()
     .action(async ({ input }) => {
-      return mcpService.completeOAuthFlow(
+      return completeManagedMcpOAuthFlow(
         input.serverName,
         input.code,
         input.state,
+        mcpOAuthManagementStore,
       )
     }),
 
   getOAuthStatus: t.procedure
     .input<string>()
     .action(async ({ input: serverName }) => {
-      return mcpService.getOAuthStatus(serverName)
+      return getManagedMcpOAuthStatus(serverName, mcpOAuthManagementStore)
     }),
 
   revokeOAuthTokens: t.procedure
     .input<string>()
     .action(async ({ input: serverName }) => {
-      return mcpService.revokeOAuthTokens(serverName)
+      return revokeManagedMcpOAuthTokens(serverName, mcpOAuthManagementStore)
     }),
 
   // Parakeet (local) STT model management

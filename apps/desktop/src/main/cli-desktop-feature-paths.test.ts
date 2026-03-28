@@ -74,6 +74,10 @@ const mcpToolManagementSource = readFileSync(
   new URL("./mcp-tool-management.ts", import.meta.url),
   "utf8",
 )
+const mcpOAuthManagementSource = readFileSync(
+  new URL("./mcp-oauth-management.ts", import.meta.url),
+  "utf8",
+)
 const knowledgeNoteManagementSource = readFileSync(
   new URL("./knowledge-note-management.ts", import.meta.url),
   "utf8",
@@ -1765,6 +1769,57 @@ describe("CLI and desktop feature paths", () => {
     expect(sessionTileSource).toContain("tipcClient.generateSpeech({")
   })
 
+  it("shares MCP OAuth management across CLI and desktop capability surfaces", () => {
+    expect(mcpOAuthManagementSource).toContain(
+      "export async function getManagedMcpOAuthServers",
+    )
+    expect(mcpOAuthManagementSource).toContain(
+      "export async function getManagedMcpOAuthServer",
+    )
+    expect(mcpOAuthManagementSource).toContain(
+      "export function resolveManagedMcpOAuthServerSelection",
+    )
+    expect(mcpOAuthManagementSource).toContain(
+      "export async function startManagedMcpOAuthFlow",
+    )
+    expect(mcpOAuthManagementSource).toContain(
+      "export async function completeManagedMcpOAuthFlow",
+    )
+    expect(mcpOAuthManagementSource).toContain(
+      "export async function revokeManagedMcpOAuthTokens",
+    )
+    expect(headlessCliSource).toContain("getManagedMcpOAuthServers(")
+    expect(headlessCliSource).toContain("getManagedMcpOAuthServer(")
+    expect(headlessCliSource).toContain("resolveManagedMcpOAuthServerSelection(")
+    expect(headlessCliSource).toContain("startManagedMcpOAuthFlow(")
+    expect(headlessCliSource).toContain("completeManagedMcpOAuthFlow(")
+    expect(headlessCliSource).toContain("revokeManagedMcpOAuthTokens(")
+    expect(headlessCliSource).toContain('case "/mcp-oauth":')
+    expect(headlessCliSource).toContain('case "/mcp-oauth-show":')
+    expect(headlessCliSource).toContain('case "/mcp-oauth-start":')
+    expect(headlessCliSource).toContain('case "/mcp-oauth-complete":')
+    expect(headlessCliSource).toContain('case "/mcp-oauth-revoke":')
+    expect(headlessCliSource).toContain("{ openBrowser: false }")
+    expect(tipcSource).toContain('from "./mcp-oauth-management"')
+    expect(tipcSource).toContain("startManagedMcpOAuthFlow(")
+    expect(tipcSource).toContain("completeManagedMcpOAuthFlow(")
+    expect(tipcSource).toContain("getManagedMcpOAuthStatus(")
+    expect(tipcSource).toContain("revokeManagedMcpOAuthTokens(")
+    expect(mcpConfigManagerSource).toContain("window.electronAPI.getOAuthStatus")
+    expect(mcpConfigManagerSource).toContain(
+      "await window.electronAPI.initiateOAuthFlow(name)",
+    )
+    expect(mcpConfigManagerSource).toContain(
+      "await window.electronAPI.revokeOAuthTokens(name)",
+    )
+    expect(docsSource).toContain("## Shared MCP OAuth management")
+    expect(docsSource).toContain("`/mcp-oauth`")
+    expect(docsSource).toContain("`/mcp-oauth-show`")
+    expect(docsSource).toContain("`/mcp-oauth-start`")
+    expect(docsSource).toContain("`/mcp-oauth-complete`")
+    expect(docsSource).toContain("`/mcp-oauth-revoke`")
+  })
+
   it("shares knowledge note management across CLI, desktop, and remote surfaces", () => {
     expect(knowledgeNoteManagementSource).toContain(
       "export async function getManagedKnowledgeNotes",
@@ -1896,6 +1951,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared repeat task management")
     expect(docsSource).toContain("Shared MCP server management")
     expect(docsSource).toContain("Shared speech generation")
+    expect(docsSource).toContain("Shared MCP OAuth management")
     expect(docsSource).toContain("Shared knowledge note management")
     expect(docsSource).toContain("Shared conversation history serialization")
     expect(docsSource).toContain("Shared runtime shutdown")
@@ -1940,6 +1996,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI remote access controls")
     expect(docsSource).toContain("Headless CLI sandbox slot management")
     expect(docsSource).toContain("Headless CLI + desktop speech generation")
+    expect(docsSource).toContain("Headless CLI + desktop MCP OAuth management")
     expect(docsSource).toContain("Headless CLI + desktop model catalog management")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")

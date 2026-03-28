@@ -2343,7 +2343,12 @@ export class MCPService {
   /**
    * Initiate OAuth flow for a server
    */
-  async initiateOAuthFlow(serverName: string): Promise<{ authorizationUrl: string; state: string }> {
+  async initiateOAuthFlow(
+    serverName: string,
+    options: {
+      openBrowser?: boolean
+    } = {},
+  ): Promise<{ authorizationUrl: string; state: string }> {
     const config = configStore.get()
     const serverConfig = config.mcpConfig?.mcpServers?.[serverName]
 
@@ -2367,8 +2372,11 @@ export class MCPService {
       // Save updated config
       await oauthStorage.save(serverConfig.url, currentConfig)
 
-      // Open authorization URL in browser
-      await oauthClient.openAuthorizationUrl(authRequest.authorizationUrl)
+      if (options.openBrowser !== false) {
+        // Open authorization URL in browser unless the caller is running
+        // in a headless environment and wants to print the URL instead.
+        await oauthClient.openAuthorizationUrl(authRequest.authorizationUrl)
+      }
 
       return {
         authorizationUrl: authRequest.authorizationUrl,

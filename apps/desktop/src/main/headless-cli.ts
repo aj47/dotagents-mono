@@ -85,7 +85,17 @@ import {
   type ManagedMcpToolSourceSummary,
 } from "./mcp-tool-management"
 import {
+  completeManagedMcpOAuthFlow,
+  getManagedMcpOAuthServer,
+  getManagedMcpOAuthServers,
+  resolveManagedMcpOAuthServerSelection,
+  revokeManagedMcpOAuthTokens,
+  startManagedMcpOAuthFlow,
+  type ManagedMcpOAuthServerSummary,
+} from "./mcp-oauth-management"
+import {
   mcpManagementStore,
+  mcpOAuthManagementStore,
   mcpToolManagementStore,
 } from "./mcp-management-store"
 import {
@@ -495,6 +505,11 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/mcp-tool-disable <name>${colors.reset} - Disable one MCP or runtime tool
   ${colors.cyan}/mcp-source-enable <name>${colors.reset} - Enable all tools for one MCP source
   ${colors.cyan}/mcp-source-disable <name>${colors.reset} - Disable all tools for one MCP source
+  ${colors.cyan}/mcp-oauth${colors.reset}     - List OAuth-capable MCP servers and auth state
+  ${colors.cyan}/mcp-oauth-show <name>${colors.reset} - Show OAuth details for one MCP server
+  ${colors.cyan}/mcp-oauth-start <name>${colors.reset} - Start OAuth without requiring a local browser
+  ${colors.cyan}/mcp-oauth-complete <name> <code> <state>${colors.reset} - Complete OAuth with a callback code
+  ${colors.cyan}/mcp-oauth-revoke <name>${colors.reset} - Revoke stored OAuth tokens for one MCP server
   ${colors.cyan}/agents${colors.reset}        - List enabled agents and the active selection
   ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
   ${colors.cyan}/agent-profiles${colors.reset} - List all agents, including disabled profiles
@@ -1306,6 +1321,45 @@ function parseCliTwoArguments(
   }
 
   return { first, second }
+}
+
+function parseCliThreeArguments(
+  input: string,
+  usage: string,
+): { first: string; second: string; third: string } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const first = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const remaining = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  if (!first || !remaining) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const secondWhitespaceIndex = remaining.search(/\s/)
+  if (secondWhitespaceIndex < 0) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const second = remaining.slice(0, secondWhitespaceIndex).trim()
+  const third = remaining.slice(secondWhitespaceIndex + 1).trim()
+  if (!second || !third) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  return { first, second, third }
 }
 
 function parseKnowledgeNoteEditCommand(
@@ -4560,6 +4614,240 @@ function handleShowMcpServerLogs(selection: string): void {
   console.log()
 }
 
+function describeCliMcpOAuthState(server: ManagedMcpOAuthServerSummary): {
+  color: string
+  label: string
+} {
+  if (server.error) {
+    return { color: colors.red, label: "error" }
+  }
+  if (server.authenticated) {
+    return { color: colors.green, label: "authenticated" }
+  }
+  if (server.configured) {
+    return { color: colors.yellow, label: "needs auth" }
+  }
+  return { color: colors.dim, label: "not configured" }
+}
+
+function formatManagedMcpOAuthSelectionSummary(
+  server: ManagedMcpOAuthServerSummary,
+): string {
+  const { color, label } = describeCliMcpOAuthState(server)
+  return `${server.name} (${color}${label}${colors.reset})`
+}
+
+async function printMcpOAuthServers(
+  options: { includeHint?: boolean } = {},
+): Promise<void> {
+  const servers = await getManagedMcpOAuthServers(mcpOAuthManagementStore)
+
+  console.log(`\n${colors.bold}MCP OAuth:${colors.reset}`)
+  if (servers.length === 0) {
+    console.log(
+      `  ${colors.dim}(no streamable HTTP MCP servers configured)${colors.reset}`,
+    )
+    console.log()
+    return
+  }
+
+  for (const server of servers) {
+    const { color, label } = describeCliMcpOAuthState(server)
+    console.log(
+      `  ${server.name}: ${color}${label}${colors.reset} (${server.transport})`,
+    )
+    console.log(`    ${colors.dim}${server.url}${colors.reset}`)
+    if (server.tokenExpiry) {
+      console.log(
+        `    ${colors.dim}token expires ${new Date(server.tokenExpiry).toLocaleString()}${colors.reset}`,
+      )
+    }
+    if (server.error) {
+      console.log(`    ${colors.red}${server.error}${colors.reset}`)
+    }
+  }
+
+  if (options.includeHint !== false) {
+    console.log()
+    console.log(
+      `${colors.dim}Use /mcp-oauth-show, /mcp-oauth-start, /mcp-oauth-complete, or /mcp-oauth-revoke with a server name prefix.${colors.reset}`,
+    )
+  }
+  console.log()
+}
+
+function printMcpOAuthServerDetails(
+  server: ManagedMcpOAuthServerSummary,
+): void {
+  const { color, label } = describeCliMcpOAuthState(server)
+
+  console.log(`\n${colors.bold}${server.name}${colors.reset}`)
+  console.log(`  ${colors.dim}${server.url}${colors.reset}`)
+  console.log(`  ${color}${label}${colors.reset}`)
+  console.log(
+    `  ${colors.dim}OAuth configured: ${server.configured ? "yes" : "no"}${colors.reset}`,
+  )
+
+  if (server.tokenExpiry) {
+    console.log(
+      `  ${colors.dim}Token expiry: ${new Date(server.tokenExpiry).toLocaleString()}${colors.reset}`,
+    )
+  }
+
+  if (server.error) {
+    console.log()
+    console.log(`${colors.red}${server.error}${colors.reset}`)
+  }
+
+  console.log()
+}
+
+async function resolveMcpOAuthServerSelectionForCli(
+  selection: string,
+): Promise<ManagedMcpOAuthServerSummary | null> {
+  const query = selection.trim()
+  if (!query) {
+    printColored(
+      colors.yellow,
+      "Usage: /mcp-oauth-show|/mcp-oauth-start|/mcp-oauth-revoke <server-name-or-prefix>",
+    )
+    return null
+  }
+
+  const servers = await getManagedMcpOAuthServers(mcpOAuthManagementStore)
+  const { selectedServer, ambiguousServers } =
+    resolveManagedMcpOAuthServerSelection(servers, query)
+
+  if (selectedServer) {
+    return (
+      (await getManagedMcpOAuthServer(
+        selectedServer.name,
+        mcpOAuthManagementStore,
+      )) || null
+    )
+  }
+
+  if (ambiguousServers?.length) {
+    printColored(
+      colors.yellow,
+      `MCP OAuth selector "${query}" matches multiple servers:`,
+    )
+    for (const server of ambiguousServers) {
+      console.log(`  ${formatManagedMcpOAuthSelectionSummary(server)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `MCP OAuth server not found: ${query}`)
+  return null
+}
+
+async function handleShowMcpOAuthServer(selection: string): Promise<void> {
+  const selectedServer = await resolveMcpOAuthServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  printMcpOAuthServerDetails(selectedServer)
+}
+
+async function handleStartMcpOAuthFlow(selection: string): Promise<void> {
+  const selectedServer = await resolveMcpOAuthServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = await startManagedMcpOAuthFlow(
+    selectedServer.name,
+    mcpOAuthManagementStore,
+    { openBrowser: false },
+  )
+  if (!result.success || !result.authorizationUrl || !result.state) {
+    printColored(
+      colors.red,
+      result.error || `Failed to start OAuth flow for ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Started OAuth flow for ${selectedServer.name}. Open the authorization URL, then complete it with /mcp-oauth-complete.`,
+  )
+  console.log()
+  console.log(`${colors.bold}Authorization URL${colors.reset}`)
+  console.log(result.authorizationUrl)
+  console.log()
+  console.log(`${colors.bold}State${colors.reset}`)
+  console.log(result.state)
+  console.log()
+}
+
+async function handleCompleteMcpOAuthFlow(input: string): Promise<void> {
+  const parsed = parseCliThreeArguments(
+    input,
+    "Usage: /mcp-oauth-complete <server-name-or-prefix> <code> <state>",
+  )
+  if (!parsed) {
+    return
+  }
+
+  const selectedServer = await resolveMcpOAuthServerSelectionForCli(parsed.first)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = await completeManagedMcpOAuthFlow(
+    selectedServer.name,
+    parsed.second,
+    parsed.third,
+    mcpOAuthManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || `Failed to complete OAuth for ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Completed OAuth flow for ${selectedServer.name}.`,
+  )
+  if (result.server) {
+    printMcpOAuthServerDetails(result.server)
+  }
+}
+
+async function handleRevokeMcpOAuthTokens(selection: string): Promise<void> {
+  const selectedServer = await resolveMcpOAuthServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = await revokeManagedMcpOAuthTokens(
+    selectedServer.name,
+    mcpOAuthManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error ||
+        `Failed to revoke OAuth tokens for ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Revoked OAuth tokens for ${selectedServer.name}.`,
+  )
+  if (result.server) {
+    printMcpOAuthServerDetails(result.server)
+  }
+}
+
 function resolveMcpToolSelectionForCli(
   selection: string,
 ): ManagedMcpToolDetails | null {
@@ -5801,6 +6089,21 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/mcp-source-disable":
       handleSetMcpToolSourceEnabled(argumentsText, false)
+      return true
+    case "/mcp-oauth":
+      await printMcpOAuthServers()
+      return true
+    case "/mcp-oauth-show":
+      await handleShowMcpOAuthServer(argumentsText)
+      return true
+    case "/mcp-oauth-start":
+      await handleStartMcpOAuthFlow(argumentsText)
+      return true
+    case "/mcp-oauth-complete":
+      await handleCompleteMcpOAuthFlow(argumentsText)
+      return true
+    case "/mcp-oauth-revoke":
+      await handleRevokeMcpOAuthTokens(argumentsText)
       return true
     case "/agents":
       printAgents()
