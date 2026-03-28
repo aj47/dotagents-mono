@@ -21,16 +21,16 @@ Built with Electron, React, and Rust, the desktop app provides:
 
 ## Platform Support
 
-| Feature | macOS | Windows | Linux |
-|---------|-------|---------|-------|
-| Voice recording | Yes | Yes | Yes |
-| Voice transcription (STT) | Yes | Yes | Yes |
-| Text-to-speech (TTS) | Yes | Yes | Yes |
-| MCP tool execution | Yes | Limited | Limited |
-| Keyboard hotkeys | Yes | Yes | Yes |
-| Text injection | Yes | Yes | Yes |
-| Agent delegation (ACP) | Yes | Yes | Yes |
-| System tray | Yes | Yes | Yes |
+| Feature                   | macOS | Windows | Linux   |
+| ------------------------- | ----- | ------- | ------- |
+| Voice recording           | Yes   | Yes     | Yes     |
+| Voice transcription (STT) | Yes   | Yes     | Yes     |
+| Text-to-speech (TTS)      | Yes   | Yes     | Yes     |
+| MCP tool execution        | Yes   | Limited | Limited |
+| Keyboard hotkeys          | Yes   | Yes     | Yes     |
+| Text injection            | Yes   | Yes     | Yes     |
+| Agent delegation (ACP)    | Yes   | Yes     | Yes     |
+| System tray               | Yes   | Yes     | Yes     |
 
 ## Interface
 
@@ -51,15 +51,15 @@ DotAgents can run as a compact **floating panel** — a small window that stays 
 
 The settings interface has dedicated sections:
 
-| Section | Purpose |
-|---------|---------|
-| **General** | AI provider selection, TTS/STT settings, theme |
-| **Providers** | API key management for OpenAI, Groq, Gemini |
-| **Models** | Model selection and custom base URLs |
-| **Capabilities** | MCP server management, tool enable/disable |
-| **Agents** | Agent profile creation and management |
-| **Loops** | Recurring automated task scheduling |
-| **WhatsApp** | WhatsApp integration settings |
+| Section          | Purpose                                        |
+| ---------------- | ---------------------------------------------- |
+| **General**      | AI provider selection, TTS/STT settings, theme |
+| **Providers**    | API key management for OpenAI, Groq, Gemini    |
+| **Models**       | Model selection and custom base URLs           |
+| **Capabilities** | MCP server management, tool enable/disable     |
+| **Agents**       | Agent profile creation and management          |
+| **Loops**        | Recurring automated task scheduling            |
+| **WhatsApp**     | WhatsApp integration settings                  |
 
 ## Key Features
 
@@ -130,6 +130,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Conversation/session bootstrap** still lives in one place underneath those launchers, and resumed runs now reuse the same shared session-revival and history-loading path so transcription handoffs, queued follow-ups, and resumed prompts stay aligned across surfaces.
 - **Runtime session state** is also owned by the shared session manager, so remote, loop, CLI, and desktop runs no longer reset the legacy active/stop/iteration flags independently.
 - **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins.
+- **Desktop remote access, headless CLI, and QR pairing** now share the same Cloudflare tunnel bootstrap, so config-driven auto-start and QR fallback behavior stay aligned across surfaces.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 
@@ -139,25 +140,25 @@ DotAgents supports both **dark** and **light** themes with consistent design tok
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Hold `Ctrl` | Voice recording (macOS/Linux) |
-| Hold `Ctrl+/` | Voice recording (Windows) |
-| `Fn` | Toggle dictation on/off |
-| Hold `Ctrl+Alt` | MCP agent mode (with tools) |
-| `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input |
-| `Ctrl+Shift+Escape` | Emergency stop (kill all agents) |
+| Shortcut                        | Action                           |
+| ------------------------------- | -------------------------------- |
+| Hold `Ctrl`                     | Voice recording (macOS/Linux)    |
+| Hold `Ctrl+/`                   | Voice recording (Windows)        |
+| `Fn`                            | Toggle dictation on/off          |
+| Hold `Ctrl+Alt`                 | MCP agent mode (with tools)      |
+| `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input                       |
+| `Ctrl+Shift+Escape`             | Emergency stop (kill all agents) |
 
 ## Data Storage
 
 All data is stored locally on your machine:
 
-| Data | Location (macOS) |
-|------|-------------------|
-| Config | `~/Library/Application Support/DotAgents/` |
-| Conversations | `~/.dotagents/conversations/` |
-| Recordings | `~/.dotagents/recordings/` |
-| Agent Config | `~/.agents/` |
+| Data          | Location (macOS)                           |
+| ------------- | ------------------------------------------ |
+| Config        | `~/Library/Application Support/DotAgents/` |
+| Conversations | `~/.dotagents/conversations/`              |
+| Recordings    | `~/.dotagents/recordings/`                 |
+| Agent Config  | `~/.agents/`                               |
 
 ---
 

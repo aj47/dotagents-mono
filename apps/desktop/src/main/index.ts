@@ -9,7 +9,10 @@ import {
   setAppQuitting,
   WINDOWS,
 } from "./window"
-import { listenToKeyboardEvents, stopListeningToKeyboardEvents } from "./keyboard"
+import {
+  listenToKeyboardEvents,
+  stopListeningToKeyboardEvents,
+} from "./keyboard"
 import { registerServeSchema } from "./serve"
 import { createAppMenu } from "./menu"
 import { destroyTray, initTray } from "./tray"
@@ -22,20 +25,13 @@ import { diagnosticsService } from "./diagnostics"
 import { ensureAppSwitcherPresence } from "./app-switcher"
 
 import { configStore } from "./config"
-import {
-  startRemoteServer,
-  printQRCodeToTerminal,
-} from "./remote-server"
+import { startConfiguredCloudflareTunnel } from "./cloudflare-runtime"
+import { startRemoteServer, printQRCodeToTerminal } from "./remote-server"
 import { acpService } from "./acp-service"
 import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
 } from "./app-runtime"
-import {
-  startCloudflareTunnel,
-  startNamedCloudflareTunnel,
-  checkCloudflaredInstalled,
-} from "./cloudflare-tunnel"
 import { loopService } from "./loop-service"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
@@ -223,72 +219,25 @@ if (!gotSingleInstanceLock) {
     // Handle --qr mode: start remote server, start tunnel, print QR code, run headlessly
     if (isQRMode) {
       logApp("Running in --qr mode (headless with QR code)")
-      let gracefulShutdown:
-        | ((exitCode: number) => Promise<void>)
-        | undefined
+      let gracefulShutdown: ((exitCode: number) => Promise<void>) | undefined
 
       try {
         const sharedHeadlessRuntime = await startSharedHeadlessRuntime({
           label: "qr-runtime",
           shutdownLabel: "QR Mode",
           remoteServerBindAddress: HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
+          cloudflareTunnelActivation: "force",
+          cloudflareConsoleLabel: "QR Mode",
         })
         gracefulShutdown = sharedHeadlessRuntime.gracefulShutdown
-        registerHeadlessTerminationHandlers(sharedHeadlessRuntime.gracefulShutdown)
-
-        // Start Cloudflare tunnel for remote access
-        const cfg = configStore.get()
-        let tunnelUrl: string | undefined
-
-        // Check if cloudflared is installed
-        const cloudflaredInstalled = await checkCloudflaredInstalled()
-        if (!cloudflaredInstalled) {
-          console.log(
-            "[QR Mode] cloudflared not installed - QR code will use local address",
-          )
-          console.log(
-            "[QR Mode] Install cloudflared for remote access: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
-          )
-        } else {
-          // Prefer named tunnel if configured, otherwise use quick tunnel
-          const tunnelMode = cfg.cloudflareTunnelMode || "quick"
-
-          if (
-            tunnelMode === "named" &&
-            cfg.cloudflareTunnelId &&
-            cfg.cloudflareTunnelHostname
-          ) {
-            console.log("[QR Mode] Starting named Cloudflare tunnel...")
-            const result = await startNamedCloudflareTunnel({
-              tunnelId: cfg.cloudflareTunnelId,
-              hostname: cfg.cloudflareTunnelHostname,
-              credentialsPath: cfg.cloudflareTunnelCredentialsPath || undefined,
-            })
-            if (result.success && result.url) {
-              tunnelUrl = result.url
-              logApp(`Named tunnel started: ${tunnelUrl}`)
-            } else {
-              console.error(`[QR Mode] Named tunnel failed: ${result.error}`)
-              console.log("[QR Mode] Falling back to quick tunnel...")
-            }
-          }
-
-          // If named tunnel wasn't used or failed, try quick tunnel
-          if (!tunnelUrl) {
-            console.log("[QR Mode] Starting Cloudflare quick tunnel...")
-            const result = await startCloudflareTunnel()
-            if (result.success && result.url) {
-              tunnelUrl = result.url
-              logApp(`Quick tunnel started: ${tunnelUrl}`)
-            } else {
-              console.error(`[QR Mode] Quick tunnel failed: ${result.error}`)
-              console.log("[QR Mode] QR code will use local address instead")
-            }
-          }
-        }
+        registerHeadlessTerminationHandlers(
+          sharedHeadlessRuntime.gracefulShutdown,
+        )
 
         // Print QR code to terminal (with tunnel URL if available)
-        const printed = await printQRCodeToTerminal(tunnelUrl)
+        const printed = await printQRCodeToTerminal(
+          sharedHeadlessRuntime.cloudflareTunnelUrl,
+        )
         if (!printed) {
           console.error(
             "[QR Mode] Failed to print QR code. Ensure remoteServerApiKey is configured.",
@@ -318,18 +267,20 @@ if (!gotSingleInstanceLock) {
     // Handle --headless mode: initialize services and start CLI without any GUI
     if (isHeadlessMode) {
       logApp("Running in --headless mode")
-      let gracefulShutdown:
-        | ((exitCode: number) => Promise<void>)
-        | undefined
+      let gracefulShutdown: ((exitCode: number) => Promise<void>) | undefined
 
       try {
         const sharedHeadlessRuntime = await startSharedHeadlessRuntime({
           label: "headless-runtime",
           shutdownLabel: "Headless",
           remoteServerBindAddress: HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
+          cloudflareTunnelActivation: "auto",
+          cloudflareConsoleLabel: "Headless",
         })
         gracefulShutdown = sharedHeadlessRuntime.gracefulShutdown
-        registerHeadlessTerminationHandlers(sharedHeadlessRuntime.gracefulShutdown)
+        registerHeadlessTerminationHandlers(
+          sharedHeadlessRuntime.gracefulShutdown,
+        )
 
         // Start headless CLI
         const { startHeadlessCLI } = await import("./headless-cli")
@@ -465,76 +416,14 @@ if (!gotSingleInstanceLock) {
             }
 
             logApp("Remote server started")
-
-            // Auto-start Cloudflare tunnel if enabled
-            // Wrapped in try/catch to isolate tunnel errors from remote server startup reporting
-            if (cfg.cloudflareTunnelAutoStart) {
-              try {
-                const cloudflaredInstalled = await checkCloudflaredInstalled()
-                if (!cloudflaredInstalled) {
-                  logApp(
-                    "Cloudflare tunnel auto-start skipped: cloudflared not installed",
-                  )
-                  return
-                }
-
-                const tunnelMode = cfg.cloudflareTunnelMode || "quick"
-
-                if (tunnelMode === "named") {
-                  // For named tunnels, we need tunnel ID and hostname
-                  if (
-                    !cfg.cloudflareTunnelId ||
-                    !cfg.cloudflareTunnelHostname
-                  ) {
-                    logApp(
-                      "Cloudflare tunnel auto-start skipped: named tunnel requires tunnel ID and hostname",
-                    )
-                    return
-                  }
-                  startNamedCloudflareTunnel({
-                    tunnelId: cfg.cloudflareTunnelId,
-                    hostname: cfg.cloudflareTunnelHostname,
-                    credentialsPath:
-                      cfg.cloudflareTunnelCredentialsPath || undefined,
-                  })
-                    .then((result) => {
-                      if (result.success) {
-                        logApp(`Cloudflare named tunnel started: ${result.url}`)
-                      } else {
-                        logApp(
-                          `Cloudflare named tunnel failed to start: ${result.error}`,
-                        )
-                      }
-                    })
-                    .catch((err) =>
-                      logApp(
-                        `Cloudflare named tunnel error: ${err instanceof Error ? err.message : String(err)}`,
-                      ),
-                    )
-                } else {
-                  // Quick tunnel
-                  startCloudflareTunnel()
-                    .then((result) => {
-                      if (result.success) {
-                        logApp(`Cloudflare quick tunnel started: ${result.url}`)
-                      } else {
-                        logApp(
-                          `Cloudflare quick tunnel failed to start: ${result.error}`,
-                        )
-                      }
-                    })
-                    .catch((err) =>
-                      logApp(
-                        `Cloudflare quick tunnel error: ${err instanceof Error ? err.message : String(err)}`,
-                      ),
-                    )
-                }
-              } catch (err) {
-                logApp(
-                  `Cloudflare tunnel auto-start error: ${err instanceof Error ? err.message : String(err)}`,
-                )
-              }
-            }
+            void startConfiguredCloudflareTunnel({
+              activation: "auto",
+              logLabel: "desktop-runtime",
+            }).catch((error) => {
+              logApp(
+                `Cloudflare tunnel auto-start error: ${error instanceof Error ? error.message : String(error)}`,
+              )
+            })
           })
           .catch((err) =>
             logApp(
@@ -553,13 +442,18 @@ if (!gotSingleInstanceLock) {
     const MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS = 250
     let lastMacAppActivationAt = 0
 
-    const handleAppActivation = (reason: "app.activate" | "app.did-become-active") => {
+    const handleAppActivation = (
+      reason: "app.activate" | "app.did-become-active",
+    ) => {
       const mainWin = WINDOWS.get("main")
       const cfg = configStore.get()
 
       if (process.platform === "darwin") {
         const now = Date.now()
-        if (now - lastMacAppActivationAt < MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS) {
+        if (
+          now - lastMacAppActivationAt <
+          MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS
+        ) {
           logApp(`[${reason}] Skipping duplicate macOS activation pulse`)
           return
         }

@@ -42,6 +42,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Headless bootstrap helper: `apps/desktop/src/main/headless-runtime.ts`
 - Non-GUI startup helper: `startSharedHeadlessRuntime(...)`
 
+## Shared Cloudflare tunnel bootstrap
+
+- Shared tunnel file: `apps/desktop/src/main/cloudflare-runtime.ts`
+- Tunnel bootstrap helper: `startConfiguredCloudflareTunnel(...)`
+- Activation modes: `"auto"` for config-driven startup and `"force"` for QR pairing
+
 ## Feature path matrix
 
 1. Desktop text input
@@ -57,11 +63,11 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 6. Queued desktop follow-ups / ACP parent resume
    `tipc.ts` now calls `startDesktopResumeRun(...)`, which wraps `startSharedResumeRun(...)`, so queued follow-ups revive candidate session IDs and reload prior history through the same shared resume bootstrap before `runPromise` enters `runTopLevelAgentMode(...)`; `acp/acp-background-notifier.ts` reuses the same path through `runAgentLoopSession(...)`, while both entry points still avoid appending persisted or synthetic turns.
 7. Desktop GUI startup
-   `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`.
+   `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`; when the remote server comes up, it also reuses `startConfiguredCloudflareTunnel({ activation: "auto" })` so desktop remote access follows the same tunnel bootstrap rules as non-GUI modes.
 8. Headless CLI startup
-   `index.ts --headless` calls the same infrastructure and runtime helpers before forcing the remote server on `0.0.0.0` and launching the terminal CLI.
+   `index.ts --headless` calls `startSharedHeadlessRuntime(...)` with `cloudflareTunnelActivation: "auto"`, so the terminal CLI now reuses the same config-driven Cloudflare tunnel bootstrap as desktop after forcing the remote server on `0.0.0.0`.
 9. QR headless pairing startup
-   `index.ts --qr` calls `startSharedHeadlessRuntime(...)`, starts the remote server on `0.0.0.0`, optionally starts a Cloudflare tunnel, then prints the pairing QR code without creating windows.
+   `index.ts --qr` calls `startSharedHeadlessRuntime(...)` with `cloudflareTunnelActivation: "force"`, which forces the same shared tunnel helper to prefer the configured named tunnel, fall back to quick tunnel when needed, and hand the resulting URL to `printQRCodeToTerminal(...)` without creating windows.
 
 ## Parity rules
 
@@ -76,6 +82,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
 - Legacy runtime flags stay session-manager-owned: prompt entrypoints do not reset `state.isAgentModeActive`, `state.shouldStopAgent`, or `state.agentIterationCount` directly, so overlapping desktop, CLI, remote, and loop sessions do not clobber each other.
 - GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.
+- Cloudflare tunnel startup is decided in one place: `startConfiguredCloudflareTunnel(...)`, so desktop auto-start, headless CLI auto-start, and QR pairing all converge on the same named-vs-quick tunnel logic.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 
 ## Verification targets
@@ -91,6 +98,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared startup helper registers IPC/serve infrastructure, supports awaited headless startup, and preserves background desktop startup.
 - `apps/desktop/src/main/headless-runtime.test.ts`
-  Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, and cleans up services through one graceful shutdown path.
+  Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, optionally layers the shared Cloudflare tunnel bootstrap on top, and cleans up services through one graceful shutdown path.
+- `apps/desktop/src/main/cloudflare-runtime.test.ts`
+  Confirms the shared Cloudflare tunnel bootstrap skips disabled auto-start, honors named-tunnel config, and falls back to quick tunnels for forced QR pairing.
 - `apps/desktop/src/main/loop-service.max-iterations.test.ts`
   Confirms repeat tasks pass their max-iteration override through the shared prompt launcher while resume-only runs keep the same override on the shared resume launcher.

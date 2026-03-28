@@ -4,6 +4,10 @@ import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
 } from "./app-runtime"
+import {
+  type CloudflareTunnelActivation,
+  startConfiguredCloudflareTunnel,
+} from "./cloudflare-runtime"
 import { logApp } from "./debug"
 import { loopService } from "./loop-service"
 import { mcpService } from "./mcp-service"
@@ -16,10 +20,13 @@ export interface SharedHeadlessRuntimeOptions {
   label: string
   shutdownLabel: string
   remoteServerBindAddress?: string
+  cloudflareTunnelActivation?: CloudflareTunnelActivation
+  cloudflareConsoleLabel?: string
 }
 
 export interface SharedHeadlessRuntimeHandle {
   gracefulShutdown: (exitCode: number) => Promise<void>
+  cloudflareTunnelUrl?: string
 }
 
 export async function startSharedHeadlessRuntime(
@@ -29,6 +36,8 @@ export async function startSharedHeadlessRuntime(
     label,
     shutdownLabel,
     remoteServerBindAddress = DEFAULT_HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
+    cloudflareTunnelActivation = "disabled",
+    cloudflareConsoleLabel,
   } = options
 
   setHeadlessMode(true)
@@ -65,9 +74,17 @@ export async function startSharedHeadlessRuntime(
     throw new Error(serverResult.error || "Unknown error")
   }
 
-  logApp(
-    `Remote server started on ${remoteServerBindAddress} (${label})`,
-  )
+  logApp(`Remote server started on ${remoteServerBindAddress} (${label})`)
 
-  return { gracefulShutdown }
+  let cloudflareTunnelUrl: string | undefined
+  if (cloudflareTunnelActivation !== "disabled") {
+    const tunnelResult = await startConfiguredCloudflareTunnel({
+      activation: cloudflareTunnelActivation,
+      logLabel: label,
+      consoleLabel: cloudflareConsoleLabel ?? shutdownLabel,
+    })
+    cloudflareTunnelUrl = tunnelResult.url
+  }
+
+  return { gracefulShutdown, cloudflareTunnelUrl }
 }

@@ -25,6 +25,7 @@ pnpm dev debug-ui        # UI focus and state changes only
 ### LLM Debug (`debug-llm`)
 
 Logs all LLM-related operations:
+
 - API requests (model, messages, parameters)
 - API responses (content, token usage)
 - Tool call decisions
@@ -35,6 +36,7 @@ Logs all LLM-related operations:
 ### Tool Debug (`debug-tools`)
 
 Logs all MCP tool operations:
+
 - Tool discovery from servers
 - Tool call requests (name, arguments)
 - Tool execution results
@@ -44,6 +46,7 @@ Logs all MCP tool operations:
 ### UI Debug (`debug-ui`)
 
 Logs UI state changes:
+
 - Focus events (window focus/blur)
 - State transitions
 - Component lifecycle events
@@ -77,7 +80,7 @@ pnpm --filter @dotagents/desktop dev -- --qr
 
 The headless CLI, QR mode, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. Fresh desktop text, voice, CLI, remote, and loop prompts now also share the same launcher and conversation/session bootstrap before entering that runner, while queued desktop follow-ups and ACP parent-resume nudges now share a dedicated resume-only launcher so they do not duplicate persisted or synthetic turns. Legacy active/stop/iteration flags are likewise left to the shared session manager, which prevents one entry point from clearing another still-running session. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 
-Headless, QR, and GUI startup also share the same runtime bootstrap for MCP, repeat tasks, ACP profile sync, bundled skills, and models.dev initialization, so both `--headless` and `--qr` now boot the same service stack as the desktop app before they diverge into the terminal REPL or QR pairing flow.
+Headless, QR, and GUI startup also share the same runtime bootstrap for MCP, repeat tasks, ACP profile sync, bundled skills, and models.dev initialization, so both `--headless` and `--qr` now boot the same service stack as the desktop app before they diverge into the terminal REPL or QR pairing flow. Cloudflare tunnel startup is likewise shared now: desktop auto-start, headless CLI auto-start, and QR pairing all pass through the same config-aware tunnel helper, with QR mode forcing the same named-to-quick fallback path before printing the pairing URL.
 
 ## Common Debugging Scenarios
 
@@ -88,6 +91,7 @@ pnpm dev debug-llm
 ```
 
 Check for:
+
 - API key validation errors
 - Model availability issues
 - Rate limiting
@@ -100,6 +104,7 @@ pnpm dev debug-tools
 ```
 
 Check for:
+
 - Server connection failures
 - Tool discovery issues
 - Tool call argument errors
@@ -108,6 +113,7 @@ Check for:
 ### Voice Not Recording
 
 Check:
+
 - System microphone permissions
 - Correct microphone selected in OS settings
 - Keyboard accessibility permissions (macOS)
@@ -116,6 +122,7 @@ Check:
 ### Mobile App Not Connecting
 
 Check:
+
 - Desktop app is running
 - Remote server is accessible
 - Correct URL in mobile settings
@@ -123,10 +130,10 @@ Check:
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
+| Variable                 | Description                        |
+| ------------------------ | ---------------------------------- |
 | `SPEAKMCP_WORKSPACE_DIR` | Set workspace `.agents/` directory |
-| `DEBUG` | Node.js debug flag |
+| `DEBUG`                  | Node.js debug flag                 |
 
 ## Langfuse (Production Debugging)
 

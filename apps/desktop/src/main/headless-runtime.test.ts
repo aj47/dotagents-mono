@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   hideDock: vi.fn(),
   initializeSharedRuntimeServices: vi.fn(),
   registerSharedMainProcessInfrastructure: vi.fn(),
+  startConfiguredCloudflareTunnel: vi.fn(),
   startRemoteServerForced: vi.fn(),
   stopRemoteServer: vi.fn(),
   stopAllLoops: vi.fn(),
@@ -25,6 +26,10 @@ vi.mock("./app-runtime", () => ({
   initializeSharedRuntimeServices: mocks.initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure:
     mocks.registerSharedMainProcessInfrastructure,
+}))
+
+vi.mock("./cloudflare-runtime", () => ({
+  startConfiguredCloudflareTunnel: mocks.startConfiguredCloudflareTunnel,
 }))
 
 vi.mock("./remote-server", () => ({
@@ -64,6 +69,7 @@ describe("headless-runtime", () => {
     vi.resetModules()
 
     mocks.initializeSharedRuntimeServices.mockResolvedValue(undefined)
+    mocks.startConfiguredCloudflareTunnel.mockResolvedValue({ started: false })
     mocks.startRemoteServerForced.mockResolvedValue({ running: true })
     mocks.stopRemoteServer.mockResolvedValue(undefined)
     mocks.acpShutdown.mockResolvedValue(undefined)
@@ -79,7 +85,9 @@ describe("headless-runtime", () => {
     })
 
     expect(mocks.setHeadlessMode).toHaveBeenCalledWith(true)
-    expect(mocks.registerSharedMainProcessInfrastructure).toHaveBeenCalledTimes(1)
+    expect(mocks.registerSharedMainProcessInfrastructure).toHaveBeenCalledTimes(
+      1,
+    )
     expect(mocks.initializeSharedRuntimeServices).toHaveBeenCalledWith({
       label: "qr-runtime",
       mcpStrategy: "await",
@@ -88,6 +96,28 @@ describe("headless-runtime", () => {
     expect(mocks.startRemoteServerForced).toHaveBeenCalledWith({
       bindAddressOverride: "0.0.0.0",
     })
+  })
+
+  it("optionally starts the shared Cloudflare tunnel bootstrap for non-GUI modes", async () => {
+    mocks.startConfiguredCloudflareTunnel.mockResolvedValue({
+      started: true,
+      url: "https://quick.example.com",
+    })
+    const { startSharedHeadlessRuntime } = await import("./headless-runtime")
+
+    const result = await startSharedHeadlessRuntime({
+      label: "qr-runtime",
+      shutdownLabel: "QR Mode",
+      cloudflareTunnelActivation: "force",
+      cloudflareConsoleLabel: "QR Mode",
+    })
+
+    expect(mocks.startConfiguredCloudflareTunnel).toHaveBeenCalledWith({
+      activation: "force",
+      logLabel: "qr-runtime",
+      consoleLabel: "QR Mode",
+    })
+    expect(result.cloudflareTunnelUrl).toBe("https://quick.example.com")
   })
 
   it("cleans up shared services exactly once during graceful shutdown", async () => {
