@@ -22,21 +22,21 @@ describe("desktop repeat-task save result handling", () => {
     expect(handleSaveSection).toContain('toast.error("Failed to save task")')
 
     const guardIndex = handleSaveSection.indexOf("if (saveResult?.success === false) {")
-    const invalidateIndex = handleSaveSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loops"] })')
+    const invalidateIndex = handleSaveSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loop-summaries"] })')
 
     expect(guardIndex).toBeGreaterThanOrEqual(0)
     expect(invalidateIndex).toBeGreaterThan(guardIndex)
   })
 
   it("does not treat toggle persistence failures as successful updates", () => {
-    const toggleSection = getSection(settingsLoopsSource, "  const handleToggleEnabled = async (loop: LoopConfig) => {", "  const handleRunNow = async")
+    const toggleSection = getSection(settingsLoopsSource, "  const handleToggleEnabled = async (loop: LoopSummary) => {", "  const handleRunNow = async")
 
     expect(toggleSection).toContain("const saveResult = await tipcClient.saveLoop({ loop: updatedLoop })")
     expect(toggleSection).toContain("if (saveResult?.success === false) {")
     expect(toggleSection).toContain('toast.error("Failed to update task")')
 
     const guardIndex = toggleSection.indexOf("if (saveResult?.success === false) {")
-    const invalidateIndex = toggleSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loops"] })')
+    const invalidateIndex = toggleSection.indexOf('queryClient.invalidateQueries({ queryKey: ["loop-summaries"] })')
 
     expect(guardIndex).toBeGreaterThanOrEqual(0)
     expect(invalidateIndex).toBeGreaterThan(guardIndex)

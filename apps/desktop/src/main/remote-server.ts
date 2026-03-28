@@ -67,6 +67,7 @@ import {
   agentProfileService,
   toolConfigToMcpServerConfig,
 } from "./agent-profile-service"
+import { summarizeLoop, summarizeLoops } from "./loop-summaries"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -2997,9 +2998,6 @@ async function startRemoteServerInternal(
   // Repeat Tasks Management Endpoints (for mobile app)
   // ============================================
 
-  const getLoopProfileName = (profileId?: string) =>
-    profileId ? agentProfileService.getById(profileId)?.displayName : undefined
-
   const loadLoopService = async () => {
     try {
       const { loopService } = await import("./loop-service")
@@ -3011,20 +3009,12 @@ async function startRemoteServerInternal(
 
   const formatLoopResponse = async (loop: LoopConfig) => {
     const status = (await loadLoopService())?.getLoopStatus(loop.id)
-
-    return {
-      id: loop.id,
-      name: loop.name,
-      prompt: loop.prompt,
-      intervalMinutes: loop.intervalMinutes,
-      enabled: loop.enabled,
-      profileId: loop.profileId,
-      profileName: getLoopProfileName(loop.profileId),
-      runOnStartup: loop.runOnStartup,
-      lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
-      isRunning: status?.isRunning ?? false,
-      nextRunAt: status?.nextRunAt,
-    }
+    return summarizeLoop(loop, {
+      status,
+      profileName: loop.profileId
+        ? agentProfileService.getById(loop.profileId)?.displayName
+        : undefined,
+    })
   }
 
   // GET /v1/loops - List all repeat tasks
@@ -3034,24 +3024,13 @@ async function startRemoteServerInternal(
       const loops = loopService?.getLoops() ?? (configStore.get().loops || [])
       const statuses = loopService?.getLoopStatuses() ?? []
 
-      const statusById = new Map(statuses.map((s) => [s.id, s]))
-
       return reply.send({
-        loops: loops.map((l) => {
-          const status = statusById.get(l.id)
-          return {
-            id: l.id,
-            name: l.name,
-            prompt: l.prompt,
-            intervalMinutes: l.intervalMinutes,
-            enabled: l.enabled,
-            profileId: l.profileId,
-            profileName: getLoopProfileName(l.profileId),
-            runOnStartup: l.runOnStartup,
-            lastRunAt: status?.lastRunAt ?? l.lastRunAt,
-            isRunning: status?.isRunning ?? false,
-            nextRunAt: status?.nextRunAt,
-          }
+        loops: summarizeLoops(loops, {
+          statuses,
+          getProfileName: (profileId) =>
+            profileId
+              ? agentProfileService.getById(profileId)?.displayName
+              : undefined,
         }),
       })
     } catch (error: any) {

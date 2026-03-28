@@ -62,8 +62,16 @@ const headlessRuntimeSource = readFileSync(
   new URL("./headless-runtime.ts", import.meta.url),
   "utf8",
 )
+const loopSummariesSource = readFileSync(
+  new URL("./loop-summaries.ts", import.meta.url),
+  "utf8",
+)
 const settingsRemoteServerSource = readFileSync(
   new URL("../renderer/src/pages/settings-remote-server.tsx", import.meta.url),
+  "utf8",
+)
+const settingsLoopsSource = readFileSync(
+  new URL("../renderer/src/pages/settings-loops.tsx", import.meta.url),
   "utf8",
 )
 const settingsModelsSource = readFileSync(
@@ -359,6 +367,18 @@ describe("CLI and desktop feature paths", () => {
     expect(modelSelectorSource).toContain("resolveModelPresetId(")
   })
 
+  it("shares repeat-task summaries across desktop and remote surfaces", () => {
+    expect(loopSummariesSource).toContain("export function summarizeLoop")
+    expect(loopSummariesSource).toContain("export function summarizeLoops")
+    expect(tipcSource).toContain("getLoopSummaries: t.procedure.action")
+    expect(tipcSource).toContain("return summarizeLoops(loopService.getLoops(), {")
+    expect(remoteServerSource).toContain('from "./loop-summaries"')
+    expect(remoteServerSource).toContain("return summarizeLoop(loop, {")
+    expect(remoteServerSource).toContain("loops: summarizeLoops(loops, {")
+    expect(settingsLoopsSource).toContain("tipcClient.getLoopSummaries()")
+    expect(settingsLoopsSource).toContain('queryKey: ["loop-summaries"]')
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -376,6 +396,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
+    expect(docsSource).toContain("Shared repeat task summaries")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -406,5 +427,6 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(docsSource).toContain("CLI/desktop MCP server status surfaces")
     expect(docsSource).toContain("Preset-aware CLI labels + preset surfaces")
+    expect(docsSource).toContain("Desktop repeat task settings + remote loop API")
   })
 })

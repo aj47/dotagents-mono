@@ -254,4 +254,21 @@ describe("remote-server route registration", () => {
     expect(failureIndex).toBeGreaterThan(saveIndex)
     expect(successIndex).toBeGreaterThan(failureIndex)
   })
+
+  it("shares repeat task summaries with the desktop loop surface", () => {
+    const source = getRemoteServerSource()
+    const listLoopsSection = getSection(
+      source,
+      '// GET /v1/loops - List all repeat tasks',
+      '// POST /v1/loops/:id/toggle - Toggle repeat task enabled state',
+    )
+
+    expect(source).toContain('from "./loop-summaries"')
+    expect(source).toContain("return summarizeLoop(loop, {")
+    expect(listLoopsSection).toContain("loops: summarizeLoops(loops, {")
+    expect(listLoopsSection).not.toContain("new Map(statuses.map(")
+    expect(listLoopsSection).not.toContain("profileName:")
+    expect(listLoopsSection).not.toContain("isRunning:")
+    expect(listLoopsSection).not.toContain("nextRunAt:")
+  })
 })

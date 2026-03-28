@@ -115,6 +115,7 @@ import {
 } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
+import { summarizeLoops } from "./loop-summaries"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -5174,6 +5175,16 @@ export const router = {
 
   getLoopStatuses: t.procedure.action(async () => {
     return loopService.getLoopStatuses()
+  }),
+
+  getLoopSummaries: t.procedure.action(async () => {
+    return summarizeLoops(loopService.getLoops(), {
+      statuses: loopService.getLoopStatuses(),
+      getProfileName: (profileId) =>
+        profileId
+          ? agentProfileService.getById(profileId)?.displayName
+          : undefined,
+    })
   }),
 
   openLoopTaskFile: t.procedure

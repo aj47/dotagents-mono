@@ -942,6 +942,12 @@ export interface LoopConfig {
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
 }
 
+export interface LoopSummary extends LoopConfig {
+  profileName?: string
+  isRunning: boolean
+  nextRunAt?: number
+}
+
 export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string

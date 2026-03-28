@@ -127,6 +127,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **QR headless pairing** starts the app with `--qr`, boots the same non-GUI runtime stack, and then prints a pairing QR code for remote/mobile clients.
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.
+- **Repeat task summaries** now also share one main-process formatter, so the desktop repeat-task settings page and the remote `/v1/loops` API report the same profile name plus running/last-run/next-run fields.
 - **Desktop text, voice, CLI, remote, and loop entrypoints** now share the same fresh-prompt launcher above the top-level runner, while queued desktop follow-ups and ACP parent-resume nudges share a dedicated resume-only launcher so they do not duplicate persisted turns.
 - **CLI conversation selection** now resolves full IDs and unique ID prefixes through one shared helper before the next prompt reuses the same conversation bootstrap path as desktop follow-ups.
 - **Conversation/session bootstrap** still lives in one place underneath those launchers, and resumed runs now reuse the same shared session-revival and history-loading path so transcription handoffs, queued follow-ups, and resumed prompts stay aligned across surfaces.

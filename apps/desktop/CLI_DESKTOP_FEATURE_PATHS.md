@@ -109,6 +109,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `resolveModelPresetId(...)`, `resolveModelPresets(...)`, and `resolveModelPreset(...)`
 - Current callers: `resolveChatModelDisplayInfo(...)` for CLI/progress labels, `remote-server.ts` preset payload + validation, `summarization-service.ts` weak-model preset lookup, `settings-models.tsx` preset selection UI, `model-preset-manager.tsx` preset editor state, and `model-selector.tsx` preset-scoped model fetches
 
+## Shared repeat task summaries
+
+- Shared loop summary file: `apps/desktop/src/main/loop-summaries.ts`
+- Shared helpers: `summarizeLoop(...)` and `summarizeLoops(...)`
+- Current callers: `tipc.ts` `getLoopSummaries(...)`, `settings-loops.tsx`, and `remote-server.ts` `/v1/loops` plus repeat-task create/update responses
+
 ## Shared runtime shutdown
 
 - Shared shutdown file: `apps/desktop/src/main/app-runtime.ts`
@@ -163,6 +169,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` startup/status output, `remote-server.ts` `/v1/mcp/servers`, `settings-agents.tsx`, and `mcp-config-manager.tsx` now classify each MCP server through `resolveMcpServerRuntimeState(...)` and `listMcpServerStatusSummaries(...)`, so config-disabled vs runtime-stopped vs connected/error/disconnected states stay aligned across the terminal, desktop UI, and remote API.
 23. Preset-aware CLI labels + preset surfaces
     `packages/shared/src/providers.ts` now resolves merged OpenAI-compatible preset IDs and records in one place, so CLI/provider labels, remote `/v1/settings` preset payloads, weak summarization preset lookup, preset editor screens, and preset-scoped model fetches all use the same built-in override, duplicate-filtering, legacy OpenAI-key fallback, and default preset ID rules.
+24. Desktop repeat task settings + remote loop API
+    `settings-loops.tsx` now queries `tipc.ts getLoopSummaries(...)`, while `remote-server.ts` reuses `summarizeLoop(...)` and `summarizeLoops(...)` for `/v1/loops` plus repeat-task create/update responses, so profile names and runtime last-run/next-run/is-running fields are merged in one main-process path before either the desktop UI or remote clients render them.
 
 ## Parity rules
 
@@ -190,6 +198,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
 - OpenAI-compatible preset IDs and merged preset records are decided in one place: `resolveModelPresetId(...)`, `resolveModelPresets(...)`, and `resolveModelPreset(...)`, so CLI labels, preset editors, preset-scoped model fetching, weak summarization preset lookup, and remote settings payloads stay aligned.
+- Repeat task summaries are decided in one place: `summarizeLoop(...)` and `summarizeLoops(...)`, so the desktop repeat-task page and remote loop API merge persisted loop config, runtime status, and profile display names the same way.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 - Runtime teardown is decided in one place: `shutdownSharedRuntimeServices(...)`, so GUI quit and non-GUI graceful shutdown both stop loops and clean up ACP, MCP, and remote-server state through the same helper.
 
@@ -215,6 +224,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/stt-models.test.ts`
   Confirms shared STT provider/model defaults stay aligned for onboarding, renderer settings, remote settings payloads, and main-process transcription callers.
+- `apps/desktop/src/main/loop-summaries.test.ts`
+  Confirms repeat-task summaries prefer runtime timestamps when available and merge profile names consistently for desktop and remote callers.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`
   Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
 - `apps/desktop/src/main/app-runtime.test.ts`
