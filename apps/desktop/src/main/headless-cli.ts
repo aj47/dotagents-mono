@@ -31,6 +31,16 @@ import { mcpManagementStore } from "./mcp-management-store"
 import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfile } from "./agent-profile-activation"
 import { loopService } from "./loop-service"
+import {
+  createManagedKnowledgeNote,
+  deleteAllManagedKnowledgeNotes,
+  deleteManagedKnowledgeNote,
+  getManagedKnowledgeNote,
+  getManagedKnowledgeNotes,
+  isManagedKnowledgeNoteFailure,
+  searchManagedKnowledgeNotes,
+  updateManagedKnowledgeNote,
+} from "./knowledge-note-management"
 import { skillsService } from "./skills-service"
 import {
   deleteAllConversationsAndSyncSessionState,
@@ -66,6 +76,7 @@ import type {
   AgentProgressUpdate,
   Conversation,
   ConversationHistoryItem,
+  KnowledgeNote,
   LoopSummary,
 } from "@shared/types"
 
@@ -87,6 +98,7 @@ let shutdownRequested = false
 const RECENT_CONVERSATION_LIMIT = 10
 const SHOWN_CONVERSATION_MESSAGE_LIMIT = 12
 const SHOWN_MCP_SERVER_LOG_LIMIT = 20
+const SHOWN_KNOWLEDGE_NOTE_LIST_LIMIT = 25
 let onShutdown: () => Promise<void> = async () => {
   process.exit(0)
 }
@@ -141,9 +153,12 @@ async function promptForConfirmation(message: string): Promise<boolean> {
   }
 
   return await new Promise<boolean>((resolve) => {
-    rl?.question(`${colors.yellow}${message} [y/N] ${colors.reset}`, (answer) => {
-      resolve(/^(y|yes)$/i.test(answer.trim()))
-    })
+    rl?.question(
+      `${colors.yellow}${message} [y/N] ${colors.reset}`,
+      (answer) => {
+        resolve(/^(y|yes)$/i.test(answer.trim()))
+      },
+    )
   })
 }
 
@@ -167,6 +182,13 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/loop-show <id-or-name>${colors.reset} - Show full repeat-task details
   ${colors.cyan}/loop-toggle <id-or-name>${colors.reset} - Enable or disable a repeat task
   ${colors.cyan}/loop-run <id-or-name>${colors.reset} - Run a repeat task immediately
+  ${colors.cyan}/notes${colors.reset}         - List knowledge notes with context and tags
+  ${colors.cyan}/note-show <id>${colors.reset} - Show a knowledge note by ID or unique prefix
+  ${colors.cyan}/note-search <query>${colors.reset} - Search knowledge notes by content or metadata
+  ${colors.cyan}/note-new <json>${colors.reset} - Create a knowledge note from a JSON payload
+  ${colors.cyan}/note-edit <id> <json>${colors.reset} - Update a knowledge note from a JSON payload
+  ${colors.cyan}/note-delete <id>${colors.reset} - Delete a knowledge note by ID or unique prefix
+  ${colors.cyan}/note-delete-all${colors.reset} - Delete all knowledge notes
   ${colors.cyan}/skills${colors.reset}        - List skills for the current agent profile
   ${colors.cyan}/skill <id>${colors.reset}    - Toggle a skill for the current agent profile
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
@@ -246,9 +268,7 @@ function formatAgentSelectionSummary(profile: AgentProfile): string {
     ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}`
     : ""
   const summary = getAgentProfileCatalogDescription(profile)
-  const description = summary
-    ? ` ${colors.dim}- ${summary}${colors.reset}`
-    : ""
+  const description = summary ? ` ${colors.dim}- ${summary}${colors.reset}` : ""
 
   return `${profile.id}: ${getAgentProfileDisplayName(profile)}${labelSuffix}${description}`
 }
@@ -348,6 +368,354 @@ function printLoops() {
   console.log()
 }
 
+function formatKnowledgeNoteContextLabel(note: KnowledgeNote): string {
+  const color = note.context === "auto" ? colors.green : colors.yellow
+  return `${color}${note.context}${colors.reset}`
+}
+
+function formatKnowledgeNoteSelectionSummary(note: KnowledgeNote): string {
+  return `${note.id} (${note.title}, ${note.context}, updated ${new Date(
+    note.updatedAt || note.createdAt || Date.now(),
+  ).toLocaleString()})`
+}
+
+function formatKnowledgeNoteMetadata(note: KnowledgeNote): string[] {
+  const metadata: string[] = [note.context]
+
+  if (note.tags.length > 0) {
+    metadata.push(`${note.tags.length} tag${note.tags.length === 1 ? "" : "s"}`)
+  }
+
+  if (note.references?.length) {
+    metadata.push(
+      `${note.references.length} reference${note.references.length === 1 ? "" : "s"}`,
+    )
+  }
+
+  if (note.group) {
+    metadata.push(`group ${note.group}`)
+  }
+
+  if (note.series) {
+    metadata.push(`series ${note.series}`)
+  }
+
+  metadata.push(
+    `updated ${new Date(note.updatedAt || note.createdAt || Date.now()).toLocaleString()}`,
+  )
+
+  return metadata
+}
+
+function printKnowledgeNoteList(
+  notes: KnowledgeNote[],
+  options: {
+    heading: string
+    emptyLabel: string
+    includeHint?: boolean
+  },
+): void {
+  console.log(`\n${colors.bold}${options.heading}:${colors.reset}`)
+  if (notes.length === 0) {
+    console.log(`  ${colors.dim}${options.emptyLabel}${colors.reset}`)
+    console.log()
+    return
+  }
+
+  const visibleNotes = notes.slice(0, SHOWN_KNOWLEDGE_NOTE_LIST_LIMIT)
+  for (const note of visibleNotes) {
+    const summary = (note.summary?.trim() || note.body.trim()).slice(0, 140)
+    console.log(
+      `  ${note.id}: ${note.title} ${colors.dim}[${formatKnowledgeNoteContextLabel(note)}${colors.dim}]${colors.reset}`,
+    )
+    console.log(
+      `    ${colors.dim}${formatKnowledgeNoteMetadata(note).join(" • ")}${colors.reset}`,
+    )
+    console.log(`    ${colors.dim}${summary}${colors.reset}`)
+  }
+
+  if (notes.length > visibleNotes.length) {
+    console.log()
+    console.log(
+      `${colors.dim}Showing ${visibleNotes.length} of ${notes.length} notes.${colors.reset}`,
+    )
+  }
+
+  if (options.includeHint !== false) {
+    console.log()
+    console.log(
+      `${colors.dim}Use /note-show, /note-search, /note-new, /note-edit, /note-delete, or /note-delete-all to manage notes.${colors.reset}`,
+    )
+  }
+  console.log()
+}
+
+function printKnowledgeNoteDetails(note: KnowledgeNote): void {
+  console.log(`\n${colors.bold}${note.title}${colors.reset}`)
+  console.log(`  ${colors.dim}${note.id}${colors.reset}`)
+  console.log(
+    `  ${colors.dim}${formatKnowledgeNoteMetadata(note).join(" • ")}${colors.reset}`,
+  )
+
+  if (note.tags.length > 0) {
+    console.log(`  ${colors.dim}tags ${note.tags.join(", ")}${colors.reset}`)
+  }
+
+  if (note.references?.length) {
+    console.log()
+    console.log(`${colors.bold}References${colors.reset}`)
+    for (const reference of note.references) {
+      console.log(`  ${reference}`)
+    }
+  }
+
+  if (note.summary?.trim()) {
+    console.log()
+    console.log(`${colors.bold}Summary${colors.reset}`)
+    console.log(note.summary)
+  }
+
+  console.log()
+  console.log(`${colors.bold}Body${colors.reset}`)
+  console.log(note.body)
+  console.log()
+}
+
+function parseCliJsonObject(
+  input: string,
+  usage: string,
+): Record<string, unknown> | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      printColored(colors.red, "JSON payload must be an object.")
+      return null
+    }
+    return parsed as Record<string, unknown>
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    printColored(colors.red, `Invalid JSON payload: ${message}`)
+    return null
+  }
+}
+
+function parseKnowledgeNoteEditCommand(
+  input: string,
+): { selection: string; payload: Record<string, unknown> } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(
+      colors.yellow,
+      "Usage: /note-edit <note-id-or-prefix> <json-payload>",
+    )
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(
+      colors.yellow,
+      "Usage: /note-edit <note-id-or-prefix> <json-payload>",
+    )
+    return null
+  }
+
+  const selection = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const payloadText = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /note-edit <note-id-or-prefix> <json-payload>",
+  )
+
+  if (!payload) {
+    return null
+  }
+
+  return { selection, payload }
+}
+
+async function resolveKnowledgeNoteSelectionForCli(
+  selection: string,
+): Promise<KnowledgeNote | null> {
+  const query = selection.trim()
+  if (!query) {
+    printColored(
+      colors.yellow,
+      "Usage: /note-show|/note-edit|/note-delete <note-id-or-prefix>",
+    )
+    return null
+  }
+
+  const exactMatch = await getManagedKnowledgeNote(query)
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  const normalizedQuery = query.toLowerCase()
+  const notes = await getManagedKnowledgeNotes()
+  const matches = notes.filter(
+    (note) =>
+      note.id.toLowerCase().startsWith(normalizedQuery) ||
+      note.title.toLowerCase().startsWith(normalizedQuery),
+  )
+
+  if (matches.length === 1) {
+    return matches[0]
+  }
+
+  if (matches.length > 1) {
+    printColored(
+      colors.yellow,
+      `Knowledge note selector "${query}" matches multiple notes:`,
+    )
+    for (const note of matches.slice(0, SHOWN_KNOWLEDGE_NOTE_LIST_LIMIT)) {
+      console.log(`  ${formatKnowledgeNoteSelectionSummary(note)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `Knowledge note not found: ${query}`)
+  return null
+}
+
+async function handleShowKnowledgeNotes(): Promise<void> {
+  const notes = await getManagedKnowledgeNotes()
+  printKnowledgeNoteList(notes, {
+    heading: "Knowledge Notes",
+    emptyLabel: "(no knowledge notes)",
+  })
+}
+
+async function handleShowKnowledgeNote(selection: string): Promise<void> {
+  const selectedNote = await resolveKnowledgeNoteSelectionForCli(selection)
+  if (!selectedNote) {
+    return
+  }
+
+  printKnowledgeNoteDetails(selectedNote)
+}
+
+async function handleSearchKnowledgeNotes(selection: string): Promise<void> {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, "Usage: /note-search <query>")
+    return
+  }
+
+  const notes = await searchManagedKnowledgeNotes(query)
+  printKnowledgeNoteList(notes, {
+    heading: `Knowledge Note Search: ${query}`,
+    emptyLabel: "(no matching knowledge notes)",
+    includeHint: false,
+  })
+}
+
+async function handleCreateKnowledgeNote(selection: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    selection,
+    "Usage: /note-new <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  const result = await createManagedKnowledgeNote(payload)
+  if (isManagedKnowledgeNoteFailure(result)) {
+    printColored(
+      result.errorCode === "invalid_input" ? colors.yellow : colors.red,
+      result.error,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Created knowledge note ${result.note.id}: ${result.note.title}`,
+  )
+}
+
+async function handleEditKnowledgeNote(selection: string): Promise<void> {
+  const parsed = parseKnowledgeNoteEditCommand(selection)
+  if (!parsed) {
+    return
+  }
+
+  const selectedNote = await resolveKnowledgeNoteSelectionForCli(
+    parsed.selection,
+  )
+  if (!selectedNote) {
+    return
+  }
+
+  const result = await updateManagedKnowledgeNote(
+    selectedNote.id,
+    parsed.payload,
+  )
+  if (isManagedKnowledgeNoteFailure(result)) {
+    printColored(
+      result.errorCode === "invalid_input" ? colors.yellow : colors.red,
+      result.error,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Updated knowledge note ${result.note.id}: ${result.note.title}`,
+  )
+}
+
+async function handleDeleteKnowledgeNote(selection: string): Promise<void> {
+  const selectedNote = await resolveKnowledgeNoteSelectionForCli(selection)
+  if (!selectedNote) {
+    return
+  }
+
+  const confirmed = await promptForConfirmation(
+    `Delete knowledge note ${selectedNote.id} (${selectedNote.title})?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Knowledge note delete cancelled.")
+    return
+  }
+
+  const result = await deleteManagedKnowledgeNote(selectedNote.id)
+  if (isManagedKnowledgeNoteFailure(result)) {
+    printColored(colors.red, result.error)
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted knowledge note ${selectedNote.id}: ${selectedNote.title}`,
+  )
+}
+
+async function handleDeleteAllKnowledgeNotes(): Promise<void> {
+  const confirmed = await promptForConfirmation("Delete all knowledge notes?")
+  if (!confirmed) {
+    printColored(colors.dim, "Knowledge note delete-all cancelled.")
+    return
+  }
+
+  const result = await deleteAllManagedKnowledgeNotes()
+  if (isManagedKnowledgeNoteFailure(result)) {
+    printColored(colors.red, result.error)
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted ${result.deletedCount} knowledge note${result.deletedCount === 1 ? "" : "s"}.`,
+  )
+}
+
 function printStatus() {
   const activeSessions = agentSessionTracker.getActiveSessions()
   const currentAgent = agentProfileService.getCurrentProfile()
@@ -397,7 +765,9 @@ function printAgents() {
         availableSkillCount,
       })
       if (summaryItems.length > 0) {
-        console.log(`    ${colors.dim}${summaryItems.join(" • ")}${colors.reset}`)
+        console.log(
+          `    ${colors.dim}${summaryItems.join(" • ")}${colors.reset}`,
+        )
       }
     }
   }
@@ -459,9 +829,8 @@ async function printConversations() {
   if (history.length === 0) {
     console.log(`  ${colors.dim}(no conversations)${colors.reset}`)
   } else {
-    const recent = orderItemsByPinnedFirst(
-      history,
-      (conversation) => pinnedSessionIds.has(conversation.id),
+    const recent = orderItemsByPinnedFirst(history, (conversation) =>
+      pinnedSessionIds.has(conversation.id),
     ).slice(0, RECENT_CONVERSATION_LIMIT)
     for (const conv of recent) {
       const isCurrent = conv.id === currentConversationId
@@ -569,7 +938,10 @@ async function handleUseAgent(selection: string): Promise<void> {
   }
 
   if (ambiguousAgents?.length) {
-    printColored(colors.yellow, `Agent selector "${query}" matches multiple agents:`)
+    printColored(
+      colors.yellow,
+      `Agent selector "${query}" matches multiple agents:`,
+    )
     for (const profile of ambiguousAgents) {
       console.log(`  ${formatAgentSelectionSummary(profile)}`)
     }
@@ -590,7 +962,9 @@ function printMcpServerDetails(server: ManagedMcpServerDetails): void {
 
   if (server.config?.command) {
     const commandParts = [server.config.command, ...(server.config.args || [])]
-    console.log(`  ${colors.dim}command ${commandParts.join(" ")}${colors.reset}`)
+    console.log(
+      `  ${colors.dim}command ${commandParts.join(" ")}${colors.reset}`,
+    )
   }
 
   if (server.config?.url) {
@@ -598,11 +972,15 @@ function printMcpServerDetails(server: ManagedMcpServerDetails): void {
   }
 
   if (typeof server.config?.timeout === "number") {
-    console.log(`  ${colors.dim}timeout ${server.config.timeout}ms${colors.reset}`)
+    console.log(
+      `  ${colors.dim}timeout ${server.config.timeout}ms${colors.reset}`,
+    )
   }
 
   if (server.envCount > 0) {
-    console.log(`  ${colors.dim}${server.envCount} env vars configured${colors.reset}`)
+    console.log(
+      `  ${colors.dim}${server.envCount} env vars configured${colors.reset}`,
+    )
   }
 
   if (server.headerCount > 0) {
@@ -638,7 +1016,10 @@ function resolveMcpServerSelectionForCli(
   )
 
   if (selectedServer) {
-    return getManagedMcpServerSummary(selectedServer.name, mcpManagementStore) || null
+    return (
+      getManagedMcpServerSummary(selectedServer.name, mcpManagementStore) ||
+      null
+    )
   }
 
   if (ambiguousServers?.length) {
@@ -748,7 +1129,8 @@ function handleShowMcpServerLogs(selection: string): void {
   if (!result.success) {
     printColored(
       colors.red,
-      result.error || `Failed to load logs for MCP server ${selectedServer.name}.`,
+      result.error ||
+        `Failed to load logs for MCP server ${selectedServer.name}.`,
     )
     return
   }
@@ -782,7 +1164,9 @@ function printLoopDetails(loop: LoopSummary): void {
     console.log(`  ${colors.dim}agent ${loop.profileName}${colors.reset}`)
   }
   if (typeof loop.maxIterations === "number") {
-    console.log(`  ${colors.dim}max ${loop.maxIterations} iterations${colors.reset}`)
+    console.log(
+      `  ${colors.dim}max ${loop.maxIterations} iterations${colors.reset}`,
+    )
   }
 
   const lastRunAt = formatLoopTimestamp(loop.lastRunAt)
@@ -805,7 +1189,10 @@ async function resolveLoopSelectionForCli(
 ): Promise<LoopSummary | null> {
   const query = selection.trim()
   if (!query) {
-    printColored(colors.yellow, "Usage: /loop-show|/loop-toggle|/loop-run <loop-id-or-name>")
+    printColored(
+      colors.yellow,
+      "Usage: /loop-show|/loop-toggle|/loop-run <loop-id-or-name>",
+    )
     return null
   }
 
@@ -961,9 +1348,14 @@ async function toggleConversationSessionStateForCli(
     ...nextSessionState,
   })
 
-  const actionLabel = stateKey === "pinnedSessionIds"
-    ? (nextEnabled ? "Pinned" : "Unpinned")
-    : (nextEnabled ? "Archived" : "Unarchived")
+  const actionLabel =
+    stateKey === "pinnedSessionIds"
+      ? nextEnabled
+        ? "Pinned"
+        : "Unpinned"
+      : nextEnabled
+        ? "Archived"
+        : "Unarchived"
 
   printColored(
     colors.green,
@@ -1208,6 +1600,28 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/loop-run":
       await handleRunLoop(argumentsText)
+      return true
+    case "/notes":
+      await handleShowKnowledgeNotes()
+      return true
+    case "/note-show":
+      await handleShowKnowledgeNote(argumentsText)
+      return true
+    case "/note-search":
+      await handleSearchKnowledgeNotes(argumentsText)
+      return true
+    case "/note-new":
+      await handleCreateKnowledgeNote(argumentsText)
+      return true
+    case "/note-edit":
+      await handleEditKnowledgeNote(argumentsText)
+      return true
+    case "/note-delete":
+      await handleDeleteKnowledgeNote(argumentsText)
+      return true
+    case "/note-delete-all":
+      await handleDeleteAllKnowledgeNotes()
+      return true
     case "/skills":
       printSkills()
       return true

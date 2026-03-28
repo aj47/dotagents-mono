@@ -131,6 +131,18 @@ import {
   stopManagedMcpServer,
 } from "./mcp-management"
 import { mcpManagementStore } from "./mcp-management-store"
+import {
+  deleteAllManagedKnowledgeNotes,
+  deleteManagedKnowledgeNote,
+  deleteMultipleManagedKnowledgeNotes,
+  getManagedKnowledgeNote,
+  getManagedKnowledgeNotes,
+  isManagedKnowledgeNoteFailure,
+  saveManagedKnowledgeNote,
+  saveManagedKnowledgeNoteFromSummary,
+  searchManagedKnowledgeNotes,
+  updateManagedKnowledgeNote,
+} from "./knowledge-note-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -2854,10 +2866,9 @@ export const router = {
   getMcpServerLogs: t.procedure
     .input<{ serverName: string }>()
     .action(async ({ input }) => {
-      return getManagedMcpServerLogs(
-        input.serverName,
-        mcpManagementStore,
-      ).logs || []
+      return (
+        getManagedMcpServerLogs(input.serverName, mcpManagementStore).logs || []
+      )
     }),
 
   clearMcpServerLogs: t.procedure
@@ -5004,13 +5015,13 @@ export const router = {
 
   // Knowledge notes service handlers
   getAllKnowledgeNotes: t.procedure.action(async () => {
-    return knowledgeNotesService.getAllNotes()
+    return getManagedKnowledgeNotes()
   }),
 
   getKnowledgeNote: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.getNote(input.id)
+      return getManagedKnowledgeNote(input.id)
     }),
 
   saveKnowledgeNoteFromSummary: t.procedure
@@ -5023,23 +5034,7 @@ export const router = {
       conversationId?: string
     }>()
     .action(async ({ input }) => {
-      const note = knowledgeNotesService.createNoteFromSummary(
-        input.summary,
-        input.title,
-        input.userNotes,
-        input.tags,
-        input.conversationTitle,
-        input.conversationId,
-      )
-      if (!note) {
-        return {
-          success: true,
-          note: null,
-          reason: "no_durable_content" as const,
-        }
-      }
-      const success = await knowledgeNotesService.saveNote(note)
-      return { success, note: success ? note : null }
+      return saveManagedKnowledgeNoteFromSummary(input)
     }),
 
   saveKnowledgeNote: t.procedure
@@ -5047,7 +5042,8 @@ export const router = {
       note: import("../shared/types").KnowledgeNote
     }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.saveNote(input.note)
+      const result = await saveManagedKnowledgeNote(input.note)
+      return result.success
     }),
 
   updateKnowledgeNote: t.procedure
@@ -5058,28 +5054,30 @@ export const router = {
       >
     }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.updateNote(input.id, input.updates)
+      const result = await updateManagedKnowledgeNote(input.id, input.updates)
+      return result.success
     }),
 
   deleteKnowledgeNote: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.deleteNote(input.id)
+      const result = await deleteManagedKnowledgeNote(input.id)
+      return result.success
     }),
 
   deleteMultipleKnowledgeNotes: t.procedure
     .input<{ ids: string[] }>()
     .action(async ({ input }) => {
-      const result = await knowledgeNotesService.deleteMultipleNotes(input.ids)
-      if (result.error) {
+      const result = await deleteMultipleManagedKnowledgeNotes(input.ids)
+      if (isManagedKnowledgeNoteFailure(result)) {
         throw new Error(result.error)
       }
       return result.deletedCount
     }),
 
   deleteAllKnowledgeNotes: t.procedure.action(async () => {
-    const result = await knowledgeNotesService.deleteAllNotes()
-    if (result.error) {
+    const result = await deleteAllManagedKnowledgeNotes()
+    if (isManagedKnowledgeNoteFailure(result)) {
       throw new Error(result.error)
     }
     return result.deletedCount
@@ -5088,7 +5086,7 @@ export const router = {
   searchKnowledgeNotes: t.procedure
     .input<{ query: string }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.searchNotes(input.query)
+      return searchManagedKnowledgeNotes(input.query)
     }),
 
   // Summarization service handlers

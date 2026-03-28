@@ -60,15 +60,20 @@ import {
   clearBadgeCount,
 } from "./push-notification-service"
 import { skillsService } from "./skills-service"
-import { knowledgeNotesService } from "./knowledge-notes-service"
+import {
+  createManagedKnowledgeNote,
+  deleteManagedKnowledgeNote,
+  getManagedKnowledgeNote,
+  getManagedKnowledgeNotes,
+  isManagedKnowledgeNoteFailure,
+  updateManagedKnowledgeNote,
+} from "./knowledge-note-management"
 import {
   sanitizeAgentProfileConnection,
   VALID_AGENT_PROFILE_CONNECTION_TYPES,
 } from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
-import {
-  agentProfileService,
-} from "./agent-profile-service"
+import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfileById } from "./agent-profile-activation"
 import {
   deleteManagedLoop,
@@ -2453,25 +2458,11 @@ async function startRemoteServerInternal(
   // Knowledge Notes Management Endpoints (for mobile app)
   // ============================================
 
-  const serializeKnowledgeNote = (
-    note: import("../shared/types").KnowledgeNote,
-  ) => ({
-    id: note.id,
-    title: note.title,
-    body: note.body,
-    summary: note.summary,
-    context: note.context,
-    tags: note.tags,
-    references: note.references,
-    createdAt: note.createdAt,
-    updatedAt: note.updatedAt,
-  })
-
   // GET /v1/knowledge/notes - List all knowledge notes
   fastify.get("/v1/knowledge/notes", async (_req, reply) => {
     try {
-      const notes = await knowledgeNotesService.getAllNotes()
-      return reply.send({ notes: notes.map(serializeKnowledgeNote) })
+      const notes = await getManagedKnowledgeNotes()
+      return reply.send({ notes })
     } catch (error: any) {
       diagnosticsService.logError(
         "remote-server",
@@ -2486,10 +2477,10 @@ async function startRemoteServerInternal(
   fastify.get("/v1/knowledge/notes/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const note = await knowledgeNotesService.getNote(params.id)
+      const note = await getManagedKnowledgeNote(params.id)
       if (!note)
         return reply.code(404).send({ error: "Knowledge note not found" })
-      return reply.send({ note: serializeKnowledgeNote(note) })
+      return reply.send({ note })
     } catch (error: any) {
       diagnosticsService.logError(
         "remote-server",
@@ -2506,15 +2497,10 @@ async function startRemoteServerInternal(
   fastify.delete("/v1/knowledge/notes/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const note = await knowledgeNotesService.getNote(params.id)
-      if (!note)
-        return reply.code(404).send({ error: "Knowledge note not found" })
-
-      const success = await knowledgeNotesService.deleteNote(params.id)
-      if (!success) {
-        return reply
-          .code(500)
-          .send({ error: "Failed to persist knowledge note deletion" })
+      const result = await deleteManagedKnowledgeNote(params.id)
+      if (isManagedKnowledgeNoteFailure(result)) {
+        const statusCode = result.errorCode === "not_found" ? 404 : 500
+        return reply.code(statusCode).send({ error: result.error })
       }
 
       return reply.send({ success: true, id: params.id })
@@ -3111,54 +3097,13 @@ async function startRemoteServerInternal(
         references?: unknown
       }
 
-      const noteBody = typeof body.body === "string" ? body.body.trim() : ""
-      if (!noteBody) {
-        return reply
-          .code(400)
-          .send({ error: "body is required and must be a non-empty string" })
+      const result = await createManagedKnowledgeNote(body)
+      if (isManagedKnowledgeNoteFailure(result)) {
+        const statusCode = result.errorCode === "invalid_input" ? 400 : 500
+        return reply.code(statusCode).send({ error: result.error })
       }
 
-      const note = knowledgeNotesService.createNote({
-        id:
-          typeof body.id === "string" && body.id.trim()
-            ? body.id.trim()
-            : undefined,
-        title:
-          typeof body.title === "string" && body.title.trim()
-            ? body.title.trim()
-            : undefined,
-        body: noteBody,
-        summary:
-          typeof body.summary === "string" && body.summary.trim()
-            ? body.summary.trim()
-            : undefined,
-        context:
-          body.context === "auto" || body.context === "search-only"
-            ? body.context
-            : "search-only",
-        tags: Array.isArray(body.tags)
-          ? body.tags.filter((tag): tag is string => typeof tag === "string")
-          : [],
-        references: Array.isArray(body.references)
-          ? body.references.filter(
-              (ref): ref is string => typeof ref === "string",
-            )
-          : [],
-      })
-
-      const success = await knowledgeNotesService.saveNote(note)
-      if (!success) {
-        return reply.code(500).send({ error: "Failed to save knowledge note" })
-      }
-
-      const savedNote = await knowledgeNotesService.getNote(note.id)
-      if (!savedNote) {
-        return reply
-          .code(500)
-          .send({ error: "Failed to load saved knowledge note" })
-      }
-
-      return reply.code(201).send({ note: serializeKnowledgeNote(savedNote) })
+      return reply.code(201).send({ note: result.note })
     } catch (error: any) {
       diagnosticsService.logError(
         "remote-server",
@@ -3184,92 +3129,20 @@ async function startRemoteServerInternal(
         references?: unknown
       }
 
-      const existing = await knowledgeNotesService.getNote(params.id)
-      if (!existing) {
-        return reply.code(404).send({ error: "Knowledge note not found" })
-      }
-
-      const updates: Record<string, unknown> = {}
-      if (body.title !== undefined) {
-        if (typeof body.title !== "string" || body.title.trim() === "") {
-          return reply
-            .code(400)
-            .send({ error: "title must be a non-empty string when provided" })
-        }
-        updates.title = body.title.trim()
-      }
-      if (body.body !== undefined) {
-        if (typeof body.body !== "string" || body.body.trim() === "") {
-          return reply
-            .code(400)
-            .send({ error: "body must be a non-empty string when provided" })
-        }
-        updates.body = body.body.trim()
-      }
-      if (body.summary !== undefined) {
-        if (typeof body.summary !== "string") {
-          return reply
-            .code(400)
-            .send({ error: "summary must be a string when provided" })
-        }
-        updates.summary = body.summary.trim() || undefined
-      }
-      if (body.context !== undefined) {
-        if (body.context === "auto" || body.context === "search-only") {
-          updates.context = body.context
-        } else {
-          return reply
-            .code(400)
-            .send({ error: "context must be one of: auto, search-only" })
-        }
-      }
-      if (body.tags !== undefined) {
-        if (
-          !Array.isArray(body.tags) ||
-          !body.tags.every((tag): tag is string => typeof tag === "string")
-        ) {
-          return reply
-            .code(400)
-            .send({ error: "tags must be an array of strings when provided" })
-        }
-        updates.tags = body.tags
-      }
-      if (body.references !== undefined) {
-        if (
-          !Array.isArray(body.references) ||
-          !body.references.every(
-            (ref): ref is string => typeof ref === "string",
-          )
-        ) {
-          return reply.code(400).send({
-            error: "references must be an array of strings when provided",
-          })
-        }
-        updates.references = body.references
-      }
-
-      const success = await knowledgeNotesService.updateNote(
-        params.id,
-        updates as Partial<
-          Omit<import("../shared/types").KnowledgeNote, "id" | "createdAt">
-        >,
-      )
-      if (!success) {
-        return reply
-          .code(500)
-          .send({ error: "Failed to update knowledge note" })
-      }
-
-      const updated = await knowledgeNotesService.getNote(params.id)
-      if (!updated) {
-        return reply
-          .code(500)
-          .send({ error: "Failed to load updated knowledge note" })
+      const result = await updateManagedKnowledgeNote(params.id, body)
+      if (isManagedKnowledgeNoteFailure(result)) {
+        const statusCode =
+          result.errorCode === "invalid_input"
+            ? 400
+            : result.errorCode === "not_found"
+              ? 404
+              : 500
+        return reply.code(statusCode).send({ error: result.error })
       }
 
       return reply.send({
         success: true,
-        note: serializeKnowledgeNote(updated),
+        note: result.note,
       })
     } catch (error: any) {
       diagnosticsService.logError(

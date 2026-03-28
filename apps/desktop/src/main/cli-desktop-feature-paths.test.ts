@@ -66,6 +66,10 @@ const mcpManagementSource = readFileSync(
   new URL("./mcp-management.ts", import.meta.url),
   "utf8",
 )
+const knowledgeNoteManagementSource = readFileSync(
+  new URL("./knowledge-note-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -107,6 +111,10 @@ const settingsRemoteServerSource = readFileSync(
 )
 const settingsLoopsSource = readFileSync(
   new URL("../renderer/src/pages/settings-loops.tsx", import.meta.url),
+  "utf8",
+)
+const knowledgePageSource = readFileSync(
+  new URL("../renderer/src/pages/knowledge.tsx", import.meta.url),
   "utf8",
 )
 const settingsModelsSource = readFileSync(
@@ -152,7 +160,10 @@ const settingsAgentsSource = readFileSync(
   "utf8",
 )
 const agentCapabilitiesSidebarSource = readFileSync(
-  new URL("../renderer/src/components/agent-capabilities-sidebar.tsx", import.meta.url),
+  new URL(
+    "../renderer/src/components/agent-capabilities-sidebar.tsx",
+    import.meta.url,
+  ),
   "utf8",
 )
 const agentStoreSource = readFileSync(
@@ -412,7 +423,9 @@ describe("CLI and desktop feature paths", () => {
     expect(applySelectedAgentSource).toContain("getEnabledAgentProfiles(")
     expect(applySelectedAgentSource).toContain("getDefaultAgentProfile(")
     expect(settingsAgentsSource).toContain("getAgentProfileCatalogDescription(")
-    expect(settingsAgentsSource).toContain("getAgentProfileCatalogSummaryItems(")
+    expect(settingsAgentsSource).toContain(
+      "getAgentProfileCatalogSummaryItems(",
+    )
     expect(settingsAgentsSource).toContain("getAgentProfileDisplayName(")
     expect(settingsAgentsSource).toContain("getAgentProfileStatusLabels(")
     expect(mobileAgentSelectorOptionsSource).toContain(
@@ -658,8 +671,12 @@ describe("CLI and desktop feature paths", () => {
   it("shares repeat-task summaries and runtime controls across CLI, desktop, and remote surfaces", () => {
     expect(loopSummariesSource).toContain("export function summarizeLoop")
     expect(loopSummariesSource).toContain("export function summarizeLoops")
-    expect(loopManagementSource).toContain("export function getManagedLoopSummary")
-    expect(loopManagementSource).toContain("export function getManagedLoopSummaries")
+    expect(loopManagementSource).toContain(
+      "export function getManagedLoopSummary",
+    )
+    expect(loopManagementSource).toContain(
+      "export function getManagedLoopSummaries",
+    )
     expect(loopManagementSource).toContain(
       "export function resolveManagedLoopSelection",
     )
@@ -667,7 +684,9 @@ describe("CLI and desktop feature paths", () => {
     expect(loopManagementSource).toContain(
       "export function toggleManagedLoopEnabled",
     )
-    expect(loopManagementSource).toContain("export async function triggerManagedLoop")
+    expect(loopManagementSource).toContain(
+      "export async function triggerManagedLoop",
+    )
     expect(loopManagementSource).toContain("export function deleteManagedLoop")
     expect(headlessCliSource).toContain("getManagedLoopSummaries(loopService)")
     expect(headlessCliSource).toContain("resolveManagedLoopSelection(")
@@ -680,7 +699,9 @@ describe("CLI and desktop feature paths", () => {
     expect(remoteServerSource).toContain(
       "return getManagedLoopSummary(loopService, loop)",
     )
-    expect(remoteServerSource).toContain("loops: getManagedLoopSummaries(loopService)")
+    expect(remoteServerSource).toContain(
+      "loops: getManagedLoopSummaries(loopService)",
+    )
     expect(remoteServerSource).toContain(
       "const result = toggleManagedLoopEnabled(loopService, params.id)",
     )
@@ -747,6 +768,77 @@ describe("CLI and desktop feature paths", () => {
     )
   })
 
+  it("shares knowledge note management across CLI, desktop, and remote surfaces", () => {
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function getManagedKnowledgeNotes",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function getManagedKnowledgeNote",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function searchManagedKnowledgeNotes",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function saveManagedKnowledgeNoteFromSummary",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function createManagedKnowledgeNote",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function updateManagedKnowledgeNote",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function deleteManagedKnowledgeNote",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
+      "export async function deleteAllManagedKnowledgeNotes",
+    )
+    expect(headlessCliSource).toContain("getManagedKnowledgeNotes(")
+    expect(headlessCliSource).toContain("getManagedKnowledgeNote(")
+    expect(headlessCliSource).toContain("searchManagedKnowledgeNotes(")
+    expect(headlessCliSource).toContain("createManagedKnowledgeNote(")
+    expect(headlessCliSource).toContain("updateManagedKnowledgeNote(")
+    expect(headlessCliSource).toContain("deleteManagedKnowledgeNote(")
+    expect(headlessCliSource).toContain("deleteAllManagedKnowledgeNotes(")
+    expect(headlessCliSource).toContain('case "/notes":')
+    expect(headlessCliSource).toContain('case "/note-new":')
+    expect(headlessCliSource).toContain('case "/note-edit":')
+    expect(headlessCliSource).toContain('case "/note-delete-all":')
+    expect(tipcSource).toContain('from "./knowledge-note-management"')
+    expect(tipcSource).toContain("getManagedKnowledgeNotes()")
+    expect(tipcSource).toContain("saveManagedKnowledgeNoteFromSummary(input)")
+    expect(tipcSource).toContain("saveManagedKnowledgeNote(input.note)")
+    expect(tipcSource).toContain(
+      "updateManagedKnowledgeNote(input.id, input.updates)",
+    )
+    expect(tipcSource).toContain("deleteManagedKnowledgeNote(input.id)")
+    expect(tipcSource).toContain(
+      "deleteMultipleManagedKnowledgeNotes(input.ids)",
+    )
+    expect(tipcSource).toContain("deleteAllManagedKnowledgeNotes()")
+    expect(tipcSource).toContain("searchManagedKnowledgeNotes(input.query)")
+    expect(remoteServerSource).toContain('from "./knowledge-note-management"')
+    expect(remoteServerSource).toContain("getManagedKnowledgeNotes()")
+    expect(remoteServerSource).toContain("getManagedKnowledgeNote(params.id)")
+    expect(remoteServerSource).toContain("createManagedKnowledgeNote(body)")
+    expect(remoteServerSource).toContain(
+      "updateManagedKnowledgeNote(params.id, body)",
+    )
+    expect(remoteServerSource).toContain(
+      "deleteManagedKnowledgeNote(params.id)",
+    )
+    expect(knowledgePageSource).toContain("tipcClient.getAllKnowledgeNotes()")
+    expect(knowledgePageSource).toContain("tipcClient.searchKnowledgeNotes(")
+    expect(knowledgePageSource).toContain("tipcClient.updateKnowledgeNote(")
+    expect(knowledgePageSource).toContain("tipcClient.deleteKnowledgeNote(")
+    expect(knowledgePageSource).toContain(
+      "tipcClient.deleteMultipleKnowledgeNotes(",
+    )
+    expect(knowledgePageSource).toContain(
+      "tipcClient.deleteAllKnowledgeNotes()",
+    )
+  })
+
   it("shares conversation-history serialization across runtime and remote surfaces", () => {
     expect(sharedConversationHistorySource).toContain(
       "export function formatConversationHistoryMessages",
@@ -792,6 +884,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared repeat task summaries")
     expect(docsSource).toContain("Shared repeat task management")
     expect(docsSource).toContain("Shared MCP server management")
+    expect(docsSource).toContain("Shared knowledge note management")
     expect(docsSource).toContain("Shared conversation history serialization")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
@@ -814,12 +907,11 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI conversation management")
     expect(docsSource).toContain("Headless CLI agent selection")
     expect(docsSource).toContain("Headless CLI repeat-task controls")
+    expect(docsSource).toContain("Headless CLI knowledge note controls")
     expect(docsSource).toContain("Headless CLI and desktop agent picker")
     expect(docsSource).toContain("Desktop and mobile ACP main-agent pickers")
     expect(docsSource).toContain("Headless CLI skill toggles")
-    expect(docsSource).toContain(
-      "Desktop/mobile per-profile skill enablement",
-    )
+    expect(docsSource).toContain("Desktop/mobile per-profile skill enablement")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")
@@ -836,6 +928,9 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Preset-aware CLI labels + preset surfaces")
     expect(docsSource).toContain(
       "Desktop repeat task settings + remote loop API",
+    )
+    expect(docsSource).toContain(
+      "Desktop knowledge workspace + CLI note controls",
     )
     expect(docsSource).toContain(
       "Desktop progress history + remote API conversation payloads",

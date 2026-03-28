@@ -55,8 +55,8 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mcpSection = getSection(
       source,
-      '// GET /v1/mcp/servers - List MCP servers with status',
-      '// GET /v1/settings - Get relevant settings for mobile app',
+      "// GET /v1/mcp/servers - List MCP servers with status",
+      "// GET /v1/settings - Get relevant settings for mobile app",
     )
 
     expect(source).toContain('from "./mcp-management"')
@@ -86,14 +86,16 @@ describe("remote-server route registration", () => {
     const profileSwitchSection = getSection(
       source,
       'fastify.post("/v1/profiles/current"',
-      '// GET /v1/profiles/:id/export - Export a profile as JSON',
+      "// GET /v1/profiles/:id/export - Export a profile as JSON",
     )
 
     expect(source).toContain('from "./agent-profile-activation"')
     expect(profileSwitchSection).toContain(
       "const profile = activateAgentProfileById(profileId)",
     )
-    expect(profileSwitchSection).not.toContain("mcpService.applyProfileMcpConfig(")
+    expect(profileSwitchSection).not.toContain(
+      "mcpService.applyProfileMcpConfig(",
+    )
     expect(profileSwitchSection).not.toContain("toolConfigToMcpServerConfig(")
   })
 
@@ -186,8 +188,24 @@ describe("remote-server route registration", () => {
     )
   })
 
-  it("registers note-only knowledge routes", () => {
+  it("shares knowledge note routes with the desktop and CLI note manager", () => {
     const source = getRemoteServerSource()
+    const notesSection = getSection(
+      source,
+      "// GET /v1/knowledge/notes - List all knowledge notes",
+      "// Agent Management Endpoints (for mobile app)",
+    )
+
+    expect(source).toContain('from "./knowledge-note-management"')
+    expect(notesSection).toContain("getManagedKnowledgeNotes()")
+    expect(notesSection).toContain("getManagedKnowledgeNote(params.id)")
+    expect(notesSection).toContain("deleteManagedKnowledgeNote(params.id)")
+    expect(source).toContain("createManagedKnowledgeNote(body)")
+    expect(source).toContain("updateManagedKnowledgeNote(params.id, body)")
+    expect(notesSection).not.toContain("knowledgeNotesService.getAllNotes(")
+    expect(notesSection).not.toContain("knowledgeNotesService.createNote(")
+    expect(notesSection).not.toContain("knowledgeNotesService.updateNote(")
+    expect(notesSection).not.toContain("knowledgeNotesService.deleteNote(")
 
     expect(source).toContain('fastify.get("/v1/knowledge/notes"')
     expect(source).toContain('fastify.get("/v1/knowledge/notes/:id"')
@@ -295,14 +313,16 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const listLoopsSection = getSection(
       source,
-      '// GET /v1/loops - List all repeat tasks',
-      '// POST /v1/loops/:id/toggle - Toggle repeat task enabled state',
+      "// GET /v1/loops - List all repeat tasks",
+      "// POST /v1/loops/:id/toggle - Toggle repeat task enabled state",
     )
 
     expect(source).toContain('from "./loop-summaries"')
     expect(source).toContain('from "./loop-management"')
     expect(source).toContain("return getManagedLoopSummary(loopService, loop)")
-    expect(listLoopsSection).toContain("loops: getManagedLoopSummaries(loopService)")
+    expect(listLoopsSection).toContain(
+      "loops: getManagedLoopSummaries(loopService)",
+    )
     expect(listLoopsSection).not.toContain("new Map(statuses.map(")
     expect(listLoopsSection).not.toContain("profileName:")
     expect(listLoopsSection).not.toContain("isRunning:")

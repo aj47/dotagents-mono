@@ -169,6 +169,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedMcpServerSummaries(...)`, `getManagedMcpServerSummary(...)`, `resolveManagedMcpServerSelection(...)`, `setManagedMcpServerRuntimeEnabled(...)`, `restartManagedMcpServer(...)`, `stopManagedMcpServer(...)`, and `getManagedMcpServerLogs(...)`
 - Current callers: `headless-cli.ts` `/mcp`, `/mcp-show`, `/mcp-enable`, `/mcp-disable`, `/mcp-restart`, `/mcp-stop`, and `/mcp-logs`; `tipc.ts` `setMcpServerRuntimeEnabled(...)`, `restartMcpServer(...)`, `stopMcpServer(...)`, and `getMcpServerLogs(...)`; and `remote-server.ts` `/v1/mcp/servers` plus `/v1/mcp/servers/:name/toggle`
 
+## Shared knowledge note management
+
+- Shared knowledge-note file: `apps/desktop/src/main/knowledge-note-management.ts`
+- Shared helpers: `getManagedKnowledgeNotes(...)`, `getManagedKnowledgeNote(...)`, `searchManagedKnowledgeNotes(...)`, `saveManagedKnowledgeNoteFromSummary(...)`, `saveManagedKnowledgeNote(...)`, `createManagedKnowledgeNote(...)`, `updateManagedKnowledgeNote(...)`, `deleteManagedKnowledgeNote(...)`, `deleteMultipleManagedKnowledgeNotes(...)`, and `deleteAllManagedKnowledgeNotes(...)`
+- Current callers: `headless-cli.ts` `/notes`, `/note-show`, `/note-search`, `/note-new`, `/note-edit`, `/note-delete`, and `/note-delete-all`; `tipc.ts` knowledge-note list/search/save/update/delete handlers; renderer `knowledge.tsx` plus `agent-summary-view.tsx`; and `remote-server.ts` `/v1/knowledge/notes` CRUD routes
+
 ## Shared conversation history serialization
 
 - Shared conversation history file: `packages/shared/src/conversation-history.ts`
@@ -257,6 +263,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `packages/shared/src/agent-profiles.ts` now also resolves effective enabled skill IDs plus toggle transitions in one place, so `settings-agents.tsx`, `agent-capabilities-sidebar.tsx`, `agent-profile-service.ts`, and `remote-server.ts` `/v1/skills` all agree on which skills are enabled for the current profile and when a profile should collapse back to the default “all skills enabled” state.
 37. Headless CLI MCP server controls
     `headless-cli.ts` now routes `/mcp`, `/mcp-show`, `/mcp-enable`, `/mcp-disable`, `/mcp-restart`, `/mcp-stop`, and `/mcp-logs` through `mcp-management.ts`, while `tipc.ts` reuses the same runtime-enable, restart, stop, and log helpers for the desktop capabilities UI and `remote-server.ts` reuses the same list/toggle helpers for `/v1/mcp/servers`, so MCP server selection by exact name or unique prefix plus runtime enablement, restart/stop lifecycle actions, and recent log lookup stay aligned across terminal, desktop UI, and remote clients.
+38. Headless CLI knowledge note controls
+    `headless-cli.ts` now routes `/notes`, `/note-show`, `/note-search`, `/note-new`, `/note-edit`, `/note-delete`, and `/note-delete-all` through `knowledge-note-management.ts`, so terminal note listing, search, CRUD validation, and delete-all behavior stay aligned with the same note helpers the desktop knowledge workspace and remote API use.
+39. Desktop knowledge workspace + CLI note controls
+    `knowledge.tsx` continues to use `tipc.ts` knowledge-note handlers, but those handlers now route through `knowledge-note-management.ts`, while `agent-summary-view.tsx` reuses the same summary-save helper and `remote-server.ts` reuses the same CRUD helpers for `/v1/knowledge/notes`, so desktop note browsing/search/edit/delete, CLI note commands, summary-driven saves, and remote note CRUD all normalize and persist notes through one main-process path.
 
 ## Parity rules
 
@@ -307,9 +317,11 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, headless CLI skill toggles, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, headless CLI skill toggles, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
-  Confirms the remote server keeps using the shared prompt runner, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
+  Confirms the remote server keeps using the shared prompt runner, routes knowledge-note CRUD through the shared note helper, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
+- `apps/desktop/src/main/knowledge-note-management.test.ts`
+  Confirms shared knowledge-note listing/search, summary-save behavior, CRUD validation, and delete failure handling stay aligned for CLI, desktop, and remote callers.
 - `apps/desktop/src/main/remote-server-qr.test.ts`
   Confirms startup auto-print, manual terminal QR printing, streamer-mode suppression, and QR-mode override URLs all converge on the shared remote-server QR helper.
 - `apps/desktop/src/shared/remote-server-url.test.ts`
