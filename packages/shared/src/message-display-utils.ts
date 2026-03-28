@@ -4,12 +4,8 @@ import type { AgentProgressUpdate } from "./agent-progress"
 const INLINE_DATA_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi
 const MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi
 
-function hasInlineDataImage(content: string): boolean {
-  return !!content && /data:image\//i.test(content)
-}
-
 export function sanitizeMessageContentForDisplay(content: string): string {
-  if (!hasInlineDataImage(content)) {
+  if (!/data:image\//i.test(content)) {
     return content
   }
 
