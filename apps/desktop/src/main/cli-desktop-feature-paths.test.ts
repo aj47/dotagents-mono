@@ -30,6 +30,10 @@ const conversationManagementSource = readFileSync(
   new URL("./conversation-management.ts", import.meta.url),
   "utf8",
 )
+const agentProfileActivationSource = readFileSync(
+  new URL("./agent-profile-activation.ts", import.meta.url),
+  "utf8",
+)
 const appRuntimeSource = readFileSync(
   new URL("./app-runtime.ts", import.meta.url),
   "utf8",
@@ -285,6 +289,26 @@ describe("CLI and desktop feature paths", () => {
     )
   })
 
+  it("shares agent profile activation across CLI, desktop, and remote surfaces", () => {
+    expect(agentProfileActivationSource).toContain(
+      "export function buildConfigForActivatedProfile",
+    )
+    expect(agentProfileActivationSource).toContain(
+      "export function activateAgentProfile(",
+    )
+    expect(agentProfileActivationSource).toContain(
+      "export function activateAgentProfileById(",
+    )
+    expect(headlessCliSource).toContain('case "/agents":')
+    expect(headlessCliSource).toContain('case "/agent":')
+    expect(headlessCliSource).toContain("activateAgentProfile(selectedAgent)")
+    expect(tipcSource).toContain("const profile = activateAgentProfileById(input.id)")
+    expect(tipcSource).toContain("activateAgentProfile(profile)")
+    expect(remoteServerSource).toContain(
+      "const profile = activateAgentProfileById(profileId)",
+    )
+  })
+
   it("routes the remote server through the shared launcher and runner", () => {
     expect(remoteServerSource).toContain('approvalMode: "dialog"')
     expect(remoteServerSource).toContain("const agentResult = await runPromise")
@@ -522,6 +546,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared MCP server status classification")
     expect(docsSource).toContain("Shared session history state")
     expect(docsSource).toContain("Shared conversation management")
+    expect(docsSource).toContain("Shared agent profile activation")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -546,6 +571,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI conversation resume selection")
     expect(docsSource).toContain("Headless CLI session pin/archive controls")
     expect(docsSource).toContain("Headless CLI conversation management")
+    expect(docsSource).toContain("Headless CLI agent selection")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")
@@ -565,6 +591,9 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(docsSource).toContain(
       "Desktop history management + runtime session-title sync",
+    )
+    expect(docsSource).toContain(
+      "Desktop agent selection + remote/mobile profile switching",
     )
   })
 })

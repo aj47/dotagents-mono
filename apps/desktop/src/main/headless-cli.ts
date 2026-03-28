@@ -10,6 +10,8 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
+import { agentProfileService } from "./agent-profile-service"
+import { activateAgentProfile } from "./agent-profile-activation"
 import {
   deleteAllConversationsAndSyncSessionState,
   deleteConversationAndSyncSessionState,
@@ -30,6 +32,7 @@ import {
   type McpServerStatusSnapshot,
 } from "../shared/mcp-server-status"
 import type {
+  AgentProfile,
   AgentProgressUpdate,
   Conversation,
   ConversationHistoryItem,
@@ -119,6 +122,8 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/quit${colors.reset}, ${colors.cyan}/exit${colors.reset}  - Exit the CLI
   ${colors.cyan}/stop${colors.reset}          - Emergency stop current agent session
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
+  ${colors.cyan}/agents${colors.reset}        - List enabled agents and the active selection
+  ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -173,9 +178,90 @@ function describeCliMcpServerState(status: McpServerStatusSnapshot): {
   }
 }
 
+function getAgentSelectionCandidates(profile: AgentProfile): string[] {
+  return [profile.id, profile.name, profile.displayName]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .map((value) => value.toLowerCase())
+}
+
+function getAvailableAgentsForCli(): AgentProfile[] {
+  const currentAgentId = agentProfileService.getCurrentProfile()?.id
+
+  return agentProfileService
+    .getAll()
+    .filter((profile) => profile.enabled)
+    .sort((left, right) => {
+      const leftPriority =
+        (left.id === currentAgentId ? -2 : 0) + (left.isDefault ? -1 : 0)
+      const rightPriority =
+        (right.id === currentAgentId ? -2 : 0) + (right.isDefault ? -1 : 0)
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority
+      }
+
+      const leftLabel = (left.displayName || left.name || left.id).toLowerCase()
+      const rightLabel = (right.displayName || right.name || right.id).toLowerCase()
+      return leftLabel.localeCompare(rightLabel)
+    })
+}
+
+function formatAgentSelectionSummary(profile: AgentProfile): string {
+  const labels: string[] = []
+  if (profile.id === agentProfileService.getCurrentProfile()?.id) {
+    labels.push("current")
+  }
+  if (profile.isDefault) {
+    labels.push("default")
+  }
+  if (profile.connection.type !== "internal") {
+    labels.push(profile.connection.type)
+  }
+
+  const labelSuffix = labels.length
+    ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}`
+    : ""
+  const description = profile.description?.trim()
+    ? ` ${colors.dim}- ${profile.description.trim()}${colors.reset}`
+    : ""
+
+  return `${profile.id}: ${profile.displayName}${labelSuffix}${description}`
+}
+
+function resolveAgentSelectionForCli(selection: string): {
+  ambiguousAgents?: AgentProfile[]
+  selectedAgent?: AgentProfile
+} {
+  const query = selection.trim().toLowerCase()
+  const availableAgents = getAvailableAgentsForCli()
+
+  const exactAgent = availableAgents.find((profile) => {
+    const exactCandidates = new Set(getAgentSelectionCandidates(profile))
+
+    return exactCandidates.has(query)
+  })
+  if (exactAgent) {
+    return { selectedAgent: exactAgent }
+  }
+
+  const matchingAgents = availableAgents.filter((profile) => {
+    const prefixCandidates = new Set(getAgentSelectionCandidates(profile))
+
+    return [...prefixCandidates].some((candidate) => candidate.startsWith(query))
+  })
+  if (matchingAgents.length === 1) {
+    return { selectedAgent: matchingAgents[0] }
+  }
+  if (matchingAgents.length > 1) {
+    return { ambiguousAgents: matchingAgents }
+  }
+
+  return {}
+}
+
 function printStatus() {
   const serverStatus = mcpService.getServerStatus()
   const activeSessions = agentSessionTracker.getActiveSessions()
+  const currentAgent = agentProfileService.getCurrentProfile()
   const { model, providerDisplayName } = resolveChatModelDisplayInfo(
     configStore.get(),
   )
@@ -183,6 +269,9 @@ function printStatus() {
   console.log(`\n${colors.bold}Server Status:${colors.reset}`)
   console.log(
     `  Model: ${colors.cyan}${providerDisplayName}/${model}${colors.reset}`,
+  )
+  console.log(
+    `  Current agent: ${colors.cyan}${currentAgent?.displayName || "(none)"}${colors.reset}${currentAgent ? `${colors.dim} (${currentAgent.id})${colors.reset}` : ""}`,
   )
   console.log(
     `  Current conversation: ${colors.cyan}${currentConversationId || "(none)"}${colors.reset}`,
@@ -216,6 +305,19 @@ function printStatus() {
       console.log(
         `  ${session.id}: ${session.conversationTitle || "(untitled)"}`,
       )
+    }
+  }
+  console.log()
+}
+
+function printAgents() {
+  const agents = getAvailableAgentsForCli()
+  console.log(`\n${colors.bold}Enabled Agents:${colors.reset}`)
+  if (agents.length === 0) {
+    console.log(`  ${colors.dim}(no enabled agents)${colors.reset}`)
+  } else {
+    for (const profile of agents) {
+      console.log(`  ${formatAgentSelectionSummary(profile)}`)
     }
   }
   console.log()
@@ -318,6 +420,34 @@ async function handleUseConversation(selection: string): Promise<void> {
     colors.green,
     `Using conversation ${selectedConversation.id}: ${selectedConversation.title}`,
   )
+}
+
+async function handleUseAgent(selection: string): Promise<void> {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, "Usage: /agent <agent-id-or-name>")
+    return
+  }
+
+  const { selectedAgent, ambiguousAgents } = resolveAgentSelectionForCli(query)
+  if (selectedAgent) {
+    const profile = activateAgentProfile(selectedAgent)
+    printColored(
+      colors.green,
+      `Using agent ${profile.displayName} (${profile.id}) for future prompts.`,
+    )
+    return
+  }
+
+  if (ambiguousAgents?.length) {
+    printColored(colors.yellow, `Agent selector "${query}" matches multiple agents:`)
+    for (const profile of ambiguousAgents) {
+      console.log(`  ${formatAgentSelectionSummary(profile)}`)
+    }
+    return
+  }
+
+  printColored(colors.red, `Agent not found: ${query}`)
 }
 
 async function toggleConversationSessionStateForCli(
@@ -557,6 +687,12 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/status":
       printStatus()
+      return true
+    case "/agents":
+      printAgents()
+      return true
+    case "/agent":
+      await handleUseAgent(argumentsText)
       return true
     case "/conversations":
       await printConversations()

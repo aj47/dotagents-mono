@@ -67,8 +67,8 @@ import {
 import { isRuntimeTool } from "./runtime-tools"
 import {
   agentProfileService,
-  toolConfigToMcpServerConfig,
 } from "./agent-profile-service"
+import { activateAgentProfileById } from "./agent-profile-activation"
 import { summarizeLoop, summarizeLoops } from "./loop-summaries"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
@@ -918,16 +918,7 @@ async function startRemoteServerInternal(
       if (!profileId || typeof profileId !== "string") {
         return reply.code(400).send({ error: "Missing or invalid profileId" })
       }
-      const profile = agentProfileService.setCurrentProfileStrict(profileId)
-      // Apply the profile's MCP configuration
-      const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
-      mcpService.applyProfileMcpConfig(
-        mcpServerConfig?.disabledServers,
-        mcpServerConfig?.disabledTools,
-        mcpServerConfig?.allServersDisabledByDefault,
-        mcpServerConfig?.enabledServers,
-        mcpServerConfig?.enabledRuntimeTools,
-      )
+      const profile = activateAgentProfileById(profileId)
       diagnosticsService.logInfo(
         "remote-server",
         `Switched to profile: ${profile.displayName}`,

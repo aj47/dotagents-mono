@@ -101,8 +101,11 @@ import { messageQueueService } from "./message-queue-service"
 import {
   agentProfileService,
   createSessionSnapshotFromProfile,
-  toolConfigToMcpServerConfig,
 } from "./agent-profile-service"
+import {
+  activateAgentProfile,
+  activateAgentProfileById,
+} from "./agent-profile-activation"
 import { acpService, ACPRunRequest } from "./acp-service"
 import {
   type StartSharedPromptRunOptions,
@@ -3421,75 +3424,7 @@ export const router = {
   setCurrentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const profile = agentProfileService.setCurrentProfileStrict(input.id)
-
-      // Update the config with the profile's guidelines, system prompt, and model config
-      const config = configStore.get()
-      const updatedConfig = {
-        ...config,
-        mcpCurrentProfileId: profile.id,
-        // Apply model config if it exists
-        // Agent/MCP Tools settings
-        ...(profile.modelConfig?.mcpToolsProviderId && {
-          mcpToolsProviderId: profile.modelConfig.mcpToolsProviderId,
-        }),
-        ...(profile.modelConfig?.mcpToolsOpenaiModel && {
-          mcpToolsOpenaiModel: profile.modelConfig.mcpToolsOpenaiModel,
-        }),
-        ...(profile.modelConfig?.mcpToolsGroqModel && {
-          mcpToolsGroqModel: profile.modelConfig.mcpToolsGroqModel,
-        }),
-        ...(profile.modelConfig?.mcpToolsGeminiModel && {
-          mcpToolsGeminiModel: profile.modelConfig.mcpToolsGeminiModel,
-        }),
-        ...(profile.modelConfig?.currentModelPresetId && {
-          currentModelPresetId: profile.modelConfig.currentModelPresetId,
-        }),
-        // STT Provider settings
-        ...(profile.modelConfig?.sttProviderId && {
-          sttProviderId: profile.modelConfig.sttProviderId,
-        }),
-        ...(profile.modelConfig?.openaiSttModel && {
-          openaiSttModel: profile.modelConfig.openaiSttModel,
-        }),
-        ...(profile.modelConfig?.groqSttModel && {
-          groqSttModel: profile.modelConfig.groqSttModel,
-        }),
-        // Transcript Post-Processing settings
-        ...(profile.modelConfig?.transcriptPostProcessingProviderId && {
-          transcriptPostProcessingProviderId:
-            profile.modelConfig.transcriptPostProcessingProviderId,
-        }),
-        ...(profile.modelConfig?.transcriptPostProcessingOpenaiModel && {
-          transcriptPostProcessingOpenaiModel:
-            profile.modelConfig.transcriptPostProcessingOpenaiModel,
-        }),
-        ...(profile.modelConfig?.transcriptPostProcessingGroqModel && {
-          transcriptPostProcessingGroqModel:
-            profile.modelConfig.transcriptPostProcessingGroqModel,
-        }),
-        ...(profile.modelConfig?.transcriptPostProcessingGeminiModel && {
-          transcriptPostProcessingGeminiModel:
-            profile.modelConfig.transcriptPostProcessingGeminiModel,
-        }),
-        // TTS Provider settings
-        ...(profile.modelConfig?.ttsProviderId && {
-          ttsProviderId: profile.modelConfig.ttsProviderId,
-        }),
-      }
-      configStore.save(updatedConfig)
-
-      // Apply the profile's MCP server configuration
-      // If the profile has no toolConfig, we pass empty arrays to reset to default (all enabled)
-      const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
-      mcpService.applyProfileMcpConfig(
-        mcpServerConfig?.disabledServers ?? [],
-        mcpServerConfig?.disabledTools ?? [],
-        mcpServerConfig?.allServersDisabledByDefault ?? false,
-
-        mcpServerConfig?.enabledServers ?? [],
-        mcpServerConfig?.enabledRuntimeTools ?? [],
-      )
+      const profile = activateAgentProfileById(input.id)
 
       return agentProfileService.getProfileLegacy(profile.id)
     }),
@@ -4170,7 +4105,7 @@ export const router = {
       if (!profile || !profile.enabled) {
         return { success: false }
       }
-      agentProfileService.setCurrentProfile(input.id)
+      activateAgentProfile(profile)
       return { success: true }
     }),
 

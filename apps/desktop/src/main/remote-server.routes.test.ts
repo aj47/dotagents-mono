@@ -61,6 +61,22 @@ describe("remote-server route registration", () => {
     expect(source).not.toContain("resolvePreferredTopLevelAcpAgentSelection({")
   })
 
+  it("routes remote profile switches through the shared activation helper", () => {
+    const source = getRemoteServerSource()
+    const profileSwitchSection = getSection(
+      source,
+      'fastify.post("/v1/profiles/current"',
+      '// GET /v1/profiles/:id/export - Export a profile as JSON',
+    )
+
+    expect(source).toContain('from "./agent-profile-activation"')
+    expect(profileSwitchSection).toContain(
+      "const profile = activateAgentProfileById(profileId)",
+    )
+    expect(profileSwitchSection).not.toContain("mcpService.applyProfileMcpConfig(")
+    expect(profileSwitchSection).not.toContain("toolConfigToMcpServerConfig(")
+  })
+
   it("leaves legacy runtime flag ownership to the shared session manager", () => {
     const source = getRemoteServerSource()
 
