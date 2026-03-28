@@ -13,6 +13,7 @@ import os from "os"
 import path from "path"
 import {
   formatConversationHistoryMessages,
+  sanitizeSessionIdList,
   resolveChatModelSelection,
   resolveChatProviderId,
   resolveModelPresetId,
@@ -1177,16 +1178,8 @@ async function startRemoteServerInternal(
           .filter((p) => p.connection.type === "acp" && p.enabled !== false)
           .map((p) => ({ name: p.name, displayName: p.displayName })),
         // Session History (pinned/archived conversation IDs)
-        pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds)
-          ? cfg.pinnedSessionIds.filter(
-              (id: unknown): id is string => typeof id === "string",
-            )
-          : [],
-        archivedSessionIds: Array.isArray(cfg.archivedSessionIds)
-          ? cfg.archivedSessionIds.filter(
-              (id: unknown): id is string => typeof id === "string",
-            )
-          : [],
+        pinnedSessionIds: sanitizeSessionIdList(cfg.pinnedSessionIds),
+        archivedSessionIds: sanitizeSessionIdList(cfg.archivedSessionIds),
       })
     } catch (error: any) {
       diagnosticsService.logError(

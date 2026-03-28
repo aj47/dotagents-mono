@@ -1,3 +1,5 @@
+import { orderItemsByPinnedFirst } from "@dotagents/shared"
+
 type SessionLike = {
   id: string
   conversationId?: string
@@ -11,21 +13,11 @@ export function orderActiveSessionsByPinnedFirst<T extends SessionLike>(
     return sessions
   }
 
-  const pinnedSessions: T[] = []
-  const unpinnedSessions: T[] = []
-
-  for (const session of sessions) {
-    if (
-      session.conversationId &&
-      pinnedSessionIds.has(session.conversationId)
-    ) {
-      pinnedSessions.push(session)
-    } else {
-      unpinnedSessions.push(session)
-    }
-  }
-
-  return [...pinnedSessions, ...unpinnedSessions]
+  return orderItemsByPinnedFirst(
+    sessions,
+    (session) =>
+      !!session.conversationId && pinnedSessionIds.has(session.conversationId),
+  )
 }
 
 export function filterPastSessionsAgainstActiveSessions<

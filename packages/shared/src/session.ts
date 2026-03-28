@@ -57,15 +57,60 @@ export interface SessionListItem {
   preview: string;
 }
 
-export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 'isPinned'>>(sessions: T[]): T[] {
-  return [...sessions].sort((a, b) => {
-    const pinOrder = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
-    if (pinOrder !== 0) {
-      return pinOrder;
-    }
+export function orderItemsByPinnedFirst<T>(
+  items: readonly T[],
+  isPinned: (item: T) => boolean,
+): T[] {
+  if (items.length <= 1) {
+    return [...items];
+  }
 
-    return b.updatedAt - a.updatedAt;
-  });
+  const pinnedItems: T[] = [];
+  const unpinnedItems: T[] = [];
+
+  for (const item of items) {
+    if (isPinned(item)) {
+      pinnedItems.push(item);
+    } else {
+      unpinnedItems.push(item);
+    }
+  }
+
+  if (pinnedItems.length === 0 || unpinnedItems.length === 0) {
+    return [...items];
+  }
+
+  return [...pinnedItems, ...unpinnedItems];
+}
+
+export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 'isPinned'>>(sessions: T[]): T[] {
+  const sortedByRecency = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return orderItemsByPinnedFirst(
+    sortedByRecency,
+    (session) => Boolean(session.isPinned),
+  );
+}
+
+export function sanitizeSessionIdList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((sessionId): sessionId is string => typeof sessionId === 'string')
+    : [];
+}
+
+export function setSessionIdMembership(
+  sessionIds: Iterable<string>,
+  sessionId: string,
+  isIncluded: boolean,
+): string[] {
+  const nextSessionIds = new Set(sessionIds);
+  if (isIncluded) {
+    nextSessionIds.add(sessionId);
+  } else {
+    nextSessionIds.delete(sessionId);
+  }
+
+  return [...nextSessionIds];
 }
 
 /**

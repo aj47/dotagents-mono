@@ -1,4 +1,5 @@
 import type { ConversationHistoryItem } from "@shared/types"
+import { orderItemsByPinnedFirst } from "@dotagents/shared"
 
 export function orderConversationHistoryByPinnedFirst(
   sessions: ConversationHistoryItem[],
@@ -8,16 +9,8 @@ export function orderConversationHistoryByPinnedFirst(
     return sessions
   }
 
-  const pinnedSessions: ConversationHistoryItem[] = []
-  const unpinnedSessions: ConversationHistoryItem[] = []
-
-  for (const session of sessions) {
-    if (pinnedSessionIds.has(session.id)) {
-      pinnedSessions.push(session)
-    } else {
-      unpinnedSessions.push(session)
-    }
-  }
-
-  return [...pinnedSessions, ...unpinnedSessions]
+  return orderItemsByPinnedFirst(
+    sessions,
+    (session) => pinnedSessionIds.has(session.id),
+  )
 }

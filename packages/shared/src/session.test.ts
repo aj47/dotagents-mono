@@ -3,6 +3,9 @@ import {
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
+  orderItemsByPinnedFirst,
+  sanitizeSessionIdList,
+  setSessionIdMembership,
   sortSessionsByPinnedFirst,
   sanitizeSessionText,
   sessionToListItem,
@@ -72,6 +75,37 @@ describe('generateSessionTitle', () => {
   })
 })
 
+// ── orderItemsByPinnedFirst ──────────────────────────────────────────────────
+
+describe('orderItemsByPinnedFirst', () => {
+  it('moves pinned items to the front while preserving each group order', () => {
+    const ordered = orderItemsByPinnedFirst(
+      [
+        { id: 'session-4', isPinned: false },
+        { id: 'session-3', isPinned: true },
+        { id: 'session-2', isPinned: false },
+        { id: 'session-1', isPinned: true },
+      ],
+      (session) => session.isPinned,
+    )
+
+    expect(ordered.map((session) => session.id)).toEqual([
+      'session-3',
+      'session-1',
+      'session-4',
+      'session-2',
+    ])
+  })
+
+  it('returns a shallow copy when every item is in the same pin group', () => {
+    const sessions = [{ id: 'session-1' }, { id: 'session-2' }]
+    const ordered = orderItemsByPinnedFirst(sessions, () => false)
+
+    expect(ordered).toEqual(sessions)
+    expect(ordered).not.toBe(sessions)
+  })
+})
+
 // ── sortSessionsByPinnedFirst ────────────────────────────────────────────────
 
 describe('sortSessionsByPinnedFirst', () => {
@@ -110,6 +144,42 @@ describe('sortSessionsByPinnedFirst', () => {
     const original = [...sessions]
     sortSessionsByPinnedFirst(sessions)
     expect(sessions).toEqual(original)
+  })
+})
+
+// ── sanitizeSessionIdList ────────────────────────────────────────────────────
+
+describe('sanitizeSessionIdList', () => {
+  it('returns only string entries from array input', () => {
+    expect(
+      sanitizeSessionIdList(['session-1', 2, null, 'session-2'])
+    ).toEqual(['session-1', 'session-2'])
+  })
+
+  it('returns an empty array for non-array input', () => {
+    expect(sanitizeSessionIdList('session-1')).toEqual([])
+  })
+})
+
+// ── setSessionIdMembership ───────────────────────────────────────────────────
+
+describe('setSessionIdMembership', () => {
+  it('adds missing session ids when enabling membership', () => {
+    expect(
+      setSessionIdMembership(['session-1'], 'session-2', true)
+    ).toEqual(['session-1', 'session-2'])
+  })
+
+  it('removes existing session ids when disabling membership', () => {
+    expect(
+      setSessionIdMembership(['session-1', 'session-2'], 'session-1', false)
+    ).toEqual(['session-2'])
+  })
+
+  it('does not duplicate ids when enabling an existing membership', () => {
+    expect(
+      setSessionIdMembership(['session-1'], 'session-1', true)
+    ).toEqual(['session-1'])
   })
 })
 

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
+import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sanitizeSessionIdList, setSessionIdMembership, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';
@@ -299,15 +299,13 @@ export function useSessions(): SessionStore {
           const serverSettings = await client.getSettings().catch(() => null);
           // Only merge+push when we successfully fetched settings with the relevant field
           if (serverSettings && 'pinnedSessionIds' in serverSettings) {
-            const serverPinnedIds = new Set<string>(
-              Array.isArray(serverSettings.pinnedSessionIds) ? serverSettings.pinnedSessionIds : []
-            );
-            if (toggledSession.isPinned) {
-              serverPinnedIds.add(toggledSession.serverConversationId);
-            } else {
-              serverPinnedIds.delete(toggledSession.serverConversationId);
-            }
-            await client.updateSettings({ pinnedSessionIds: [...serverPinnedIds] });
+            await client.updateSettings({
+              pinnedSessionIds: setSessionIdMembership(
+                sanitizeSessionIdList(serverSettings.pinnedSessionIds),
+                toggledSession.serverConversationId,
+                !!toggledSession.isPinned,
+              ),
+            });
           }
         }
       } catch {
@@ -345,15 +343,13 @@ export function useSessions(): SessionStore {
           const serverSettings = await client.getSettings().catch(() => null);
           // Only merge+push when we successfully fetched settings with the relevant field
           if (serverSettings && 'archivedSessionIds' in serverSettings) {
-            const serverArchivedIds = new Set<string>(
-              Array.isArray(serverSettings.archivedSessionIds) ? serverSettings.archivedSessionIds : []
-            );
-            if (toggledSession.isArchived) {
-              serverArchivedIds.add(toggledSession.serverConversationId);
-            } else {
-              serverArchivedIds.delete(toggledSession.serverConversationId);
-            }
-            await client.updateSettings({ archivedSessionIds: [...serverArchivedIds] });
+            await client.updateSettings({
+              archivedSessionIds: setSessionIdMembership(
+                sanitizeSessionIdList(serverSettings.archivedSessionIds),
+                toggledSession.serverConversationId,
+                !!toggledSession.isArchived,
+              ),
+            });
           }
         }
       } catch {

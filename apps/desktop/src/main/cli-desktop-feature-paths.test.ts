@@ -58,6 +58,10 @@ const sharedConversationHistorySource = readFileSync(
   new URL("../../../../packages/shared/src/conversation-history.ts", import.meta.url),
   "utf8",
 )
+const sharedSessionSource = readFileSync(
+  new URL("../../../../packages/shared/src/session.ts", import.meta.url),
+  "utf8",
+)
 const sharedSttModelsSource = readFileSync(
   new URL("../../../../packages/shared/src/stt-models.ts", import.meta.url),
   "utf8",
@@ -106,8 +110,20 @@ const settingsAgentsSource = readFileSync(
   new URL("../renderer/src/pages/settings-agents.tsx", import.meta.url),
   "utf8",
 )
+const agentStoreSource = readFileSync(
+  new URL("../renderer/src/stores/agent-store.ts", import.meta.url),
+  "utf8",
+)
 const mcpConfigManagerSource = readFileSync(
   new URL("../renderer/src/components/mcp-config-manager.tsx", import.meta.url),
+  "utf8",
+)
+const pinnedSessionHistorySource = readFileSync(
+  new URL("../renderer/src/lib/pinned-session-history.ts", import.meta.url),
+  "utf8",
+)
+const sidebarSessionsSource = readFileSync(
+  new URL("../renderer/src/lib/sidebar-sessions.ts", import.meta.url),
   "utf8",
 )
 const aiSdkProviderSource = readFileSync(
@@ -179,6 +195,27 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain(
       "requestedConversationId: currentConversationId",
     )
+  })
+
+  it("shares session pin/archive helpers across CLI, desktop, and remote surfaces", () => {
+    expect(sharedSessionSource).toContain(
+      "export function orderItemsByPinnedFirst",
+    )
+    expect(sharedSessionSource).toContain(
+      "export function sanitizeSessionIdList",
+    )
+    expect(sharedSessionSource).toContain(
+      "export function setSessionIdMembership",
+    )
+    expect(headlessCliSource).toContain('case "/pin":')
+    expect(headlessCliSource).toContain('case "/archive":')
+    expect(headlessCliSource).toContain("orderItemsByPinnedFirst(")
+    expect(headlessCliSource).toContain("sanitizeSessionIdList(")
+    expect(headlessCliSource).toContain("setSessionIdMembership(")
+    expect(agentStoreSource).toContain("setSessionIdMembership(")
+    expect(pinnedSessionHistorySource).toContain("orderItemsByPinnedFirst(")
+    expect(sidebarSessionsSource).toContain("orderItemsByPinnedFirst(")
+    expect(remoteServerSource).toContain("sanitizeSessionIdList(")
   })
 
   it("routes the remote server through the shared launcher and runner", () => {
@@ -416,6 +453,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared remote server QR printing")
     expect(docsSource).toContain("Shared remote server URL rules")
     expect(docsSource).toContain("Shared MCP server status classification")
+    expect(docsSource).toContain("Shared session history state")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -438,6 +476,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop GUI shutdown")
     expect(docsSource).toContain("Headless non-GUI shutdown")
     expect(docsSource).toContain("Headless CLI conversation resume selection")
+    expect(docsSource).toContain("Headless CLI session pin/archive controls")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")

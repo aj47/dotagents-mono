@@ -11,7 +11,12 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
 import { emergencyStopAll } from "./emergency-stop"
-import { resolveChatModelDisplayInfo } from "@dotagents/shared"
+import {
+  orderItemsByPinnedFirst,
+  resolveChatModelDisplayInfo,
+  sanitizeSessionIdList,
+  setSessionIdMembership,
+} from "@dotagents/shared"
 import {
   countConnectedMcpServers,
   resolveMcpServerRuntimeState,
@@ -40,6 +45,7 @@ let rl: readline.Interface | null = null
 let shutdownRequested = false
 const RECENT_CONVERSATION_LIMIT = 10
 const SHOWN_CONVERSATION_MESSAGE_LIMIT = 12
+type ConversationSessionStateKey = "pinnedSessionIds" | "archivedSessionIds"
 let onShutdown: () => Promise<void> = async () => {
   process.exit(0)
 }
@@ -98,10 +104,45 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
+  ${colors.cyan}/pin [id]${colors.reset}      - Pin or unpin the current or selected conversation
+  ${colors.cyan}/archive [id]${colors.reset}  - Archive or unarchive the current or selected conversation
   ${colors.cyan}/new${colors.reset}           - Start a new conversation
 
 ${colors.dim}Type any message to interact with the agent.${colors.reset}
 `)
+}
+
+function getConfiguredSessionIdList(
+  stateKey: ConversationSessionStateKey,
+): string[] {
+  return sanitizeSessionIdList(configStore.get()[stateKey])
+}
+
+function getConfiguredConversationSessionState(): {
+  pinnedSessionIds: Set<string>
+  archivedSessionIds: Set<string>
+} {
+  return {
+    pinnedSessionIds: new Set(getConfiguredSessionIdList("pinnedSessionIds")),
+    archivedSessionIds: new Set(getConfiguredSessionIdList("archivedSessionIds")),
+  }
+}
+
+function formatConversationSessionStateLabel(
+  conversationId: string,
+  sessionState: ReturnType<typeof getConfiguredConversationSessionState>,
+): string {
+  const labels: string[] = []
+  if (sessionState.pinnedSessionIds.has(conversationId)) {
+    labels.push("pinned")
+  }
+  if (sessionState.archivedSessionIds.has(conversationId)) {
+    labels.push("archived")
+  }
+
+  return labels.length > 0
+    ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}`
+    : ""
 }
 
 function describeCliMcpServerState(status: McpServerStatusSnapshot): {
@@ -173,22 +214,30 @@ function printStatus() {
 
 async function printConversations() {
   const history = await conversationService.getConversationHistory()
+  const sessionState = getConfiguredConversationSessionState()
   console.log(`\n${colors.bold}Recent Conversations:${colors.reset}`)
   if (history.length === 0) {
     console.log(`  ${colors.dim}(no conversations)${colors.reset}`)
   } else {
-    const recent = history.slice(0, RECENT_CONVERSATION_LIMIT)
+    const recent = orderItemsByPinnedFirst(
+      history,
+      (conversation) => sessionState.pinnedSessionIds.has(conversation.id),
+    ).slice(0, RECENT_CONVERSATION_LIMIT)
     for (const conv of recent) {
       const isCurrent = conv.id === currentConversationId
       const marker = isCurrent ? colors.green + " *" : "  "
       const date = new Date(conv.updatedAt).toLocaleString()
+      const stateLabel = formatConversationSessionStateLabel(
+        conv.id,
+        sessionState,
+      )
       console.log(
-        `${marker} ${conv.id}${colors.reset}: ${conv.title} ${colors.dim}(${date})${colors.reset}`,
+        `${marker} ${conv.id}${colors.reset}: ${conv.title}${stateLabel} ${colors.dim}(${date})${colors.reset}`,
       )
     }
     console.log()
     console.log(
-      `${colors.dim}Use /use <conversation-id-prefix> to continue one, or /show <conversation-id-prefix> to inspect it.${colors.reset}`,
+      `${colors.dim}Use /use, /show, /pin, or /archive with a conversation ID prefix to manage it.${colors.reset}`,
     )
   }
   console.log()
@@ -198,7 +247,10 @@ function formatConversationSelectionSummary(
   conversation: ConversationHistoryItem,
 ): string {
   const updatedAt = new Date(conversation.updatedAt).toLocaleString()
-  return `${conversation.id} (${conversation.title}, updated ${updatedAt})`
+  return `${conversation.id} (${conversation.title}${formatConversationSessionStateLabel(
+    conversation.id,
+    getConfiguredConversationSessionState(),
+  )}, updated ${updatedAt})`
 }
 
 async function resolveConversationSelectionForCli(
@@ -258,6 +310,43 @@ async function handleUseConversation(selection: string): Promise<void> {
   )
 }
 
+async function toggleConversationSessionStateForCli(
+  stateKey: ConversationSessionStateKey,
+  selection: string,
+): Promise<void> {
+  const selectedConversation = await resolveConversationSelectionForCli(
+    selection.trim() || currentConversationId,
+  )
+  if (!selectedConversation) {
+    return
+  }
+
+  currentConversationId = selectedConversation.id
+
+  const cfg = configStore.get()
+  const currentIds = getConfiguredSessionIdList(stateKey)
+  const nextEnabled = !currentIds.includes(selectedConversation.id)
+  const nextIds = setSessionIdMembership(
+    currentIds,
+    selectedConversation.id,
+    nextEnabled,
+  )
+
+  configStore.save({
+    ...cfg,
+    [stateKey]: nextIds,
+  })
+
+  const actionLabel = stateKey === "pinnedSessionIds"
+    ? (nextEnabled ? "Pinned" : "Unpinned")
+    : (nextEnabled ? "Archived" : "Unarchived")
+
+  printColored(
+    colors.green,
+    `${actionLabel} conversation ${selectedConversation.id}: ${selectedConversation.title}`,
+  )
+}
+
 function getConversationRoleColor(
   role: Conversation["messages"][number]["role"],
 ): string {
@@ -269,6 +358,13 @@ function getConversationRoleColor(
 function printConversationDetails(conversation: Conversation): void {
   console.log(`\n${colors.bold}${conversation.title}${colors.reset}`)
   console.log(`  ${colors.dim}${conversation.id}${colors.reset}`)
+  const stateLabel = formatConversationSessionStateLabel(
+    conversation.id,
+    getConfiguredConversationSessionState(),
+  )
+  if (stateLabel) {
+    console.log(`  ${stateLabel}`)
+  }
   console.log(
     `  ${colors.dim}${conversation.messages.length} messages, updated ${new Date(conversation.updatedAt).toLocaleString()}${colors.reset}`,
   )
@@ -381,6 +477,18 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/show":
       await handleShowConversation(argumentsText)
+      return true
+    case "/pin":
+      await toggleConversationSessionStateForCli(
+        "pinnedSessionIds",
+        argumentsText,
+      )
+      return true
+    case "/archive":
+      await toggleConversationSessionStateForCli(
+        "archivedSessionIds",
+        argumentsText,
+      )
       return true
     case "/new":
       startNewConversation()

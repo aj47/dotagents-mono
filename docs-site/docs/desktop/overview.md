@@ -124,12 +124,14 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Desktop voice MCP mode** emits transcription progress on the desktop session, then reuses the same shared prompt/session bootstrap once the transcript is ready.
 - **Headless CLI** starts the app with `--headless` and runs the same ACP/tool-routing path in a terminal.
 - **Headless CLI conversation browsing** now lets `/conversations`, `/use <conversation-id-prefix>`, and `/show [conversation-id-prefix]` inspect and continue prior sessions without leaving the terminal.
+- **Headless CLI session state controls** now let `/pin [conversation-id-prefix]` and `/archive [conversation-id-prefix]` manage the same pinned/archived conversation state the desktop UI uses.
 - **QR headless pairing** starts the app with `--qr`, boots the same non-GUI runtime stack, and then prints a pairing QR code for remote/mobile clients.
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.
 - **Repeat task summaries** now also share one main-process formatter, so the desktop repeat-task settings page and the remote `/v1/loops` API report the same profile name plus running/last-run/next-run fields.
 - **Desktop text, voice, CLI, remote, and loop entrypoints** now share the same fresh-prompt launcher above the top-level runner, while queued desktop follow-ups and ACP parent-resume nudges share a dedicated resume-only launcher so they do not duplicate persisted turns.
 - **CLI conversation selection** now resolves full IDs and unique ID prefixes through one shared helper before the next prompt reuses the same conversation bootstrap path as desktop follow-ups.
+- **CLI session pin/archive state** now also shares one set of session helpers, so pinned-first ordering plus pinned/archived conversation IDs stay aligned between the headless CLI, desktop session views, remote settings payloads, and mobile sync.
 - **Conversation/session bootstrap** still lives in one place underneath those launchers, and resumed runs now reuse the same shared session-revival and history-loading path so transcription handoffs, queued follow-ups, and resumed prompts stay aligned across surfaces.
 - **Runtime session state** is also owned by the shared session manager, so remote, loop, CLI, and desktop runs no longer reset the legacy active/stop/iteration flags independently.
 - **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins, and the two non-GUI modes now also share one top-level launcher for startup failure handling and signal ownership.

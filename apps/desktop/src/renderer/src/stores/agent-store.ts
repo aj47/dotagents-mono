@@ -4,6 +4,7 @@ import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
 import {
   sanitizeAgentProgressUpdateForDisplay,
 } from '@dotagents/shared/message-display-utils'
+import { setSessionIdMembership } from '@dotagents/shared'
 import { logUI } from '@renderer/lib/debug'
 
 const getProgressActivityTimestamp = (progress: AgentProgressUpdate): number => {
@@ -488,13 +489,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   togglePinSession: (sessionId: string) => {
     set((state) => {
-      const newPinned = new Set(state.pinnedSessionIds)
-      if (newPinned.has(sessionId)) {
-        newPinned.delete(sessionId)
-      } else {
-        newPinned.add(sessionId)
+      return {
+        pinnedSessionIds: new Set(
+          setSessionIdMembership(
+            state.pinnedSessionIds,
+            sessionId,
+            !state.pinnedSessionIds.has(sessionId),
+          ),
+        ),
       }
-      return { pinnedSessionIds: newPinned }
     })
   },
 
@@ -508,13 +511,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   toggleArchiveSession: (sessionId: string) => {
     set((state) => {
-      const newArchived = new Set(state.archivedSessionIds)
-      if (newArchived.has(sessionId)) {
-        newArchived.delete(sessionId)
-      } else {
-        newArchived.add(sessionId)
+      return {
+        archivedSessionIds: new Set(
+          setSessionIdMembership(
+            state.archivedSessionIds,
+            sessionId,
+            !state.archivedSessionIds.has(sessionId),
+          ),
+        ),
       }
-      return { archivedSessionIds: newArchived }
     })
   },
 

@@ -90,6 +90,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `resolveMcpServerRuntimeState(...)`, `countConnectedMcpServers(...)`, and `listMcpServerStatusSummaries(...)`
 - Current callers: `headless-cli.ts` startup/status output, `remote-server.ts` `/v1/mcp/servers`, `settings-agents.tsx`, and `mcp-config-manager.tsx`
 
+## Shared session history state
+
+- Shared session file: `packages/shared/src/session.ts`
+- Shared helpers: `orderItemsByPinnedFirst(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`
+- Current callers: `headless-cli.ts` `/conversations`, `/pin`, and `/archive`; `remote-server.ts` `/v1/settings` session-state payloads; `agent-store.ts`; `pinned-session-history.ts`; `sidebar-sessions.ts`; and mobile session-store sync
+
 ## Shared chat model selection
 
 - Shared provider/model file: `packages/shared/src/providers.ts`
@@ -157,27 +163,29 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-runtime.ts` logs the mode-specific shutdown banner, then calls `shutdownSharedRuntimeServices(...)` before `process.exit(...)` so `--headless` and `--qr` tear down loops, ACP, MCP, and the remote server through the same helper the GUI uses.
 14. Headless CLI conversation resume selection
     `headless-cli.ts` now resolves `/use` and `/show` targets through `resolveConversationHistorySelection(...)`, so selecting a prior conversation by full ID or unique prefix goes through one shared lookup path before the next CLI prompt reuses `startSharedPromptRun(...)` with that conversation ID.
-15. Desktop/manual remote server QR print
+15. Headless CLI session pin/archive controls
+    `headless-cli.ts` now resolves `/pin [id]` and `/archive [id]` targets through the same conversation-selection path, reorders `/conversations` through `orderItemsByPinnedFirst(...)`, and persists `pinnedSessionIds` / `archivedSessionIds` through `sanitizeSessionIdList(...)` plus `setSessionIdMembership(...)`, so terminal session-state controls stay aligned with the desktop session store, renderer pinned ordering, and mobile sync.
+16. Desktop/manual remote server QR print
     `tipc.ts printRemoteServerQRCode` calls `printQRCodeToTerminal(...)`, which now delegates to `printSharedRemoteServerQrCode(...)` so manual terminal QR output shares the same server/api-key guards and URL normalization path as startup auto-print and `--qr`.
-16. Remote server startup QR auto-print
+17. Remote server startup QR auto-print
     `remote-server.ts startRemoteServerInternal(...)` now also calls `printSharedRemoteServerQrCode(...)` in `auto` mode, so headless auto-print and the desktop "Terminal QR Code" setting share one enablement, streamer-mode, and LAN URL-resolution path before printing.
-17. Desktop remote settings pairing preview
+18. Desktop remote settings pairing preview
     `settings-remote-server.tsx` now calls `resolveRemoteServerPairingPreview(...)`, so the settings page base URL preview plus wildcard/loopback warnings use the same bind classification and default URL builder that the main-process remote server status path uses.
-18. Remote server status + headless pairing defaults
+19. Remote server status + headless pairing defaults
     `remote-server.ts` now builds runtime status URLs through `buildRemoteServerBaseUrl(...)`, while `remote-server-qr.ts` and `headless-runtime.ts` reuse the same shared bind/port constants, so desktop pairing previews, remote status payloads, QR fallback URLs, and headless defaults stay aligned.
-19. Shared active model selection
+20. Shared active model selection
     `packages/shared/src/providers.ts` now resolves the effective chat provider/model once, so runtime model creation, desktop progress metadata, context budgeting, remote API model payloads, MCP sampling defaults, headless CLI status output, and the renderer model settings page all use the same provider fallback, STT-model sanitization, and OpenAI-compatible provider label rules.
-20. Desktop speech settings + onboarding
+21. Desktop speech settings + onboarding
     `settings-models.tsx`, `settings-providers.tsx`, `settings-general.tsx`, and `onboarding.tsx` now all resolve STT/TTS provider IDs plus default model/voice values through the shared speech helpers, so provider badges, STT language controls, onboarding checks, and model/voice pickers stay aligned with runtime defaults.
-21. Runtime speech generation + remote settings payload
+22. Runtime speech generation + remote settings payload
     `tipc.ts`, `tts-llm-preprocessing.ts`, and `remote-server.ts` now all use the same shared speech selectors, so cloud transcription models, TTS model/voice defaults, transcript-provider fallbacks, and `/v1/settings` payload defaults stay aligned across desktop runtime, headless CLI, and remote clients.
-22. CLI/desktop MCP server status surfaces
+23. CLI/desktop MCP server status surfaces
     `headless-cli.ts` startup/status output, `remote-server.ts` `/v1/mcp/servers`, `settings-agents.tsx`, and `mcp-config-manager.tsx` now classify each MCP server through `resolveMcpServerRuntimeState(...)` and `listMcpServerStatusSummaries(...)`, so config-disabled vs runtime-stopped vs connected/error/disconnected states stay aligned across the terminal, desktop UI, and remote API.
-23. Preset-aware CLI labels + preset surfaces
+24. Preset-aware CLI labels + preset surfaces
     `packages/shared/src/providers.ts` now resolves merged OpenAI-compatible preset IDs and records in one place, so CLI/provider labels, remote `/v1/settings` preset payloads, weak summarization preset lookup, preset editor screens, and preset-scoped model fetches all use the same built-in override, duplicate-filtering, legacy OpenAI-key fallback, and default preset ID rules.
-24. Desktop repeat task settings + remote loop API
+25. Desktop repeat task settings + remote loop API
     `settings-loops.tsx` now queries `tipc.ts getLoopSummaries(...)`, while `remote-server.ts` reuses `summarizeLoop(...)` and `summarizeLoops(...)` for `/v1/loops` plus repeat-task create/update responses, so profile names and runtime last-run/next-run/is-running fields are merged in one main-process path before either the desktop UI or remote clients render them.
-25. Desktop progress history + remote API conversation payloads
+26. Desktop progress history + remote API conversation payloads
     `packages/shared/src/conversation-history.ts` now flattens tool calls and tool results into shared `ConversationHistoryMessage` / `ToolResult` shapes, so `llm.ts` incremental persistence, weak step summaries, and progress history payloads serialize the same way that `remote-server.ts` now serializes chat/conversation API history for mobile and other remote clients.
 
 ## Parity rules
@@ -202,6 +210,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Remote server QR printing is decided in one place: `printSharedRemoteServerQrCode(...)`, so startup auto-print, manual terminal QR printing, and QR-mode override URLs all share the same guard and URL-resolution rules before printing.
 - Remote server pairing URL/connectability rules are decided in one place: `apps/desktop/src/shared/remote-server-url.ts`, so desktop settings previews, main-process status payloads, QR defaults, and headless bind defaults stay aligned.
 - MCP server runtime state is decided in one place: `apps/desktop/src/shared/mcp-server-status.ts`, so CLI status output, desktop capability screens, and remote API status payloads all distinguish disabled vs stopped vs connected/error/disconnected the same way.
+- Session-history pin/archive state is decided in one place: `orderItemsByPinnedFirst(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`, so headless CLI session controls, desktop session ordering/state, remote settings payloads, and mobile sync all treat pinned/archived conversation IDs the same way.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -220,7 +229,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
 - `apps/desktop/src/main/remote-server-qr.test.ts`
@@ -231,6 +240,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared MCP server runtime classification and connected-server counts stay aligned for CLI, desktop UI, and remote API callers.
 - `packages/shared/src/providers.test.ts`
   Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
+- `packages/shared/src/session.test.ts`
+  Confirms shared pinned-first ordering and session-ID membership helpers stay aligned for CLI session controls, desktop session ordering, remote settings payloads, and mobile sync.
 - `packages/shared/src/conversation-history.test.ts`
   Confirms shared tool-call/result flattening and conversation-history serialization stay aligned for desktop runtime progress, persistence, and remote API callers.
 - `packages/shared/src/stt-models.test.ts`
