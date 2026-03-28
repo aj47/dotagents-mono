@@ -49,6 +49,37 @@ describe("panel recording layout", () => {
     expect(tipcSource).toContain('hideFloatingPanelWindow()')
   })
 
+  it("re-focuses the floating panel window before focusing hotkey-opened text input", () => {
+    const showTextInputSection = panelSource.slice(
+      panelSource.indexOf("const unlisten = rendererHandlers.showTextInput.listen((data) => {"),
+      panelSource.indexOf("return unlisten", panelSource.indexOf("const unlisten = rendererHandlers.showTextInput.listen((data) => {")),
+    )
+    const mainProcessTextInputSection = mainWindowSource.slice(
+      mainWindowSource.indexOf("export async function showPanelWindowAndShowTextInput("),
+      mainWindowSource.indexOf("export function makePanelWindowClosable()")
+    )
+
+    expect(showTextInputSection).toContain(
+      'await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })'
+    )
+    expect(showTextInputSection).toContain("textInputPanelRef.current?.focus()")
+    expect(mainProcessTextInputSection).toContain("const shouldHideVisibleMainBeforeTextInputOpen =")
+    expect(mainProcessTextInputSection).toContain("hideMainWindowForTextInputPanelOpen()")
+    expect(mainProcessTextInputSection).toContain("setPanelFocusable(true)")
+    expect(mainProcessTextInputSection).not.toContain("setPanelFocusable(true, true)")
+    expect(mainWindowSource).toContain('logApp(`[showPanelWindow] Showing panel with showInactive() for ${mode} mode`)')
+  })
+
+  it("lets text-input cancel defer state cleanup to the main-process hide path", () => {
+    const cancelSection = panelSource.slice(
+      panelSource.indexOf("onCancel={() => {"),
+      panelSource.indexOf("isProcessing={", panelSource.indexOf("onCancel={() => {")),
+    )
+
+    expect(cancelSection).toContain("tipcClient.hidePanelWindow({})")
+    expect(cancelSection).not.toContain("tipcClient.clearTextInputState({})")
+  })
+
   it("lets MCP text submits create fresh conversations in the main process", () => {
     const handleTextSubmitSection = panelSource.slice(
       panelSource.indexOf("const handleTextSubmit = async (text: string) => {"),

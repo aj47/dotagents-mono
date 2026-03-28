@@ -694,11 +694,18 @@ export function Component() {
       setShowTextInput(true)
       // Panel window is already shown by the keyboard handler
       // Focus the text input after a short delay to ensure it's rendered
-      setTimeout(() => {
+      setTimeout(async () => {
         // Set initial text if provided (e.g., from predefined prompts)
         if (data?.initialText) {
           textInputPanelRef.current?.setInitialText(data.initialText)
         }
+
+        try {
+          await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+        } catch {
+          // Ignore — the textarea focus attempt below may still succeed
+        }
+
         textInputPanelRef.current?.focus()
       }, 100)
     })
@@ -1095,8 +1102,13 @@ export function Component() {
             selectedAgentId={selectedAgentId}
             onSelectAgent={setSelectedAgentId}
             onCancel={() => {
+              logUI("[Panel] Text input cancel requested; clearing state and hiding panel", {
+                currentConversationId,
+                continueConversationTitle,
+                selectedAgentId,
+                showTextInput,
+              })
               setShowTextInput(false)
-              tipcClient.clearTextInputState({})
               tipcClient.hidePanelWindow({})
             }}
             isProcessing={

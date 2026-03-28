@@ -21,7 +21,10 @@ async function loadIndexForHubInstall(
   const createPanelWindow = vi.fn()
   const createSetupWindow = vi.fn()
   const showMainWindow = vi.fn()
+  const getTextInputPanelHideActivationSuppressionDebugState = vi.fn(() => ({ active: false, ageMs: null, windowMs: 300 }))
+  const shouldSuppressMainWindowActivationForRecentTextInputHide = vi.fn(() => false)
   const stopListeningToKeyboardEvents = vi.fn(() => Promise.resolve())
+  const state = { isTextInputActive: false }
   const requestSingleInstanceLock = vi.fn(() => gotSingleInstanceLock)
   const releaseSingleInstanceLock = vi.fn()
   const quit = vi.fn()
@@ -78,8 +81,11 @@ async function loadIndexForHubInstall(
     createMainWindow,
     createPanelWindow,
     createSetupWindow,
+    getTextInputPanelHideActivationSuppressionDebugState,
+    getWindowFocusDebugSnapshot: vi.fn(() => ({ focusedWindow: "none" })),
     makePanelWindowClosable: vi.fn(),
     setAppQuitting: vi.fn(),
+    shouldSuppressMainWindowActivationForRecentTextInputHide,
     showMainWindow,
     WINDOWS: windows,
   }))
@@ -151,7 +157,7 @@ async function loadIndexForHubInstall(
   vi.doMock("./loop-service", () => ({
     loopService: { startAllLoops: vi.fn(), stopAllLoops: vi.fn() },
   }))
-  vi.doMock("./state", () => ({ setHeadlessMode: vi.fn() }))
+  vi.doMock("./state", () => ({ setHeadlessMode: vi.fn(), state }))
   vi.doMock("./bundle-service", () => ({ findHubBundleHandoffFilePath }))
   vi.doMock("./hub-install", () => ({
     findHubBundleInstallBundleUrl,
@@ -166,7 +172,10 @@ async function loadIndexForHubInstall(
     handlers,
     createMainWindow,
     showMainWindow,
+    getTextInputPanelHideActivationSuppressionDebugState,
+    shouldSuppressMainWindowActivationForRecentTextInputHide,
     windows,
+    state,
     downloadHubBundleToTempFile,
     requestSingleInstanceLock,
     releaseSingleInstanceLock,
@@ -330,5 +339,60 @@ describe("Hub install handoff routing", () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it("does not reopen the main window when the text-input panel is already active", async () => {
+    const { handlers, showMainWindow, windows, state } = await loadIndexForHubInstall(["electron"])
+    const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+
+    expect(didBecomeActiveHandler).toBeTypeOf("function")
+
+    windows.set("main", { id: "main" })
+    windows.set("panel", { isVisible: vi.fn(() => true) })
+    state.isTextInputActive = true
+    showMainWindow.mockClear()
+
+    didBecomeActiveHandler?.()
+
+    expect(showMainWindow).not.toHaveBeenCalled()
+  })
+
+  it("does not reopen the main window when text input is opening before the panel reports visible", async () => {
+    const { handlers, showMainWindow, windows, state } = await loadIndexForHubInstall(["electron"])
+    const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+
+    expect(didBecomeActiveHandler).toBeTypeOf("function")
+
+    windows.set("main", { id: "main" })
+    windows.set("panel", { isVisible: vi.fn(() => false) })
+    state.isTextInputActive = true
+    showMainWindow.mockClear()
+
+    didBecomeActiveHandler?.()
+
+    expect(showMainWindow).not.toHaveBeenCalled()
+  })
+
+  it("does not reopen the main window when the text-input panel was just intentionally hidden", async () => {
+    const {
+      handlers,
+      showMainWindow,
+      shouldSuppressMainWindowActivationForRecentTextInputHide,
+      windows,
+      state,
+    } = await loadIndexForHubInstall(["electron"])
+    const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+
+    expect(didBecomeActiveHandler).toBeTypeOf("function")
+
+    windows.set("main", { id: "main" })
+    windows.set("panel", { isVisible: vi.fn(() => false) })
+    state.isTextInputActive = false
+    shouldSuppressMainWindowActivationForRecentTextInputHide.mockReturnValue(true)
+    showMainWindow.mockClear()
+
+    didBecomeActiveHandler?.()
+
+    expect(showMainWindow).not.toHaveBeenCalled()
   })
 })

@@ -95,12 +95,27 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
   vi.resetModules()
   const Null = () => null
 
+  vi.stubGlobal("window", {
+    electron: {
+      ipcRenderer: {
+        invoke: vi.fn(),
+        on: vi.fn(),
+        send: vi.fn(),
+      },
+    },
+  })
+
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ") }))
+  vi.doMock("@renderer/lib/tipc-client", () => ({
+    tipcClient: {
+      setPanelFocusable: vi.fn(async () => undefined),
+    },
+  }))
   vi.doMock("./agent-processing-view", () => ({ AgentProcessingView: Null }))
   const themeContextMock = { useTheme: () => ({ isDark: false }) }
   vi.doMock("@renderer/contexts/theme-context", () => themeContextMock)

@@ -902,7 +902,11 @@ export const router = {
   }),
 
   hidePanelWindow: t.procedure.action(async () => {
-    logApp("[hidePanelWindow] Hiding floating panel")
+    logApp("[hidePanelWindow] Hiding floating panel", {
+      panelMode: getCurrentPanelMode(),
+      panelVisible: WINDOWS.get("panel")?.isVisible?.() ?? false,
+      textInputActive: state.isTextInputActive,
+    })
     hideFloatingPanelWindow()
   }),
 
@@ -2628,6 +2632,11 @@ export const router = {
     }),
 
   clearTextInputState: t.procedure.action(async () => {
+    logApp("[clearTextInputState] Clearing text input state", {
+      panelMode: getCurrentPanelMode(),
+      panelVisible: WINDOWS.get("panel")?.isVisible?.() ?? false,
+      previousTextInputActive: state.isTextInputActive,
+    })
     state.isTextInputActive = false
   }),
 

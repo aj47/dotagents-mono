@@ -21,6 +21,43 @@ type WINDOW_ID = "main" | "panel" | "setup"
 
 export const WINDOWS = new Map<WINDOW_ID, BrowserWindow>()
 
+function getWindowIdForDebug(win: BrowserWindow | null | undefined): WINDOW_ID | "unknown" | "none" {
+  if (!win) return "none"
+  for (const [id, candidate] of WINDOWS.entries()) {
+    if (candidate === win) return id
+  }
+  return "unknown"
+}
+
+function safeWindowFlag<T>(read: () => T, fallback: T): T {
+  try {
+    return read()
+  } catch {
+    return fallback
+  }
+}
+
+function getWindowStateForDebug(win: BrowserWindow | undefined) {
+  if (!win) return null
+
+  return {
+    visible: safeWindowFlag(() => win.isVisible(), false),
+    focused: safeWindowFlag(() => win.isFocused(), false),
+    minimized: safeWindowFlag(() => win.isMinimized(), false),
+  }
+}
+
+export function getWindowFocusDebugSnapshot() {
+  return {
+    focusedWindow: getWindowIdForDebug(BrowserWindow.getFocusedWindow()),
+    main: getWindowStateForDebug(WINDOWS.get("main")),
+    panel: getWindowStateForDebug(WINDOWS.get("panel")),
+    setup: getWindowStateForDebug(WINDOWS.get("setup")),
+    panelHiddenByMainFocus,
+    panelOpenedWithMain,
+  }
+}
+
 // macOS: track whether the app is quitting so we allow the main window to actually close.
 // Without this, the main window hides on close (standard macOS behavior) to stay in Cmd+Tab.
 let isAppQuitting = false
@@ -109,8 +146,14 @@ function createBaseWindow({
   win.on("hide", () => logUI(`[WINDOW ${_label}] hide`))
   win.on("minimize", () => logUI(`[WINDOW ${_label}] minimize`))
   win.on("restore", () => logUI(`[WINDOW ${_label}] restore`))
-  win.on("focus", () => logUI(`[WINDOW ${_label}] focus`))
-  win.on("blur", () => logUI(`[WINDOW ${_label}] blur`))
+  win.on("focus", () => {
+    logUI(`[WINDOW ${_label}] focus`)
+    logApp(`[window:${id}] focus`, getWindowFocusDebugSnapshot())
+  })
+  win.on("blur", () => {
+    logUI(`[WINDOW ${_label}] blur`)
+    logApp(`[window:${id}] blur`, getWindowFocusDebugSnapshot())
+  })
 
   if (process.env.IS_MAC) {
     // Suppress accidental app hide (Cmd+H) for all windows, not just main.
@@ -176,6 +219,12 @@ let panelHiddenByMainFocus = false
 // When this is true, we don't hide panel when main window gains focus
 let panelOpenedWithMain = false
 
+// macOS can emit a brief activation pulse when the floating text-input panel is
+// intentionally hidden. Track a short suppression window so the global activation
+// handler does not immediately re-show the main window and cause a flash.
+const TEXT_INPUT_PANEL_HIDE_ACTIVATION_SUPPRESSION_WINDOW_MS = 300
+let lastIntentionalTextInputPanelHideAt = 0
+
 // Exported for use in panel show event to reset stale flag
 export function clearPanelHiddenByMainFocus() {
   panelHiddenByMainFocus = false
@@ -186,12 +235,66 @@ export function clearPanelOpenedWithMain() {
   panelOpenedWithMain = false
 }
 
+// One-shot flag for intentional main-window hide paths.
+// If main is hidden without this flag, we treat it as accidental and recover.
+let allowExpectedMainHide = false
+let lastMainBlurWithoutAppFocusAt = 0
+const MAIN_HIDE_RECOVERY_DEACTIVATION_WINDOW_MS = 250
+
+function markIntentionalTextInputPanelHide(source: "hideFloatingPanelWindow" | "stopTextInputAndHidePanelWindow") {
+  lastIntentionalTextInputPanelHideAt = Date.now()
+  logApp(`[textInput.hide] Marked intentional text-input panel hide from ${source}`, {
+    suppressionWindowMs: TEXT_INPUT_PANEL_HIDE_ACTIVATION_SUPPRESSION_WINDOW_MS,
+    snapshot: getWindowFocusDebugSnapshot(),
+  })
+}
+
+export function shouldSuppressMainWindowActivationForRecentTextInputHide() {
+  return (
+    lastIntentionalTextInputPanelHideAt > 0 &&
+    Date.now() - lastIntentionalTextInputPanelHideAt <=
+      TEXT_INPUT_PANEL_HIDE_ACTIVATION_SUPPRESSION_WINDOW_MS
+  )
+}
+
+export function getTextInputPanelHideActivationSuppressionDebugState() {
+  const ageMs =
+    lastIntentionalTextInputPanelHideAt > 0 ? Date.now() - lastIntentionalTextInputPanelHideAt : null
+
+  return {
+    active:
+      ageMs !== null && ageMs <= TEXT_INPUT_PANEL_HIDE_ACTIVATION_SUPPRESSION_WINDOW_MS,
+    ageMs,
+    windowMs: TEXT_INPUT_PANEL_HIDE_ACTIVATION_SUPPRESSION_WINDOW_MS,
+  }
+}
+
 // Set the "opened with main" flag when panel is shown while main is visible
 function setPanelOpenedWithMain() {
   const main = WINDOWS.get("main")
   if (main && main.isVisible()) {
     panelOpenedWithMain = true
   }
+}
+
+function hideMainWindowForTextInputPanelOpen() {
+  const main = WINDOWS.get("main")
+  if (!main || !main.isVisible()) return false
+
+  // macOS can surface any already-visible regular app window when our app becomes
+  // active for the floating text-input panel. If DotAgents is backgrounded and the
+  // main window is still visible behind another app, explicitly hide it first so
+  // the later panel focus handoff does not drag the main UI in front.
+  allowExpectedMainHide = true
+  clearPanelOpenedWithMain()
+  clearPanelHiddenByMainFocus()
+
+  logApp("[textInput.open] Hiding main window before activating floating text-input panel", {
+    snapshot: getWindowFocusDebugSnapshot(),
+  })
+
+  main.hide()
+  return true
 }
 
 export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow | undefined {
@@ -212,13 +315,11 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
     },
   })
 
-  // One-shot flag for intentional hide paths (e.g. close-to-hide on macOS).
-  // If main is hidden without this flag, we treat it as accidental and recover.
-  let allowExpectedMainHide = false
-
   // Hide floating panel when main window is focused (if setting is enabled)
   // But skip hiding if panel was intentionally opened alongside main window
   win.on("focus", () => {
+    lastMainBlurWithoutAppFocusAt = 0
+
     const config = configStore.get()
     if (config.hidePanelWhenMainFocused !== false) {
       const panel = WINDOWS.get("panel")
@@ -226,10 +327,13 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
         // Don't hide panel if it was intentionally opened while main window is visible
         // This prevents the panel from closing during drag/button interactions
         if (panelOpenedWithMain) {
-          logApp("[createMainWindow] Main window focused - skipping panel hide (panel opened with main)")
+          logApp(
+            "[createMainWindow] Main window focused - skipping panel hide (panel opened with main)",
+            getWindowFocusDebugSnapshot(),
+          )
           return
         }
-        logApp("[createMainWindow] Main window focused - hiding floating panel")
+        logApp("[createMainWindow] Main window focused - hiding floating panel", getWindowFocusDebugSnapshot())
         panelHiddenByMainFocus = true
         panel.hide()
       }
@@ -238,8 +342,13 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
 
   // Restore floating panel when main window loses focus (if it was hidden by focus)
   win.on("blur", () => {
+    if (!BrowserWindow.getFocusedWindow()) {
+      lastMainBlurWithoutAppFocusAt = Date.now()
+    }
+
     const config = configStore.get()
     if (config.hidePanelWhenMainFocused !== false && panelHiddenByMainFocus) {
+      logApp("[createMainWindow] Main window blur - evaluating panel restore", getWindowFocusDebugSnapshot())
       // Let the native app activation state settle before deciding whether to
       // restore the floating panel. On macOS, immediately re-showing our
       // always-on-top panel during app deactivation can re-activate the app,
@@ -249,14 +358,17 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
         if (!panelHiddenByMainFocus) return
 
         if (!BrowserWindow.getFocusedWindow()) {
-          logApp("[createMainWindow] Main window blurred while app deactivated - leaving floating panel hidden")
+          logApp(
+            "[createMainWindow] Main window blurred while app deactivated - leaving floating panel hidden",
+            getWindowFocusDebugSnapshot(),
+          )
           panelHiddenByMainFocus = false
           return
         }
 
         const panel = WINDOWS.get("panel")
         if (panel && !panel.isVisible()) {
-          logApp("[createMainWindow] Main window blurred - restoring floating panel")
+          logApp("[createMainWindow] Main window blurred - restoring floating panel", getWindowFocusDebugSnapshot())
           panelHiddenByMainFocus = false
           // Use showInactive() directly to avoid stealing focus from other apps.
           // showPanelWindow() would call win.focus() on Windows which is undesirable
@@ -277,8 +389,23 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
 
     const cfg = configStore.get()
     const isAppHidden = app.isHidden()
+    const blurredIntoAppDeactivation =
+      lastMainBlurWithoutAppFocusAt > 0 &&
+      Date.now() - lastMainBlurWithoutAppFocusAt <= MAIN_HIDE_RECOVERY_DEACTIVATION_WINDOW_MS
     const shouldRecoverFromUnexpectedHide =
-      !isAppQuitting && !cfg.hideDockIcon && !allowExpectedMainHide && !win.isMinimized() && !isAppHidden
+      !isAppQuitting &&
+      !cfg.hideDockIcon &&
+      !allowExpectedMainHide &&
+      !win.isMinimized() &&
+      !isAppHidden &&
+      !blurredIntoAppDeactivation
+
+    if (blurredIntoAppDeactivation) {
+      logApp(
+        "[main.hide] Skipping unexpected-hide recovery because the app is deactivating",
+        getWindowFocusDebugSnapshot(),
+      )
+    }
 
     if (shouldRecoverFromUnexpectedHide) {
       logApp(
@@ -305,6 +432,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
     }
 
     // Consume one-shot expectation regardless of hide cause.
+    lastMainBlurWithoutAppFocusAt = 0
     allowExpectedMainHide = false
   })
 
@@ -386,6 +514,7 @@ export function showMainWindow(url?: string) {
   const win = WINDOWS.get("main")
 
   if (win) {
+    logApp("[showMainWindow] Reusing existing main window", getWindowFocusDebugSnapshot())
     showAndFocusMainWindow(win, "showMainWindow")
     if (url) {
       getRendererHandlers<RendererHandlers>(win.webContents).navigate.send(url)
@@ -721,6 +850,21 @@ export function hideFloatingPanelWindow() {
   const panel = WINDOWS.get("panel")
   if (!panel) return
 
+  const isHidingTextInputPanel =
+    state.isTextInputActive === true || getCurrentPanelMode() === "textInput"
+
+  logApp("[hideFloatingPanelWindow] Requested", {
+    isHidingTextInputPanel,
+    panelVisible: panel.isVisible(),
+    panelMode: getCurrentPanelMode(),
+    textInputActive: state.isTextInputActive,
+    snapshot: getWindowFocusDebugSnapshot(),
+  })
+
+  if (isHidingTextInputPanel) {
+    markIntentionalTextInputPanelHide("hideFloatingPanelWindow")
+  }
+
   suppressPanelAutoShow(1000)
   clearPanelOpenedWithMain()
   clearPanelHiddenByMainFocus()
@@ -728,12 +872,24 @@ export function hideFloatingPanelWindow() {
   hidePanelTextInputInRenderer()
 
   if (panel.isVisible()) {
+    logApp("[hideFloatingPanelWindow] Hiding visible panel window", {
+      panelMode: getCurrentPanelMode(),
+      snapshot: getWindowFocusDebugSnapshot(),
+    })
     panel.hide()
   }
 
   if (getCurrentPanelMode() === "textInput") {
     setPanelMode("normal")
   }
+
+  logApp("[hideFloatingPanelWindow] Completed", {
+    panelVisible: panel.isVisible(),
+    panelMode: getCurrentPanelMode(),
+    textInputActive: state.isTextInputActive,
+    suppression: getTextInputPanelHideActivationSuppressionDebugState(),
+    snapshot: getWindowFocusDebugSnapshot(),
+  })
 }
 
 export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
@@ -843,6 +999,12 @@ export function createPanelWindow(): BrowserWindow | undefined {
   })
 
   win.on("hide", () => {
+    logApp("[window:panel] hide", {
+      panelMode: getCurrentPanelMode(),
+      textInputActive: state.isTextInputActive,
+      suppression: getTextInputPanelHideActivationSuppressionDebugState(),
+      snapshot: getWindowFocusDebugSnapshot(),
+    })
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
   })
 
@@ -883,7 +1045,13 @@ export function showPanelWindow(options: { markOpenedWithMain?: boolean } = {}) 
 
   const win = WINDOWS.get("panel")
   if (win) {
-    logApp(`[showPanelWindow] Called. Current visibility: ${win.isVisible()}`)
+    const mode = getCurrentPanelMode()
+
+    logApp(`[showPanelWindow] Called. Current visibility: ${win.isVisible()}`, {
+      mode,
+      markOpenedWithMain: options.markOpenedWithMain !== false,
+      snapshot: getWindowFocusDebugSnapshot(),
+    })
 
     if (options.markOpenedWithMain === false) {
       clearPanelOpenedWithMain()
@@ -894,13 +1062,12 @@ export function showPanelWindow(options: { markOpenedWithMain?: boolean } = {}) 
       setPanelOpenedWithMain()
     }
 
-    const mode = getCurrentPanelMode()
     // Apply mode sizing/positioning just before showing
     try { applyPanelMode(mode) } catch {}
 
     if (mode === "textInput") {
-      logApp(`[showPanelWindow] Showing panel with show() for ${mode} mode`)
-      win.show()
+      logApp(`[showPanelWindow] Showing panel with showInactive() for ${mode} mode`)
+      win.showInactive()
     } else {
       logApp(`[showPanelWindow] Showing panel with showInactive() for ${mode} mode`)
       win.showInactive()
@@ -994,15 +1161,33 @@ export async function showPanelWindowAndShowTextInput(initialText?: string, conv
   // Set text input state first
   state.isTextInputActive = true
 
+  const main = WINDOWS.get("main")
+  const focusedWindow = BrowserWindow.getFocusedWindow()
+  const shouldHideVisibleMainBeforeTextInputOpen =
+    process.platform === "darwin" && !focusedWindow && main?.isVisible?.() === true
+
+  // Guard the "Ctrl+T from another app" case. The panel still needs a later
+  // explicit focus handoff, but if the main window remains visible in the
+  // background macOS can surface it as part of app activation.
+  logApp("[textInput.open] Preparing floating text-input open", {
+    hasFocusedWindow: Boolean(focusedWindow),
+    shouldHideVisibleMainBeforeTextInputOpen,
+    snapshot: getWindowFocusDebugSnapshot(),
+  })
+
+  if (shouldHideVisibleMainBeforeTextInputOpen) {
+    hideMainWindowForTextInputPanelOpen()
+  }
+
   // Resize panel for text input mode before showing
   // This fixes the issue where panel was too small after waveform recording (#840)
   resizePanelForTextInput()
 
   showPanelWindow() // This will now use textInput mode positioning
-  // Ensure the panel can actually receive keyboard input when opened by the global
-  // hotkey. On macOS in particular, the window can be visible without becoming the
-  // active/focused recipient for the renderer's textarea.focus() call.
-  setPanelFocusable(true, true)
+  // Make the panel focusable, but defer the actual focus handoff until the renderer
+  // has mounted the textarea. This avoids a brief main-window flash on macOS caused
+  // by stacking multiple activation/focus operations back-to-back.
+  setPanelFocusable(true)
   // Guard against early IPC loss right after app launch (mirrors recording start paths)
   whenPanelReady(() => {
     getWindowRendererHandlers("panel")?.showTextInput.send({ initialText, conversationId, conversationTitle })
@@ -1042,6 +1227,13 @@ export const stopRecordingAndHidePanelWindow = () => {
 export const stopTextInputAndHidePanelWindow = () => {
   const win = WINDOWS.get("panel")
   if (win) {
+    logApp("[stopTextInputAndHidePanelWindow] Requested", {
+      panelVisible: win.isVisible(),
+      panelMode: getCurrentPanelMode(),
+      textInputActive: state.isTextInputActive,
+      snapshot: getWindowFocusDebugSnapshot(),
+    })
+    markIntentionalTextInputPanelHide("stopTextInputAndHidePanelWindow")
     state.isTextInputActive = false
     getRendererHandlers<RendererHandlers>(win.webContents).hideTextInput.send()
 

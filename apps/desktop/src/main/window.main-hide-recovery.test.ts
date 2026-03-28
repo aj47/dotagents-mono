@@ -14,6 +14,13 @@ const mockApp = {
 
 const mockEnsureAppSwitcherPresence = vi.fn()
 const mockGetFocusedWindow = vi.fn()
+const mockRendererHandlers = {
+  hideTextInput: { send: vi.fn() },
+  navigate: { send: vi.fn() },
+  onPanelSizeChanged: { send: vi.fn() },
+  showTextInput: { send: vi.fn() },
+  stopRecording: { send: vi.fn() },
+}
 
 let mockConfig = {
   hideDockIcon: false,
@@ -23,29 +30,47 @@ let mockConfig = {
 class MockBrowserWindow extends EventEmitter {
   visible = false
   minimized = false
+  focused = false
+  width = 900
+  height = 670
   loadURL = vi.fn()
-  focus = vi.fn(() => this.emit("focus"))
+  focus = vi.fn(() => {
+    this.focused = true
+    this.emit("focus")
+  })
   restore = vi.fn(() => {
     this.minimized = false
     this.emit("restore")
   })
   show = vi.fn(() => {
     this.visible = true
+    this.focused = true
     this.emit("show")
   })
   showInactive = vi.fn(() => {
     this.visible = true
+    this.focused = false
     this.emit("show")
   })
   hide = vi.fn(() => {
     this.visible = false
+    this.focused = false
     this.emit("hide")
   })
   isVisible = vi.fn(() => this.visible)
+  isFocused = vi.fn(() => this.focused)
   isMinimized = vi.fn(() => this.minimized)
   setAlwaysOnTop = vi.fn()
   setClosable = vi.fn()
+  setFocusable = vi.fn()
+  setMinimumSize = vi.fn()
+  setPosition = vi.fn()
+  setSize = vi.fn((width: number, height: number) => {
+    this.width = width
+    this.height = height
+  })
   setVisibleOnAllWorkspaces = vi.fn()
+  getSize = vi.fn(() => [this.width, this.height])
   isClosable = vi.fn(() => true)
   webContents = Object.assign(new EventEmitter(), {
     id: 1,
@@ -64,7 +89,7 @@ vi.mock("electron", () => ({
 }))
 
 vi.mock("@egoist/tipc/main", () => ({
-  getRendererHandlers: vi.fn(() => ({ navigate: { send: vi.fn() } })),
+  getRendererHandlers: vi.fn(() => mockRendererHandlers),
 }))
 
 vi.mock("./debug", () => ({
@@ -166,6 +191,29 @@ describe("main window hide recovery", () => {
     }
   })
 
+  it("skips main-window hide recovery when the app is deactivating to another app", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { createMainWindow } = await import("./window")
+      const win = createMainWindow()
+
+      expect(win).toBeDefined()
+
+      mockGetFocusedWindow.mockReturnValue(null)
+      win?.emit("blur")
+      win?.emit("hide")
+
+      await vi.runAllTimersAsync()
+
+      expect(mockEnsureAppSwitcherPresence).not.toHaveBeenCalled()
+      expect(mockApp.show).not.toHaveBeenCalled()
+      expect(win?.show).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("does not restore the floating panel when the app is deactivating", async () => {
     vi.useFakeTimers()
 
@@ -217,6 +265,38 @@ describe("main window hide recovery", () => {
       expect(panel.setVisibleOnAllWorkspaces).toHaveBeenCalled()
       expect(panel.setAlwaysOnTop).toHaveBeenCalled()
       expect(panel.isVisible()).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("hides the visible main window before opening text input from another app", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const keyboard = await import("./keyboard")
+      vi.mocked(keyboard.getFocusedAppInfo).mockResolvedValue("Other App")
+
+      const { createMainWindow, createPanelWindow, showPanelWindowAndShowTextInput } = await import("./window")
+      const main = createMainWindow() as MockBrowserWindow | undefined
+      const panel = createPanelWindow() as MockBrowserWindow | undefined
+
+      expect(main).toBeDefined()
+      expect(panel).toBeDefined()
+
+      if (!main || !panel) return
+
+      main.visible = true
+      main.focused = false
+      mockGetFocusedWindow.mockReturnValue(null)
+
+      await showPanelWindowAndShowTextInput()
+      await vi.runAllTimersAsync()
+
+      expect(main.hide).toHaveBeenCalledTimes(1)
+      expect(mockApp.show).not.toHaveBeenCalled()
+      expect(panel.showInactive).toHaveBeenCalledTimes(1)
+      expect(mockRendererHandlers.showTextInput.send).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }

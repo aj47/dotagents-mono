@@ -540,6 +540,11 @@ export function listenToKeyboardEvents() {
           // Check if we're currently recording
           if (state.isRecording) {
             stopRecordingAndHidePanelWindow()
+          } else if (state.isTextInputActive) {
+            // Text input needs its dedicated hide path so intentional-dismiss
+            // suppression and cleanup run before macOS can bounce focus back to
+            // the main window.
+            stopTextInputAndHidePanelWindow()
           } else {
             // Panel is visible but not recording - treat ESC like minimize so
             // the current floating sessions stay snoozed until explicitly restored.

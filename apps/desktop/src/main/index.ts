@@ -4,7 +4,10 @@ import {
   createMainWindow,
   createPanelWindow,
   createSetupWindow,
+  getTextInputPanelHideActivationSuppressionDebugState,
+  getWindowFocusDebugSnapshot,
   makePanelWindowClosable,
+  shouldSuppressMainWindowActivationForRecentTextInputHide,
   showMainWindow,
   setAppQuitting,
   WINDOWS,
@@ -12,6 +15,7 @@ import {
 import { listenToKeyboardEvents, stopListeningToKeyboardEvents } from "./keyboard"
 import { registerIpcMain } from "@egoist/tipc/main"
 import { router } from "./tipc"
+import { state } from "./state"
 import { registerServeProtocol, registerServeSchema } from "./serve"
 import { createAppMenu } from "./menu"
 import { destroyTray, initTray } from "./tray"
@@ -665,12 +669,29 @@ if (!gotSingleInstanceLock) {
 
     const handleAppActivation = (reason: "app.activate" | "app.did-become-active") => {
       const mainWin = WINDOWS.get("main")
+      const panelWin = WINDOWS.get("panel")
       const cfg = configStore.get()
+      const textInputPanelVisible = panelWin?.isVisible?.() === true
+      const shouldKeepTextInputPanelFocused = state.isTextInputActive === true
+      const textInputHideSuppression = getTextInputPanelHideActivationSuppressionDebugState()
+      const shouldSuppressRecentTextInputHideRestore =
+        shouldSuppressMainWindowActivationForRecentTextInputHide()
+
+      logApp(`[${reason}] Activation handler entered`, {
+        accessibilityGranted,
+        hideDockIcon: cfg.hideDockIcon === true,
+        hasMainWindow: Boolean(mainWin),
+        textInputPanelActive: shouldKeepTextInputPanelFocused,
+        textInputPanelVisible,
+        recentTextInputPanelHide: shouldSuppressRecentTextInputHideRestore,
+        textInputHideSuppression,
+        snapshot: getWindowFocusDebugSnapshot(),
+      })
 
       if (process.platform === "darwin") {
         const now = Date.now()
         if (now - lastMacAppActivationAt < MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS) {
-          logApp(`[${reason}] Skipping duplicate macOS activation pulse`)
+          logApp(`[${reason}] Skipping duplicate macOS activation pulse`, getWindowFocusDebugSnapshot())
           return
         }
         lastMacAppActivationAt = now
@@ -685,6 +706,29 @@ if (!gotSingleInstanceLock) {
           // Window exists (may be hidden/minimized/behind another app).
           // Prefer opening any queued Hub install; otherwise restore and focus the main window.
           if (!openPendingHubBundleInstall()) {
+            if (shouldKeepTextInputPanelFocused) {
+              logApp(
+                `[${reason}] Skipping main-window activation restore because text input is active or opening`,
+                {
+                  textInputPanelVisible,
+                  snapshot: getWindowFocusDebugSnapshot(),
+                },
+              )
+              return
+            }
+
+            if (shouldSuppressRecentTextInputHideRestore) {
+              logApp(
+                `[${reason}] Skipping main-window activation restore because text input panel was just hidden`,
+                {
+                  textInputHideSuppression,
+                  snapshot: getWindowFocusDebugSnapshot(),
+                },
+              )
+              return
+            }
+
+            logApp(`[${reason}] Showing main window from activation handler`, getWindowFocusDebugSnapshot())
             showMainWindow()
           }
         } else {

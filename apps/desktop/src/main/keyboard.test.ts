@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs"
 import { EventEmitter } from "events"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const keyboardSource = readFileSync(new URL("./keyboard.ts", import.meta.url), "utf8")
 
 const mockSpawn = vi.fn()
 
@@ -216,5 +219,20 @@ describe("keyboard listener lifecycle", () => {
     listenToKeyboardEvents()
 
     expect(mockSpawn).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("keyboard Escape handling", () => {
+  it("routes visible text-input Escape dismissals through the text-input hide path before snoozing", () => {
+    const escapeSection = keyboardSource.slice(
+      keyboardSource.indexOf('if (e.data.key === "Escape") {'),
+      keyboardSource.indexOf("// Handle other kill switch hotkeys"),
+    )
+
+    expect(escapeSection).toContain("} else if (state.isTextInputActive) {")
+    expect(escapeSection).toContain("stopTextInputAndHidePanelWindow()")
+    expect(escapeSection.indexOf("stopTextInputAndHidePanelWindow()")).toBeLessThan(
+      escapeSection.indexOf("snoozeAgentSessionsAndHidePanelWindow()"),
+    )
   })
 })

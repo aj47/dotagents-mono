@@ -9,6 +9,7 @@ import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
+import { logUI } from "@renderer/lib/debug"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
@@ -167,6 +168,11 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       void handleSubmit()
     } else if (e.key === "Escape") {
       e.preventDefault()
+      logUI("[TextInputPanel] Escape pressed; requesting cancel", {
+        isBusy,
+        textLength: text.length,
+        imageAttachmentCount: imageAttachments.length,
+      })
       onCancel()
     }
   }
@@ -307,7 +313,14 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={onCancel}
+            onClick={() => {
+              logUI("[TextInputPanel] Cancel button clicked; requesting cancel", {
+                isBusy,
+                textLength: text.length,
+                imageAttachmentCount: imageAttachments.length,
+              })
+              onCancel()
+            }}
             disabled={isBusy}
             className="rounded px-2 py-1 transition-colors hover:bg-white/10"
           >
