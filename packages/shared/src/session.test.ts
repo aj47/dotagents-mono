@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
+  sanitizeConversationSessionState,
+  setConversationSessionStateMembership,
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
   orderItemsByPinnedFirst,
+  removeSessionIdFromConversationSessionState,
   sanitizeSessionIdList,
   setSessionIdMembership,
   sortSessionsByPinnedFirst,
@@ -161,6 +164,27 @@ describe('sanitizeSessionIdList', () => {
   })
 })
 
+describe('sanitizeConversationSessionState', () => {
+  it('sanitizes both pinned and archived session id lists together', () => {
+    expect(
+      sanitizeConversationSessionState({
+        pinnedSessionIds: ['session-1', 2, 'session-2'],
+        archivedSessionIds: ['session-3', null, 'session-4'],
+      })
+    ).toEqual({
+      pinnedSessionIds: ['session-1', 'session-2'],
+      archivedSessionIds: ['session-3', 'session-4'],
+    })
+  })
+
+  it('returns empty lists when session state is missing', () => {
+    expect(sanitizeConversationSessionState(undefined)).toEqual({
+      pinnedSessionIds: [],
+      archivedSessionIds: [],
+    })
+  })
+})
+
 // ── setSessionIdMembership ───────────────────────────────────────────────────
 
 describe('setSessionIdMembership', () => {
@@ -180,6 +204,59 @@ describe('setSessionIdMembership', () => {
     expect(
       setSessionIdMembership(['session-1'], 'session-1', true)
     ).toEqual(['session-1'])
+  })
+})
+
+describe('setConversationSessionStateMembership', () => {
+  it('updates pinned session ids while keeping archived ids intact', () => {
+    expect(
+      setConversationSessionStateMembership(
+        {
+          pinnedSessionIds: ['session-1'],
+          archivedSessionIds: ['session-3'],
+        },
+        'pinnedSessionIds',
+        'session-2',
+        true,
+      )
+    ).toEqual({
+      pinnedSessionIds: ['session-1', 'session-2'],
+      archivedSessionIds: ['session-3'],
+    })
+  })
+
+  it('updates archived session ids with sanitized input state', () => {
+    expect(
+      setConversationSessionStateMembership(
+        {
+          pinnedSessionIds: ['session-1', 2],
+          archivedSessionIds: ['session-3'],
+        },
+        'archivedSessionIds',
+        'session-3',
+        false,
+      )
+    ).toEqual({
+      pinnedSessionIds: ['session-1'],
+      archivedSessionIds: [],
+    })
+  })
+})
+
+describe('removeSessionIdFromConversationSessionState', () => {
+  it('removes a session id from both pinned and archived state lists', () => {
+    expect(
+      removeSessionIdFromConversationSessionState(
+        {
+          pinnedSessionIds: ['session-1', 'session-2'],
+          archivedSessionIds: ['session-3', 'session-1'],
+        },
+        'session-1',
+      )
+    ).toEqual({
+      pinnedSessionIds: ['session-2'],
+      archivedSessionIds: ['session-3'],
+    })
   })
 })
 

@@ -93,8 +93,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 ## Shared session history state
 
 - Shared session file: `packages/shared/src/session.ts`
-- Shared helpers: `orderItemsByPinnedFirst(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`
-- Current callers: `headless-cli.ts` `/conversations`, `/pin`, and `/archive`; `remote-server.ts` `/v1/settings` session-state payloads; `agent-store.ts`; `pinned-session-history.ts`; `sidebar-sessions.ts`; and mobile session-store sync
+- Shared helpers: `orderItemsByPinnedFirst(...)`, `sanitizeConversationSessionState(...)`, `setConversationSessionStateMembership(...)`, `removeSessionIdFromConversationSessionState(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`
+- Current callers: `headless-cli.ts` `/conversations`, `/pin`, and `/archive`; `conversation-management.ts`; `remote-server.ts` `/v1/settings` read/write payloads; `agent-store.ts`; `use-store-sync.ts`; `pinned-session-history.ts`; `sidebar-sessions.ts`; and mobile session-store sync/toggles
 
 ## Shared conversation management
 
@@ -170,7 +170,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 14. Headless CLI conversation resume selection
     `headless-cli.ts` now resolves `/use` and `/show` targets through `resolveConversationHistorySelection(...)`, so selecting a prior conversation by full ID or unique prefix goes through one shared lookup path before the next CLI prompt reuses `startSharedPromptRun(...)` with that conversation ID.
 15. Headless CLI session pin/archive controls
-    `headless-cli.ts` now resolves `/pin [id]` and `/archive [id]` targets through the same conversation-selection path, reorders `/conversations` through `orderItemsByPinnedFirst(...)`, and persists `pinnedSessionIds` / `archivedSessionIds` through `sanitizeSessionIdList(...)` plus `setSessionIdMembership(...)`, so terminal session-state controls stay aligned with the desktop session store, renderer pinned ordering, and mobile sync.
+    `headless-cli.ts` now resolves `/pin [id]` and `/archive [id]` targets through the same conversation-selection path, reorders `/conversations` through `orderItemsByPinnedFirst(...)`, and normalizes/persists `pinnedSessionIds` / `archivedSessionIds` through `sanitizeConversationSessionState(...)` plus `setConversationSessionStateMembership(...)`, so terminal session-state controls stay aligned with desktop config hydration, remote settings writes, renderer pinned ordering, and mobile sync.
 16. Desktop/manual remote server QR print
     `tipc.ts printRemoteServerQRCode` calls `printQRCodeToTerminal(...)`, which now delegates to `printSharedRemoteServerQrCode(...)` so manual terminal QR output shares the same server/api-key guards and URL normalization path as startup auto-print and `--qr`.
 17. Remote server startup QR auto-print
@@ -220,7 +220,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Remote server QR printing is decided in one place: `printSharedRemoteServerQrCode(...)`, so startup auto-print, manual terminal QR printing, and QR-mode override URLs all share the same guard and URL-resolution rules before printing.
 - Remote server pairing URL/connectability rules are decided in one place: `apps/desktop/src/shared/remote-server-url.ts`, so desktop settings previews, main-process status payloads, QR defaults, and headless bind defaults stay aligned.
 - MCP server runtime state is decided in one place: `apps/desktop/src/shared/mcp-server-status.ts`, so CLI status output, desktop capability screens, and remote API status payloads all distinguish disabled vs stopped vs connected/error/disconnected the same way.
-- Session-history pin/archive state is decided in one place: `orderItemsByPinnedFirst(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`, so headless CLI session controls, desktop session ordering/state, remote settings payloads, and mobile sync all treat pinned/archived conversation IDs the same way.
+- Session-history pin/archive state is decided in one place: `orderItemsByPinnedFirst(...)`, `sanitizeConversationSessionState(...)`, `setConversationSessionStateMembership(...)`, `removeSessionIdFromConversationSessionState(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`, so headless CLI session controls, desktop session ordering/state, renderer config hydration, remote settings payloads, and mobile sync/toggles all treat pinned/archived conversation IDs the same way.
 - Conversation rename/delete flows are decided in one place: `conversation-management.ts`, so CLI session management, desktop history actions, and runtime `set_session_title` updates all reuse the same title-sync and pinned/archived cleanup path.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
@@ -242,7 +242,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
   Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
-  Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
+  Confirms the remote server keeps using the shared prompt runner, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
 - `apps/desktop/src/main/remote-server-qr.test.ts`
   Confirms startup auto-print, manual terminal QR printing, streamer-mode suppression, and QR-mode override URLs all converge on the shared remote-server QR helper.
 - `apps/desktop/src/shared/remote-server-url.test.ts`
@@ -252,7 +252,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `packages/shared/src/providers.test.ts`
   Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/session.test.ts`
-  Confirms shared pinned-first ordering and session-ID membership helpers stay aligned for CLI session controls, desktop session ordering, remote settings payloads, and mobile sync.
+  Confirms shared pinned-first ordering plus session-state normalization/membership helpers stay aligned for CLI session controls, desktop session ordering/config hydration, remote settings payloads, and mobile sync.
 - `apps/desktop/src/main/conversation-management.test.ts`
   Confirms shared rename/delete/delete-all helpers synchronize tracked session titles and prune pinned/archived state for CLI, desktop, and runtime-tool callers.
 - `packages/shared/src/conversation-history.test.ts`

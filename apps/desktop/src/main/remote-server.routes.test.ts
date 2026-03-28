@@ -280,4 +280,30 @@ describe("remote-server route registration", () => {
     expect(source).not.toContain("toolCalls: entry.toolCalls?.map(")
     expect(source).not.toContain("toolResults: entry.toolResults?.map(")
   })
+
+  it("sanitizes session-state payloads through the shared session helpers", () => {
+    const source = getRemoteServerSource()
+    const settingsPatchSection = getSection(
+      source,
+      "// PATCH /v1/settings - Update settings",
+      "// Conversation Recovery Endpoints (for mobile app)",
+    )
+
+    expect(source).toContain("sanitizeConversationSessionState(")
+    expect(settingsPatchSection).toContain(
+      "const conversationSessionState = sanitizeConversationSessionState(body)",
+    )
+    expect(settingsPatchSection).toContain(
+      "updates.pinnedSessionIds = conversationSessionState.pinnedSessionIds",
+    )
+    expect(settingsPatchSection).toContain(
+      "updates.archivedSessionIds = conversationSessionState.archivedSessionIds",
+    )
+    expect(settingsPatchSection).not.toContain(
+      'body.pinnedSessionIds.every((id: unknown) => typeof id === "string")',
+    )
+    expect(settingsPatchSection).not.toContain(
+      'body.archivedSessionIds.every((id: unknown) => typeof id === "string")',
+    )
+  })
 })

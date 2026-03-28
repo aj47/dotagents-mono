@@ -1,6 +1,6 @@
 import {
-  sanitizeSessionIdList,
-  setSessionIdMembership,
+  removeSessionIdFromConversationSessionState,
+  sanitizeConversationSessionState,
 } from "@dotagents/shared"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
@@ -17,25 +17,20 @@ function saveConversationSessionState(config: Config): void {
 
 function removeConversationFromSessionState(conversationId: string): void {
   const currentConfig = configStore.get()
-  const nextPinnedSessionIds = setSessionIdMembership(
-    sanitizeSessionIdList(currentConfig.pinnedSessionIds),
+  const currentSessionState = sanitizeConversationSessionState(currentConfig)
+  const nextSessionState = removeSessionIdFromConversationSessionState(
+    currentSessionState,
     conversationId,
-    false,
-  )
-  const nextArchivedSessionIds = setSessionIdMembership(
-    sanitizeSessionIdList(currentConfig.archivedSessionIds),
-    conversationId,
-    false,
   )
 
   if (
     areStringListsEqual(
-      nextPinnedSessionIds,
-      sanitizeSessionIdList(currentConfig.pinnedSessionIds),
+      nextSessionState.pinnedSessionIds,
+      currentSessionState.pinnedSessionIds,
     ) &&
     areStringListsEqual(
-      nextArchivedSessionIds,
-      sanitizeSessionIdList(currentConfig.archivedSessionIds),
+      nextSessionState.archivedSessionIds,
+      currentSessionState.archivedSessionIds,
     )
   ) {
     return
@@ -43,23 +38,17 @@ function removeConversationFromSessionState(conversationId: string): void {
 
   saveConversationSessionState({
     ...currentConfig,
-    pinnedSessionIds: nextPinnedSessionIds,
-    archivedSessionIds: nextArchivedSessionIds,
+    ...nextSessionState,
   })
 }
 
 function clearConversationSessionState(): void {
   const currentConfig = configStore.get()
-  const currentPinnedSessionIds = sanitizeSessionIdList(
-    currentConfig.pinnedSessionIds,
-  )
-  const currentArchivedSessionIds = sanitizeSessionIdList(
-    currentConfig.archivedSessionIds,
-  )
+  const currentSessionState = sanitizeConversationSessionState(currentConfig)
 
   if (
-    currentPinnedSessionIds.length === 0 &&
-    currentArchivedSessionIds.length === 0
+    currentSessionState.pinnedSessionIds.length === 0 &&
+    currentSessionState.archivedSessionIds.length === 0
   ) {
     return
   }

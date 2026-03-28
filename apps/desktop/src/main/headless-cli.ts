@@ -17,10 +17,12 @@ import {
 } from "./conversation-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
+  type ConversationSessionState,
+  type ConversationSessionStateKey,
   orderItemsByPinnedFirst,
   resolveChatModelDisplayInfo,
-  sanitizeSessionIdList,
-  setSessionIdMembership,
+  sanitizeConversationSessionState,
+  setConversationSessionStateMembership,
 } from "@dotagents/shared"
 import {
   countConnectedMcpServers,
@@ -50,7 +52,6 @@ let rl: readline.Interface | null = null
 let shutdownRequested = false
 const RECENT_CONVERSATION_LIMIT = 10
 const SHOWN_CONVERSATION_MESSAGE_LIMIT = 12
-type ConversationSessionStateKey = "pinnedSessionIds" | "archivedSessionIds"
 let onShutdown: () => Promise<void> = async () => {
   process.exit(0)
 }
@@ -132,31 +133,19 @@ ${colors.dim}Type any message to interact with the agent.${colors.reset}
 `)
 }
 
-function getConfiguredSessionIdList(
-  stateKey: ConversationSessionStateKey,
-): string[] {
-  return sanitizeSessionIdList(configStore.get()[stateKey])
-}
-
-function getConfiguredConversationSessionState(): {
-  pinnedSessionIds: Set<string>
-  archivedSessionIds: Set<string>
-} {
-  return {
-    pinnedSessionIds: new Set(getConfiguredSessionIdList("pinnedSessionIds")),
-    archivedSessionIds: new Set(getConfiguredSessionIdList("archivedSessionIds")),
-  }
+function getConfiguredConversationSessionState(): ConversationSessionState {
+  return sanitizeConversationSessionState(configStore.get())
 }
 
 function formatConversationSessionStateLabel(
   conversationId: string,
-  sessionState: ReturnType<typeof getConfiguredConversationSessionState>,
+  sessionState: ConversationSessionState,
 ): string {
   const labels: string[] = []
-  if (sessionState.pinnedSessionIds.has(conversationId)) {
+  if (sessionState.pinnedSessionIds.includes(conversationId)) {
     labels.push("pinned")
   }
-  if (sessionState.archivedSessionIds.has(conversationId)) {
+  if (sessionState.archivedSessionIds.includes(conversationId)) {
     labels.push("archived")
   }
 
@@ -235,13 +224,14 @@ function printStatus() {
 async function printConversations() {
   const history = await conversationService.getConversationHistory()
   const sessionState = getConfiguredConversationSessionState()
+  const pinnedSessionIds = new Set(sessionState.pinnedSessionIds)
   console.log(`\n${colors.bold}Recent Conversations:${colors.reset}`)
   if (history.length === 0) {
     console.log(`  ${colors.dim}(no conversations)${colors.reset}`)
   } else {
     const recent = orderItemsByPinnedFirst(
       history,
-      (conversation) => sessionState.pinnedSessionIds.has(conversation.id),
+      (conversation) => pinnedSessionIds.has(conversation.id),
     ).slice(0, RECENT_CONVERSATION_LIMIT)
     for (const conv of recent) {
       const isCurrent = conv.id === currentConversationId
@@ -344,17 +334,19 @@ async function toggleConversationSessionStateForCli(
   currentConversationId = selectedConversation.id
 
   const cfg = configStore.get()
-  const currentIds = getConfiguredSessionIdList(stateKey)
+  const currentSessionState = sanitizeConversationSessionState(cfg)
+  const currentIds = currentSessionState[stateKey]
   const nextEnabled = !currentIds.includes(selectedConversation.id)
-  const nextIds = setSessionIdMembership(
-    currentIds,
+  const nextSessionState = setConversationSessionStateMembership(
+    currentSessionState,
+    stateKey,
     selectedConversation.id,
     nextEnabled,
   )
 
   configStore.save({
     ...cfg,
-    [stateKey]: nextIds,
+    ...nextSessionState,
   })
 
   const actionLabel = stateKey === "pinnedSessionIds"

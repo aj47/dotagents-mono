@@ -57,6 +57,20 @@ export interface SessionListItem {
   preview: string;
 }
 
+export type ConversationSessionStateKey =
+  | 'pinnedSessionIds'
+  | 'archivedSessionIds';
+
+export interface ConversationSessionState {
+  pinnedSessionIds: string[];
+  archivedSessionIds: string[];
+}
+
+type ConversationSessionStateLike =
+  | Partial<Record<ConversationSessionStateKey, unknown>>
+  | null
+  | undefined;
+
 export function orderItemsByPinnedFirst<T>(
   items: readonly T[],
   isPinned: (item: T) => boolean,
@@ -98,6 +112,15 @@ export function sanitizeSessionIdList(value: unknown): string[] {
     : [];
 }
 
+export function sanitizeConversationSessionState(
+  value: ConversationSessionStateLike,
+): ConversationSessionState {
+  return {
+    pinnedSessionIds: sanitizeSessionIdList(value?.pinnedSessionIds),
+    archivedSessionIds: sanitizeSessionIdList(value?.archivedSessionIds),
+  };
+}
+
 export function setSessionIdMembership(
   sessionIds: Iterable<string>,
   sessionId: string,
@@ -111,6 +134,44 @@ export function setSessionIdMembership(
   }
 
   return [...nextSessionIds];
+}
+
+export function setConversationSessionStateMembership(
+  value: ConversationSessionStateLike,
+  stateKey: ConversationSessionStateKey,
+  sessionId: string,
+  isIncluded: boolean,
+): ConversationSessionState {
+  const sessionState = sanitizeConversationSessionState(value);
+  const nextSessionIds = setSessionIdMembership(
+    sessionState[stateKey],
+    sessionId,
+    isIncluded,
+  );
+
+  return stateKey === 'pinnedSessionIds'
+    ? { ...sessionState, pinnedSessionIds: nextSessionIds }
+    : { ...sessionState, archivedSessionIds: nextSessionIds };
+}
+
+export function removeSessionIdFromConversationSessionState(
+  value: ConversationSessionStateLike,
+  sessionId: string,
+): ConversationSessionState {
+  const sessionState = sanitizeConversationSessionState(value);
+
+  return {
+    pinnedSessionIds: setSessionIdMembership(
+      sessionState.pinnedSessionIds,
+      sessionId,
+      false,
+    ),
+    archivedSessionIds: setSessionIdMembership(
+      sessionState.archivedSessionIds,
+      sessionId,
+      false,
+    ),
+  };
 }
 
 /**

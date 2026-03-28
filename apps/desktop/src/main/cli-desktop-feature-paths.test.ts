@@ -130,6 +130,14 @@ const sidebarSessionsSource = readFileSync(
   new URL("../renderer/src/lib/sidebar-sessions.ts", import.meta.url),
   "utf8",
 )
+const useStoreSyncSource = readFileSync(
+  new URL("../renderer/src/hooks/use-store-sync.ts", import.meta.url),
+  "utf8",
+)
+const mobileSessionsSource = readFileSync(
+  new URL("../../../mobile/src/store/sessions.ts", import.meta.url),
+  "utf8",
+)
 const aiSdkProviderSource = readFileSync(
   new URL("./ai-sdk-provider.ts", import.meta.url),
   "utf8",
@@ -210,6 +218,15 @@ describe("CLI and desktop feature paths", () => {
       "export function orderItemsByPinnedFirst",
     )
     expect(sharedSessionSource).toContain(
+      "export function sanitizeConversationSessionState",
+    )
+    expect(sharedSessionSource).toContain(
+      "export function setConversationSessionStateMembership",
+    )
+    expect(sharedSessionSource).toContain(
+      "export function removeSessionIdFromConversationSessionState",
+    )
+    expect(sharedSessionSource).toContain(
       "export function sanitizeSessionIdList",
     )
     expect(sharedSessionSource).toContain(
@@ -218,12 +235,24 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/pin":')
     expect(headlessCliSource).toContain('case "/archive":')
     expect(headlessCliSource).toContain("orderItemsByPinnedFirst(")
-    expect(headlessCliSource).toContain("sanitizeSessionIdList(")
-    expect(headlessCliSource).toContain("setSessionIdMembership(")
+    expect(headlessCliSource).toContain("sanitizeConversationSessionState(")
+    expect(headlessCliSource).toContain(
+      "setConversationSessionStateMembership(",
+    )
+    expect(conversationManagementSource).toContain(
+      "removeSessionIdFromConversationSessionState(",
+    )
     expect(agentStoreSource).toContain("setSessionIdMembership(")
     expect(pinnedSessionHistorySource).toContain("orderItemsByPinnedFirst(")
     expect(sidebarSessionsSource).toContain("orderItemsByPinnedFirst(")
-    expect(remoteServerSource).toContain("sanitizeSessionIdList(")
+    expect(useStoreSyncSource).toContain("sanitizeConversationSessionState(")
+    expect(remoteServerSource).toContain("sanitizeConversationSessionState(")
+    expect(mobileSessionsSource).toContain(
+      "sanitizeConversationSessionState(",
+    )
+    expect(mobileSessionsSource).toContain(
+      "setConversationSessionStateMembership(",
+    )
   })
 
   it("shares conversation management across CLI, desktop, and runtime tool surfaces", () => {

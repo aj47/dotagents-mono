@@ -13,7 +13,7 @@ import os from "os"
 import path from "path"
 import {
   formatConversationHistoryMessages,
-  sanitizeSessionIdList,
+  sanitizeConversationSessionState,
   resolveChatModelSelection,
   resolveChatProviderId,
   resolveModelPresetId,
@@ -1080,6 +1080,7 @@ async function startRemoteServerInternal(
       const openaiTtsSelection = resolveTtsSelection(cfg, "openai")
       const groqTtsSelection = resolveTtsSelection(cfg, "groq")
       const geminiTtsSelection = resolveTtsSelection(cfg, "gemini")
+      const conversationSessionState = sanitizeConversationSessionState(cfg)
 
       return reply.send({
         // Model settings
@@ -1178,8 +1179,8 @@ async function startRemoteServerInternal(
           .filter((p) => p.connection.type === "acp" && p.enabled !== false)
           .map((p) => ({ name: p.name, displayName: p.displayName })),
         // Session History (pinned/archived conversation IDs)
-        pinnedSessionIds: sanitizeSessionIdList(cfg.pinnedSessionIds),
-        archivedSessionIds: sanitizeSessionIdList(cfg.archivedSessionIds),
+        pinnedSessionIds: conversationSessionState.pinnedSessionIds,
+        archivedSessionIds: conversationSessionState.archivedSessionIds,
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -1478,17 +1479,12 @@ async function startRemoteServerInternal(
       }
 
       // Session History (pinned/archived conversation IDs)
-      if (
-        Array.isArray(body.pinnedSessionIds) &&
-        body.pinnedSessionIds.every((id: unknown) => typeof id === "string")
-      ) {
-        updates.pinnedSessionIds = body.pinnedSessionIds
+      const conversationSessionState = sanitizeConversationSessionState(body)
+      if (Array.isArray(body.pinnedSessionIds)) {
+        updates.pinnedSessionIds = conversationSessionState.pinnedSessionIds
       }
-      if (
-        Array.isArray(body.archivedSessionIds) &&
-        body.archivedSessionIds.every((id: unknown) => typeof id === "string")
-      ) {
-        updates.archivedSessionIds = body.archivedSessionIds
+      if (Array.isArray(body.archivedSessionIds)) {
+        updates.archivedSessionIds = conversationSessionState.archivedSessionIds
       }
 
       // Predefined Prompts
