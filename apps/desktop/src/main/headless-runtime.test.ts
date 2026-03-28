@@ -5,10 +5,8 @@ const mocks = vi.hoisted(() => ({
   initializeSharedRuntimeServices: vi.fn(),
   registerSharedMainProcessInfrastructure: vi.fn(),
   shutdownSharedRuntimeServices: vi.fn(),
-  startConfiguredCloudflareTunnel: vi.fn(),
-  startRemoteServerForced: vi.fn(),
+  startSharedRemoteAccessRuntime: vi.fn(),
   setHeadlessMode: vi.fn(),
-  logApp: vi.fn(),
 }))
 
 vi.mock("electron", () => ({
@@ -26,20 +24,12 @@ vi.mock("./app-runtime", () => ({
   shutdownSharedRuntimeServices: mocks.shutdownSharedRuntimeServices,
 }))
 
-vi.mock("./cloudflare-runtime", () => ({
-  startConfiguredCloudflareTunnel: mocks.startConfiguredCloudflareTunnel,
-}))
-
-vi.mock("./remote-server", () => ({
-  startRemoteServerForced: mocks.startRemoteServerForced,
+vi.mock("./remote-access-runtime", () => ({
+  startSharedRemoteAccessRuntime: mocks.startSharedRemoteAccessRuntime,
 }))
 
 vi.mock("./state", () => ({
   setHeadlessMode: mocks.setHeadlessMode,
-}))
-
-vi.mock("./debug", () => ({
-  logApp: mocks.logApp,
 }))
 
 describe("headless-runtime", () => {
@@ -53,11 +43,13 @@ describe("headless-runtime", () => {
 
     mocks.initializeSharedRuntimeServices.mockResolvedValue(undefined)
     mocks.shutdownSharedRuntimeServices.mockResolvedValue(undefined)
-    mocks.startConfiguredCloudflareTunnel.mockResolvedValue({ started: false })
-    mocks.startRemoteServerForced.mockResolvedValue({ running: true })
+    mocks.startSharedRemoteAccessRuntime.mockResolvedValue({
+      remoteServerStarted: true,
+      cloudflareTunnelStarted: false,
+    })
   })
 
-  it("starts the shared runtime and forces the remote server bind for non-GUI modes", async () => {
+  it("starts the shared remote access runtime with the forced headless bind", async () => {
     const { startSharedHeadlessRuntime } = await import("./headless-runtime")
 
     await startSharedHeadlessRuntime({
@@ -74,15 +66,21 @@ describe("headless-runtime", () => {
       mcpStrategy: "await",
       acpStrategy: "await",
     })
-    expect(mocks.startRemoteServerForced).toHaveBeenCalledWith({
-      bindAddressOverride: "0.0.0.0",
+    expect(mocks.startSharedRemoteAccessRuntime).toHaveBeenCalledWith({
+      label: "qr-runtime",
+      remoteServerStrategy: "forced",
+      remoteServerBindAddress: "0.0.0.0",
+      requireRemoteServer: true,
+      cloudflareTunnelActivation: "disabled",
+      cloudflareConsoleLabel: "QR Mode",
     })
   })
 
-  it("optionally starts the shared Cloudflare tunnel bootstrap for non-GUI modes", async () => {
-    mocks.startConfiguredCloudflareTunnel.mockResolvedValue({
-      started: true,
-      url: "https://quick.example.com",
+  it("returns the shared remote access tunnel URL for non-GUI modes", async () => {
+    mocks.startSharedRemoteAccessRuntime.mockResolvedValue({
+      remoteServerStarted: true,
+      cloudflareTunnelStarted: true,
+      cloudflareTunnelUrl: "https://quick.example.com",
     })
     const { startSharedHeadlessRuntime } = await import("./headless-runtime")
 
@@ -93,10 +91,13 @@ describe("headless-runtime", () => {
       cloudflareConsoleLabel: "QR Mode",
     })
 
-    expect(mocks.startConfiguredCloudflareTunnel).toHaveBeenCalledWith({
-      activation: "force",
-      logLabel: "qr-runtime",
-      consoleLabel: "QR Mode",
+    expect(mocks.startSharedRemoteAccessRuntime).toHaveBeenCalledWith({
+      label: "qr-runtime",
+      remoteServerStrategy: "forced",
+      remoteServerBindAddress: "0.0.0.0",
+      requireRemoteServer: true,
+      cloudflareTunnelActivation: "force",
+      cloudflareConsoleLabel: "QR Mode",
     })
     expect(result.cloudflareTunnelUrl).toBe("https://quick.example.com")
   })
@@ -196,11 +197,10 @@ describe("headless-runtime", () => {
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
 
-  it("surfaces remote server startup failures", async () => {
-    mocks.startRemoteServerForced.mockResolvedValue({
-      running: false,
-      error: "bind failed",
-    })
+  it("surfaces shared remote access startup failures", async () => {
+    mocks.startSharedRemoteAccessRuntime.mockRejectedValue(
+      new Error("bind failed"),
+    )
     const { startSharedHeadlessRuntime } = await import("./headless-runtime")
 
     await expect(

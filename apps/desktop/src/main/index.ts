@@ -25,8 +25,8 @@ import { diagnosticsService } from "./diagnostics"
 import { ensureAppSwitcherPresence } from "./app-switcher"
 
 import { configStore } from "./config"
-import { startConfiguredCloudflareTunnel } from "./cloudflare-runtime"
-import { startRemoteServer, printQRCodeToTerminal } from "./remote-server"
+import { printQRCodeToTerminal } from "./remote-server"
+import { startSharedRemoteAccessRuntime } from "./remote-access-runtime"
 import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
@@ -354,28 +354,14 @@ if (!gotSingleInstanceLock) {
     try {
       const cfg = configStore.get()
       if (cfg.remoteServerEnabled) {
-        startRemoteServer()
-          .then(async (result) => {
-            if (!result.running) {
-              logApp(
-                `Remote server failed to start: ${result.error || "Unknown error"}`,
-              )
-              return
-            }
-
-            logApp("Remote server started")
-            void startConfiguredCloudflareTunnel({
-              activation: "auto",
-              logLabel: "desktop-runtime",
-            }).catch((error) => {
-              logApp(
-                `Cloudflare tunnel auto-start error: ${error instanceof Error ? error.message : String(error)}`,
-              )
-            })
-          })
+        void startSharedRemoteAccessRuntime({
+          label: "desktop-runtime",
+          remoteServerStrategy: "config",
+          cloudflareTunnelActivation: "auto",
+        })
           .catch((err) =>
             logApp(
-              `Remote server failed to start: ${err instanceof Error ? err.message : String(err)}`,
+              `Remote access startup failed: ${err instanceof Error ? err.message : String(err)}`,
             ),
           )
       }

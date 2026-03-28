@@ -26,6 +26,10 @@ const appRuntimeSource = readFileSync(
   new URL("./app-runtime.ts", import.meta.url),
   "utf8",
 )
+const remoteAccessRuntimeSource = readFileSync(
+  new URL("./remote-access-runtime.ts", import.meta.url),
+  "utf8",
+)
 const cloudflareRuntimeSource = readFileSync(
   new URL("./cloudflare-runtime.ts", import.meta.url),
   "utf8",
@@ -110,6 +114,9 @@ describe("CLI and desktop feature paths", () => {
     expect(cloudflareRuntimeSource).toContain(
       "export async function startConfiguredCloudflareTunnel",
     )
+    expect(remoteAccessRuntimeSource).toContain(
+      "export async function startSharedRemoteAccessRuntime",
+    )
     expect(headlessRuntimeSource).toContain(
       "export async function startSharedHeadlessRuntime",
     )
@@ -120,14 +127,16 @@ describe("CLI and desktop feature paths", () => {
       "export function registerSharedHeadlessTerminationHandlers",
     )
     expect(headlessRuntimeSource).toContain("cloudflareTunnelActivation")
-    expect(headlessRuntimeSource).toContain("startConfiguredCloudflareTunnel({")
+    expect(headlessRuntimeSource).toContain("startSharedRemoteAccessRuntime({")
+    expect(remoteAccessRuntimeSource).toContain("startConfiguredCloudflareTunnel")
+    expect(remoteAccessRuntimeSource).toContain("startRemoteServerForced({")
+    expect(remoteAccessRuntimeSource).toContain("return startRemoteServer()")
     expect(headlessRuntimeSource).toContain("shutdownSharedRuntimeServices({")
-    expect(headlessRuntimeSource).toContain('mcpStrategy: "await"')
-    expect(headlessRuntimeSource).toContain('acpStrategy: "await"')
     expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
-    expect(indexSource).toContain("startConfiguredCloudflareTunnel({")
+    expect(indexSource).toContain("startSharedRemoteAccessRuntime({")
     expect(indexSource).toContain("launchSharedHeadlessMode({")
     expect(indexSource).toContain("shutdownSharedRuntimeServices({")
+    expect(indexSource).toContain('remoteServerStrategy: "config"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "auto"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "force"')
     expect(indexSource).toContain('terminationSignals: ["SIGTERM"]')
@@ -141,6 +150,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
     expect(docsSource).toContain("Shared prompt session bootstrap")
+    expect(docsSource).toContain("Shared remote access bootstrap")
     expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Shared runtime shutdown")
@@ -155,6 +165,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop GUI startup")
     expect(docsSource).toContain("Headless CLI startup")
     expect(docsSource).toContain("QR headless pairing startup")
+    expect(docsSource).toContain("Desktop remote access startup")
     expect(docsSource).toContain("Desktop GUI shutdown")
     expect(docsSource).toContain("Headless non-GUI shutdown")
   })

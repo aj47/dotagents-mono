@@ -4,12 +4,9 @@ import {
   registerSharedMainProcessInfrastructure,
   shutdownSharedRuntimeServices,
 } from "./app-runtime"
-import {
-  type CloudflareTunnelActivation,
-  startConfiguredCloudflareTunnel,
-} from "./cloudflare-runtime"
+import { type CloudflareTunnelActivation } from "./cloudflare-runtime"
 import { logApp } from "./debug"
-import { startRemoteServerForced } from "./remote-server"
+import { startSharedRemoteAccessRuntime } from "./remote-access-runtime"
 import { setHeadlessMode } from "./state"
 
 const DEFAULT_HEADLESS_REMOTE_SERVER_BIND_ADDRESS = "0.0.0.0"
@@ -88,24 +85,14 @@ export async function startSharedHeadlessRuntime(
     acpStrategy: "await",
   })
 
-  const serverResult = await startRemoteServerForced({
-    bindAddressOverride: remoteServerBindAddress,
+  const { cloudflareTunnelUrl } = await startSharedRemoteAccessRuntime({
+    label,
+    remoteServerStrategy: "forced",
+    remoteServerBindAddress,
+    requireRemoteServer: true,
+    cloudflareTunnelActivation,
+    cloudflareConsoleLabel: cloudflareConsoleLabel ?? shutdownLabel,
   })
-  if (!serverResult.running) {
-    throw new Error(serverResult.error || "Unknown error")
-  }
-
-  logApp(`Remote server started on ${remoteServerBindAddress} (${label})`)
-
-  let cloudflareTunnelUrl: string | undefined
-  if (cloudflareTunnelActivation !== "disabled") {
-    const tunnelResult = await startConfiguredCloudflareTunnel({
-      activation: cloudflareTunnelActivation,
-      logLabel: label,
-      consoleLabel: cloudflareConsoleLabel ?? shutdownLabel,
-    })
-    cloudflareTunnelUrl = tunnelResult.url
-  }
 
   return { gracefulShutdown, cloudflareTunnelUrl }
 }
