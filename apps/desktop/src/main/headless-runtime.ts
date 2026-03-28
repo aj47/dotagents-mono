@@ -15,6 +15,7 @@ import { startRemoteServerForced, stopRemoteServer } from "./remote-server"
 import { setHeadlessMode } from "./state"
 
 const DEFAULT_HEADLESS_REMOTE_SERVER_BIND_ADDRESS = "0.0.0.0"
+const DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS = ["SIGTERM", "SIGINT"] as const
 
 export interface SharedHeadlessRuntimeOptions {
   label: string
@@ -27,6 +28,26 @@ export interface SharedHeadlessRuntimeOptions {
 export interface SharedHeadlessRuntimeHandle {
   gracefulShutdown: (exitCode: number) => Promise<void>
   cloudflareTunnelUrl?: string
+}
+
+export type SharedHeadlessTerminationSignal =
+  (typeof DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS)[number]
+
+export interface LaunchSharedHeadlessModeOptions
+  extends SharedHeadlessRuntimeOptions {
+  onStarted?: (runtime: SharedHeadlessRuntimeHandle) => Promise<void>
+  terminationSignals?: readonly SharedHeadlessTerminationSignal[]
+}
+
+export function registerSharedHeadlessTerminationHandlers(
+  gracefulShutdown: (exitCode: number) => Promise<void>,
+  signals: readonly SharedHeadlessTerminationSignal[] = DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS,
+): void {
+  for (const signal of signals) {
+    process.on(signal, () => {
+      void gracefulShutdown(0)
+    })
+  }
 }
 
 export async function startSharedHeadlessRuntime(
@@ -87,4 +108,44 @@ export async function startSharedHeadlessRuntime(
   }
 
   return { gracefulShutdown, cloudflareTunnelUrl }
+}
+
+export async function launchSharedHeadlessMode(
+  options: LaunchSharedHeadlessModeOptions,
+): Promise<void> {
+  const {
+    shutdownLabel,
+    onStarted,
+    terminationSignals = DEFAULT_SHARED_HEADLESS_TERMINATION_SIGNALS,
+    ...runtimeOptions
+  } = options
+
+  let runtimeHandle: SharedHeadlessRuntimeHandle | undefined
+
+  try {
+    runtimeHandle = await startSharedHeadlessRuntime({
+      shutdownLabel,
+      ...runtimeOptions,
+    })
+    registerSharedHeadlessTerminationHandlers(
+      runtimeHandle.gracefulShutdown,
+      terminationSignals,
+    )
+
+    if (onStarted) {
+      await onStarted(runtimeHandle)
+    }
+  } catch (error) {
+    console.error(
+      `[${shutdownLabel}] Failed to initialize:`,
+      error instanceof Error ? error.message : String(error),
+    )
+
+    if (runtimeHandle) {
+      await runtimeHandle.gracefulShutdown(1)
+      return
+    }
+
+    process.exit(1)
+  }
 }

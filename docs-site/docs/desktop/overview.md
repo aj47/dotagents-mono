@@ -129,7 +129,8 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Desktop text, voice, CLI, remote, and loop entrypoints** now share the same fresh-prompt launcher above the top-level runner, while queued desktop follow-ups and ACP parent-resume nudges share a dedicated resume-only launcher so they do not duplicate persisted turns.
 - **Conversation/session bootstrap** still lives in one place underneath those launchers, and resumed runs now reuse the same shared session-revival and history-loading path so transcription handoffs, queued follow-ups, and resumed prompts stay aligned across surfaces.
 - **Runtime session state** is also owned by the shared session manager, so remote, loop, CLI, and desktop runs no longer reset the legacy active/stop/iteration flags independently.
-- **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins.
+- **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins, and the two non-GUI modes now also share one top-level launcher for startup failure handling and signal ownership.
+- **Headless CLI Ctrl+C** stays owned by the terminal REPL, while the shared non-GUI launcher only claims `SIGTERM` for that mode so stop-or-exit behavior matches the CLI surface instead of racing a global shutdown handler.
 - **Desktop remote access, headless CLI, and QR pairing** now share the same Cloudflare tunnel bootstrap, so config-driven auto-start and QR fallback behavior stay aligned across surfaces.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.

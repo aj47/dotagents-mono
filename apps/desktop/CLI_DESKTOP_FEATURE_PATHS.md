@@ -42,6 +42,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Headless bootstrap helper: `apps/desktop/src/main/headless-runtime.ts`
 - Non-GUI startup helper: `startSharedHeadlessRuntime(...)`
 
+## Shared non-GUI mode launcher
+
+- Non-GUI launcher file: `apps/desktop/src/main/headless-runtime.ts`
+- Mode launcher helper: `launchSharedHeadlessMode(...)`
+- Signal registration helper: `registerSharedHeadlessTerminationHandlers(...)`
+
 ## Shared Cloudflare tunnel bootstrap
 
 - Shared tunnel file: `apps/desktop/src/main/cloudflare-runtime.ts`
@@ -65,9 +71,9 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 7. Desktop GUI startup
    `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`; when the remote server comes up, it also reuses `startConfiguredCloudflareTunnel({ activation: "auto" })` so desktop remote access follows the same tunnel bootstrap rules as non-GUI modes.
 8. Headless CLI startup
-   `index.ts --headless` calls `startSharedHeadlessRuntime(...)` with `cloudflareTunnelActivation: "auto"`, so the terminal CLI now reuses the same config-driven Cloudflare tunnel bootstrap as desktop after forcing the remote server on `0.0.0.0`.
+   `index.ts --headless` calls `launchSharedHeadlessMode(...)`, which wraps `startSharedHeadlessRuntime(...)`, shared non-GUI startup failure handling, and shared termination wiring before starting `headless-cli.ts`; that launcher intentionally only claims `SIGTERM`, so the terminal REPL keeps owning `SIGINT` / Ctrl+C for stop-or-exit behavior while still reusing the same config-driven Cloudflare tunnel bootstrap as desktop after forcing the remote server on `0.0.0.0`.
 9. QR headless pairing startup
-   `index.ts --qr` calls `startSharedHeadlessRuntime(...)` with `cloudflareTunnelActivation: "force"`, which forces the same shared tunnel helper to prefer the configured named tunnel, fall back to quick tunnel when needed, and hand the resulting URL to `printQRCodeToTerminal(...)` without creating windows.
+   `index.ts --qr` calls `launchSharedHeadlessMode(...)`, which wraps `startSharedHeadlessRuntime(...)`, shared `SIGINT`/`SIGTERM` ownership, and shared non-GUI startup failure handling before forcing the same shared tunnel helper to prefer the configured named tunnel, fall back to quick tunnel when needed, and hand the resulting URL to `printQRCodeToTerminal(...)` without creating windows.
 
 ## Parity rules
 
@@ -82,6 +88,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
 - Legacy runtime flags stay session-manager-owned: prompt entrypoints do not reset `state.isAgentModeActive`, `state.shouldStopAgent`, or `state.agentIterationCount` directly, so overlapping desktop, CLI, remote, and loop sessions do not clobber each other.
 - GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.
+- `--headless` and `--qr` now also share the same top-level non-GUI launcher through `launchSharedHeadlessMode(...)`, so startup failures and signal registration are decided in one place.
+- Headless CLI intentionally narrows that shared launcher to `SIGTERM` so `headless-cli.ts` keeps owning terminal `SIGINT` / Ctrl+C behavior for stop-or-exit parity instead of racing a global shutdown handler.
 - Cloudflare tunnel startup is decided in one place: `startConfiguredCloudflareTunnel(...)`, so desktop auto-start, headless CLI auto-start, and QR pairing all converge on the same named-vs-quick tunnel logic.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 
@@ -98,7 +106,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared startup helper registers IPC/serve infrastructure, supports awaited headless startup, and preserves background desktop startup.
 - `apps/desktop/src/main/headless-runtime.test.ts`
-  Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, optionally layers the shared Cloudflare tunnel bootstrap on top, and cleans up services through one graceful shutdown path.
+  Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, optionally layers the shared Cloudflare tunnel bootstrap on top, routes `--headless` / `--qr` through one shared non-GUI launcher, preserves CLI-local `SIGINT` ownership when requested, and cleans up services through one graceful shutdown path.
 - `apps/desktop/src/main/cloudflare-runtime.test.ts`
   Confirms the shared Cloudflare tunnel bootstrap skips disabled auto-start, honors named-tunnel config, and falls back to quick tunnels for forced QR pairing.
 - `apps/desktop/src/main/loop-service.max-iterations.test.ts`

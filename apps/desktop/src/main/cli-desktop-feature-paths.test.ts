@@ -110,15 +110,22 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessRuntimeSource).toContain(
       "export async function startSharedHeadlessRuntime",
     )
+    expect(headlessRuntimeSource).toContain(
+      "export async function launchSharedHeadlessMode",
+    )
+    expect(headlessRuntimeSource).toContain(
+      "export function registerSharedHeadlessTerminationHandlers",
+    )
     expect(headlessRuntimeSource).toContain("cloudflareTunnelActivation")
     expect(headlessRuntimeSource).toContain("startConfiguredCloudflareTunnel({")
     expect(headlessRuntimeSource).toContain('mcpStrategy: "await"')
     expect(headlessRuntimeSource).toContain('acpStrategy: "await"')
     expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
     expect(indexSource).toContain("startConfiguredCloudflareTunnel({")
-    expect(indexSource).toContain("startSharedHeadlessRuntime({")
+    expect(indexSource).toContain("launchSharedHeadlessMode({")
     expect(indexSource).toContain('cloudflareTunnelActivation: "auto"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "force"')
+    expect(indexSource).toContain('terminationSignals: ["SIGTERM"]')
     expect(indexSource).toContain('label: "headless-runtime"')
     expect(indexSource).toContain('label: "qr-runtime"')
     expect(indexSource).toContain('label: "desktop-runtime"')
@@ -129,6 +136,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
     expect(docsSource).toContain("Shared prompt session bootstrap")
+    expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")

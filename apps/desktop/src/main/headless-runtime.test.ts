@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   hideDock: vi.fn(),
@@ -64,6 +64,10 @@ vi.mock("./debug", () => ({
 }))
 
 describe("headless-runtime", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
@@ -120,6 +124,45 @@ describe("headless-runtime", () => {
     expect(result.cloudflareTunnelUrl).toBe("https://quick.example.com")
   })
 
+  it("registers shared non-GUI signal handlers by default before running mode-specific startup", async () => {
+    const processOnSpy = vi
+      .spyOn(process, "on")
+      .mockImplementation((() => process) as typeof process.on)
+    const onStarted = vi.fn().mockResolvedValue(undefined)
+    const { launchSharedHeadlessMode } = await import("./headless-runtime")
+
+    await launchSharedHeadlessMode({
+      label: "qr-runtime",
+      shutdownLabel: "QR Mode",
+      onStarted,
+    })
+
+    expect(processOnSpy).toHaveBeenCalledWith("SIGTERM", expect.any(Function))
+    expect(processOnSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function))
+    expect(onStarted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gracefulShutdown: expect.any(Function),
+      }),
+    )
+  })
+
+  it("allows callers to narrow shared non-GUI signal ownership", async () => {
+    const processOnSpy = vi
+      .spyOn(process, "on")
+      .mockImplementation((() => process) as typeof process.on)
+    const { launchSharedHeadlessMode } = await import("./headless-runtime")
+
+    await launchSharedHeadlessMode({
+      label: "headless-runtime",
+      shutdownLabel: "Headless",
+      terminationSignals: ["SIGTERM"],
+      onStarted: vi.fn().mockResolvedValue(undefined),
+    })
+
+    expect(processOnSpy).toHaveBeenCalledTimes(1)
+    expect(processOnSpy).toHaveBeenCalledWith("SIGTERM", expect.any(Function))
+  })
+
   it("cleans up shared services exactly once during graceful shutdown", async () => {
     const exitSpy = vi
       .spyOn(process, "exit")
@@ -142,6 +185,40 @@ describe("headless-runtime", () => {
     expect(exitSpy).toHaveBeenCalledTimes(1)
     expect(exitSpy).toHaveBeenCalledWith(0)
     expect(consoleSpy).toHaveBeenCalledWith("\n[Headless] Shutting down...")
+  })
+
+  it("shuts down the shared runtime when mode-specific startup fails after bootstrap", async () => {
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined as never) as typeof process.exit)
+    const processOnSpy = vi
+      .spyOn(process, "on")
+      .mockImplementation((() => process) as typeof process.on)
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {})
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const { launchSharedHeadlessMode } = await import("./headless-runtime")
+
+    await launchSharedHeadlessMode({
+      label: "headless-runtime",
+      shutdownLabel: "Headless",
+      terminationSignals: [],
+      onStarted: async () => {
+        throw new Error("cli startup failed")
+      },
+    })
+
+    expect(processOnSpy).not.toHaveBeenCalled()
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[Headless] Failed to initialize:",
+      "cli startup failed",
+    )
+    expect(mocks.stopAllLoops).toHaveBeenCalledTimes(1)
+    expect(mocks.acpShutdown).toHaveBeenCalledTimes(1)
+    expect(mocks.mcpCleanup).toHaveBeenCalledTimes(1)
+    expect(mocks.stopRemoteServer).toHaveBeenCalledTimes(1)
+    expect(exitSpy).toHaveBeenCalledWith(1)
   })
 
   it("surfaces remote server startup failures", async () => {

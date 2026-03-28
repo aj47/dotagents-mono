@@ -19,7 +19,7 @@ import { destroyTray, initTray } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { mcpService } from "./mcp-service"
 import { initDebugFlags, logApp } from "./debug"
-import { startSharedHeadlessRuntime } from "./headless-runtime"
+import { launchSharedHeadlessMode } from "./headless-runtime"
 import { initializeDeepLinkHandling } from "./oauth-deeplink-handler"
 import { diagnosticsService } from "./diagnostics"
 import { ensureAppSwitcherPresence } from "./app-switcher"
@@ -48,7 +48,6 @@ const isQRMode = process.argv.includes("--qr")
 // Check for --headless flag (headless mode without GUI)
 const isHeadlessMode = process.argv.includes("--headless")
 const isNoGuiMode = isQRMode || isHeadlessMode
-const HEADLESS_REMOTE_SERVER_BIND_ADDRESS = "0.0.0.0"
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
 // This must be called before app.whenReady()
@@ -91,16 +90,6 @@ function releaseAppSingleInstanceLock() {
   try {
     app.releaseSingleInstanceLock()
   } catch {}
-}
-
-function registerHeadlessTerminationHandlers(
-  gracefulShutdown: (exitCode: number) => Promise<void>,
-): void {
-  for (const signal of ["SIGTERM", "SIGINT"] as const) {
-    process.on(signal, () => {
-      void gracefulShutdown(0)
-    })
-  }
 }
 
 function openPendingHubBundleInstall(): boolean {
@@ -219,46 +208,27 @@ if (!gotSingleInstanceLock) {
     // Handle --qr mode: start remote server, start tunnel, print QR code, run headlessly
     if (isQRMode) {
       logApp("Running in --qr mode (headless with QR code)")
-      let gracefulShutdown: ((exitCode: number) => Promise<void>) | undefined
-
-      try {
-        const sharedHeadlessRuntime = await startSharedHeadlessRuntime({
-          label: "qr-runtime",
-          shutdownLabel: "QR Mode",
-          remoteServerBindAddress: HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
-          cloudflareTunnelActivation: "force",
-          cloudflareConsoleLabel: "QR Mode",
-        })
-        gracefulShutdown = sharedHeadlessRuntime.gracefulShutdown
-        registerHeadlessTerminationHandlers(
-          sharedHeadlessRuntime.gracefulShutdown,
-        )
-
-        // Print QR code to terminal (with tunnel URL if available)
-        const printed = await printQRCodeToTerminal(
-          sharedHeadlessRuntime.cloudflareTunnelUrl,
-        )
-        if (!printed) {
-          console.error(
-            "[QR Mode] Failed to print QR code. Ensure remoteServerApiKey is configured.",
+      await launchSharedHeadlessMode({
+        label: "qr-runtime",
+        shutdownLabel: "QR Mode",
+        cloudflareTunnelActivation: "force",
+        onStarted: async ({ cloudflareTunnelUrl }) => {
+          // Print QR code to terminal (with tunnel URL if available)
+          const printed = await printQRCodeToTerminal(
+            cloudflareTunnelUrl,
           )
-          console.log(
-            "[QR Mode] You can set an API key in the config or run the app normally first.",
-          )
-        }
+          if (!printed) {
+            console.error(
+              "[QR Mode] Failed to print QR code. Ensure remoteServerApiKey is configured.",
+            )
+            console.log(
+              "[QR Mode] You can set an API key in the config or run the app normally first.",
+            )
+          }
 
-        console.log("[QR Mode] Server running. Press Ctrl+C to exit.")
-      } catch (err) {
-        console.error(
-          "[QR Mode] Failed to initialize:",
-          err instanceof Error ? err.message : String(err),
-        )
-        if (gracefulShutdown) {
-          await gracefulShutdown(1)
-          return
-        }
-        process.exit(1)
-      }
+          console.log("[QR Mode] Server running. Press Ctrl+C to exit.")
+        },
+      })
 
       // Keep the process running - don't create any windows
       return
@@ -267,38 +237,19 @@ if (!gotSingleInstanceLock) {
     // Handle --headless mode: initialize services and start CLI without any GUI
     if (isHeadlessMode) {
       logApp("Running in --headless mode")
-      let gracefulShutdown: ((exitCode: number) => Promise<void>) | undefined
-
-      try {
-        const sharedHeadlessRuntime = await startSharedHeadlessRuntime({
-          label: "headless-runtime",
-          shutdownLabel: "Headless",
-          remoteServerBindAddress: HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
-          cloudflareTunnelActivation: "auto",
-          cloudflareConsoleLabel: "Headless",
-        })
-        gracefulShutdown = sharedHeadlessRuntime.gracefulShutdown
-        registerHeadlessTerminationHandlers(
-          sharedHeadlessRuntime.gracefulShutdown,
-        )
-
-        // Start headless CLI
-        const { startHeadlessCLI } = await import("./headless-cli")
-        await startHeadlessCLI(async () => {
-          await sharedHeadlessRuntime.gracefulShutdown(0)
-        })
-      } catch (err) {
-        console.error(
-          "[Headless] Failed to initialize:",
-          err instanceof Error ? err.message : String(err),
-        )
-        if (gracefulShutdown) {
-          await gracefulShutdown(1)
-          return
-        }
-        process.exit(1)
-        return
-      }
+      await launchSharedHeadlessMode({
+        label: "headless-runtime",
+        shutdownLabel: "Headless",
+        cloudflareTunnelActivation: "auto",
+        terminationSignals: ["SIGTERM"],
+        onStarted: async (runtimeHandle) => {
+          // Start headless CLI
+          const { startHeadlessCLI } = await import("./headless-cli")
+          await startHeadlessCLI(async () => {
+            await runtimeHandle.gracefulShutdown(0)
+          })
+        },
+      })
 
       // Keep the process running - don't create any windows
       return
