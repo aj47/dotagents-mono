@@ -124,6 +124,19 @@ import {
   previewManagedBundleWithConflicts,
 } from "./bundle-management"
 import {
+  deleteManagedSandboxSlot,
+  getManagedSandboxState,
+  importManagedBundleToSandbox,
+  renameManagedSandboxSlot,
+  resolveManagedSandboxSlotSelection,
+  restoreManagedSandboxBaseline,
+  saveManagedCurrentSandboxSlot,
+  saveManagedSandboxBaseline,
+  switchManagedSandboxSlot,
+  type ManagedSandboxBundleImportResult,
+  type SandboxSlot,
+} from "./sandbox-management"
+import {
   connectManagedWhatsapp,
   disconnectManagedWhatsapp,
   getManagedWhatsappStatus,
@@ -458,6 +471,14 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/bundle-preview <path>${colors.reset} - Preview a .dotagents bundle plus merged conflicts
   ${colors.cyan}/bundle-import <path> [json]${colors.reset} - Import a .dotagents bundle (default conflictStrategy: skip)
   ${colors.cyan}/bundle-publish-payload <json>${colors.reset} - Print a Hub publish payload JSON for the merged layers
+  ${colors.cyan}/sandboxes${colors.reset} - List sandbox slots and the active slot
+  ${colors.cyan}/sandbox-baseline-save${colors.reset} - Save or update the baseline sandbox slot
+  ${colors.cyan}/sandbox-baseline-restore${colors.reset} - Restore the baseline sandbox slot
+  ${colors.cyan}/sandbox-slot-save <name>${colors.reset} - Snapshot the current config into a sandbox slot
+  ${colors.cyan}/sandbox-slot-switch <name>${colors.reset} - Switch to a sandbox slot and refresh runtime state
+  ${colors.cyan}/sandbox-slot-delete <name>${colors.reset} - Delete a non-active sandbox slot
+  ${colors.cyan}/sandbox-slot-rename <old-name> <new-name>${colors.reset} - Rename a sandbox slot
+  ${colors.cyan}/sandbox-bundle-import <path> <slot-name> [json]${colors.reset} - Create or update a sandbox slot from a bundle import
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -1042,6 +1063,82 @@ function parseCliPathAndOptionalJsonObject(
   }
 
   return { filePath, payload }
+}
+
+function parseCliPathNameAndOptionalJsonObject(
+  input: string,
+  usage: string,
+): { filePath: string; name: string; payload: Record<string, unknown> } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const filePath = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const remaining = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  if (!filePath || !remaining) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const secondWhitespaceIndex = remaining.search(/\s/)
+  if (secondWhitespaceIndex < 0) {
+    return {
+      filePath,
+      name: remaining,
+      payload: {},
+    }
+  }
+
+  const name = remaining.slice(0, secondWhitespaceIndex).trim()
+  const payloadText = remaining.slice(secondWhitespaceIndex + 1).trim()
+  if (!name) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+  if (!payloadText) {
+    return { filePath, name, payload: {} }
+  }
+
+  const payload = parseCliJsonObject(payloadText, usage)
+  if (!payload) {
+    return null
+  }
+
+  return { filePath, name, payload }
+}
+
+function parseCliTwoArguments(
+  input: string,
+  usage: string,
+): { first: string; second: string } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const first = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const second = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  if (!first || !second) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  return { first, second }
 }
 
 function parseKnowledgeNoteEditCommand(
@@ -1918,7 +2015,20 @@ function printBundleImportResultSection(
   }
 }
 
-function printBundleImportResult(filePath: string, result: Awaited<ReturnType<typeof importManagedBundle>>): void {
+type BundleImportLikeResult = {
+  success: boolean
+  errors: string[]
+  agentProfiles: ImportItemResult[]
+  mcpServers: ImportItemResult[]
+  skills: ImportItemResult[]
+  repeatTasks: ImportItemResult[]
+  knowledgeNotes: ImportItemResult[]
+}
+
+function printBundleImportResult(
+  filePath: string,
+  result: BundleImportLikeResult,
+): void {
   if (!result.success) {
     printColored(colors.red, `Bundle import failed for ${filePath}.`)
     for (const error of result.errors) {
@@ -1940,6 +2050,252 @@ function printBundleImportResult(filePath: string, result: Awaited<ReturnType<ty
     }
   }
   console.log()
+}
+
+function formatSandboxSlotSelectionSummary(slot: SandboxSlot): string {
+  const labels: string[] = []
+  if (slot.isDefault) {
+    labels.push("baseline")
+  }
+  if (slot.sourceBundleName) {
+    labels.push(`bundle ${slot.sourceBundleName}`)
+  }
+
+  const updatedAt = new Date(slot.updatedAt).toLocaleString()
+  return `${slot.name}${labels.length > 0 ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}` : ""} ${colors.dim}- updated ${updatedAt}${colors.reset}`
+}
+
+function printSandboxState(): void {
+  const state = getManagedSandboxState()
+
+  console.log(`\n${colors.bold}Sandbox Slots:${colors.reset}`)
+  console.log(
+    `  Active slot: ${colors.cyan}${state.activeSlot || "(untracked current config)"}${colors.reset}`,
+  )
+
+  if (state.slots.length === 0) {
+    console.log(`  ${colors.dim}(no sandbox slots saved)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const slot of state.slots) {
+    const isActive = state.activeSlot === slot.name
+    const status = isActive ? `${colors.green}active${colors.reset} ` : ""
+    console.log(`  ${status}${formatSandboxSlotSelectionSummary(slot)}`)
+  }
+
+  console.log()
+  console.log(
+    `${colors.dim}Use /sandbox-slot-switch <name> to activate a slot or /sandbox-bundle-import <path> <slot-name> [json-payload] to stage a bundle in a sandbox.${colors.reset}`,
+  )
+  console.log()
+}
+
+function resolveSandboxSlotForCli(
+  selection: string,
+  usage: string,
+): SandboxSlot | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const state = getManagedSandboxState()
+  const { selectedSlot, ambiguousSlots } = resolveManagedSandboxSlotSelection(
+    state.slots,
+    query,
+  )
+
+  if (selectedSlot) {
+    return selectedSlot
+  }
+
+  if (ambiguousSlots && ambiguousSlots.length > 0) {
+    printColored(
+      colors.yellow,
+      `Sandbox slot selector "${query}" matches multiple slots:`,
+    )
+    for (const slot of ambiguousSlots) {
+      console.log(`  ${formatSandboxSlotSelectionSummary(slot)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `Sandbox slot not found: ${query}`)
+  return null
+}
+
+async function handleSaveSandboxBaseline(): Promise<void> {
+  const result = saveManagedSandboxBaseline()
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to save sandbox baseline.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Saved sandbox baseline as ${result.slot?.name || "default"}.`,
+  )
+}
+
+async function handleRestoreSandboxBaseline(): Promise<void> {
+  const confirmed = await promptForConfirmation(
+    "Restore the baseline sandbox slot and refresh the current runtime?",
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Sandbox baseline restore cancelled.")
+    return
+  }
+
+  const result = await restoreManagedSandboxBaseline()
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || "Failed to restore sandbox baseline.",
+    )
+    return
+  }
+
+  printColored(colors.green, "Restored sandbox baseline.")
+}
+
+async function handleSaveSandboxSlot(selection: string): Promise<void> {
+  const slotName = selection.trim()
+  if (!slotName) {
+    printColored(colors.yellow, "Usage: /sandbox-slot-save <slot-name>")
+    return
+  }
+
+  const result = saveManagedCurrentSandboxSlot(slotName)
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to save sandbox slot.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Saved sandbox slot ${result.slot?.name || slotName}.`,
+  )
+}
+
+async function handleSwitchSandboxSlot(selection: string): Promise<void> {
+  const slot = resolveSandboxSlotForCli(
+    selection,
+    "Usage: /sandbox-slot-switch <slot-name-or-prefix>",
+  )
+  if (!slot) {
+    return
+  }
+
+  const result = await switchManagedSandboxSlot(slot.name)
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to switch sandbox slot.")
+    return
+  }
+
+  printColored(colors.green, `Switched to sandbox slot ${slot.name}.`)
+}
+
+async function handleDeleteSandboxSlot(selection: string): Promise<void> {
+  const slot = resolveSandboxSlotForCli(
+    selection,
+    "Usage: /sandbox-slot-delete <slot-name-or-prefix>",
+  )
+  if (!slot) {
+    return
+  }
+
+  const confirmed = await promptForConfirmation(
+    `Delete sandbox slot ${slot.name}?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Sandbox slot deletion cancelled.")
+    return
+  }
+
+  const result = deleteManagedSandboxSlot(slot.name)
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to delete sandbox slot.")
+    return
+  }
+
+  printColored(colors.green, `Deleted sandbox slot ${slot.name}.`)
+}
+
+async function handleRenameSandboxSlot(input: string): Promise<void> {
+  const parsed = parseCliTwoArguments(
+    input,
+    "Usage: /sandbox-slot-rename <old-slot-name-or-prefix> <new-slot-name>",
+  )
+  if (!parsed) {
+    return
+  }
+
+  const slot = resolveSandboxSlotForCli(
+    parsed.first,
+    "Usage: /sandbox-slot-rename <old-slot-name-or-prefix> <new-slot-name>",
+  )
+  if (!slot) {
+    return
+  }
+
+  const result = renameManagedSandboxSlot(slot.name, parsed.second)
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to rename sandbox slot.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Renamed sandbox slot ${slot.name} to ${result.slot?.name || parsed.second}.`,
+  )
+}
+
+function printSandboxBundleImportResult(
+  filePath: string,
+  result: ManagedSandboxBundleImportResult,
+): void {
+  printBundleImportResult(filePath, result)
+
+  if (result.success) {
+    printColored(
+      colors.dim,
+      `Active sandbox slot: ${result.slotName || "(unknown)"}${result.sourceBundleName ? ` • bundle ${result.sourceBundleName}` : ""}`,
+    )
+    return
+  }
+
+  if (result.slotName) {
+    printColored(
+      colors.dim,
+      `Target sandbox slot: ${result.slotName}${result.sourceBundleName ? ` • bundle ${result.sourceBundleName}` : ""}`,
+    )
+  }
+}
+
+async function handleImportBundleToSandbox(input: string): Promise<void> {
+  const parsed = parseCliPathNameAndOptionalJsonObject(
+    input,
+    "Usage: /sandbox-bundle-import <path> <slot-name> [json-payload]",
+  )
+  if (!parsed) {
+    return
+  }
+
+  const importOptions = parseBundleImportOptions(parsed.payload)
+  if (!importOptions) {
+    return
+  }
+
+  const filePath = resolveCliFileSystemPath(parsed.filePath)
+  const result = await importManagedBundleToSandbox({
+    filePath,
+    slotName: parsed.name,
+    importOptions,
+  })
+  printSandboxBundleImportResult(filePath, result)
 }
 
 async function handleBundleExport(input: string): Promise<void> {
@@ -4683,6 +5039,30 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/bundle-publish-payload":
       await handleBundlePublishPayload(argumentsText)
+      return true
+    case "/sandboxes":
+      printSandboxState()
+      return true
+    case "/sandbox-baseline-save":
+      await handleSaveSandboxBaseline()
+      return true
+    case "/sandbox-baseline-restore":
+      await handleRestoreSandboxBaseline()
+      return true
+    case "/sandbox-slot-save":
+      await handleSaveSandboxSlot(argumentsText)
+      return true
+    case "/sandbox-slot-switch":
+      await handleSwitchSandboxSlot(argumentsText)
+      return true
+    case "/sandbox-slot-delete":
+      await handleDeleteSandboxSlot(argumentsText)
+      return true
+    case "/sandbox-slot-rename":
+      await handleRenameSandboxSlot(argumentsText)
+      return true
+    case "/sandbox-bundle-import":
+      await handleImportBundleToSandbox(argumentsText)
       return true
     case "/conversations":
       await printConversations()

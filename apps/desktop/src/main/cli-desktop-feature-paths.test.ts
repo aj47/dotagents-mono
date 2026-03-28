@@ -86,6 +86,10 @@ const bundleManagementSource = readFileSync(
   new URL("./bundle-management.ts", import.meta.url),
   "utf8",
 )
+const sandboxManagementSource = readFileSync(
+  new URL("./sandbox-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -200,6 +204,13 @@ const agentStoreSource = readFileSync(
 )
 const mcpConfigManagerSource = readFileSync(
   new URL("../renderer/src/components/mcp-config-manager.tsx", import.meta.url),
+  "utf8",
+)
+const sandboxSlotSwitcherSource = readFileSync(
+  new URL(
+    "../renderer/src/components/sandbox-slot-switcher.tsx",
+    import.meta.url,
+  ),
   "utf8",
 )
 const pinnedSessionHistorySource = readFileSync(
@@ -981,6 +992,82 @@ describe("CLI and desktop feature paths", () => {
     )
   })
 
+  it("shares sandbox slot management across headless and desktop surfaces", () => {
+    expect(sandboxManagementSource).toContain(
+      "export function getManagedSandboxState()",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export function resolveManagedSandboxSlotSelection",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export function saveManagedSandboxBaseline()",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export function saveManagedCurrentSandboxSlot(",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export async function switchManagedSandboxSlot(",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export async function restoreManagedSandboxBaseline()",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export function deleteManagedSandboxSlot(",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export function renameManagedSandboxSlot(",
+    )
+    expect(sandboxManagementSource).toContain(
+      "export async function importManagedBundleToSandbox(",
+    )
+    expect(headlessCliSource).toContain('case "/sandboxes":')
+    expect(headlessCliSource).toContain('case "/sandbox-baseline-save":')
+    expect(headlessCliSource).toContain('case "/sandbox-baseline-restore":')
+    expect(headlessCliSource).toContain('case "/sandbox-slot-save":')
+    expect(headlessCliSource).toContain('case "/sandbox-slot-switch":')
+    expect(headlessCliSource).toContain('case "/sandbox-slot-delete":')
+    expect(headlessCliSource).toContain('case "/sandbox-slot-rename":')
+    expect(headlessCliSource).toContain('case "/sandbox-bundle-import":')
+    expect(headlessCliSource).toContain("getManagedSandboxState()")
+    expect(headlessCliSource).toContain("resolveManagedSandboxSlotSelection(")
+    expect(headlessCliSource).toContain("saveManagedSandboxBaseline()")
+    expect(headlessCliSource).toContain("saveManagedCurrentSandboxSlot(")
+    expect(headlessCliSource).toContain("await switchManagedSandboxSlot(")
+    expect(headlessCliSource).toContain(
+      "await restoreManagedSandboxBaseline()",
+    )
+    expect(headlessCliSource).toContain("deleteManagedSandboxSlot(")
+    expect(headlessCliSource).toContain("renameManagedSandboxSlot(")
+    expect(headlessCliSource).toContain("await importManagedBundleToSandbox(")
+    expect(tipcSource).toContain('from "./sandbox-management"')
+    expect(tipcSource).toContain("return getManagedSandboxState()")
+    expect(tipcSource).toContain("return saveManagedSandboxBaseline()")
+    expect(tipcSource).toContain("return saveManagedCurrentSandboxSlot(")
+    expect(tipcSource).toContain("return switchManagedSandboxSlot(input.name)")
+    expect(tipcSource).toContain("return restoreManagedSandboxBaseline()")
+    expect(tipcSource).toContain("return deleteManagedSandboxSlot(input.name)")
+    expect(tipcSource).toContain(
+      "return renameManagedSandboxSlot(input.oldName, input.newName)",
+    )
+    expect(tipcSource).toContain("return importManagedBundleToSandbox({")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.getSandboxState()")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.saveBaseline()")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.saveCurrentAsSlot(")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.switchToSlot(")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.restoreBaseline()")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.deleteSlot(")
+    expect(sandboxSlotSwitcherSource).toContain("tipcClient.renameSlot(")
+    expect(docsSource).toContain("## Shared sandbox slot management")
+    expect(docsSource).toContain("`/sandboxes`")
+    expect(docsSource).toContain("`/sandbox-baseline-save`")
+    expect(docsSource).toContain("`/sandbox-baseline-restore`")
+    expect(docsSource).toContain("`/sandbox-slot-save`")
+    expect(docsSource).toContain("`/sandbox-slot-switch`")
+    expect(docsSource).toContain("`/sandbox-slot-delete`")
+    expect(docsSource).toContain("`/sandbox-slot-rename`")
+    expect(docsSource).toContain("`/sandbox-bundle-import`")
+  })
+
   it("shares WhatsApp connection management across headless and desktop surfaces", () => {
     expect(whatsappManagementSource).toContain(
       "export async function getManagedWhatsappStatus()",
@@ -1566,6 +1653,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared skill catalog management")
     expect(docsSource).toContain("Shared bundle management")
     expect(docsSource).toContain("Shared remote access management")
+    expect(docsSource).toContain("Shared sandbox slot management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -1615,6 +1703,7 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(docsSource).toContain("Headless CLI bundle management")
     expect(docsSource).toContain("Headless CLI remote access controls")
+    expect(docsSource).toContain("Headless CLI sandbox slot management")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")

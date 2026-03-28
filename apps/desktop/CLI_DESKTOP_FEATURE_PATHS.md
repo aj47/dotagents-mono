@@ -186,6 +186,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedBundleLayerDirs(...)`, `getManagedBundleImportTargetDir(...)`, `getManagedBundleExportableItems(...)`, `exportManagedBundle(...)`, `exportManagedBundleToFile(...)`, `previewManagedBundleWithConflicts(...)`, `importManagedBundle(...)`, `generateManagedBundlePublishPayload(...)`, and `refreshRuntimeAfterManagedBundleImport(...)`
 - Current callers: `headless-cli.ts` `/bundle-items`, `/bundle-export`, `/bundle-preview`, `/bundle-import`, and `/bundle-publish-payload`; `tipc.ts` bundle export/import/preview/publish handlers used by `settings-agents.tsx`, `settings-skills.tsx`, `bundle-import-dialog.tsx`, `bundle-export-dialog.tsx`, `bundle-publish-dialog.tsx`, and sandbox slot restore/import flows
 
+## Shared sandbox slot management
+
+- Shared sandbox-management file: `apps/desktop/src/main/sandbox-management.ts`
+- Shared helpers: `getManagedSandboxState(...)`, `resolveManagedSandboxSlotSelection(...)`, `saveManagedSandboxBaseline(...)`, `saveManagedCurrentSandboxSlot(...)`, `switchManagedSandboxSlot(...)`, `restoreManagedSandboxBaseline(...)`, `deleteManagedSandboxSlot(...)`, `renameManagedSandboxSlot(...)`, and `importManagedBundleToSandbox(...)`
+- Current callers: `headless-cli.ts` `/sandboxes`, `/sandbox-baseline-save`, `/sandbox-baseline-restore`, `/sandbox-slot-save`, `/sandbox-slot-switch`, `/sandbox-slot-delete`, `/sandbox-slot-rename`, and `/sandbox-bundle-import`; `tipc.ts` sandbox slot handlers used by `sandbox-slot-switcher.tsx` and `settings-agents.tsx`
+
 ## Shared agent catalog summaries
 
 - Shared selector file: `packages/shared/src/agent-profiles.ts`
@@ -361,15 +367,17 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now routes `/status` current-agent reads plus `/agents` current markers through `getManagedCurrentAgentProfile(...)`, while `tipc.ts` `getUserProfiles(...)`, `getAgentTargets(...)`, `getEnabledAgentTargets(...)`, `getCurrentAgentProfile(...)`, and `getExternalAgents(...)` plus `remote-server.ts` `/v1/profiles` and `/v1/profiles/current` now reuse the same profile-catalog helpers, so terminal status output, desktop profile pickers, and remote/mobile profile settings all agree on the current profile plus user/target/external profile subsets before rendering diverges.
 50. Headless CLI bundle management
     `headless-cli.ts` now routes `/bundle-items`, `/bundle-export <path> [json]`, `/bundle-preview <path>`, `/bundle-import <path> [json]`, and `/bundle-publish-payload <json>` through `bundle-management.ts`, while `tipc.ts` bundle export/import/preview/publish handlers plus sandbox slot restore/import flows reuse the same layered bundle selection, merged workspace/global conflict preview, publish payload generation, and post-import runtime refresh helper path before terminal, desktop dialogs, or sandbox flows format their own results.
-51. Desktop legacy profile IPC handlers
+51. Headless CLI sandbox slot management
+    `headless-cli.ts` now routes `/sandboxes`, `/sandbox-baseline-save`, `/sandbox-baseline-restore`, `/sandbox-slot-save <name>`, `/sandbox-slot-switch <name>`, `/sandbox-slot-delete <name>`, `/sandbox-slot-rename <old> <new>`, and `/sandbox-bundle-import <path> <slot-name> [json]` through `sandbox-management.ts`, while `tipc.ts` sandbox handlers plus `sandbox-slot-switcher.tsx` reuse the same slot selection, baseline save/restore, switch/delete/rename, and bundle-to-slot import helpers before terminal rows or desktop cards format the result.
+52. Desktop legacy profile IPC handlers
     `tipc.ts` `getProfiles(...)`, `getProfile(...)`, `getCurrentProfile(...)`, `createProfile(...)`, `updateProfile(...)`, `deleteProfile(...)`, and `setCurrentProfile(...)` now route through the managed legacy-profile adapters in `agent-profile-management.ts`, so the backward-compatible desktop profile surface reuses the same current-profile guard plus shared agent-profile create/update/delete validation path that headless and remote profile management already follow before results get reshaped into the legacy payload format.
-52. Headless CLI + desktop agent session management
+53. Headless CLI + desktop agent session management
     `headless-cli.ts` now routes `/status`, `/sessions`, `/session-stop <session-id-or-prefix>`, and `/sessions-clear` through `agent-session-management.ts`, while `tipc.ts` `getAgentSessions(...)`, `stopAgentSession(...)`, and `clearInactiveSessions(...)` reuse the same tracked-session snapshot plus stop/cleanup helpers, so terminal session inspection and per-session stop/clear flows stay aligned with the desktop Sessions page, sidebar, and stop buttons before presentation diverges.
-53. Headless CLI + desktop message queue controls
+54. Headless CLI + desktop message queue controls
     `headless-cli.ts` now routes `/queues`, `/queue [conversation-id-prefix]`, `/queue-edit <message-id-or-prefix> <text>`, `/queue-remove <message-id-or-prefix> [conversation-id-prefix]`, `/queue-retry <message-id-or-prefix> [conversation-id-prefix]`, `/queue-clear [conversation-id-prefix]`, `/queue-pause [conversation-id-prefix]`, and `/queue-resume [conversation-id-prefix]` through `message-queue-management.ts`, while `tipc.ts` message-queue CRUD/pause/resume handlers plus the desktop queued-follow-up processor now reuse the same queue snapshot, message selection, edit/retry/pause/resume decisions, and shared `processManagedQueuedMessages(...)` loop before the renderer queue panel or terminal formatting diverges.
-54. Headless CLI + desktop WhatsApp management
+55. Headless CLI + desktop WhatsApp management
     `headless-cli.ts` now routes `/whatsapp-status`, `/whatsapp-connect`, `/whatsapp-disconnect`, and `/whatsapp-logout` through `whatsapp-management.ts`, while `tipc.ts` reuses the same helper for `settings-whatsapp.tsx`, so WhatsApp MCP-server availability checks, status parsing, QR-required connection responses, and disconnect/logout error handling stay aligned across the terminal and desktop settings UI.
-55. Headless CLI remote access controls
+56. Headless CLI remote access controls
     `headless-cli.ts` now routes `/remote-status`, `/remote-qr`, `/cloudflare-status`, `/cloudflare-start`, `/cloudflare-stop`, and `/cloudflare-list` through `remote-access-management.ts`, while `tipc.ts` reuses the same helper for `settings-remote-server.tsx`, so remote-server status, manual terminal QR printing, Cloudflare install/login checks, named-tunnel listing, and quick/named tunnel lifecycle actions stay aligned across the terminal and desktop remote settings page.
 
 ## Parity rules
