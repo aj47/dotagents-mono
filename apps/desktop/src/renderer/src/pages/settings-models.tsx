@@ -1,5 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react"
-import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ElementType,
+  type ReactNode,
+} from "react"
+import {
+  Control,
+  ControlGroup,
+  ControlLabel,
+} from "@renderer/components/ui/control"
 import { Input } from "@renderer/components/ui/input"
 import { Textarea } from "@renderer/components/ui/textarea"
 import {
@@ -10,9 +22,15 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import {
+  useConfigQuery,
+  useSaveConfigMutation,
+} from "@renderer/lib/query-client"
 import { ModelPresetManager } from "@renderer/components/model-preset-manager"
-import { ModelSelector, ProviderModelSelector } from "@renderer/components/model-selector"
+import {
+  ModelSelector,
+  ProviderModelSelector,
+} from "@renderer/components/model-selector"
 import { PresetModelSelector } from "@renderer/components/preset-model-selector"
 import { Config, ModelPreset } from "@shared/types"
 import {
@@ -36,9 +54,20 @@ import {
   getBuiltInModelPresets,
   resolveChatModelSelection,
   resolveChatProviderId,
+  resolveSttModelSelection,
+  resolveSttProviderId,
+  resolveTtsProviderId,
+  resolveTtsSelection,
 } from "@dotagents/shared"
-import { getDefaultSttModel } from "@dotagents/shared/stt-models"
-import { Mic, FileText, Volume2, Bot, Zap, BookOpen, Settings2 } from "lucide-react"
+import {
+  Mic,
+  FileText,
+  Volume2,
+  Bot,
+  Zap,
+  BookOpen,
+  Settings2,
+} from "lucide-react"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
@@ -59,7 +88,17 @@ function RoleProviderSelector({
 }) {
   return (
     <Control
-      label={<ControlLabel label={<span className="flex items-center gap-2"><Icon className="h-4 w-4 text-muted-foreground" />{label}</span>} tooltip={tooltip} />}
+      label={
+        <ControlLabel
+          label={
+            <span className="flex items-center gap-2">
+              <Icon className="text-muted-foreground h-4 w-4" />
+              {label}
+            </span>
+          }
+          tooltip={tooltip}
+        />
+      }
       className="px-3"
     >
       <Select value={value} onValueChange={onChange}>
@@ -81,35 +120,49 @@ function RoleProviderSelector({
 export function Component() {
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
-  const transcriptProcessingPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [transcriptProcessingPromptDraft, setTranscriptProcessingPromptDraft] = useState("")
+  const transcriptProcessingPromptSaveTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const [transcriptProcessingPromptDraft, setTranscriptProcessingPromptDraft] =
+    useState("")
 
-  const saveConfig = useCallback((updates: Partial<Config>) => {
-    if (!configQuery.data) return
-    saveConfigMutation.mutate({ config: { ...configQuery.data, ...updates } })
-  }, [configQuery.data, saveConfigMutation])
+  const saveConfig = useCallback(
+    (updates: Partial<Config>) => {
+      if (!configQuery.data) return
+      saveConfigMutation.mutate({ config: { ...configQuery.data, ...updates } })
+    },
+    [configQuery.data, saveConfigMutation],
+  )
 
-  const flushTranscriptProcessingPromptSave = useCallback((value: string) => {
-    if (transcriptProcessingPromptSaveTimeoutRef.current) {
-      clearTimeout(transcriptProcessingPromptSaveTimeoutRef.current)
-      transcriptProcessingPromptSaveTimeoutRef.current = null
-    }
-    saveConfig({ transcriptPostProcessingPrompt: value })
-  }, [saveConfig])
-
-  const updateTranscriptProcessingPromptDraft = useCallback((value: string) => {
-    setTranscriptProcessingPromptDraft(value)
-    if (transcriptProcessingPromptSaveTimeoutRef.current) {
-      clearTimeout(transcriptProcessingPromptSaveTimeoutRef.current)
-    }
-    transcriptProcessingPromptSaveTimeoutRef.current = setTimeout(() => {
-      transcriptProcessingPromptSaveTimeoutRef.current = null
+  const flushTranscriptProcessingPromptSave = useCallback(
+    (value: string) => {
+      if (transcriptProcessingPromptSaveTimeoutRef.current) {
+        clearTimeout(transcriptProcessingPromptSaveTimeoutRef.current)
+        transcriptProcessingPromptSaveTimeoutRef.current = null
+      }
       saveConfig({ transcriptPostProcessingPrompt: value })
-    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
-  }, [saveConfig])
+    },
+    [saveConfig],
+  )
+
+  const updateTranscriptProcessingPromptDraft = useCallback(
+    (value: string) => {
+      setTranscriptProcessingPromptDraft(value)
+      if (transcriptProcessingPromptSaveTimeoutRef.current) {
+        clearTimeout(transcriptProcessingPromptSaveTimeoutRef.current)
+      }
+      transcriptProcessingPromptSaveTimeoutRef.current = setTimeout(() => {
+        transcriptProcessingPromptSaveTimeoutRef.current = null
+        saveConfig({ transcriptPostProcessingPrompt: value })
+      }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
 
   useEffect(() => {
-    setTranscriptProcessingPromptDraft(configQuery.data?.transcriptPostProcessingPrompt ?? "")
+    setTranscriptProcessingPromptDraft(
+      configQuery.data?.transcriptPostProcessingPrompt ?? "",
+    )
   }, [configQuery.data?.transcriptPostProcessingPrompt])
 
   useEffect(() => {
@@ -127,12 +180,19 @@ export function Component() {
       const saved = custom.find((candidate) => candidate.id === preset.id)
       if (saved) {
         const merged = { ...preset, ...saved }
-        if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && configQuery.data?.openaiApiKey) {
+        if (
+          preset.id === DEFAULT_MODEL_PRESET_ID &&
+          !merged.apiKey &&
+          configQuery.data?.openaiApiKey
+        ) {
           merged.apiKey = configQuery.data.openaiApiKey
         }
         return merged
       }
-      if (preset.id === DEFAULT_MODEL_PRESET_ID && configQuery.data?.openaiApiKey) {
+      if (
+        preset.id === DEFAULT_MODEL_PRESET_ID &&
+        configQuery.data?.openaiApiKey
+      ) {
         return { ...preset, apiKey: configQuery.data.openaiApiKey }
       }
       return preset
@@ -141,44 +201,63 @@ export function Component() {
     return [...mergedBuiltIn, ...custom.filter((preset) => !preset.isBuiltIn)]
   }, [configQuery.data?.modelPresets, configQuery.data?.openaiApiKey])
 
-  const getPresetById = useCallback((presetId?: string): ModelPreset | undefined => {
-    if (!presetId) return undefined
-    return allPresets.find((preset) => preset.id === presetId)
-  }, [allPresets])
+  const getPresetById = useCallback(
+    (presetId?: string): ModelPreset | undefined => {
+      if (!presetId) return undefined
+      return allPresets.find((preset) => preset.id === presetId)
+    },
+    [allPresets],
+  )
 
   if (!configQuery.data) return null
 
   const config = configQuery.data
-  const sttProviderId = config.sttProviderId || "openai"
+  const sttProviderId = resolveSttProviderId(config)
   const transcriptProcessingProviderId = resolveChatProviderId(
     config,
     "transcript",
   )
-  const ttsProviderId = config.ttsProviderId || "openai"
+  const ttsProviderId = resolveTtsProviderId(config)
   const agentProviderId = resolveChatProviderId(config)
-  const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
+  const transcriptProcessingEnabled =
+    config.transcriptPostProcessingEnabled ?? false
   const usesOpenAiCompatiblePreset =
     agentProviderId === "openai" ||
-    (transcriptProcessingEnabled && transcriptProcessingProviderId === "openai") ||
+    (transcriptProcessingEnabled &&
+      transcriptProcessingProviderId === "openai") ||
     (config.dualModelEnabled ?? false)
   const { model: transcriptProcessingModel } = resolveChatModelSelection(
     config,
     "transcript",
   )
+  const openaiSttSelection = resolveSttModelSelection(config, "openai")
+  const groqSttSelection = resolveSttModelSelection(config, "groq")
+  const openaiTtsSelection = resolveTtsSelection(config, "openai")
+  const groqTtsSelection = resolveTtsSelection(config, "groq")
+  const geminiTtsSelection = resolveTtsSelection(config, "gemini")
+  const kittenTtsSelection = resolveTtsSelection(config, "kitten")
+  const supertonicTtsSelection = resolveTtsSelection(config, "supertonic")
   const dualModelEnabled = config.dualModelEnabled ?? false
-  const strongPresetId = config.dualModelStrongPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const weakPresetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
+  const strongPresetId =
+    config.dualModelStrongPresetId ||
+    config.currentModelPresetId ||
+    DEFAULT_MODEL_PRESET_ID
+  const weakPresetId =
+    config.dualModelWeakPresetId ||
+    config.currentModelPresetId ||
+    DEFAULT_MODEL_PRESET_ID
   const strongPreset = getPresetById(strongPresetId)
   const weakPreset = getPresetById(weakPresetId)
 
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8">
       <div className="space-y-6">
-        <div className="rounded-lg border bg-muted/20 px-4 py-3">
+        <div className="bg-muted/20 rounded-lg border px-4 py-3">
           <h2 className="text-sm font-semibold">Model Selection</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choose which provider powers each job, then pick the model or voice for that job here. API keys, base URLs,
-            and local engine downloads live on the Providers page.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Choose which provider powers each job, then pick the model or voice
+            for that job here. API keys, base URLs, and local engine downloads
+            live on the Providers page.
           </p>
         </div>
 
@@ -187,7 +266,9 @@ export function Component() {
             label="Speech-to-Text"
             tooltip="Choose which provider listens to your audio and turns it into text."
             value={sttProviderId}
-            onChange={(value) => saveConfig({ sttProviderId: value as STT_PROVIDER_ID })}
+            onChange={(value) =>
+              saveConfig({ sttProviderId: value as STT_PROVIDER_ID })
+            }
             providers={STT_PROVIDERS}
             icon={Mic}
           />
@@ -196,7 +277,9 @@ export function Component() {
             label="Text-to-Speech"
             tooltip="Choose which provider turns text back into audio."
             value={ttsProviderId}
-            onChange={(value) => saveConfig({ ttsProviderId: value as TTS_PROVIDER_ID })}
+            onChange={(value) =>
+              saveConfig({ ttsProviderId: value as TTS_PROVIDER_ID })
+            }
             providers={TTS_PROVIDERS}
             icon={Volume2}
           />
@@ -205,7 +288,9 @@ export function Component() {
             label="Agent/MCP Tools"
             tooltip="Choose which provider powers the main agent model for tool calling and reasoning."
             value={agentProviderId}
-            onChange={(value) => saveConfig({ mcpToolsProviderId: value as CHAT_PROVIDER_ID })}
+            onChange={(value) =>
+              saveConfig({ mcpToolsProviderId: value as CHAT_PROVIDER_ID })
+            }
             providers={CHAT_PROVIDERS}
             icon={Bot}
           />
@@ -213,12 +298,19 @@ export function Component() {
 
         <ControlGroup title="Transcript Processing" collapsible>
           <Control
-            label={<ControlLabel label="Enabled" tooltip="Optionally clean up punctuation, formatting, or wording after transcription and before the transcript is used elsewhere." />}
+            label={
+              <ControlLabel
+                label="Enabled"
+                tooltip="Optionally clean up punctuation, formatting, or wording after transcription and before the transcript is used elsewhere."
+              />
+            }
             className="px-3"
           >
             <Switch
               checked={transcriptProcessingEnabled}
-              onCheckedChange={(checked) => saveConfig({ transcriptPostProcessingEnabled: checked })}
+              onCheckedChange={(checked) =>
+                saveConfig({ transcriptPostProcessingEnabled: checked })
+              }
             />
           </Control>
 
@@ -228,7 +320,12 @@ export function Component() {
                 label="Provider"
                 tooltip="Choose which provider handles transcript processing when it is enabled."
                 value={transcriptProcessingProviderId}
-                onChange={(value) => saveConfig({ transcriptPostProcessingProviderId: value as CHAT_PROVIDER_ID })}
+                onChange={(value) =>
+                  saveConfig({
+                    transcriptPostProcessingProviderId:
+                      value as CHAT_PROVIDER_ID,
+                  })
+                }
                 providers={CHAT_PROVIDERS}
                 icon={FileText}
               />
@@ -236,10 +333,16 @@ export function Component() {
               <div className="border-t px-3 py-2">
                 {transcriptProcessingProviderId === "openai" ? (
                   <Control
-                    label={<ControlLabel label="Transcript Processing model" tooltip="OpenAI-compatible transcript processing is selected through the preset section below." />}
+                    label={
+                      <ControlLabel
+                        label="Transcript Processing model"
+                        tooltip="OpenAI-compatible transcript processing is selected through the preset section below."
+                      />
+                    }
                   >
-                    <p className="text-sm text-muted-foreground">
-                      OpenAI-compatible transcript processing models are selected in the OpenAI-Compatible Preset section below.
+                    <p className="text-muted-foreground text-sm">
+                      OpenAI-compatible transcript processing models are
+                      selected in the OpenAI-Compatible Preset section below.
                     </p>
                   </Control>
                 ) : (
@@ -250,7 +353,9 @@ export function Component() {
                       if (transcriptProcessingProviderId === "groq") {
                         saveConfig({ transcriptPostProcessingGroqModel: value })
                       } else {
-                        saveConfig({ transcriptPostProcessingGeminiModel: value })
+                        saveConfig({
+                          transcriptPostProcessingGeminiModel: value,
+                        })
                       }
                     }}
                     label="Transcript Processing model"
@@ -261,20 +366,32 @@ export function Component() {
               </div>
 
               <Control
-                label={<ControlLabel label="Prompt" tooltip="Custom prompt for transcript processing. Use {transcript} to insert the original transcript." />}
+                label={
+                  <ControlLabel
+                    label="Prompt"
+                    tooltip="Custom prompt for transcript processing. Use {transcript} to insert the original transcript."
+                  />
+                }
                 className="border-t px-3 py-2"
               >
                 <div className="w-full space-y-2">
                   <Textarea
                     rows={6}
                     value={transcriptProcessingPromptDraft}
-                    onChange={(e) => updateTranscriptProcessingPromptDraft(e.currentTarget.value)}
-                    onBlur={(e) => flushTranscriptProcessingPromptSave(e.currentTarget.value)}
+                    onChange={(e) =>
+                      updateTranscriptProcessingPromptDraft(
+                        e.currentTarget.value,
+                      )
+                    }
+                    onBlur={(e) =>
+                      flushTranscriptProcessingPromptSave(e.currentTarget.value)
+                    }
                     placeholder="Custom instructions for transcript processing..."
                     className="min-h-[120px]"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use <span className="select-text">{"{transcript}"}</span> to insert the original transcript.
+                  <p className="text-muted-foreground text-xs">
+                    Use <span className="select-text">{"{transcript}"}</span> to
+                    insert the original transcript.
                   </p>
                 </div>
               </Control>
@@ -286,17 +403,33 @@ export function Component() {
           <div className="px-3 py-2">
             {sttProviderId === "parakeet" ? (
               <Control
-                label={<ControlLabel label="Speech-to-Text model" tooltip="Parakeet uses the local speech-to-text model bundle managed on the Providers page." />}
+                label={
+                  <ControlLabel
+                    label="Speech-to-Text model"
+                    tooltip="Parakeet uses the local speech-to-text model bundle managed on the Providers page."
+                  />
+                }
               >
-                <p className="text-sm text-muted-foreground">
-                  Parakeet uses its local downloaded model bundle. Manage installation and runtime settings on Providers.
+                <p className="text-muted-foreground text-sm">
+                  Parakeet uses its local downloaded model bundle. Manage
+                  installation and runtime settings on Providers.
                 </p>
               </Control>
             ) : (
               <ModelSelector
                 providerId={sttProviderId}
-                value={sttProviderId === "openai" ? config.openaiSttModel || getDefaultSttModel("openai") : config.groqSttModel || getDefaultSttModel("groq")}
-                onValueChange={(value) => saveConfig(sttProviderId === "openai" ? { openaiSttModel: value } : { groqSttModel: value })}
+                value={
+                  sttProviderId === "openai"
+                    ? openaiSttSelection.model || ""
+                    : groqSttSelection.model || ""
+                }
+                onValueChange={(value) =>
+                  saveConfig(
+                    sttProviderId === "openai"
+                      ? { openaiSttModel: value }
+                      : { groqSttModel: value },
+                  )
+                }
                 label="Speech-to-Text model"
                 placeholder="Select model for speech transcription"
                 onlyTranscriptionModels={true}
@@ -306,33 +439,92 @@ export function Component() {
 
           <div className="border-t px-3 py-2">
             <div className="pb-2">
-              <span className="text-sm font-medium">Text-to-Speech model and voice</span>
-              <p className="text-xs text-muted-foreground">
-                Pick the voice stack for the currently selected text-to-speech provider.
+              <span className="text-sm font-medium">
+                Text-to-Speech model and voice
+              </span>
+              <p className="text-muted-foreground text-xs">
+                Pick the voice stack for the currently selected text-to-speech
+                provider.
               </p>
             </div>
 
             {ttsProviderId === "openai" && (
               <>
-                <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the OpenAI TTS model to use." />}>
-                  <Select value={config.openaiTtsModel || "gpt-4o-mini-tts"} onValueChange={(value) => saveConfig({ openaiTtsModel: value as "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech model"
+                      tooltip="Choose the OpenAI TTS model to use."
+                    />
+                  }
+                >
+                  <Select
+                    value={openaiTtsSelection.model}
+                    onValueChange={(value) =>
+                      saveConfig({
+                        openaiTtsModel: value as
+                          | "gpt-4o-mini-tts"
+                          | "tts-1"
+                          | "tts-1-hd",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {OPENAI_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
+                      {OPENAI_TTS_MODELS.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          {model.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for OpenAI TTS." />}>
-                  <Select value={config.openaiTtsVoice || "alloy"} onValueChange={(value) => saveConfig({ openaiTtsVoice: value as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech voice"
+                      tooltip="Choose the voice for OpenAI TTS."
+                    />
+                  }
+                >
+                  <Select
+                    value={openaiTtsSelection.voice}
+                    onValueChange={(value) =>
+                      saveConfig({
+                        openaiTtsVoice: value as
+                          | "alloy"
+                          | "echo"
+                          | "fable"
+                          | "onyx"
+                          | "nova"
+                          | "shimmer",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {OPENAI_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
+                      {OPENAI_TTS_VOICES.map((voice) => (
+                        <SelectItem key={voice.value} value={voice.value}>
+                          {voice.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Text-to-Speech speed" tooltip="Speech speed between 0.25 and 4.0." />}>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech speed"
+                      tooltip="Speech speed between 0.25 and 4.0."
+                    />
+                  }
+                >
                   <Input
                     type="number"
                     min="0.25"
@@ -353,30 +545,72 @@ export function Component() {
 
             {ttsProviderId === "groq" && (
               <>
-                <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the Groq TTS model to use." />}>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech model"
+                      tooltip="Choose the Groq TTS model to use."
+                    />
+                  }
+                >
                   <Select
-                    value={config.groqTtsModel || "canopylabs/orpheus-v1-english"}
+                    value={groqTtsSelection.model}
                     onValueChange={(value) => {
-                      const defaultVoice = value === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy"
-                      saveConfig({ groqTtsModel: value as "canopylabs/orpheus-v1-english" | "canopylabs/orpheus-arabic-saudi", groqTtsVoice: defaultVoice })
+                      const defaultVoice = resolveTtsSelection(
+                        {
+                          ...config,
+                          groqTtsModel: value,
+                          groqTtsVoice: undefined,
+                        },
+                        "groq",
+                      ).voice
+                      saveConfig({
+                        groqTtsModel: value as
+                          | "canopylabs/orpheus-v1-english"
+                          | "canopylabs/orpheus-arabic-saudi",
+                        groqTtsVoice: defaultVoice,
+                      })
                     }}
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {GROQ_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
+                      {GROQ_TTS_MODELS.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          {model.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for Groq TTS." />}>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech voice"
+                      tooltip="Choose the voice for Groq TTS."
+                    />
+                  }
+                >
                   <Select
-                    value={config.groqTtsVoice || (config.groqTtsModel === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy")}
-                    onValueChange={(value) => saveConfig({ groqTtsVoice: value })}
+                    value={groqTtsSelection.voice}
+                    onValueChange={(value) =>
+                      saveConfig({ groqTtsVoice: value })
+                    }
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {(config.groqTtsModel === "canopylabs/orpheus-arabic-saudi" ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH).map((voice) => (
-                        <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>
+                      {(groqTtsSelection.model ===
+                      "canopylabs/orpheus-arabic-saudi"
+                        ? GROQ_TTS_VOICES_ARABIC
+                        : GROQ_TTS_VOICES_ENGLISH
+                      ).map((voice) => (
+                        <SelectItem key={voice.value} value={voice.value}>
+                          {voice.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -386,20 +620,60 @@ export function Component() {
 
             {ttsProviderId === "gemini" && (
               <>
-                <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the Gemini TTS model to use." />}>
-                  <Select value={config.geminiTtsModel || "gemini-2.5-flash-preview-tts"} onValueChange={(value) => saveConfig({ geminiTtsModel: value as "gemini-2.5-flash-preview-tts" | "gemini-2.5-pro-preview-tts" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech model"
+                      tooltip="Choose the Gemini TTS model to use."
+                    />
+                  }
+                >
+                  <Select
+                    value={geminiTtsSelection.model}
+                    onValueChange={(value) =>
+                      saveConfig({
+                        geminiTtsModel: value as
+                          | "gemini-2.5-flash-preview-tts"
+                          | "gemini-2.5-pro-preview-tts",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {GEMINI_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
+                      {GEMINI_TTS_MODELS.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          {model.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for Gemini TTS." />}>
-                  <Select value={config.geminiTtsVoice || "Kore"} onValueChange={(value) => saveConfig({ geminiTtsVoice: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech voice"
+                      tooltip="Choose the voice for Gemini TTS."
+                    />
+                  }
+                >
+                  <Select
+                    value={geminiTtsSelection.voice}
+                    onValueChange={(value) =>
+                      saveConfig({ geminiTtsVoice: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {GEMINI_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
+                      {GEMINI_TTS_VOICES.map((voice) => (
+                        <SelectItem key={voice.value} value={voice.value}>
+                          {voice.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
@@ -408,46 +682,112 @@ export function Component() {
 
             {ttsProviderId === "kitten" && (
               <>
-                <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the local Kitten voice to use." />}>
-                  <Select value={String(config.kittenVoiceId ?? 0)} onValueChange={(value) => saveConfig({ kittenVoiceId: parseInt(value) })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech voice"
+                      tooltip="Choose the local Kitten voice to use."
+                    />
+                  }
+                >
+                  <Select
+                    value={String(kittenTtsSelection.voiceId)}
+                    onValueChange={(value) =>
+                      saveConfig({ kittenVoiceId: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {KITTEN_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={String(voice.value)}>{voice.label}</SelectItem>)}
+                      {KITTEN_TTS_VOICES.map((voice) => (
+                        <SelectItem
+                          key={voice.value}
+                          value={String(voice.value)}
+                        >
+                          {voice.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
-                <p className="pb-2 text-xs text-muted-foreground">Kitten download and voice testing live on Providers.</p>
+                <p className="text-muted-foreground pb-2 text-xs">
+                  Kitten download and voice testing live on Providers.
+                </p>
               </>
             )}
 
             {ttsProviderId === "supertonic" && (
               <>
-                <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Select the Supertonic voice style." />}>
-                  <Select value={config.supertonicVoice ?? "M1"} onValueChange={(value) => saveConfig({ supertonicVoice: value })}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text-to-Speech voice"
+                      tooltip="Select the Supertonic voice style."
+                    />
+                  }
+                >
+                  <Select
+                    value={supertonicTtsSelection.voice}
+                    onValueChange={(value) =>
+                      saveConfig({ supertonicVoice: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {SUPERTONIC_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
+                      {SUPERTONIC_TTS_VOICES.map((voice) => (
+                        <SelectItem key={voice.value} value={voice.value}>
+                          {voice.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Language" tooltip="Select the language for speech synthesis." />}>
-                  <Select value={config.supertonicLanguage ?? "en"} onValueChange={(value) => saveConfig({ supertonicLanguage: value })}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Language"
+                      tooltip="Select the language for speech synthesis."
+                    />
+                  }
+                >
+                  <Select
+                    value={supertonicTtsSelection.language}
+                    onValueChange={(value) =>
+                      saveConfig({ supertonicLanguage: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {SUPERTONIC_TTS_LANGUAGES.map((language) => <SelectItem key={language.value} value={language.value}>{language.label}</SelectItem>)}
+                      {SUPERTONIC_TTS_LANGUAGES.map((language) => (
+                        <SelectItem key={language.value} value={language.value}>
+                          {language.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Speed" tooltip="Speech speed multiplier." />}>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Speed"
+                      tooltip="Speech speed multiplier."
+                    />
+                  }
+                >
                   <Input
                     type="number"
                     min={0.5}
                     max={2.0}
                     step={0.05}
                     className="w-full sm:w-[100px]"
-                    value={config.supertonicSpeed ?? 1.05}
+                    value={supertonicTtsSelection.speed}
                     onChange={(e) => {
                       const val = parseFloat(e.currentTarget.value)
                       if (!isNaN(val) && val >= 0.5 && val <= 2.0) {
@@ -457,14 +797,21 @@ export function Component() {
                   />
                 </Control>
 
-                <Control label={<ControlLabel label="Quality Steps" tooltip="Higher values improve quality but slow synthesis." />}>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Quality Steps"
+                      tooltip="Higher values improve quality but slow synthesis."
+                    />
+                  }
+                >
                   <Input
                     type="number"
                     min={2}
                     max={10}
                     step={1}
                     className="w-full sm:w-[100px]"
-                    value={config.supertonicSteps ?? 5}
+                    value={supertonicTtsSelection.steps}
                     onChange={(e) => {
                       const val = parseInt(e.currentTarget.value)
                       if (!isNaN(val) && val >= 2 && val <= 10) {
@@ -473,28 +820,37 @@ export function Component() {
                     }}
                   />
                 </Control>
-                <p className="pb-2 text-xs text-muted-foreground">Supertonic downloads and quick voice tests live on Providers.</p>
+                <p className="text-muted-foreground pb-2 text-xs">
+                  Supertonic downloads and quick voice tests live on Providers.
+                </p>
               </>
             )}
           </div>
         </ControlGroup>
 
         <ControlGroup title="Agent Models" collapsible>
-          <div className="mx-3 my-2 rounded-md border border-muted bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            Keep agent model choices here. OpenAI-compatible presets can carry both an agent model and a transcript processing model.
+          <div className="border-muted bg-muted/30 text-muted-foreground mx-3 my-2 rounded-md border px-3 py-2 text-xs">
+            Keep agent model choices here. OpenAI-compatible presets can carry
+            both an agent model and a transcript processing model.
           </div>
 
           {usesOpenAiCompatiblePreset && (
-            <div className="px-3 py-2 border-b">
+            <div className="border-b px-3 py-2">
               <div className="pb-3">
-                <span className="text-sm font-medium">OpenAI-Compatible Preset</span>
-                <p className="text-xs text-muted-foreground">
-                  Use this when Agent/MCP Tools or Transcript Processing is set to OpenAI-compatible.
+                <span className="text-sm font-medium">
+                  OpenAI-Compatible Preset
+                </span>
+                <p className="text-muted-foreground text-xs">
+                  Use this when Agent/MCP Tools or Transcript Processing is set
+                  to OpenAI-compatible.
                 </p>
               </div>
               <ModelPresetManager
                 showAgentModel={agentProviderId === "openai"}
-                showTranscriptCleanupModel={transcriptProcessingEnabled && transcriptProcessingProviderId === "openai"}
+                showTranscriptCleanupModel={
+                  transcriptProcessingEnabled &&
+                  transcriptProcessingProviderId === "openai"
+                }
               />
             </div>
           )}
@@ -503,8 +859,18 @@ export function Component() {
             <div className="px-3 py-2">
               <ProviderModelSelector
                 providerId={agentProviderId}
-                mcpModel={agentProviderId === "groq" ? config.mcpToolsGroqModel : config.mcpToolsGeminiModel}
-                onMcpModelChange={(value) => saveConfig(agentProviderId === "groq" ? { mcpToolsGroqModel: value } : { mcpToolsGeminiModel: value })}
+                mcpModel={
+                  agentProviderId === "groq"
+                    ? config.mcpToolsGroqModel
+                    : config.mcpToolsGeminiModel
+                }
+                onMcpModelChange={(value) =>
+                  saveConfig(
+                    agentProviderId === "groq"
+                      ? { mcpToolsGroqModel: value }
+                      : { mcpToolsGeminiModel: value },
+                  )
+                }
                 showMcpModel={true}
                 showTranscriptModel={false}
               />
@@ -512,44 +878,85 @@ export function Component() {
           )}
 
           {!usesOpenAiCompatiblePreset && (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
-              OpenAI-compatible preset controls appear here when Agent/MCP Tools or Transcript Processing uses that provider.
+            <p className="text-muted-foreground px-3 py-2 text-sm">
+              OpenAI-compatible preset controls appear here when Agent/MCP Tools
+              or Transcript Processing uses that provider.
             </p>
           )}
         </ControlGroup>
 
         <ControlGroup title="Advanced Agent Models" collapsible>
           <Control
-            label={<ControlLabel label="Enable summarization model" tooltip="Use a separate model for UI and knowledge-note summaries." />}
+            label={
+              <ControlLabel
+                label="Enable summarization model"
+                tooltip="Use a separate model for UI and knowledge-note summaries."
+              />
+            }
             className="px-3"
           >
-            <Switch checked={dualModelEnabled} onCheckedChange={(checked) => saveConfig({ dualModelEnabled: checked })} />
+            <Switch
+              checked={dualModelEnabled}
+              onCheckedChange={(checked) =>
+                saveConfig({ dualModelEnabled: checked })
+              }
+            />
           </Control>
 
           {dualModelEnabled && (
             <>
-              <div className="px-3 py-3 space-y-3 border-t">
+              <div className="space-y-3 border-t px-3 py-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Zap className="h-4 w-4 text-yellow-500" />
                   Strong Model (Planning)
                 </div>
-                <p className="text-xs text-muted-foreground">Primary model for reasoning and tool calls. Uses the current agent model if not set.</p>
-                <Control label={<ControlLabel label="Preset" tooltip="Select which preset to use." />}>
-                  <Select value={strongPresetId} onValueChange={(value) => saveConfig({ dualModelStrongPresetId: value })}>
-                    <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
+                <p className="text-muted-foreground text-xs">
+                  Primary model for reasoning and tool calls. Uses the current
+                  agent model if not set.
+                </p>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Preset"
+                      tooltip="Select which preset to use."
+                    />
+                  }
+                >
+                  <Select
+                    value={strongPresetId}
+                    onValueChange={(value) =>
+                      saveConfig({ dualModelStrongPresetId: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {allPresets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
+                      {allPresets.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id}>
+                          {preset.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
                 {strongPreset && (
-                  <Control label={<ControlLabel label="Model" tooltip="Select the strong planning model." />}>
+                  <Control
+                    label={
+                      <ControlLabel
+                        label="Model"
+                        tooltip="Select the strong planning model."
+                      />
+                    }
+                  >
                     <PresetModelSelector
                       presetId={strongPresetId}
                       baseUrl={strongPreset.baseUrl}
                       apiKey={strongPreset.apiKey}
                       value={config.dualModelStrongModelName || ""}
-                      onValueChange={(value) => saveConfig({ dualModelStrongModelName: value })}
+                      onValueChange={(value) =>
+                        saveConfig({ dualModelStrongModelName: value })
+                      }
                       label="Strong Model"
                       placeholder="Select model..."
                     />
@@ -557,28 +964,57 @@ export function Component() {
                 )}
               </div>
 
-              <div className="px-3 py-3 space-y-3 border-t">
+              <div className="space-y-3 border-t px-3 py-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <BookOpen className="h-4 w-4 text-blue-500" />
                   Summarization Model
                 </div>
-                <p className="text-xs text-muted-foreground">Faster, cheaper model for summarizing agent steps.</p>
-                <Control label={<ControlLabel label="Preset" tooltip="Select which preset to use." />}>
-                  <Select value={weakPresetId} onValueChange={(value) => saveConfig({ dualModelWeakPresetId: value })}>
-                    <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
+                <p className="text-muted-foreground text-xs">
+                  Faster, cheaper model for summarizing agent steps.
+                </p>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Preset"
+                      tooltip="Select which preset to use."
+                    />
+                  }
+                >
+                  <Select
+                    value={weakPresetId}
+                    onValueChange={(value) =>
+                      saveConfig({ dualModelWeakPresetId: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {allPresets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
+                      {allPresets.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id}>
+                          {preset.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>
                 {weakPreset && (
-                  <Control label={<ControlLabel label="Model" tooltip="Select the summarization model." />}>
+                  <Control
+                    label={
+                      <ControlLabel
+                        label="Model"
+                        tooltip="Select the summarization model."
+                      />
+                    }
+                  >
                     <PresetModelSelector
                       presetId={weakPresetId}
                       baseUrl={weakPreset.baseUrl}
                       apiKey={weakPreset.apiKey}
                       value={config.dualModelWeakModelName || ""}
-                      onValueChange={(value) => saveConfig({ dualModelWeakModelName: value })}
+                      onValueChange={(value) =>
+                        saveConfig({ dualModelWeakModelName: value })
+                      }
                       label="Summarization Model"
                       placeholder="Select model..."
                     />
@@ -586,23 +1022,65 @@ export function Component() {
                 )}
               </div>
 
-              <div className="px-3 py-3 space-y-3 border-t">
+              <div className="space-y-3 border-t px-3 py-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Settings2 className="h-4 w-4" />
                   Summarization Settings
                 </div>
-                <Control label={<ControlLabel label="Frequency" tooltip="How often to generate summaries." />}>
-                  <Select value={config.dualModelSummarizationFrequency || "every_response"} onValueChange={(value) => saveConfig({ dualModelSummarizationFrequency: value as "every_response" | "major_steps_only" })}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Frequency"
+                      tooltip="How often to generate summaries."
+                    />
+                  }
+                >
+                  <Select
+                    value={
+                      config.dualModelSummarizationFrequency || "every_response"
+                    }
+                    onValueChange={(value) =>
+                      saveConfig({
+                        dualModelSummarizationFrequency: value as
+                          | "every_response"
+                          | "major_steps_only",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="every_response">Every Response</SelectItem>
-                      <SelectItem value="major_steps_only">Major Steps Only</SelectItem>
+                      <SelectItem value="every_response">
+                        Every Response
+                      </SelectItem>
+                      <SelectItem value="major_steps_only">
+                        Major Steps Only
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </Control>
-                <Control label={<ControlLabel label="Detail Level" tooltip="How detailed the summaries should be." />}>
-                  <Select value={config.dualModelSummaryDetailLevel || "compact"} onValueChange={(value) => saveConfig({ dualModelSummaryDetailLevel: value as "compact" | "detailed" })}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Detail Level"
+                      tooltip="How detailed the summaries should be."
+                    />
+                  }
+                >
+                  <Select
+                    value={config.dualModelSummaryDetailLevel || "compact"}
+                    onValueChange={(value) =>
+                      saveConfig({
+                        dualModelSummaryDetailLevel: value as
+                          | "compact"
+                          | "detailed",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="compact">Compact</SelectItem>
                       <SelectItem value="detailed">Detailed</SelectItem>

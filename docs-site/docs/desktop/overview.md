@@ -138,6 +138,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Terminal QR printing** now also shares one helper, so headless auto-print, desktop manual QR printing, and `--qr` override URLs all apply the same API-key, streamer-mode, and URL-resolution rules before printing pairing output.
 - **Remote server settings previews and runtime status** now also share the same mobile-pairing URL helper, so loopback/wildcard warnings, IPv6 URL formatting, and default bind/port fallbacks stay aligned between the settings page, QR logic, and headless defaults.
 - **Agent/MCP model resolution** now also shares one provider/model resolver, so the settings page defaults, headless CLI status output, desktop progress metadata, remote API model payloads, MCP sampling defaults, and AI SDK runtime model creation all use the same fallback and OpenAI-compatible provider-label rules.
+- **Speech provider defaults** now also share STT/TTS selectors, so onboarding checks, speech settings pages, provider badges, remote settings payloads, transcript-provider fallbacks, and runtime transcription/TTS defaults all agree on the same effective provider, model, and voice choices.
 - **Desktop quit and non-GUI graceful shutdown** now also share the same runtime teardown helper, so loop shutdown plus ACP, MCP, and remote-server cleanup stay aligned while the GUI layers keyboard-listener cleanup on top.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.

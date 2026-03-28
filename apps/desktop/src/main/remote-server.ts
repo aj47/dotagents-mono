@@ -11,7 +11,14 @@ import crypto from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import { resolveChatModelSelection } from "@dotagents/shared"
+import {
+  resolveChatModelSelection,
+  resolveChatProviderId,
+  resolveSttModelSelection,
+  resolveSttProviderId,
+  resolveTtsProviderId,
+  resolveTtsSelection,
+} from "@dotagents/shared"
 import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
@@ -1126,10 +1133,15 @@ async function startRemoteServerInternal(
       // Filter custom presets by excluding any IDs that match built-in presets
       // This prevents duplicates from older entries where isBuiltIn was unset
       const customPresets = savedPresets.filter((p) => !builtInIds.has(p.id))
+      const openaiSttSelection = resolveSttModelSelection(cfg, "openai")
+      const groqSttSelection = resolveSttModelSelection(cfg, "groq")
+      const openaiTtsSelection = resolveTtsSelection(cfg, "openai")
+      const groqTtsSelection = resolveTtsSelection(cfg, "groq")
+      const geminiTtsSelection = resolveTtsSelection(cfg, "gemini")
 
       return reply.send({
         // Model settings
-        mcpToolsProviderId: cfg.mcpToolsProviderId || "openai",
+        mcpToolsProviderId: resolveChatProviderId(cfg),
         mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
@@ -1194,12 +1206,14 @@ async function startRemoteServerInternal(
         langfuseSecretKey: cfg.langfuseSecretKey ? "••••••••" : "",
         langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
         // STT/TTS/Post-Processing Provider settings
-        sttProviderId: cfg.sttProviderId || "openai",
-        openaiSttModel: cfg.openaiSttModel || "whisper-1",
-        groqSttModel: cfg.groqSttModel || "whisper-large-v3-turbo",
-        ttsProviderId: cfg.ttsProviderId || "openai",
-        transcriptPostProcessingProviderId:
-          cfg.transcriptPostProcessingProviderId || "openai",
+        sttProviderId: resolveSttProviderId(cfg),
+        openaiSttModel: openaiSttSelection.model ?? "",
+        groqSttModel: groqSttSelection.model ?? "",
+        ttsProviderId: resolveTtsProviderId(cfg),
+        transcriptPostProcessingProviderId: resolveChatProviderId(
+          cfg,
+          "transcript",
+        ),
         transcriptPostProcessingOpenaiModel:
           cfg.transcriptPostProcessingOpenaiModel || "",
         transcriptPostProcessingGroqModel:
@@ -1210,13 +1224,13 @@ async function startRemoteServerInternal(
         mainAgentName: cfg.mainAgentName || "",
         acpInjectRuntimeTools: cfg.acpInjectRuntimeTools !== false,
         // TTS voice/model per provider
-        openaiTtsModel: cfg.openaiTtsModel || "gpt-4o-mini-tts",
-        openaiTtsVoice: cfg.openaiTtsVoice || "alloy",
-        openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
-        groqTtsModel: cfg.groqTtsModel || "canopylabs/orpheus-v1-english",
-        groqTtsVoice: cfg.groqTtsVoice || "autumn",
-        geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash-preview-tts",
-        geminiTtsVoice: cfg.geminiTtsVoice || "Kore",
+        openaiTtsModel: openaiTtsSelection.model,
+        openaiTtsVoice: openaiTtsSelection.voice,
+        openaiTtsSpeed: openaiTtsSelection.speed,
+        groqTtsModel: groqTtsSelection.model,
+        groqTtsVoice: groqTtsSelection.voice,
+        geminiTtsModel: geminiTtsSelection.model,
+        geminiTtsVoice: geminiTtsSelection.voice,
         // ACP Agent list for agent selection
         acpAgents: agentProfileService
           .getAll()

@@ -50,6 +50,10 @@ const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
 )
+const sharedSttModelsSource = readFileSync(
+  new URL("../../../../packages/shared/src/stt-models.ts", import.meta.url),
+  "utf8",
+)
 const headlessRuntimeSource = readFileSync(
   new URL("./headless-runtime.ts", import.meta.url),
   "utf8",
@@ -60,6 +64,18 @@ const settingsRemoteServerSource = readFileSync(
 )
 const settingsModelsSource = readFileSync(
   new URL("../renderer/src/pages/settings-models.tsx", import.meta.url),
+  "utf8",
+)
+const settingsProvidersSource = readFileSync(
+  new URL("../renderer/src/pages/settings-providers.tsx", import.meta.url),
+  "utf8",
+)
+const settingsGeneralSource = readFileSync(
+  new URL("../renderer/src/pages/settings-general.tsx", import.meta.url),
+  "utf8",
+)
+const onboardingSource = readFileSync(
+  new URL("../renderer/src/pages/onboarding.tsx", import.meta.url),
   "utf8",
 )
 const aiSdkProviderSource = readFileSync(
@@ -73,6 +89,10 @@ const contextBudgetSource = readFileSync(
 const llmSource = readFileSync(new URL("./llm.ts", import.meta.url), "utf8")
 const mcpSamplingSource = readFileSync(
   new URL("./mcp-sampling.ts", import.meta.url),
+  "utf8",
+)
+const ttsLlmPreprocessingSource = readFileSync(
+  new URL("./tts-llm-preprocessing.ts", import.meta.url),
   "utf8",
 )
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
@@ -246,6 +266,37 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsModelsSource).toContain("resolveChatModelSelection(")
   })
 
+  it("shares speech provider and fallback selection across runtime and renderer surfaces", () => {
+    expect(sharedSttModelsSource).toContain(
+      "export function resolveSttProviderId",
+    )
+    expect(sharedSttModelsSource).toContain(
+      "export function resolveSttModelSelection",
+    )
+    expect(sharedProvidersSource).toContain(
+      "export function resolveTtsProviderId",
+    )
+    expect(sharedProvidersSource).toContain(
+      "export function resolveTtsSelection",
+    )
+    expect(remoteServerSource).toContain("resolveSttProviderId")
+    expect(remoteServerSource).toContain("resolveSttModelSelection")
+    expect(remoteServerSource).toContain("resolveTtsProviderId")
+    expect(remoteServerSource).toContain("resolveTtsSelection")
+    expect(tipcSource).toContain("resolveSttModelSelection")
+    expect(tipcSource).toContain("resolveTtsProviderId")
+    expect(tipcSource).toContain("resolveTtsSelection")
+    expect(ttsLlmPreprocessingSource).toContain("resolveChatProviderId")
+    expect(settingsModelsSource).toContain("resolveSttProviderId")
+    expect(settingsModelsSource).toContain("resolveSttModelSelection")
+    expect(settingsModelsSource).toContain("resolveTtsProviderId")
+    expect(settingsModelsSource).toContain("resolveTtsSelection")
+    expect(settingsProvidersSource).toContain("resolveSttProviderId")
+    expect(settingsProvidersSource).toContain("resolveTtsSelection")
+    expect(settingsGeneralSource).toContain("resolveSttProviderId")
+    expect(onboardingSource).toContain("resolveSttProviderId")
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -260,6 +311,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared remote server QR printing")
     expect(docsSource).toContain("Shared remote server URL rules")
     expect(docsSource).toContain("Shared chat model selection")
+    expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -284,5 +336,9 @@ describe("CLI and desktop feature paths", () => {
       "Remote server status + headless pairing defaults",
     )
     expect(docsSource).toContain("Shared active model selection")
+    expect(docsSource).toContain("Desktop speech settings + onboarding")
+    expect(docsSource).toContain(
+      "Runtime speech generation + remote settings payload",
+    )
   })
 })

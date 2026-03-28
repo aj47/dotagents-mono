@@ -84,6 +84,199 @@ export const TTS_PROVIDERS = [
 
 export type TTS_PROVIDER_ID = (typeof TTS_PROVIDERS)[number]["value"]
 
+export interface TtsConfigLike {
+  ttsProviderId?: TTS_PROVIDER_ID
+  openaiTtsModel?: string
+  openaiTtsVoice?: string
+  openaiTtsSpeed?: number
+  groqTtsModel?: string
+  groqTtsVoice?: string
+  geminiTtsModel?: string
+  geminiTtsVoice?: string
+  kittenVoiceId?: number
+  supertonicVoice?: string
+  supertonicLanguage?: string
+  supertonicSpeed?: number
+  supertonicSteps?: number
+}
+
+const DEFAULT_TTS_PROVIDER_ID: TTS_PROVIDER_ID = "openai"
+
+export const DEFAULT_TTS_SELECTION = {
+  openai: {
+    model: "gpt-4o-mini-tts",
+    voice: "alloy",
+    speed: 1.0,
+  },
+  groq: {
+    model: "canopylabs/orpheus-v1-english",
+    englishVoice: "troy",
+    arabicVoice: "fahad",
+  },
+  gemini: {
+    model: "gemini-2.5-flash-preview-tts",
+    voice: "Kore",
+  },
+  kitten: {
+    voiceId: 0,
+  },
+  supertonic: {
+    voice: "M1",
+    language: "en",
+    speed: 1.05,
+    steps: 5,
+  },
+} as const
+
+export type ResolvedTtsSelection =
+  | {
+      providerId: "openai"
+      model: string
+      voice: string
+      speed: number
+    }
+  | {
+      providerId: "groq"
+      model: string
+      voice: string
+    }
+  | {
+      providerId: "gemini"
+      model: string
+      voice: string
+    }
+  | {
+      providerId: "kitten"
+      voiceId: number
+    }
+  | {
+      providerId: "supertonic"
+      voice: string
+      language: string
+      speed: number
+      steps: number
+    }
+
+function normalizeConfiguredString(
+  value: string | undefined,
+): string | undefined {
+  const normalized = value?.trim()
+  return normalized ? normalized : undefined
+}
+
+function getDefaultGroqTtsVoice(model: string): string {
+  return model === "canopylabs/orpheus-arabic-saudi"
+    ? DEFAULT_TTS_SELECTION.groq.arabicVoice
+    : DEFAULT_TTS_SELECTION.groq.englishVoice
+}
+
+export function resolveTtsProviderId(
+  config: Pick<TtsConfigLike, "ttsProviderId">,
+): TTS_PROVIDER_ID {
+  return config.ttsProviderId || DEFAULT_TTS_PROVIDER_ID
+}
+
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride: "openai",
+): Extract<ResolvedTtsSelection, { providerId: "openai" }>
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride: "groq",
+): Extract<ResolvedTtsSelection, { providerId: "groq" }>
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride: "gemini",
+): Extract<ResolvedTtsSelection, { providerId: "gemini" }>
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride: "kitten",
+): Extract<ResolvedTtsSelection, { providerId: "kitten" }>
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride: "supertonic",
+): Extract<ResolvedTtsSelection, { providerId: "supertonic" }>
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride?: TTS_PROVIDER_ID,
+): ResolvedTtsSelection
+export function resolveTtsSelection(
+  config: TtsConfigLike,
+  providerIdOverride?: TTS_PROVIDER_ID,
+): ResolvedTtsSelection {
+  const providerId = providerIdOverride || resolveTtsProviderId(config)
+
+  switch (providerId) {
+    case "openai":
+      return {
+        providerId,
+        model:
+          normalizeConfiguredString(config.openaiTtsModel) ||
+          DEFAULT_TTS_SELECTION.openai.model,
+        voice:
+          normalizeConfiguredString(config.openaiTtsVoice) ||
+          DEFAULT_TTS_SELECTION.openai.voice,
+        speed:
+          typeof config.openaiTtsSpeed === "number"
+            ? config.openaiTtsSpeed
+            : DEFAULT_TTS_SELECTION.openai.speed,
+      }
+
+    case "groq": {
+      const model =
+        normalizeConfiguredString(config.groqTtsModel) ||
+        DEFAULT_TTS_SELECTION.groq.model
+
+      return {
+        providerId,
+        model,
+        voice:
+          normalizeConfiguredString(config.groqTtsVoice) ||
+          getDefaultGroqTtsVoice(model),
+      }
+    }
+
+    case "gemini":
+      return {
+        providerId,
+        model:
+          normalizeConfiguredString(config.geminiTtsModel) ||
+          DEFAULT_TTS_SELECTION.gemini.model,
+        voice:
+          normalizeConfiguredString(config.geminiTtsVoice) ||
+          DEFAULT_TTS_SELECTION.gemini.voice,
+      }
+
+    case "kitten":
+      return {
+        providerId,
+        voiceId:
+          typeof config.kittenVoiceId === "number"
+            ? config.kittenVoiceId
+            : DEFAULT_TTS_SELECTION.kitten.voiceId,
+      }
+
+    case "supertonic":
+      return {
+        providerId,
+        voice:
+          normalizeConfiguredString(config.supertonicVoice) ||
+          DEFAULT_TTS_SELECTION.supertonic.voice,
+        language:
+          normalizeConfiguredString(config.supertonicLanguage) ||
+          DEFAULT_TTS_SELECTION.supertonic.language,
+        speed:
+          typeof config.supertonicSpeed === "number"
+            ? config.supertonicSpeed
+            : DEFAULT_TTS_SELECTION.supertonic.speed,
+        steps:
+          typeof config.supertonicSteps === "number"
+            ? config.supertonicSteps
+            : DEFAULT_TTS_SELECTION.supertonic.steps,
+      }
+  }
+}
+
 // OpenAI TTS Voice Options
 export const OPENAI_TTS_VOICES = [
   { label: "Alloy", value: "alloy" },

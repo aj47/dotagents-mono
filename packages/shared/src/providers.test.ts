@@ -23,6 +23,8 @@ import {
   resolveChatModelDisplayInfo,
   resolveChatModelSelection,
   resolveChatProviderId,
+  resolveTtsProviderId,
+  resolveTtsSelection,
   sanitizeConfiguredChatModel,
 } from "./providers"
 import type { ModelPreset } from "./providers"
@@ -329,5 +331,93 @@ describe("chat model resolution", () => {
   it("uses canonical provider labels for non-OpenAI providers", () => {
     expect(getChatProviderDisplayName({}, "groq")).toBe("Groq")
     expect(getChatProviderDisplayName({}, "gemini")).toBe("Gemini")
+  })
+})
+
+describe("tts selection resolution", () => {
+  it("defaults to the OpenAI provider selection", () => {
+    expect(resolveTtsProviderId({})).toBe("openai")
+    expect(resolveTtsSelection({})).toEqual({
+      providerId: "openai",
+      model: "gpt-4o-mini-tts",
+      voice: "alloy",
+      speed: 1,
+    })
+  })
+
+  it("keeps configured OpenAI settings", () => {
+    expect(
+      resolveTtsSelection({
+        ttsProviderId: "openai",
+        openaiTtsModel: "tts-1",
+        openaiTtsVoice: "nova",
+        openaiTtsSpeed: 1.5,
+      }),
+    ).toEqual({
+      providerId: "openai",
+      model: "tts-1",
+      voice: "nova",
+      speed: 1.5,
+    })
+  })
+
+  it("uses model-aware Groq voice defaults", () => {
+    expect(resolveTtsSelection({ ttsProviderId: "groq" })).toEqual({
+      providerId: "groq",
+      model: "canopylabs/orpheus-v1-english",
+      voice: "troy",
+    })
+
+    expect(
+      resolveTtsSelection({
+        ttsProviderId: "groq",
+        groqTtsModel: "canopylabs/orpheus-arabic-saudi",
+      }),
+    ).toEqual({
+      providerId: "groq",
+      model: "canopylabs/orpheus-arabic-saudi",
+      voice: "fahad",
+    })
+  })
+
+  it("preserves configured Groq and Gemini voices", () => {
+    expect(
+      resolveTtsSelection({
+        ttsProviderId: "groq",
+        groqTtsModel: "canopylabs/orpheus-v1-english",
+        groqTtsVoice: "autumn",
+      }),
+    ).toEqual({
+      providerId: "groq",
+      model: "canopylabs/orpheus-v1-english",
+      voice: "autumn",
+    })
+
+    expect(
+      resolveTtsSelection({
+        ttsProviderId: "gemini",
+        geminiTtsModel: "gemini-2.5-pro-preview-tts",
+        geminiTtsVoice: "Aoede",
+      }),
+    ).toEqual({
+      providerId: "gemini",
+      model: "gemini-2.5-pro-preview-tts",
+      voice: "Aoede",
+    })
+  })
+
+  it("returns local provider defaults for Kitten and Supertonic", () => {
+    expect(resolveTtsSelection({ ttsProviderId: "kitten" })).toEqual({
+      providerId: "kitten",
+      voiceId: 0,
+    })
+
+    expect(resolveTtsSelection({ ttsProviderId: "supertonic" })).toEqual({
+      providerId: "supertonic",
+      voice: "M1",
+      language: "en",
+      speed: 1.05,
+      steps: 5,
+    })
   })
 })

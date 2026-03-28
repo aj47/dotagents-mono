@@ -15,16 +15,38 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
 import { Config } from "@shared/types"
+import {
+  resolveChatProviderId,
+  resolveSttProviderId,
+  resolveTtsSelection,
+} from "@dotagents/shared"
 
-import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
+import {
+  Mic,
+  Bot,
+  Volume2,
+  FileText,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Cpu,
+  Download,
+  Loader2,
+} from "lucide-react"
 
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
-type ProviderDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+type ProviderDraftKey =
+  | "groqApiKey"
+  | "groqBaseUrl"
+  | "geminiApiKey"
+  | "geminiBaseUrl"
 
-function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
+function getProviderDrafts(
+  config?: Config | null,
+): Record<ProviderDraftKey, string> {
   return {
     groqApiKey: config?.groqApiKey || "",
     groqBaseUrl: config?.groqBaseUrl || "",
@@ -34,9 +56,15 @@ function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, str
 }
 
 // Badge component to show which features are using this provider
-function ActiveProviderBadge({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
+function ActiveProviderBadge({
+  label,
+  icon: Icon,
+}: {
+  label: string
+  icon: React.ElementType
+}) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+    <span className="bg-primary/10 text-primary border-primary/20 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium">
       <Icon className="h-3 w-3" />
       {label}
     </span>
@@ -55,7 +83,7 @@ function ParakeetModelDownload() {
     // Poll while downloading (either local state or server state) to keep progress updated
     refetchInterval: (query) => {
       const status = query.state.data as { downloading?: boolean } | undefined
-      return (isDownloading || status?.downloading) ? 500 : false
+      return isDownloading || status?.downloading ? 500 : false
     },
   })
 
@@ -73,10 +101,17 @@ function ParakeetModelDownload() {
     }
   }
 
-  const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
+  const status = modelStatusQuery.data as
+    | {
+        downloaded: boolean
+        downloading: boolean
+        progress: number
+        error?: string
+      }
+    | undefined
 
   if (modelStatusQuery.isLoading) {
-    return <span className="text-xs text-muted-foreground">Checking...</span>
+    return <span className="text-muted-foreground text-xs">Checking...</span>
   }
 
   if (status?.downloaded) {
@@ -91,16 +126,16 @@ function ParakeetModelDownload() {
   if (status?.downloading || isDownloading) {
     const progress = status?.progress ?? downloadProgress
     return (
-      <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex w-full flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-          <span className="text-xs text-muted-foreground">
+          <Loader2 className="text-primary h-3.5 w-3.5 animate-spin" />
+          <span className="text-muted-foreground text-xs">
             Downloading... {Math.round(progress * 100)}%
           </span>
         </div>
-        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+        <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
           <div
-            className="h-full bg-primary transition-all duration-200"
+            className="bg-primary h-full transition-all duration-200"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
@@ -111,9 +146,9 @@ function ParakeetModelDownload() {
   if (status?.error) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-destructive">{status.error}</span>
+        <span className="text-destructive text-xs">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
+          <Download className="mr-1.5 h-3.5 w-3.5" />
           Retry
         </Button>
       </div>
@@ -122,7 +157,7 @@ function ParakeetModelDownload() {
 
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
-      <Download className="h-3.5 w-3.5 mr-1.5" />
+      <Download className="mr-1.5 h-3.5 w-3.5" />
       Download (~200MB)
     </Button>
   )
@@ -145,37 +180,41 @@ function ParakeetProviderSection({
   onNumThreadsChange: (value: number) => void
 }) {
   return (
-    <div className={`rounded-lg border ${isActive ? 'border-primary/30 bg-primary/5' : ''}`}>
+    <div
+      className={`rounded-lg border ${isActive ? "border-primary/30 bg-primary/5" : ""}`}
+    >
       <button
         type="button"
-        className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+        className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
         onClick={onToggleCollapse}
         aria-expanded={!isCollapsed}
         aria-controls="parakeet-provider-content"
       >
         <span className="flex items-center gap-2 text-sm font-semibold">
           {isCollapsed ? (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="text-muted-foreground h-4 w-4" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="text-muted-foreground h-4 w-4" />
           )}
           <Cpu className="h-4 w-4" />
           Parakeet (Local)
-          {isActive && (
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-          )}
+          {isActive && <CheckCircle2 className="text-primary h-4 w-4" />}
         </span>
         {isActive && usageBadges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap justify-end">
+          <div className="flex flex-wrap justify-end gap-1.5">
             {usageBadges.map((badge) => (
-              <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+              <ActiveProviderBadge
+                key={badge.label}
+                label={badge.label}
+                icon={badge.icon}
+              />
             ))}
           </div>
         )}
       </button>
       {!isCollapsed && (
         <div id="parakeet-provider-content" className="divide-y border-t">
-          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+          <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
             {isActive
               ? "Local speech-to-text with NVIDIA Parakeet on your device."
               : "Not selected above. You can still configure it here."}
@@ -237,7 +276,7 @@ function KittenModelDownload() {
     // Poll while downloading (either local state or server state) to keep progress updated
     refetchInterval: (query) => {
       const status = query.state.data as { downloading?: boolean } | undefined
-      return (isDownloading || status?.downloading) ? 500 : false
+      return isDownloading || status?.downloading ? 500 : false
     },
   })
 
@@ -255,10 +294,17 @@ function KittenModelDownload() {
     }
   }
 
-  const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
+  const status = modelStatusQuery.data as
+    | {
+        downloaded: boolean
+        downloading: boolean
+        progress: number
+        error?: string
+      }
+    | undefined
 
   if (modelStatusQuery.isLoading) {
-    return <span className="text-xs text-muted-foreground">Checking...</span>
+    return <span className="text-muted-foreground text-xs">Checking...</span>
   }
 
   if (status?.downloaded) {
@@ -273,16 +319,16 @@ function KittenModelDownload() {
   if (status?.downloading || isDownloading) {
     const progress = status?.progress ?? downloadProgress
     return (
-      <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex w-full flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-          <span className="text-xs text-muted-foreground">
+          <Loader2 className="text-primary h-3.5 w-3.5 animate-spin" />
+          <span className="text-muted-foreground text-xs">
             Downloading... {Math.round(progress * 100)}%
           </span>
         </div>
-        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+        <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
           <div
-            className="h-full bg-primary transition-all duration-200"
+            className="bg-primary h-full transition-all duration-200"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
@@ -293,9 +339,9 @@ function KittenModelDownload() {
   if (status?.error) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-destructive">{status.error}</span>
+        <span className="text-destructive text-xs">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
+          <Download className="mr-1.5 h-3.5 w-3.5" />
           Retry
         </Button>
       </div>
@@ -304,7 +350,7 @@ function KittenModelDownload() {
 
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
-      <Download className="h-3.5 w-3.5 mr-1.5" />
+      <Download className="mr-1.5 h-3.5 w-3.5" />
       Download (~24MB)
     </Button>
   )
@@ -329,15 +375,22 @@ function KittenProviderSection({
     queryKey: ["kittenModelStatus"],
     queryFn: () => window.electron.ipcRenderer.invoke("getKittenModelStatus"),
   })
-  const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
+  const modelDownloaded =
+    (modelStatusQuery.data as { downloaded: boolean } | undefined)
+      ?.downloaded ?? false
   const handleTestVoice = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke("synthesizeWithKitten", {
-        text: "Hello! This is a test of the Kitten text to speech voice.",
-        voiceId,
-      }) as { audio: string; sampleRate: number }
+      const result = (await window.electron.ipcRenderer.invoke(
+        "synthesizeWithKitten",
+        {
+          text: "Hello! This is a test of the Kitten text to speech voice.",
+          voiceId,
+        },
+      )) as { audio: string; sampleRate: number }
       // Decode base64 WAV audio and play it
-      const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
+      const audioData = Uint8Array.from(atob(result.audio), (c) =>
+        c.charCodeAt(0),
+      )
       const blob = new Blob([audioData], { type: "audio/wav" })
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
@@ -350,37 +403,41 @@ function KittenProviderSection({
   }
 
   return (
-    <div className={`rounded-lg border ${isActive ? 'border-primary/30 bg-primary/5' : ''}`}>
+    <div
+      className={`rounded-lg border ${isActive ? "border-primary/30 bg-primary/5" : ""}`}
+    >
       <button
         type="button"
-        className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+        className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
         onClick={onToggleCollapse}
         aria-expanded={!isCollapsed}
         aria-controls="kitten-provider-content"
       >
         <span className="flex items-center gap-2 text-sm font-semibold">
           {isCollapsed ? (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="text-muted-foreground h-4 w-4" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="text-muted-foreground h-4 w-4" />
           )}
           <Volume2 className="h-4 w-4" />
           Kitten (Local)
-          {isActive && (
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-          )}
+          {isActive && <CheckCircle2 className="text-primary h-4 w-4" />}
         </span>
         {isActive && usageBadges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap justify-end">
+          <div className="flex flex-wrap justify-end gap-1.5">
             {usageBadges.map((badge) => (
-              <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+              <ActiveProviderBadge
+                key={badge.label}
+                label={badge.label}
+                icon={badge.icon}
+              />
             ))}
           </div>
         )}
       </button>
       {!isCollapsed && (
         <div id="kitten-provider-content" className="divide-y border-t">
-          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+          <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
             {isActive
               ? "Local text-to-speech with Kitten on your device."
               : "Not selected above. You can still configure it here."}
@@ -399,8 +456,9 @@ function KittenProviderSection({
             <KittenModelDownload />
           </Control>
 
-          <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-            Voice selection now lives in Voice Models above. Use this section for install status and quick voice testing.
+          <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+            Voice selection now lives in Voice Models above. Use this section
+            for install status and quick voice testing.
           </p>
 
           {/* Test Voice Button - only shown when model is downloaded */}
@@ -415,7 +473,7 @@ function KittenProviderSection({
               className="px-3"
             >
               <Button size="sm" variant="outline" onClick={handleTestVoice}>
-                <Volume2 className="h-3.5 w-3.5 mr-1.5" />
+                <Volume2 className="mr-1.5 h-3.5 w-3.5" />
                 Test Voice
               </Button>
             </Control>
@@ -434,10 +492,11 @@ function SupertonicModelDownload() {
 
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
+    queryFn: () =>
+      window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
     refetchInterval: (query) => {
       const status = query.state.data as { downloading?: boolean } | undefined
-      return (isDownloading || status?.downloading) ? 500 : false
+      return isDownloading || status?.downloading ? 500 : false
     },
   })
 
@@ -454,10 +513,17 @@ function SupertonicModelDownload() {
     }
   }
 
-  const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
+  const status = modelStatusQuery.data as
+    | {
+        downloaded: boolean
+        downloading: boolean
+        progress: number
+        error?: string
+      }
+    | undefined
 
   if (modelStatusQuery.isLoading) {
-    return <span className="text-xs text-muted-foreground">Checking...</span>
+    return <span className="text-muted-foreground text-xs">Checking...</span>
   }
 
   if (status?.downloaded) {
@@ -472,16 +538,16 @@ function SupertonicModelDownload() {
   if (status?.downloading || isDownloading) {
     const progress = status?.progress ?? downloadProgress
     return (
-      <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex w-full flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-          <span className="text-xs text-muted-foreground">
+          <Loader2 className="text-primary h-3.5 w-3.5 animate-spin" />
+          <span className="text-muted-foreground text-xs">
             Downloading... {Math.round(progress * 100)}%
           </span>
         </div>
-        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+        <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
           <div
-            className="h-full bg-primary transition-all duration-200"
+            className="bg-primary h-full transition-all duration-200"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
@@ -492,9 +558,9 @@ function SupertonicModelDownload() {
   if (status?.error) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-destructive">{status.error}</span>
+        <span className="text-destructive text-xs">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
+          <Download className="mr-1.5 h-3.5 w-3.5" />
           Retry
         </Button>
       </div>
@@ -503,7 +569,7 @@ function SupertonicModelDownload() {
 
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
-      <Download className="h-3.5 w-3.5 mr-1.5" />
+      <Download className="mr-1.5 h-3.5 w-3.5" />
       Download (~263MB)
     </Button>
   )
@@ -531,20 +597,28 @@ function SupertonicProviderSection({
 }) {
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
+    queryFn: () =>
+      window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
   })
-  const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
+  const modelDownloaded =
+    (modelStatusQuery.data as { downloaded: boolean } | undefined)
+      ?.downloaded ?? false
 
   const handleTestVoice = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke("synthesizeWithSupertonic", {
-        text: "Hello! This is a test of the Supertonic text to speech voice.",
-        voice,
-        lang: language,
-        speed,
-        steps,
-      }) as { audio: string; sampleRate: number }
-      const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
+      const result = (await window.electron.ipcRenderer.invoke(
+        "synthesizeWithSupertonic",
+        {
+          text: "Hello! This is a test of the Supertonic text to speech voice.",
+          voice,
+          lang: language,
+          speed,
+          steps,
+        },
+      )) as { audio: string; sampleRate: number }
+      const audioData = Uint8Array.from(atob(result.audio), (c) =>
+        c.charCodeAt(0),
+      )
       const blob = new Blob([audioData], { type: "audio/wav" })
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
@@ -557,37 +631,41 @@ function SupertonicProviderSection({
   }
 
   return (
-    <div className={`rounded-lg border ${isActive ? 'border-primary/30 bg-primary/5' : ''}`}>
+    <div
+      className={`rounded-lg border ${isActive ? "border-primary/30 bg-primary/5" : ""}`}
+    >
       <button
         type="button"
-        className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+        className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
         onClick={onToggleCollapse}
         aria-expanded={!isCollapsed}
         aria-controls="supertonic-provider-content"
       >
         <span className="flex items-center gap-2 text-sm font-semibold">
           {isCollapsed ? (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="text-muted-foreground h-4 w-4" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="text-muted-foreground h-4 w-4" />
           )}
           <Volume2 className="h-4 w-4" />
           Supertonic (Local)
-          {isActive && (
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-          )}
+          {isActive && <CheckCircle2 className="text-primary h-4 w-4" />}
         </span>
         {isActive && usageBadges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap justify-end">
+          <div className="flex flex-wrap justify-end gap-1.5">
             {usageBadges.map((badge) => (
-              <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+              <ActiveProviderBadge
+                key={badge.label}
+                label={badge.label}
+                icon={badge.icon}
+              />
             ))}
           </div>
         )}
       </button>
       {!isCollapsed && (
         <div id="supertonic-provider-content" className="divide-y border-t">
-          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+          <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
             {isActive
               ? "Local text-to-speech with Supertonic on your device. Supports English, Korean, Spanish, Portuguese, and French."
               : "Not selected above. You can still configure it here."}
@@ -606,8 +684,9 @@ function SupertonicProviderSection({
             <SupertonicModelDownload />
           </Control>
 
-          <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-            Voice, language, and quality settings now live in Voice Models above. Use this section for install status and quick voice testing.
+          <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+            Voice, language, and quality settings now live in Voice Models
+            above. Use this section for install status and quick voice testing.
           </p>
 
           {modelDownloaded && (
@@ -621,7 +700,7 @@ function SupertonicProviderSection({
               className="px-3"
             >
               <Button size="sm" variant="outline" onClick={handleTestVoice}>
-                <Volume2 className="h-3.5 w-3.5 mr-1.5" />
+                <Volume2 className="mr-1.5 h-3.5 w-3.5" />
                 Test Voice
               </Button>
             </Control>
@@ -637,8 +716,12 @@ export function Component() {
 
   const saveConfigMutation = useSaveConfigMutation()
   const cfgRef = useRef(configQuery.data)
-  const providerSaveTimeoutsRef = useRef<Partial<Record<ProviderDraftKey, ReturnType<typeof setTimeout>>>>({})
-  const [providerDrafts, setProviderDrafts] = useState(() => getProviderDrafts(configQuery.data))
+  const providerSaveTimeoutsRef = useRef<
+    Partial<Record<ProviderDraftKey, ReturnType<typeof setTimeout>>>
+  >({})
+  const [providerDrafts, setProviderDrafts] = useState(() =>
+    getProviderDrafts(configQuery.data),
+  )
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
@@ -670,76 +753,103 @@ export function Component() {
 
   useEffect(() => {
     return () => {
-      for (const timeout of Object.values(providerSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
+      for (const timeout of Object.values(
+        providerSaveTimeoutsRef.current,
+      ) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
       }
     }
   }, [])
 
-  const flushProviderSave = useCallback((key: ProviderDraftKey, value: string) => {
-    const pendingSave = providerSaveTimeoutsRef.current[key]
-    if (pendingSave) {
-      clearTimeout(pendingSave)
-      delete providerSaveTimeoutsRef.current[key]
-    }
+  const flushProviderSave = useCallback(
+    (key: ProviderDraftKey, value: string) => {
+      const pendingSave = providerSaveTimeoutsRef.current[key]
+      if (pendingSave) {
+        clearTimeout(pendingSave)
+        delete providerSaveTimeoutsRef.current[key]
+      }
 
-    saveConfig({ [key]: value } as Partial<Config>)
-  }, [saveConfig])
-
-  const scheduleProviderSave = useCallback((key: ProviderDraftKey, value: string) => {
-    const pendingSave = providerSaveTimeoutsRef.current[key]
-    if (pendingSave) {
-      clearTimeout(pendingSave)
-    }
-
-    providerSaveTimeoutsRef.current[key] = setTimeout(() => {
-      delete providerSaveTimeoutsRef.current[key]
       saveConfig({ [key]: value } as Partial<Config>)
-    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
-  }, [saveConfig])
+    },
+    [saveConfig],
+  )
 
-  const updateProviderDraft = useCallback((key: ProviderDraftKey, value: string) => {
-    setProviderDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [key]: value,
-    }))
-    scheduleProviderSave(key, value)
-  }, [scheduleProviderSave])
+  const scheduleProviderSave = useCallback(
+    (key: ProviderDraftKey, value: string) => {
+      const pendingSave = providerSaveTimeoutsRef.current[key]
+      if (pendingSave) {
+        clearTimeout(pendingSave)
+      }
+
+      providerSaveTimeoutsRef.current[key] = setTimeout(() => {
+        delete providerSaveTimeoutsRef.current[key]
+        saveConfig({ [key]: value } as Partial<Config>)
+      }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const updateProviderDraft = useCallback(
+    (key: ProviderDraftKey, value: string) => {
+      setProviderDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [key]: value,
+      }))
+      scheduleProviderSave(key, value)
+    },
+    [scheduleProviderSave],
+  )
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
-    if (!configQuery.data) return { openai: [], groq: [], gemini: [], parakeet: [], kitten: [], supertonic: [] }
+    if (!configQuery.data)
+      return {
+        openai: [],
+        groq: [],
+        gemini: [],
+        parakeet: [],
+        kitten: [],
+        supertonic: [],
+      }
 
     const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acp"
-    const stt = configQuery.data.sttProviderId || "openai"
-    const transcript = configQuery.data.transcriptPostProcessingProviderId || "openai"
-    const mcp = configQuery.data.mcpToolsProviderId || "openai"
-    const tts = configQuery.data.ttsProviderId || "openai"
+    const stt = resolveSttProviderId(configQuery.data)
+    const transcript = resolveChatProviderId(configQuery.data, "transcript")
+    const mcp = resolveChatProviderId(configQuery.data)
+    const tts = resolveTtsSelection(configQuery.data).providerId
 
     return {
       openai: [
         ...(stt === "openai" ? [{ label: "STT", icon: Mic }] : []),
-        ...(transcript === "openai" ? [{ label: "Cleanup", icon: FileText }] : []),
-        ...(mcp === "openai" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
+        ...(transcript === "openai"
+          ? [{ label: "Cleanup", icon: FileText }]
+          : []),
+        ...(mcp === "openai" && !isMainAgentAcpMode
+          ? [{ label: "Agent", icon: Bot }]
+          : []),
         ...(tts === "openai" ? [{ label: "TTS", icon: Volume2 }] : []),
       ],
       groq: [
         ...(stt === "groq" ? [{ label: "STT", icon: Mic }] : []),
-        ...(transcript === "groq" ? [{ label: "Cleanup", icon: FileText }] : []),
-        ...(mcp === "groq" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
+        ...(transcript === "groq"
+          ? [{ label: "Cleanup", icon: FileText }]
+          : []),
+        ...(mcp === "groq" && !isMainAgentAcpMode
+          ? [{ label: "Agent", icon: Bot }]
+          : []),
         ...(tts === "groq" ? [{ label: "TTS", icon: Volume2 }] : []),
       ],
       gemini: [
-        ...(transcript === "gemini" ? [{ label: "Cleanup", icon: FileText }] : []),
-        ...(mcp === "gemini" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
+        ...(transcript === "gemini"
+          ? [{ label: "Cleanup", icon: FileText }]
+          : []),
+        ...(mcp === "gemini" && !isMainAgentAcpMode
+          ? [{ label: "Agent", icon: Bot }]
+          : []),
         ...(tts === "gemini" ? [{ label: "TTS", icon: Volume2 }] : []),
       ],
-      parakeet: [
-        ...(stt === "parakeet" ? [{ label: "STT", icon: Mic }] : []),
-      ],
-      kitten: [
-        ...(tts === "kitten" ? [{ label: "TTS", icon: Volume2 }] : []),
-      ],
+      parakeet: [...(stt === "parakeet" ? [{ label: "STT", icon: Mic }] : [])],
+      kitten: [...(tts === "kitten" ? [{ label: "TTS", icon: Volume2 }] : [])],
       supertonic: [
         ...(tts === "supertonic" ? [{ label: "TTS", icon: Volume2 }] : []),
       ],
@@ -747,14 +857,21 @@ export function Component() {
   }, [configQuery.data])
 
   const selectableMainAcpAgents = useMemo(
-    () => getSelectableMainAcpAgents(configQuery.data?.agentProfiles || [], configQuery.data?.acpAgents || []),
-    [configQuery.data?.agentProfiles, configQuery.data?.acpAgents]
+    () =>
+      getSelectableMainAcpAgents(
+        configQuery.data?.agentProfiles || [],
+        configQuery.data?.acpAgents || [],
+      ),
+    [configQuery.data?.agentProfiles, configQuery.data?.acpAgents],
   )
 
   const selectedMainAcpAgentDisplayName = useMemo(() => {
     const selectedAgentName = configQuery.data?.mainAgentName?.trim()
     if (!selectedAgentName) return null
-    return selectableMainAcpAgents.find(agent => agent.name === selectedAgentName)?.displayName || selectedAgentName
+    return (
+      selectableMainAcpAgents.find((agent) => agent.name === selectedAgentName)
+        ?.displayName || selectedAgentName
+    )
   }, [configQuery.data?.mainAgentName, selectableMainAcpAgents])
 
   const isMainAgentAcpMode = configQuery.data?.mainAgentMode === "acp"
@@ -767,6 +884,12 @@ export function Component() {
   const isSupertonicActive = activeProviders.supertonic.length > 0
 
   if (!configQuery.data) return null
+
+  const kittenTtsSelection = resolveTtsSelection(configQuery.data, "kitten")
+  const supertonicTtsSelection = resolveTtsSelection(
+    configQuery.data,
+    "supertonic",
+  )
 
   const renderProviderDraftInput = (
     key: ProviderDraftKey,
@@ -797,53 +920,67 @@ export function Component() {
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
-
       <div className="grid gap-4">
-        <div className="rounded-lg border bg-muted/20 px-4 py-3">
+        <div className="bg-muted/20 rounded-lg border px-4 py-3">
           <h2 className="text-sm font-semibold">Provider Setup</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Use this page for API keys, base URLs, local engine downloads, and quick provider diagnostics. All model and voice
-            selection now lives on the Models page.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Use this page for API keys, base URLs, local engine downloads, and
+            quick provider diagnostics. All model and voice selection now lives
+            on the Models page.
           </p>
           {isMainAgentAcpMode && (
-            <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
-              <div className="flex items-center gap-1.5 font-medium text-primary">
+            <div className="border-primary/30 bg-primary/5 mt-3 rounded-md border px-3 py-2 text-xs">
+              <div className="text-primary flex items-center gap-1.5 font-medium">
                 <Bot className="h-3.5 w-3.5" />
                 ACP Main Agent:{" "}
-                <span className="text-foreground">{selectedMainAcpAgentDisplayName || "Not selected"}</span>
+                <span className="text-foreground">
+                  {selectedMainAcpAgentDisplayName || "Not selected"}
+                </span>
               </div>
-              <p className="mt-1 text-muted-foreground">
-                ACP mode handles chat submissions through the selected agent. Provider setup below still applies to API-backed
-                tools, voice, and local engines.
+              <p className="text-muted-foreground mt-1">
+                ACP mode handles chat submissions through the selected agent.
+                Provider setup below still applies to API-backed tools, voice,
+                and local engines.
               </p>
             </div>
           )}
         </div>
 
         {/* OpenAI Compatible Provider Section */}
-        <div className={`rounded-lg border ${activeProviders.openai.length > 0 ? 'border-primary/30 bg-primary/5' : ''}`}>
+        <div
+          className={`rounded-lg border ${activeProviders.openai.length > 0 ? "border-primary/30 bg-primary/5" : ""}`}
+        >
           <button
             type="button"
-            className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() => saveConfig({ providerSectionCollapsedOpenai: !configQuery.data.providerSectionCollapsedOpenai })}
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+            onClick={() =>
+              saveConfig({
+                providerSectionCollapsedOpenai:
+                  !configQuery.data.providerSectionCollapsedOpenai,
+              })
+            }
             aria-expanded={!configQuery.data.providerSectionCollapsedOpenai}
             aria-controls="openai-provider-content"
           >
             <span className="flex items-center gap-2 text-sm font-semibold">
               {configQuery.data.providerSectionCollapsedOpenai ? (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
               )}
               OpenAI Compatible
               {activeProviders.openai.length > 0 && (
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="text-primary h-4 w-4" />
               )}
             </span>
             {activeProviders.openai.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap justify-end">
+              <div className="flex flex-wrap justify-end gap-1.5">
                 {activeProviders.openai.map((badge) => (
-                  <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+                  <ActiveProviderBadge
+                    key={badge.label}
+                    label={badge.label}
+                    icon={badge.icon}
+                  />
                 ))}
               </div>
             )}
@@ -851,14 +988,15 @@ export function Component() {
           {!configQuery.data.providerSectionCollapsedOpenai && (
             <div id="openai-provider-content" className="divide-y border-t">
               {activeProviders.openai.length === 0 && (
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
                   OpenAI-compatible presets are selected from the Models page.
                 </p>
               )}
 
               <div className="px-3 py-2">
-                <p className="text-sm text-muted-foreground">
-                  OpenAI-compatible presets, agent models, and transcript cleanup models are now managed on the Models page.
+                <p className="text-muted-foreground text-sm">
+                  OpenAI-compatible presets, agent models, and transcript
+                  cleanup models are now managed on the Models page.
                 </p>
               </div>
             </div>
@@ -867,26 +1005,35 @@ export function Component() {
 
         {/* Groq Provider Section - rendered in order based on active status */}
         {isGroqActive && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5">
+          <div className="border-primary/30 bg-primary/5 rounded-lg border">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => saveConfig({ providerSectionCollapsedGroq: !configQuery.data.providerSectionCollapsedGroq })}
+              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+              onClick={() =>
+                saveConfig({
+                  providerSectionCollapsedGroq:
+                    !configQuery.data.providerSectionCollapsedGroq,
+                })
+              }
               aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
               aria-controls="groq-provider-content"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGroq ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="text-muted-foreground h-4 w-4" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="text-muted-foreground h-4 w-4" />
                 )}
                 Groq
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="text-primary h-4 w-4" />
               </span>
-              <div className="flex gap-1.5 flex-wrap justify-end">
+              <div className="flex flex-wrap justify-end gap-1.5">
                 {activeProviders.groq.map((badge) => (
-                  <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+                  <ActiveProviderBadge
+                    key={badge.label}
+                    label={badge.label}
+                    icon={badge.icon}
+                  />
                 ))}
               </div>
             </button>
@@ -903,7 +1050,7 @@ export function Component() {
                   placeholder: "https://api.groq.com/openai/v1",
                 })}
 
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
                   Groq model selection now lives on the Models page.
                 </p>
               </div>
@@ -913,26 +1060,35 @@ export function Component() {
 
         {/* Gemini Provider Section - rendered in order based on active status */}
         {isGeminiActive && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5">
+          <div className="border-primary/30 bg-primary/5 rounded-lg border">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => saveConfig({ providerSectionCollapsedGemini: !configQuery.data.providerSectionCollapsedGemini })}
+              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+              onClick={() =>
+                saveConfig({
+                  providerSectionCollapsedGemini:
+                    !configQuery.data.providerSectionCollapsedGemini,
+                })
+              }
               aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
               aria-controls="gemini-provider-content"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGemini ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="text-muted-foreground h-4 w-4" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="text-muted-foreground h-4 w-4" />
                 )}
                 Gemini
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="text-primary h-4 w-4" />
               </span>
-              <div className="flex gap-1.5 flex-wrap justify-end">
+              <div className="flex flex-wrap justify-end gap-1.5">
                 {activeProviders.gemini.map((badge) => (
-                  <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+                  <ActiveProviderBadge
+                    key={badge.label}
+                    label={badge.label}
+                    icon={badge.icon}
+                  />
                 ))}
               </div>
             </button>
@@ -949,7 +1105,7 @@ export function Component() {
                   placeholder: "https://generativelanguage.googleapis.com",
                 })}
 
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
                   Gemini model selection now lives on the Models page.
                 </p>
               </div>
@@ -961,11 +1117,21 @@ export function Component() {
         {isParakeetActive && (
           <ParakeetProviderSection
             isActive={true}
-            isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
+            isCollapsed={
+              configQuery.data.providerSectionCollapsedParakeet ?? true
+            }
+            onToggleCollapse={() =>
+              saveConfig({
+                providerSectionCollapsedParakeet: !(
+                  configQuery.data.providerSectionCollapsedParakeet ?? true
+                ),
+              })
+            }
             usageBadges={activeProviders.parakeet}
             numThreads={configQuery.data.parakeetNumThreads || 2}
-            onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
+            onNumThreadsChange={(value) =>
+              saveConfig({ parakeetNumThreads: value })
+            }
           />
         )}
 
@@ -973,10 +1139,18 @@ export function Component() {
         {isKittenActive && (
           <KittenProviderSection
             isActive={true}
-            isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedKitten: !(configQuery.data.providerSectionCollapsedKitten ?? true) })}
+            isCollapsed={
+              configQuery.data.providerSectionCollapsedKitten ?? true
+            }
+            onToggleCollapse={() =>
+              saveConfig({
+                providerSectionCollapsedKitten: !(
+                  configQuery.data.providerSectionCollapsedKitten ?? true
+                ),
+              })
+            }
             usageBadges={activeProviders.kitten}
-            voiceId={configQuery.data.kittenVoiceId ?? 0}
+            voiceId={kittenTtsSelection.voiceId}
           />
         )}
 
@@ -984,13 +1158,21 @@ export function Component() {
         {isSupertonicActive && (
           <SupertonicProviderSection
             isActive={true}
-            isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
+            isCollapsed={
+              configQuery.data.providerSectionCollapsedSupertonic ?? true
+            }
+            onToggleCollapse={() =>
+              saveConfig({
+                providerSectionCollapsedSupertonic: !(
+                  configQuery.data.providerSectionCollapsedSupertonic ?? true
+                ),
+              } as Partial<Config>)
+            }
             usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            steps={configQuery.data.supertonicSteps ?? 5}
+            voice={supertonicTtsSelection.voice}
+            language={supertonicTtsSelection.language}
+            speed={supertonicTtsSelection.speed}
+            steps={supertonicTtsSelection.steps}
           />
         )}
 
@@ -999,23 +1181,31 @@ export function Component() {
           <div className="rounded-lg border">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => saveConfig({ providerSectionCollapsedGroq: !configQuery.data.providerSectionCollapsedGroq })}
+              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+              onClick={() =>
+                saveConfig({
+                  providerSectionCollapsedGroq:
+                    !configQuery.data.providerSectionCollapsedGroq,
+                })
+              }
               aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
               aria-controls="groq-provider-content-inactive"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGroq ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="text-muted-foreground h-4 w-4" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="text-muted-foreground h-4 w-4" />
                 )}
                 Groq
               </span>
             </button>
             {!configQuery.data.providerSectionCollapsedGroq && (
-              <div id="groq-provider-content-inactive" className="divide-y border-t">
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+              <div
+                id="groq-provider-content-inactive"
+                className="divide-y border-t"
+              >
+                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
                   Not selected above. You can still configure it here.
                 </p>
 
@@ -1030,7 +1220,7 @@ export function Component() {
                   placeholder: "https://api.groq.com/openai/v1",
                 })}
 
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
                   Groq model selection now lives on the Models page.
                 </p>
               </div>
@@ -1043,23 +1233,31 @@ export function Component() {
           <div className="rounded-lg border">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => saveConfig({ providerSectionCollapsedGemini: !configQuery.data.providerSectionCollapsedGemini })}
+              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+              onClick={() =>
+                saveConfig({
+                  providerSectionCollapsedGemini:
+                    !configQuery.data.providerSectionCollapsedGemini,
+                })
+              }
               aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
               aria-controls="gemini-provider-content-inactive"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGemini ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronRight className="text-muted-foreground h-4 w-4" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="text-muted-foreground h-4 w-4" />
                 )}
                 Gemini
               </span>
             </button>
             {!configQuery.data.providerSectionCollapsedGemini && (
-              <div id="gemini-provider-content-inactive" className="divide-y border-t">
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+              <div
+                id="gemini-provider-content-inactive"
+                className="divide-y border-t"
+              >
+                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
                   Not selected above. You can still configure it here.
                 </p>
 
@@ -1074,7 +1272,7 @@ export function Component() {
                   placeholder: "https://generativelanguage.googleapis.com",
                 })}
 
-                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
                   Gemini model selection now lives on the Models page.
                 </p>
               </div>
@@ -1086,11 +1284,21 @@ export function Component() {
         {!isParakeetActive && (
           <ParakeetProviderSection
             isActive={false}
-            isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
+            isCollapsed={
+              configQuery.data.providerSectionCollapsedParakeet ?? true
+            }
+            onToggleCollapse={() =>
+              saveConfig({
+                providerSectionCollapsedParakeet: !(
+                  configQuery.data.providerSectionCollapsedParakeet ?? true
+                ),
+              })
+            }
             usageBadges={activeProviders.parakeet}
             numThreads={configQuery.data.parakeetNumThreads || 2}
-            onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
+            onNumThreadsChange={(value) =>
+              saveConfig({ parakeetNumThreads: value })
+            }
           />
         )}
 
@@ -1098,10 +1306,18 @@ export function Component() {
         {!isKittenActive && (
           <KittenProviderSection
             isActive={false}
-            isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedKitten: !(configQuery.data.providerSectionCollapsedKitten ?? true) })}
+            isCollapsed={
+              configQuery.data.providerSectionCollapsedKitten ?? true
+            }
+            onToggleCollapse={() =>
+              saveConfig({
+                providerSectionCollapsedKitten: !(
+                  configQuery.data.providerSectionCollapsedKitten ?? true
+                ),
+              })
+            }
             usageBadges={activeProviders.kitten}
-            voiceId={configQuery.data.kittenVoiceId ?? 0}
+            voiceId={kittenTtsSelection.voiceId}
           />
         )}
 
@@ -1109,16 +1325,23 @@ export function Component() {
         {!isSupertonicActive && (
           <SupertonicProviderSection
             isActive={false}
-            isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
+            isCollapsed={
+              configQuery.data.providerSectionCollapsedSupertonic ?? true
+            }
+            onToggleCollapse={() =>
+              saveConfig({
+                providerSectionCollapsedSupertonic: !(
+                  configQuery.data.providerSectionCollapsedSupertonic ?? true
+                ),
+              } as Partial<Config>)
+            }
             usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            steps={configQuery.data.supertonicSteps ?? 5}
+            voice={supertonicTtsSelection.voice}
+            language={supertonicTtsSelection.language}
+            speed={supertonicTtsSelection.speed}
+            steps={supertonicTtsSelection.steps}
           />
         )}
-
       </div>
     </div>
   )
