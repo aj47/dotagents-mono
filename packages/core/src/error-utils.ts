@@ -80,11 +80,11 @@ export function getErrorMessage(error: unknown, fallback = "Unknown error"): str
 export function normalizeError(error: unknown, fallback = "Unknown error"): Error {
   const message = getErrorMessage(error, fallback)
 
-  if (error instanceof Error) {
-    if (error.message === message) {
-      return error
-    }
+  if (error instanceof Error && error.message === message) {
+    return error
+  }
 
+  if (error instanceof Error) {
     const normalized = new Error(message, { cause: error })
     normalized.name = error.name || normalized.name
     return normalized
