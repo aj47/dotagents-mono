@@ -57,6 +57,7 @@ import {
   createManagedKnowledgeNote,
   deleteAllManagedKnowledgeNotes,
   deleteManagedKnowledgeNote,
+  deleteMultipleManagedKnowledgeNotes,
   getManagedKnowledgeNote,
   getManagedKnowledgeNotes,
   isManagedKnowledgeNoteFailure,
@@ -72,6 +73,7 @@ import {
   cleanupManagedStaleSkillReferences,
   createManagedSkill,
   deleteManagedSkill,
+  deleteManagedSkills,
   exportManagedSkillToMarkdown,
   getManagedSkill,
   getManagedSkillCanonicalFilePath,
@@ -270,6 +272,7 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/note-new <json>${colors.reset} - Create a knowledge note from a JSON payload
   ${colors.cyan}/note-edit <id> <json>${colors.reset} - Update a knowledge note from a JSON payload
   ${colors.cyan}/note-delete <id>${colors.reset} - Delete a knowledge note by ID or unique prefix
+  ${colors.cyan}/note-delete-many <json>${colors.reset} - Delete multiple knowledge notes from a JSON array of selectors
   ${colors.cyan}/note-delete-all${colors.reset} - Delete all knowledge notes
   ${colors.cyan}/skills${colors.reset}        - List skills for the current agent profile
   ${colors.cyan}/skill <id>${colors.reset}    - Toggle a skill for the current agent profile
@@ -277,6 +280,7 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/skill-new <json>${colors.reset} - Create a skill from a JSON payload
   ${colors.cyan}/skill-edit <id> <json>${colors.reset} - Update a skill from a JSON payload
   ${colors.cyan}/skill-delete <id>${colors.reset} - Delete a skill by ID, name, or unique prefix
+  ${colors.cyan}/skill-delete-many <json>${colors.reset} - Delete multiple skills from a JSON array of selectors
   ${colors.cyan}/skill-export <id>${colors.reset} - Print a skill as SKILL.md markdown
   ${colors.cyan}/skill-path <id>${colors.reset} - Show the canonical skill file path
   ${colors.cyan}/skill-import-file <path>${colors.reset} - Import a skill from a markdown file
@@ -549,7 +553,7 @@ function printKnowledgeNoteList(
   if (options.includeHint !== false) {
     console.log()
     console.log(
-      `${colors.dim}Use /note-show, /note-search, /note-new, /note-edit, /note-delete, or /note-delete-all to manage notes.${colors.reset}`,
+      `${colors.dim}Use /note-show, /note-search, /note-new, /note-edit, /note-delete, /note-delete-many, or /note-delete-all to manage notes.${colors.reset}`,
     )
   }
   console.log()
@@ -603,6 +607,42 @@ function parseCliJsonObject(
       return null
     }
     return parsed as Record<string, unknown>
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    printColored(colors.red, `Invalid JSON payload: ${message}`)
+    return null
+  }
+}
+
+function parseCliJsonStringArray(
+  input: string,
+  usage: string,
+): string[] | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (!Array.isArray(parsed)) {
+      printColored(colors.red, "JSON payload must be an array of strings.")
+      return null
+    }
+
+    const values = parsed.map((entry) =>
+      typeof entry === "string" ? entry.trim() : "",
+    )
+    if (values.length === 0 || values.some((value) => !value)) {
+      printColored(
+        colors.red,
+        "JSON payload must be a non-empty array of non-empty strings.",
+      )
+      return null
+    }
+
+    return values
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     printColored(colors.red, `Invalid JSON payload: ${message}`)
@@ -1125,6 +1165,57 @@ async function handleDeleteKnowledgeNote(selection: string): Promise<void> {
   printColored(
     colors.green,
     `Deleted knowledge note ${selectedNote.id}: ${selectedNote.title}`,
+  )
+}
+
+async function handleDeleteMultipleKnowledgeNotes(
+  selection: string,
+): Promise<void> {
+  const selectors = parseCliJsonStringArray(
+    selection,
+    "Usage: /note-delete-many <json-array-of-note-ids-or-prefixes>",
+  )
+  if (!selectors) {
+    return
+  }
+
+  const selectedNotes: KnowledgeNote[] = []
+  const seenNoteIds = new Set<string>()
+  for (const selector of selectors) {
+    const selectedNote = await resolveKnowledgeNoteSelectionForCli(selector)
+    if (!selectedNote) {
+      return
+    }
+    if (seenNoteIds.has(selectedNote.id)) {
+      continue
+    }
+    seenNoteIds.add(selectedNote.id)
+    selectedNotes.push(selectedNote)
+  }
+
+  const preview = selectedNotes
+    .slice(0, 3)
+    .map((note) => note.title)
+    .join(", ")
+  const confirmed = await promptForConfirmation(
+    `Delete ${selectedNotes.length} knowledge note${selectedNotes.length === 1 ? "" : "s"}${preview ? `: ${preview}${selectedNotes.length > 3 ? ", ..." : ""}` : ""}?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Knowledge note bulk delete cancelled.")
+    return
+  }
+
+  const result = await deleteMultipleManagedKnowledgeNotes(
+    selectedNotes.map((note) => note.id),
+  )
+  if (isManagedKnowledgeNoteFailure(result)) {
+    printColored(colors.red, result.error)
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted ${result.deletedCount} knowledge note${result.deletedCount === 1 ? "" : "s"}.`,
   )
 }
 
@@ -1878,7 +1969,7 @@ function printSkills() {
 
   console.log()
   console.log(
-    `${colors.dim}Use /skill to toggle, or /skill-show, /skill-new, /skill-edit, /skill-delete, /skill-export, /skill-path, /skill-import-file, /skill-import-folder, /skill-import-parent, /skill-import-github, /skill-scan, and /skill-cleanup to manage the catalog.${colors.reset}`,
+    `${colors.dim}Use /skill to toggle, or /skill-show, /skill-new, /skill-edit, /skill-delete, /skill-delete-many, /skill-export, /skill-path, /skill-import-file, /skill-import-folder, /skill-import-parent, /skill-import-github, /skill-scan, and /skill-cleanup to manage the catalog.${colors.reset}`,
   )
   console.log()
 }
@@ -2823,6 +2914,84 @@ async function handleDeleteSkill(selection: string): Promise<void> {
   }
 }
 
+async function handleDeleteMultipleSkills(selection: string): Promise<void> {
+  const selectors = parseCliJsonStringArray(
+    selection,
+    "Usage: /skill-delete-many <json-array-of-skill-ids-or-names>",
+  )
+  if (!selectors) {
+    return
+  }
+
+  const selectedSkills: AgentSkill[] = []
+  const seenSkillIds = new Set<string>()
+  for (const selector of selectors) {
+    const selectedSkill = resolveSkillSelectionForCli(
+      selector,
+      "Usage: /skill-delete-many <json-array-of-skill-ids-or-names>",
+    )
+    if (!selectedSkill) {
+      return
+    }
+    if (seenSkillIds.has(selectedSkill.id)) {
+      continue
+    }
+    seenSkillIds.add(selectedSkill.id)
+    selectedSkills.push(selectedSkill)
+  }
+
+  const preview = selectedSkills
+    .slice(0, 3)
+    .map((skill) => skill.name)
+    .join(", ")
+  const confirmed = await promptForConfirmation(
+    `Delete ${selectedSkills.length} skill${selectedSkills.length === 1 ? "" : "s"}${preview ? `: ${preview}${selectedSkills.length > 3 ? ", ..." : ""}` : ""}?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Skill bulk delete cancelled.")
+    return
+  }
+
+  const result = await deleteManagedSkills(
+    selectedSkills.map((skill) => skill.id),
+  )
+  const deletedSkillIds = new Set(
+    result.results
+      .filter((deleteResult) => deleteResult.success)
+      .map((deleteResult) => deleteResult.id),
+  )
+  const failedSkills = selectedSkills.filter(
+    (skill) => !deletedSkillIds.has(skill.id),
+  )
+
+  if (deletedSkillIds.size === 0) {
+    printColored(colors.red, "Failed to delete the selected skills.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted ${deletedSkillIds.size} skill${deletedSkillIds.size === 1 ? "" : "s"}.`,
+  )
+
+  if (failedSkills.length > 0) {
+    printColored(
+      colors.red,
+      `Failed to delete: ${failedSkills.map((skill) => `${skill.id} (${skill.name})`).join(", ")}`,
+    )
+  }
+
+  if (
+    result.cleanupSummary &&
+    result.cleanupSummary.removedReferenceCount > 0
+  ) {
+    printColored(
+      colors.dim,
+      `Removed ${result.cleanupSummary.removedReferenceCount} stale skill reference${result.cleanupSummary.removedReferenceCount === 1 ? "" : "s"} across ${result.cleanupSummary.updatedProfileIds.length} profile${result.cleanupSummary.updatedProfileIds.length === 1 ? "" : "s"}.`,
+    )
+  }
+}
+
 async function handleExportSkill(selection: string): Promise<void> {
   const selectedSkill = resolveSkillSelectionForCli(
     selection,
@@ -3432,6 +3601,9 @@ async function handleSlashCommand(input: string): Promise<boolean> {
     case "/note-delete":
       await handleDeleteKnowledgeNote(argumentsText)
       return true
+    case "/note-delete-many":
+      await handleDeleteMultipleKnowledgeNotes(argumentsText)
+      return true
     case "/note-delete-all":
       await handleDeleteAllKnowledgeNotes()
       return true
@@ -3452,6 +3624,9 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/skill-delete":
       await handleDeleteSkill(argumentsText)
+      return true
+    case "/skill-delete-many":
+      await handleDeleteMultipleSkills(argumentsText)
       return true
     case "/skill-export":
       await handleExportSkill(argumentsText)

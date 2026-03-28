@@ -22,6 +22,7 @@ import {
   createManagedKnowledgeNote,
   deleteAllManagedKnowledgeNotes,
   deleteManagedKnowledgeNote,
+  deleteMultipleManagedKnowledgeNotes,
   getManagedKnowledgeNote,
   getManagedKnowledgeNotes,
   saveManagedKnowledgeNoteFromSummary,
@@ -148,6 +149,32 @@ describe("knowledge note management", () => {
       error: "Failed to delete note note-2",
     })
     await expect(deleteAllManagedKnowledgeNotes()).resolves.toEqual({
+      success: false,
+      errorCode: "persist_failed",
+      error: "Failed to delete note note-2",
+    })
+  })
+
+  it("bulk deletes notes through the shared mutation helper", async () => {
+    mockKnowledgeNotesService.deleteMultipleNotes.mockResolvedValue({
+      deletedCount: 2,
+    })
+
+    await expect(
+      deleteMultipleManagedKnowledgeNotes(["note-1", "note-2"]),
+    ).resolves.toEqual({
+      success: true,
+      deletedCount: 2,
+    })
+
+    mockKnowledgeNotesService.deleteMultipleNotes.mockResolvedValue({
+      deletedCount: 1,
+      error: "Failed to delete note note-2",
+    })
+
+    await expect(
+      deleteMultipleManagedKnowledgeNotes(["note-1", "note-2"]),
+    ).resolves.toEqual({
       success: false,
       errorCode: "persist_failed",
       error: "Failed to delete note note-2",

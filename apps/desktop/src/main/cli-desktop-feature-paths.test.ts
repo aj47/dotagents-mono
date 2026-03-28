@@ -872,6 +872,7 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/skill-new":')
     expect(headlessCliSource).toContain('case "/skill-edit":')
     expect(headlessCliSource).toContain('case "/skill-delete":')
+    expect(headlessCliSource).toContain('case "/skill-delete-many":')
     expect(headlessCliSource).toContain('case "/skill-export":')
     expect(headlessCliSource).toContain('case "/skill-path":')
     expect(headlessCliSource).toContain('case "/skill-import-file":')
@@ -884,6 +885,7 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("createManagedSkill(")
     expect(headlessCliSource).toContain("updateManagedSkill(")
     expect(headlessCliSource).toContain("await deleteManagedSkill(")
+    expect(headlessCliSource).toContain("await deleteManagedSkills(")
     expect(headlessCliSource).toContain("exportManagedSkillToMarkdown(")
     expect(headlessCliSource).toContain("getManagedSkillCanonicalFilePath(")
     expect(headlessCliSource).toContain("importManagedSkillFromFile(")
@@ -1314,6 +1316,9 @@ describe("CLI and desktop feature paths", () => {
       "export async function deleteManagedKnowledgeNote",
     )
     expect(knowledgeNoteManagementSource).toContain(
+      "export async function deleteMultipleManagedKnowledgeNotes",
+    )
+    expect(knowledgeNoteManagementSource).toContain(
       "export async function deleteAllManagedKnowledgeNotes",
     )
     expect(headlessCliSource).toContain("getManagedKnowledgeNotes(")
@@ -1322,10 +1327,12 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("createManagedKnowledgeNote(")
     expect(headlessCliSource).toContain("updateManagedKnowledgeNote(")
     expect(headlessCliSource).toContain("deleteManagedKnowledgeNote(")
+    expect(headlessCliSource).toContain("deleteMultipleManagedKnowledgeNotes(")
     expect(headlessCliSource).toContain("deleteAllManagedKnowledgeNotes(")
     expect(headlessCliSource).toContain('case "/notes":')
     expect(headlessCliSource).toContain('case "/note-new":')
     expect(headlessCliSource).toContain('case "/note-edit":')
+    expect(headlessCliSource).toContain('case "/note-delete-many":')
     expect(headlessCliSource).toContain('case "/note-delete-all":')
     expect(tipcSource).toContain('from "./knowledge-note-management"')
     expect(tipcSource).toContain("getManagedKnowledgeNotes()")
