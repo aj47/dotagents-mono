@@ -69,6 +69,14 @@ import {
   agentProfileService,
 } from "./agent-profile-service"
 import { activateAgentProfileById } from "./agent-profile-activation"
+import {
+  deleteManagedLoop,
+  getManagedLoopSummaries,
+  getManagedLoopSummary,
+  saveManagedLoop,
+  toggleManagedLoopEnabled,
+  triggerManagedLoop,
+} from "./loop-management"
 import { summarizeLoop, summarizeLoops } from "./loop-summaries"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
@@ -2952,9 +2960,12 @@ async function startRemoteServerInternal(
   }
 
   const formatLoopResponse = async (loop: LoopConfig) => {
-    const status = (await loadLoopService())?.getLoopStatus(loop.id)
+    const loopService = await loadLoopService()
+    if (loopService) {
+      return getManagedLoopSummary(loopService, loop)
+    }
+
     return summarizeLoop(loop, {
-      status,
       profileName: loop.profileId
         ? agentProfileService.getById(loop.profileId)?.displayName
         : undefined,
@@ -2965,12 +2976,17 @@ async function startRemoteServerInternal(
   fastify.get("/v1/loops", async (_req, reply) => {
     try {
       const loopService = await loadLoopService()
-      const loops = loopService?.getLoops() ?? (configStore.get().loops || [])
-      const statuses = loopService?.getLoopStatuses() ?? []
+
+      if (loopService) {
+        return reply.send({
+          loops: getManagedLoopSummaries(loopService),
+        })
+      }
+
+      const loops = configStore.get().loops || []
 
       return reply.send({
         loops: summarizeLoops(loops, {
-          statuses,
           getProfileName: (profileId) =>
             profileId
               ? agentProfileService.getById(profileId)?.displayName
@@ -2994,29 +3010,21 @@ async function startRemoteServerInternal(
       const loopService = await loadLoopService()
 
       if (loopService) {
-        const existing = loopService.getLoop(params.id)
-        if (!existing) {
-          return reply.code(404).send({ error: "Repeat task not found" })
-        }
+        const result = toggleManagedLoopEnabled(loopService, params.id)
+        if (!result.success) {
+          if (result.error === "not_found") {
+            return reply.code(404).send({ error: "Repeat task not found" })
+          }
 
-        const updated = { ...existing, enabled: !existing.enabled }
-        const saved = loopService.saveLoop(updated)
-        if (!saved) {
           return reply
             .code(500)
             .send({ error: "Failed to persist repeat task toggle" })
         }
 
-        if (updated.enabled) {
-          loopService.startLoop(params.id)
-        } else {
-          loopService.stopLoop(params.id)
-        }
-
         return reply.send({
           success: true,
           id: params.id,
-          enabled: updated.enabled,
+          enabled: result.loop?.enabled ?? false,
         })
       }
 
@@ -3060,14 +3068,12 @@ async function startRemoteServerInternal(
       const loopService = await loadLoopService()
 
       if (loopService) {
-        const loopExists = loopService.getLoop(params.id)
-        if (!loopExists) {
-          return reply.code(404).send({ error: "Repeat task not found" })
-        }
+        const result = await triggerManagedLoop(loopService, params.id)
+        if (!result.success) {
+          if (result.error === "not_found") {
+            return reply.code(404).send({ error: "Repeat task not found" })
+          }
 
-        const triggered = await loopService.triggerLoop(params.id)
-
-        if (!triggered) {
           return reply.code(409).send({ error: "Task is already running" })
         }
 
@@ -3337,26 +3343,24 @@ async function startRemoteServerInternal(
 
       const loopService = await loadLoopService()
       if (loopService) {
-        const saved = loopService.saveLoop(newLoop)
-        if (!saved) {
+        const result = saveManagedLoop(loopService, newLoop)
+        if (!result.success) {
           return reply
             .code(500)
             .send({ error: "Failed to persist repeat task" })
         }
 
-        if (newLoop.enabled) {
-          loopService.startLoop(newLoop.id)
-        }
-      } else {
-        const cfg = configStore.get()
-        const loops = [...(cfg.loops || []), newLoop]
-        configStore.save({ ...cfg, loops })
+        return reply.send({
+          loop: result.summary ?? (await formatLoopResponse(newLoop)),
+        })
       }
 
+      const cfg = configStore.get()
+      const loops = [...(cfg.loops || []), newLoop]
+      configStore.save({ ...cfg, loops })
+
       return reply.send({
-        loop: await formatLoopResponse(
-          loopService?.getLoop(newLoop.id) ?? newLoop,
-        ),
+        loop: await formatLoopResponse(newLoop),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -3466,20 +3470,22 @@ async function startRemoteServerInternal(
       }
 
       if (loopService) {
-        const saved = loopService.saveLoop(updated)
-        if (!saved) {
+        const result = saveManagedLoop(loopService, updated, {
+          restartIfEnabled: true,
+        })
+        if (!result.success) {
           return reply
             .code(500)
             .send({ error: "Failed to persist repeat task" })
         }
 
-        if (updated.enabled) {
-          loopService.stopLoop(params.id)
-          loopService.startLoop(params.id)
-        } else {
-          loopService.stopLoop(params.id)
-        }
-      } else if (cfg && loopIndex >= 0) {
+        return reply.send({
+          success: true,
+          loop: result.summary ?? (await formatLoopResponse(updated)),
+        })
+      }
+
+      if (cfg && loopIndex >= 0) {
         const updatedLoops = [...loops]
         updatedLoops[loopIndex] = updated
         configStore.save({ ...cfg, loops: updatedLoops })
@@ -3487,9 +3493,7 @@ async function startRemoteServerInternal(
 
       return reply.send({
         success: true,
-        loop: await formatLoopResponse(
-          loopService?.getLoop(params.id) ?? updated,
-        ),
+        loop: await formatLoopResponse(updated),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -3510,13 +3514,12 @@ async function startRemoteServerInternal(
       const loopService = await loadLoopService()
 
       if (loopService) {
-        const existing = loopService.getLoop(params.id)
-        if (!existing) {
-          return reply.code(404).send({ error: "Repeat task not found" })
-        }
+        const result = deleteManagedLoop(loopService, params.id)
+        if (!result.success) {
+          if (result.error === "not_found") {
+            return reply.code(404).send({ error: "Repeat task not found" })
+          }
 
-        const deleted = loopService.deleteLoop(params.id)
-        if (!deleted) {
           return reply.code(500).send({ error: "Failed to delete repeat task" })
         }
 

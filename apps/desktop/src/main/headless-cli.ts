@@ -10,8 +10,15 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
+import {
+  getManagedLoopSummaries,
+  resolveManagedLoopSelection,
+  toggleManagedLoopEnabled,
+  triggerManagedLoop,
+} from "./loop-management"
 import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfile } from "./agent-profile-activation"
+import { loopService } from "./loop-service"
 import { skillsService } from "./skills-service"
 import {
   deleteAllConversationsAndSyncSessionState,
@@ -44,6 +51,7 @@ import type {
   AgentProgressUpdate,
   Conversation,
   ConversationHistoryItem,
+  LoopSummary,
 } from "@shared/types"
 
 // ANSI color codes (no external deps)
@@ -132,6 +140,10 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
   ${colors.cyan}/agents${colors.reset}        - List enabled agents and the active selection
   ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
+  ${colors.cyan}/loops${colors.reset}         - List repeat tasks with live status and profile info
+  ${colors.cyan}/loop-show <id-or-name>${colors.reset} - Show full repeat-task details
+  ${colors.cyan}/loop-toggle <id-or-name>${colors.reset} - Enable or disable a repeat task
+  ${colors.cyan}/loop-run <id-or-name>${colors.reset} - Run a repeat task immediately
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -208,6 +220,72 @@ function formatAgentSelectionSummary(profile: AgentProfile): string {
     : ""
 
   return `${profile.id}: ${getAgentProfileDisplayName(profile)}${labelSuffix}${description}`
+}
+
+function formatRelativeLoopInterval(intervalMinutes: number): string {
+  return intervalMinutes === 1
+    ? "every 1 minute"
+    : `every ${intervalMinutes} minutes`
+}
+
+function formatLoopTimestamp(timestamp?: number): string | undefined {
+  return typeof timestamp === "number"
+    ? new Date(timestamp).toLocaleString()
+    : undefined
+}
+
+function formatLoopStatusLabels(loop: LoopSummary): string[] {
+  const labels = [loop.enabled ? "enabled" : "disabled"]
+
+  if (loop.isRunning) {
+    labels.push("running")
+  }
+  if (loop.runOnStartup) {
+    labels.push("startup")
+  }
+
+  return labels
+}
+
+function formatLoopSelectionSummary(loop: LoopSummary): string {
+  return `${loop.id} (${loop.name}, ${formatRelativeLoopInterval(loop.intervalMinutes)})`
+}
+
+function printLoops() {
+  const loops = getManagedLoopSummaries(loopService)
+
+  console.log(`\n${colors.bold}Repeat Tasks:${colors.reset}`)
+  if (loops.length === 0) {
+    console.log(`  ${colors.dim}(no repeat tasks)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const loop of loops) {
+    const labelSuffix = ` ${colors.dim}[${formatLoopStatusLabels(loop).join(", ")}]${colors.reset}`
+    console.log(`  ${loop.id}: ${loop.name}${labelSuffix}`)
+
+    const metadata = [formatRelativeLoopInterval(loop.intervalMinutes)]
+    if (loop.profileName) {
+      metadata.push(`agent ${loop.profileName}`)
+    }
+    if (typeof loop.maxIterations === "number") {
+      metadata.push(`max ${loop.maxIterations}`)
+    }
+    const lastRunAt = formatLoopTimestamp(loop.lastRunAt)
+    if (lastRunAt) {
+      metadata.push(`last ${lastRunAt}`)
+    }
+    const nextRunAt = formatLoopTimestamp(loop.nextRunAt)
+    if (nextRunAt) {
+      metadata.push(`next ${nextRunAt}`)
+    }
+
+    console.log(`    ${colors.dim}${metadata.join(" • ")}${colors.reset}`)
+    console.log(`    ${colors.dim}${loop.prompt}${colors.reset}`)
+  }
+
+  console.log()
 }
 
 function printStatus() {
@@ -408,6 +486,127 @@ async function handleUseAgent(selection: string): Promise<void> {
   }
 
   printColored(colors.red, `Agent not found: ${query}`)
+}
+
+function printLoopDetails(loop: LoopSummary): void {
+  console.log(`\n${colors.bold}${loop.name}${colors.reset}`)
+  console.log(`  ${colors.dim}${loop.id}${colors.reset}`)
+  console.log(
+    `  ${colors.dim}${formatLoopStatusLabels(loop).join(", ")}${colors.reset}`,
+  )
+  console.log(
+    `  ${colors.dim}${formatRelativeLoopInterval(loop.intervalMinutes)}${colors.reset}`,
+  )
+  if (loop.profileName) {
+    console.log(`  ${colors.dim}agent ${loop.profileName}${colors.reset}`)
+  }
+  if (typeof loop.maxIterations === "number") {
+    console.log(`  ${colors.dim}max ${loop.maxIterations} iterations${colors.reset}`)
+  }
+
+  const lastRunAt = formatLoopTimestamp(loop.lastRunAt)
+  if (lastRunAt) {
+    console.log(`  ${colors.dim}last run ${lastRunAt}${colors.reset}`)
+  }
+
+  const nextRunAt = formatLoopTimestamp(loop.nextRunAt)
+  if (nextRunAt) {
+    console.log(`  ${colors.dim}next run ${nextRunAt}${colors.reset}`)
+  }
+
+  console.log()
+  console.log(loop.prompt)
+  console.log()
+}
+
+async function resolveLoopSelectionForCli(
+  selection: string,
+): Promise<LoopSummary | null> {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, "Usage: /loop-show|/loop-toggle|/loop-run <loop-id-or-name>")
+    return null
+  }
+
+  const loops = getManagedLoopSummaries(loopService)
+  const { selectedLoop, ambiguousLoops } = resolveManagedLoopSelection(
+    loops,
+    query,
+  )
+
+  if (selectedLoop) {
+    return selectedLoop
+  }
+
+  if (ambiguousLoops?.length) {
+    printColored(
+      colors.yellow,
+      `Repeat-task selector "${query}" matches multiple tasks:`,
+    )
+    for (const loop of ambiguousLoops) {
+      console.log(`  ${formatLoopSelectionSummary(loop)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `Repeat task not found: ${query}`)
+  return null
+}
+
+async function handleShowLoop(selection: string): Promise<void> {
+  const selectedLoop = await resolveLoopSelectionForCli(selection)
+  if (!selectedLoop) {
+    return
+  }
+
+  printLoopDetails(selectedLoop)
+}
+
+async function handleToggleLoop(selection: string): Promise<void> {
+  const selectedLoop = await resolveLoopSelectionForCli(selection)
+  if (!selectedLoop) {
+    return
+  }
+
+  const result = toggleManagedLoopEnabled(loopService, selectedLoop.id)
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error === "persist_failed"
+        ? "Failed to persist repeat task toggle."
+        : `Repeat task not found: ${selectedLoop.id}`,
+    )
+    return
+  }
+
+  const actionLabel = result.loop?.enabled ? "Enabled" : "Disabled"
+  printColored(
+    colors.green,
+    `${actionLabel} repeat task ${selectedLoop.id}: ${selectedLoop.name}`,
+  )
+}
+
+async function handleRunLoop(selection: string): Promise<void> {
+  const selectedLoop = await resolveLoopSelectionForCli(selection)
+  if (!selectedLoop) {
+    return
+  }
+
+  const result = await triggerManagedLoop(loopService, selectedLoop.id)
+  if (!result.success) {
+    printColored(
+      result.error === "already_running" ? colors.yellow : colors.red,
+      result.error === "already_running"
+        ? `Repeat task is already running: ${selectedLoop.id}`
+        : `Repeat task not found: ${selectedLoop.id}`,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Triggered repeat task ${selectedLoop.id}: ${selectedLoop.name}`,
+  )
 }
 
 async function toggleConversationSessionStateForCli(
@@ -653,6 +852,18 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/agent":
       await handleUseAgent(argumentsText)
+      return true
+    case "/loops":
+      printLoops()
+      return true
+    case "/loop-show":
+      await handleShowLoop(argumentsText)
+      return true
+    case "/loop-toggle":
+      await handleToggleLoop(argumentsText)
+      return true
+    case "/loop-run":
+      await handleRunLoop(argumentsText)
       return true
     case "/conversations":
       await printConversations()

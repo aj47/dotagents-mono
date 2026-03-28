@@ -151,6 +151,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `summarizeLoop(...)` and `summarizeLoops(...)`
 - Current callers: `tipc.ts` `getLoopSummaries(...)`, `settings-loops.tsx`, and `remote-server.ts` `/v1/loops` plus repeat-task create/update responses
 
+## Shared repeat task management
+
+- Shared loop management file: `apps/desktop/src/main/loop-management.ts`
+- Shared helpers: `getManagedLoopSummary(...)`, `getManagedLoopSummaries(...)`, `resolveManagedLoopSelection(...)`, `saveManagedLoop(...)`, `toggleManagedLoopEnabled(...)`, `triggerManagedLoop(...)`, and `deleteManagedLoop(...)`
+- Current callers: `headless-cli.ts` `/loops`, `/loop-show`, `/loop-toggle`, and `/loop-run`; `tipc.ts` `getLoopSummaries(...)`; and `remote-server.ts` `/v1/loops`, `/v1/loops/:id/toggle`, `/v1/loops/:id/run`, plus repeat-task create/update/delete responses
+
 ## Shared conversation history serialization
 
 - Shared conversation history file: `packages/shared/src/conversation-history.ts`
@@ -214,7 +220,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 24. Preset-aware CLI labels + preset surfaces
     `packages/shared/src/providers.ts` now resolves merged OpenAI-compatible preset IDs and records in one place, so CLI/provider labels, remote `/v1/settings` preset payloads, weak summarization preset lookup, preset editor screens, and preset-scoped model fetches all use the same built-in override, duplicate-filtering, legacy OpenAI-key fallback, and default preset ID rules.
 25. Desktop repeat task settings + remote loop API
-    `settings-loops.tsx` now queries `tipc.ts getLoopSummaries(...)`, while `remote-server.ts` reuses `summarizeLoop(...)` and `summarizeLoops(...)` for `/v1/loops` plus repeat-task create/update responses, so profile names and runtime last-run/next-run/is-running fields are merged in one main-process path before either the desktop UI or remote clients render them.
+    `settings-loops.tsx` now queries `tipc.ts getLoopSummaries(...)`, while `tipc.ts` and `remote-server.ts` both route those summary payloads through `getManagedLoopSummaries(...)`, so profile names and runtime last-run/next-run/is-running fields are merged in one main-process path before either the desktop UI or remote clients render them.
 26. Desktop progress history + remote API conversation payloads
     `packages/shared/src/conversation-history.ts` now flattens tool calls and tool results into shared `ConversationHistoryMessage` / `ToolResult` shapes, so `llm.ts` incremental persistence, weak step summaries, and progress history payloads serialize the same way that `remote-server.ts` now serializes chat/conversation API history for mobile and other remote clients.
 27. Headless CLI conversation management
@@ -231,6 +237,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `packages/shared/src/agent-profiles.ts` now also merges ACP-capable profile agents and legacy stdio ACP entries through `getSelectableMainAcpAgents(...)`, so desktop settings main-agent dropdowns, mobile ACP selector sheets, and main-process ACP main-agent validation all expose the same deduped agent names and display names before selection resolution or settings writes happen.
 33. Headless and desktop agent catalog summaries
     `packages/shared/src/agent-profiles.ts` now also resolves agent catalog descriptions, capability summary items, and status badges, so headless `/agents` output and the desktop Settings > Agents catalog both fall back from description to guidelines the same way, list the same connection/provider/server/skill/property metadata, and label built-in/default/current/disabled states from one shared helper path.
+34. Headless CLI repeat-task controls
+    `headless-cli.ts` now routes `/loops`, `/loop-show`, `/loop-toggle`, and `/loop-run` through `loop-management.ts`, while `tipc.ts getLoopSummaries(...)` plus `remote-server.ts` repeat-task endpoints reuse the same summary/runtime helpers, so repeat-task selection by ID or name, live status rendering, enable/disable persistence, and manual run behavior stay aligned across terminal, desktop settings, and remote/mobile.
 
 ## Parity rules
 
@@ -260,6 +268,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Agent selector profile readiness is decided in one place: `getAgentProfileDisplayName(...)`, `getAgentProfileSummary(...)`, `getEnabledAgentProfiles(...)`, `sortAgentProfilesByPriority(...)`, `getDefaultAgentProfile(...)`, `resolveAgentProfileSelection(...)`, and `getAcpCapableAgentProfiles(...)`, so headless CLI `/agents` and `/agent`, desktop selector/apply-selected-agent flows, mobile selector lists, ACP-capable profile filtering, and ACP main-agent config matching all stay aligned before activation.
 - ACP main-agent option lists are decided in one place: `getSelectableMainAcpAgents(...)`, so desktop settings main-agent dropdowns, mobile ACP selectors, and main-process ACP main-agent validation all dedupe profile and legacy stdio agent names the same way before selection or fallback repair happens.
 - Agent catalog descriptions, metadata chips, and status badges are decided in one place: `getAgentProfileCatalogDescription(...)`, `getAgentProfileCatalogSummaryItems(...)`, and `getAgentProfileStatusLabels(...)`, so headless `/agents` and the desktop Settings > Agents catalog render the same fallback description and capability summary fields before presentation diverges into terminal lines or cards.
+- Repeat task summaries and runtime actions are decided in one place: `getManagedLoopSummary(...)`, `getManagedLoopSummaries(...)`, `saveManagedLoop(...)`, `toggleManagedLoopEnabled(...)`, `triggerManagedLoop(...)`, and `deleteManagedLoop(...)`, so headless CLI repeat-task controls, desktop loop summaries, and remote repeat-task endpoints all reuse the same profile-name enrichment and runtime start/stop/trigger behavior before the UI or API response diverges.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -303,6 +312,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared STT provider/model defaults stay aligned for onboarding, renderer settings, remote settings payloads, and main-process transcription callers.
 - `apps/desktop/src/main/loop-summaries.test.ts`
   Confirms repeat-task summaries prefer runtime timestamps when available and merge profile names consistently for desktop and remote callers.
+- `apps/desktop/src/main/loop-management.test.ts`
+  Confirms shared repeat-task selection, summary enrichment, enable/disable persistence, manual trigger conflicts, and delete behavior stay aligned for headless CLI, desktop summaries, and remote loop endpoints.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`
   Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
 - `apps/desktop/src/renderer/src/lib/apply-selected-agent.test.ts`

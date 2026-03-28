@@ -190,16 +190,16 @@ describe("remote-server route registration", () => {
     )
 
     expect(toggleLoopSection).toContain(
-      "const saved = loopService.saveLoop(updated)",
+      "const result = toggleManagedLoopEnabled(loopService, params.id)",
     )
-    expect(toggleLoopSection).toContain("if (!saved) {")
+    expect(toggleLoopSection).toContain("if (!result.success) {")
     expect(toggleLoopSection).toContain(".code(500)")
     expect(toggleLoopSection).toContain(
       '.send({ error: "Failed to persist repeat task toggle" })',
     )
 
     const saveIndex = toggleLoopSection.indexOf(
-      "const saved = loopService.saveLoop(updated)",
+      "const result = toggleManagedLoopEnabled(loopService, params.id)",
     )
     const failureIndex = toggleLoopSection.indexOf(
       '.send({ error: "Failed to persist repeat task toggle" })',
@@ -220,16 +220,16 @@ describe("remote-server route registration", () => {
     )
 
     expect(createLoopSection).toContain(
-      "const saved = loopService.saveLoop(newLoop)",
+      "const result = saveManagedLoop(loopService, newLoop)",
     )
-    expect(createLoopSection).toContain("if (!saved) {")
+    expect(createLoopSection).toContain("if (!result.success) {")
     expect(createLoopSection).toContain(".code(500)")
     expect(createLoopSection).toContain(
       '.send({ error: "Failed to persist repeat task" })',
     )
 
     const saveIndex = createLoopSection.indexOf(
-      "const saved = loopService.saveLoop(newLoop)",
+      "const result = saveManagedLoop(loopService, newLoop)",
     )
     const failureIndex = createLoopSection.indexOf(
       '.send({ error: "Failed to persist repeat task" })',
@@ -250,16 +250,16 @@ describe("remote-server route registration", () => {
     )
 
     expect(updateLoopSection).toContain(
-      "const saved = loopService.saveLoop(updated)",
+      "const result = saveManagedLoop(loopService, updated, {",
     )
-    expect(updateLoopSection).toContain("if (!saved) {")
+    expect(updateLoopSection).toContain("if (!result.success) {")
     expect(updateLoopSection).toContain(".code(500)")
     expect(updateLoopSection).toContain(
       '.send({ error: "Failed to persist repeat task" })',
     )
 
     const saveIndex = updateLoopSection.indexOf(
-      "const saved = loopService.saveLoop(updated)",
+      "const result = saveManagedLoop(loopService, updated, {",
     )
     const failureIndex = updateLoopSection.indexOf(
       '.send({ error: "Failed to persist repeat task" })',
@@ -280,8 +280,9 @@ describe("remote-server route registration", () => {
     )
 
     expect(source).toContain('from "./loop-summaries"')
-    expect(source).toContain("return summarizeLoop(loop, {")
-    expect(listLoopsSection).toContain("loops: summarizeLoops(loops, {")
+    expect(source).toContain('from "./loop-management"')
+    expect(source).toContain("return getManagedLoopSummary(loopService, loop)")
+    expect(listLoopsSection).toContain("loops: getManagedLoopSummaries(loopService)")
     expect(listLoopsSection).not.toContain("new Map(statuses.map(")
     expect(listLoopsSection).not.toContain("profileName:")
     expect(listLoopsSection).not.toContain("isRunning:")

@@ -89,6 +89,10 @@ const loopSummariesSource = readFileSync(
   new URL("./loop-summaries.ts", import.meta.url),
   "utf8",
 )
+const loopManagementSource = readFileSync(
+  new URL("./loop-management.ts", import.meta.url),
+  "utf8",
+)
 const settingsRemoteServerSource = readFileSync(
   new URL("../renderer/src/pages/settings-remote-server.tsx", import.meta.url),
   "utf8",
@@ -606,16 +610,47 @@ describe("CLI and desktop feature paths", () => {
     expect(modelSelectorSource).toContain("resolveModelPresetId(")
   })
 
-  it("shares repeat-task summaries across desktop and remote surfaces", () => {
+  it("shares repeat-task summaries and runtime controls across CLI, desktop, and remote surfaces", () => {
     expect(loopSummariesSource).toContain("export function summarizeLoop")
     expect(loopSummariesSource).toContain("export function summarizeLoops")
-    expect(tipcSource).toContain("getLoopSummaries: t.procedure.action")
-    expect(tipcSource).toContain(
-      "return summarizeLoops(loopService.getLoops(), {",
+    expect(loopManagementSource).toContain("export function getManagedLoopSummary")
+    expect(loopManagementSource).toContain("export function getManagedLoopSummaries")
+    expect(loopManagementSource).toContain(
+      "export function resolveManagedLoopSelection",
     )
+    expect(loopManagementSource).toContain("export function saveManagedLoop")
+    expect(loopManagementSource).toContain(
+      "export function toggleManagedLoopEnabled",
+    )
+    expect(loopManagementSource).toContain("export async function triggerManagedLoop")
+    expect(loopManagementSource).toContain("export function deleteManagedLoop")
+    expect(headlessCliSource).toContain("getManagedLoopSummaries(loopService)")
+    expect(headlessCliSource).toContain("resolveManagedLoopSelection(")
+    expect(headlessCliSource).toContain("toggleManagedLoopEnabled(loopService,")
+    expect(headlessCliSource).toContain("triggerManagedLoop(loopService,")
+    expect(tipcSource).toContain("getLoopSummaries: t.procedure.action")
+    expect(tipcSource).toContain("return getManagedLoopSummaries(loopService)")
     expect(remoteServerSource).toContain('from "./loop-summaries"')
-    expect(remoteServerSource).toContain("return summarizeLoop(loop, {")
-    expect(remoteServerSource).toContain("loops: summarizeLoops(loops, {")
+    expect(remoteServerSource).toContain('from "./loop-management"')
+    expect(remoteServerSource).toContain(
+      "return getManagedLoopSummary(loopService, loop)",
+    )
+    expect(remoteServerSource).toContain("loops: getManagedLoopSummaries(loopService)")
+    expect(remoteServerSource).toContain(
+      "const result = toggleManagedLoopEnabled(loopService, params.id)",
+    )
+    expect(remoteServerSource).toContain(
+      "const result = await triggerManagedLoop(loopService, params.id)",
+    )
+    expect(remoteServerSource).toContain(
+      "const result = saveManagedLoop(loopService, newLoop)",
+    )
+    expect(remoteServerSource).toContain(
+      "const result = saveManagedLoop(loopService, updated, {",
+    )
+    expect(remoteServerSource).toContain(
+      "const result = deleteManagedLoop(loopService, params.id)",
+    )
     expect(settingsLoopsSource).toContain("tipcClient.getLoopSummaries()")
     expect(settingsLoopsSource).toContain('queryKey: ["loop-summaries"]')
   })
@@ -662,6 +697,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
     expect(docsSource).toContain("Shared repeat task summaries")
+    expect(docsSource).toContain("Shared repeat task management")
     expect(docsSource).toContain("Shared conversation history serialization")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
@@ -683,6 +719,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI session pin/archive controls")
     expect(docsSource).toContain("Headless CLI conversation management")
     expect(docsSource).toContain("Headless CLI agent selection")
+    expect(docsSource).toContain("Headless CLI repeat-task controls")
     expect(docsSource).toContain("Headless CLI and desktop agent picker")
     expect(docsSource).toContain("Desktop and mobile ACP main-agent pickers")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
