@@ -13,6 +13,8 @@ import os from "os"
 import path from "path"
 import {
   formatConversationHistoryMessages,
+  getEnabledSkillIdsForAgentProfile,
+  isSkillEnabledForAgentProfile,
   sanitizeConversationSessionState,
   resolveChatModelSelection,
   resolveChatProviderId,
@@ -2367,13 +2369,10 @@ async function startRemoteServerInternal(
     try {
       const skills = skillsService.getSkills()
       const currentProfile = agentProfileService.getCurrentProfile()
-      // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
-      const allEnabledByDefault =
-        !currentProfile?.skillsConfig ||
-        !currentProfile.skillsConfig.allSkillsDisabledByDefault
-      const enabledSkillIds = allEnabledByDefault
-        ? skills.map((s) => s.id)
-        : currentProfile?.skillsConfig?.enabledSkillIds || []
+      const enabledSkillIds = getEnabledSkillIdsForAgentProfile(
+        currentProfile,
+        skills.map((skill) => skill.id),
+      )
 
       return reply.send({
         skills: skills.map((s) => ({
@@ -2420,14 +2419,9 @@ async function startRemoteServerInternal(
         params.id,
         allSkillIds,
       )
-      // Check enablement using the new semantics
-      const isNowEnabled =
-        !updatedProfile?.skillsConfig ||
-        !updatedProfile.skillsConfig.allSkillsDisabledByDefault
-          ? true
-          : (updatedProfile.skillsConfig.enabledSkillIds || []).includes(
-              params.id,
-            )
+      const isNowEnabled = updatedProfile
+        ? isSkillEnabledForAgentProfile(updatedProfile, params.id)
+        : false
 
       return reply.send({
         success: true,

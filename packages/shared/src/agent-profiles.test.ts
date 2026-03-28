@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
+  areAllSkillsEnabledForAgentProfile,
   getAcpCapableAgentProfiles,
   getAgentProfileCatalogDescription,
   getAgentProfileCatalogSummaryItems,
   getAgentProfileDisplayName,
+  getEnabledSkillIdsForAgentProfile,
   getAgentProfileSummary,
   getAgentProfileStatusLabels,
   getDefaultAgentProfile,
@@ -11,8 +13,10 @@ import {
   getAgentProfileConnectionType,
   getSelectableMainAcpAgents,
   isAcpCapableAgentProfile,
+  isSkillEnabledForAgentProfile,
   resolveAgentProfileSelection,
   sortAgentProfilesByPriority,
+  toggleSkillForAgentProfile,
 } from "./agent-profiles"
 
 describe("agent profile helpers", () => {
@@ -111,6 +115,64 @@ describe("agent profile helpers", () => {
         { availableSkillCount: 3 },
       ),
     ).toEqual(["internal", "3 skills"])
+  })
+
+  it("shares profile skill enablement rules across default, opt-in, and toggle states", () => {
+    expect(areAllSkillsEnabledForAgentProfile(undefined)).toBe(true)
+    expect(isSkillEnabledForAgentProfile(undefined, "skill-1")).toBe(true)
+    expect(
+      getEnabledSkillIdsForAgentProfile(undefined, ["skill-1", "skill-2"]),
+    ).toEqual(["skill-1", "skill-2"])
+
+    const optInProfile = {
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: ["skill-2"],
+      },
+    }
+
+    expect(areAllSkillsEnabledForAgentProfile(optInProfile)).toBe(false)
+    expect(isSkillEnabledForAgentProfile(optInProfile, "skill-1")).toBe(false)
+    expect(isSkillEnabledForAgentProfile(optInProfile, "skill-2")).toBe(true)
+    expect(
+      getEnabledSkillIdsForAgentProfile(optInProfile, [
+        "skill-1",
+        "skill-2",
+        "skill-3",
+      ]),
+    ).toEqual(["skill-2"])
+
+    expect(
+      toggleSkillForAgentProfile(undefined, "skill-2", [
+        "skill-1",
+        "skill-2",
+        "skill-3",
+      ]),
+    ).toEqual({
+      enabledSkillIds: ["skill-1", "skill-3"],
+      allSkillsDisabledByDefault: true,
+    })
+
+    expect(
+      toggleSkillForAgentProfile(optInProfile, "skill-1", [
+        "skill-1",
+        "skill-2",
+      ]),
+    ).toEqual({
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: false,
+    })
+
+    expect(
+      toggleSkillForAgentProfile(optInProfile, "skill-2", [
+        "skill-1",
+        "skill-2",
+        "skill-3",
+      ]),
+    ).toEqual({
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: true,
+    })
   })
 
   it("filters enabled profiles and sorts them by priority, default, and label", () => {

@@ -235,6 +235,116 @@ export function getAgentProfileCatalogSummaryItems(
   return items
 }
 
+function normalizeSkillIds(skillIds: readonly string[]): string[] {
+  return [
+    ...new Set(
+      skillIds.filter(
+        (skillId) =>
+          typeof skillId === "string" && skillId.trim().length > 0,
+      ),
+    ),
+  ]
+}
+
+export function areAllSkillsEnabledForAgentProfile(
+  profile: Pick<AgentProfileCatalogLike, "skillsConfig"> | null | undefined,
+): boolean {
+  return !profile?.skillsConfig?.allSkillsDisabledByDefault
+}
+
+export function isSkillEnabledForAgentProfile(
+  profile: Pick<AgentProfileCatalogLike, "skillsConfig"> | null | undefined,
+  skillId: string,
+): boolean {
+  const normalizedSkillId = skillId.trim()
+  if (!normalizedSkillId) {
+    return false
+  }
+
+  if (areAllSkillsEnabledForAgentProfile(profile)) {
+    return true
+  }
+
+  return (profile?.skillsConfig?.enabledSkillIds ?? []).includes(
+    normalizedSkillId,
+  )
+}
+
+export function getEnabledSkillIdsForAgentProfile(
+  profile: Pick<AgentProfileCatalogLike, "skillsConfig"> | null | undefined,
+  allSkillIds: readonly string[],
+): string[] {
+  const normalizedSkillIds = normalizeSkillIds(allSkillIds)
+  if (areAllSkillsEnabledForAgentProfile(profile)) {
+    return normalizedSkillIds
+  }
+
+  const enabledSkillIds = new Set(profile?.skillsConfig?.enabledSkillIds ?? [])
+  return normalizedSkillIds.filter((skillId) => enabledSkillIds.has(skillId))
+}
+
+export function toggleSkillForAgentProfile(
+  profile: Pick<AgentProfileCatalogLike, "skillsConfig"> | null | undefined,
+  skillId: string,
+  allSkillIds: readonly string[],
+): {
+  enabledSkillIds: string[]
+  allSkillsDisabledByDefault: boolean
+} {
+  const normalizedSkillId = skillId.trim()
+  const normalizedAllSkillIds = normalizeSkillIds(allSkillIds)
+  if (!normalizedSkillId) {
+    return areAllSkillsEnabledForAgentProfile(profile)
+      ? {
+        enabledSkillIds: [],
+        allSkillsDisabledByDefault: false,
+      }
+      : {
+        enabledSkillIds: normalizedAllSkillIds.filter((availableSkillId) =>
+          (profile?.skillsConfig?.enabledSkillIds ?? []).includes(
+            availableSkillId,
+          ),
+        ),
+        allSkillsDisabledByDefault: true,
+      }
+  }
+
+  if (areAllSkillsEnabledForAgentProfile(profile)) {
+    return {
+      enabledSkillIds: normalizedAllSkillIds.filter(
+        (availableSkillId) => availableSkillId !== normalizedSkillId,
+      ),
+      allSkillsDisabledByDefault: true,
+    }
+  }
+
+  const enabledSkillIds = new Set(profile?.skillsConfig?.enabledSkillIds ?? [])
+  if (enabledSkillIds.has(normalizedSkillId)) {
+    enabledSkillIds.delete(normalizedSkillId)
+  } else {
+    enabledSkillIds.add(normalizedSkillId)
+  }
+
+  if (
+    normalizedAllSkillIds.length > 0 &&
+    normalizedAllSkillIds.every((availableSkillId) =>
+      enabledSkillIds.has(availableSkillId),
+    )
+  ) {
+    return {
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: false,
+    }
+  }
+
+  return {
+    enabledSkillIds: normalizedAllSkillIds.filter((availableSkillId) =>
+      enabledSkillIds.has(availableSkillId),
+    ),
+    allSkillsDisabledByDefault: true,
+  }
+}
+
 export function sortAgentProfilesByPriority<TProfile extends AgentProfileLike>(
   profiles: readonly TProfile[],
   options: {

@@ -27,6 +27,7 @@ import {
 } from "./conversation-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
+  getEnabledSkillIdsForAgentProfile,
   type ConversationSessionState,
   type ConversationSessionStateKey,
   getAgentProfileCatalogDescription,
@@ -34,6 +35,7 @@ import {
   getAgentProfileDisplayName,
   getEnabledAgentProfiles,
   getAgentProfileStatusLabels,
+  isSkillEnabledForAgentProfile,
   orderItemsByPinnedFirst,
   resolveAgentProfileSelection,
   resolveChatModelDisplayInfo,
@@ -48,6 +50,7 @@ import {
 } from "../shared/mcp-server-status"
 import type {
   AgentProfile,
+  AgentSkill,
   AgentProgressUpdate,
   Conversation,
   ConversationHistoryItem,
@@ -144,6 +147,8 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/loop-show <id-or-name>${colors.reset} - Show full repeat-task details
   ${colors.cyan}/loop-toggle <id-or-name>${colors.reset} - Enable or disable a repeat task
   ${colors.cyan}/loop-run <id-or-name>${colors.reset} - Run a repeat task immediately
+  ${colors.cyan}/skills${colors.reset}        - List skills for the current agent profile
+  ${colors.cyan}/skill <id>${colors.reset}    - Toggle a skill for the current agent profile
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -357,6 +362,53 @@ function printAgents() {
       }
     }
   }
+  console.log()
+}
+
+function getSortedSkillsForCli(): AgentSkill[] {
+  return [...skillsService.getSkills()].sort((left, right) =>
+    left.name.localeCompare(right.name),
+  )
+}
+
+function printSkills() {
+  const skills = getSortedSkillsForCli()
+  const currentProfile = agentProfileService.getCurrentProfile()
+  const enabledSkillIdSet = new Set(
+    getEnabledSkillIdsForAgentProfile(
+      currentProfile,
+      skills.map((skill) => skill.id),
+    ),
+  )
+
+  console.log(`\n${colors.bold}Skills:${colors.reset}`)
+  console.log(
+    `  Current agent: ${colors.cyan}${currentProfile ? getAgentProfileDisplayName(currentProfile) : "(global defaults)"}${colors.reset}${currentProfile ? `${colors.dim} (${currentProfile.id})${colors.reset}` : ""}`,
+  )
+
+  if (skills.length === 0) {
+    console.log(`  ${colors.dim}(no skills configured)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const skill of skills) {
+    const enabledForProfile = enabledSkillIdSet.has(skill.id)
+    const stateLabel = enabledForProfile
+      ? `${colors.green}enabled`
+      : `${colors.dim}disabled`
+    console.log(
+      `  ${skill.id}: ${stateLabel}${colors.reset} ${colors.dim}- ${skill.name}${colors.reset}`,
+    )
+    if (skill.description) {
+      console.log(`    ${colors.dim}${skill.description}${colors.reset}`)
+    }
+  }
+
+  console.log()
+  console.log(
+    `${colors.dim}Use /skill <id> to toggle a skill for the current agent profile.${colors.reset}`,
+  )
   console.log()
 }
 
@@ -606,6 +658,48 @@ async function handleRunLoop(selection: string): Promise<void> {
   printColored(
     colors.green,
     `Triggered repeat task ${selectedLoop.id}: ${selectedLoop.name}`,
+  )
+}
+
+async function handleToggleSkill(selection: string): Promise<void> {
+  const skillId = selection.trim()
+  if (!skillId) {
+    printColored(colors.yellow, "Usage: /skill <skill-id>")
+    return
+  }
+
+  const currentProfile = agentProfileService.getCurrentProfile()
+  if (!currentProfile) {
+    printColored(
+      colors.yellow,
+      "No current agent profile. Use /agent <id-or-name> before toggling skills.",
+    )
+    return
+  }
+
+  const skill = skillsService.getSkill(skillId)
+  if (!skill) {
+    printColored(colors.red, `Skill not found: ${skillId}`)
+    return
+  }
+
+  const updatedProfile = agentProfileService.toggleProfileSkill(
+    currentProfile.id,
+    skill.id,
+    getSortedSkillsForCli().map((availableSkill) => availableSkill.id),
+  )
+  if (!updatedProfile) {
+    printColored(colors.red, `Failed to toggle skill: ${skill.id}`)
+    return
+  }
+
+  const enabledForProfile = isSkillEnabledForAgentProfile(
+    updatedProfile,
+    skill.id,
+  )
+  printColored(
+    colors.green,
+    `${enabledForProfile ? "Enabled" : "Disabled"} skill ${skill.name} (${skill.id}) for ${getAgentProfileDisplayName(updatedProfile)}.`,
   )
 }
 
@@ -864,6 +958,11 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/loop-run":
       await handleRunLoop(argumentsText)
+    case "/skills":
+      printSkills()
+      return true
+    case "/skill":
+      await handleToggleSkill(argumentsText)
       return true
     case "/conversations":
       await printConversations()

@@ -34,6 +34,10 @@ const agentProfileActivationSource = readFileSync(
   new URL("./agent-profile-activation.ts", import.meta.url),
   "utf8",
 )
+const agentProfileServiceSource = readFileSync(
+  new URL("./agent-profile-service.ts", import.meta.url),
+  "utf8",
+)
 const appRuntimeSource = readFileSync(
   new URL("./app-runtime.ts", import.meta.url),
   "utf8",
@@ -141,6 +145,10 @@ const onboardingSource = readFileSync(
 )
 const settingsAgentsSource = readFileSync(
   new URL("../renderer/src/pages/settings-agents.tsx", import.meta.url),
+  "utf8",
+)
+const agentCapabilitiesSidebarSource = readFileSync(
+  new URL("../renderer/src/components/agent-capabilities-sidebar.tsx", import.meta.url),
   "utf8",
 )
 const agentStoreSource = readFileSync(
@@ -420,6 +428,39 @@ describe("CLI and desktop feature paths", () => {
     expect(mainAgentSelectionSource).toContain("isAcpCapableAgentProfile(")
   })
 
+  it("shares profile skill gating across CLI, desktop, and remote/mobile surfaces", () => {
+    expect(sharedAgentProfilesSource).toContain(
+      "export function areAllSkillsEnabledForAgentProfile",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function isSkillEnabledForAgentProfile",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getEnabledSkillIdsForAgentProfile",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function toggleSkillForAgentProfile",
+    )
+    expect(agentProfileServiceSource).toContain("toggleSkillForAgentProfile(")
+    expect(agentProfileServiceSource).toContain(
+      "isSkillEnabledForAgentProfile(",
+    )
+    expect(headlessCliSource).toContain('case "/skills":')
+    expect(headlessCliSource).toContain('case "/skill":')
+    expect(headlessCliSource).toContain("getEnabledSkillIdsForAgentProfile(")
+    expect(headlessCliSource).toContain("isSkillEnabledForAgentProfile(")
+    expect(settingsAgentsSource).toContain("toggleSkillForAgentProfile(")
+    expect(settingsAgentsSource).toContain("isSkillEnabledForAgentProfile(")
+    expect(agentCapabilitiesSidebarSource).toContain(
+      "toggleSkillForAgentProfile(",
+    )
+    expect(agentCapabilitiesSidebarSource).toContain(
+      "getEnabledSkillIdsForAgentProfile(",
+    )
+    expect(remoteServerSource).toContain("getEnabledSkillIdsForAgentProfile(")
+    expect(remoteServerSource).toContain("isSkillEnabledForAgentProfile(")
+  })
+
   it("routes the remote server through the shared launcher and runner", () => {
     expect(remoteServerSource).toContain('approvalMode: "dialog"')
     expect(remoteServerSource).toContain("const agentResult = await runPromise")
@@ -693,6 +734,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared agent profile activation")
     expect(docsSource).toContain("Shared agent selector profiles")
     expect(docsSource).toContain("Shared ACP main-agent options")
+    expect(docsSource).toContain("Shared profile skill gating")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -722,6 +764,10 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI repeat-task controls")
     expect(docsSource).toContain("Headless CLI and desktop agent picker")
     expect(docsSource).toContain("Desktop and mobile ACP main-agent pickers")
+    expect(docsSource).toContain("Headless CLI skill toggles")
+    expect(docsSource).toContain(
+      "Desktop/mobile per-profile skill enablement",
+    )
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")

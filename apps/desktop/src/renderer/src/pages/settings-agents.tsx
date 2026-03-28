@@ -14,10 +14,13 @@ import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, Chevr
 import { Facehash } from "facehash"
 import { toast } from "sonner"
 import {
+  getEnabledSkillIdsForAgentProfile,
   getAgentProfileCatalogDescription,
   getAgentProfileCatalogSummaryItems,
   getAgentProfileDisplayName,
   getAgentProfileStatusLabels,
+  isSkillEnabledForAgentProfile,
+  toggleSkillForAgentProfile,
 } from "@dotagents/shared"
 
 // Curated palette of vivid colors to pick from deterministically
@@ -379,6 +382,7 @@ export function SettingsAgents() {
   const runtimeTools = typedTools.filter(t => t.sourceKind === "runtime")
   const externalTools = typedTools.filter(t => t.sourceKind === "mcp")
   const serverNames = Object.keys(serverStatus)
+  const allSkillIds = skills.map((skill) => skill.id)
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.sourceName === serverName)
 
   // Tool config helpers
@@ -401,9 +405,7 @@ export function SettingsAgents() {
   }
 
   const isSkillEnabled = (skillId: string): boolean => {
-    // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
-    if (!editing?.skillsConfig || !editing.skillsConfig.allSkillsDisabledByDefault) return true
-    return (editing.skillsConfig.enabledSkillIds || []).includes(skillId)
+    return isSkillEnabledForAgentProfile(editing, skillId)
   }
 
   const toggleServer = (serverName: string) => {
@@ -450,21 +452,10 @@ export function SettingsAgents() {
 
   const toggleSkill = (skillId: string) => {
     if (!editing) return
-    // Transitioning from "all enabled by default" to explicit opt-in mode
-    if (!editing.skillsConfig || !editing.skillsConfig.allSkillsDisabledByDefault) {
-      const allExcept = skills.map(s => s.id).filter(id => id !== skillId)
-      setEditing({ ...editing, skillsConfig: { enabledSkillIds: allExcept, allSkillsDisabledByDefault: true } })
-      return
-    }
-    const ids = [...(editing.skillsConfig.enabledSkillIds || [])]
-    const idx = ids.indexOf(skillId)
-    if (idx >= 0) ids.splice(idx, 1); else ids.push(skillId)
-    // If all skills are re-enabled, reset to default state
-    if (ids.length === skills.length) {
-      setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: false } })
-    } else {
-      setEditing({ ...editing, skillsConfig: { ...editing.skillsConfig, enabledSkillIds: ids } })
-    }
+    setEditing({
+      ...editing,
+      skillsConfig: toggleSkillForAgentProfile(editing, skillId, allSkillIds),
+    })
   }
 
   // Bulk toggle helpers
@@ -476,8 +467,9 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: true } })
   }
-  const allSkillsEnabled = !editing?.skillsConfig?.allSkillsDisabledByDefault || (editing?.skillsConfig?.enabledSkillIds?.length === skills.length)
-  const allSkillsDisabled = !!editing?.skillsConfig?.allSkillsDisabledByDefault && (editing?.skillsConfig?.enabledSkillIds?.length ?? 0) === 0
+  const enabledSkillIds = getEnabledSkillIdsForAgentProfile(editing, allSkillIds)
+  const allSkillsEnabled = enabledSkillIds.length === allSkillIds.length
+  const allSkillsDisabled = !!editing?.skillsConfig?.allSkillsDisabledByDefault && enabledSkillIds.length === 0
 
   const enableAllServers = () => {
     if (!editing) return

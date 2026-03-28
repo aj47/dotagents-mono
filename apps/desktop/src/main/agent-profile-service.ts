@@ -2,6 +2,11 @@ import { app } from "electron"
 import path from "path"
 import fs from "fs"
 import {
+  areAllSkillsEnabledForAgentProfile,
+  isSkillEnabledForAgentProfile,
+  toggleSkillForAgentProfile,
+} from "@dotagents/shared"
+import {
   AgentProfile,
   AgentProfileRole,
   AgentProfilesData,
@@ -918,28 +923,10 @@ class AgentProfileService {
     const profile = this.getById(profileId)
     if (!profile) return undefined
 
-    // If profile has no explicit skills config (all enabled by default)
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) {
-      // Transitioning from "all enabled" to opt-in: enable all EXCEPT the toggled skill
-      const allIds = allSkillIds ?? []
-      const newEnabledSkillIds = allIds.filter(id => id !== skillId)
-      return this.updateProfileSkillsConfig(profileId, {
-        enabledSkillIds: newEnabledSkillIds,
-        allSkillsDisabledByDefault: true,
-      })
-    }
-
-    const currentEnabledSkills = profile.skillsConfig.enabledSkillIds ?? []
-    const isCurrentlyEnabled = currentEnabledSkills.includes(skillId)
-
-    const newEnabledSkillIds = isCurrentlyEnabled
-      ? currentEnabledSkills.filter(id => id !== skillId)
-      : [...currentEnabledSkills, skillId]
-
-    return this.updateProfileSkillsConfig(profileId, {
-      enabledSkillIds: newEnabledSkillIds,
-      allSkillsDisabledByDefault: true,
-    })
+    return this.updateProfileSkillsConfig(
+      profileId,
+      toggleSkillForAgentProfile(profile, skillId, allSkillIds ?? []),
+    )
   }
 
   /**
@@ -949,9 +936,7 @@ class AgentProfileService {
   isSkillEnabledForProfile(profileId: string, skillId: string): boolean {
     const profile = this.getById(profileId)
     if (!profile) return false
-    // No skillsConfig = unconfigured = all skills enabled by default
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) return true
-    return (profile.skillsConfig.enabledSkillIds ?? []).includes(skillId)
+    return isSkillEnabledForAgentProfile(profile, skillId)
   }
 
   /**
@@ -960,7 +945,7 @@ class AgentProfileService {
   hasAllSkillsEnabledByDefault(profileId: string): boolean {
     const profile = this.getById(profileId)
     if (!profile) return false
-    return !profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault
+    return areAllSkillsEnabledForAgentProfile(profile)
   }
 
   /**
@@ -984,12 +969,15 @@ class AgentProfileService {
     const currentProfile = this.getCurrentProfile()
     if (!currentProfile) return undefined
 
-    // If all skills are enabled by default (no skillsConfig), no need to add explicitly
-    if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) {
+    const skillsConfig = currentProfile.skillsConfig
+    if (
+      areAllSkillsEnabledForAgentProfile(currentProfile) ||
+      !skillsConfig?.allSkillsDisabledByDefault
+    ) {
       return currentProfile
     }
 
-    const currentEnabledSkills = currentProfile.skillsConfig.enabledSkillIds ?? []
+    const currentEnabledSkills = skillsConfig.enabledSkillIds ?? []
     if (currentEnabledSkills.includes(skillId)) return currentProfile
 
     return this.updateProfileSkillsConfig(currentProfile.id, {

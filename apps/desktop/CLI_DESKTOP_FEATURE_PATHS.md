@@ -120,6 +120,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helper: `getSelectableMainAcpAgents(...)`
 - Current callers: `main-agent-selection.ts`; renderer `settings-general-main-agent-options.ts` (used by `settings-general.tsx` and `settings-providers.tsx`); and mobile `mainAgentOptions.ts`
 
+## Shared profile skill gating
+
+- Shared selector file: `packages/shared/src/agent-profiles.ts`
+- Shared helpers: `areAllSkillsEnabledForAgentProfile(...)`, `isSkillEnabledForAgentProfile(...)`, `getEnabledSkillIdsForAgentProfile(...)`, and `toggleSkillForAgentProfile(...)`
+- Current callers: `agent-profile-service.ts`; `headless-cli.ts` `/skills` and `/skill`; renderer `settings-agents.tsx`; `agent-capabilities-sidebar.tsx`; and `remote-server.ts` `/v1/skills`
+
 ## Shared agent catalog summaries
 
 - Shared selector file: `packages/shared/src/agent-profiles.ts`
@@ -239,6 +245,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `packages/shared/src/agent-profiles.ts` now also resolves agent catalog descriptions, capability summary items, and status badges, so headless `/agents` output and the desktop Settings > Agents catalog both fall back from description to guidelines the same way, list the same connection/provider/server/skill/property metadata, and label built-in/default/current/disabled states from one shared helper path.
 34. Headless CLI repeat-task controls
     `headless-cli.ts` now routes `/loops`, `/loop-show`, `/loop-toggle`, and `/loop-run` through `loop-management.ts`, while `tipc.ts getLoopSummaries(...)` plus `remote-server.ts` repeat-task endpoints reuse the same summary/runtime helpers, so repeat-task selection by ID or name, live status rendering, enable/disable persistence, and manual run behavior stay aligned across terminal, desktop settings, and remote/mobile.
+35. Headless CLI skill toggles
+    `headless-cli.ts` now also exposes `/skills` and `/skill <id>` through the same profile-skill helper path used elsewhere, so terminal skill visibility and per-profile toggles reuse the same “all enabled unless opt-in mode is active” semantics that the desktop agent editor and remote/mobile settings already use.
+36. Desktop/mobile per-profile skill enablement
+    `packages/shared/src/agent-profiles.ts` now also resolves effective enabled skill IDs plus toggle transitions in one place, so `settings-agents.tsx`, `agent-capabilities-sidebar.tsx`, `agent-profile-service.ts`, and `remote-server.ts` `/v1/skills` all agree on which skills are enabled for the current profile and when a profile should collapse back to the default “all skills enabled” state.
 
 ## Parity rules
 
@@ -267,6 +277,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Agent profile activation is decided in one place: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`, so headless CLI agent switching, desktop agent selection, and remote/mobile profile switches all reuse the same current-profile persistence, model override application, and MCP runtime config path.
 - Agent selector profile readiness is decided in one place: `getAgentProfileDisplayName(...)`, `getAgentProfileSummary(...)`, `getEnabledAgentProfiles(...)`, `sortAgentProfilesByPriority(...)`, `getDefaultAgentProfile(...)`, `resolveAgentProfileSelection(...)`, and `getAcpCapableAgentProfiles(...)`, so headless CLI `/agents` and `/agent`, desktop selector/apply-selected-agent flows, mobile selector lists, ACP-capable profile filtering, and ACP main-agent config matching all stay aligned before activation.
 - ACP main-agent option lists are decided in one place: `getSelectableMainAcpAgents(...)`, so desktop settings main-agent dropdowns, mobile ACP selectors, and main-process ACP main-agent validation all dedupe profile and legacy stdio agent names the same way before selection or fallback repair happens.
+- Profile skill enablement is decided in one place: `areAllSkillsEnabledForAgentProfile(...)`, `isSkillEnabledForAgentProfile(...)`, `getEnabledSkillIdsForAgentProfile(...)`, and `toggleSkillForAgentProfile(...)`, so headless CLI `/skills` and `/skill`, desktop agent skill editors, `agent-profile-service.ts`, and remote/mobile `/v1/skills` payloads all interpret default-vs-opt-in skill access the same way.
 - Agent catalog descriptions, metadata chips, and status badges are decided in one place: `getAgentProfileCatalogDescription(...)`, `getAgentProfileCatalogSummaryItems(...)`, and `getAgentProfileStatusLabels(...)`, so headless `/agents` and the desktop Settings > Agents catalog render the same fallback description and capability summary fields before presentation diverges into terminal lines or cards.
 - Repeat task summaries and runtime actions are decided in one place: `getManagedLoopSummary(...)`, `getManagedLoopSummaries(...)`, `saveManagedLoop(...)`, `toggleManagedLoopEnabled(...)`, `triggerManagedLoop(...)`, and `deleteManagedLoop(...)`, so headless CLI repeat-task controls, desktop loop summaries, and remote repeat-task endpoints all reuse the same profile-name enrichment and runtime start/stop/trigger behavior before the UI or API response diverges.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
@@ -287,7 +298,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, headless CLI skill toggles, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
 - `apps/desktop/src/main/remote-server-qr.test.ts`
@@ -305,7 +316,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/agent-profile-activation.test.ts`
   Confirms shared profile activation records the current profile ID and reapplies defined model overrides without clobbering unrelated runtime settings for CLI, desktop, and remote/mobile callers.
 - `packages/shared/src/agent-profiles.test.ts`
-  Confirms shared enabled/default agent selection, display-name/summary fallback, ACP-capable filtering, and CLI selector matching stay aligned for headless CLI, desktop selector/apply flows, mobile selectors, and ACP main-agent selection.
+  Confirms shared enabled/default agent selection, display-name/summary fallback, ACP-capable filtering, CLI selector matching, and profile-skill gating stay aligned for headless CLI, desktop selector/apply flows, mobile selectors, and ACP main-agent selection.
 - `packages/shared/src/conversation-history.test.ts`
   Confirms shared tool-call/result flattening and conversation-history serialization stay aligned for desktop runtime progress, persistence, and remote API callers.
 - `packages/shared/src/stt-models.test.ts`
