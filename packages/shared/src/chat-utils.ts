@@ -33,7 +33,7 @@ export function shouldCollapseMessage(
  * @returns A formatted string showing tool names
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
-  if (!toolCalls || toolCalls.length === 0) return '';
+  if (!toolCalls?.length) return '';
   return `🔧 ${toolCalls.map(tc => tc.name).join(', ')}`;
 }
 
@@ -43,7 +43,7 @@ export function getToolCallsSummary(toolCalls: ToolCall[]): string {
  * @returns A formatted string showing result status and key information
  */
 export function getToolResultsSummary(toolResults: ToolResult[]): string {
-  if (!toolResults || toolResults.length === 0) return '';
+  if (!toolResults?.length) return '';
   const allSuccess = toolResults.every(r => r.success);
   const icon = allSuccess ? '✅' : '⚠️';
   const count = toolResults.length;
