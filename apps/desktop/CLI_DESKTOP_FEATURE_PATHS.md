@@ -29,9 +29,9 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 ## Feature path matrix
 
 1. Desktop text input
-   `tipc.ts` creates or appends the user turn, then calls `ensureAgentSessionForConversation(...)` before `processWithAgentMode(...)`, which delegates to `runTopLevelAgentMode(...)`.
+   `tipc.ts` queues follow-ups for active sessions when needed; otherwise `createMcpTextInput` calls `preparePromptExecutionContext(...)` so the desktop text prompt creates/appends the user turn and reuses the same session bootstrap as headless and remote before `processWithAgentMode(...)` delegates to `runTopLevelAgentMode(...)`.
 2. Desktop voice MCP mode
-   `tipc.ts` resolves the transcribing session through `ensureAgentSessionForConversation(...)`, updates the transcription status on that session, then reuses the same `processWithAgentMode(...)` wrapper.
+   `tipc.ts` resolves the transcribing session through `ensureAgentSessionForConversation(...)`, emits transcription progress on that session, then calls `preparePromptExecutionContext(...)` after transcription so the persisted user turn and runtime session handoff follow the same shared bootstrap before reusing `processWithAgentMode(...)`.
 3. Headless CLI prompt
    `headless-cli.ts` calls `preparePromptExecutionContext(...)`, registers a terminal approval handler for the returned session, then calls `runTopLevelAgentMode(...)`.
 4. Remote server prompt
@@ -50,6 +50,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - ACP routing is decided in one place: `runTopLevelAgentMode(...)`.
 - Standard MCP approval flow is inline when the caller requests `approvalMode: "inline"`.
 - Conversation/session bootstrap is decided in one place: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`.
+- Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
 - CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which lets terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
 - GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.

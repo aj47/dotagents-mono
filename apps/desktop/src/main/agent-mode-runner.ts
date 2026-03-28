@@ -340,6 +340,12 @@ export function ensureAgentSessionForConversation(
 
   for (const sessionId of sessionCandidates) {
     if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
+      agentSessionTracker.updateSession(sessionId, {
+        conversationId,
+        conversationTitle,
+        isSnoozed: startSnoozed,
+        ...(profileSnapshot ? { profileSnapshot } : {}),
+      })
       return {
         sessionId,
         reusedExistingSession: true,

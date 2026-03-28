@@ -17,6 +17,7 @@ describe("CLI and desktop feature paths", () => {
     expect(agentModeRunnerSource).toContain("export async function preparePromptExecutionContext")
     expect(headlessCliSource).toContain("preparePromptExecutionContext({")
     expect(remoteServerSource).toContain("preparePromptExecutionContext({")
+    expect(tipcSource).toContain("preparePromptExecutionContext({")
     expect(tipcSource).toContain("ensureAgentSessionForConversation({")
     expect(loopServiceSource).toContain("ensureAgentSessionForConversation({")
   })
@@ -33,6 +34,7 @@ describe("CLI and desktop feature paths", () => {
 
   it("keeps desktop UI and loop entry points on the shared runner", () => {
     expect(tipcSource).toContain("const result = await runTopLevelAgentMode({")
+    expect(tipcSource).toContain("previousConversationHistoryOverride")
     expect(tipcSource).toContain("maxIterationsOverride?: number")
     expect(tipcSource).toContain("return processWithAgentMode(text, conversationId, existingSessionId, true, maxIterationsOverride)")
     expect(loopServiceSource).toContain("runAgentLoopSession(loop.prompt, conversation.id, sessionId, loop.maxIterations)")

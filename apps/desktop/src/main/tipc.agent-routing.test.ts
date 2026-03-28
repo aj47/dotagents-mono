@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest"
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 
 describe("tipc selected-agent routing", () => {
-  it("delegates top-level routing to the shared runner while preserving revived-session history", () => {
+  it("delegates top-level routing to the shared runner while preserving prepared or revived session history", () => {
     expect(tipcSource).toContain(
-      "const previousConversationHistory = await loadPreviousConversationHistory(conversationId)",
+      "const previousConversationHistory = previousConversationHistoryOverride",
     )
+    expect(tipcSource).toContain("preparePromptExecutionContext({")
     expect(tipcSource).toContain("const result = await runTopLevelAgentMode({")
     expect(tipcSource).toContain("existingSessionId")
   })

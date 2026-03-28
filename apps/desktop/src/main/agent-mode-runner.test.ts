@@ -227,6 +227,11 @@ describe("agent-mode-runner", () => {
     })
 
     expect(mocks.reviveSession).toHaveBeenCalledWith("session-existing", true)
+    expect(mocks.updateSession).toHaveBeenCalledWith("session-existing", {
+      conversationId: "conv-1",
+      conversationTitle: "Current prompt",
+      isSnoozed: true,
+    })
     expect(mocks.startSession).not.toHaveBeenCalled()
     expect(result).toEqual({
       conversationId: "conv-1",

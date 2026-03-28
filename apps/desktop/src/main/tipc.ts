@@ -81,6 +81,7 @@ import { acpService, ACPRunRequest } from "./acp-service"
 import {
   ensureAgentSessionForConversation,
   loadPreviousConversationHistory,
+  preparePromptExecutionContext,
   runTopLevelAgentMode,
 } from "./agent-mode-runner"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
@@ -164,12 +165,14 @@ async function processWithAgentMode(
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
   maxIterationsOverride?: number,
+  previousConversationHistoryOverride?: Parameters<typeof runTopLevelAgentMode>[0]["previousConversationHistory"],
 ): Promise<string> {
   const normalizedMaxIterationsOverride =
     typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
       ? Math.max(1, Math.floor(maxIterationsOverride))
       : undefined
-  const previousConversationHistory = await loadPreviousConversationHistory(conversationId)
+  const previousConversationHistory = previousConversationHistoryOverride
+    ?? await loadPreviousConversationHistory(conversationId)
 
   const result = await runTopLevelAgentMode({
     text,
@@ -1422,44 +1425,29 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
-        
-      // Create or get conversation ID
-      let conversationId = input.conversationId
-      if (!conversationId) {
-        const conversation = await conversationService.createConversation(
-          input.text,
-          "user",
-        )
-        conversationId = conversation.id
-      } else {
-        // Check if message queuing is enabled and there's an active session
-        if (config.mcpMessageQueueEnabled !== false) {
-          const activeSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-          if (activeSessionId) {
-            const session = agentSessionTracker.getSession(activeSessionId)
-            if (session && session.status === "active") {
-              // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, input.text, activeSessionId)
-              logApp(`[createMcpTextInput] Queued message ${queuedMessage.id} for active session ${activeSessionId}`)
-              return { conversationId, queued: true, queuedMessageId: queuedMessage.id }
-            }
+
+      if (input.conversationId && config.mcpMessageQueueEnabled !== false) {
+        const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
+        if (activeSessionId) {
+          const session = agentSessionTracker.getSession(activeSessionId)
+          if (session && session.status === "active") {
+            // Queue the message instead of starting a new session
+            const queuedMessage = messageQueueService.enqueue(input.conversationId, input.text, activeSessionId)
+            logApp(`[createMcpTextInput] Queued message ${queuedMessage.id} for active session ${activeSessionId}`)
+            return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
           }
         }
-
-        // Add user message to existing conversation
-        await conversationService.addMessageToConversation(
-          conversationId,
-          input.text,
-          "user",
-        )
       }
 
       const startSnoozed = input.fromTile ?? false
       const {
+        conversationId,
+        previousConversationHistory,
         sessionId: runtimeSessionId,
         reusedExistingSession,
-      } = ensureAgentSessionForConversation({
-        conversationId,
+      } = await preparePromptExecutionContext({
+        prompt: input.text,
+        requestedConversationId: input.conversationId,
         conversationTitle: input.text,
         startSnoozed,
       })
@@ -1479,7 +1467,14 @@ export const router = {
       // This allows multiple sessions to run concurrently
       // The session is prepared up front so typed, headless, and remote prompts
       // all reuse the same conversation/session bootstrap rules.
-      processWithAgentMode(input.text, conversationId, runtimeSessionId, startSnoozed)
+      processWithAgentMode(
+        input.text,
+        conversationId,
+        runtimeSessionId,
+        startSnoozed,
+        undefined,
+        previousConversationHistory,
+      )
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -1759,73 +1754,68 @@ export const router = {
           transcript = json.text
         }
 
-      // Create or continue conversation
-      let conversationId = input.conversationId
-      let conversation: Conversation | null = null
+        const {
+          conversationId,
+          previousConversationHistory,
+          sessionId: runtimeSessionId,
+          reusedExistingSession,
+        } = await preparePromptExecutionContext({
+          prompt: transcript,
+          requestedConversationId: input.conversationId,
+          conversationTitle: transcript,
+          startSnoozed,
+          profileSnapshot,
+          candidateSessionIds: [sessionId],
+        })
 
-      if (!conversationId) {
-        // Create new conversation with the transcript
-        conversation = await conversationService.createConversation(
-          transcript,
-          "user",
-        )
-        conversationId = conversation.id
-      } else {
-        // Load existing conversation and add user message
-        conversation =
-          await conversationService.loadConversation(conversationId)
-        if (conversation) {
-          await conversationService.addMessageToConversation(
+        logApp(
+          reusedExistingSession
+            ? "[createMcpRecording] Reused runtime session after transcription"
+            : "[createMcpRecording] Started runtime session after transcription",
+          {
             conversationId,
-            transcript,
-            "user",
-          )
-        } else {
-          conversation = await conversationService.createConversation(
-            transcript,
-            "user",
-          )
-          conversationId = conversation.id
-        }
-      }
+            sessionId: runtimeSessionId,
+            fromTile: startSnoozed,
+          },
+        )
 
-      // Update session with actual conversation ID and title after transcription
-      const conversationTitle = transcript
-      agentSessionTracker.updateSession(sessionId, {
-        conversationId,
-        conversationTitle,
-      })
-
-      // Save the recording file immediately
-      const recordingId = Date.now().toString()
-      fs.writeFileSync(
-        path.join(recordingsFolder, `${recordingId}.webm`),
-        Buffer.from(input.recording),
-      )
+        // Save the recording file immediately
+        const recordingId = Date.now().toString()
+        fs.writeFileSync(
+          path.join(recordingsFolder, `${recordingId}.webm`),
+          Buffer.from(input.recording),
+        )
 
         // Fire-and-forget: Start agent processing without blocking.
         // Preserve the tile/background snooze state after transcription so
         // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(transcript, conversationId, sessionId, startSnoozed)
-        .then((finalResponse) => {
-          // Save to history after completion
-          const history = getRecordingHistory()
-          const item: RecordingHistoryItem = {
-            id: recordingId,
-            createdAt: Date.now(),
-            duration: input.duration,
-            transcript: finalResponse,
-          }
-          history.push(item)
-          saveRecordingsHitory(history)
+        processWithAgentMode(
+          transcript,
+          conversationId,
+          runtimeSessionId,
+          startSnoozed,
+          undefined,
+          previousConversationHistory,
+        )
+          .then((finalResponse) => {
+            // Save to history after completion
+            const history = getRecordingHistory()
+            const item: RecordingHistoryItem = {
+              id: recordingId,
+              createdAt: Date.now(),
+              duration: input.duration,
+              transcript: finalResponse,
+            }
+            history.push(item)
+            saveRecordingsHitory(history)
 
-          const main = WINDOWS.get("main")
-          if (main) {
-            getRendererHandlers<RendererHandlers>(
-              main.webContents,
-            ).refreshRecordingHistory.send()
-          }
-        })
+            const main = WINDOWS.get("main")
+            if (main) {
+              getRendererHandlers<RendererHandlers>(
+                main.webContents,
+              ).refreshRecordingHistory.send()
+            }
+          })
           .catch((error) => {
             logLLM("[createMcpRecording] Agent processing error:", error)
           })
