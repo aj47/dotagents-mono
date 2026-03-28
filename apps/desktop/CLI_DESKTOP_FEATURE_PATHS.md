@@ -259,6 +259,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedParakeetModelStatus(...)`, `downloadManagedParakeetModel(...)`, `getManagedKittenModelStatus(...)`, `downloadManagedKittenModel(...)`, `getManagedSupertonicModelStatus(...)`, and `downloadManagedSupertonicModel(...)`
 - Current callers: `headless-cli.ts` `/parakeet-status`, `/parakeet-download`, `/kitten-status`, `/kitten-download`, `/supertonic-status`, and `/supertonic-download`; plus `tipc.ts` `getParakeetModelStatus(...)`, `downloadParakeetModel(...)`, `getKittenModelStatus(...)`, `downloadKittenModel(...)`, `getSupertonicModelStatus(...)`, and `downloadSupertonicModel(...)` used by `settings-providers.tsx`
 
+## Shared speech generation
+
+- Shared speech file: `apps/desktop/src/main/speech-management.ts`
+- Shared helpers: `generateManagedSpeech(...)`, `synthesizeManagedKittenSpeech(...)`, and `synthesizeManagedSupertonicSpeech(...)`
+- Current callers: `headless-cli.ts` `/tts`, `/kitten-speak`, and `/supertonic-speak`; `tipc.ts` `generateSpeech(...)`, `synthesizeWithKitten(...)`, and `synthesizeWithSupertonic(...)`; plus renderer `settings-providers.tsx`, `agent-progress.tsx`, and `session-tile.tsx`
+
 ## Shared model catalog management
 
 - Shared model-management file: `apps/desktop/src/main/model-management.ts`
@@ -399,9 +405,11 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now routes `/remote-status`, `/remote-qr`, `/cloudflare-status`, `/cloudflare-start`, `/cloudflare-stop`, and `/cloudflare-list` through `remote-access-management.ts`, while `tipc.ts` reuses the same helper for `settings-remote-server.tsx`, so remote-server status, manual terminal QR printing, Cloudflare install/login checks, named-tunnel listing, and quick/named tunnel lifecycle actions stay aligned across the terminal and desktop remote settings page.
 57. Headless CLI + desktop local provider model management
     `headless-cli.ts` now routes `/parakeet-status`, `/parakeet-download`, `/kitten-status`, `/kitten-download`, `/supertonic-status`, and `/supertonic-download` through `local-provider-management.ts`, while `tipc.ts` reuses the same helper for `settings-providers.tsx`, so local Parakeet, Kitten, and Supertonic model status reads plus download flows stay aligned across the terminal and desktop provider settings page before progress or status formatting diverges.
-58. Headless CLI + desktop MCP tool management
+58. Headless CLI + desktop speech generation
+    `headless-cli.ts` now routes `/tts <json-payload>`, `/kitten-speak <json-payload>`, and `/supertonic-speak <json-payload>` through `speech-management.ts`, while `tipc.ts` reuses the same helper for desktop response narration plus `settings-providers.tsx` local voice previews, so preprocessing, provider/voice defaults, local WAV conversion, and provider-specific TTS failures stay aligned before output diverges into saved files or desktop audio playback.
+59. Headless CLI + desktop MCP tool management
     `headless-cli.ts` now routes `/mcp-tools`, `/mcp-tool-show <tool-name-prefix>`, `/mcp-tool-enable <tool-name-prefix>`, `/mcp-tool-disable <tool-name-prefix>`, `/mcp-source-enable <source-name-prefix>`, and `/mcp-source-disable <source-name-prefix>` through `mcp-tool-management.ts`, while `tipc.ts` `getMcpDetailedToolList(...)`, `setMcpToolEnabled(...)`, and `setMcpToolSourceEnabled(...)` plus `mcp-config-manager.tsx` / `mcp-tool-manager.tsx` now reuse the same tool/source selection and toggle helpers, so individual and source-wide MCP/runtime tool toggles stay aligned across the terminal and desktop capabilities UI.
-59. Headless CLI + desktop model catalog management
+60. Headless CLI + desktop model catalog management
     `headless-cli.ts` now routes `/models <provider-id>`, `/models-preset <json-payload>`, `/model-info <model-id> [provider-id]`, `/models-dev`, and `/models-refresh` through `model-management.ts`, while `tipc.ts` model-fetch and models.dev handlers plus `remote-server.ts` `GET /v1/models/:providerId` reuse the same provider validation, preset-scoped model fetch, and models.dev lookup/refresh helpers so terminal diagnostics, desktop model selectors, and remote provider-model queries stay aligned before formatting diverges.
 
 ## Parity rules
@@ -445,6 +453,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - MCP tool and source selection plus tool/source-wide toggles are decided in one place: `getManagedMcpTools(...)`, `getManagedMcpToolSources(...)`, `resolveManagedMcpToolSelection(...)`, `resolveManagedMcpToolSourceSelection(...)`, `setManagedMcpToolEnabled(...)`, and `setManagedMcpToolSourceEnabled(...)`, so headless CLI `/mcp-tools`, `/mcp-tool-show`, `/mcp-tool-enable`, `/mcp-tool-disable`, `/mcp-source-enable`, and `/mcp-source-disable` plus the desktop capabilities UI tool toggles all reuse the same main-process behavior before presentation diverges into terminal output or desktop switches.
 - WhatsApp MCP-server availability, status parsing, QR-required connection responses, and disconnect/logout error handling are decided in one place: `getManagedWhatsappStatus(...)`, `connectManagedWhatsapp(...)`, `disconnectManagedWhatsapp(...)`, and `logoutManagedWhatsapp(...)`, so headless CLI WhatsApp controls and the desktop WhatsApp settings screen both reuse the same main-process tool-call interpretation before presenting terminal output or GUI state.
 - Local Parakeet, Kitten, and Supertonic model status/download behavior is decided in one place: `getManagedParakeetModelStatus(...)`, `downloadManagedParakeetModel(...)`, `getManagedKittenModelStatus(...)`, `downloadManagedKittenModel(...)`, `getManagedSupertonicModelStatus(...)`, and `downloadManagedSupertonicModel(...)`, so headless CLI local-provider commands and the desktop Providers settings screen both reuse the same main-process model-management helpers before terminal or GUI progress formatting diverges.
+- Speech generation, response narration, and local voice previews are decided in one place: `generateManagedSpeech(...)`, `synthesizeManagedKittenSpeech(...)`, and `synthesizeManagedSupertonicSpeech(...)`, so headless CLI `/tts`, `/kitten-speak`, and `/supertonic-speak` plus desktop narration and provider-preview actions all reuse the same preprocessing, provider-default, and WAV conversion rules before output diverges into saved files or GUI playback.
 - Available provider-model fetches, preset-scoped model fetches, and models.dev lookup/refresh behavior are decided in one place: `getManagedAvailableModels(...)`, `getManagedPresetModels(...)`, `getManagedModelInfo(...)`, `getManagedModelsDevData(...)`, and `refreshManagedModelsDevData(...)`, so headless CLI model commands, desktop model selectors, and the remote `/v1/models/:providerId` route all reuse the same provider validation plus models.dev lookup rules before formatting diverges.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
@@ -515,6 +524,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared MCP tool/source summaries, exact/prefix selection, per-tool toggles, and source-wide toggle failures stay aligned for headless CLI and desktop capabilities callers.
 - `apps/desktop/src/main/local-provider-management.test.ts`
   Confirms shared local Parakeet, Kitten, and Supertonic status/download helpers stay aligned for headless CLI and desktop provider settings callers.
+- `apps/desktop/src/main/speech-management.test.ts`
+  Confirms shared speech generation, Kitten/Supertonic preview synthesis, provider-default selection, and TTS failure logging stay aligned for headless CLI and desktop narration/preview callers.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`
   Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
 - `apps/desktop/src/renderer/src/lib/apply-selected-agent.test.ts`

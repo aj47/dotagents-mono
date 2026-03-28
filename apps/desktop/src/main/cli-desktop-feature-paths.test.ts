@@ -98,6 +98,10 @@ const localProviderManagementSource = readFileSync(
   new URL("./local-provider-management.ts", import.meta.url),
   "utf8",
 )
+const speechManagementSource = readFileSync(
+  new URL("./speech-management.ts", import.meta.url),
+  "utf8",
+)
 const modelManagementSource = readFileSync(
   new URL("./model-management.ts", import.meta.url),
   "utf8",
@@ -196,6 +200,14 @@ const agentSelectorSource = readFileSync(
 )
 const settingsProvidersSource = readFileSync(
   new URL("../renderer/src/pages/settings-providers.tsx", import.meta.url),
+  "utf8",
+)
+const agentProgressSource = readFileSync(
+  new URL("../renderer/src/components/agent-progress.tsx", import.meta.url),
+  "utf8",
+)
+const sessionTileSource = readFileSync(
+  new URL("../renderer/src/components/session-tile.tsx", import.meta.url),
   "utf8",
 )
 const settingsGeneralSource = readFileSync(
@@ -1516,8 +1528,8 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsManagementSource).toContain("resolveTtsProviderId")
     expect(settingsManagementSource).toContain("resolveTtsSelection")
     expect(tipcSource).toContain("resolveSttModelSelection")
-    expect(tipcSource).toContain("resolveTtsProviderId")
-    expect(tipcSource).toContain("resolveTtsSelection")
+    expect(speechManagementSource).toContain("resolveTtsProviderId")
+    expect(speechManagementSource).toContain("resolveTtsSelection")
     expect(ttsLlmPreprocessingSource).toContain("resolveChatProviderId")
     expect(settingsModelsSource).toContain("resolveSttProviderId")
     expect(settingsModelsSource).toContain("resolveSttModelSelection")
@@ -1727,6 +1739,32 @@ describe("CLI and desktop feature paths", () => {
     )
   })
 
+  it("shares speech generation across CLI and desktop narration/preview surfaces", () => {
+    expect(speechManagementSource).toContain(
+      "export async function generateManagedSpeech",
+    )
+    expect(speechManagementSource).toContain(
+      "export async function synthesizeManagedKittenSpeech",
+    )
+    expect(speechManagementSource).toContain(
+      "export async function synthesizeManagedSupertonicSpeech",
+    )
+    expect(headlessCliSource).toContain("generateManagedSpeech(")
+    expect(headlessCliSource).toContain("synthesizeManagedKittenSpeech(")
+    expect(headlessCliSource).toContain("synthesizeManagedSupertonicSpeech(")
+    expect(headlessCliSource).toContain('case "/tts":')
+    expect(headlessCliSource).toContain('case "/kitten-speak":')
+    expect(headlessCliSource).toContain('case "/supertonic-speak":')
+    expect(tipcSource).toContain('from "./speech-management"')
+    expect(tipcSource).toContain("generateManagedSpeech(input)")
+    expect(tipcSource).toContain("synthesizeManagedKittenSpeech(input)")
+    expect(tipcSource).toContain("synthesizeManagedSupertonicSpeech(input)")
+    expect(settingsProvidersSource).toContain('"synthesizeWithKitten"')
+    expect(settingsProvidersSource).toContain('"synthesizeWithSupertonic"')
+    expect(agentProgressSource).toContain("tipcClient.generateSpeech({")
+    expect(sessionTileSource).toContain("tipcClient.generateSpeech({")
+  })
+
   it("shares knowledge note management across CLI, desktop, and remote surfaces", () => {
     expect(knowledgeNoteManagementSource).toContain(
       "export async function getManagedKnowledgeNotes",
@@ -1857,6 +1895,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared repeat task summaries")
     expect(docsSource).toContain("Shared repeat task management")
     expect(docsSource).toContain("Shared MCP server management")
+    expect(docsSource).toContain("Shared speech generation")
     expect(docsSource).toContain("Shared knowledge note management")
     expect(docsSource).toContain("Shared conversation history serialization")
     expect(docsSource).toContain("Shared runtime shutdown")
@@ -1900,6 +1939,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI bundle management")
     expect(docsSource).toContain("Headless CLI remote access controls")
     expect(docsSource).toContain("Headless CLI sandbox slot management")
+    expect(docsSource).toContain("Headless CLI + desktop speech generation")
     expect(docsSource).toContain("Headless CLI + desktop model catalog management")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")

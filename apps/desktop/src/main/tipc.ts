@@ -63,8 +63,6 @@ import {
   DEFAULT_STT_MODELS,
   getConfiguredSttModel,
   resolveSttModelSelection,
-  resolveTtsProviderId,
-  resolveTtsSelection,
 } from "@dotagents/shared"
 import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
 import {
@@ -254,65 +252,11 @@ import {
 } from "./remote-access-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
-
-/**
- * Convert Float32Array audio samples to WAV format buffer
- */
-function float32ToWav(samples: Float32Array, sampleRate: number): Buffer {
-  const numChannels = 1
-  const bitsPerSample = 16
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8)
-  const blockAlign = numChannels * (bitsPerSample / 8)
-  const dataSize = samples.length * (bitsPerSample / 8)
-  const headerSize = 44
-  const totalSize = headerSize + dataSize
-
-  const buffer = Buffer.alloc(totalSize)
-  let offset = 0
-
-  // RIFF header
-  buffer.write("RIFF", offset)
-  offset += 4
-  buffer.writeUInt32LE(totalSize - 8, offset)
-  offset += 4
-  buffer.write("WAVE", offset)
-  offset += 4
-
-  // fmt subchunk
-  buffer.write("fmt ", offset)
-  offset += 4
-  buffer.writeUInt32LE(16, offset)
-  offset += 4 // subchunk1Size (16 for PCM)
-  buffer.writeUInt16LE(1, offset)
-  offset += 2 // audioFormat (1 = PCM)
-  buffer.writeUInt16LE(numChannels, offset)
-  offset += 2
-  buffer.writeUInt32LE(sampleRate, offset)
-  offset += 4
-  buffer.writeUInt32LE(byteRate, offset)
-  offset += 4
-  buffer.writeUInt16LE(blockAlign, offset)
-  offset += 2
-  buffer.writeUInt16LE(bitsPerSample, offset)
-  offset += 2
-
-  // data subchunk
-  buffer.write("data", offset)
-  offset += 4
-  buffer.writeUInt32LE(dataSize, offset)
-  offset += 4
-
-  // Convert Float32 samples to 16-bit PCM
-  for (let i = 0; i < samples.length; i++) {
-    // Clamp to [-1, 1] and scale to 16-bit signed integer range
-    const sample = Math.max(-1, Math.min(1, samples[i]))
-    const intSample = Math.round(sample * 32767)
-    buffer.writeInt16LE(intSample, offset)
-    offset += 2
-  }
-
-  return buffer
-}
+import {
+  generateManagedSpeech,
+  synthesizeManagedKittenSpeech,
+  synthesizeManagedSupertonicSpeech,
+} from "./speech-management"
 
 async function postProcessTranscriptSafely(
   transcript: string,
@@ -397,8 +341,6 @@ import { summarizationService } from "./summarization-service"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText, writeTextWithFocusRestore } from "./keyboard"
-import { preprocessTextForTTS, validateTTSText } from "@dotagents/shared"
-import { preprocessTextForTTSWithLLM } from "./tts-llm-preprocessing"
 
 const t = tipc.create()
 
@@ -996,12 +938,9 @@ export const router = {
       speed?: number
     }>()
     .action(async ({ input }) => {
-      const { synthesize } = await import("./kitten-tts")
-      const result = await synthesize(input.text, input.voiceId, input.speed)
-      // Convert Float32Array samples to WAV format
-      const wavBuffer = float32ToWav(result.samples, result.sampleRate)
+      const result = await synthesizeManagedKittenSpeech(input)
       return {
-        audio: wavBuffer.toString("base64"),
+        audio: Buffer.from(result.audio).toString("base64"),
         sampleRate: result.sampleRate,
       }
     }),
@@ -1030,17 +969,9 @@ export const router = {
       steps?: number
     }>()
     .action(async ({ input }) => {
-      const { synthesize } = await import("./supertonic-tts")
-      const result = await synthesize(
-        input.text,
-        input.voice,
-        input.lang,
-        input.speed,
-        input.steps,
-      )
-      const wavBuffer = float32ToWav(result.samples, result.sampleRate)
+      const result = await synthesizeManagedSupertonicSpeech(input)
       return {
-        audio: wavBuffer.toString("base64"),
+        audio: Buffer.from(result.audio).toString("base64"),
         sampleRate: result.sampleRate,
       }
     }),
@@ -2419,97 +2350,13 @@ export const router = {
   generateSpeech: t.procedure
     .input<{
       text: string
-      providerId?: string
+      providerId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
       voice?: string
       model?: string
       speed?: number
     }>()
     .action(async ({ input }) => {
-      const config = configStore.get()
-
-      if (!config.ttsEnabled) {
-        throw new Error("Text-to-Speech is not enabled")
-      }
-
-      const providerId = input.providerId || resolveTtsProviderId(config)
-
-      // Preprocess text for TTS
-      let processedText = input.text
-
-      if (config.ttsPreprocessingEnabled !== false) {
-        // Use LLM-based preprocessing if enabled, otherwise fall back to regex
-        if (config.ttsUseLLMPreprocessing) {
-          processedText = await preprocessTextForTTSWithLLM(
-            input.text,
-            config.ttsLLMPreprocessingProviderId,
-          )
-        } else {
-          // Use regex-based preprocessing
-          const preprocessingOptions = {
-            removeCodeBlocks: config.ttsRemoveCodeBlocks ?? true,
-            removeUrls: config.ttsRemoveUrls ?? true,
-            convertMarkdown: config.ttsConvertMarkdown ?? true,
-          }
-          processedText = preprocessTextForTTS(input.text, preprocessingOptions)
-        }
-      }
-
-      // Validate processed text
-      const validation = validateTTSText(processedText)
-      if (!validation.isValid) {
-        throw new Error(
-          `TTS validation failed: ${validation.issues.join(", ")}`,
-        )
-      }
-
-      try {
-        let ttsResult: TTSGenerationResult
-
-        if (providerId === "openai") {
-          ttsResult = await generateOpenAITTS(processedText, input, config)
-        } else if (providerId === "groq") {
-          ttsResult = await generateGroqTTS(processedText, input, config)
-        } else if (providerId === "gemini") {
-          ttsResult = await generateGeminiTTS(processedText, input, config)
-        } else if (providerId === "kitten") {
-          const { synthesize } = await import("./kitten-tts")
-          const { voiceId } = resolveTtsSelection(config, "kitten")
-          const result = await synthesize(processedText, voiceId, input.speed)
-          const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          ttsResult = {
-            audio: new Uint8Array(wavBuffer).buffer,
-            mimeType: "audio/wav",
-          }
-        } else if (providerId === "supertonic") {
-          const { synthesize } = await import("./supertonic-tts")
-          const selection = resolveTtsSelection(config, "supertonic")
-          const speed = input.speed ?? selection.speed
-          const result = await synthesize(
-            processedText,
-            selection.voice,
-            selection.language,
-            speed,
-            selection.steps,
-          )
-          const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          ttsResult = {
-            audio: new Uint8Array(wavBuffer).buffer,
-            mimeType: "audio/wav",
-          }
-        } else {
-          throw new Error(`Unsupported TTS provider: ${providerId}`)
-        }
-
-        return {
-          audio: ttsResult.audio,
-          mimeType: ttsResult.mimeType,
-          processedText,
-          provider: providerId,
-        }
-      } catch (error) {
-        diagnosticsService.logError("tts", "TTS generation failed", error)
-        throw error
-      }
+      return generateManagedSpeech(input)
     }),
 
   // Models Management
@@ -4213,224 +4060,6 @@ export const router = {
     loopService.stopAllLoops()
     return { success: true }
   }),
-}
-
-// TTS Provider Implementation Functions
-
-type TTSGenerationResult = {
-  audio: ArrayBuffer
-  mimeType: string
-}
-
-function getOpenAITTSMimeType(
-  responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm",
-): string {
-  switch (responseFormat) {
-    case "mp3":
-      return "audio/mpeg"
-    case "opus":
-      return "audio/opus"
-    case "aac":
-      return "audio/aac"
-    case "flac":
-      return "audio/flac"
-    case "pcm":
-      return "audio/L16"
-    case "wav":
-    default:
-      return "audio/wav"
-  }
-}
-
-async function generateOpenAITTS(
-  text: string,
-  input: { voice?: string; model?: string; speed?: number },
-  config: Config,
-): Promise<TTSGenerationResult> {
-  const selection = resolveTtsSelection(config, "openai")
-  const model = input.model || selection.model
-  const voice = input.voice || selection.voice
-  const speed = input.speed ?? selection.speed
-  const responseFormat = config.openaiTtsResponseFormat || "mp3"
-
-  const baseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-  const apiKey = config.openaiApiKey
-
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required for TTS")
-  }
-
-  const requestBody = {
-    model,
-    input: text,
-    voice,
-    speed,
-    response_format: responseFormat,
-  }
-
-  const response = await fetch(`${baseUrl}/audio/speech`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(
-      `OpenAI TTS API error: ${response.statusText} - ${errorText}`,
-    )
-  }
-
-  const audioBuffer = await response.arrayBuffer()
-
-  return {
-    audio: audioBuffer,
-    mimeType: getOpenAITTSMimeType(responseFormat),
-  }
-}
-
-async function generateGroqTTS(
-  text: string,
-  input: { voice?: string; model?: string },
-  config: Config,
-): Promise<TTSGenerationResult> {
-  const selection = resolveTtsSelection(config, "groq")
-  const model = input.model || selection.model
-  const voice =
-    input.voice ||
-    resolveTtsSelection(
-      {
-        ...config,
-        groqTtsModel: model,
-      },
-      "groq",
-    ).voice
-
-  const baseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-  const apiKey = config.groqApiKey
-
-  if (!apiKey) {
-    throw new Error("Groq API key is required for TTS")
-  }
-
-  const requestBody = {
-    model,
-    input: text,
-    voice,
-    response_format: "wav",
-  }
-
-  const response = await fetch(`${baseUrl}/audio/speech`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-
-    // Check for specific error cases and provide helpful messages
-    if (errorText.includes("requires terms acceptance")) {
-      // The model parameter determines which terms page to show
-      const modelParam =
-        model === "canopylabs/orpheus-arabic-saudi"
-          ? "canopylabs%2Forpheus-arabic-saudi"
-          : "canopylabs%2Forpheus-v1-english"
-      throw new Error(
-        `Groq TTS model requires terms acceptance. Please visit https://console.groq.com/playground?model=${modelParam} and accept the terms when prompted, then try again.`,
-      )
-    }
-
-    throw new Error(`Groq TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const audioBuffer = await response.arrayBuffer()
-
-  return {
-    audio: audioBuffer,
-    mimeType: "audio/wav",
-  }
-}
-
-async function generateGeminiTTS(
-  text: string,
-  input: { voice?: string; model?: string },
-  config: Config,
-): Promise<TTSGenerationResult> {
-  const selection = resolveTtsSelection(config, "gemini")
-  const model = input.model || selection.model
-  const voice = input.voice || selection.voice
-
-  const baseUrl =
-    config.geminiBaseUrl || "https://generativelanguage.googleapis.com"
-  const apiKey = config.geminiApiKey
-
-  if (!apiKey) {
-    throw new Error("Gemini API key is required for TTS")
-  }
-
-  const requestBody = {
-    contents: [
-      {
-        parts: [{ text }],
-      },
-    ],
-    generationConfig: {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: {
-            voiceName: voice,
-          },
-        },
-      },
-    },
-  }
-
-  const url = `${baseUrl}/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(
-      `Gemini TTS API error: ${response.statusText} - ${errorText}`,
-    )
-  }
-
-  const result = await response.json()
-
-  const inlineAudioData =
-    result.candidates?.[0]?.content?.parts?.[0]?.inlineData
-  const audioData = inlineAudioData?.data
-
-  if (!audioData) {
-    throw new Error("No audio data received from Gemini TTS API")
-  }
-
-  // Convert base64 to ArrayBuffer
-  const binaryString = atob(audioData)
-  const bytes = new Uint8Array(binaryString.length)
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i)
-  }
-
-  return {
-    audio: bytes.buffer,
-    mimeType: inlineAudioData?.mimeType || "audio/L16",
-  }
 }
 
 export type Router = typeof router

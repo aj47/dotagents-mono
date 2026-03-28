@@ -154,6 +154,9 @@ Inside the CLI, use:
 - `/kitten-download` to download the local Kitten TTS model
 - `/supertonic-status` to inspect the local Supertonic TTS model state
 - `/supertonic-download` to download the local Supertonic TTS model
+- `/tts <json>` to generate speech and write the audio file, for example `{ "text": "Hello", "path": "./hello.wav" }`
+- `/kitten-speak <json>` to preview Kitten TTS and write a WAV file
+- `/supertonic-speak <json>` to preview Supertonic TTS and write a WAV file
 - `/remote-status` to inspect remote-server bind, pairing URL, and last error state
 - `/remote-qr` to print the remote-server pairing QR code in the terminal
 - `/cloudflare-status` to inspect Cloudflare install, login, and live tunnel state
@@ -189,6 +192,8 @@ Inside the CLI, use:
 The headless model commands above now also share the same model-management path that desktop model selectors use through `tipc.ts`, while the remote `/v1/models/:providerId` route now also reuses that helper so provider validation, preset-scoped fetches, and models.dev lookups stay aligned before each surface formats the result.
 
 The local provider commands above now also share the same local-model management path that `Settings > Providers` uses in the desktop UI, so Parakeet, Kitten, and Supertonic status reads plus download flows stay aligned before the CLI or GUI formats progress.
+
+The speech commands above now also share the same speech-management path that desktop response narration and the Providers page voice-preview buttons use through `tipc.ts`, so preprocessing, provider defaults, and local WAV conversion stay aligned before the CLI writes audio files or the GUI plays audio.
 
 The MCP tool commands above now also share the same MCP tool-management path that the desktop capabilities UI uses through `tipc.ts`, so exact-name/unique-prefix tool selection, source selection, and per-tool or source-wide MCP/runtime tool toggles stay aligned before terminal or GUI presentation diverges.
 

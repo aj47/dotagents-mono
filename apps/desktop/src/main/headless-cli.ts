@@ -57,6 +57,12 @@ import {
   type ManagedLocalProviderModelStatus,
 } from "./local-provider-management"
 import {
+  generateManagedSpeech,
+  synthesizeManagedKittenSpeech,
+  synthesizeManagedSupertonicSpeech,
+  type ManagedSpeechProviderId,
+} from "./speech-management"
+import {
   getManagedMcpServerLogs,
   getManagedMcpServerSummary,
   getManagedMcpServerSummaries,
@@ -463,6 +469,9 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/kitten-download${colors.reset} - Download the local Kitten TTS model
   ${colors.cyan}/supertonic-status${colors.reset} - Show the local Supertonic TTS model status
   ${colors.cyan}/supertonic-download${colors.reset} - Download the local Supertonic TTS model
+  ${colors.cyan}/tts <json>${colors.reset}   - Generate speech and write the audio file to disk
+  ${colors.cyan}/kitten-speak <json>${colors.reset} - Preview Kitten TTS and write a WAV file
+  ${colors.cyan}/supertonic-speak <json>${colors.reset} - Preview Supertonic TTS and write a WAV file
   ${colors.cyan}/remote-status${colors.reset} - Show remote-server bind, pairing URL, and last error
   ${colors.cyan}/remote-qr${colors.reset}     - Print the remote-server pairing QR code
   ${colors.cyan}/cloudflare-status${colors.reset} - Show Cloudflare install/login/tunnel status
@@ -1010,6 +1019,14 @@ function getOptionalStringArray(value: unknown): string[] | undefined {
     .filter((entry): entry is string => typeof entry === "string")
     .map((entry) => entry.trim())
     .filter(Boolean)
+}
+
+function getOptionalNumber(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined
+  }
+
+  return value
 }
 
 function getOptionalBundleComponentSelection(
@@ -1997,6 +2014,215 @@ async function handleDownloadSupertonicModel(): Promise<void> {
     getStatus: getManagedSupertonicModelStatus,
     download: downloadManagedSupertonicModel,
   })
+}
+
+type CliSpeechPayload = {
+  text: string
+  path?: string
+  providerId?: ManagedSpeechProviderId
+  voice?: string
+  voiceId?: number
+  model?: string
+  speed?: number
+  lang?: string
+  steps?: number
+}
+
+function parseCliSpeechPayload(
+  input: string,
+  usage: string,
+): CliSpeechPayload | null {
+  const payload = parseCliJsonObject(input, usage)
+  if (!payload) {
+    return null
+  }
+
+  const text = getOptionalTrimmedString(payload.text)
+  if (!text) {
+    printColored(colors.red, "Speech payload must include a non-empty text field.")
+    return null
+  }
+
+  return {
+    text,
+    path: getOptionalTrimmedString(payload.path),
+    providerId: getOptionalTrimmedString(
+      payload.providerId,
+    ) as ManagedSpeechProviderId | undefined,
+    voice: getOptionalTrimmedString(payload.voice),
+    voiceId: getOptionalNumber(payload.voiceId),
+    model: getOptionalTrimmedString(payload.model),
+    speed: getOptionalNumber(payload.speed),
+    lang: getOptionalTrimmedString(payload.lang),
+    steps: getOptionalNumber(payload.steps),
+  }
+}
+
+function getCliAudioFileExtension(mimeType: string): string {
+  switch (mimeType.toLowerCase()) {
+    case "audio/mpeg":
+      return "mp3"
+    case "audio/opus":
+      return "opus"
+    case "audio/aac":
+      return "aac"
+    case "audio/flac":
+      return "flac"
+    case "audio/l16":
+      return "l16"
+    case "audio/wav":
+    default:
+      return "wav"
+  }
+}
+
+function writeCliAudioFile(options: {
+  audio: ArrayBuffer
+  mimeType: string
+  outputPath?: string
+  defaultBaseName: string
+}): string {
+  const extension = getCliAudioFileExtension(options.mimeType)
+  const defaultName = `${options.defaultBaseName}-${Date.now()}.${extension}`
+  const filePath = resolveCliFileSystemPath(options.outputPath || defaultName)
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, Buffer.from(options.audio))
+  return filePath
+}
+
+function printCliSpeechFileSummary(options: {
+  label: string
+  filePath: string
+  mimeType: string
+  provider?: string
+  processedText?: string
+  sourceText?: string
+  sampleRate?: number
+}): void {
+  console.log(`\n${colors.bold}${options.label}:${colors.reset}`)
+  console.log(`  Path: ${colors.cyan}${options.filePath}${colors.reset}`)
+  console.log(`  MIME: ${colors.cyan}${options.mimeType}${colors.reset}`)
+
+  if (options.provider) {
+    console.log(`  Provider: ${colors.cyan}${options.provider}${colors.reset}`)
+  }
+  if (typeof options.sampleRate === "number") {
+    console.log(
+      `  Sample rate: ${colors.cyan}${options.sampleRate} Hz${colors.reset}`,
+    )
+  }
+  if (
+    options.processedText &&
+    options.sourceText &&
+    options.processedText !== options.sourceText
+  ) {
+    console.log(`  ${colors.dim}Processed text: ${options.processedText}${colors.reset}`)
+  }
+
+  console.log()
+}
+
+async function handleGenerateSpeech(argumentsText: string): Promise<void> {
+  const payload = parseCliSpeechPayload(
+    argumentsText,
+    "Usage: /tts <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  try {
+    const result = await generateManagedSpeech(payload)
+    const filePath = writeCliAudioFile({
+      audio: result.audio,
+      mimeType: result.mimeType,
+      outputPath: payload.path,
+      defaultBaseName: `dotagents-tts-${result.provider}`,
+    })
+
+    printColored(colors.green, `Wrote speech audio to ${filePath}`)
+    printCliSpeechFileSummary({
+      label: "Speech Output",
+      filePath,
+      mimeType: result.mimeType,
+      provider: result.provider,
+      processedText: result.processedText,
+      sourceText: payload.text,
+    })
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleKittenSpeechPreview(argumentsText: string): Promise<void> {
+  const payload = parseCliSpeechPayload(
+    argumentsText,
+    "Usage: /kitten-speak <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  try {
+    const result = await synthesizeManagedKittenSpeech(payload)
+    const filePath = writeCliAudioFile({
+      audio: result.audio,
+      mimeType: result.mimeType,
+      outputPath: payload.path,
+      defaultBaseName: "kitten-preview",
+    })
+
+    printColored(colors.green, `Wrote Kitten preview audio to ${filePath}`)
+    printCliSpeechFileSummary({
+      label: "Kitten Preview",
+      filePath,
+      mimeType: result.mimeType,
+      sampleRate: result.sampleRate,
+    })
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleSupertonicSpeechPreview(
+  argumentsText: string,
+): Promise<void> {
+  const payload = parseCliSpeechPayload(
+    argumentsText,
+    "Usage: /supertonic-speak <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  try {
+    const result = await synthesizeManagedSupertonicSpeech(payload)
+    const filePath = writeCliAudioFile({
+      audio: result.audio,
+      mimeType: result.mimeType,
+      outputPath: payload.path,
+      defaultBaseName: "supertonic-preview",
+    })
+
+    printColored(colors.green, `Wrote Supertonic preview audio to ${filePath}`)
+    printCliSpeechFileSummary({
+      label: "Supertonic Preview",
+      filePath,
+      mimeType: result.mimeType,
+      sampleRate: result.sampleRate,
+    })
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
 }
 
 async function handleShowRemoteServerStatus(): Promise<void> {
@@ -5497,6 +5723,15 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/supertonic-download":
       await handleDownloadSupertonicModel()
+      return true
+    case "/tts":
+      await handleGenerateSpeech(argumentsText)
+      return true
+    case "/kitten-speak":
+      await handleKittenSpeechPreview(argumentsText)
+      return true
+    case "/supertonic-speak":
+      await handleSupertonicSpeechPreview(argumentsText)
       return true
     case "/remote-status":
       await handleShowRemoteServerStatus()
