@@ -109,6 +109,7 @@ import {
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
+  getManagedAgentProfile,
   getManagedAgentProfiles,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
@@ -4065,7 +4066,7 @@ export const router = {
   getAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.getById(input.id)
+      return getManagedAgentProfile(input.id)
     }),
 
   getAgentProfileByName: t.procedure
@@ -4077,9 +4078,10 @@ export const router = {
   createAgentProfile: t.procedure
     .input<{
       profile: {
-        name: string
+        name?: string
         displayName: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
 
@@ -4098,6 +4100,9 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const result = createManagedAgentProfile(input.profile)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
       return result.profile
     }),
 
@@ -4107,9 +4112,10 @@ export const router = {
       updates: Partial<import("@shared/types").AgentProfile>
     }>()
     .action(async ({ input }) => {
-      const result = updateManagedAgentProfile(input.id, input.updates, {
-        allowBuiltInFieldUpdates: true,
-      })
+      const result = updateManagedAgentProfile(input.id, input.updates)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
       return result.profile
     }),
 
@@ -4117,7 +4123,10 @@ export const router = {
     .input<{ id: string }>()
     .action(async ({ input }) => {
       const result = deleteManagedAgentProfile(input.id)
-      return result.success
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return true
     }),
 
   getUserProfiles: t.procedure.action(async () => {
@@ -4150,7 +4159,7 @@ export const router = {
   getAgentProfilesByRole: t.procedure
     .input<{ role: import("@shared/types").AgentProfileRole }>()
     .action(async ({ input }) => {
-      return agentProfileService.getByRole(input.role)
+      return getManagedAgentProfiles({ role: input.role })
     }),
 
   getExternalAgents: t.procedure.action(async () => {

@@ -165,6 +165,69 @@ function notifyConversationHistoryChanged(): void {
   }
 }
 
+function serializeManagedAgentProfileSummary(profile: AgentProfile) {
+  return {
+    id: profile.id,
+    name: profile.name,
+    displayName: profile.displayName,
+    description: profile.description,
+    enabled: profile.enabled,
+    isBuiltIn: profile.isBuiltIn,
+    isUserProfile: profile.isUserProfile,
+    isAgentTarget: profile.isAgentTarget,
+    isDefault: profile.isDefault,
+    role: profile.role,
+    connectionType: profile.connection.type,
+    autoSpawn: profile.autoSpawn,
+    guidelines: profile.guidelines,
+    systemPrompt: profile.systemPrompt,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  }
+}
+
+function serializeManagedAgentProfile(profile: AgentProfile) {
+  return {
+    id: profile.id,
+    name: profile.name,
+    displayName: profile.displayName,
+    description: profile.description,
+    avatarDataUrl: profile.avatarDataUrl,
+    systemPrompt: profile.systemPrompt,
+    guidelines: profile.guidelines,
+    properties: profile.properties,
+    modelConfig: profile.modelConfig,
+    toolConfig: profile.toolConfig,
+    skillsConfig: profile.skillsConfig,
+    connection: profile.connection,
+    isStateful: profile.isStateful,
+    conversationId: profile.conversationId,
+    role: profile.role,
+    enabled: profile.enabled,
+    isBuiltIn: profile.isBuiltIn,
+    isUserProfile: profile.isUserProfile,
+    isAgentTarget: profile.isAgentTarget,
+    isDefault: profile.isDefault,
+    autoSpawn: profile.autoSpawn,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  }
+}
+
+function getManagedAgentProfileErrorStatusCode(errorCode: string): number {
+  switch (errorCode) {
+    case "invalid_input":
+      return 400
+    case "delete_forbidden":
+      return 403
+    case "not_found":
+      return 404
+    case "persist_failed":
+    default:
+      return 500
+  }
+}
+
 interface AcpMcpRequestContext {
   appSessionId: string
   profileSnapshot: SessionProfileSnapshot
@@ -2543,24 +2606,10 @@ async function startRemoteServerInternal(
   fastify.get("/v1/agent-profiles", async (req, reply) => {
     try {
       const query = req.query as { role?: string }
-      let profiles = getManagedAgentProfiles()
-
-      // Filter by role if specified
-      if (query.role) {
-        profiles = profiles.filter((p) => {
-          const role =
-            p.role ||
-            (p.isUserProfile
-              ? "user-profile"
-              : p.isAgentTarget
-                ? "delegation-target"
-                : "delegation-target")
-          return role === query.role
-        })
-      }
+      const profiles = getManagedAgentProfiles({ role: query.role })
 
       return reply.send({
-        profiles: profiles.map(serializeRemoteAgentProfile),
+        profiles: profiles.map(serializeManagedAgentProfileSummary),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -2577,13 +2626,11 @@ async function startRemoteServerInternal(
     try {
       const params = req.params as { id: string }
       const result = toggleManagedAgentProfileEnabled(params.id)
-      if (!result.success || !result.profile) {
-        const statusCode = result.error === "not_found" ? 404 : 500
+
+      if (!result.success) {
         return reply
-          .code(statusCode)
-          .send({
-            error: result.errorMessage || "Failed to toggle agent profile",
-          })
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
 
       return reply.send({
@@ -2614,7 +2661,7 @@ async function startRemoteServerInternal(
       }
 
       return reply.send({
-        profile: serializeRemoteAgentProfile(profile),
+        profile: serializeManagedAgentProfile(profile),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -2635,12 +2682,13 @@ async function startRemoteServerInternal(
         name?: string
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
-        connection?: AgentProfile["connection"]
+        connection?: import("@shared/types").AgentProfileConnection
         connectionType?: string
         connectionCommand?: string
-        connectionArgs?: string
+        connectionArgs?: string | string[]
         connectionBaseUrl?: string
         connectionCwd?: string
         enabled?: boolean
@@ -2649,19 +2697,22 @@ async function startRemoteServerInternal(
         toolConfig?: any
         skillsConfig?: any
         properties?: Record<string, string>
+        role?: import("@shared/types").AgentProfileRole
+        isUserProfile?: boolean
+        isAgentTarget?: boolean
+        isDefault?: boolean
+        isStateful?: boolean
       }
       const result = createManagedAgentProfile(body)
-      if (!result.success || !result.profile) {
-        const statusCode = result.error === "invalid_input" ? 400 : 500
+
+      if (!result.success) {
         return reply
-          .code(statusCode)
-          .send({
-            error: result.errorMessage || "Failed to create agent profile",
-          })
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
 
       return reply.code(201).send({
-        profile: serializeRemoteAgentProfile(result.profile),
+        profile: serializeManagedAgentProfile(result.profile),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -2683,12 +2734,13 @@ async function startRemoteServerInternal(
         name?: string
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
-        connection?: AgentProfile["connection"]
+        connection?: import("@shared/types").AgentProfileConnection
         connectionType?: string
         connectionCommand?: string
-        connectionArgs?: string
+        connectionArgs?: string | string[]
         connectionBaseUrl?: string
         connectionCwd?: string
         enabled?: boolean
@@ -2697,25 +2749,23 @@ async function startRemoteServerInternal(
         toolConfig?: any
         skillsConfig?: any
         properties?: Record<string, string>
+        role?: import("@shared/types").AgentProfileRole
+        isUserProfile?: boolean
+        isAgentTarget?: boolean
+        isDefault?: boolean
+        isStateful?: boolean
       }
       const result = updateManagedAgentProfile(params.id, body)
-      if (!result.success || !result.profile) {
-        const statusCode =
-          result.error === "invalid_input"
-            ? 400
-            : result.error === "not_found"
-              ? 404
-              : 500
+
+      if (!result.success) {
         return reply
-          .code(statusCode)
-          .send({
-            error: result.errorMessage || "Failed to update agent profile",
-          })
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
 
       return reply.send({
         success: true,
-        profile: serializeRemoteAgentProfile(result.profile),
+        profile: serializeManagedAgentProfile(result.profile),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -2734,18 +2784,11 @@ async function startRemoteServerInternal(
     try {
       const params = req.params as { id: string }
       const result = deleteManagedAgentProfile(params.id)
+
       if (!result.success) {
-        const statusCode =
-          result.error === "not_found"
-            ? 404
-            : result.error === "delete_forbidden"
-              ? 403
-              : 500
         return reply
-          .code(statusCode)
-          .send({
-            error: result.errorMessage || "Failed to delete agent profile",
-          })
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
 
       return reply.send({ success: true })

@@ -1,267 +1,269 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { AgentProfile } from "@shared/types"
 
 const {
-  activateAgentProfileMock,
-  createProfile,
-  createProfileMock,
-  deleteProfileMock,
+  createMock,
+  deleteMock,
   getAllMock,
   getByIdMock,
-  getCurrentProfileMock,
-  profileStore,
-  updateProfileMock,
-} = vi.hoisted(() => {
-  const profileStore: {
-    currentProfileId?: string
-    profiles: any[]
-  } = {
-    currentProfileId: undefined,
-    profiles: [],
-  }
-
-  const createProfile = (overrides: Record<string, unknown> = {}) => ({
-    id: "profile-main",
-    name: "Main Agent",
-    displayName: "Main Agent",
-    connection: { type: "internal" as const },
-    enabled: true,
-    isBuiltIn: false,
-    isDefault: false,
-    role: "delegation-target" as const,
-    isUserProfile: false,
-    isAgentTarget: true,
-    createdAt: 1,
-    updatedAt: 1,
-    ...overrides,
-  })
-
-  const getAllMock = vi.fn(() => profileStore.profiles)
-  const getByIdMock = vi.fn((profileId: string) =>
-    profileStore.profiles.find((profile) => profile.id === profileId),
-  )
-  const getCurrentProfileMock = vi.fn(() =>
-    profileStore.profiles.find(
-      (profile) => profile.id === profileStore.currentProfileId,
-    ),
-  )
-  const createProfileMock = vi.fn((profile: Record<string, unknown>) => {
-    const nextProfile = createProfile({
-      ...profile,
-      id: profile.id || `profile-${profileStore.profiles.length + 1}`,
-      createdAt: 10 + profileStore.profiles.length,
-      updatedAt: 10 + profileStore.profiles.length,
-    })
-    profileStore.profiles.push(nextProfile)
-    return nextProfile
-  })
-  const updateProfileMock = vi.fn(
-    (profileId: string, updates: Record<string, unknown>) => {
-      const profile = profileStore.profiles.find(
-        (existing) => existing.id === profileId,
-      )
-      if (!profile) {
-        return undefined
-      }
-      Object.assign(profile, updates, { updatedAt: profile.updatedAt + 1 })
-      return profile
-    },
-  )
-  const deleteProfileMock = vi.fn((profileId: string) => {
-    const nextProfiles = profileStore.profiles.filter(
-      (profile) => profile.id !== profileId,
-    )
-    const deleted = nextProfiles.length !== profileStore.profiles.length
-    profileStore.profiles = nextProfiles
-    return deleted
-  })
-  const activateAgentProfileMock = vi.fn((profile: any) => {
-    profileStore.currentProfileId = profile.id
-    return profile
-  })
-
-  return {
-    activateAgentProfileMock,
-    createProfile,
-    createProfileMock,
-    deleteProfileMock,
-    getAllMock,
-    getByIdMock,
-    getCurrentProfileMock,
-    profileStore,
-    updateProfileMock,
-  }
-})
+  getByRoleMock,
+  updateMock,
+} = vi.hoisted(() => ({
+  createMock: vi.fn(),
+  deleteMock: vi.fn(),
+  getAllMock: vi.fn(),
+  getByIdMock: vi.fn(),
+  getByRoleMock: vi.fn(),
+  updateMock: vi.fn(),
+}))
 
 vi.mock("./agent-profile-service", () => ({
   agentProfileService: {
-    create: createProfileMock,
-    delete: deleteProfileMock,
+    create: createMock,
+    delete: deleteMock,
     getAll: getAllMock,
     getById: getByIdMock,
-    getCurrentProfile: getCurrentProfileMock,
-    update: updateProfileMock,
+    getByRole: getByRoleMock,
+    update: updateMock,
   },
-}))
-
-vi.mock("./agent-profile-activation", () => ({
-  activateAgentProfile: activateAgentProfileMock,
 }))
 
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
+  getManagedAgentProfile,
   getManagedAgentProfiles,
   resolveManagedAgentProfileSelection,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
 
+function createProfile(
+  id: string,
+  overrides: Partial<AgentProfile> = {},
+): AgentProfile {
+  return {
+    id,
+    name: overrides.name ?? id,
+    displayName: overrides.displayName ?? id,
+    connection: overrides.connection ?? { type: "internal" },
+    enabled: overrides.enabled ?? true,
+    createdAt: overrides.createdAt ?? 1,
+    updatedAt: overrides.updatedAt ?? 2,
+    ...overrides,
+  }
+}
+
 describe("agent profile management", () => {
   beforeEach(() => {
-    profileStore.currentProfileId = "profile-current"
-    profileStore.profiles = [
-      createProfile({
-        id: "profile-current",
-        name: "Current Agent",
-        displayName: "Current Agent",
-      }),
-      createProfile({
-        id: "profile-default",
-        name: "main-agent",
-        displayName: "Main Agent",
-        isBuiltIn: true,
-        isDefault: true,
-      }),
-      createProfile({
-        id: "profile-disabled",
-        name: "Disabled Agent",
-        displayName: "Disabled Agent",
-        enabled: false,
-      }),
-    ]
-    activateAgentProfileMock.mockClear()
-    createProfileMock.mockClear()
-    deleteProfileMock.mockClear()
-    getAllMock.mockClear()
-    getByIdMock.mockClear()
-    getCurrentProfileMock.mockClear()
-    updateProfileMock.mockClear()
+    createMock.mockReset()
+    deleteMock.mockReset()
+    getAllMock.mockReset()
+    getByIdMock.mockReset()
+    getByRoleMock.mockReset()
+    updateMock.mockReset()
   })
 
-  it("sorts managed profiles with the current profile first", () => {
-    expect(getManagedAgentProfiles().map((profile) => profile.id)).toEqual([
-      "profile-current",
-      "profile-default",
-      "profile-disabled",
-    ])
-  })
+  it("lists and loads managed agent profiles through one helper", () => {
+    const allProfiles = [createProfile("main-agent"), createProfile("ops-agent")]
+    const delegationTargets = [allProfiles[1]]
 
-  it("resolves selections by exact match and unique prefix across all profiles", () => {
-    const profiles = getManagedAgentProfiles()
+    getAllMock.mockReturnValue(allProfiles)
+    getByRoleMock.mockReturnValue(delegationTargets)
+    getByIdMock.mockReturnValue(allProfiles[0])
 
-    expect(
-      resolveManagedAgentProfileSelection(profiles, "profile-cur"),
-    ).toEqual({
-      selectedProfile: profiles[0],
-    })
-    expect(resolveManagedAgentProfileSelection(profiles, "Main Agent")).toEqual(
-      {
-        selectedProfile: profiles[1],
-      },
+    expect(getManagedAgentProfiles()).toEqual(allProfiles)
+    expect(getManagedAgentProfiles({ role: "delegation-target" })).toEqual(
+      delegationTargets,
     )
+    expect(getManagedAgentProfiles({ role: "invalid-role" })).toEqual([])
+    expect(getManagedAgentProfile("main-agent")).toEqual(allProfiles[0])
   })
 
-  it("creates agent profiles through one shared validation path", () => {
+  it("creates agent profiles from flattened payloads with shared defaults", () => {
+    createMock.mockImplementation((profile: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">) =>
+      createProfile("created-agent", profile),
+    )
+
     const result = createManagedAgentProfile({
-      displayName: "Ops Agent",
-      connectionType: "acp",
-      connectionCommand: " npx ",
-      connectionArgs: "ops --stdio",
+      displayName: "  Remote Ops  ",
+      description: "  Handles remote tasks  ",
+      connectionType: "remote",
+      connectionBaseUrl: " https://agent.example.com/base ",
+      avatarDataUrl: " data:image/png;base64,abc ",
       enabled: false,
       autoSpawn: true,
     })
 
-    expect(result).toMatchObject({
-      success: true,
-      profile: {
-        displayName: "Ops Agent",
-        enabled: false,
-        autoSpawn: true,
-        role: "delegation-target",
-        isAgentTarget: true,
-        isUserProfile: false,
-        connection: {
-          type: "acp",
-          command: "npx",
-          args: ["ops", "--stdio"],
-        },
+    expect(createMock).toHaveBeenCalledWith({
+      name: "Remote Ops",
+      displayName: "Remote Ops",
+      description: "Handles remote tasks",
+      avatarDataUrl: "data:image/png;base64,abc",
+      systemPrompt: undefined,
+      guidelines: undefined,
+      properties: undefined,
+      modelConfig: undefined,
+      toolConfig: undefined,
+      skillsConfig: undefined,
+      connection: {
+        type: "remote",
+        baseUrl: "https://agent.example.com/base",
       },
+      isStateful: undefined,
+      enabled: false,
+      role: "delegation-target",
+      isUserProfile: false,
+      isAgentTarget: true,
+      isDefault: undefined,
+      autoSpawn: true,
+    })
+    expect(result).toEqual({
+      success: true,
+      profile: createProfile("created-agent", {
+        name: "Remote Ops",
+        displayName: "Remote Ops",
+        description: "Handles remote tasks",
+        avatarDataUrl: "data:image/png;base64,abc",
+        connection: {
+          type: "remote",
+          baseUrl: "https://agent.example.com/base",
+        },
+        enabled: false,
+        role: "delegation-target",
+        isUserProfile: false,
+        isAgentTarget: true,
+        autoSpawn: true,
+      }),
     })
   })
 
-  it("keeps built-in remote updates on the restricted shared path by default", () => {
-    const result = updateManagedAgentProfile("profile-default", {
-      displayName: "Renamed Built-in",
-      guidelines: "Keep answers brief.",
+  it("updates agent profiles with direct connection payloads and normalized fields", () => {
+    const existingProfile = createProfile("profile-1", {
+      displayName: "Old Name",
+      connection: { type: "acp", command: "old-command", args: ["--old"] },
+      autoSpawn: false,
+    })
+    const updatedProfile = createProfile("profile-1", {
+      displayName: "New Name",
+      description: "Updated description",
+      connection: {
+        type: "acp",
+        command: "codex-acp",
+        args: ["serve", "--json"],
+        cwd: "/tmp/workspace",
+      },
+      autoSpawn: true,
+      avatarDataUrl: null,
+    })
+
+    getByIdMock.mockReturnValue(existingProfile)
+    updateMock.mockReturnValue(updatedProfile)
+
+    const result = updateManagedAgentProfile("profile-1", {
+      displayName: "  New Name  ",
+      description: " Updated description ",
+      avatarDataUrl: null,
+      connection: {
+        type: "acp",
+        command: " codex-acp ",
+        args: ["serve", " --json "],
+        cwd: " /tmp/workspace ",
+      },
+      autoSpawn: true,
+    })
+
+    expect(updateMock).toHaveBeenCalledWith("profile-1", {
+      displayName: "New Name",
+      description: "Updated description",
+      avatarDataUrl: null,
+      connection: {
+        type: "acp",
+        command: "codex-acp",
+        args: ["serve", "--json"],
+        cwd: "/tmp/workspace",
+      },
+      autoSpawn: true,
+    })
+    expect(result).toEqual({
+      success: true,
+      profile: updatedProfile,
+    })
+  })
+
+  it("toggles and deletes agent profiles through the shared helper", () => {
+    const existingProfile = createProfile("profile-1", {
+      enabled: true,
+    })
+    const toggledProfile = createProfile("profile-1", {
       enabled: false,
     })
 
-    expect(result).toMatchObject({
+    getByIdMock.mockReturnValue(existingProfile)
+    updateMock.mockReturnValue(toggledProfile)
+    deleteMock.mockReturnValue(true)
+
+    expect(toggleManagedAgentProfileEnabled("profile-1")).toEqual({
       success: true,
-      profile: {
-        id: "profile-default",
+      profile: toggledProfile,
+    })
+    expect(updateMock).toHaveBeenCalledWith("profile-1", {
+      enabled: false,
+    })
+
+    expect(deleteManagedAgentProfile("profile-1")).toEqual({
+      success: true,
+      id: "profile-1",
+    })
+    expect(deleteMock).toHaveBeenCalledWith("profile-1")
+  })
+
+  it("reports invalid inputs, missing profiles, and protected deletes explicitly", () => {
+    expect(
+      createManagedAgentProfile({
+        displayName: "   ",
+      }),
+    ).toEqual({
+      success: false,
+      errorCode: "invalid_input",
+      error: "displayName is required and must be a non-empty string",
+    })
+
+    getByIdMock.mockReturnValue(undefined)
+    expect(updateManagedAgentProfile("missing", { enabled: true })).toEqual({
+      success: false,
+      errorCode: "not_found",
+      error: "Agent profile not found: missing",
+    })
+
+    const builtInProfile = createProfile("main-agent", {
+      isBuiltIn: true,
+    })
+    getByIdMock.mockReturnValue(builtInProfile)
+    expect(deleteManagedAgentProfile("main-agent")).toEqual({
+      success: false,
+      errorCode: "delete_forbidden",
+      error: "Cannot delete built-in agent profiles",
+    })
+  })
+
+  it("reuses shared id/name/display-name selection rules for agent management", () => {
+    const profiles = [
+      createProfile("main-agent", {
+        name: "main-agent",
         displayName: "Main Agent",
-        guidelines: "Keep answers brief.",
-        enabled: false,
-      },
+      }),
+      createProfile("ops-agent", {
+        name: "ops-agent",
+        displayName: "Operations Agent",
+      }),
+    ]
+
+    expect(resolveManagedAgentProfileSelection(profiles, "Main")).toEqual({
+      selectedProfile: profiles[0],
     })
-  })
-
-  it("allows desktop-style full built-in updates when explicitly requested", () => {
-    const result = updateManagedAgentProfile(
-      "profile-default",
-      {
-        displayName: "Renamed Built-in",
-        systemPrompt: "Use the fallback prompt.",
-      },
-      { allowBuiltInFieldUpdates: true },
-    )
-
-    expect(result).toMatchObject({
-      success: true,
-      profile: {
-        id: "profile-default",
-        displayName: "Renamed Built-in",
-        name: "Renamed Built-in",
-        systemPrompt: "Use the fallback prompt.",
-      },
+    expect(resolveManagedAgentProfileSelection(profiles, "ops")).toEqual({
+      selectedProfile: profiles[1],
     })
-  })
-
-  it("toggles agent-profile enablement through one helper", () => {
-    const result = toggleManagedAgentProfileEnabled("profile-disabled")
-
-    expect(result).toMatchObject({
-      success: true,
-      profile: {
-        id: "profile-disabled",
-        enabled: true,
-      },
-    })
-  })
-
-  it("deletes the current profile and activates the shared fallback profile", () => {
-    const result = deleteManagedAgentProfile("profile-current")
-
-    expect(result).toEqual({
-      success: true,
-      activatedProfile: profileStore.profiles.find(
-        (profile) => profile.id === "profile-default",
-      ),
-    })
-    expect(deleteProfileMock).toHaveBeenCalledWith("profile-current")
-    expect(activateAgentProfileMock).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "profile-default" }),
-    )
   })
 })

@@ -108,7 +108,9 @@ describe("remote-server route registration", () => {
     )
 
     expect(source).toContain('from "./agent-profile-management"')
-    expect(agentProfileSection).toContain("getManagedAgentProfiles()")
+    expect(agentProfileSection).toContain(
+      "getManagedAgentProfiles({ role: query.role })",
+    )
     expect(agentProfileSection).toContain("getManagedAgentProfile(params.id)")
     expect(agentProfileSection).toContain(
       "toggleManagedAgentProfileEnabled(params.id)",
@@ -247,6 +249,41 @@ describe("remote-server route registration", () => {
     expect(source).not.toContain('fastify.post("/v1/memories"')
     expect(source).not.toContain('fastify.patch("/v1/memories/:id"')
     expect(source).not.toContain('fastify.delete("/v1/memories/:id"')
+  })
+
+  it("shares agent profile routes with the desktop and CLI profile manager", () => {
+    const source = getRemoteServerSource()
+    const agentProfilesSection = getSection(
+      source,
+      "// GET /v1/agent-profiles - List all agent profiles",
+      "// ============================================\n  // Repeat Tasks Management Endpoints (for mobile app)",
+    )
+
+    expect(source).toContain('from "./agent-profile-management"')
+    expect(agentProfilesSection).toContain(
+      "getManagedAgentProfiles({ role: query.role })",
+    )
+    expect(agentProfilesSection).toContain(
+      "toggleManagedAgentProfileEnabled(params.id)",
+    )
+    expect(agentProfilesSection).toContain(
+      "const profile = getManagedAgentProfile(params.id)",
+    )
+    expect(agentProfilesSection).toContain("createManagedAgentProfile(body)")
+    expect(agentProfilesSection).toContain(
+      "updateManagedAgentProfile(params.id, body)",
+    )
+    expect(agentProfilesSection).toContain(
+      "deleteManagedAgentProfile(params.id)",
+    )
+    expect(agentProfilesSection).not.toContain(
+      "sanitizeAgentProfileConnection(",
+    )
+    expect(agentProfilesSection).not.toContain(
+      "VALID_AGENT_PROFILE_CONNECTION_TYPES",
+    )
+    expect(agentProfilesSection).not.toContain("agentProfileService.update(")
+    expect(agentProfilesSection).not.toContain("agentProfileService.delete(")
   })
 
   it("does not report repeat task toggles as successful when loop persistence fails", () => {

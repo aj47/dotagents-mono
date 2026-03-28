@@ -16,6 +16,7 @@ The remote server starts automatically with the desktop app and exposes an HTTP 
 - Sending messages to agents
 - Managing conversations
 - Transcribing audio
+- Managing agent profiles
 - Managing MCP servers
 - Health checks
 
@@ -146,11 +147,15 @@ Get current application settings (excluding sensitive data like API keys).
 
 #### `GET /v1/agent-profiles`
 
-List agent profiles. Pass `?role=user-profile`, `?role=delegation-target`, or `?role=external-agent` to filter the catalog.
+These routes share the same main-process profile manager that powers desktop Settings > Agents and the headless CLI profile commands.
+
+#### `GET /v1/agent-profiles`
+
+List agent profiles. Pass `?role=user-profile|delegation-target|external-agent` to filter the catalog.
 
 #### `GET /v1/agent-profiles/{id}`
 
-Get a single agent profile with full connection, model, tool, and skill settings.
+Get one agent profile with its connection, model, tool, skill, and property config.
 
 #### `POST /v1/agent-profiles`
 
@@ -160,19 +165,22 @@ Create an agent profile.
 
 ```json
 {
-  "displayName": "Ops Agent",
-  "description": "Handles operational triage",
+  "displayName": "Codex ACP",
+  "description": "OpenAI Codex via ACP",
   "connectionType": "acp",
-  "connectionCommand": "npx",
-  "connectionArgs": "ops-agent --stdio",
+  "connectionCommand": "codex-acp",
+  "connectionArgs": "--help",
+  "connectionCwd": "/Users/alice/project",
   "enabled": true,
-  "autoSpawn": false
+  "autoSpawn": true
 }
 ```
 
+You can also send a `connection` object instead of the flattened `connectionType` / `connectionCommand` / `connectionArgs` / `connectionBaseUrl` / `connectionCwd` fields.
+
 #### `PATCH /v1/agent-profiles/{id}`
 
-Update an agent profile. The remote API keeps built-in profile edits limited to safe fields like `enabled`, `guidelines`, and `autoSpawn`.
+Update an agent profile. The request body accepts the same fields as create.
 
 #### `POST /v1/agent-profiles/{id}/toggle`
 

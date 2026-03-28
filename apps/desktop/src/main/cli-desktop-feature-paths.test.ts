@@ -380,7 +380,7 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessCliSource).toContain('case "/agents":')
     expect(headlessCliSource).toContain('case "/agent":')
-    expect(headlessCliSource).toContain("activateAgentProfile(selectedProfile)")
+    expect(headlessCliSource).toContain("activateAgentProfile(selectedAgent)")
     expect(tipcSource).toContain(
       "const profile = activateAgentProfileById(input.id)",
     )
@@ -392,7 +392,7 @@ describe("CLI and desktop feature paths", () => {
 
   it("shares agent profile management across CLI, desktop, and remote surfaces", () => {
     expect(agentProfileManagementSource).toContain(
-      "export function getManagedAgentProfiles()",
+      "export function getManagedAgentProfiles",
     )
     expect(agentProfileManagementSource).toContain(
       "export function getManagedAgentProfile(",
@@ -412,34 +412,40 @@ describe("CLI and desktop feature paths", () => {
     expect(agentProfileManagementSource).toContain(
       "export function deleteManagedAgentProfile(",
     )
+    expect(headlessCliSource).toContain('case "/agent-profiles":')
     expect(headlessCliSource).toContain('case "/agent-show":')
     expect(headlessCliSource).toContain('case "/agent-new":')
     expect(headlessCliSource).toContain('case "/agent-edit":')
     expect(headlessCliSource).toContain('case "/agent-toggle":')
     expect(headlessCliSource).toContain('case "/agent-delete":')
-    expect(headlessCliSource).toContain("getManagedAgentProfiles()")
+    expect(headlessCliSource).toContain("getManagedAgentProfiles(), {")
+    expect(headlessCliSource).toContain("printAgentProfiles()")
     expect(headlessCliSource).toContain("resolveManagedAgentProfileSelection(")
     expect(headlessCliSource).toContain("createManagedAgentProfile(payload)")
     expect(headlessCliSource).toContain(
-      "updateManagedAgentProfile(selectedProfile.id, parsed.payload, {",
+      "updateManagedAgentProfile(profile.id, parsedCommand.payload)",
     )
     expect(headlessCliSource).toContain(
-      "toggleManagedAgentProfileEnabled(selectedProfile.id)",
+      "toggleManagedAgentProfileEnabled(profile.id)",
     )
-    expect(headlessCliSource).toContain(
-      "deleteManagedAgentProfile(selectedProfile.id)",
-    )
+    expect(headlessCliSource).toContain("deleteManagedAgentProfile(profile.id)")
     expect(tipcSource).toContain("return getManagedAgentProfiles()")
+    expect(tipcSource).toContain("return getManagedAgentProfile(input.id)")
     expect(tipcSource).toContain(
       "const result = createManagedAgentProfile(input.profile)",
     )
     expect(tipcSource).toContain(
-      "const result = updateManagedAgentProfile(input.id, input.updates, {",
+      "const result = updateManagedAgentProfile(input.id, input.updates)",
     )
     expect(tipcSource).toContain(
       "const result = deleteManagedAgentProfile(input.id)",
     )
-    expect(remoteServerSource).toContain("getManagedAgentProfiles()")
+    expect(tipcSource).toContain(
+      "return getManagedAgentProfiles({ role: input.role })",
+    )
+    expect(remoteServerSource).toContain(
+      "getManagedAgentProfiles({ role: query.role })",
+    )
     expect(remoteServerSource).toContain("getManagedAgentProfile(params.id)")
     expect(remoteServerSource).toContain(
       "toggleManagedAgentProfileEnabled(params.id)",
@@ -552,6 +558,73 @@ describe("CLI and desktop feature paths", () => {
     expect(agentCapabilitiesSidebarSource).toContain(
       "getEnabledSkillIdsForAgentProfile(",
     )
+  })
+
+  it("shares agent profile management across headless, desktop, and remote surfaces", () => {
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedAgentProfiles",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedAgentProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function resolveManagedAgentProfileSelection",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function createManagedAgentProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function updateManagedAgentProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function toggleManagedAgentProfileEnabled",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function deleteManagedAgentProfile",
+    )
+    expect(headlessCliSource).toContain('case "/agent-profiles":')
+    expect(headlessCliSource).toContain('case "/agent-show":')
+    expect(headlessCliSource).toContain('case "/agent-new":')
+    expect(headlessCliSource).toContain('case "/agent-edit":')
+    expect(headlessCliSource).toContain('case "/agent-toggle":')
+    expect(headlessCliSource).toContain('case "/agent-delete":')
+    expect(headlessCliSource).toContain("getManagedAgentProfiles()")
+    expect(headlessCliSource).toContain("resolveManagedAgentProfileSelection(")
+    expect(headlessCliSource).toContain("createManagedAgentProfile(payload)")
+    expect(headlessCliSource).toContain(
+      "updateManagedAgentProfile(profile.id, parsedCommand.payload)",
+    )
+    expect(headlessCliSource).toContain(
+      "toggleManagedAgentProfileEnabled(profile.id)",
+    )
+    expect(headlessCliSource).toContain(
+      "deleteManagedAgentProfile(profile.id)",
+    )
+    expect(tipcSource).toContain("return getManagedAgentProfiles()")
+    expect(tipcSource).toContain("return getManagedAgentProfile(input.id)")
+    expect(tipcSource).toContain("createManagedAgentProfile(input.profile)")
+    expect(tipcSource).toContain(
+      "updateManagedAgentProfile(input.id, input.updates)",
+    )
+    expect(tipcSource).toContain("deleteManagedAgentProfile(input.id)")
+    expect(tipcSource).toContain(
+      "return getManagedAgentProfiles({ role: input.role })",
+    )
+    expect(remoteServerSource).toContain(
+      'profiles: profiles.map(serializeManagedAgentProfileSummary)',
+    )
+    expect(remoteServerSource).toContain(
+      "toggleManagedAgentProfileEnabled(params.id)",
+    )
+    expect(remoteServerSource).toContain("getManagedAgentProfile(params.id)")
+    expect(remoteServerSource).toContain("createManagedAgentProfile(body)")
+    expect(remoteServerSource).toContain(
+      "updateManagedAgentProfile(params.id, body)",
+    )
+    expect(remoteServerSource).toContain("deleteManagedAgentProfile(params.id)")
+    expect(settingsAgentsSource).toContain("tipcClient.createAgentProfile(")
+    expect(settingsAgentsSource).toContain("tipcClient.updateAgentProfile(")
+    expect(settingsAgentsSource).toContain("tipcClient.deleteAgentProfile(")
   })
 
   it("shares profile skill management across headless, desktop, and remote surfaces", () => {
