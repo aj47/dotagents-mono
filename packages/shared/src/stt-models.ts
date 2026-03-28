@@ -33,13 +33,13 @@ interface SttModelConfig {
 export function getConfiguredSttModel(
   config: SttModelConfig,
 ): string | undefined {
-  if (config.sttProviderId === "openai") {
-    return config.openaiSttModel?.trim() || DEFAULT_STT_MODELS.openai
+  const defaultModel = getDefaultSttModel(config.sttProviderId)
+  if (!defaultModel) {
+    return undefined
   }
 
-  if (config.sttProviderId === "groq") {
-    return config.groqSttModel?.trim() || DEFAULT_STT_MODELS.groq
-  }
+  const configuredModel =
+    config.sttProviderId === "openai" ? config.openaiSttModel : config.groqSttModel
 
-  return undefined
+  return configuredModel?.trim() || defaultModel
 }
