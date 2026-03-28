@@ -106,6 +106,12 @@ import {
   activateAgentProfile,
   activateAgentProfileById,
 } from "./agent-profile-activation"
+import {
+  createManagedAgentProfile,
+  deleteManagedAgentProfile,
+  getManagedAgentProfiles,
+  updateManagedAgentProfile,
+} from "./agent-profile-management"
 import { acpService, ACPRunRequest } from "./acp-service"
 import {
   type StartSharedPromptRunOptions,
@@ -4053,7 +4059,7 @@ export const router = {
   // ============================================================================
 
   getAgentProfiles: t.procedure.action(async () => {
-    return agentProfileService.getAll()
+    return getManagedAgentProfiles()
   }),
 
   getAgentProfile: t.procedure
@@ -4091,7 +4097,8 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      return agentProfileService.create(input.profile)
+      const result = createManagedAgentProfile(input.profile)
+      return result.profile
     }),
 
   updateAgentProfile: t.procedure
@@ -4100,13 +4107,17 @@ export const router = {
       updates: Partial<import("@shared/types").AgentProfile>
     }>()
     .action(async ({ input }) => {
-      return agentProfileService.update(input.id, input.updates)
+      const result = updateManagedAgentProfile(input.id, input.updates, {
+        allowBuiltInFieldUpdates: true,
+      })
+      return result.profile
     }),
 
   deleteAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.delete(input.id)
+      const result = deleteManagedAgentProfile(input.id)
+      return result.success
     }),
 
   getUserProfiles: t.procedure.action(async () => {

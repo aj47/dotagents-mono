@@ -34,6 +34,15 @@ import {
 import { mcpManagementStore } from "./mcp-management-store"
 import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfile } from "./agent-profile-activation"
+import {
+  createManagedAgentProfile,
+  deleteManagedAgentProfile,
+  getManagedAgentProfile,
+  getManagedAgentProfiles,
+  resolveManagedAgentProfileSelection,
+  toggleManagedAgentProfileEnabled,
+  updateManagedAgentProfile,
+} from "./agent-profile-management"
 import { loopService } from "./loop-service"
 import {
   createManagedKnowledgeNote,
@@ -65,7 +74,6 @@ import {
   getEnabledAgentProfiles,
   getAgentProfileStatusLabels,
   orderItemsByPinnedFirst,
-  resolveAgentProfileSelection,
   resolveChatModelDisplayInfo,
   sanitizeConversationSessionState,
   setConversationSessionStateMembership,
@@ -181,8 +189,13 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/mcp-restart <name>${colors.reset} - Restart an MCP server process
   ${colors.cyan}/mcp-stop <name>${colors.reset} - Stop an MCP server process
   ${colors.cyan}/mcp-logs <name>${colors.reset} - Show recent MCP server logs
-  ${colors.cyan}/agents${colors.reset}        - List enabled agents and the active selection
+  ${colors.cyan}/agents${colors.reset}        - List agent profiles and the active selection
   ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
+  ${colors.cyan}/agent-show <id-or-name>${colors.reset} - Show full agent profile details
+  ${colors.cyan}/agent-new <json>${colors.reset} - Create an agent profile from a JSON payload
+  ${colors.cyan}/agent-edit <id> <json>${colors.reset} - Update an agent profile from a JSON payload
+  ${colors.cyan}/agent-toggle <id-or-name>${colors.reset} - Enable or disable an agent profile
+  ${colors.cyan}/agent-delete <id-or-name>${colors.reset} - Delete an agent profile
   ${colors.cyan}/loops${colors.reset}         - List repeat tasks with live status and profile info
   ${colors.cyan}/loop-show <id-or-name>${colors.reset} - Show full repeat-task details
   ${colors.cyan}/loop-new <json>${colors.reset} - Create a repeat task from a JSON payload
@@ -259,9 +272,9 @@ function formatManagedMcpServerSelectionSummary(
   return `${server.name} (${server.transport}, ${server.state})`
 }
 
-function getAvailableAgentsForCli(): AgentProfile[] {
+function getSelectableAgentsForCli(): AgentProfile[] {
   return sortAgentProfilesByPriority(
-    getEnabledAgentProfiles(agentProfileService.getAll()),
+    getEnabledAgentProfiles(getManagedAgentProfiles()),
     {
       priorityProfileId: agentProfileService.getCurrentProfile()?.id,
     },
@@ -279,6 +292,74 @@ function formatAgentSelectionSummary(profile: AgentProfile): string {
   const description = summary ? ` ${colors.dim}- ${summary}${colors.reset}` : ""
 
   return `${profile.id}: ${getAgentProfileDisplayName(profile)}${labelSuffix}${description}`
+}
+
+function printAgentDetails(profile: AgentProfile): void {
+  console.log(
+    `\n${colors.bold}${getAgentProfileDisplayName(profile)}${colors.reset}`,
+  )
+  console.log(`  ${colors.dim}${profile.id}${colors.reset}`)
+  console.log(
+    `  ${colors.dim}${
+      getAgentProfileStatusLabels(profile, {
+        isCurrent: profile.id === agentProfileService.getCurrentProfile()?.id,
+      }).join(", ") || "custom"
+    }${colors.reset}`,
+  )
+
+  const summary = getAgentProfileCatalogDescription(profile)
+  if (summary) {
+    console.log(`  ${colors.dim}${summary}${colors.reset}`)
+  }
+
+  console.log()
+  console.log(`${colors.bold}Connection${colors.reset}`)
+  console.log(`  type: ${profile.connection.type}`)
+  if (profile.connection.command) {
+    console.log(
+      `  command: ${profile.connection.command}${profile.connection.args?.length ? ` ${profile.connection.args.join(" ")}` : ""}`,
+    )
+  }
+  if (profile.connection.baseUrl) {
+    console.log(`  baseUrl: ${profile.connection.baseUrl}`)
+  }
+  if (profile.connection.cwd) {
+    console.log(`  cwd: ${profile.connection.cwd}`)
+  }
+
+  const optionalSections: Array<[string, unknown]> = [
+    ["description", profile.description],
+    ["systemPrompt", profile.systemPrompt],
+    ["guidelines", profile.guidelines],
+    ["modelConfig", profile.modelConfig],
+    ["toolConfig", profile.toolConfig],
+    ["skillsConfig", profile.skillsConfig],
+    ["properties", profile.properties],
+  ]
+
+  for (const [label, value] of optionalSections) {
+    if (
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" && value === "") ||
+      (typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.keys(value).length === 0)
+    ) {
+      continue
+    }
+
+    console.log()
+    console.log(`${colors.bold}${label}${colors.reset}`)
+    if (typeof value === "string") {
+      console.log(value)
+      continue
+    }
+
+    console.log(JSON.stringify(value, null, 2))
+  }
+
+  console.log()
 }
 
 function formatRelativeLoopInterval(intervalMinutes: number): string {
@@ -796,11 +877,11 @@ function printStatus() {
 }
 
 function printAgents() {
-  const agents = getAvailableAgentsForCli()
+  const agents = getManagedAgentProfiles()
   const availableSkillCount = getManagedSkillsCatalog().length
-  console.log(`\n${colors.bold}Enabled Agents:${colors.reset}`)
+  console.log(`\n${colors.bold}Agent Profiles:${colors.reset}`)
   if (agents.length === 0) {
-    console.log(`  ${colors.dim}(no enabled agents)${colors.reset}`)
+    console.log(`  ${colors.dim}(no agent profiles)${colors.reset}`)
   } else {
     for (const profile of agents) {
       console.log(`  ${formatAgentSelectionSummary(profile)}`)
@@ -815,6 +896,228 @@ function printAgents() {
     }
   }
   console.log()
+  console.log(
+    `${colors.dim}Use /agent to switch enabled profiles, or /agent-show, /agent-new, /agent-edit, /agent-toggle, and /agent-delete for profile management.${colors.reset}`,
+  )
+  console.log()
+}
+
+function parseAgentProfileEditCommand(
+  input: string,
+): { selection: string; payload: Record<string, unknown> } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(
+      colors.yellow,
+      "Usage: /agent-edit <agent-id-or-name> <json-payload>",
+    )
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(
+      colors.yellow,
+      "Usage: /agent-edit <agent-id-or-name> <json-payload>",
+    )
+    return null
+  }
+
+  const selection = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const payloadText = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /agent-edit <agent-id-or-name> <json-payload>",
+  )
+  if (!payload) {
+    return null
+  }
+
+  return { selection, payload }
+}
+
+function resolveAgentProfileSelectionForCli(
+  selection: string,
+  options: {
+    enabledOnly?: boolean
+    usage?: string
+  } = {},
+): AgentProfile | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(
+      colors.yellow,
+      options.usage || "Usage: /agent <agent-id-or-name>",
+    )
+    return null
+  }
+
+  const candidateProfiles = options.enabledOnly
+    ? getSelectableAgentsForCli()
+    : getManagedAgentProfiles()
+  const { selectedProfile, ambiguousProfiles } =
+    resolveManagedAgentProfileSelection(candidateProfiles, query)
+  if (selectedProfile) {
+    return selectedProfile
+  }
+
+  if (ambiguousProfiles?.length) {
+    printColored(
+      colors.yellow,
+      `Agent selector "${query}" matches multiple profiles:`,
+    )
+    for (const profile of ambiguousProfiles) {
+      console.log(`  ${formatAgentSelectionSummary(profile)}`)
+    }
+    return null
+  }
+
+  if (options.enabledOnly) {
+    const disabledMatch = resolveManagedAgentProfileSelection(
+      getManagedAgentProfiles(),
+      query,
+    ).selectedProfile
+    if (disabledMatch && disabledMatch.enabled === false) {
+      printColored(
+        colors.yellow,
+        `Agent profile ${getAgentProfileDisplayName(disabledMatch)} is disabled. Use /agent-toggle or /agent-edit to enable it first.`,
+      )
+      return null
+    }
+  }
+
+  printColored(colors.red, `Agent profile not found: ${query}`)
+  return null
+}
+
+async function handleShowAgentProfile(selection: string): Promise<void> {
+  const selectedProfile = resolveAgentProfileSelectionForCli(selection, {
+    usage: "Usage: /agent-show <agent-id-or-name>",
+  })
+  if (!selectedProfile) {
+    return
+  }
+
+  const latestProfile =
+    getManagedAgentProfile(selectedProfile.id) || selectedProfile
+  printAgentDetails(latestProfile)
+}
+
+async function handleCreateAgentProfile(payloadText: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /agent-new <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  const result = createManagedAgentProfile(payload)
+  if (!result.success || !result.profile) {
+    printColored(
+      result.error === "invalid_input" ? colors.yellow : colors.red,
+      result.errorMessage || "Failed to create agent profile.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Created agent profile ${result.profile.id}: ${getAgentProfileDisplayName(result.profile)}`,
+  )
+  printAgentDetails(result.profile)
+}
+
+async function handleEditAgentProfile(input: string): Promise<void> {
+  const parsed = parseAgentProfileEditCommand(input)
+  if (!parsed) {
+    return
+  }
+
+  const selectedProfile = resolveAgentProfileSelectionForCli(parsed.selection, {
+    usage: "Usage: /agent-edit <agent-id-or-name> <json-payload>",
+  })
+  if (!selectedProfile) {
+    return
+  }
+
+  const result = updateManagedAgentProfile(selectedProfile.id, parsed.payload, {
+    allowBuiltInFieldUpdates: true,
+  })
+  if (!result.success || !result.profile) {
+    printColored(
+      result.error === "invalid_input" ? colors.yellow : colors.red,
+      result.errorMessage || "Failed to update agent profile.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Updated agent profile ${result.profile.id}: ${getAgentProfileDisplayName(result.profile)}`,
+  )
+  printAgentDetails(result.profile)
+}
+
+async function handleToggleAgentProfile(selection: string): Promise<void> {
+  const selectedProfile = resolveAgentProfileSelectionForCli(selection, {
+    usage: "Usage: /agent-toggle <agent-id-or-name>",
+  })
+  if (!selectedProfile) {
+    return
+  }
+
+  const result = toggleManagedAgentProfileEnabled(selectedProfile.id)
+  if (!result.success || !result.profile) {
+    printColored(
+      result.error === "not_found" ? colors.red : colors.yellow,
+      result.errorMessage || "Failed to toggle agent profile.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `${result.profile.enabled ? "Enabled" : "Disabled"} agent profile ${result.profile.id}: ${getAgentProfileDisplayName(result.profile)}`,
+  )
+}
+
+async function handleDeleteAgentProfile(selection: string): Promise<void> {
+  const selectedProfile = resolveAgentProfileSelectionForCli(selection, {
+    usage: "Usage: /agent-delete <agent-id-or-name>",
+  })
+  if (!selectedProfile) {
+    return
+  }
+
+  const confirmed = await promptForConfirmation(
+    `Delete agent profile ${selectedProfile.id} (${getAgentProfileDisplayName(selectedProfile)})?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Agent profile delete cancelled.")
+    return
+  }
+
+  const result = deleteManagedAgentProfile(selectedProfile.id)
+  if (!result.success) {
+    printColored(
+      result.error === "delete_forbidden" ? colors.yellow : colors.red,
+      result.errorMessage || "Failed to delete agent profile.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted agent profile ${selectedProfile.id}: ${getAgentProfileDisplayName(selectedProfile)}`,
+  )
+
+  if (result.activatedProfile) {
+    printColored(
+      colors.dim,
+      `Current agent switched to ${getAgentProfileDisplayName(result.activatedProfile)} (${result.activatedProfile.id}).`,
+    )
+  }
 }
 
 function printSkills() {
@@ -949,35 +1252,19 @@ async function handleUseConversation(selection: string): Promise<void> {
 }
 
 async function handleUseAgent(selection: string): Promise<void> {
-  const query = selection.trim()
-  if (!query) {
-    printColored(colors.yellow, "Usage: /agent <agent-id-or-name>")
+  const selectedProfile = resolveAgentProfileSelectionForCli(selection, {
+    enabledOnly: true,
+    usage: "Usage: /agent <agent-id-or-name>",
+  })
+  if (!selectedProfile) {
     return
   }
 
-  const { selectedProfile: selectedAgent, ambiguousProfiles: ambiguousAgents } =
-    resolveAgentProfileSelection(getAvailableAgentsForCli(), query)
-  if (selectedAgent) {
-    const profile = activateAgentProfile(selectedAgent)
-    printColored(
-      colors.green,
-      `Using agent ${getAgentProfileDisplayName(profile)} (${profile.id}) for future prompts.`,
-    )
-    return
-  }
-
-  if (ambiguousAgents?.length) {
-    printColored(
-      colors.yellow,
-      `Agent selector "${query}" matches multiple agents:`,
-    )
-    for (const profile of ambiguousAgents) {
-      console.log(`  ${formatAgentSelectionSummary(profile)}`)
-    }
-    return
-  }
-
-  printColored(colors.red, `Agent not found: ${query}`)
+  const profile = activateAgentProfile(selectedProfile)
+  printColored(
+    colors.green,
+    `Using agent ${getAgentProfileDisplayName(profile)} (${profile.id}) for future prompts.`,
+  )
 }
 
 function printMcpServerDetails(server: ManagedMcpServerDetails): void {
@@ -1702,6 +1989,21 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/agent":
       await handleUseAgent(argumentsText)
+      return true
+    case "/agent-show":
+      await handleShowAgentProfile(argumentsText)
+      return true
+    case "/agent-new":
+      await handleCreateAgentProfile(argumentsText)
+      return true
+    case "/agent-edit":
+      await handleEditAgentProfile(argumentsText)
+      return true
+    case "/agent-toggle":
+      await handleToggleAgentProfile(argumentsText)
+      return true
+    case "/agent-delete":
+      await handleDeleteAgentProfile(argumentsText)
       return true
     case "/loops":
       printLoops()

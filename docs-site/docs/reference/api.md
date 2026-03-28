@@ -142,6 +142,46 @@ Emergency stop a specific agent session.
 
 Get current application settings (excluding sensitive data like API keys).
 
+### Agent Profiles
+
+#### `GET /v1/agent-profiles`
+
+List agent profiles. Pass `?role=user-profile`, `?role=delegation-target`, or `?role=external-agent` to filter the catalog.
+
+#### `GET /v1/agent-profiles/{id}`
+
+Get a single agent profile with full connection, model, tool, and skill settings.
+
+#### `POST /v1/agent-profiles`
+
+Create an agent profile.
+
+**Request:**
+
+```json
+{
+  "displayName": "Ops Agent",
+  "description": "Handles operational triage",
+  "connectionType": "acp",
+  "connectionCommand": "npx",
+  "connectionArgs": "ops-agent --stdio",
+  "enabled": true,
+  "autoSpawn": false
+}
+```
+
+#### `PATCH /v1/agent-profiles/{id}`
+
+Update an agent profile. The remote API keeps built-in profile edits limited to safe fields like `enabled`, `guidelines`, and `autoSpawn`.
+
+#### `POST /v1/agent-profiles/{id}/toggle`
+
+Toggle an agent profile between enabled and disabled.
+
+#### `DELETE /v1/agent-profiles/{id}`
+
+Delete an agent profile. Built-in profiles cannot be deleted.
+
 ### Repeat Tasks
 
 #### `GET /v1/loops`

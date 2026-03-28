@@ -99,6 +99,36 @@ describe("remote-server route registration", () => {
     expect(profileSwitchSection).not.toContain("toolConfigToMcpServerConfig(")
   })
 
+  it("shares agent profile CRUD routes with the main-process management helper", () => {
+    const source = getRemoteServerSource()
+    const agentProfileSection = getSection(
+      source,
+      "// GET /v1/agent-profiles - List all agent profiles",
+      "// Repeat Tasks Management Endpoints (for mobile app)",
+    )
+
+    expect(source).toContain('from "./agent-profile-management"')
+    expect(agentProfileSection).toContain("getManagedAgentProfiles()")
+    expect(agentProfileSection).toContain("getManagedAgentProfile(params.id)")
+    expect(agentProfileSection).toContain(
+      "toggleManagedAgentProfileEnabled(params.id)",
+    )
+    expect(agentProfileSection).toContain("createManagedAgentProfile(body)")
+    expect(agentProfileSection).toContain(
+      "updateManagedAgentProfile(params.id, body)",
+    )
+    expect(agentProfileSection).toContain(
+      "deleteManagedAgentProfile(params.id)",
+    )
+    expect(agentProfileSection).not.toContain("sanitizeAgentProfileConnection(")
+    expect(agentProfileSection).not.toContain(
+      "VALID_AGENT_PROFILE_CONNECTION_TYPES",
+    )
+    expect(agentProfileSection).not.toContain("agentProfileService.create(")
+    expect(agentProfileSection).not.toContain("agentProfileService.update(")
+    expect(agentProfileSection).not.toContain("agentProfileService.delete(")
+  })
+
   it("leaves legacy runtime flag ownership to the shared session manager", () => {
     const source = getRemoteServerSource()
 
