@@ -82,6 +82,10 @@ const skillManagementSource = readFileSync(
   new URL("./skill-management.ts", import.meta.url),
   "utf8",
 )
+const bundleManagementSource = readFileSync(
+  new URL("./bundle-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -847,6 +851,56 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsSkillsSource).toContain("tipcClient.importSkillFromGitHub(")
   })
 
+  it("shares bundle export/import/publish flows across headless and desktop surfaces", () => {
+    expect(bundleManagementSource).toContain(
+      "export function getManagedBundleExportableItems",
+    )
+    expect(bundleManagementSource).toContain(
+      "export async function exportManagedBundle(",
+    )
+    expect(bundleManagementSource).toContain(
+      "export async function exportManagedBundleToFile(",
+    )
+    expect(bundleManagementSource).toContain(
+      "export function previewManagedBundleWithConflicts(",
+    )
+    expect(bundleManagementSource).toContain(
+      "export async function importManagedBundle(",
+    )
+    expect(bundleManagementSource).toContain(
+      "export async function generateManagedBundlePublishPayload(",
+    )
+    expect(bundleManagementSource).toContain(
+      "export async function refreshRuntimeAfterManagedBundleImport",
+    )
+    expect(headlessCliSource).toContain('case "/bundle-items":')
+    expect(headlessCliSource).toContain('case "/bundle-export":')
+    expect(headlessCliSource).toContain('case "/bundle-preview":')
+    expect(headlessCliSource).toContain('case "/bundle-import":')
+    expect(headlessCliSource).toContain('case "/bundle-publish-payload":')
+    expect(headlessCliSource).toContain("getManagedBundleExportableItems()")
+    expect(headlessCliSource).toContain("await exportManagedBundle(")
+    expect(headlessCliSource).toContain("previewManagedBundleWithConflicts(")
+    expect(headlessCliSource).toContain("await importManagedBundle(")
+    expect(headlessCliSource).toContain(
+      "await generateManagedBundlePublishPayload(",
+    )
+    expect(tipcSource).toContain("return getManagedBundleExportableItems()")
+    expect(tipcSource).toContain("return exportManagedBundleToFile(")
+    expect(tipcSource).toContain(
+      "return generateManagedBundlePublishPayload(",
+    )
+    expect(tipcSource).toContain(
+      "return previewManagedBundleWithConflicts(input.filePath)",
+    )
+    expect(tipcSource).toContain(
+      "return importManagedBundle(input.filePath, {",
+    )
+    expect(tipcSource).toContain(
+      "await refreshRuntimeAfterManagedBundleImport()",
+    )
+  })
+
   it("routes the remote server through the shared launcher and runner", () => {
     expect(remoteServerSource).toContain('approvalMode: "dialog"')
     expect(remoteServerSource).toContain("const agentResult = await runPromise")
@@ -1284,6 +1338,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared profile skill gating")
     expect(docsSource).toContain("Shared profile skill management")
     expect(docsSource).toContain("Shared skill catalog management")
+    expect(docsSource).toContain("Shared bundle management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -1331,6 +1386,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain(
       "Desktop skill settings + CLI skill catalog controls",
     )
+    expect(docsSource).toContain("Headless CLI bundle management")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")

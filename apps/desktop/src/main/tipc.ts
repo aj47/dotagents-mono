@@ -179,6 +179,14 @@ import {
 } from "./skill-management"
 import { toggleManagedSkillForProfile } from "./profile-skill-management"
 import { saveManagedConfig } from "./settings-management"
+import {
+  exportManagedBundleToFile,
+  generateManagedBundlePublishPayload,
+  getManagedBundleExportableItems,
+  importManagedBundle,
+  previewManagedBundleWithConflicts,
+  refreshRuntimeAfterManagedBundleImport,
+} from "./bundle-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -347,169 +355,6 @@ const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
     path.join(recordingsFolder, "history.json"),
     JSON.stringify(history),
   )
-}
-
-async function refreshRuntimeAfterBundleImport(): Promise<void> {
-  try {
-    configStore.reload()
-  } catch (error) {
-    logApp("[tipc] Failed to reload config after bundle load", { error })
-  }
-
-  try {
-    agentProfileService.reload()
-    agentProfileService.syncAgentProfilesToACPRegistry()
-  } catch (error) {
-    logApp("[tipc] Failed to reload agent profiles after bundle load", {
-      error,
-    })
-  }
-
-  try {
-    const { skillsService } = await import("./skills-service")
-    skillsService.scanSkillsFolder()
-  } catch (error) {
-    logApp("[tipc] Failed to reload skills after bundle load", { error })
-  }
-
-  try {
-    loopService.stopAllLoops()
-    loopService.reload()
-    loopService.resumeScheduling()
-    loopService.startAllLoops()
-  } catch (error) {
-    logApp("[tipc] Failed to reload repeat tasks after bundle load", { error })
-    // Avoid leaving loop scheduling paused if stopAllLoops() succeeded but reload/start failed.
-    try {
-      loopService.resumeScheduling()
-    } catch {
-      // best-effort
-    }
-  }
-
-  try {
-    await knowledgeNotesService.reload()
-  } catch (error) {
-    logApp("[tipc] Failed to reload knowledge notes after bundle load", {
-      error,
-    })
-  }
-
-  try {
-    const config = configStore.get()
-    const configuredServers = config.mcpConfig?.mcpServers || {}
-    const serverStatusBeforeRefresh = mcpService.getServerStatus()
-
-    // Stop servers that were removed/disabled by the imported bundle.
-    for (const [serverName, status] of Object.entries(
-      serverStatusBeforeRefresh,
-    )) {
-      const serverConfig = configuredServers[serverName]
-      const shouldBeStopped =
-        !serverConfig || !!(serverConfig as MCPServerConfig).disabled
-      if (!shouldBeStopped) continue
-
-      const stopResult = await mcpService.stopServer(serverName)
-      if (!stopResult.success) {
-        logApp("[tipc] Failed to stop MCP server after bundle load", {
-          serverName,
-          error: stopResult.error,
-          wasConnected: status.connected,
-        })
-      }
-    }
-
-    const serverStatusAfterStops = mcpService.getServerStatus()
-
-    // Restart currently connected enabled servers so overwritten configs take effect immediately.
-    for (const [serverName, serverConfig] of Object.entries(
-      configuredServers,
-    )) {
-      if ((serverConfig as MCPServerConfig).disabled) continue
-      const status = serverStatusAfterStops[serverName]
-      if (status?.runtimeEnabled === false) continue
-      if (!status?.connected) continue
-
-      const restartResult = await mcpService.restartServer(serverName)
-      if (!restartResult.success) {
-        logApp("[tipc] Failed to restart MCP server after bundle load", {
-          serverName,
-          error: restartResult.error,
-        })
-      }
-    }
-
-    // Start any newly imported enabled servers that were previously absent.
-    await mcpService.initialize()
-  } catch (error) {
-    logApp("[tipc] Failed to reinitialize MCP after bundle load", { error })
-  }
-}
-
-type BundleConflictItem = {
-  id: string
-  name: string
-  existingName?: string
-}
-
-type BundleConflictMap = {
-  agentProfiles: BundleConflictItem[]
-  mcpServers: BundleConflictItem[]
-  skills: BundleConflictItem[]
-  repeatTasks: BundleConflictItem[]
-  knowledgeNotes: BundleConflictItem[]
-}
-
-type BundleConflictPreview = {
-  success: boolean
-  conflicts?: BundleConflictMap
-}
-
-const BUNDLE_CONFLICT_KEYS: Array<keyof BundleConflictMap> = [
-  "agentProfiles",
-  "mcpServers",
-  "skills",
-  "repeatTasks",
-  "knowledgeNotes",
-]
-
-function mergeConflictItems(
-  primary: BundleConflictItem[] | undefined,
-  secondary: BundleConflictItem[] | undefined,
-): BundleConflictItem[] {
-  const merged = new Map<string, BundleConflictItem>()
-
-  for (const item of primary || []) {
-    if (!item?.id) continue
-    merged.set(item.id, item)
-  }
-  for (const item of secondary || []) {
-    if (!item?.id) continue
-    merged.set(item.id, item)
-  }
-
-  return Array.from(merged.values())
-}
-
-function mergeConflictMaps(
-  primary: BundleConflictMap | undefined,
-  secondary: BundleConflictMap | undefined,
-): BundleConflictMap | undefined {
-  if (!primary && !secondary) return undefined
-
-  const merged: BundleConflictMap = {
-    agentProfiles: [],
-    mcpServers: [],
-    skills: [],
-    repeatTasks: [],
-    knowledgeNotes: [],
-  }
-
-  for (const key of BUNDLE_CONFLICT_KEYS) {
-    merged[key] = mergeConflictItems(primary?.[key], secondary?.[key])
-  }
-
-  return merged
 }
 
 /**
@@ -4331,17 +4176,7 @@ export const router = {
   // ============================================================================
 
   getBundleExportableItems: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-      await import("./config")
-    const { getBundleExportableItemsFromLayers } =
-      await import("./bundle-service")
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-
-    return getBundleExportableItemsFromLayers(
-      workspaceAgentsFolder
-        ? [globalAgentsFolder, workspaceAgentsFolder]
-        : [globalAgentsFolder],
-    )
+    return getManagedBundleExportableItems()
   }),
 
   exportBundle: t.procedure
@@ -4378,12 +4213,7 @@ export const router = {
       | undefined
     >()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-        await import("./config")
-      const { exportBundleToFile, exportBundleToFileFromLayers } =
-        await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const exportOptions = {
+      return exportManagedBundleToFile({
         name: input?.name,
         description: input?.description,
         publicMetadata: input?.publicMetadata,
@@ -4393,17 +4223,7 @@ export const router = {
         repeatTaskIds: input?.repeatTaskIds,
         knowledgeNoteIds: input?.knowledgeNoteIds,
         components: input?.components,
-      }
-
-      // Export from merged layers when a workspace overlay exists (workspace wins on conflicts).
-      if (workspaceAgentsFolder) {
-        return exportBundleToFileFromLayers(
-          [globalAgentsFolder, workspaceAgentsFolder],
-          exportOptions,
-        )
-      }
-
-      return exportBundleToFile(globalAgentsFolder, exportOptions)
+      })
     }),
 
   generatePublishPayload: t.procedure
@@ -4439,14 +4259,7 @@ export const router = {
       knowledgeNoteIds?: string[]
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-        await import("./config")
-      const { generatePublishPayload } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const dirs = workspaceAgentsFolder
-        ? [globalAgentsFolder, workspaceAgentsFolder]
-        : [globalAgentsFolder]
-      return generatePublishPayload(dirs, {
+      return generateManagedBundlePublishPayload({
         name: input.name,
         catalogId: input.catalogId,
         artifactUrl: input.artifactUrl,
@@ -4498,39 +4311,7 @@ export const router = {
   previewBundleWithConflicts: t.procedure
     .input<{ filePath: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-        await import("./config")
-      const { previewBundleWithConflicts } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const targetDir = workspaceAgentsFolder || globalAgentsFolder
-      const targetPreview = previewBundleWithConflicts(
-        input.filePath,
-        targetDir,
-      )
-
-      // With workspace overlays, merge conflicts from global + workspace so preview
-      // matches the merged UI view and catches shadowing collisions.
-      if (!workspaceAgentsFolder || !targetPreview.success) {
-        return targetPreview
-      }
-
-      const globalPreview = previewBundleWithConflicts(
-        input.filePath,
-        globalAgentsFolder,
-      )
-      if (!globalPreview.success) {
-        return targetPreview
-      }
-
-      const mergedConflicts = mergeConflictMaps(
-        (globalPreview as BundleConflictPreview).conflicts,
-        (targetPreview as BundleConflictPreview).conflicts,
-      )
-
-      return {
-        ...targetPreview,
-        conflicts: mergedConflicts,
-      }
+      return previewManagedBundleWithConflicts(input.filePath)
     }),
 
   importBundle: t.procedure
@@ -4546,17 +4327,10 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-        await import("./config")
-      const { importBundle } = await import("./bundle-service")
-      // Use workspace layer if present, otherwise global
-      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
-      const result = await importBundle(input.filePath, targetDir, {
+      return importManagedBundle(input.filePath, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
       })
-      await refreshRuntimeAfterBundleImport()
-      return result
     }),
 
   importBundleFromDialog: t.procedure
@@ -4581,7 +4355,7 @@ export const router = {
         components: input.components,
       })
       if (result) {
-        await refreshRuntimeAfterBundleImport()
+        await refreshRuntimeAfterManagedBundleImport()
       }
       return result
     }),
@@ -4615,7 +4389,7 @@ export const router = {
       const { switchToSlot } = await import("./sandbox-service")
       const result = switchToSlot(globalAgentsFolder, input.name)
       if (result.success) {
-        await refreshRuntimeAfterBundleImport()
+        await refreshRuntimeAfterManagedBundleImport()
       }
       return result
     }),
@@ -4624,7 +4398,7 @@ export const router = {
     const { restoreBaseline } = await import("./sandbox-service")
     const result = restoreBaseline(globalAgentsFolder)
     if (result.success) {
-      await refreshRuntimeAfterBundleImport()
+      await refreshRuntimeAfterManagedBundleImport()
     }
     return result
   }),
@@ -4723,7 +4497,7 @@ export const router = {
         }
       }
 
-      await refreshRuntimeAfterBundleImport()
+      await refreshRuntimeAfterManagedBundleImport()
       return importResult
     }),
 

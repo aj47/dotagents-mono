@@ -89,6 +89,13 @@ import {
   getManagedSettingsUpdates,
   saveManagedConfig,
 } from "./settings-management"
+import {
+  exportManagedBundle,
+  generateManagedBundlePublishPayload,
+  getManagedBundleExportableItems,
+  importManagedBundle,
+  previewManagedBundleWithConflicts,
+} from "./bundle-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
   type ConversationSessionState,
@@ -119,6 +126,16 @@ import type {
   KnowledgeNote,
   LoopSummary,
 } from "@shared/types"
+import type {
+  BundleComponentSelection,
+  BundlePreviewResult,
+  BundlePublicMetadata,
+  ExportBundleOptions,
+  ExportableBundleItems,
+  GeneratePublishPayloadOptions,
+  ImportItemResult,
+  ImportOptions,
+} from "./bundle-service"
 
 // ANSI color codes (no external deps)
 const colors = {
@@ -258,6 +275,11 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/skill-import-github <repo>${colors.reset} - Import skills from a GitHub repository
   ${colors.cyan}/skill-scan${colors.reset}   - Reload skills from the layered .agents folders
   ${colors.cyan}/skill-cleanup${colors.reset} - Remove stale skill references from agent profiles
+  ${colors.cyan}/bundle-items${colors.reset} - List exportable bundle items from the merged .agents layers
+  ${colors.cyan}/bundle-export <path> [json]${colors.reset} - Export a .dotagents bundle to a file
+  ${colors.cyan}/bundle-preview <path>${colors.reset} - Preview a .dotagents bundle plus merged conflicts
+  ${colors.cyan}/bundle-import <path> [json]${colors.reset} - Import a .dotagents bundle (default conflictStrategy: skip)
+  ${colors.cyan}/bundle-publish-payload <json>${colors.reset} - Print a Hub publish payload JSON for the merged layers
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -576,6 +598,236 @@ function parseCliJsonObject(
     printColored(colors.red, `Invalid JSON payload: ${message}`)
     return null
   }
+}
+
+function getCliRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+function getOptionalTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function getOptionalStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  return value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
+function getOptionalBundleComponentSelection(
+  value: unknown,
+): BundleComponentSelection | undefined {
+  const record = getCliRecord(value)
+  if (!record) {
+    return undefined
+  }
+
+  const components: BundleComponentSelection = {}
+  if (typeof record.agentProfiles === "boolean") {
+    components.agentProfiles = record.agentProfiles
+  }
+  if (typeof record.mcpServers === "boolean") {
+    components.mcpServers = record.mcpServers
+  }
+  if (typeof record.skills === "boolean") {
+    components.skills = record.skills
+  }
+  if (typeof record.repeatTasks === "boolean") {
+    components.repeatTasks = record.repeatTasks
+  }
+  if (typeof record.knowledgeNotes === "boolean") {
+    components.knowledgeNotes = record.knowledgeNotes
+  }
+
+  return Object.keys(components).length > 0 ? components : undefined
+}
+
+function parseBundlePublicMetadata(
+  value: unknown,
+  options: {
+    usage: string
+    required: boolean
+  },
+): BundlePublicMetadata | undefined | null {
+  if (value === undefined) {
+    if (options.required) {
+      printColored(
+        colors.red,
+        `${options.usage}: publicMetadata.summary and publicMetadata.author.displayName are required.`,
+      )
+      return null
+    }
+    return undefined
+  }
+
+  const record = getCliRecord(value)
+  const authorRecord = getCliRecord(record?.author)
+  const summary = getOptionalTrimmedString(record?.summary)
+  const displayName = getOptionalTrimmedString(authorRecord?.displayName)
+
+  if (!record || !summary || !displayName) {
+    printColored(
+      colors.red,
+      `${options.usage}: publicMetadata.summary and publicMetadata.author.displayName are required.`,
+    )
+    return null
+  }
+
+  const authorHandle = authorRecord
+    ? getOptionalTrimmedString(authorRecord.handle)
+    : undefined
+  const authorUrl = authorRecord
+    ? getOptionalTrimmedString(authorRecord.url)
+    : undefined
+
+  const publicMetadata: BundlePublicMetadata = {
+    summary,
+    author: {
+      displayName,
+      ...(authorHandle ? { handle: authorHandle } : {}),
+      ...(authorUrl ? { url: authorUrl } : {}),
+    },
+    tags: getOptionalStringArray(record.tags) || [],
+  }
+
+  const compatibilityRecord = getCliRecord(record.compatibility)
+  if (compatibilityRecord) {
+    const minDesktopVersion = getOptionalTrimmedString(
+      compatibilityRecord.minDesktopVersion,
+    )
+    const notes = getOptionalStringArray(compatibilityRecord.notes)
+    if (minDesktopVersion || notes) {
+      publicMetadata.compatibility = {
+        ...(minDesktopVersion ? { minDesktopVersion } : {}),
+        ...(notes ? { notes } : {}),
+      }
+    }
+  }
+
+  return publicMetadata
+}
+
+function parseBundleExportOptions(
+  payload: Record<string, unknown>,
+  usage: string,
+): ExportBundleOptions | null {
+  const publicMetadata = parseBundlePublicMetadata(payload.publicMetadata, {
+    usage,
+    required: false,
+  })
+  if (publicMetadata === null) {
+    return null
+  }
+
+  return {
+    name: getOptionalTrimmedString(payload.name),
+    description: getOptionalTrimmedString(payload.description),
+    publicMetadata,
+    agentProfileIds: getOptionalStringArray(payload.agentProfileIds),
+    mcpServerNames: getOptionalStringArray(payload.mcpServerNames),
+    skillIds: getOptionalStringArray(payload.skillIds),
+    repeatTaskIds: getOptionalStringArray(payload.repeatTaskIds),
+    knowledgeNoteIds: getOptionalStringArray(payload.knowledgeNoteIds),
+    components: getOptionalBundleComponentSelection(payload.components),
+  }
+}
+
+function parseBundleImportOptions(
+  payload: Record<string, unknown>,
+): ImportOptions | null {
+  let conflictStrategy: ImportOptions["conflictStrategy"] = "skip"
+  if (payload.conflictStrategy !== undefined) {
+    if (
+      payload.conflictStrategy !== "skip" &&
+      payload.conflictStrategy !== "overwrite" &&
+      payload.conflictStrategy !== "rename"
+    ) {
+      printColored(
+        colors.red,
+        'bundle-import conflictStrategy must be "skip", "overwrite", or "rename".',
+      )
+      return null
+    }
+    conflictStrategy = payload.conflictStrategy
+  }
+
+  return {
+    conflictStrategy,
+    components: getOptionalBundleComponentSelection(payload.components),
+  }
+}
+
+function parseBundlePublishPayloadOptions(
+  payload: Record<string, unknown>,
+  usage: string,
+): GeneratePublishPayloadOptions | null {
+  const publicMetadata = parseBundlePublicMetadata(payload.publicMetadata, {
+    usage,
+    required: true,
+  })
+  if (!publicMetadata) {
+    return null
+  }
+
+  return {
+    name: getOptionalTrimmedString(payload.name),
+    catalogId: getOptionalTrimmedString(payload.catalogId),
+    artifactUrl: getOptionalTrimmedString(payload.artifactUrl),
+    description: getOptionalTrimmedString(payload.description),
+    publicMetadata,
+    components: getOptionalBundleComponentSelection(payload.components),
+    agentProfileIds: getOptionalStringArray(payload.agentProfileIds),
+    mcpServerNames: getOptionalStringArray(payload.mcpServerNames),
+    skillIds: getOptionalStringArray(payload.skillIds),
+    repeatTaskIds: getOptionalStringArray(payload.repeatTaskIds),
+    knowledgeNoteIds: getOptionalStringArray(payload.knowledgeNoteIds),
+  }
+}
+
+function parseCliPathAndOptionalJsonObject(
+  input: string,
+  usage: string,
+): { filePath: string; payload: Record<string, unknown> } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    return { filePath: trimmed, payload: {} }
+  }
+
+  const filePath = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const payloadText = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  if (!filePath) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+  if (!payloadText) {
+    return { filePath, payload: {} }
+  }
+
+  const payload = parseCliJsonObject(payloadText, usage)
+  if (!payload) {
+    return null
+  }
+
+  return { filePath, payload }
 }
 
 function parseKnowledgeNoteEditCommand(
@@ -917,6 +1169,325 @@ async function handleEditSettings(input: string): Promise<void> {
     remoteAccessLabel: "headless-cli-settings",
   })
   printColored(colors.green, `Updated settings: ${updatedKeys.join(", ")}`)
+}
+
+function printBundleExportableItemsSection(
+  heading: string,
+  lines: string[],
+): void {
+  console.log(`\n${colors.bold}${heading}${colors.reset}`)
+  if (lines.length === 0) {
+    console.log(`  ${colors.dim}(none)${colors.reset}`)
+    return
+  }
+
+  for (const line of lines) {
+    console.log(`  ${line}`)
+  }
+}
+
+function printBundleExportableItems(): void {
+  const items = getManagedBundleExportableItems()
+
+  console.log(`\n${colors.bold}Bundle Exportable Items:${colors.reset}`)
+  printBundleExportableItemsSection(
+    "Agent Profiles",
+    items.agentProfiles.map((profile) => {
+      const metadata: string[] = []
+      if (profile.role) {
+        metadata.push(profile.role)
+      }
+      if (profile.referencedMcpServerNames.length > 0) {
+        metadata.push(`mcp ${profile.referencedMcpServerNames.length}`)
+      }
+      if (profile.referencedSkillIds.length > 0) {
+        metadata.push(`skills ${profile.referencedSkillIds.length}`)
+      }
+
+      return `${profile.id}: ${profile.displayName || profile.name}${metadata.length > 0 ? ` ${colors.dim}[${metadata.join(", ")}]${colors.reset}` : ""}`
+    }),
+  )
+  printBundleExportableItemsSection(
+    "MCP Servers",
+    items.mcpServers.map(
+      (server) =>
+        `${server.name}${server.transport ? ` ${colors.dim}[${server.transport}]${colors.reset}` : ""}`,
+    ),
+  )
+  printBundleExportableItemsSection(
+    "Skills",
+    items.skills.map((skill) => `${skill.id}: ${skill.name}`),
+  )
+  printBundleExportableItemsSection(
+    "Repeat Tasks",
+    items.repeatTasks.map(
+      (task) =>
+        `${task.id}: ${task.name} ${colors.dim}[${formatRelativeLoopInterval(task.intervalMinutes)}]${colors.reset}`,
+    ),
+  )
+  printBundleExportableItemsSection(
+    "Knowledge Notes",
+    items.knowledgeNotes.map(
+      (note) =>
+        `${note.id}: ${note.title}${note.context ? ` ${colors.dim}[${note.context}]${colors.reset}` : ""}`,
+    ),
+  )
+  console.log()
+  console.log(
+    `${colors.dim}Use /bundle-export <path> [json-payload] to write a bundle, /bundle-preview <path> to inspect one, and /bundle-import <path> [json-payload] to load one.${colors.reset}`,
+  )
+  console.log()
+}
+
+function formatBundlePreviewComponentSummary(
+  items: ExportableBundleItems | BundlePreviewResult["bundle"],
+): string {
+  if (!items) {
+    return "0 profiles • 0 MCP servers • 0 skills • 0 repeat tasks • 0 notes"
+  }
+
+  return [
+    `${items.agentProfiles.length} profiles`,
+    `${items.mcpServers.length} MCP servers`,
+    `${items.skills.length} skills`,
+    `${items.repeatTasks.length} repeat tasks`,
+    `${items.knowledgeNotes.length} notes`,
+  ].join(" • ")
+}
+
+function printBundlePreviewResult(result: BundlePreviewResult): void {
+  if (!result.success || !result.bundle) {
+    printColored(
+      colors.red,
+      result.error || "Failed to preview bundle file.",
+    )
+    return
+  }
+
+  const bundle = result.bundle
+  console.log(`\n${colors.bold}${bundle.manifest.name}${colors.reset}`)
+  if (result.filePath) {
+    console.log(`  ${colors.dim}${result.filePath}${colors.reset}`)
+  }
+  console.log(
+    `  ${colors.dim}created ${new Date(bundle.manifest.createdAt).toLocaleString()} • exported from ${bundle.manifest.exportedFrom}${colors.reset}`,
+  )
+  console.log(
+    `  ${colors.dim}${formatBundlePreviewComponentSummary(bundle)}${colors.reset}`,
+  )
+
+  if (bundle.manifest.description) {
+    console.log()
+    console.log(bundle.manifest.description)
+  }
+
+  if (bundle.manifest.publicMetadata) {
+    const publicMetadata = bundle.manifest.publicMetadata
+    console.log(`\n${colors.bold}Public Metadata${colors.reset}`)
+    console.log(`  ${publicMetadata.summary}`)
+    console.log(
+      `  ${colors.dim}author ${publicMetadata.author.displayName}${publicMetadata.author.handle ? ` (${publicMetadata.author.handle})` : ""}${colors.reset}`,
+    )
+    if (publicMetadata.tags.length > 0) {
+      console.log(
+        `  ${colors.dim}tags ${publicMetadata.tags.join(", ")}${colors.reset}`,
+      )
+    }
+  }
+
+  const conflicts = result.conflicts
+  const conflictSections = [
+    ["Agent Profiles", conflicts?.agentProfiles || []],
+    ["MCP Servers", conflicts?.mcpServers || []],
+    ["Skills", conflicts?.skills || []],
+    ["Repeat Tasks", conflicts?.repeatTasks || []],
+    ["Knowledge Notes", conflicts?.knowledgeNotes || []],
+  ] as const
+  const conflictCount = conflictSections.reduce(
+    (count, [, items]) => count + items.length,
+    0,
+  )
+
+  if (conflictCount === 0) {
+    console.log()
+    printColored(colors.green, "No import conflicts detected.")
+    console.log()
+    return
+  }
+
+  console.log(`\n${colors.bold}Conflicts${colors.reset}`)
+  for (const [label, items] of conflictSections) {
+    if (items.length === 0) continue
+    console.log(`  ${label}:`)
+    for (const item of items) {
+      console.log(
+        `    ${item.id}: ${item.name}${item.existingName ? ` ${colors.dim}[existing: ${item.existingName}]${colors.reset}` : ""}`,
+      )
+    }
+  }
+  console.log()
+}
+
+function printBundleImportResultSection(
+  heading: string,
+  items: ImportItemResult[],
+): void {
+  if (items.length === 0) {
+    return
+  }
+
+  console.log(`\n${colors.bold}${heading}${colors.reset}`)
+  for (const item of items) {
+    const label =
+      item.action === "imported"
+        ? colors.green
+        : item.action === "skipped"
+          ? colors.dim
+          : item.action === "overwritten"
+            ? colors.yellow
+            : colors.cyan
+    const suffix =
+      item.action === "renamed" && item.newId
+        ? ` -> ${item.newId}`
+        : item.error
+          ? ` (${item.error})`
+          : ""
+    console.log(`  ${label}${item.action}${colors.reset} ${item.id}: ${item.name}${suffix}`)
+  }
+}
+
+function printBundleImportResult(filePath: string, result: Awaited<ReturnType<typeof importManagedBundle>>): void {
+  if (!result.success) {
+    printColored(colors.red, `Bundle import failed for ${filePath}.`)
+    for (const error of result.errors) {
+      printColored(colors.red, error)
+    }
+    return
+  }
+
+  printColored(colors.green, `Imported bundle from ${filePath}.`)
+  printBundleImportResultSection("Agent Profiles", result.agentProfiles)
+  printBundleImportResultSection("MCP Servers", result.mcpServers)
+  printBundleImportResultSection("Skills", result.skills)
+  printBundleImportResultSection("Repeat Tasks", result.repeatTasks)
+  printBundleImportResultSection("Knowledge Notes", result.knowledgeNotes)
+  if (result.errors.length > 0) {
+    console.log()
+    for (const error of result.errors) {
+      printColored(colors.red, error)
+    }
+  }
+  console.log()
+}
+
+async function handleBundleExport(input: string): Promise<void> {
+  const parsed = parseCliPathAndOptionalJsonObject(
+    input,
+    "Usage: /bundle-export <path> [json-payload]",
+  )
+  if (!parsed) {
+    return
+  }
+
+  const options = parseBundleExportOptions(
+    parsed.payload,
+    "/bundle-export <path> [json-payload]",
+  )
+  if (!options) {
+    return
+  }
+
+  const filePath = resolveCliFileSystemPath(parsed.filePath)
+
+  if (fs.existsSync(filePath)) {
+    const confirmed = await promptForConfirmation(
+      `Overwrite existing bundle file ${filePath}?`,
+    )
+    if (!confirmed) {
+      printColored(colors.dim, "Bundle export cancelled.")
+      return
+    }
+  }
+
+  try {
+    const bundle = await exportManagedBundle(options)
+    fs.mkdirSync(path.dirname(filePath), { recursive: true })
+    fs.writeFileSync(filePath, JSON.stringify(bundle, null, 2), "utf8")
+    printColored(
+      colors.green,
+      `Exported bundle ${bundle.manifest.name} to ${filePath}.`,
+    )
+    printColored(
+      colors.dim,
+      formatBundlePreviewComponentSummary(bundle),
+    )
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleBundlePreview(selection: string): Promise<void> {
+  const rawPath = selection.trim()
+  if (!rawPath) {
+    printColored(colors.yellow, "Usage: /bundle-preview <path>")
+    return
+  }
+
+  printBundlePreviewResult(
+    previewManagedBundleWithConflicts(resolveCliFileSystemPath(rawPath)),
+  )
+}
+
+async function handleBundleImport(input: string): Promise<void> {
+  const parsed = parseCliPathAndOptionalJsonObject(
+    input,
+    "Usage: /bundle-import <path> [json-payload]",
+  )
+  if (!parsed) {
+    return
+  }
+
+  const options = parseBundleImportOptions(parsed.payload)
+  if (!options) {
+    return
+  }
+
+  const filePath = resolveCliFileSystemPath(parsed.filePath)
+  const result = await importManagedBundle(filePath, options)
+  printBundleImportResult(filePath, result)
+}
+
+async function handleBundlePublishPayload(input: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    input,
+    "Usage: /bundle-publish-payload <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  const options = parseBundlePublishPayloadOptions(
+    payload,
+    "/bundle-publish-payload <json-payload>",
+  )
+  if (!options) {
+    return
+  }
+
+  try {
+    const result = await generateManagedBundlePublishPayload(options)
+    console.log()
+    console.log(JSON.stringify(result, null, 2))
+    console.log()
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
 }
 
 function printStatus() {
@@ -2746,6 +3317,21 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/skill-cleanup":
       await handleCleanupSkillReferences()
+      return true
+    case "/bundle-items":
+      printBundleExportableItems()
+      return true
+    case "/bundle-export":
+      await handleBundleExport(argumentsText)
+      return true
+    case "/bundle-preview":
+      await handleBundlePreview(argumentsText)
+      return true
+    case "/bundle-import":
+      await handleBundleImport(argumentsText)
+      return true
+    case "/bundle-publish-payload":
+      await handleBundlePublishPayload(argumentsText)
       return true
     case "/conversations":
       await printConversations()

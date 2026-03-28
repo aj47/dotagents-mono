@@ -156,6 +156,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedSkillsCatalog(...)`, `getManagedSkill(...)`, `resolveManagedSkillSelection(...)`, `createManagedSkill(...)`, `updateManagedSkill(...)`, `deleteManagedSkill(...)`, `deleteManagedSkills(...)`, `cleanupManagedStaleSkillReferences(...)`, `importManagedSkillFromMarkdown(...)`, `importManagedSkillFromFile(...)`, `importManagedSkillFromFolder(...)`, `importManagedSkillsFromParentFolder(...)`, `exportManagedSkillToMarkdown(...)`, `getManagedSkillCanonicalFilePath(...)`, `ensureManagedSkillFile(...)`, `scanManagedSkillsFolder(...)`, and `importManagedSkillFromGitHub(...)`
 - Current callers: `headless-cli.ts` skill catalog commands; `profile-skill-management.ts` sorted catalog access; and `tipc.ts` skill CRUD/import/export/open-file/cleanup handlers used by `settings-skills.tsx`
 
+## Shared bundle management
+
+- Shared bundle-management file: `apps/desktop/src/main/bundle-management.ts`
+- Shared helpers: `getManagedBundleLayerDirs(...)`, `getManagedBundleImportTargetDir(...)`, `getManagedBundleExportableItems(...)`, `exportManagedBundle(...)`, `exportManagedBundleToFile(...)`, `previewManagedBundleWithConflicts(...)`, `importManagedBundle(...)`, `generateManagedBundlePublishPayload(...)`, and `refreshRuntimeAfterManagedBundleImport(...)`
+- Current callers: `headless-cli.ts` `/bundle-items`, `/bundle-export`, `/bundle-preview`, `/bundle-import`, and `/bundle-publish-payload`; `tipc.ts` bundle export/import/preview/publish handlers used by `settings-agents.tsx`, `settings-skills.tsx`, `bundle-import-dialog.tsx`, `bundle-export-dialog.tsx`, `bundle-publish-dialog.tsx`, and sandbox slot restore/import flows
+
 ## Shared agent catalog summaries
 
 - Shared selector file: `packages/shared/src/agent-profiles.ts`
@@ -323,6 +329,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `tipc.ts` `saveConfig(...)` and `remote-server.ts` `PATCH /v1/settings` now both call `saveManagedConfig(...)`, so config persistence, model-cache invalidation, remote-access reconciliation, WhatsApp MCP auto-config/restarts, Langfuse reinitialization, and MCP profile cleanup all run through one main-process settings path whether the change comes from the desktop UI, headless CLI, or a remote/mobile client.
 49. Current agent profile catalogs + status surfaces
     `headless-cli.ts` now routes `/status` current-agent reads plus `/agents` current markers through `getManagedCurrentAgentProfile(...)`, while `tipc.ts` `getUserProfiles(...)`, `getAgentTargets(...)`, `getEnabledAgentTargets(...)`, `getCurrentAgentProfile(...)`, and `getExternalAgents(...)` plus `remote-server.ts` `/v1/profiles` and `/v1/profiles/current` now reuse the same profile-catalog helpers, so terminal status output, desktop profile pickers, and remote/mobile profile settings all agree on the current profile plus user/target/external profile subsets before rendering diverges.
+50. Headless CLI bundle management
+    `headless-cli.ts` now routes `/bundle-items`, `/bundle-export <path> [json]`, `/bundle-preview <path>`, `/bundle-import <path> [json]`, and `/bundle-publish-payload <json>` through `bundle-management.ts`, while `tipc.ts` bundle export/import/preview/publish handlers plus sandbox slot restore/import flows reuse the same layered bundle selection, merged workspace/global conflict preview, publish payload generation, and post-import runtime refresh helper path before terminal, desktop dialogs, or sandbox flows format their own results.
 
 ## Parity rules
 
@@ -379,7 +387,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI bundle management, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner, routes current-profile catalog/switch endpoints plus knowledge-note CRUD through the shared management helpers, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
 - `apps/desktop/src/main/knowledge-note-management.test.ts`
@@ -392,6 +400,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared MCP server runtime classification and connected-server counts stay aligned for CLI, desktop UI, and remote API callers.
 - `apps/desktop/src/main/settings-management.test.ts`
   Confirms shared settings snapshots, validated patch extraction, ACP main-agent option payloads, and config-persistence side effects stay aligned for headless CLI, desktop settings saves, and remote/mobile settings updates.
+- `apps/desktop/src/main/bundle-management.test.ts`
+  Confirms shared bundle layer selection, merged workspace/global conflict previews, publish-payload generation, and post-import runtime refresh stay aligned for headless CLI and desktop bundle flows.
 - `packages/shared/src/providers.test.ts`
   Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/session.test.ts`
