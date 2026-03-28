@@ -164,7 +164,15 @@ import {
   setManagedMcpServerRuntimeEnabled,
   stopManagedMcpServer,
 } from "./mcp-management"
-import { mcpManagementStore } from "./mcp-management-store"
+import {
+  getManagedMcpTools,
+  setManagedMcpToolEnabled,
+  setManagedMcpToolSourceEnabled,
+} from "./mcp-tool-management"
+import {
+  mcpManagementStore,
+  mcpToolManagementStore,
+} from "./mcp-management-store"
 import {
   deleteAllManagedKnowledgeNotes,
   deleteManagedKnowledgeNote,
@@ -2246,14 +2254,27 @@ export const router = {
   }),
 
   getMcpDetailedToolList: t.procedure.action(async () => {
-    return mcpService.getDetailedToolList()
+    return getManagedMcpTools(mcpToolManagementStore)
   }),
 
   setMcpToolEnabled: t.procedure
     .input<{ toolName: string; enabled: boolean }>()
     .action(async ({ input }) => {
-      const success = mcpService.setToolEnabled(input.toolName, input.enabled)
-      return { success }
+      return setManagedMcpToolEnabled(
+        input.toolName,
+        input.enabled,
+        mcpToolManagementStore,
+      )
+    }),
+
+  setMcpToolSourceEnabled: t.procedure
+    .input<{ sourceName: string; enabled: boolean }>()
+    .action(async ({ input }) => {
+      return setManagedMcpToolSourceEnabled(
+        input.sourceName,
+        input.enabled,
+        mcpToolManagementStore,
+      )
     }),
 
   setMcpServerRuntimeEnabled: t.procedure

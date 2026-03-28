@@ -67,7 +67,21 @@ import {
   type ManagedMcpServerDetails,
   type ManagedMcpServerSummary,
 } from "./mcp-management"
-import { mcpManagementStore } from "./mcp-management-store"
+import {
+  getManagedMcpTool,
+  getManagedMcpTools,
+  getManagedMcpToolSources,
+  resolveManagedMcpToolSelection,
+  resolveManagedMcpToolSourceSelection,
+  setManagedMcpToolEnabled,
+  setManagedMcpToolSourceEnabled,
+  type ManagedMcpToolDetails,
+  type ManagedMcpToolSourceSummary,
+} from "./mcp-tool-management"
+import {
+  mcpManagementStore,
+  mcpToolManagementStore,
+} from "./mcp-management-store"
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
@@ -441,6 +455,12 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/mcp-restart <name>${colors.reset} - Restart an MCP server process
   ${colors.cyan}/mcp-stop <name>${colors.reset} - Stop an MCP server process
   ${colors.cyan}/mcp-logs <name>${colors.reset} - Show recent MCP server logs
+  ${colors.cyan}/mcp-tools${colors.reset}     - List MCP and runtime tools grouped by source
+  ${colors.cyan}/mcp-tool-show <name>${colors.reset} - Show one MCP or runtime tool in detail
+  ${colors.cyan}/mcp-tool-enable <name>${colors.reset} - Enable one MCP or runtime tool
+  ${colors.cyan}/mcp-tool-disable <name>${colors.reset} - Disable one MCP or runtime tool
+  ${colors.cyan}/mcp-source-enable <name>${colors.reset} - Enable all tools for one MCP source
+  ${colors.cyan}/mcp-source-disable <name>${colors.reset} - Disable all tools for one MCP source
   ${colors.cyan}/agents${colors.reset}        - List enabled agents and the active selection
   ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
   ${colors.cyan}/agent-profiles${colors.reset} - List all agents, including disabled profiles
@@ -636,9 +656,97 @@ function printMcpServers(options: { includeHint?: boolean } = {}): void {
   if (options.includeHint !== false) {
     console.log()
     console.log(
-      `${colors.dim}Use /mcp-show, /mcp-enable, /mcp-disable, /mcp-restart, /mcp-stop, or /mcp-logs with a server name prefix.${colors.reset}`,
+      `${colors.dim}Use /mcp-show, /mcp-enable, /mcp-disable, /mcp-restart, /mcp-stop, or /mcp-logs with a server name prefix, or /mcp-tools to inspect per-tool toggles.${colors.reset}`,
     )
   }
+  console.log()
+}
+
+function describeCliMcpToolState(tool: ManagedMcpToolDetails): {
+  color: string
+  label: string
+} {
+  if (!tool.serverEnabled) {
+    return { color: colors.yellow, label: "source disabled" }
+  }
+  if (tool.enabled) {
+    return { color: colors.green, label: "enabled" }
+  }
+  return { color: colors.red, label: "disabled" }
+}
+
+function formatManagedMcpToolSelectionSummary(
+  tool: ManagedMcpToolDetails,
+): string {
+  const { color, label } = describeCliMcpToolState(tool)
+  return `${tool.name} (${tool.sourceLabel}, ${color}${label}${colors.reset})`
+}
+
+function formatManagedMcpToolSourceSelectionSummary(
+  source: ManagedMcpToolSourceSummary,
+): string {
+  const stateLabel = source.serverEnabled ? "available" : "source disabled"
+  return `${source.sourceLabel} (${source.enabledToolCount}/${source.toolCount} enabled, ${stateLabel})`
+}
+
+function printMcpTools(options: { includeHint?: boolean } = {}): void {
+  const tools = getManagedMcpTools(mcpToolManagementStore)
+  const sources = getManagedMcpToolSources(mcpToolManagementStore)
+
+  console.log(`\n${colors.bold}MCP Tools:${colors.reset}`)
+  if (tools.length === 0) {
+    console.log(`  ${colors.dim}(no tools available)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const source of sources) {
+    const stateColor = source.serverEnabled ? colors.green : colors.yellow
+    const stateLabel = source.serverEnabled ? "available" : "source disabled"
+    console.log(
+      `  ${source.sourceLabel}: ${stateColor}${stateLabel}${colors.reset} (${source.enabledToolCount}/${source.toolCount} enabled)`,
+    )
+
+    for (const tool of tools.filter(
+      (candidate) => candidate.sourceName === source.sourceName,
+    )) {
+      const { color, label } = describeCliMcpToolState(tool)
+      console.log(
+        `    ${tool.name}: ${color}${label}${colors.reset} [${tool.sourceKind}]`,
+      )
+      if (tool.description.trim()) {
+        console.log(`      ${colors.dim}${tool.description}${colors.reset}`)
+      }
+    }
+  }
+
+  if (options.includeHint !== false) {
+    console.log()
+    console.log(
+      `${colors.dim}Use /mcp-tool-show, /mcp-tool-enable, /mcp-tool-disable, /mcp-source-enable, or /mcp-source-disable with a tool or source prefix.${colors.reset}`,
+    )
+  }
+  console.log()
+}
+
+function printMcpToolDetails(tool: ManagedMcpToolDetails): void {
+  const { color, label } = describeCliMcpToolState(tool)
+
+  console.log(`\n${colors.bold}${tool.name}${colors.reset}`)
+  console.log(
+    `  ${colors.dim}${tool.sourceLabel} • ${tool.sourceKind}${colors.reset}`,
+  )
+  console.log(`  ${color}${label}${colors.reset}`)
+
+  if (tool.description.trim()) {
+    console.log()
+    console.log(`${colors.bold}Description${colors.reset}`)
+    console.log(tool.description)
+  }
+
+  console.log()
+  console.log(`${colors.bold}Input Schema${colors.reset}`)
+  console.log(JSON.stringify(tool.inputSchema ?? {}, null, 2))
   console.log()
 }
 
@@ -4027,6 +4135,153 @@ function handleShowMcpServerLogs(selection: string): void {
   console.log()
 }
 
+function resolveMcpToolSelectionForCli(
+  selection: string,
+): ManagedMcpToolDetails | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(
+      colors.yellow,
+      "Usage: /mcp-tool-show|/mcp-tool-enable|/mcp-tool-disable <tool-name-or-prefix>",
+    )
+    return null
+  }
+
+  const tools = getManagedMcpTools(mcpToolManagementStore)
+  const { selectedTool, ambiguousTools } = resolveManagedMcpToolSelection(
+    tools,
+    query,
+  )
+
+  if (selectedTool) {
+    return getManagedMcpTool(selectedTool.name, mcpToolManagementStore) || null
+  }
+
+  if (ambiguousTools?.length) {
+    printColored(
+      colors.yellow,
+      `MCP tool selector "${query}" matches multiple tools:`,
+    )
+    for (const tool of ambiguousTools) {
+      console.log(`  ${formatManagedMcpToolSelectionSummary(tool)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `MCP tool not found: ${query}`)
+  return null
+}
+
+function resolveMcpToolSourceSelectionForCli(
+  selection: string,
+): ManagedMcpToolSourceSummary | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(
+      colors.yellow,
+      "Usage: /mcp-source-enable|/mcp-source-disable <source-name-or-prefix>",
+    )
+    return null
+  }
+
+  const sources = getManagedMcpToolSources(mcpToolManagementStore)
+  const { selectedSource, ambiguousSources } =
+    resolveManagedMcpToolSourceSelection(sources, query)
+
+  if (selectedSource) {
+    return selectedSource
+  }
+
+  if (ambiguousSources?.length) {
+    printColored(
+      colors.yellow,
+      `MCP tool source selector "${query}" matches multiple sources:`,
+    )
+    for (const source of ambiguousSources) {
+      console.log(`  ${formatManagedMcpToolSourceSelectionSummary(source)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `MCP tool source not found: ${query}`)
+  return null
+}
+
+function handleShowMcpTool(selection: string): void {
+  const selectedTool = resolveMcpToolSelectionForCli(selection)
+  if (!selectedTool) {
+    return
+  }
+
+  printMcpToolDetails(selectedTool)
+}
+
+function handleSetMcpToolEnabled(selection: string, enabled: boolean): void {
+  const selectedTool = resolveMcpToolSelectionForCli(selection)
+  if (!selectedTool) {
+    return
+  }
+
+  const result = setManagedMcpToolEnabled(
+    selectedTool.name,
+    enabled,
+    mcpToolManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error ||
+        `Failed to ${enabled ? "enable" : "disable"} MCP tool ${selectedTool.name}.`,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `${enabled ? "Enabled" : "Disabled"} MCP tool ${selectedTool.name}.`,
+  )
+}
+
+function handleSetMcpToolSourceEnabled(
+  selection: string,
+  enabled: boolean,
+): void {
+  const selectedSource = resolveMcpToolSourceSelectionForCli(selection)
+  if (!selectedSource) {
+    return
+  }
+
+  const result = setManagedMcpToolSourceEnabled(
+    selectedSource.sourceName,
+    enabled,
+    mcpToolManagementStore,
+  )
+
+  if (!result.success) {
+    printColored(
+      colors.yellow,
+      result.error || "Some MCP tools failed to update.",
+    )
+  }
+
+  const updatedCount = result.updatedCount
+  if (result.failedTools?.length) {
+    printColored(
+      colors.yellow,
+      `${updatedCount}/${selectedSource.toolCount} tools ${enabled ? "enabled" : "disabled"} for ${selectedSource.sourceLabel}.`,
+    )
+    for (const toolName of result.failedTools) {
+      console.log(`  ${colors.dim}${toolName}${colors.reset}`)
+    }
+    return
+  }
+
+  printColored(
+    colors.green,
+    `${enabled ? "Enabled" : "Disabled"} all ${selectedSource.toolCount} tools for ${selectedSource.sourceLabel}.`,
+  )
+}
+
 function printLoopDetails(loop: LoopSummary): void {
   console.log(`\n${colors.bold}${loop.name}${colors.reset}`)
   console.log(`  ${colors.dim}${loop.id}${colors.reset}`)
@@ -5079,6 +5334,24 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/mcp-logs":
       handleShowMcpServerLogs(argumentsText)
+      return true
+    case "/mcp-tools":
+      printMcpTools()
+      return true
+    case "/mcp-tool-show":
+      handleShowMcpTool(argumentsText)
+      return true
+    case "/mcp-tool-enable":
+      handleSetMcpToolEnabled(argumentsText, true)
+      return true
+    case "/mcp-tool-disable":
+      handleSetMcpToolEnabled(argumentsText, false)
+      return true
+    case "/mcp-source-enable":
+      handleSetMcpToolSourceEnabled(argumentsText, true)
+      return true
+    case "/mcp-source-disable":
+      handleSetMcpToolSourceEnabled(argumentsText, false)
       return true
     case "/agents":
       printAgents()

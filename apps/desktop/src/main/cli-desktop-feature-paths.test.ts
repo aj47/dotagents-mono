@@ -70,6 +70,10 @@ const mcpManagementSource = readFileSync(
   new URL("./mcp-management.ts", import.meta.url),
   "utf8",
 )
+const mcpToolManagementSource = readFileSync(
+  new URL("./mcp-tool-management.ts", import.meta.url),
+  "utf8",
+)
 const knowledgeNoteManagementSource = readFileSync(
   new URL("./knowledge-note-management.ts", import.meta.url),
   "utf8",
@@ -208,6 +212,10 @@ const agentStoreSource = readFileSync(
 )
 const mcpConfigManagerSource = readFileSync(
   new URL("../renderer/src/components/mcp-config-manager.tsx", import.meta.url),
+  "utf8",
+)
+const mcpToolManagerSource = readFileSync(
+  new URL("../renderer/src/components/mcp-tool-manager.tsx", import.meta.url),
   "utf8",
 )
 const sandboxSlotSwitcherSource = readFileSync(
@@ -1607,6 +1615,55 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(mcpConfigManagerSource).toContain(
       "tipcClient.stopMcpServer({ serverName })",
+    )
+  })
+
+  it("shares MCP tool management across CLI and desktop capability surfaces", () => {
+    expect(mcpToolManagementSource).toContain(
+      "export function getManagedMcpTools",
+    )
+    expect(mcpToolManagementSource).toContain(
+      "export function getManagedMcpToolSources",
+    )
+    expect(mcpToolManagementSource).toContain(
+      "export function resolveManagedMcpToolSelection",
+    )
+    expect(mcpToolManagementSource).toContain(
+      "export function resolveManagedMcpToolSourceSelection",
+    )
+    expect(mcpToolManagementSource).toContain(
+      "export function setManagedMcpToolEnabled",
+    )
+    expect(mcpToolManagementSource).toContain(
+      "export function setManagedMcpToolSourceEnabled",
+    )
+    expect(headlessCliSource).toContain("getManagedMcpTools(")
+    expect(headlessCliSource).toContain("getManagedMcpToolSources(")
+    expect(headlessCliSource).toContain("resolveManagedMcpToolSelection(")
+    expect(headlessCliSource).toContain("resolveManagedMcpToolSourceSelection(")
+    expect(headlessCliSource).toContain("setManagedMcpToolEnabled(")
+    expect(headlessCliSource).toContain("setManagedMcpToolSourceEnabled(")
+    expect(headlessCliSource).toContain('case "/mcp-tools":')
+    expect(headlessCliSource).toContain('case "/mcp-tool-show":')
+    expect(headlessCliSource).toContain('case "/mcp-tool-enable":')
+    expect(headlessCliSource).toContain('case "/mcp-tool-disable":')
+    expect(headlessCliSource).toContain('case "/mcp-source-enable":')
+    expect(headlessCliSource).toContain('case "/mcp-source-disable":')
+    expect(tipcSource).toContain('from "./mcp-tool-management"')
+    expect(tipcSource).toContain("getManagedMcpTools(")
+    expect(tipcSource).toContain("setManagedMcpToolEnabled(")
+    expect(tipcSource).toContain("setManagedMcpToolSourceEnabled(")
+    expect(mcpConfigManagerSource).toContain(
+      "tipcClient.setMcpToolEnabled({ toolName, enabled })",
+    )
+    expect(mcpConfigManagerSource).toContain(
+      "tipcClient.setMcpToolSourceEnabled({",
+    )
+    expect(mcpToolManagerSource).toContain(
+      "tipcClient.setMcpToolEnabled({ toolName, enabled })",
+    )
+    expect(mcpToolManagerSource).toContain(
+      "tipcClient.setMcpToolSourceEnabled({",
     )
   })
 
