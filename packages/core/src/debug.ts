@@ -83,7 +83,7 @@ export function initDebugFlags(argv: string[] = process.argv): DebugFlags {
 
 
 
-  if (flags.llm || flags.tools || flags.keybinds || flags.app || flags.ui || flags.mcp || flags.acp) {
+  if (Object.values(flags).some(Boolean)) {
     // Small banner so users can see debugs are enabled
     const enabled: string[] = []
     if (flags.llm) enabled.push("LLM")
