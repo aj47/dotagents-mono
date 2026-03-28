@@ -447,13 +447,16 @@ export class ConfigStore {
         defaultValue: {},
       })
       let mcpDirty = false
-      if (mcpJson.mcpVerifyCompletionEnabled === false) {
-        mcpJson.mcpVerifyCompletionEnabled = true
-        mcpDirty = true
-      }
-      if (mcpJson.mcpUnlimitedIterations === false) {
-        mcpJson.mcpUnlimitedIterations = true
-        mcpDirty = true
+      const defaultedBooleanKeys = [
+        "mcpVerifyCompletionEnabled",
+        "mcpUnlimitedIterations",
+      ] as const
+
+      for (const key of defaultedBooleanKeys) {
+        if (mcpJson[key] === false) {
+          mcpJson[key] = true
+          mcpDirty = true
+        }
       }
       if (mcpDirty) {
         safeWriteJsonFileSync(globalLayer.mcpJsonPath, mcpJson, {
