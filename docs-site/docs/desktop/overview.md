@@ -116,6 +116,18 @@ Set up tasks that run on a schedule:
 - Monitor loop execution history
 - Pause and resume loops
 
+### Execution Paths
+
+The desktop app exposes multiple top-level ways to run the same agent engine:
+
+- **Desktop text input** uses the renderer/TIPC path for typed requests.
+- **Desktop voice MCP mode** transcribes audio, then reuses the same top-level runner.
+- **Headless CLI** starts the app with `--headless` and runs the same ACP/tool-routing path in a terminal.
+- **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
+- **Loops** create background sessions and then call into the same shared top-level execution path.
+
+The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
+
 ### Themes
 
 DotAgents supports both **dark** and **light** themes with consistent design tokens across all UI components.

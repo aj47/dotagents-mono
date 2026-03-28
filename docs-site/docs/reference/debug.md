@@ -61,6 +61,22 @@ Debug logs appear in:
 - **Electron DevTools** — Main process console (View > Toggle Developer Tools)
 - **Renderer DevTools** — Right-click > Inspect in the app window
 
+## Headless CLI
+
+Run the desktop app without opening the GUI:
+
+```bash
+pnpm --filter @dotagents/desktop dev -- --headless
+```
+
+Use QR-based remote access while staying headless:
+
+```bash
+pnpm --filter @dotagents/desktop dev -- --qr
+```
+
+The headless CLI, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
+
 ## Common Debugging Scenarios
 
 ### Agent Not Responding
@@ -112,7 +128,7 @@ Check:
 
 ## Langfuse (Production Debugging)
 
-For production observability without terminal access, use the [Langfuse integration](/tools/observability:
+For production observability without terminal access, use the [Langfuse integration](/tools/observability):
 
 - Trace all LLM calls with token usage
 - Monitor tool execution success/failure

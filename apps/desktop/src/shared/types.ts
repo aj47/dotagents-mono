@@ -878,7 +878,7 @@ export interface EnhancedModelInfo extends ModelInfo {
 }
 
 // ACP Agent Configuration Types
-type ACPConnectionType = "stdio" | "remote" | "internal"
+type ACPConnectionType = "acp" | "stdio" | "remote" | "internal"
 
 // ACPConfigOptionValue and ACPConfigOption — re-exported from @dotagents/shared (see above)
 
@@ -897,7 +897,7 @@ export interface ACPAgentConfig {
   isInternal?: boolean
   // Connection configuration
   connection: {
-    // Connection type: "stdio" for local process, "remote" for HTTP endpoint, "internal" for built-in
+    // Connection type: "acp"/"stdio" for local process, "remote" for HTTP endpoint, "internal" for built-in
     type: ACPConnectionType
     // For stdio: command to run (e.g., "auggie", "claude-code-acp")
     command?: string
