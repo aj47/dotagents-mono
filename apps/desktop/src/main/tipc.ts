@@ -96,7 +96,6 @@ import {
   toolApprovalManager,
   agentSessionStateManager,
 } from "./state"
-import { printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
@@ -217,6 +216,17 @@ import {
   getManagedWhatsappStatus,
   logoutManagedWhatsapp,
 } from "./whatsapp-management"
+import {
+  checkManagedCloudflaredInstalled,
+  checkManagedCloudflaredLoggedIn,
+  getManagedCloudflareTunnelStatus,
+  getManagedRemoteServerStatus,
+  listManagedCloudflareTunnels,
+  printManagedRemoteServerQrCode,
+  startManagedCloudflareNamedTunnel,
+  startManagedCloudflareQuickTunnel,
+  stopManagedCloudflareTunnel,
+} from "./remote-access-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -2963,13 +2973,11 @@ export const router = {
 
   // Cloudflare Tunnel handlers
   checkCloudflaredInstalled: t.procedure.action(async () => {
-    const { checkCloudflaredInstalled } = await import("./cloudflare-tunnel")
-    return checkCloudflaredInstalled()
+    return checkManagedCloudflaredInstalled()
   }),
 
   startCloudflareTunnel: t.procedure.action(async () => {
-    const { startCloudflareTunnel } = await import("./cloudflare-tunnel")
-    return startCloudflareTunnel()
+    return startManagedCloudflareQuickTunnel()
   }),
 
   startNamedCloudflareTunnel: t.procedure
@@ -2979,37 +2987,32 @@ export const router = {
       credentialsPath?: string
     }>()
     .action(async ({ input }) => {
-      const { startNamedCloudflareTunnel } = await import("./cloudflare-tunnel")
-      return startNamedCloudflareTunnel(input)
+      return startManagedCloudflareNamedTunnel(input)
     }),
 
   stopCloudflareTunnel: t.procedure.action(async () => {
-    const { stopCloudflareTunnel } = await import("./cloudflare-tunnel")
-    return stopCloudflareTunnel()
+    return stopManagedCloudflareTunnel()
   }),
 
   getCloudflareTunnelStatus: t.procedure.action(async () => {
-    const { getCloudflareTunnelStatus } = await import("./cloudflare-tunnel")
-    return getCloudflareTunnelStatus()
+    return getManagedCloudflareTunnelStatus()
   }),
 
   listCloudflareTunnels: t.procedure.action(async () => {
-    const { listCloudflareTunnels } = await import("./cloudflare-tunnel")
-    return listCloudflareTunnels()
+    return listManagedCloudflareTunnels()
   }),
 
   checkCloudflaredLoggedIn: t.procedure.action(async () => {
-    const { checkCloudflaredLoggedIn } = await import("./cloudflare-tunnel")
-    return checkCloudflaredLoggedIn()
+    return checkManagedCloudflaredLoggedIn()
   }),
 
   getRemoteServerStatus: t.procedure.action(async () => {
-    return getRemoteServerStatus()
+    return getManagedRemoteServerStatus()
   }),
 
   // Remote Server QR Code handler
   printRemoteServerQRCode: t.procedure.action(async () => {
-    return printQRCodeToTerminal()
+    return printManagedRemoteServerQrCode()
   }),
 
   // MCP Elicitation handlers (Protocol 2025-11-25)

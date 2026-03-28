@@ -129,6 +129,16 @@ import {
   getManagedWhatsappStatus,
   logoutManagedWhatsapp,
 } from "./whatsapp-management"
+import {
+  checkManagedCloudflaredInstalled,
+  checkManagedCloudflaredLoggedIn,
+  getManagedCloudflareTunnelStatus,
+  getManagedRemoteServerStatus,
+  listManagedCloudflareTunnels,
+  printManagedRemoteServerQrCode,
+  startManagedConfiguredCloudflareTunnel,
+  stopManagedCloudflareTunnel,
+} from "./remote-access-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
   type ConversationSessionState,
@@ -384,6 +394,12 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/queue-resume [id]${colors.reset} - Resume queue processing for a conversation
   ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
   ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
+  ${colors.cyan}/remote-status${colors.reset} - Show remote-server bind, pairing URL, and last error
+  ${colors.cyan}/remote-qr${colors.reset}     - Print the remote-server pairing QR code
+  ${colors.cyan}/cloudflare-status${colors.reset} - Show Cloudflare install/login/tunnel status
+  ${colors.cyan}/cloudflare-start${colors.reset} - Start the configured Cloudflare tunnel mode
+  ${colors.cyan}/cloudflare-stop${colors.reset} - Stop the active Cloudflare tunnel
+  ${colors.cyan}/cloudflare-list${colors.reset} - List available named Cloudflare tunnels
   ${colors.cyan}/whatsapp-status${colors.reset} - Show WhatsApp connection status
   ${colors.cyan}/whatsapp-connect${colors.reset} - Start or resume WhatsApp pairing
   ${colors.cyan}/whatsapp-disconnect${colors.reset} - Disconnect the active WhatsApp session
@@ -1418,6 +1434,177 @@ async function handleEditSettings(input: string): Promise<void> {
     remoteAccessLabel: "headless-cli-settings",
   })
   printColored(colors.green, `Updated settings: ${updatedKeys.join(", ")}`)
+}
+
+async function handleShowRemoteServerStatus(): Promise<void> {
+  const status = getManagedRemoteServerStatus()
+  const tunnelStatus = getManagedCloudflareTunnelStatus()
+
+  console.log(`\n${colors.bold}Remote Server Status:${colors.reset}`)
+  console.log(
+    `  Running: ${status.running ? colors.green + "yes" : colors.yellow + "no"}${colors.reset}`,
+  )
+  console.log(
+    `  Bind: ${colors.cyan}${status.bind}:${status.port}${colors.reset}`,
+  )
+
+  if (status.url) {
+    console.log(`  URL: ${colors.cyan}${status.url}${colors.reset}`)
+  }
+  if (status.connectableUrl) {
+    console.log(
+      `  Pairing URL: ${colors.cyan}${status.connectableUrl}${colors.reset}`,
+    )
+  }
+  if (status.lastError) {
+    console.log(`  ${colors.yellow}${status.lastError}${colors.reset}`)
+  }
+
+  if (tunnelStatus.running && tunnelStatus.url) {
+    console.log(
+      `  Cloudflare: ${colors.green}${tunnelStatus.mode || "active"}${colors.reset} ${colors.dim}(${tunnelStatus.url})${colors.reset}`,
+    )
+  } else if (tunnelStatus.starting) {
+    console.log(`  Cloudflare: ${colors.yellow}starting${colors.reset}`)
+  }
+
+  console.log()
+}
+
+async function handlePrintRemoteServerQrCode(): Promise<void> {
+  const printed = await printManagedRemoteServerQrCode()
+  if (printed) {
+    printColored(colors.green, "Printed remote-server QR code to the terminal.")
+  }
+}
+
+async function handleShowCloudflareStatus(): Promise<void> {
+  const config = configStore.get()
+  const tunnelStatus = getManagedCloudflareTunnelStatus()
+  const installed = await checkManagedCloudflaredInstalled()
+  const loggedIn = installed ? await checkManagedCloudflaredLoggedIn() : false
+
+  console.log(`\n${colors.bold}Cloudflare Tunnel Status:${colors.reset}`)
+  console.log(
+    `  Installed: ${installed ? colors.green + "yes" : colors.yellow + "no"}${colors.reset}`,
+  )
+  console.log(
+    `  Logged in: ${loggedIn ? colors.green + "yes" : colors.dim + "no"}${colors.reset}`,
+  )
+  console.log(
+    `  Configured mode: ${colors.cyan}${config.cloudflareTunnelMode || "quick"}${colors.reset}`,
+  )
+  console.log(
+    `  Auto-start: ${config.cloudflareTunnelAutoStart ? colors.green + "enabled" : colors.dim + "disabled"}${colors.reset}`,
+  )
+  console.log(
+    `  Runtime: ${
+      tunnelStatus.running
+        ? colors.green + "running"
+        : tunnelStatus.starting
+          ? colors.yellow + "starting"
+          : colors.dim + "stopped"
+    }${colors.reset}`,
+  )
+
+  if (config.cloudflareTunnelId) {
+    console.log(
+      `  Tunnel ID: ${colors.cyan}${config.cloudflareTunnelId}${colors.reset}`,
+    )
+  }
+  if (config.cloudflareTunnelHostname) {
+    console.log(
+      `  Hostname: ${colors.cyan}${config.cloudflareTunnelHostname}${colors.reset}`,
+    )
+  }
+  if (config.cloudflareTunnelCredentialsPath) {
+    console.log(
+      `  Credentials: ${colors.cyan}${config.cloudflareTunnelCredentialsPath}${colors.reset}`,
+    )
+  }
+  if (tunnelStatus.url) {
+    console.log(`  URL: ${colors.cyan}${tunnelStatus.url}${colors.reset}`)
+  }
+  if (tunnelStatus.error) {
+    console.log(`  ${colors.yellow}${tunnelStatus.error}${colors.reset}`)
+  }
+
+  console.log()
+}
+
+async function handleStartCloudflareTunnel(): Promise<void> {
+  const result = await startManagedConfiguredCloudflareTunnel()
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || "Failed to start the configured Cloudflare tunnel.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    result.url
+      ? `Cloudflare tunnel started: ${result.url}`
+      : "Cloudflare tunnel started.",
+  )
+}
+
+async function handleStopCloudflareTunnel(): Promise<void> {
+  const status = getManagedCloudflareTunnelStatus()
+  if (!status.running && !status.starting) {
+    printColored(colors.dim, "No Cloudflare tunnel is currently running.")
+    return
+  }
+
+  await stopManagedCloudflareTunnel()
+  printColored(colors.green, "Stopped the Cloudflare tunnel.")
+}
+
+async function handleListCloudflareTunnels(): Promise<void> {
+  const installed = await checkManagedCloudflaredInstalled()
+  if (!installed) {
+    printColored(
+      colors.red,
+      "cloudflared is not installed. Install it before listing named tunnels.",
+    )
+    return
+  }
+
+  const loggedIn = await checkManagedCloudflaredLoggedIn()
+  if (!loggedIn) {
+    printColored(
+      colors.red,
+      "cloudflared is not logged in. Run 'cloudflared tunnel login' first.",
+    )
+    return
+  }
+
+  const result = await listManagedCloudflareTunnels()
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || "Failed to list Cloudflare tunnels.",
+    )
+    return
+  }
+
+  const tunnels = result.tunnels || []
+
+  console.log(`\n${colors.bold}Cloudflare Tunnels:${colors.reset}`)
+  if (tunnels.length === 0) {
+    console.log(`  ${colors.dim}(no named tunnels found)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const tunnel of tunnels) {
+    console.log(
+      `  ${colors.cyan}${tunnel.name}${colors.reset}${colors.dim} (${tunnel.id})${colors.reset}`,
+    )
+    console.log(`    ${colors.dim}created ${tunnel.created_at}${colors.reset}`)
+  }
+  console.log()
 }
 
 async function printWhatsappQrCode(qrValue: string): Promise<void> {
@@ -4304,6 +4491,24 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/settings-edit":
       await handleEditSettings(argumentsText)
+      return true
+    case "/remote-status":
+      await handleShowRemoteServerStatus()
+      return true
+    case "/remote-qr":
+      await handlePrintRemoteServerQrCode()
+      return true
+    case "/cloudflare-status":
+      await handleShowCloudflareStatus()
+      return true
+    case "/cloudflare-start":
+      await handleStartCloudflareTunnel()
+      return true
+    case "/cloudflare-stop":
+      await handleStopCloudflareTunnel()
+      return true
+    case "/cloudflare-list":
+      await handleListCloudflareTunnels()
       return true
     case "/whatsapp-status":
       await handleShowWhatsappStatus()

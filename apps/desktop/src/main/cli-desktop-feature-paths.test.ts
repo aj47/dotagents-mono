@@ -259,6 +259,10 @@ const whatsappManagementSource = readFileSync(
   new URL("./whatsapp-management.ts", import.meta.url),
   "utf8",
 )
+const remoteAccessManagementSource = readFileSync(
+  new URL("./remote-access-management.ts", import.meta.url),
+  "utf8",
+)
 const mainAgentSelectionSource = readFileSync(
   new URL("./main-agent-selection.ts", import.meta.url),
   "utf8",
@@ -1009,6 +1013,70 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("`/whatsapp-logout`")
   })
 
+  it("shares remote-access management across headless and desktop surfaces", () => {
+    expect(remoteAccessManagementSource).toContain(
+      "export function getManagedRemoteServerStatus()",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export async function printManagedRemoteServerQrCode(",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export async function checkManagedCloudflaredInstalled()",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export async function checkManagedCloudflaredLoggedIn()",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export function getManagedCloudflareTunnelStatus()",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export async function listManagedCloudflareTunnels()",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export async function startManagedConfiguredCloudflareTunnel()",
+    )
+    expect(remoteAccessManagementSource).toContain(
+      "export async function stopManagedCloudflareTunnel()",
+    )
+    expect(headlessCliSource).toContain('case "/remote-status":')
+    expect(headlessCliSource).toContain('case "/remote-qr":')
+    expect(headlessCliSource).toContain('case "/cloudflare-status":')
+    expect(headlessCliSource).toContain('case "/cloudflare-start":')
+    expect(headlessCliSource).toContain('case "/cloudflare-stop":')
+    expect(headlessCliSource).toContain('case "/cloudflare-list":')
+    expect(headlessCliSource).toContain("getManagedRemoteServerStatus()")
+    expect(headlessCliSource).toContain("await printManagedRemoteServerQrCode()")
+    expect(headlessCliSource).toContain(
+      "await startManagedConfiguredCloudflareTunnel()",
+    )
+    expect(headlessCliSource).toContain("await stopManagedCloudflareTunnel()")
+    expect(headlessCliSource).toContain(
+      "await listManagedCloudflareTunnels()",
+    )
+    expect(headlessCliSource).toContain(
+      "await checkManagedCloudflaredInstalled()",
+    )
+    expect(headlessCliSource).toContain(
+      "await checkManagedCloudflaredLoggedIn()",
+    )
+    expect(tipcSource).toContain("return checkManagedCloudflaredInstalled()")
+    expect(tipcSource).toContain("return startManagedCloudflareQuickTunnel()")
+    expect(tipcSource).toContain("return startManagedCloudflareNamedTunnel(input)")
+    expect(tipcSource).toContain("return stopManagedCloudflareTunnel()")
+    expect(tipcSource).toContain("return getManagedCloudflareTunnelStatus()")
+    expect(tipcSource).toContain("return listManagedCloudflareTunnels()")
+    expect(tipcSource).toContain("return checkManagedCloudflaredLoggedIn()")
+    expect(tipcSource).toContain("return getManagedRemoteServerStatus()")
+    expect(tipcSource).toContain("return printManagedRemoteServerQrCode()")
+    expect(docsSource).toContain("## Shared remote access management")
+    expect(docsSource).toContain("`/remote-status`")
+    expect(docsSource).toContain("`/remote-qr`")
+    expect(docsSource).toContain("`/cloudflare-status`")
+    expect(docsSource).toContain("`/cloudflare-start`")
+    expect(docsSource).toContain("`/cloudflare-stop`")
+    expect(docsSource).toContain("`/cloudflare-list`")
+  })
+
   it("routes the remote server through the shared launcher and runner", () => {
     expect(remoteServerSource).toContain('approvalMode: "dialog"')
     expect(remoteServerSource).toContain("const agentResult = await runPromise")
@@ -1497,6 +1565,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared profile skill management")
     expect(docsSource).toContain("Shared skill catalog management")
     expect(docsSource).toContain("Shared bundle management")
+    expect(docsSource).toContain("Shared remote access management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -1545,6 +1614,7 @@ describe("CLI and desktop feature paths", () => {
       "Desktop skill settings + CLI skill catalog controls",
     )
     expect(docsSource).toContain("Headless CLI bundle management")
+    expect(docsSource).toContain("Headless CLI remote access controls")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")

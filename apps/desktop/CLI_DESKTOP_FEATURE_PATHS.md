@@ -78,6 +78,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helper: `printSharedRemoteServerQrCode(...)`
 - Current callers: `remote-server.ts` startup auto-print and `printQRCodeToTerminal(...)` for GUI/manual/QR-triggered printing
 
+## Shared remote access management
+
+- Shared remote-access file: `apps/desktop/src/main/remote-access-management.ts`
+- Shared helpers: `getManagedRemoteServerStatus(...)`, `printManagedRemoteServerQrCode(...)`, `checkManagedCloudflaredInstalled(...)`, `checkManagedCloudflaredLoggedIn(...)`, `getManagedCloudflareTunnelStatus(...)`, `listManagedCloudflareTunnels(...)`, `startManagedCloudflareQuickTunnel(...)`, `startManagedCloudflareNamedTunnel(...)`, `startManagedConfiguredCloudflareTunnel(...)`, and `stopManagedCloudflareTunnel(...)`
+- Current callers: `headless-cli.ts` `/remote-status`, `/remote-qr`, `/cloudflare-status`, `/cloudflare-start`, `/cloudflare-stop`, and `/cloudflare-list`; plus `tipc.ts` `checkCloudflaredInstalled(...)`, `checkCloudflaredLoggedIn(...)`, `listCloudflareTunnels(...)`, `getCloudflareTunnelStatus(...)`, `startCloudflareTunnel(...)`, `startNamedCloudflareTunnel(...)`, `stopCloudflareTunnel(...)`, `getRemoteServerStatus(...)`, and `printRemoteServerQRCode(...)` used by `settings-remote-server.tsx`
+
 ## Shared remote server URL rules
 
 - Shared URL file: `apps/desktop/src/shared/remote-server-url.ts`
@@ -363,6 +369,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now routes `/queues`, `/queue [conversation-id-prefix]`, `/queue-edit <message-id-or-prefix> <text>`, `/queue-remove <message-id-or-prefix> [conversation-id-prefix]`, `/queue-retry <message-id-or-prefix> [conversation-id-prefix]`, `/queue-clear [conversation-id-prefix]`, `/queue-pause [conversation-id-prefix]`, and `/queue-resume [conversation-id-prefix]` through `message-queue-management.ts`, while `tipc.ts` message-queue CRUD/pause/resume handlers plus the desktop queued-follow-up processor now reuse the same queue snapshot, message selection, edit/retry/pause/resume decisions, and shared `processManagedQueuedMessages(...)` loop before the renderer queue panel or terminal formatting diverges.
 54. Headless CLI + desktop WhatsApp management
     `headless-cli.ts` now routes `/whatsapp-status`, `/whatsapp-connect`, `/whatsapp-disconnect`, and `/whatsapp-logout` through `whatsapp-management.ts`, while `tipc.ts` reuses the same helper for `settings-whatsapp.tsx`, so WhatsApp MCP-server availability checks, status parsing, QR-required connection responses, and disconnect/logout error handling stay aligned across the terminal and desktop settings UI.
+55. Headless CLI remote access controls
+    `headless-cli.ts` now routes `/remote-status`, `/remote-qr`, `/cloudflare-status`, `/cloudflare-start`, `/cloudflare-stop`, and `/cloudflare-list` through `remote-access-management.ts`, while `tipc.ts` reuses the same helper for `settings-remote-server.tsx`, so remote-server status, manual terminal QR printing, Cloudflare install/login checks, named-tunnel listing, and quick/named tunnel lifecycle actions stay aligned across the terminal and desktop remote settings page.
 
 ## Parity rules
 
@@ -423,7 +431,9 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, tracked agent-session management, headless CLI message-queue controls, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI bundle management, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, tracked agent-session management, headless CLI message-queue controls, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI bundle management, headless CLI knowledge-note controls, headless CLI remote access controls, and ACP parent-resume paths still point at the intended shared helpers.
+- `apps/desktop/src/main/remote-access-management.test.ts`
+  Confirms remote-server status/QR helpers plus Cloudflare install/login/status/list/start/stop routing stay aligned for headless CLI and desktop remote settings callers.
 - `apps/desktop/src/main/agent-session-management.test.ts`
   Confirms shared tracked-session snapshots, exact/prefix selection, queued-follow-up cleanup protection, and per-session stop behavior stay aligned for headless CLI session commands and desktop session actions.
 - `apps/desktop/src/main/message-queue-management.test.ts`
