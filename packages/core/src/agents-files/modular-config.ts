@@ -122,15 +122,11 @@ export function loadMergedAgentsConfig(
   const globalHas = layerHasAnyAgentsConfig(globalLayer)
   const workspaceHas = workspaceLayer ? layerHasAnyAgentsConfig(workspaceLayer) : false
 
-  const globalConfig: Partial<Config> = globalHas
-    ? loadAgentsLayerConfig(globalLayer)
-    : {}
-  const workspaceConfig: Partial<Config> = workspaceHas && workspaceLayer
-    ? loadAgentsLayerConfig(workspaceLayer)
-    : {}
-
   return {
-    merged: { ...globalConfig, ...workspaceConfig },
+    merged: {
+      ...(globalHas ? loadAgentsLayerConfig(globalLayer) : {}),
+      ...(workspaceHas && workspaceLayer ? loadAgentsLayerConfig(workspaceLayer) : {}),
+    },
     hasAnyAgentsFiles: globalHas || workspaceHas,
   }
 }
