@@ -70,9 +70,7 @@ import {
   PanelPosition,
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
-
-
-import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
+import { printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
@@ -85,6 +83,7 @@ import {
   startSharedPromptRun,
   startSharedResumeRun,
 } from "./agent-mode-runner"
+import { syncConfiguredRemoteAccess } from "./remote-access-runtime"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
@@ -2087,26 +2086,11 @@ export const router = {
 
       // Manage Remote Server lifecycle on config changes
       try {
-        const prevEnabled = !!(prev as any)?.remoteServerEnabled
-        const nextEnabled = !!(merged as any)?.remoteServerEnabled
-
-        if (prevEnabled !== nextEnabled) {
-          if (nextEnabled) {
-            await startRemoteServer()
-          } else {
-            await stopRemoteServer()
-          }
-        } else if (nextEnabled) {
-          const changed =
-            (prev as any)?.remoteServerPort !== (merged as any)?.remoteServerPort ||
-            (prev as any)?.remoteServerBindAddress !== (merged as any)?.remoteServerBindAddress ||
-            (prev as any)?.remoteServerApiKey !== (merged as any)?.remoteServerApiKey ||
-            (prev as any)?.remoteServerLogLevel !== (merged as any)?.remoteServerLogLevel
-
-          if (changed) {
-            await restartRemoteServer()
-          }
-        }
+        await syncConfiguredRemoteAccess({
+          label: "desktop-runtime",
+          previousConfig: prev,
+          nextConfig: merged,
+        })
       } catch (_e) {
         // lifecycle is best-effort
       }

@@ -117,6 +117,9 @@ describe("CLI and desktop feature paths", () => {
     expect(remoteAccessRuntimeSource).toContain(
       "export async function startSharedRemoteAccessRuntime",
     )
+    expect(remoteAccessRuntimeSource).toContain(
+      "export async function syncConfiguredRemoteAccess",
+    )
     expect(headlessRuntimeSource).toContain(
       "export async function startSharedHeadlessRuntime",
     )
@@ -133,12 +136,12 @@ describe("CLI and desktop feature paths", () => {
     expect(remoteAccessRuntimeSource).toContain("return startRemoteServer()")
     expect(headlessRuntimeSource).toContain("shutdownSharedRuntimeServices({")
     expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
-    expect(indexSource).toContain("startSharedRemoteAccessRuntime({")
+    expect(indexSource).toContain("syncConfiguredRemoteAccess({")
     expect(indexSource).toContain("launchSharedHeadlessMode({")
     expect(indexSource).toContain("shutdownSharedRuntimeServices({")
-    expect(indexSource).toContain('remoteServerStrategy: "config"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "auto"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "force"')
+    expect(tipcSource).toContain("await syncConfiguredRemoteAccess({")
     expect(indexSource).toContain('terminationSignals: ["SIGTERM"]')
     expect(indexSource).toContain('label: "headless-runtime"')
     expect(indexSource).toContain('label: "qr-runtime"')
@@ -151,6 +154,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared resume runner")
     expect(docsSource).toContain("Shared prompt session bootstrap")
     expect(docsSource).toContain("Shared remote access bootstrap")
+    expect(docsSource).toContain("Shared configured remote access reconciliation")
     expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Shared runtime shutdown")
@@ -166,6 +170,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI startup")
     expect(docsSource).toContain("QR headless pairing startup")
     expect(docsSource).toContain("Desktop remote access startup")
+    expect(docsSource).toContain("Desktop remote access reconfiguration")
     expect(docsSource).toContain("Desktop GUI shutdown")
     expect(docsSource).toContain("Headless non-GUI shutdown")
   })

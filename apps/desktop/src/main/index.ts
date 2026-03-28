@@ -26,7 +26,10 @@ import { ensureAppSwitcherPresence } from "./app-switcher"
 
 import { configStore } from "./config"
 import { printQRCodeToTerminal } from "./remote-server"
-import { startSharedRemoteAccessRuntime } from "./remote-access-runtime"
+import {
+  startSharedRemoteAccessRuntime,
+  syncConfiguredRemoteAccess,
+} from "./remote-access-runtime"
 import {
   initializeSharedRuntimeServices,
   registerSharedMainProcessInfrastructure,
@@ -353,18 +356,14 @@ if (!gotSingleInstanceLock) {
 
     try {
       const cfg = configStore.get()
-      if (cfg.remoteServerEnabled) {
-        void startSharedRemoteAccessRuntime({
-          label: "desktop-runtime",
-          remoteServerStrategy: "config",
-          cloudflareTunnelActivation: "auto",
-        })
-          .catch((err) =>
-            logApp(
-              `Remote access startup failed: ${err instanceof Error ? err.message : String(err)}`,
-            ),
-          )
-      }
+      void syncConfiguredRemoteAccess({
+        label: "desktop-runtime",
+        nextConfig: cfg,
+      }).catch((err) =>
+        logApp(
+          `Remote access startup failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      )
     } catch (_e) {}
 
     import("./updater").then((res) => res.init()).catch(console.error)
