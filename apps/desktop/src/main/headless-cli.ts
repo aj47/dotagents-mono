@@ -84,6 +84,11 @@ import {
   deleteConversationAndSyncSessionState,
   renameConversationTitleAndSyncSession,
 } from "./conversation-management"
+import {
+  getManagedSettingsSnapshot,
+  getManagedSettingsUpdates,
+  saveManagedConfig,
+} from "./settings-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
   type ConversationSessionState,
@@ -204,6 +209,8 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/quit${colors.reset}, ${colors.cyan}/exit${colors.reset}  - Exit the CLI
   ${colors.cyan}/stop${colors.reset}          - Emergency stop current agent session
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
+  ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
+  ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
   ${colors.cyan}/mcp${colors.reset}           - List MCP servers with live status and transport
   ${colors.cyan}/mcp-show <name>${colors.reset} - Show full MCP server details
   ${colors.cyan}/mcp-enable <name>${colors.reset} - Runtime-enable an MCP server for this profile
@@ -876,6 +883,40 @@ async function handleDeleteAllKnowledgeNotes(): Promise<void> {
     colors.green,
     `Deleted ${result.deletedCount} knowledge note${result.deletedCount === 1 ? "" : "s"}.`,
   )
+}
+
+function printSettings() {
+  const settings = getManagedSettingsSnapshot()
+
+  console.log(`\n${colors.bold}Shared Settings:${colors.reset}`)
+  console.log(formatApprovalArguments(settings))
+  console.log()
+  console.log(
+    `${colors.dim}Use /settings-edit <json-payload> to update this shared settings surface.${colors.reset}`,
+  )
+  console.log()
+}
+
+async function handleEditSettings(input: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    input,
+    "Usage: /settings-edit <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  const updates = getManagedSettingsUpdates(payload)
+  const updatedKeys = Object.keys(updates)
+  if (updatedKeys.length === 0) {
+    printColored(colors.red, "No valid settings to update.")
+    return
+  }
+
+  await saveManagedConfig(updates, {
+    remoteAccessLabel: "headless-cli-settings",
+  })
+  printColored(colors.green, `Updated settings: ${updatedKeys.join(", ")}`)
 }
 
 function printStatus() {
@@ -2553,6 +2594,12 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/status":
       printStatus()
+      return true
+    case "/settings":
+      printSettings()
+      return true
+    case "/settings-edit":
+      await handleEditSettings(argumentsText)
       return true
     case "/mcp":
       printMcpServers()

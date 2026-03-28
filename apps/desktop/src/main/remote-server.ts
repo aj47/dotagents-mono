@@ -13,21 +13,13 @@ import os from "os"
 import path from "path"
 import {
   formatConversationHistoryMessages,
-  sanitizeConversationSessionState,
   resolveChatModelSelection,
-  resolveChatProviderId,
-  resolveModelPresetId,
-  resolveModelPresets,
-  resolveSttModelSelection,
-  resolveSttProviderId,
-  resolveTtsProviderId,
-  resolveTtsSelection,
 } from "@dotagents/shared"
 import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
-import { mcpService, handleWhatsAppToggle } from "./mcp-service"
+import { mcpService } from "./mcp-service"
 import {
   isHeadlessEnvironment,
   printSharedRemoteServerQrCode,
@@ -104,6 +96,11 @@ import {
   toggleManagedSkillForCurrentProfile,
 } from "./profile-skill-management"
 import { summarizeLoop, summarizeLoops } from "./loop-summaries"
+import {
+  getManagedSettingsSnapshot,
+  getManagedSettingsUpdates,
+  saveManagedConfig,
+} from "./settings-management"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -1170,115 +1167,7 @@ async function startRemoteServerInternal(
   // GET /v1/settings - Get relevant settings for mobile app
   fastify.get("/v1/settings", async (_req, reply) => {
     try {
-      const cfg = configStore.get()
-      const availablePresets = resolveModelPresets(cfg)
-      const openaiSttSelection = resolveSttModelSelection(cfg, "openai")
-      const groqSttSelection = resolveSttModelSelection(cfg, "groq")
-      const openaiTtsSelection = resolveTtsSelection(cfg, "openai")
-      const groqTtsSelection = resolveTtsSelection(cfg, "groq")
-      const geminiTtsSelection = resolveTtsSelection(cfg, "gemini")
-      const conversationSessionState = sanitizeConversationSessionState(cfg)
-
-      return reply.send({
-        // Model settings
-        mcpToolsProviderId: resolveChatProviderId(cfg),
-        mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
-        mcpToolsGroqModel: cfg.mcpToolsGroqModel,
-        mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
-        // OpenAI compatible preset settings
-        currentModelPresetId: resolveModelPresetId(cfg),
-        availablePresets: availablePresets.map((p) => ({
-          id: p.id,
-          name: p.name,
-          baseUrl: p.baseUrl,
-          isBuiltIn: p.isBuiltIn ?? false,
-        })),
-        predefinedPrompts: (cfg.predefinedPrompts || []).map((prompt) => ({
-          id: prompt.id,
-          name: prompt.name,
-          content: prompt.content,
-          createdAt: prompt.createdAt,
-          updatedAt: prompt.updatedAt,
-        })),
-        // Feature toggles
-        transcriptPostProcessingEnabled:
-          cfg.transcriptPostProcessingEnabled ?? true,
-        mcpRequireApprovalBeforeToolCall:
-          cfg.mcpRequireApprovalBeforeToolCall ?? false,
-        ttsEnabled: cfg.ttsEnabled ?? true,
-        whatsappEnabled: cfg.whatsappEnabled ?? false,
-        // Agent settings
-        mcpMaxIterations: cfg.mcpMaxIterations ?? 10,
-        // Streamer Mode
-        streamerModeEnabled: cfg.streamerModeEnabled ?? false,
-        // Speech-to-Text
-        sttLanguage: cfg.sttLanguage ?? "",
-        transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
-        transcriptPostProcessingPrompt:
-          cfg.transcriptPostProcessingPrompt ?? "",
-        // Text-to-Speech
-        ttsAutoPlay: cfg.ttsAutoPlay ?? true,
-        ttsPreprocessingEnabled: cfg.ttsPreprocessingEnabled ?? true,
-        ttsRemoveCodeBlocks: cfg.ttsRemoveCodeBlocks ?? true,
-        ttsRemoveUrls: cfg.ttsRemoveUrls ?? true,
-        ttsConvertMarkdown: cfg.ttsConvertMarkdown ?? true,
-        ttsUseLLMPreprocessing: cfg.ttsUseLLMPreprocessing ?? false,
-        // Agent settings (extended)
-        mainAgentMode: cfg.mainAgentMode ?? "api",
-        mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
-        mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
-        mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
-        dualModelEnabled: cfg.dualModelEnabled ?? false,
-        mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? true,
-        // Tool Execution
-        mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
-        mcpToolResponseProcessingEnabled:
-          cfg.mcpToolResponseProcessingEnabled ?? true,
-        mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
-        // WhatsApp (extended)
-        whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
-        whatsappAutoReply: cfg.whatsappAutoReply ?? false,
-        whatsappLogMessages: cfg.whatsappLogMessages ?? false,
-        // Langfuse
-        langfuseEnabled: cfg.langfuseEnabled ?? false,
-        langfusePublicKey: cfg.langfusePublicKey ?? "",
-        langfuseSecretKey: cfg.langfuseSecretKey ? "••••••••" : "",
-        langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
-        // STT/TTS/Post-Processing Provider settings
-        sttProviderId: resolveSttProviderId(cfg),
-        openaiSttModel: openaiSttSelection.model ?? "",
-        groqSttModel: groqSttSelection.model ?? "",
-        ttsProviderId: resolveTtsProviderId(cfg),
-        transcriptPostProcessingProviderId: resolveChatProviderId(
-          cfg,
-          "transcript",
-        ),
-        transcriptPostProcessingOpenaiModel:
-          cfg.transcriptPostProcessingOpenaiModel || "",
-        transcriptPostProcessingGroqModel:
-          cfg.transcriptPostProcessingGroqModel || "",
-        transcriptPostProcessingGeminiModel:
-          cfg.transcriptPostProcessingGeminiModel || "",
-        // ACP Agent settings
-        mainAgentName: cfg.mainAgentName || "",
-        acpInjectRuntimeTools: cfg.acpInjectRuntimeTools !== false,
-        // TTS voice/model per provider
-        openaiTtsModel: openaiTtsSelection.model,
-        openaiTtsVoice: openaiTtsSelection.voice,
-        openaiTtsSpeed: openaiTtsSelection.speed,
-        groqTtsModel: groqTtsSelection.model,
-        groqTtsVoice: groqTtsSelection.voice,
-        geminiTtsModel: geminiTtsSelection.model,
-        geminiTtsVoice: geminiTtsSelection.voice,
-        // ACP Agent list for agent selection
-        acpAgents: agentProfileService
-          .getAll()
-          .filter((p) => p.connection.type === "acp" && p.enabled !== false)
-          .map((p) => ({ name: p.name, displayName: p.displayName })),
-        // Session History (pinned/archived conversation IDs)
-        pinnedSessionIds: conversationSessionState.pinnedSessionIds,
-        archivedSessionIds: conversationSessionState.archivedSessionIds,
-      })
+      return reply.send(getManagedSettingsSnapshot())
     } catch (error: any) {
       diagnosticsService.logError(
         "remote-server",
@@ -1293,321 +1182,18 @@ async function startRemoteServerInternal(
   fastify.patch("/v1/settings", async (req, reply) => {
     try {
       const body = req.body as any
-      const cfg = configStore.get()
-      const updates: Partial<typeof cfg> = {}
-
-      // Only allow updating specific settings
-      if (typeof body.transcriptPostProcessingEnabled === "boolean") {
-        updates.transcriptPostProcessingEnabled =
-          body.transcriptPostProcessingEnabled
-      }
-      if (typeof body.mcpRequireApprovalBeforeToolCall === "boolean") {
-        updates.mcpRequireApprovalBeforeToolCall =
-          body.mcpRequireApprovalBeforeToolCall
-      }
-      if (typeof body.ttsEnabled === "boolean") {
-        updates.ttsEnabled = body.ttsEnabled
-      }
-      if (typeof body.whatsappEnabled === "boolean") {
-        updates.whatsappEnabled = body.whatsappEnabled
-      }
-      if (
-        typeof body.mcpMaxIterations === "number" &&
-        body.mcpMaxIterations >= 1 &&
-        body.mcpMaxIterations <= 100
-      ) {
-        // Coerce to integer to avoid surprising iteration counts with floats
-        updates.mcpMaxIterations = Math.floor(body.mcpMaxIterations)
-      }
-      // Model settings
-      const validProviders = ["openai", "groq", "gemini"]
-      if (
-        typeof body.mcpToolsProviderId === "string" &&
-        validProviders.includes(body.mcpToolsProviderId)
-      ) {
-        updates.mcpToolsProviderId = body.mcpToolsProviderId as
-          | "openai"
-          | "groq"
-          | "gemini"
-      }
-      if (typeof body.mcpToolsOpenaiModel === "string") {
-        updates.mcpToolsOpenaiModel = body.mcpToolsOpenaiModel
-      }
-      if (typeof body.mcpToolsGroqModel === "string") {
-        updates.mcpToolsGroqModel = body.mcpToolsGroqModel
-      }
-      if (typeof body.mcpToolsGeminiModel === "string") {
-        updates.mcpToolsGeminiModel = body.mcpToolsGeminiModel
-      }
-      // OpenAI compatible preset - validate against known preset IDs
-      if (typeof body.currentModelPresetId === "string") {
-        const allValidIds = new Set(
-          resolveModelPresets(cfg).map((preset) => preset.id),
-        )
-
-        if (allValidIds.has(body.currentModelPresetId)) {
-          updates.currentModelPresetId = body.currentModelPresetId
-        }
-        // If preset ID is invalid, silently ignore to avoid breaking client
-      }
-      // Streamer Mode
-      if (typeof body.streamerModeEnabled === "boolean") {
-        updates.streamerModeEnabled = body.streamerModeEnabled
-      }
-      // Speech-to-Text
-      if (typeof body.sttLanguage === "string") {
-        updates.sttLanguage = body.sttLanguage
-      }
-      if (typeof body.transcriptionPreviewEnabled === "boolean") {
-        updates.transcriptionPreviewEnabled = body.transcriptionPreviewEnabled
-      }
-      if (typeof body.transcriptPostProcessingPrompt === "string") {
-        updates.transcriptPostProcessingPrompt =
-          body.transcriptPostProcessingPrompt
-      }
-      // Text-to-Speech
-      if (typeof body.ttsAutoPlay === "boolean") {
-        updates.ttsAutoPlay = body.ttsAutoPlay
-      }
-      if (typeof body.ttsPreprocessingEnabled === "boolean") {
-        updates.ttsPreprocessingEnabled = body.ttsPreprocessingEnabled
-      }
-      if (typeof body.ttsRemoveCodeBlocks === "boolean") {
-        updates.ttsRemoveCodeBlocks = body.ttsRemoveCodeBlocks
-      }
-      if (typeof body.ttsRemoveUrls === "boolean") {
-        updates.ttsRemoveUrls = body.ttsRemoveUrls
-      }
-      if (typeof body.ttsConvertMarkdown === "boolean") {
-        updates.ttsConvertMarkdown = body.ttsConvertMarkdown
-      }
-      if (typeof body.ttsUseLLMPreprocessing === "boolean") {
-        updates.ttsUseLLMPreprocessing = body.ttsUseLLMPreprocessing
-      }
-      // Agent settings
-      const validAgentModes = ["api", "acp"]
-      if (
-        typeof body.mainAgentMode === "string" &&
-        validAgentModes.includes(body.mainAgentMode)
-      ) {
-        updates.mainAgentMode = body.mainAgentMode as "api" | "acp"
-      }
-      if (typeof body.mcpMessageQueueEnabled === "boolean") {
-        updates.mcpMessageQueueEnabled = body.mcpMessageQueueEnabled
-      }
-      if (typeof body.mcpVerifyCompletionEnabled === "boolean") {
-        updates.mcpVerifyCompletionEnabled = body.mcpVerifyCompletionEnabled
-      }
-      if (typeof body.mcpFinalSummaryEnabled === "boolean") {
-        updates.mcpFinalSummaryEnabled = body.mcpFinalSummaryEnabled
-      }
-
-      if (typeof body.dualModelEnabled === "boolean") {
-        updates.dualModelEnabled = body.dualModelEnabled
-      }
-
-      if (typeof body.mcpUnlimitedIterations === "boolean") {
-        updates.mcpUnlimitedIterations = body.mcpUnlimitedIterations
-      }
-      // Tool Execution
-      if (typeof body.mcpContextReductionEnabled === "boolean") {
-        updates.mcpContextReductionEnabled = body.mcpContextReductionEnabled
-      }
-      if (typeof body.mcpToolResponseProcessingEnabled === "boolean") {
-        updates.mcpToolResponseProcessingEnabled =
-          body.mcpToolResponseProcessingEnabled
-      }
-      if (typeof body.mcpParallelToolExecution === "boolean") {
-        updates.mcpParallelToolExecution = body.mcpParallelToolExecution
-      }
-      // WhatsApp (extended)
-      if (Array.isArray(body.whatsappAllowFrom)) {
-        updates.whatsappAllowFrom = body.whatsappAllowFrom.filter(
-          (n: unknown) => typeof n === "string",
-        )
-      }
-      if (typeof body.whatsappAutoReply === "boolean") {
-        updates.whatsappAutoReply = body.whatsappAutoReply
-      }
-      if (typeof body.whatsappLogMessages === "boolean") {
-        updates.whatsappLogMessages = body.whatsappLogMessages
-      }
-      // Langfuse
-      if (typeof body.langfuseEnabled === "boolean") {
-        updates.langfuseEnabled = body.langfuseEnabled
-      }
-      if (typeof body.langfusePublicKey === "string") {
-        updates.langfusePublicKey = body.langfusePublicKey
-      }
-      if (
-        typeof body.langfuseSecretKey === "string" &&
-        body.langfuseSecretKey !== "••••••••"
-      ) {
-        updates.langfuseSecretKey = body.langfuseSecretKey
-      }
-      if (typeof body.langfuseBaseUrl === "string") {
-        updates.langfuseBaseUrl = body.langfuseBaseUrl
-      }
-      // STT Provider
-      const validSttProviders = ["openai", "groq", "parakeet"]
-      if (
-        typeof body.sttProviderId === "string" &&
-        validSttProviders.includes(body.sttProviderId)
-      ) {
-        updates.sttProviderId = body.sttProviderId as
-          | "openai"
-          | "groq"
-          | "parakeet"
-      }
-      if (typeof body.openaiSttModel === "string") {
-        updates.openaiSttModel = body.openaiSttModel
-      }
-      if (typeof body.groqSttModel === "string") {
-        updates.groqSttModel = body.groqSttModel
-      }
-      // TTS Provider
-      const validTtsProviders = [
-        "openai",
-        "groq",
-        "gemini",
-        "kitten",
-        "supertonic",
-      ]
-      if (
-        typeof body.ttsProviderId === "string" &&
-        validTtsProviders.includes(body.ttsProviderId)
-      ) {
-        updates.ttsProviderId = body.ttsProviderId as
-          | "openai"
-          | "groq"
-          | "gemini"
-          | "kitten"
-          | "supertonic"
-      }
-      // Transcript Post-Processing Provider
-      const validPostProcessingProviders = ["openai", "groq", "gemini"]
-      if (
-        typeof body.transcriptPostProcessingProviderId === "string" &&
-        validPostProcessingProviders.includes(
-          body.transcriptPostProcessingProviderId,
-        )
-      ) {
-        updates.transcriptPostProcessingProviderId =
-          body.transcriptPostProcessingProviderId as
-            | "openai"
-            | "groq"
-            | "gemini"
-      }
-      if (typeof body.transcriptPostProcessingOpenaiModel === "string") {
-        updates.transcriptPostProcessingOpenaiModel =
-          body.transcriptPostProcessingOpenaiModel
-      }
-      if (typeof body.transcriptPostProcessingGroqModel === "string") {
-        updates.transcriptPostProcessingGroqModel =
-          body.transcriptPostProcessingGroqModel
-      }
-      if (typeof body.transcriptPostProcessingGeminiModel === "string") {
-        updates.transcriptPostProcessingGeminiModel =
-          body.transcriptPostProcessingGeminiModel
-      }
-      // ACP Agent settings
-      if (typeof body.mainAgentName === "string") {
-        updates.mainAgentName = body.mainAgentName
-      }
-      if (typeof body.acpInjectRuntimeTools === "boolean") {
-        updates.acpInjectRuntimeTools = body.acpInjectRuntimeTools
-      }
-      // OpenAI TTS settings
-      if (typeof body.openaiTtsModel === "string") {
-        updates.openaiTtsModel = body.openaiTtsModel as
-          | "gpt-4o-mini-tts"
-          | "tts-1"
-          | "tts-1-hd"
-      }
-      if (typeof body.openaiTtsVoice === "string") {
-        updates.openaiTtsVoice = body.openaiTtsVoice as
-          | "alloy"
-          | "echo"
-          | "fable"
-          | "onyx"
-          | "nova"
-          | "shimmer"
-      }
-      if (
-        typeof body.openaiTtsSpeed === "number" &&
-        body.openaiTtsSpeed >= 0.25 &&
-        body.openaiTtsSpeed <= 4.0
-      ) {
-        updates.openaiTtsSpeed = body.openaiTtsSpeed
-      }
-      // Groq TTS settings
-      const validGroqTtsModels = [
-        "canopylabs/orpheus-v1-english",
-        "canopylabs/orpheus-arabic-saudi",
-      ] as const
-      if (
-        typeof body.groqTtsModel === "string" &&
-        validGroqTtsModels.includes(
-          body.groqTtsModel as (typeof validGroqTtsModels)[number],
-        )
-      ) {
-        updates.groqTtsModel =
-          body.groqTtsModel as (typeof validGroqTtsModels)[number]
-      }
-      if (typeof body.groqTtsVoice === "string") {
-        updates.groqTtsVoice = body.groqTtsVoice
-      }
-      // Gemini TTS settings
-      const validGeminiTtsModels = [
-        "gemini-2.5-flash-preview-tts",
-        "gemini-2.5-pro-preview-tts",
-      ] as const
-      if (
-        typeof body.geminiTtsModel === "string" &&
-        validGeminiTtsModels.includes(
-          body.geminiTtsModel as (typeof validGeminiTtsModels)[number],
-        )
-      ) {
-        updates.geminiTtsModel =
-          body.geminiTtsModel as (typeof validGeminiTtsModels)[number]
-      }
-      if (typeof body.geminiTtsVoice === "string") {
-        updates.geminiTtsVoice = body.geminiTtsVoice
-      }
-
-      // Session History (pinned/archived conversation IDs)
-      const conversationSessionState = sanitizeConversationSessionState(body)
-      if (Array.isArray(body.pinnedSessionIds)) {
-        updates.pinnedSessionIds = conversationSessionState.pinnedSessionIds
-      }
-      if (Array.isArray(body.archivedSessionIds)) {
-        updates.archivedSessionIds = conversationSessionState.archivedSessionIds
-      }
-
-      // Predefined Prompts
-      if (Array.isArray(body.predefinedPrompts)) {
-        updates.predefinedPrompts = body.predefinedPrompts
-      }
-
+      const updates = getManagedSettingsUpdates(body)
       if (Object.keys(updates).length === 0) {
         return reply.code(400).send({ error: "No valid settings to update" })
       }
 
-      configStore.save({ ...cfg, ...updates })
+      await saveManagedConfig(updates, {
+        remoteAccessLabel: "remote-settings",
+      })
       diagnosticsService.logInfo(
         "remote-server",
         `Updated settings: ${Object.keys(updates).join(", ")}`,
       )
-
-      // Trigger WhatsApp MCP server lifecycle if whatsappEnabled changed
-      if (updates.whatsappEnabled !== undefined) {
-        try {
-          const prevEnabled = cfg.whatsappEnabled ?? false
-          await handleWhatsAppToggle(prevEnabled, updates.whatsappEnabled)
-        } catch (_e) {
-          // lifecycle is best-effort
-        }
-      }
 
       return reply.send({
         success: true,

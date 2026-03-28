@@ -175,6 +175,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `resolveModelPresetId(...)`, `resolveModelPresets(...)`, and `resolveModelPreset(...)`
 - Current callers: `resolveChatModelDisplayInfo(...)` for CLI/progress labels, `remote-server.ts` preset payload + validation, `summarization-service.ts` weak-model preset lookup, `settings-models.tsx` preset selection UI, `model-preset-manager.tsx` preset editor state, and `model-selector.tsx` preset-scoped model fetches
 
+## Shared settings management
+
+- Shared settings file: `apps/desktop/src/main/settings-management.ts`
+- Shared helpers: `getManagedSettingsSnapshot(...)`, `getManagedSettingsUpdates(...)`, and `saveManagedConfig(...)`
+- Current callers: `headless-cli.ts` `/settings` and `/settings-edit`; `remote-server.ts` `/v1/settings`; and `tipc.ts` `saveConfig(...)`
+
 ## Shared repeat task summaries
 
 - Shared loop summary file: `apps/desktop/src/main/loop-summaries.ts`
@@ -305,6 +311,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now routes `/conversations` and `/show [conversation-id-prefix]` through `getManagedConversationHistory(...)` and `getManagedConversation(...)`, while `tipc.ts` `getConversationHistory(...)`, `loadConversation(...)`, `saveConversation(...)`, `createConversation(...)`, and `addMessageToConversation(...)` reuse the same conversation-management helpers, so terminal history browsing, desktop session queries, and conversation persistence all converge on one main-process path before selection or rendering diverges.
 46. Remote conversation history + recovery API
     `remote-server.ts` now routes `/v1/conversations`, `/v1/conversations/:id`, and the create/update save path through the same conversation-management helpers, so remote/mobile history browsing, recovery loads, and persisted conversation writes reuse the same main-process history/load/save behavior that the headless CLI and desktop history surfaces use.
+47. Headless CLI settings inspection and edits
+    `headless-cli.ts` now routes `/settings` and `/settings-edit <json>` through `settings-management.ts`, so the terminal prints the same normalized settings snapshot that `remote-server.ts` exposes from `/v1/settings`, including shared ACP main-agent options plus remote-access defaults, and validates JSON patch updates through the same settings-update helper before applying them.
+48. Desktop config saves + remote/mobile settings updates
+    `tipc.ts` `saveConfig(...)` and `remote-server.ts` `PATCH /v1/settings` now both call `saveManagedConfig(...)`, so config persistence, model-cache invalidation, remote-access reconciliation, WhatsApp MCP auto-config/restarts, Langfuse reinitialization, and MCP profile cleanup all run through one main-process settings path whether the change comes from the desktop UI, headless CLI, or a remote/mobile client.
 
 ## Parity rules
 
@@ -344,6 +354,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
 - OpenAI-compatible preset IDs and merged preset records are decided in one place: `resolveModelPresetId(...)`, `resolveModelPresets(...)`, and `resolveModelPreset(...)`, so CLI labels, preset editors, preset-scoped model fetching, weak summarization preset lookup, and remote settings payloads stay aligned.
+- Settings snapshots and validated remote/headless updates are decided in one place: `getManagedSettingsSnapshot(...)` and `getManagedSettingsUpdates(...)`, so headless `/settings`, remote `/v1/settings`, shared ACP main-agent options, remote-server defaults, and masked secret handling stay aligned before the caller formats or patches them.
+- Settings persistence side effects are decided in one place: `saveManagedConfig(...)`, so desktop settings saves plus remote/headless settings updates all reuse the same provider-cache invalidation, remote-access reconciliation, WhatsApp lifecycle, Langfuse restart, login-item, dock-visibility, and MCP-profile-cleanup behavior.
 - Repeat task summaries are decided in one place: `summarizeLoop(...)` and `summarizeLoops(...)`, so the desktop repeat-task page and remote loop API merge persisted loop config, runtime status, and profile display names the same way.
 - Conversation-history serialization is decided in one place: `formatConversationHistoryMessages(...)`, `formatConversationToolCalls(...)`, and `formatConversationToolResults(...)`, so persisted tool results, progress payloads, weak step summaries, and remote API conversation history all flatten tool activity the same way.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
@@ -369,6 +381,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms loopback/wildcard host classification, IPv6 URL formatting, and desktop pairing preview warnings/base URLs stay aligned across renderer and main-process callers.
 - `apps/desktop/src/shared/mcp-server-status.test.ts`
   Confirms shared MCP server runtime classification and connected-server counts stay aligned for CLI, desktop UI, and remote API callers.
+- `apps/desktop/src/main/settings-management.test.ts`
+  Confirms shared settings snapshots, validated patch extraction, ACP main-agent option payloads, and config-persistence side effects stay aligned for headless CLI, desktop settings saves, and remote/mobile settings updates.
 - `packages/shared/src/providers.test.ts`
   Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/session.test.ts`

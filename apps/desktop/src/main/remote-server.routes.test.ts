@@ -99,6 +99,23 @@ describe("remote-server route registration", () => {
     expect(profileSwitchSection).not.toContain("toolConfigToMcpServerConfig(")
   })
 
+  it("shares remote settings snapshots and updates through the settings helper", () => {
+    const source = getRemoteServerSource()
+    const settingsSection = getSection(
+      source,
+      "// GET /v1/settings - Get relevant settings for mobile app",
+      "// ============================================\n  // Conversation Recovery Endpoints (for mobile app)",
+    )
+
+    expect(source).toContain('from "./settings-management"')
+    expect(settingsSection).toContain("return reply.send(getManagedSettingsSnapshot())")
+    expect(settingsSection).toContain("const updates = getManagedSettingsUpdates(body)")
+    expect(settingsSection).toContain("await saveManagedConfig(updates, {")
+    expect(settingsSection).not.toContain("resolveModelPresets(cfg)")
+    expect(settingsSection).not.toContain("sanitizeConversationSessionState(body)")
+    expect(settingsSection).not.toContain("configStore.save({ ...cfg, ...updates })")
+  })
+
   it("shares remote conversation browsing and save routes with the conversation-management helper", () => {
     const source = getRemoteServerSource()
     const historySection = getSection(
@@ -483,26 +500,25 @@ describe("remote-server route registration", () => {
 
   it("sanitizes session-state payloads through the shared session helpers", () => {
     const source = getRemoteServerSource()
-    const settingsPatchSection = getSection(
-      source,
-      "// PATCH /v1/settings - Update settings",
-      "// Conversation Recovery Endpoints (for mobile app)",
+    const settingsSource = readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), "settings-management.ts"),
+      "utf8",
     )
-
-    expect(source).toContain("sanitizeConversationSessionState(")
-    expect(settingsPatchSection).toContain(
-      "const conversationSessionState = sanitizeConversationSessionState(body)",
+    expect(source).toContain('from "./settings-management"')
+    expect(settingsSource).toContain("sanitizeConversationSessionState(")
+    expect(settingsSource).toContain(
+      "const conversationSessionState = sanitizeConversationSessionState(",
     )
-    expect(settingsPatchSection).toContain(
+    expect(settingsSource).toContain(
       "updates.pinnedSessionIds = conversationSessionState.pinnedSessionIds",
     )
-    expect(settingsPatchSection).toContain(
+    expect(settingsSource).toContain(
       "updates.archivedSessionIds = conversationSessionState.archivedSessionIds",
     )
-    expect(settingsPatchSection).not.toContain(
+    expect(settingsSource).not.toContain(
       'body.pinnedSessionIds.every((id: unknown) => typeof id === "string")',
     )
-    expect(settingsPatchSection).not.toContain(
+    expect(settingsSource).not.toContain(
       'body.archivedSessionIds.every((id: unknown) => typeof id === "string")',
     )
   })

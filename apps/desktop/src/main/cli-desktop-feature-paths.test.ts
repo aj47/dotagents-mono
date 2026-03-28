@@ -239,6 +239,10 @@ const runtimeToolsSource = readFileSync(
   new URL("./runtime-tools.ts", import.meta.url),
   "utf8",
 )
+const settingsManagementSource = readFileSync(
+  new URL("./settings-management.ts", import.meta.url),
+  "utf8",
+)
 const mainAgentSelectionSource = readFileSync(
   new URL("./main-agent-selection.ts", import.meta.url),
   "utf8",
@@ -333,7 +337,9 @@ describe("CLI and desktop feature paths", () => {
     expect(pinnedSessionHistorySource).toContain("orderItemsByPinnedFirst(")
     expect(sidebarSessionsSource).toContain("orderItemsByPinnedFirst(")
     expect(useStoreSyncSource).toContain("sanitizeConversationSessionState(")
-    expect(remoteServerSource).toContain("sanitizeConversationSessionState(")
+    expect(settingsManagementSource).toContain(
+      "sanitizeConversationSessionState(",
+    )
     expect(mobileSessionsSource).toContain("sanitizeConversationSessionState(")
     expect(mobileSessionsSource).toContain(
       "setConversationSessionStateMembership(",
@@ -881,7 +887,7 @@ describe("CLI and desktop feature paths", () => {
     expect(indexSource).toContain("shutdownSharedRuntimeServices({")
     expect(indexSource).toContain('cloudflareTunnelActivation: "auto"')
     expect(indexSource).toContain('cloudflareTunnelActivation: "force"')
-    expect(tipcSource).toContain("await syncConfiguredRemoteAccess({")
+    expect(settingsManagementSource).toContain("syncConfiguredRemoteAccess({")
     expect(indexSource).toContain('terminationSignals: ["SIGTERM"]')
     expect(indexSource).toContain('label: "headless-runtime"')
     expect(indexSource).toContain('label: "qr-runtime"')
@@ -906,6 +912,29 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsRemoteServerSource).toContain(
       "REMOTE_SERVER_LAN_BIND_ADDRESS",
     )
+  })
+
+  it("shares settings snapshots and persistence across CLI, desktop, and remote surfaces", () => {
+    expect(settingsManagementSource).toContain(
+      "export function getManagedSettingsSnapshot",
+    )
+    expect(settingsManagementSource).toContain(
+      "export function getManagedSettingsUpdates",
+    )
+    expect(settingsManagementSource).toContain(
+      "export async function saveManagedConfig",
+    )
+    expect(settingsManagementSource).toContain("getSelectableMainAcpAgents(")
+    expect(settingsManagementSource).toContain("syncConfiguredRemoteAccess({")
+    expect(headlessCliSource).toContain('case "/settings":')
+    expect(headlessCliSource).toContain('case "/settings-edit":')
+    expect(headlessCliSource).toContain("getManagedSettingsSnapshot()")
+    expect(headlessCliSource).toContain("getManagedSettingsUpdates(payload)")
+    expect(headlessCliSource).toContain("await saveManagedConfig(updates, {")
+    expect(remoteServerSource).toContain("return reply.send(getManagedSettingsSnapshot())")
+    expect(remoteServerSource).toContain("const updates = getManagedSettingsUpdates(body)")
+    expect(remoteServerSource).toContain("await saveManagedConfig(updates, {")
+    expect(tipcSource).toContain("await saveManagedConfig(input.config, {")
   })
 
   it("shares active chat provider/model resolution across CLI, desktop, and renderer surfaces", () => {
@@ -942,10 +971,10 @@ describe("CLI and desktop feature paths", () => {
     expect(sharedProvidersSource).toContain(
       "export function resolveTtsSelection",
     )
-    expect(remoteServerSource).toContain("resolveSttProviderId")
-    expect(remoteServerSource).toContain("resolveSttModelSelection")
-    expect(remoteServerSource).toContain("resolveTtsProviderId")
-    expect(remoteServerSource).toContain("resolveTtsSelection")
+    expect(settingsManagementSource).toContain("resolveSttProviderId")
+    expect(settingsManagementSource).toContain("resolveSttModelSelection")
+    expect(settingsManagementSource).toContain("resolveTtsProviderId")
+    expect(settingsManagementSource).toContain("resolveTtsSelection")
     expect(tipcSource).toContain("resolveSttModelSelection")
     expect(tipcSource).toContain("resolveTtsProviderId")
     expect(tipcSource).toContain("resolveTtsSelection")
@@ -989,8 +1018,8 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessCliSource).toContain("resolveChatModelDisplayInfo(")
     expect(llmSource).toContain("resolveChatModelDisplayInfo(")
-    expect(remoteServerSource).toContain("resolveModelPresetId(")
-    expect(remoteServerSource).toContain("resolveModelPresets(")
+    expect(settingsManagementSource).toContain("resolveModelPresetId(")
+    expect(settingsManagementSource).toContain("resolveModelPresets(")
     expect(summarizationServiceSource).toContain("resolveModelPreset(")
     expect(settingsModelsSource).toContain("resolveModelPresets(")
     expect(modelPresetManagerSource).toContain("resolveModelPresetId(")
@@ -1225,6 +1254,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
+    expect(docsSource).toContain("Shared settings management")
     expect(docsSource).toContain("Shared repeat task summaries")
     expect(docsSource).toContain("Shared repeat task management")
     expect(docsSource).toContain("Shared MCP server management")
@@ -1244,6 +1274,10 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("QR headless pairing startup")
     expect(docsSource).toContain("Desktop remote access startup")
     expect(docsSource).toContain("Desktop remote access reconfiguration")
+    expect(docsSource).toContain("Headless CLI settings inspection and edits")
+    expect(docsSource).toContain(
+      "Desktop config saves + remote/mobile settings updates",
+    )
     expect(docsSource).toContain("Desktop GUI shutdown")
     expect(docsSource).toContain("Headless non-GUI shutdown")
     expect(docsSource).toContain("Headless CLI conversation resume selection")

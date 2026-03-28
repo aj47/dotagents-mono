@@ -81,8 +81,6 @@ import { RendererHandlers } from "./renderer-handlers"
 import { postProcessTranscript, processTranscriptWithTools } from "./llm"
 import {
   mcpService,
-  WHATSAPP_SERVER_NAME,
-  getInternalWhatsAppServerPath,
 } from "./mcp-service"
 import {
   saveCustomPosition,
@@ -127,7 +125,6 @@ import {
   startSharedPromptRun,
   startSharedResumeRun,
 } from "./agent-mode-runner"
-import { syncConfiguredRemoteAccess } from "./remote-access-runtime"
 import {
   fetchModelsDevData,
   getModelFromModelsDevByProviderId,
@@ -179,6 +176,7 @@ import {
   updateManagedSkill,
 } from "./skill-management"
 import { toggleManagedSkillForProfile } from "./profile-skill-management"
+import { saveManagedConfig } from "./settings-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -2314,201 +2312,9 @@ export const router = {
   saveConfig: t.procedure
     .input<{ config: Config }>()
     .action(async ({ input }) => {
-      const prev = configStore.get()
-      const next = input.config
-      const merged = { ...(prev as any), ...(next as any) } as Config
-
-      // Persist merged config (ensures partial updates don't lose existing settings)
-      configStore.save(merged)
-
-      try {
-        const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-          await import("./config")
-        const { getAgentsLayerPaths } =
-          await import("./agents-files/modular-config")
-        const { cleanupInvalidMcpServerReferencesInLayers } =
-          await import("./agent-profile-mcp-cleanup")
-
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [
-              getAgentsLayerPaths(globalAgentsFolder),
-              getAgentsLayerPaths(workspaceAgentsFolder),
-            ]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
-
-        const validServerNames = Object.keys(merged.mcpConfig?.mcpServers || {})
-        const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(
-          layers,
-          validServerNames,
-        )
-        if (cleanupResult.updatedProfileIds.length > 0) {
-          agentProfileService.reload()
-        }
-      } catch (_e) {
-        // best-effort cleanup only
-      }
-
-      // Clear models cache if provider endpoints or API keys changed
-      try {
-        const providerConfigChanged =
-          (prev as any)?.openaiBaseUrl !== (merged as any)?.openaiBaseUrl ||
-          (prev as any)?.openaiApiKey !== (merged as any)?.openaiApiKey ||
-          (prev as any)?.groqBaseUrl !== (merged as any)?.groqBaseUrl ||
-          (prev as any)?.groqApiKey !== (merged as any)?.groqApiKey ||
-          (prev as any)?.geminiBaseUrl !== (merged as any)?.geminiBaseUrl ||
-          (prev as any)?.geminiApiKey !== (merged as any)?.geminiApiKey
-
-        if (providerConfigChanged) {
-          const { clearModelsCache } = await import("./models-service")
-          clearModelsCache()
-        }
-      } catch (_e) {
-        // best-effort only; cache will eventually expire
-      }
-
-      // Apply login item setting when configuration changes (production only; dev would launch bare Electron)
-      try {
-        if (
-          (process.env.NODE_ENV === "production" ||
-            !process.env.ELECTRON_RENDERER_URL) &&
-          process.platform !== "linux"
-        ) {
-          app.setLoginItemSettings({
-            openAtLogin: !!merged.launchAtLogin,
-            openAsHidden: true,
-          })
-        }
-      } catch (_e) {
-        // best-effort only
-      }
-
-      // Apply dock icon visibility changes immediately (macOS only)
-      if (process.env.IS_MAC) {
-        try {
-          const prevHideDock = !!(prev as any)?.hideDockIcon
-          const nextHideDock = !!(merged as any)?.hideDockIcon
-
-          if (prevHideDock !== nextHideDock) {
-            if (nextHideDock) {
-              // User wants to hide dock icon - hide it now
-              app.setActivationPolicy("accessory")
-              app.dock.hide()
-            } else {
-              // User wants to show dock icon - show it now
-              app.dock.show()
-              app.setActivationPolicy("regular")
-            }
-          }
-        } catch (_e) {
-          // best-effort only
-        }
-      }
-
-      // Manage Remote Server lifecycle on config changes
-      try {
-        await syncConfiguredRemoteAccess({
-          label: "desktop-runtime",
-          previousConfig: prev,
-          nextConfig: merged,
-        })
-      } catch (_e) {
-        // lifecycle is best-effort
-      }
-
-      // Manage WhatsApp MCP server auto-configuration
-      // Note: The actual server path is determined at runtime in mcp-service.ts createTransport()
-      // This ensures the correct internal bundled path is always used, regardless of what's in config
-      try {
-        const prevWhatsappEnabled = !!(prev as any)?.whatsappEnabled
-        const nextWhatsappEnabled = !!(merged as any)?.whatsappEnabled
-
-        if (prevWhatsappEnabled !== nextWhatsappEnabled) {
-          const currentMcpConfig = merged.mcpConfig || { mcpServers: {} }
-          const hasWhatsappServer =
-            !!currentMcpConfig.mcpServers?.[WHATSAPP_SERVER_NAME]
-
-          if (nextWhatsappEnabled) {
-            // WhatsApp is being enabled
-            const { mcpService } = await import("./mcp-service")
-            if (!hasWhatsappServer) {
-              // Auto-add WhatsApp MCP server config when enabled
-              // The path in config is just a placeholder - the actual path is determined
-              // at runtime in createTransport() to ensure the correct bundled path is used
-              const updatedMcpConfig: MCPConfig = {
-                ...currentMcpConfig,
-                mcpServers: {
-                  ...currentMcpConfig.mcpServers,
-                  [WHATSAPP_SERVER_NAME]: {
-                    command: "node",
-                    args: [getInternalWhatsAppServerPath()],
-                    transport: "stdio",
-                  },
-                },
-              }
-              merged.mcpConfig = updatedMcpConfig
-              configStore.save(merged)
-            }
-            // Start/restart the WhatsApp server (handles both new and existing configs)
-            await mcpService.restartServer(WHATSAPP_SERVER_NAME)
-          } else if (!nextWhatsappEnabled && hasWhatsappServer) {
-            // Stop the WhatsApp server when disabled (but keep config for re-enabling)
-            const { mcpService } = await import("./mcp-service")
-            await mcpService.stopServer(WHATSAPP_SERVER_NAME)
-          }
-        } else if (nextWhatsappEnabled) {
-          // Check if WhatsApp settings changed - restart server to pick up new env vars
-          // Also watch Remote Server settings since prepareEnvironment() derives callback URL/API key from them
-          const whatsappSettingsChanged =
-            JSON.stringify((prev as any)?.whatsappAllowFrom) !==
-              JSON.stringify((merged as any)?.whatsappAllowFrom) ||
-            (prev as any)?.whatsappAutoReply !==
-              (merged as any)?.whatsappAutoReply ||
-            (prev as any)?.whatsappLogMessages !==
-              (merged as any)?.whatsappLogMessages
-
-          // If auto-reply is enabled, also restart when Remote Server settings change
-          // This includes remoteServerEnabled because prepareEnvironment() only enables
-          // callback URL/API key injection when remote server is enabled
-          const remoteServerSettingsChanged =
-            (merged as any)?.whatsappAutoReply &&
-            ((prev as any)?.remoteServerEnabled !==
-              (merged as any)?.remoteServerEnabled ||
-              (prev as any)?.remoteServerPort !==
-                (merged as any)?.remoteServerPort ||
-              (prev as any)?.remoteServerApiKey !==
-                (merged as any)?.remoteServerApiKey)
-
-          if (whatsappSettingsChanged || remoteServerSettingsChanged) {
-            const { mcpService } = await import("./mcp-service")
-            const currentMcpConfig = merged.mcpConfig || { mcpServers: {} }
-            if (currentMcpConfig.mcpServers?.[WHATSAPP_SERVER_NAME]) {
-              await mcpService.restartServer(WHATSAPP_SERVER_NAME)
-            }
-          }
-        }
-      } catch (_e) {
-        // lifecycle is best-effort
-      }
-
-      // Reinitialize Langfuse if any Langfuse config fields changed
-      // This ensures config changes take effect without requiring app restart
-      try {
-        const langfuseConfigChanged =
-          (prev as any)?.langfuseEnabled !== (merged as any)?.langfuseEnabled ||
-          (prev as any)?.langfuseSecretKey !==
-            (merged as any)?.langfuseSecretKey ||
-          (prev as any)?.langfusePublicKey !==
-            (merged as any)?.langfusePublicKey ||
-          (prev as any)?.langfuseBaseUrl !== (merged as any)?.langfuseBaseUrl
-
-        if (langfuseConfigChanged) {
-          const { reinitializeLangfuse } = await import("./langfuse-service")
-          reinitializeLangfuse()
-        }
-      } catch (_e) {
-        // Langfuse reinitialization is best-effort
-      }
+      await saveManagedConfig(input.config, {
+        remoteAccessLabel: "desktop-runtime",
+      })
     }),
 
   // Check if langfuse package is installed (for UI to show install instructions)
