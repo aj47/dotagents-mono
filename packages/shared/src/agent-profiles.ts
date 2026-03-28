@@ -14,6 +14,21 @@ export interface AgentProfileLike {
   } | null
 }
 
+export interface AgentProfileCatalogLike extends AgentProfileLike {
+  isBuiltIn?: boolean | null
+  modelConfig?: {
+    mcpToolsProviderId?: string | null
+  } | null
+  toolConfig?: {
+    enabledServers?: readonly string[] | null
+  } | null
+  skillsConfig?: {
+    allSkillsDisabledByDefault?: boolean | null
+    enabledSkillIds?: readonly string[] | null
+  } | null
+  properties?: Record<string, unknown> | null
+}
+
 export interface LegacyAcpAgentLike {
   name: string
   displayName?: string | null
@@ -104,6 +119,13 @@ export function getAgentProfileSummary(
   return guidelines || undefined
 }
 
+export function getAgentProfileCatalogDescription(
+  profile: Pick<AgentProfileLike, "description" | "guidelines">,
+  fallback?: string,
+): string | undefined {
+  return getAgentProfileSummary(profile) ?? fallback
+}
+
 export function getAgentProfileConnectionType(
   profile: Pick<AgentProfileLike, "connectionType" | "connection">,
 ): AgentProfileConnectionType | undefined {
@@ -120,6 +142,97 @@ export function getEnabledAgentProfiles<TProfile extends AgentProfileLike>(
   profiles: readonly TProfile[],
 ): TProfile[] {
   return profiles.filter((profile) => isAgentProfileEnabled(profile))
+}
+
+export function getAgentProfileStatusLabels(
+  profile: Pick<AgentProfileCatalogLike, "enabled" | "isBuiltIn" | "isDefault">,
+  options: {
+    isCurrent?: boolean
+  } = {},
+): string[] {
+  const labels: string[] = []
+
+  if (options.isCurrent) {
+    labels.push("current")
+  }
+
+  if (profile.isBuiltIn) {
+    labels.push("built-in")
+  }
+
+  if (profile.isDefault) {
+    labels.push("default")
+  }
+
+  if (!isAgentProfileEnabled(profile)) {
+    labels.push("disabled")
+  }
+
+  return labels
+}
+
+export function getAgentProfileCatalogSummaryItems(
+  profile: Pick<
+    AgentProfileCatalogLike,
+    | "connectionType"
+    | "connection"
+    | "modelConfig"
+    | "toolConfig"
+    | "skillsConfig"
+    | "properties"
+  >,
+  options: {
+    availableSkillCount?: number
+  } = {},
+): string[] {
+  const items: string[] = []
+
+  const connectionType = getAgentProfileConnectionType(profile)
+  if (connectionType) {
+    items.push(connectionType)
+  }
+
+  const providerId = normalizeAgentProfileText(
+    profile.modelConfig?.mcpToolsProviderId,
+  )
+  if (providerId) {
+    items.push(providerId)
+  }
+
+  const enabledServerCount = profile.toolConfig?.enabledServers?.length ?? 0
+  if (enabledServerCount > 0) {
+    items.push(
+      `${enabledServerCount} server${enabledServerCount === 1 ? "" : "s"}`,
+    )
+  }
+
+  const explicitEnabledSkillCount =
+    profile.skillsConfig?.enabledSkillIds?.length ?? 0
+  const availableSkillCount =
+    typeof options.availableSkillCount === "number" &&
+    Number.isFinite(options.availableSkillCount)
+      ? Math.max(0, Math.floor(options.availableSkillCount))
+      : undefined
+  const enabledSkillCount =
+    typeof availableSkillCount === "number"
+      ? (!profile.skillsConfig?.allSkillsDisabledByDefault
+        ? availableSkillCount
+        : explicitEnabledSkillCount)
+      : (profile.skillsConfig?.allSkillsDisabledByDefault
+        ? explicitEnabledSkillCount
+        : 0)
+  if (enabledSkillCount > 0) {
+    items.push(`${enabledSkillCount} skill${enabledSkillCount === 1 ? "" : "s"}`)
+  }
+
+  const propertyCount = profile.properties
+    ? Object.keys(profile.properties).length
+    : 0
+  if (propertyCount > 0) {
+    items.push(`${propertyCount} prop${propertyCount === 1 ? "" : "s"}`)
+  }
+
+  return items
 }
 
 export function sortAgentProfilesByPriority<TProfile extends AgentProfileLike>(

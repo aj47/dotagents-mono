@@ -120,6 +120,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helper: `getSelectableMainAcpAgents(...)`
 - Current callers: `main-agent-selection.ts`; renderer `settings-general-main-agent-options.ts` (used by `settings-general.tsx` and `settings-providers.tsx`); and mobile `mainAgentOptions.ts`
 
+## Shared agent catalog summaries
+
+- Shared selector file: `packages/shared/src/agent-profiles.ts`
+- Shared helpers: `getAgentProfileCatalogDescription(...)`, `getAgentProfileCatalogSummaryItems(...)`, and `getAgentProfileStatusLabels(...)`
+- Current callers: `headless-cli.ts` `/agents`; renderer `settings-agents.tsx`
+
 ## Shared chat model selection
 
 - Shared provider/model file: `packages/shared/src/providers.ts`
@@ -223,6 +229,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `packages/shared/src/agent-profiles.ts` now resolves enabled-agent filtering, default-agent fallback, display-name/summary fallback, ACP-capable profile filtering, and `/agent` id-or-name matching in one place, so headless `/agents` and `/agent`, the desktop agent selector plus `apply-selected-agent.ts`, mobile selector lists, and ACP main-agent selection all reuse the same profile readiness plus ID/display-name/unique-prefix matching rules before activation or fallback selection happens.
 32. Desktop and mobile ACP main-agent pickers
     `packages/shared/src/agent-profiles.ts` now also merges ACP-capable profile agents and legacy stdio ACP entries through `getSelectableMainAcpAgents(...)`, so desktop settings main-agent dropdowns, mobile ACP selector sheets, and main-process ACP main-agent validation all expose the same deduped agent names and display names before selection resolution or settings writes happen.
+33. Headless and desktop agent catalog summaries
+    `packages/shared/src/agent-profiles.ts` now also resolves agent catalog descriptions, capability summary items, and status badges, so headless `/agents` output and the desktop Settings > Agents catalog both fall back from description to guidelines the same way, list the same connection/provider/server/skill/property metadata, and label built-in/default/current/disabled states from one shared helper path.
 
 ## Parity rules
 
@@ -251,6 +259,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Agent profile activation is decided in one place: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`, so headless CLI agent switching, desktop agent selection, and remote/mobile profile switches all reuse the same current-profile persistence, model override application, and MCP runtime config path.
 - Agent selector profile readiness is decided in one place: `getAgentProfileDisplayName(...)`, `getAgentProfileSummary(...)`, `getEnabledAgentProfiles(...)`, `sortAgentProfilesByPriority(...)`, `getDefaultAgentProfile(...)`, `resolveAgentProfileSelection(...)`, and `getAcpCapableAgentProfiles(...)`, so headless CLI `/agents` and `/agent`, desktop selector/apply-selected-agent flows, mobile selector lists, ACP-capable profile filtering, and ACP main-agent config matching all stay aligned before activation.
 - ACP main-agent option lists are decided in one place: `getSelectableMainAcpAgents(...)`, so desktop settings main-agent dropdowns, mobile ACP selectors, and main-process ACP main-agent validation all dedupe profile and legacy stdio agent names the same way before selection or fallback repair happens.
+- Agent catalog descriptions, metadata chips, and status badges are decided in one place: `getAgentProfileCatalogDescription(...)`, `getAgentProfileCatalogSummaryItems(...)`, and `getAgentProfileStatusLabels(...)`, so headless `/agents` and the desktop Settings > Agents catalog render the same fallback description and capability summary fields before presentation diverges into terminal lines or cards.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.

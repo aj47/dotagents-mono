@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
   getAcpCapableAgentProfiles,
+  getAgentProfileCatalogDescription,
+  getAgentProfileCatalogSummaryItems,
   getAgentProfileDisplayName,
   getAgentProfileSummary,
+  getAgentProfileStatusLabels,
   getDefaultAgentProfile,
   getEnabledAgentProfiles,
   getAgentProfileConnectionType,
@@ -39,6 +42,24 @@ describe("agent profile helpers", () => {
       } as any),
     ).toBe("Fallback summary")
     expect(
+      getAgentProfileCatalogDescription(
+        {
+          description: "   ",
+          guidelines: "Fallback summary",
+        } as any,
+        "No description provided.",
+      ),
+    ).toBe("Fallback summary")
+    expect(
+      getAgentProfileCatalogDescription(
+        {
+          description: "   ",
+          guidelines: "   ",
+        } as any,
+        "No description provided.",
+      ),
+    ).toBe("No description provided.")
+    expect(
       getAgentProfileConnectionType({
         connectionType: "stdio",
       } as any),
@@ -48,6 +69,48 @@ describe("agent profile helpers", () => {
         connection: { type: "acp" },
       } as any),
     ).toBe("acp")
+  })
+
+  it("builds shared agent catalog status labels and summary items", () => {
+    expect(
+      getAgentProfileStatusLabels(
+        {
+          enabled: false,
+          isBuiltIn: true,
+          isDefault: true,
+        } as any,
+        { isCurrent: true },
+      ),
+    ).toEqual(["current", "built-in", "default", "disabled"])
+
+    expect(
+      getAgentProfileCatalogSummaryItems(
+        {
+          connection: { type: "acp" },
+          modelConfig: { mcpToolsProviderId: "openai" },
+          toolConfig: { enabledServers: ["github", "filesystem"] },
+          skillsConfig: {
+            allSkillsDisabledByDefault: true,
+            enabledSkillIds: ["skill-1", "skill-2"],
+          },
+          properties: { region: "us", mode: "safe" },
+        } as any,
+        { availableSkillCount: 5 },
+      ),
+    ).toEqual(["acp", "openai", "2 servers", "2 skills", "2 props"])
+
+    expect(
+      getAgentProfileCatalogSummaryItems(
+        {
+          connectionType: "internal",
+          skillsConfig: {
+            allSkillsDisabledByDefault: false,
+            enabledSkillIds: [],
+          },
+        } as any,
+        { availableSkillCount: 3 },
+      ),
+    ).toEqual(["internal", "3 skills"])
   })
 
   it("filters enabled profiles and sorts them by priority, default, and label", () => {

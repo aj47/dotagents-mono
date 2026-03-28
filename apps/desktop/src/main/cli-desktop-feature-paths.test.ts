@@ -374,15 +374,31 @@ describe("CLI and desktop feature paths", () => {
     expect(sharedAgentProfilesSource).toContain(
       "export function getSelectableMainAcpAgents",
     )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getAgentProfileCatalogDescription",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getAgentProfileCatalogSummaryItems",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getAgentProfileStatusLabels",
+    )
     expect(headlessCliSource).toContain("resolveAgentProfileSelection(")
     expect(headlessCliSource).toContain("sortAgentProfilesByPriority(")
     expect(headlessCliSource).toContain("getAgentProfileDisplayName(")
+    expect(headlessCliSource).toContain("getAgentProfileCatalogDescription(")
+    expect(headlessCliSource).toContain("getAgentProfileCatalogSummaryItems(")
+    expect(headlessCliSource).toContain("getAgentProfileStatusLabels(")
     expect(agentSelectorSource).toContain("getEnabledAgentProfiles(")
     expect(agentSelectorSource).toContain("sortAgentProfilesByPriority(")
     expect(agentSelectorSource).toContain("getDefaultAgentProfile(")
     expect(agentSelectorSource).toContain("getAgentProfileDisplayName(")
     expect(applySelectedAgentSource).toContain("getEnabledAgentProfiles(")
     expect(applySelectedAgentSource).toContain("getDefaultAgentProfile(")
+    expect(settingsAgentsSource).toContain("getAgentProfileCatalogDescription(")
+    expect(settingsAgentsSource).toContain("getAgentProfileCatalogSummaryItems(")
+    expect(settingsAgentsSource).toContain("getAgentProfileDisplayName(")
+    expect(settingsAgentsSource).toContain("getAgentProfileStatusLabels(")
     expect(mobileAgentSelectorOptionsSource).toContain(
       "getAgentProfileDisplayName(",
     )

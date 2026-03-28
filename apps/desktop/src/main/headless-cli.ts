@@ -12,6 +12,7 @@ import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
 import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfile } from "./agent-profile-activation"
+import { skillsService } from "./skills-service"
 import {
   deleteAllConversationsAndSyncSessionState,
   deleteConversationAndSyncSessionState,
@@ -21,10 +22,11 @@ import { emergencyStopAll } from "./emergency-stop"
 import {
   type ConversationSessionState,
   type ConversationSessionStateKey,
-  getAgentProfileConnectionType,
+  getAgentProfileCatalogDescription,
+  getAgentProfileCatalogSummaryItems,
   getAgentProfileDisplayName,
-  getAgentProfileSummary,
   getEnabledAgentProfiles,
+  getAgentProfileStatusLabels,
   orderItemsByPinnedFirst,
   resolveAgentProfileSelection,
   resolveChatModelDisplayInfo,
@@ -194,22 +196,13 @@ function getAvailableAgentsForCli(): AgentProfile[] {
 }
 
 function formatAgentSelectionSummary(profile: AgentProfile): string {
-  const labels: string[] = []
-  if (profile.id === agentProfileService.getCurrentProfile()?.id) {
-    labels.push("current")
-  }
-  if (profile.isDefault) {
-    labels.push("default")
-  }
-  const connectionType = getAgentProfileConnectionType(profile)
-  if (connectionType && connectionType !== "internal") {
-    labels.push(connectionType)
-  }
-
+  const labels = getAgentProfileStatusLabels(profile, {
+    isCurrent: profile.id === agentProfileService.getCurrentProfile()?.id,
+  })
   const labelSuffix = labels.length
     ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}`
     : ""
-  const summary = getAgentProfileSummary(profile)
+  const summary = getAgentProfileCatalogDescription(profile)
   const description = summary
     ? ` ${colors.dim}- ${summary}${colors.reset}`
     : ""
@@ -271,12 +264,19 @@ function printStatus() {
 
 function printAgents() {
   const agents = getAvailableAgentsForCli()
+  const availableSkillCount = skillsService.getSkills().length
   console.log(`\n${colors.bold}Enabled Agents:${colors.reset}`)
   if (agents.length === 0) {
     console.log(`  ${colors.dim}(no enabled agents)${colors.reset}`)
   } else {
     for (const profile of agents) {
       console.log(`  ${formatAgentSelectionSummary(profile)}`)
+      const summaryItems = getAgentProfileCatalogSummaryItems(profile, {
+        availableSkillCount,
+      })
+      if (summaryItems.length > 0) {
+        console.log(`    ${colors.dim}${summaryItems.join(" • ")}${colors.reset}`)
+      }
     }
   }
   console.log()
