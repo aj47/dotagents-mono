@@ -140,5 +140,5 @@ export function sessionToListItem(session: Session): SessionListItem {
  * Check if a session is a lazy stub (has serverConversationId but no messages loaded)
  */
 export function isStubSession(session: Session): boolean {
-  return session.messages.length === 0 && !!session.serverConversationId && !!session.serverMetadata;
+  return !session.messages.length && !!session.serverConversationId && !!session.serverMetadata;
 }
