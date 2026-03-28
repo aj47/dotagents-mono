@@ -155,6 +155,23 @@ import {
   searchManagedKnowledgeNotes,
   updateManagedKnowledgeNote,
 } from "./knowledge-note-management"
+import {
+  cleanupManagedStaleSkillReferences,
+  createManagedSkill,
+  deleteManagedSkill,
+  deleteManagedSkills,
+  ensureManagedSkillFile,
+  exportManagedSkillToMarkdown,
+  getManagedSkill,
+  getManagedSkillsCatalog,
+  importManagedSkillFromFile,
+  importManagedSkillFromFolder,
+  importManagedSkillFromGitHub,
+  importManagedSkillFromMarkdown,
+  importManagedSkillsFromParentFolder,
+  scanManagedSkillsFolder,
+  updateManagedSkill,
+} from "./skill-management"
 import { toggleManagedSkillForProfile } from "./profile-skill-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
@@ -4196,27 +4213,17 @@ export const router = {
 
   // Agent Skills Management
   getSkills: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
-    return skillsService.getSkills()
+    return getManagedSkillsCatalog()
   }),
 
   getSkill: t.procedure.input<{ id: string }>().action(async ({ input }) => {
-    const { skillsService } = await import("./skills-service")
-    return skillsService.getSkill(input.id)
+    return getManagedSkill(input.id)
   }),
 
   createSkill: t.procedure
     .input<{ name: string; description: string; instructions: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const skill = skillsService.createSkill(
-        input.name,
-        input.description,
-        input.instructions,
-      )
-      // Auto-enable the new skill for the current profile so it's immediately usable
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-      return skill
+      return createManagedSkill(input)
     }),
 
   updateSkill: t.procedure
@@ -4228,100 +4235,24 @@ export const router = {
       enabled?: boolean
     }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
       const { id, ...updates } = input
-      return skillsService.updateSkill(id, updates)
+      return updateManagedSkill(id, updates)
     }),
 
   deleteSkill: t.procedure.input<{ id: string }>().action(async ({ input }) => {
-    const { skillsService } = await import("./skills-service")
-    const success = skillsService.deleteSkill(input.id)
-    if (!success) return false
-
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-      await import("./config")
-    const { getAgentsLayerPaths } =
-      await import("./agents-files/modular-config")
-    const { cleanupInvalidSkillReferencesInLayers } =
-      await import("./agent-profile-skill-cleanup")
-
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [
-          getAgentsLayerPaths(globalAgentsFolder),
-          getAgentsLayerPaths(workspaceAgentsFolder),
-        ]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
-
-    cleanupInvalidSkillReferencesInLayers(
-      layers,
-      skillsService.getSkills().map((skill) => skill.id),
-    )
-    agentProfileService.reload()
-    return true
+    const result = await deleteManagedSkill(input.id)
+    return result.success
   }),
 
   deleteSkills: t.procedure
     .input<{ ids: string[] }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const results: { id: string; success: boolean }[] = []
-      for (const id of input.ids) {
-        const success = skillsService.deleteSkill(id)
-        results.push({ id, success })
-      }
-
-      if (results.some((result) => result.success)) {
-        const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-          await import("./config")
-        const { getAgentsLayerPaths } =
-          await import("./agents-files/modular-config")
-        const { cleanupInvalidSkillReferencesInLayers } =
-          await import("./agent-profile-skill-cleanup")
-
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [
-              getAgentsLayerPaths(globalAgentsFolder),
-              getAgentsLayerPaths(workspaceAgentsFolder),
-            ]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
-
-        cleanupInvalidSkillReferencesInLayers(
-          layers,
-          skillsService.getSkills().map((skill) => skill.id),
-        )
-        agentProfileService.reload()
-      }
-
-      return results
+      const result = await deleteManagedSkills(input.ids)
+      return result.results
     }),
 
   cleanupStaleSkillReferences: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
-      await import("./config")
-    const { getAgentsLayerPaths } =
-      await import("./agents-files/modular-config")
-    const { cleanupInvalidSkillReferencesInLayers } =
-      await import("./agent-profile-skill-cleanup")
-
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [
-          getAgentsLayerPaths(globalAgentsFolder),
-          getAgentsLayerPaths(workspaceAgentsFolder),
-        ]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
-
-    const result = cleanupInvalidSkillReferencesInLayers(
-      layers,
-      skillsService.getSkills().map((skill) => skill.id),
-    )
-    if (result.updatedProfileIds.length > 0) {
-      agentProfileService.reload()
-    }
-    return result
+    return cleanupManagedStaleSkillReferences()
   }),
 
   cleanupStaleMcpServerReferences: t.procedure.action(async () => {
@@ -4356,23 +4287,17 @@ export const router = {
   importSkillFromMarkdown: t.procedure
     .input<{ content: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const skill = skillsService.importSkillFromMarkdown(input.content)
-      // Auto-enable the imported skill for the current profile so it's immediately usable
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-      return skill
+      return importManagedSkillFromMarkdown(input.content)
     }),
 
   exportSkillToMarkdown: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      return skillsService.exportSkillToMarkdown(input.id)
+      return exportManagedSkillToMarkdown(input.id)
     }),
 
   // Import a single skill - can be a .md file or a folder containing SKILL.md
   importSkillFile: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
     const result = await dialog.showOpenDialog({
       title: "Import Skill",
       filters: [
@@ -4386,15 +4311,11 @@ export const router = {
       return null
     }
 
-    const skill = skillsService.importSkillFromFile(result.filePaths[0])
-    // Auto-enable the imported skill for the current profile so it's immediately usable
-    agentProfileService.enableSkillForCurrentProfile(skill.id)
-    return skill
+    return importManagedSkillFromFile(result.filePaths[0])
   }),
 
   // Import a skill from a folder containing SKILL.md
   importSkillFolder: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
     const result = await dialog.showOpenDialog({
       title: "Import Skill Folder",
       message: "Select a folder containing SKILL.md",
@@ -4405,15 +4326,11 @@ export const router = {
       return null
     }
 
-    const skill = skillsService.importSkillFromFolder(result.filePaths[0])
-    // Auto-enable the imported skill for the current profile so it's immediately usable
-    agentProfileService.enableSkillForCurrentProfile(skill.id)
-    return skill
+    return importManagedSkillFromFolder(result.filePaths[0])
   }),
 
   // Bulk import all skill folders from a parent directory
   importSkillsFromParentFolder: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
     const result = await dialog.showOpenDialog({
       title: "Import Skills from Folder",
       message:
@@ -4425,21 +4342,13 @@ export const router = {
       return null
     }
 
-    const importResult = skillsService.importSkillsFromParentFolder(
-      result.filePaths[0],
-    )
-    // Auto-enable all imported skills for the current profile so they're immediately usable
-    for (const skill of importResult.imported) {
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-    }
-    return importResult
+    return importManagedSkillsFromParentFolder(result.filePaths[0])
   }),
 
   saveSkillFile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const skill = skillsService.getSkill(input.id)
+      const skill = getManagedSkill(input.id)
       if (!skill) {
         throw new Error(`Skill with id ${input.id} not found`)
       }
@@ -4454,7 +4363,7 @@ export const router = {
         return false
       }
 
-      const content = skillsService.exportSkillToMarkdown(input.id)
+      const content = exportManagedSkillToMarkdown(input.id)
       fs.writeFileSync(result.filePath, content)
       return true
     }),
@@ -4495,67 +4404,23 @@ export const router = {
   openSkillFile: t.procedure
     .input<{ skillId: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-
-      const skill = skillsService.getSkill(input.skillId)
-      if (!skill) {
-        return {
-          success: false,
-          error: `Skill with id ${input.skillId} not found`,
-        }
+      const ensuredFile = ensureManagedSkillFile(input.skillId)
+      if (!ensuredFile.success || !ensuredFile.path) {
+        return ensuredFile
       }
 
-      const filePath = skillsService.getSkillCanonicalFilePath(input.skillId)
-      if (!filePath) {
-        return {
-          success: false,
-          error: `No file path found for skill ${input.skillId}`,
-        }
-      }
-
-      if (!fs.existsSync(filePath)) {
-        try {
-          fs.mkdirSync(path.dirname(filePath), { recursive: true })
-          fs.writeFileSync(
-            filePath,
-            skillsService.exportSkillToMarkdown(input.skillId),
-            "utf8",
-          )
-        } catch (error) {
-          return {
-            success: false,
-            path: filePath,
-            error: error instanceof Error ? error.message : String(error),
-          }
-        }
-      }
-
-      return revealFileInFolder(filePath)
+      return revealFileInFolder(ensuredFile.path)
     }),
 
   scanSkillsFolder: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
-    const importedSkills = skillsService.scanSkillsFolder()
-    // Auto-enable all newly imported skills for the current profile so they're immediately usable
-    for (const skill of importedSkills) {
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-    }
-    return importedSkills
+    return scanManagedSkillsFolder()
   }),
 
   // Import skill(s) from a GitHub repository
   importSkillFromGitHub: t.procedure
     .input<{ repoIdentifier: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const result = await skillsService.importSkillFromGitHub(
-        input.repoIdentifier,
-      )
-      // Auto-enable all imported skills for the current profile so they're immediately usable
-      for (const skill of result.imported) {
-        agentProfileService.enableSkillForCurrentProfile(skill.id)
-      }
-      return result
+      return importManagedSkillFromGitHub(input.repoIdentifier)
     }),
 
   // Per-profile skill management

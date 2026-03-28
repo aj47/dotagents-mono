@@ -4,6 +4,7 @@ import {
 } from "@dotagents/shared"
 import type { AgentProfile, AgentSkill } from "@shared/types"
 import { agentProfileService } from "./agent-profile-service"
+import { getManagedSkillsCatalog as getManagedSkillsCatalogInternal } from "./skill-management"
 import { skillsService } from "./skills-service"
 
 export interface ManagedProfileSkillSummary extends AgentSkill {
@@ -50,9 +51,7 @@ function createManagedProfileSkillFailure(
 }
 
 export function getManagedSkillsCatalog(): AgentSkill[] {
-  return [...skillsService.getSkills()].sort((left, right) =>
-    left.name.localeCompare(right.name),
-  )
+  return getManagedSkillsCatalogInternal()
 }
 
 export function getManagedCurrentProfileSkills(): ManagedCurrentProfileSkills {

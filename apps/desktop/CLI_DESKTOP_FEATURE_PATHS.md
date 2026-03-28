@@ -144,6 +144,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedSkillsCatalog(...)`, `getManagedCurrentProfileSkills(...)`, `toggleManagedSkillForCurrentProfile(...)`, and `toggleManagedSkillForProfile(...)`
 - Current callers: `headless-cli.ts` `/skills` and `/skill`; `tipc.ts` `toggleProfileSkill(...)`; and `remote-server.ts` `/v1/skills` plus `/v1/skills/:id/toggle-profile`
 
+## Shared skill catalog management
+
+- Shared skill-catalog file: `apps/desktop/src/main/skill-management.ts`
+- Shared helpers: `getManagedSkillsCatalog(...)`, `getManagedSkill(...)`, `resolveManagedSkillSelection(...)`, `createManagedSkill(...)`, `updateManagedSkill(...)`, `deleteManagedSkill(...)`, `deleteManagedSkills(...)`, `cleanupManagedStaleSkillReferences(...)`, `importManagedSkillFromMarkdown(...)`, `importManagedSkillFromFile(...)`, `importManagedSkillFromFolder(...)`, `importManagedSkillsFromParentFolder(...)`, `exportManagedSkillToMarkdown(...)`, `getManagedSkillCanonicalFilePath(...)`, `ensureManagedSkillFile(...)`, `scanManagedSkillsFolder(...)`, and `importManagedSkillFromGitHub(...)`
+- Current callers: `headless-cli.ts` skill catalog commands; `profile-skill-management.ts` sorted catalog access; and `tipc.ts` skill CRUD/import/export/open-file/cleanup handlers used by `settings-skills.tsx`
+
 ## Shared agent catalog summaries
 
 - Shared selector file: `packages/shared/src/agent-profiles.ts`
@@ -281,11 +287,15 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` `/skills` and `/skill <id>`, `remote-server.ts` `/v1/skills` and `/v1/skills/:id/toggle-profile`, and `tipc.ts` `toggleProfileSkill(...)` now route through `profile-skill-management.ts`, so current-profile lookup, skill sorting, missing-skill/profile handling, and per-profile toggle responses stay aligned across terminal, desktop, and remote clients before each surface formats its own output.
 37. Desktop/mobile per-profile skill enablement
     `packages/shared/src/agent-profiles.ts` now also resolves effective enabled skill IDs plus toggle transitions in one place, so `settings-agents.tsx`, `agent-capabilities-sidebar.tsx`, `agent-profile-service.ts`, and `remote-server.ts` `/v1/skills` all agree on which skills are enabled for the current profile and when a profile should collapse back to the default “all skills enabled” state.
-38. Headless CLI MCP server controls
+38. Headless CLI skill catalog controls
+    `headless-cli.ts` now routes `/skill-show <skill-id-or-name>`, `/skill-new <json>`, `/skill-edit <skill-id-or-name> <json>`, `/skill-delete <skill-id-or-name>`, `/skill-export <skill-id-or-name>`, `/skill-path <skill-id-or-name>`, `/skill-import-file <path>`, `/skill-import-folder <path>`, `/skill-import-parent <path>`, `/skill-import-github <owner/repo[/path]>`, and `/skill-scan` through `skill-management.ts`, so terminal skill selection by ID/name/unique prefix, JSON validation, markdown export, canonical file-path lookup, file/folder/GitHub imports, and stale-reference cleanup all share one catalog-management path before output is rendered in the REPL.
+39. Desktop skill settings + CLI skill catalog controls
+    `settings-skills.tsx` still calls `tipc.ts`, but those main-process handlers now route through `skill-management.ts`, while `profile-skill-management.ts` reuses the same sorted catalog helper and `tipc.ts openSkillFile(...)` reuses the same canonical file bootstrap helper, so desktop skill create/update/delete/import/export/open-file actions and the headless CLI skill catalog commands now mutate, export, reveal, and clean up the same underlying skill catalog through one main-process path.
+40. Headless CLI MCP server controls
     `headless-cli.ts` now routes `/mcp`, `/mcp-show`, `/mcp-enable`, `/mcp-disable`, `/mcp-restart`, `/mcp-stop`, and `/mcp-logs` through `mcp-management.ts`, while `tipc.ts` reuses the same runtime-enable, restart, stop, and log helpers for the desktop capabilities UI and `remote-server.ts` reuses the same list/toggle helpers for `/v1/mcp/servers`, so MCP server selection by exact name or unique prefix plus runtime enablement, restart/stop lifecycle actions, and recent log lookup stay aligned across terminal, desktop UI, and remote clients.
-39. Headless CLI knowledge note controls
+41. Headless CLI knowledge note controls
     `headless-cli.ts` now routes `/notes`, `/note-show`, `/note-search`, `/note-new`, `/note-edit`, `/note-delete`, and `/note-delete-all` through `knowledge-note-management.ts`, so terminal note listing, search, CRUD validation, and delete-all behavior stay aligned with the same note helpers the desktop knowledge workspace and remote API use.
-40. Desktop knowledge workspace + CLI note controls
+42. Desktop knowledge workspace + CLI note controls
     `knowledge.tsx` continues to use `tipc.ts` knowledge-note handlers, but those handlers now route through `knowledge-note-management.ts`, while `agent-summary-view.tsx` reuses the same summary-save helper and `remote-server.ts` reuses the same CRUD helpers for `/v1/knowledge/notes`, so desktop note browsing/search/edit/delete, CLI note commands, summary-driven saves, and remote note CRUD all normalize and persist notes through one main-process path.
 40. Headless CLI agent profile management
     `headless-cli.ts` now routes `/agent-profiles`, `/agent-show`, `/agent-new`, `/agent-edit`, `/agent-toggle`, and `/agent-delete` through `agent-profile-management.ts`, while `tipc.ts` profile list/detail/create/update/delete/by-role handlers and `remote-server.ts` `/v1/agent-profiles*` routes reuse the same helper for profile selection, create/update validation, connection sanitization, enable/disable toggles, and delete protections before CLI, desktop settings, or remote/mobile clients format their own responses.

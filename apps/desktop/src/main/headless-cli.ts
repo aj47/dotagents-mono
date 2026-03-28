@@ -2,6 +2,8 @@
  * Interactive terminal CLI for headless mode.
  * Provides a readline-based REPL for interacting with the agent from SSH.
  */
+import os from "os"
+import path from "path"
 import readline from "readline"
 import { configStore } from "./config"
 import { mcpService } from "./mcp-service"
@@ -54,10 +56,24 @@ import {
   updateManagedKnowledgeNote,
 } from "./knowledge-note-management"
 import {
-  getManagedCurrentProfileSkills,
   getManagedSkillsCatalog,
+  getManagedCurrentProfileSkills,
   toggleManagedSkillForCurrentProfile,
 } from "./profile-skill-management"
+import {
+  createManagedSkill,
+  deleteManagedSkill,
+  exportManagedSkillToMarkdown,
+  getManagedSkill,
+  getManagedSkillCanonicalFilePath,
+  importManagedSkillFromFile,
+  importManagedSkillFromFolder,
+  importManagedSkillFromGitHub,
+  importManagedSkillsFromParentFolder,
+  resolveManagedSkillSelection,
+  scanManagedSkillsFolder,
+  updateManagedSkill,
+} from "./skill-management"
 import {
   deleteAllConversationsAndSyncSessionState,
   deleteConversationAndSyncSessionState,
@@ -86,6 +102,7 @@ import {
 } from "../shared/mcp-server-status"
 import type {
   AgentProfile,
+  AgentSkill,
   AgentProgressUpdate,
   Conversation,
   ConversationHistoryItem,
@@ -213,6 +230,17 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/note-delete-all${colors.reset} - Delete all knowledge notes
   ${colors.cyan}/skills${colors.reset}        - List skills for the current agent profile
   ${colors.cyan}/skill <id>${colors.reset}    - Toggle a skill for the current agent profile
+  ${colors.cyan}/skill-show <id>${colors.reset} - Show full skill details
+  ${colors.cyan}/skill-new <json>${colors.reset} - Create a skill from a JSON payload
+  ${colors.cyan}/skill-edit <id> <json>${colors.reset} - Update a skill from a JSON payload
+  ${colors.cyan}/skill-delete <id>${colors.reset} - Delete a skill by ID, name, or unique prefix
+  ${colors.cyan}/skill-export <id>${colors.reset} - Print a skill as SKILL.md markdown
+  ${colors.cyan}/skill-path <id>${colors.reset} - Show the canonical skill file path
+  ${colors.cyan}/skill-import-file <path>${colors.reset} - Import a skill from a markdown file
+  ${colors.cyan}/skill-import-folder <path>${colors.reset} - Import a skill from a folder containing SKILL.md
+  ${colors.cyan}/skill-import-parent <path>${colors.reset} - Bulk import skill folders from a parent directory
+  ${colors.cyan}/skill-import-github <repo>${colors.reset} - Import skills from a GitHub repository
+  ${colors.cyan}/skill-scan${colors.reset}   - Reload skills from the layered .agents folders
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -982,6 +1010,114 @@ function printAgentProfileDetails(profile: AgentProfile): void {
   console.log()
 }
 
+function resolveCliFileSystemPath(selection: string): string {
+  const trimmed = selection.trim()
+  if (trimmed === "~") {
+    return os.homedir()
+  }
+  if (trimmed.startsWith("~/")) {
+    return path.join(os.homedir(), trimmed.slice(2))
+  }
+  return path.resolve(trimmed)
+}
+
+function formatSkillSelectionSummary(skill: AgentSkill): string {
+  return `${skill.id} (${skill.name})`
+}
+
+function printSkillDetails(skill: AgentSkill): void {
+  console.log(`\n${colors.bold}${skill.name}${colors.reset}`)
+  console.log(`  ${colors.dim}${skill.id}${colors.reset}`)
+  console.log(`  ${colors.dim}source ${skill.source}${colors.reset}`)
+
+  const filePath = getManagedSkillCanonicalFilePath(skill.id)
+  if (filePath) {
+    console.log(`  ${colors.dim}path ${filePath}${colors.reset}`)
+  }
+
+  console.log(
+    `  ${colors.dim}updated ${new Date(skill.updatedAt).toLocaleString()}${colors.reset}`,
+  )
+
+  if (skill.description) {
+    console.log()
+    console.log(`${colors.dim}${skill.description}${colors.reset}`)
+  }
+
+  console.log()
+  console.log(skill.instructions)
+  console.log()
+}
+
+function parseSkillEditCommand(
+  input: string,
+): { selection: string; payload: Record<string, unknown> } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(
+      colors.yellow,
+      "Usage: /skill-edit <skill-id-or-name> <json-payload>",
+    )
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(
+      colors.yellow,
+      "Usage: /skill-edit <skill-id-or-name> <json-payload>",
+    )
+    return null
+  }
+
+  const selection = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const payloadText = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /skill-edit <skill-id-or-name> <json-payload>",
+  )
+  if (!payload) {
+    return null
+  }
+
+  return { selection, payload }
+}
+
+function resolveSkillSelectionForCli(
+  selection: string,
+  usage: string,
+): AgentSkill | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const skills = getManagedSkillsCatalog()
+  const { selectedSkill, ambiguousSkills } = resolveManagedSkillSelection(
+    skills,
+    query,
+  )
+
+  if (selectedSkill) {
+    return selectedSkill
+  }
+
+  if (ambiguousSkills?.length) {
+    printColored(
+      colors.yellow,
+      `Skill selector "${query}" matches multiple skills:`,
+    )
+    for (const skill of ambiguousSkills) {
+      console.log(`  ${formatSkillSelectionSummary(skill)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `Skill not found: ${query}`)
+  return null
+}
+
 function printSkills() {
   const { currentProfile, skills } = getManagedCurrentProfileSkills()
 
@@ -1010,7 +1146,7 @@ function printSkills() {
 
   console.log()
   console.log(
-    `${colors.dim}Use /skill <id> to toggle a skill for the current agent profile.${colors.reset}`,
+    `${colors.dim}Use /skill to toggle, or /skill-show, /skill-new, /skill-edit, /skill-delete, /skill-export, /skill-path, /skill-import-file, /skill-import-folder, /skill-import-parent, /skill-import-github, and /skill-scan to manage the catalog.${colors.reset}`,
   )
   console.log()
 }
@@ -1729,6 +1865,299 @@ async function handleToggleSkill(selection: string): Promise<void> {
   )
 }
 
+async function handleShowSkill(selection: string): Promise<void> {
+  const selectedSkill = resolveSkillSelectionForCli(
+    selection,
+    "Usage: /skill-show <skill-id-or-name>",
+  )
+  if (!selectedSkill) {
+    return
+  }
+
+  printSkillDetails(getManagedSkill(selectedSkill.id) || selectedSkill)
+}
+
+async function handleCreateSkill(payloadText: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /skill-new <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  try {
+    const skill = createManagedSkill(
+      payload as {
+        name: string
+        description?: string
+        instructions: string
+      },
+    )
+    printColored(colors.green, `Created skill ${skill.id}: ${skill.name}`)
+    printSkillDetails(skill)
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleEditSkill(input: string): Promise<void> {
+  const parsed = parseSkillEditCommand(input)
+  if (!parsed) {
+    return
+  }
+
+  const selectedSkill = resolveSkillSelectionForCli(
+    parsed.selection,
+    "Usage: /skill-edit <skill-id-or-name> <json-payload>",
+  )
+  if (!selectedSkill) {
+    return
+  }
+
+  try {
+    const updatedSkill = updateManagedSkill(
+      selectedSkill.id,
+      parsed.payload as {
+        name?: string
+        description?: string
+        instructions?: string
+      },
+    )
+    printColored(
+      colors.green,
+      `Updated skill ${updatedSkill.id}: ${updatedSkill.name}`,
+    )
+    printSkillDetails(updatedSkill)
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleDeleteSkill(selection: string): Promise<void> {
+  const selectedSkill = resolveSkillSelectionForCli(
+    selection,
+    "Usage: /skill-delete <skill-id-or-name>",
+  )
+  if (!selectedSkill) {
+    return
+  }
+
+  const confirmed = await promptForConfirmation(
+    `Delete skill ${selectedSkill.id} (${selectedSkill.name})?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Skill delete cancelled.")
+    return
+  }
+
+  const result = await deleteManagedSkill(selectedSkill.id)
+  if (!result.success) {
+    printColored(colors.red, `Failed to delete skill: ${selectedSkill.id}`)
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted skill ${selectedSkill.id}: ${selectedSkill.name}`,
+  )
+  if (
+    result.cleanupSummary &&
+    result.cleanupSummary.removedReferenceCount > 0
+  ) {
+    printColored(
+      colors.dim,
+      `Removed ${result.cleanupSummary.removedReferenceCount} stale skill reference${result.cleanupSummary.removedReferenceCount === 1 ? "" : "s"} across ${result.cleanupSummary.updatedProfileIds.length} profile${result.cleanupSummary.updatedProfileIds.length === 1 ? "" : "s"}.`,
+    )
+  }
+}
+
+async function handleExportSkill(selection: string): Promise<void> {
+  const selectedSkill = resolveSkillSelectionForCli(
+    selection,
+    "Usage: /skill-export <skill-id-or-name>",
+  )
+  if (!selectedSkill) {
+    return
+  }
+
+  try {
+    const markdown = exportManagedSkillToMarkdown(selectedSkill.id)
+    console.log()
+    console.log(markdown)
+    console.log()
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleShowSkillPath(selection: string): Promise<void> {
+  const selectedSkill = resolveSkillSelectionForCli(
+    selection,
+    "Usage: /skill-path <skill-id-or-name>",
+  )
+  if (!selectedSkill) {
+    return
+  }
+
+  const filePath = getManagedSkillCanonicalFilePath(selectedSkill.id)
+  if (!filePath) {
+    printColored(
+      colors.red,
+      `No canonical file path found for skill ${selectedSkill.id}`,
+    )
+    return
+  }
+
+  printColored(colors.green, filePath)
+}
+
+function printImportedSkillSummary(
+  skill: AgentSkill,
+  sourceLabel: string,
+): void {
+  printColored(
+    colors.green,
+    `Imported ${sourceLabel}: ${skill.id} (${skill.name})`,
+  )
+}
+
+async function handleImportSkillFile(selection: string): Promise<void> {
+  const rawPath = selection.trim()
+  if (!rawPath) {
+    printColored(colors.yellow, "Usage: /skill-import-file <path>")
+    return
+  }
+
+  try {
+    const skill = importManagedSkillFromFile(resolveCliFileSystemPath(rawPath))
+    printImportedSkillSummary(skill, "skill file")
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleImportSkillFolder(selection: string): Promise<void> {
+  const rawPath = selection.trim()
+  if (!rawPath) {
+    printColored(colors.yellow, "Usage: /skill-import-folder <path>")
+    return
+  }
+
+  try {
+    const skill = importManagedSkillFromFolder(
+      resolveCliFileSystemPath(rawPath),
+    )
+    printImportedSkillSummary(skill, "skill folder")
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleImportSkillsFromParentFolder(
+  selection: string,
+): Promise<void> {
+  const rawPath = selection.trim()
+  if (!rawPath) {
+    printColored(colors.yellow, "Usage: /skill-import-parent <path>")
+    return
+  }
+
+  try {
+    const result = importManagedSkillsFromParentFolder(
+      resolveCliFileSystemPath(rawPath),
+    )
+    printColored(
+      colors.green,
+      `Imported ${result.imported.length} skill${result.imported.length === 1 ? "" : "s"} from ${rawPath}.`,
+    )
+    for (const skill of result.imported) {
+      console.log(`  ${formatSkillSelectionSummary(skill)}`)
+    }
+    if (result.skipped.length > 0) {
+      printColored(
+        colors.dim,
+        `Skipped already-imported folders: ${result.skipped.join(", ")}`,
+      )
+    }
+    for (const error of result.errors) {
+      printColored(colors.red, `${error.folder}: ${error.error}`)
+    }
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleImportSkillFromGitHub(selection: string): Promise<void> {
+  const repoIdentifier = selection.trim()
+  if (!repoIdentifier) {
+    printColored(
+      colors.yellow,
+      "Usage: /skill-import-github <owner/repo[/path]>",
+    )
+    return
+  }
+
+  try {
+    const result = await importManagedSkillFromGitHub(repoIdentifier)
+    if (result.imported.length === 0 && result.errors.length === 0) {
+      printColored(colors.yellow, `No skills imported from ${repoIdentifier}.`)
+      return
+    }
+
+    if (result.imported.length > 0) {
+      printColored(
+        colors.green,
+        `Imported ${result.imported.length} skill${result.imported.length === 1 ? "" : "s"} from ${repoIdentifier}.`,
+      )
+      for (const skill of result.imported) {
+        console.log(`  ${formatSkillSelectionSummary(skill)}`)
+      }
+    }
+
+    for (const error of result.errors) {
+      printColored(colors.red, error)
+    }
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleScanSkills(): Promise<void> {
+  const importedSkills = scanManagedSkillsFolder()
+  const skillCount = getManagedSkillsCatalog().length
+  printColored(
+    colors.green,
+    `Reloaded skills from .agents/skills. ${skillCount} skill${skillCount === 1 ? "" : "s"} available.`,
+  )
+  if (importedSkills.length > 0) {
+    for (const skill of importedSkills) {
+      console.log(`  ${formatSkillSelectionSummary(skill)}`)
+    }
+  }
+}
+
 async function toggleConversationSessionStateForCli(
   stateKey: ConversationSessionStateKey,
   selection: string,
@@ -2064,6 +2493,39 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/skill":
       await handleToggleSkill(argumentsText)
+      return true
+    case "/skill-show":
+      await handleShowSkill(argumentsText)
+      return true
+    case "/skill-new":
+      await handleCreateSkill(argumentsText)
+      return true
+    case "/skill-edit":
+      await handleEditSkill(argumentsText)
+      return true
+    case "/skill-delete":
+      await handleDeleteSkill(argumentsText)
+      return true
+    case "/skill-export":
+      await handleExportSkill(argumentsText)
+      return true
+    case "/skill-path":
+      await handleShowSkillPath(argumentsText)
+      return true
+    case "/skill-import-file":
+      await handleImportSkillFile(argumentsText)
+      return true
+    case "/skill-import-folder":
+      await handleImportSkillFolder(argumentsText)
+      return true
+    case "/skill-import-parent":
+      await handleImportSkillsFromParentFolder(argumentsText)
+      return true
+    case "/skill-import-github":
+      await handleImportSkillFromGitHub(argumentsText)
+      return true
+    case "/skill-scan":
+      await handleScanSkills()
       return true
     case "/conversations":
       await printConversations()

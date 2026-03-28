@@ -89,6 +89,19 @@ Inside the CLI, use:
 - `/agent-edit <agent-id-or-name> <json>` to update an agent profile from a JSON payload
 - `/agent-toggle <agent-id-or-name>` to enable or disable an agent profile
 - `/agent-delete <agent-id-or-name>` to delete an agent profile after confirmation
+- `/skills` to list the current profile's effective skill access
+- `/skill <id>` to toggle one skill for the current profile
+- `/skill-show <skill-id-or-name>` to inspect a single skill in detail
+- `/skill-new <json>` to create a skill from a JSON payload
+- `/skill-edit <skill-id-or-name> <json>` to update a skill from a JSON payload
+- `/skill-delete <skill-id-or-name>` to delete a skill after confirmation
+- `/skill-export <skill-id-or-name>` to print a skill as `SKILL.md`
+- `/skill-path <skill-id-or-name>` to print the canonical skill file path
+- `/skill-import-file <path>` to import one skill markdown file
+- `/skill-import-folder <path>` to import one folder containing `SKILL.md`
+- `/skill-import-parent <path>` to bulk-import skill folders from a parent directory
+- `/skill-import-github <owner/repo[/path]>` to import skills from GitHub
+- `/skill-scan` to reload layered `.agents/skills` files
 - `/loops` to list repeat tasks with live status, schedule, and agent info
 - `/loop-show <loop-id-or-name>` to inspect a repeat task before changing it
 - `/loop-new <json>` to create a repeat task from a JSON payload
@@ -104,6 +117,8 @@ Inside the CLI, use:
 - `/archive [conversation-id-prefix]` to archive or unarchive the current or selected session
 - `/delete [conversation-id-prefix]` to delete the current or selected session
 - `/delete-all` to clear all saved sessions and pinned/archive state
+
+The headless skill commands above now share the same skill catalog CRUD/import/export path that `Settings > Skills` uses in the desktop UI, so file imports, GitHub imports, markdown export, and stale profile-skill cleanup all follow one main-process implementation.
 
 Use QR-based remote access while staying headless:
 

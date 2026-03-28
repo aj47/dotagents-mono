@@ -78,6 +78,10 @@ const profileSkillManagementSource = readFileSync(
   new URL("./profile-skill-management.ts", import.meta.url),
   "utf8",
 )
+const skillManagementSource = readFileSync(
+  new URL("./skill-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -165,6 +169,10 @@ const onboardingSource = readFileSync(
 )
 const settingsAgentsSource = readFileSync(
   new URL("../renderer/src/pages/settings-agents.tsx", import.meta.url),
+  "utf8",
+)
+const settingsSkillsSource = readFileSync(
+  new URL("../renderer/src/pages/settings-skills.tsx", import.meta.url),
   "utf8",
 )
 const agentCapabilitiesSidebarSource = readFileSync(
@@ -642,14 +650,100 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(headlessCliSource).toContain("getManagedSkillsCatalog(")
     expect(headlessCliSource).toContain("getManagedCurrentProfileSkills(")
-    expect(headlessCliSource).toContain(
-      "toggleManagedSkillForCurrentProfile(",
-    )
+    expect(headlessCliSource).toContain("toggleManagedSkillForCurrentProfile(")
     expect(remoteServerSource).toContain("getManagedCurrentProfileSkills(")
-    expect(remoteServerSource).toContain(
-      "toggleManagedSkillForCurrentProfile(",
-    )
+    expect(remoteServerSource).toContain("toggleManagedSkillForCurrentProfile(")
     expect(tipcSource).toContain("toggleManagedSkillForProfile(")
+  })
+
+  it("shares skill catalog CRUD/import/export across headless and desktop surfaces", () => {
+    expect(skillManagementSource).toContain(
+      "export function resolveManagedSkillSelection",
+    )
+    expect(skillManagementSource).toContain(
+      "export function createManagedSkill(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function updateManagedSkill(",
+    )
+    expect(skillManagementSource).toContain(
+      "export async function deleteManagedSkill(",
+    )
+    expect(skillManagementSource).toContain(
+      "export async function deleteManagedSkills(",
+    )
+    expect(skillManagementSource).toContain(
+      "export async function cleanupManagedStaleSkillReferences",
+    )
+    expect(skillManagementSource).toContain(
+      "export function importManagedSkillFromMarkdown(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function importManagedSkillFromFile(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function importManagedSkillFromFolder(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function importManagedSkillsFromParentFolder(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function exportManagedSkillToMarkdown(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function ensureManagedSkillFile(",
+    )
+    expect(skillManagementSource).toContain(
+      "export function scanManagedSkillsFolder(",
+    )
+    expect(skillManagementSource).toContain(
+      "export async function importManagedSkillFromGitHub(",
+    )
+    expect(headlessCliSource).toContain('case "/skill-show":')
+    expect(headlessCliSource).toContain('case "/skill-new":')
+    expect(headlessCliSource).toContain('case "/skill-edit":')
+    expect(headlessCliSource).toContain('case "/skill-delete":')
+    expect(headlessCliSource).toContain('case "/skill-export":')
+    expect(headlessCliSource).toContain('case "/skill-path":')
+    expect(headlessCliSource).toContain('case "/skill-import-file":')
+    expect(headlessCliSource).toContain('case "/skill-import-folder":')
+    expect(headlessCliSource).toContain('case "/skill-import-parent":')
+    expect(headlessCliSource).toContain('case "/skill-import-github":')
+    expect(headlessCliSource).toContain('case "/skill-scan":')
+    expect(headlessCliSource).toContain("resolveManagedSkillSelection(")
+    expect(headlessCliSource).toContain("createManagedSkill(")
+    expect(headlessCliSource).toContain("updateManagedSkill(")
+    expect(headlessCliSource).toContain("await deleteManagedSkill(")
+    expect(headlessCliSource).toContain("exportManagedSkillToMarkdown(")
+    expect(headlessCliSource).toContain("getManagedSkillCanonicalFilePath(")
+    expect(headlessCliSource).toContain("importManagedSkillFromFile(")
+    expect(headlessCliSource).toContain("importManagedSkillFromFolder(")
+    expect(headlessCliSource).toContain("importManagedSkillsFromParentFolder(")
+    expect(headlessCliSource).toContain("importManagedSkillFromGitHub(")
+    expect(headlessCliSource).toContain("scanManagedSkillsFolder()")
+    expect(tipcSource).toContain("return getManagedSkillsCatalog()")
+    expect(tipcSource).toContain("return createManagedSkill(input)")
+    expect(tipcSource).toContain("return updateManagedSkill(id, updates)")
+    expect(tipcSource).toContain("const result = await deleteManagedSkill(")
+    expect(tipcSource).toContain("const result = await deleteManagedSkills(")
+    expect(tipcSource).toContain("return cleanupManagedStaleSkillReferences()")
+    expect(tipcSource).toContain("return importManagedSkillFromMarkdown(")
+    expect(tipcSource).toContain("return exportManagedSkillToMarkdown(")
+    expect(tipcSource).toContain("return importManagedSkillFromFile(")
+    expect(tipcSource).toContain("return importManagedSkillFromFolder(")
+    expect(tipcSource).toContain("return importManagedSkillsFromParentFolder(")
+    expect(tipcSource).toContain("const skill = getManagedSkill(input.id)")
+    expect(tipcSource).toContain("const ensuredFile = ensureManagedSkillFile(")
+    expect(tipcSource).toContain("return scanManagedSkillsFolder()")
+    expect(tipcSource).toContain("return importManagedSkillFromGitHub(")
+    expect(settingsSkillsSource).toContain("tipcClient.createSkill(")
+    expect(settingsSkillsSource).toContain("tipcClient.updateSkill(")
+    expect(settingsSkillsSource).toContain("tipcClient.deleteSkill(")
+    expect(settingsSkillsSource).toContain("tipcClient.deleteSkills(")
+    expect(settingsSkillsSource).toContain("tipcClient.saveSkillFile(")
+    expect(settingsSkillsSource).toContain("tipcClient.openSkillFile(")
+    expect(settingsSkillsSource).toContain("tipcClient.scanSkillsFolder(")
+    expect(settingsSkillsSource).toContain("tipcClient.importSkillFromGitHub(")
   })
 
   it("routes the remote server through the shared launcher and runner", () => {
@@ -1065,6 +1159,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared ACP main-agent options")
     expect(docsSource).toContain("Shared profile skill gating")
     expect(docsSource).toContain("Shared profile skill management")
+    expect(docsSource).toContain("Shared skill catalog management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -1100,6 +1195,10 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop and mobile ACP main-agent pickers")
     expect(docsSource).toContain("Headless CLI skill toggles")
     expect(docsSource).toContain("Desktop/mobile per-profile skill enablement")
+    expect(docsSource).toContain("Headless CLI skill catalog controls")
+    expect(docsSource).toContain(
+      "Desktop skill settings + CLI skill catalog controls",
+    )
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")
