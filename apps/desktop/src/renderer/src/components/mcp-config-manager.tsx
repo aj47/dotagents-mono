@@ -67,6 +67,7 @@ import {
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry, DetailedToolInfo } from "@shared/types"
+import { resolveMcpServerRuntimeState, type McpServerStatusSnapshot } from "@shared/mcp-server-status"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@shared/runtime-tool-names"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
@@ -891,18 +892,7 @@ export function MCPConfigManager({
   } | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
-  const [serverStatus, setServerStatus] = useState<
-    Record<
-      string,
-      {
-        connected: boolean
-        toolCount: number
-        error?: string
-        runtimeEnabled?: boolean
-        configDisabled?: boolean
-      }
-    >
-  >({})
+  const [serverStatus, setServerStatus] = useState<Record<string, McpServerStatusSnapshot>>({})
   const [initializationStatus, setInitializationStatus] = useState<{
     isInitializing: boolean
     progress: { current: number; total: number; currentServer?: string }
@@ -2158,6 +2148,13 @@ export function MCPConfigManager({
                 const status = serverStatus[name]
                 const serverTools = toolsByServer[name] || []
                 const enabledToolCount = serverTools.filter((t) => t.enabled).length
+                const effectiveStatus: McpServerStatusSnapshot = status ?? {
+                  connected: false,
+                  toolCount: serverTools.length,
+                  runtimeEnabled: serverConfig.disabled !== true,
+                  configDisabled: serverConfig.disabled === true,
+                }
+                const runtimeState = resolveMcpServerRuntimeState(effectiveStatus)
 
                 return (
                   <Card key={name} className="overflow-hidden">
@@ -2183,9 +2180,9 @@ export function MCPConfigManager({
                           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         )}
                         <span className="font-medium truncate">{name}</span>
-                        {serverConfig?.disabled ? (
+                        {runtimeState === "disabled" ? (
                           <Badge variant="secondary" className="shrink-0">Disabled</Badge>
-                        ) : status?.runtimeEnabled === false ? (
+                        ) : runtimeState === "stopped" ? (
                           <div className="flex shrink-0 items-center gap-1">
                             <Square className="h-3 w-3 text-orange-500" />
                             <Badge
@@ -2197,16 +2194,16 @@ export function MCPConfigManager({
                           </div>
                         ) : (
                           <>
-                            {status?.connected ? (
+                            {runtimeState === "connected" ? (
                               <div className="flex shrink-0 items-center gap-1">
                                 <CheckCircle className="h-3 w-3 text-green-500" />
                                 <Badge variant="default" className="text-xs">
                                   {serverTools.length > 0
                                     ? `${enabledToolCount}/${serverTools.length} tools`
-                                    : `${status.toolCount} tools`}
+                                    : `${effectiveStatus.toolCount} tools`}
                                 </Badge>
                               </div>
-                            ) : status?.error ? (
+                            ) : runtimeState === "error" ? (
                               <div className="flex shrink-0 items-center gap-1">
                                 <XCircle className="h-3 w-3 text-red-500" />
                                 <Badge variant="destructive" className="text-xs">Error</Badge>
@@ -2240,9 +2237,9 @@ export function MCPConfigManager({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {!serverConfig.disabled && (
+                              {runtimeState !== "disabled" && (
                                 <>
-                                  {status?.runtimeEnabled === false ? (
+                                  {runtimeState === "stopped" ? (
                                     <DropdownMenuItem onClick={() => handleStartServer(name)}>
                                       <Play className="h-3.5 w-3.5" />
                                       Start server

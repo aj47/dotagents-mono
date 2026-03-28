@@ -37,6 +37,11 @@ import {
   AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill, DetailedToolInfo,
 } from "../../../shared/types"
+import {
+  resolveMcpServerRuntimeState,
+  type McpServerRuntimeState,
+  type McpServerStatusSnapshot,
+} from "@shared/mcp-server-status"
 
 type ConnectionType = AgentProfileConnectionType
 
@@ -81,7 +86,48 @@ interface ExternalAgentCommandVerificationResult {
   warnings?: string[]
 }
 
-type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
+type ServerInfo = McpServerStatusSnapshot
+
+function getSettingsServerRuntimeState(
+  status: ServerInfo | undefined,
+  enabled: boolean,
+  toolCount: number,
+): McpServerRuntimeState {
+  return resolveMcpServerRuntimeState(
+    status ?? {
+      connected: false,
+      toolCount,
+      runtimeEnabled: enabled,
+      configDisabled: !enabled,
+    },
+  )
+}
+
+function getSettingsServerBadgeProps(
+  runtimeState: McpServerRuntimeState,
+): {
+  className?: string
+  label: string
+  variant: "destructive" | "outline" | "secondary"
+} {
+  switch (runtimeState) {
+    case "connected":
+      return { label: "connected", variant: "secondary" }
+    case "disabled":
+      return { label: "disabled", variant: "outline" }
+    case "stopped":
+      return {
+        label: "stopped",
+        variant: "outline",
+        className: "border-orange-300 text-orange-600",
+      }
+    case "error":
+      return { label: "error", variant: "destructive" }
+    case "disconnected":
+    default:
+      return { label: "offline", variant: "outline" }
+  }
+}
 
 const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   auggie: {
@@ -1018,6 +1064,12 @@ export function SettingsAgents() {
                       const serverToolList = toolsByServer(name)
                       const isExpanded = expandedServers.has(name)
                       const enabled = isServerEnabled(name)
+                      const runtimeState = getSettingsServerRuntimeState(
+                        info,
+                        enabled,
+                        serverToolList.length,
+                      )
+                      const statusBadge = getSettingsServerBadgeProps(runtimeState)
                       return (
                         <div key={name} className="rounded-md border bg-card">
                           <div className="flex items-center justify-between px-3 py-2">
@@ -1025,10 +1077,12 @@ export function SettingsAgents() {
                               <Switch checked={enabled} onCheckedChange={() => toggleServer(name)} />
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={`font-medium text-sm truncate ${!enabled ? "text-muted-foreground" : ""}`}>{name}</span>
-                                {info?.connected
-                                  ? <Badge variant="secondary" className="text-[10px] px-1.5">connected</Badge>
-                                  : <Badge variant="outline" className="text-[10px] px-1.5">offline</Badge>
-                                }
+                                <Badge
+                                  variant={statusBadge.variant}
+                                  className={`text-[10px] px-1.5 ${statusBadge.className ?? ""}`}
+                                >
+                                  {statusBadge.label}
+                                </Badge>
                               </div>
                             </div>
                             <div className="flex items-center gap-1">

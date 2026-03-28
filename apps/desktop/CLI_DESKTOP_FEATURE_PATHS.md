@@ -84,6 +84,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `buildRemoteServerBaseUrl(...)` and `resolveRemoteServerPairingPreview(...)`
 - Current callers: `remote-server.ts` status/connectability resolution, `settings-remote-server.tsx` base URL preview and bind warnings, `remote-server-qr.ts` default bind/port fallback, and `headless-runtime.ts` forced LAN bind default
 
+## Shared MCP server status classification
+
+- Shared status file: `apps/desktop/src/shared/mcp-server-status.ts`
+- Shared helpers: `resolveMcpServerRuntimeState(...)`, `countConnectedMcpServers(...)`, and `listMcpServerStatusSummaries(...)`
+- Current callers: `headless-cli.ts` startup/status output, `remote-server.ts` `/v1/mcp/servers`, `settings-agents.tsx`, and `mcp-config-manager.tsx`
+
 ## Shared chat model selection
 
 - Shared provider/model file: `packages/shared/src/providers.ts`
@@ -147,6 +153,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `settings-models.tsx`, `settings-providers.tsx`, `settings-general.tsx`, and `onboarding.tsx` now all resolve STT/TTS provider IDs plus default model/voice values through the shared speech helpers, so provider badges, STT language controls, onboarding checks, and model/voice pickers stay aligned with runtime defaults.
 21. Runtime speech generation + remote settings payload
     `tipc.ts`, `tts-llm-preprocessing.ts`, and `remote-server.ts` now all use the same shared speech selectors, so cloud transcription models, TTS model/voice defaults, transcript-provider fallbacks, and `/v1/settings` payload defaults stay aligned across desktop runtime, headless CLI, and remote clients.
+22. CLI/desktop MCP server status surfaces
+    `headless-cli.ts` startup/status output, `remote-server.ts` `/v1/mcp/servers`, `settings-agents.tsx`, and `mcp-config-manager.tsx` now classify each MCP server through `resolveMcpServerRuntimeState(...)` and `listMcpServerStatusSummaries(...)`, so config-disabled vs runtime-stopped vs connected/error/disconnected states stay aligned across the terminal, desktop UI, and remote API.
 
 ## Parity rules
 
@@ -169,6 +177,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Cloudflare tunnel startup is decided in one place: `startConfiguredCloudflareTunnel(...)`, so desktop auto-start, headless CLI auto-start, and QR pairing all converge on the same named-vs-quick tunnel logic.
 - Remote server QR printing is decided in one place: `printSharedRemoteServerQrCode(...)`, so startup auto-print, manual terminal QR printing, and QR-mode override URLs all share the same guard and URL-resolution rules before printing.
 - Remote server pairing URL/connectability rules are decided in one place: `apps/desktop/src/shared/remote-server-url.ts`, so desktop settings previews, main-process status payloads, QR defaults, and headless bind defaults stay aligned.
+- MCP server runtime state is decided in one place: `apps/desktop/src/shared/mcp-server-status.ts`, so CLI status output, desktop capability screens, and remote API status payloads all distinguish disabled vs stopped vs connected/error/disconnected the same way.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -191,6 +200,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms startup auto-print, manual terminal QR printing, streamer-mode suppression, and QR-mode override URLs all converge on the shared remote-server QR helper.
 - `apps/desktop/src/shared/remote-server-url.test.ts`
   Confirms loopback/wildcard host classification, IPv6 URL formatting, and desktop pairing preview warnings/base URLs stay aligned across renderer and main-process callers.
+- `apps/desktop/src/shared/mcp-server-status.test.ts`
+  Confirms shared MCP server runtime classification and connected-server counts stay aligned for CLI, desktop UI, and remote API callers.
 - `packages/shared/src/providers.test.ts`
   Confirms shared chat provider/model resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/stt-models.test.ts`

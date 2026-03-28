@@ -46,6 +46,10 @@ const remoteServerUrlSource = readFileSync(
   new URL("../shared/remote-server-url.ts", import.meta.url),
   "utf8",
 )
+const mcpServerStatusSource = readFileSync(
+  new URL("../shared/mcp-server-status.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -76,6 +80,14 @@ const settingsGeneralSource = readFileSync(
 )
 const onboardingSource = readFileSync(
   new URL("../renderer/src/pages/onboarding.tsx", import.meta.url),
+  "utf8",
+)
+const settingsAgentsSource = readFileSync(
+  new URL("../renderer/src/pages/settings-agents.tsx", import.meta.url),
+  "utf8",
+)
+const mcpConfigManagerSource = readFileSync(
+  new URL("../renderer/src/components/mcp-config-manager.tsx", import.meta.url),
   "utf8",
 )
 const aiSdkProviderSource = readFileSync(
@@ -297,6 +309,23 @@ describe("CLI and desktop feature paths", () => {
     expect(onboardingSource).toContain("resolveSttProviderId")
   })
 
+  it("shares MCP server runtime status classification across CLI, desktop, and remote surfaces", () => {
+    expect(mcpServerStatusSource).toContain(
+      "export function resolveMcpServerRuntimeState",
+    )
+    expect(mcpServerStatusSource).toContain(
+      "export function countConnectedMcpServers",
+    )
+    expect(mcpServerStatusSource).toContain(
+      "export function listMcpServerStatusSummaries",
+    )
+    expect(headlessCliSource).toContain("resolveMcpServerRuntimeState(")
+    expect(headlessCliSource).toContain("countConnectedMcpServers(")
+    expect(remoteServerSource).toContain("listMcpServerStatusSummaries(")
+    expect(settingsAgentsSource).toContain("resolveMcpServerRuntimeState(")
+    expect(mcpConfigManagerSource).toContain("resolveMcpServerRuntimeState(")
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -310,6 +339,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Shared remote server QR printing")
     expect(docsSource).toContain("Shared remote server URL rules")
+    expect(docsSource).toContain("Shared MCP server status classification")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared runtime shutdown")
@@ -340,5 +370,6 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain(
       "Runtime speech generation + remote settings payload",
     )
+    expect(docsSource).toContain("CLI/desktop MCP server status surfaces")
   })
 })

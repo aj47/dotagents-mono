@@ -41,6 +41,7 @@ import {
   isWildcardRemoteServerHost as isWildcardBindHost,
   normalizeRemoteServerHostForComparison as normalizeHostForComparison,
 } from "../shared/remote-server-url"
+import { listMcpServerStatusSummaries } from "../shared/mcp-server-status"
 import {
   AgentProgressUpdate,
   SessionProfileSnapshot,
@@ -1047,16 +1048,7 @@ async function startRemoteServerInternal(
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get("/v1/mcp/servers", async (_req, reply) => {
     try {
-      const serverStatus = mcpService.getServerStatus()
-      const servers = Object.entries(serverStatus).map(([name, status]) => ({
-        name,
-        connected: status.connected,
-        toolCount: status.toolCount,
-        enabled: status.runtimeEnabled && !status.configDisabled,
-        runtimeEnabled: status.runtimeEnabled,
-        configDisabled: status.configDisabled,
-        error: status.error,
-      }))
+      const servers = listMcpServerStatusSummaries(mcpService.getServerStatus())
       return reply.send({ servers })
     } catch (error: any) {
       diagnosticsService.logError(

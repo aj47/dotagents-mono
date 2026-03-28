@@ -12,6 +12,11 @@ import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
 import { emergencyStopAll } from "./emergency-stop"
 import { resolveChatModelDisplayInfo } from "@dotagents/shared"
+import {
+  countConnectedMcpServers,
+  resolveMcpServerRuntimeState,
+  type McpServerStatusSnapshot,
+} from "../shared/mcp-server-status"
 import type {
   AgentProgressUpdate,
   Conversation,
@@ -99,6 +104,25 @@ ${colors.dim}Type any message to interact with the agent.${colors.reset}
 `)
 }
 
+function describeCliMcpServerState(status: McpServerStatusSnapshot): {
+  color: string
+  label: string
+} {
+  switch (resolveMcpServerRuntimeState(status)) {
+    case "disabled":
+      return { color: colors.dim, label: "disabled" }
+    case "stopped":
+      return { color: colors.yellow, label: "stopped" }
+    case "connected":
+      return { color: colors.green, label: "connected" }
+    case "error":
+      return { color: colors.red, label: "error" }
+    case "disconnected":
+    default:
+      return { color: colors.red, label: "disconnected" }
+  }
+}
+
 function printStatus() {
   const serverStatus = mcpService.getServerStatus()
   const activeSessions = agentSessionTracker.getActiveSessions()
@@ -124,15 +148,13 @@ function printStatus() {
   } else {
     for (const name of serverNames) {
       const s = serverStatus[name]
-      const status = s.connected
-        ? colors.green + "connected"
-        : colors.red + "disconnected"
-      const disabled = s.configDisabled
-        ? ` ${colors.dim}(disabled)${colors.reset}`
-        : ""
+      const { color, label } = describeCliMcpServerState(s)
       console.log(
-        `  ${name}: ${status}${colors.reset} (${s.toolCount} tools)${disabled}`,
+        `  ${name}: ${color}${label}${colors.reset} (${s.toolCount} tools)`,
       )
+      if (s.error && resolveMcpServerRuntimeState(s) === "error") {
+        console.log(`    ${colors.dim}${s.error}${colors.reset}`)
+      }
     }
   }
 
@@ -472,9 +494,7 @@ ${colors.dim}Type /help for available commands.${colors.reset}
 `)
 
   const serverStatus = mcpService.getServerStatus()
-  const connectedCount = Object.values(serverStatus).filter(
-    (s) => s.connected,
-  ).length
+  const connectedCount = countConnectedMcpServers(serverStatus)
   const totalCount = Object.keys(serverStatus).length
   printColored(
     colors.green,
