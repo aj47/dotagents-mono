@@ -45,11 +45,24 @@ describe("remote-server route registration", () => {
     expect(duplicates).toEqual([])
   })
 
-  it("routes mobile chat requests through ACP main-agent handling when configured", () => {
+  it("routes mobile chat requests through the shared prompt runner", () => {
     const source = getRemoteServerSource()
 
-    expect(source).toContain('cfg.mainAgentMode === "acp" && cfg.mainAgentName')
-    expect(source).toContain("processTranscriptWithACPAgent")
+    expect(source).toContain("preparePromptExecutionContext({")
+    expect(source).toContain("runTopLevelAgentMode({")
+    expect(source).toContain('approvalMode: "dialog"')
+    expect(source).not.toContain("processTranscriptWithACPAgent(")
+    expect(source).not.toContain("resolvePreferredTopLevelAcpAgentSelection({")
+  })
+
+  it("leaves legacy runtime flag ownership to the shared session manager", () => {
+    const source = getRemoteServerSource()
+
+    expect(source).toContain("preparePromptExecutionContext({")
+    expect(source).toContain("runTopLevelAgentMode({")
+    expect(source).not.toContain("state.isAgentModeActive = true")
+    expect(source).not.toContain("state.shouldStopAgent = false")
+    expect(source).not.toContain("state.agentIterationCount = 0")
   })
 
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {

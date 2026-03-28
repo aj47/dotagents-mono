@@ -53,6 +53,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
 - CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which lets terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
+- Legacy runtime flags stay session-manager-owned: prompt entrypoints do not reset `state.isAgentModeActive`, `state.shouldStopAgent`, or `state.agentIterationCount` directly, so overlapping desktop, CLI, remote, and loop sessions do not clobber each other.
 - GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 
@@ -64,6 +65,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms conversation/session bootstrap, inline approval behavior, and ACP routing.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
   Confirms desktop UI, headless CLI, remote server, loop, GUI startup, headless startup, and QR startup paths still point at shared helpers.
+- `apps/desktop/src/main/remote-server.routes.test.ts`
+  Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared startup helper registers IPC/serve infrastructure, supports awaited headless startup, and preserves background desktop startup.
 - `apps/desktop/src/main/headless-runtime.test.ts`

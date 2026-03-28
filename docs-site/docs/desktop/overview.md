@@ -127,6 +127,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.
 - **Desktop text, voice, CLI, remote, and loop entrypoints** now share the same conversation/session bootstrap helpers before they enter the top-level runner, and revived sessions refresh their metadata through the same shared path so transcription handoffs and resumed prompts stay aligned across surfaces.
+- **Runtime session state** is also owned by the shared session manager, so remote, loop, CLI, and desktop runs no longer reset the legacy active/stop/iteration flags independently.
 - **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.

@@ -75,7 +75,7 @@ Use QR-based remote access while staying headless:
 pnpm --filter @dotagents/desktop dev -- --qr
 ```
 
-The headless CLI, QR mode, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. Desktop text, voice, CLI, remote, and loop prompts now also share the same conversation/session bootstrap helpers before entering that runner, including the revived-session metadata refresh used during desktop transcription handoffs. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
+The headless CLI, QR mode, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. Desktop text, voice, CLI, remote, and loop prompts now also share the same conversation/session bootstrap helpers before entering that runner, including the revived-session metadata refresh used during desktop transcription handoffs. Legacy active/stop/iteration flags are likewise left to the shared session manager, which prevents one entry point from clearing another still-running session. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 
 Headless, QR, and GUI startup also share the same runtime bootstrap for MCP, repeat tasks, ACP profile sync, bundled skills, and models.dev initialization, so both `--headless` and `--qr` now boot the same service stack as the desktop app before they diverge into the terminal REPL or QR pairing flow.
 

@@ -50,4 +50,23 @@ describe("toolApprovalManager session handlers", () => {
     toolApprovalManager.cancelAllApprovals()
     await expect(promise).resolves.toBe(false)
   })
+
+  it("keeps shared runtime flags active while another session is still registered", async () => {
+    const { agentSessionStateManager, state } = await import("./state")
+
+    agentSessionStateManager.startSessionRun("session-one")
+    agentSessionStateManager.startSessionRun("session-two")
+    agentSessionStateManager.updateIterationCount("session-two", 4)
+
+    agentSessionStateManager.cleanupSession("session-one")
+
+    expect(state.isAgentModeActive).toBe(true)
+    expect(state.agentIterationCount).toBe(4)
+    expect(agentSessionStateManager.getActiveSessionCount()).toBe(1)
+
+    agentSessionStateManager.cleanupSession("session-two")
+
+    expect(state.isAgentModeActive).toBe(false)
+    expect(state.agentIterationCount).toBe(0)
+  })
 })

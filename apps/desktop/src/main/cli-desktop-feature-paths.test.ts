@@ -30,6 +30,9 @@ describe("CLI and desktop feature paths", () => {
   it("routes the remote server through the shared bootstrap and runner", () => {
     expect(remoteServerSource).toContain('approvalMode: "dialog"')
     expect(remoteServerSource).toContain("runTopLevelAgentMode({")
+    expect(remoteServerSource).not.toContain("state.isAgentModeActive = true")
+    expect(remoteServerSource).not.toContain("state.shouldStopAgent = false")
+    expect(remoteServerSource).not.toContain("state.agentIterationCount = 0")
   })
 
   it("keeps desktop UI and loop entry points on the shared runner", () => {

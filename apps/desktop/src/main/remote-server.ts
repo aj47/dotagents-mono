@@ -14,7 +14,7 @@ import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
 import { preparePromptExecutionContext, runTopLevelAgentMode } from "./agent-mode-runner"
-import { state, agentProcessManager, agentSessionStateManager } from "./state"
+import { agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -544,11 +544,6 @@ async function runAgent(options: RunAgentOptions): Promise<{
   const cfg = configStore.get()
   const startSnoozed = !cfg.remoteServerAutoShowPanel
 
-  // Set agent mode state for process management - ensure clean state
-  state.isAgentModeActive = true
-  state.shouldStopAgent = false
-  state.agentIterationCount = 0
-
   const {
     conversationId,
     previousConversationHistory,
@@ -598,11 +593,6 @@ async function runAgent(options: RunAgentOptions): Promise<{
     notifyConversationHistoryChanged()
 
     throw error
-  } finally {
-    // Clean up agent state to ensure next session starts fresh
-    state.isAgentModeActive = false
-    state.shouldStopAgent = false
-    state.agentIterationCount = 0
   }
 }
 
