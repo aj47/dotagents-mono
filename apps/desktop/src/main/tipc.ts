@@ -145,11 +145,12 @@ import {
   startSharedResumeRun,
 } from "./agent-mode-runner"
 import {
-  fetchModelsDevData,
-  getModelFromModelsDevByProviderId,
-  findBestModelMatch,
-  refreshModelsDevCache,
-} from "./models-dev-service"
+  getManagedAvailableModels,
+  getManagedModelInfo,
+  getManagedModelsDevData,
+  getManagedPresetModels,
+  refreshManagedModelsDevData,
+} from "./model-management"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import {
@@ -2515,44 +2516,31 @@ export const router = {
   fetchAvailableModels: t.procedure
     .input<{ providerId: string }>()
     .action(async ({ input }) => {
-      const { fetchAvailableModels } = await import("./models-service")
-      return fetchAvailableModels(input.providerId)
+      return getManagedAvailableModels(input.providerId)
     }),
 
   // Fetch models for a specific preset (base URL + API key)
   fetchModelsForPreset: t.procedure
     .input<{ baseUrl: string; apiKey: string }>()
     .action(async ({ input }) => {
-      const { fetchModelsForPreset } = await import("./models-service")
-      return fetchModelsForPreset(input.baseUrl, input.apiKey)
+      return getManagedPresetModels(input.baseUrl, input.apiKey)
     }),
 
   // Get enhanced model info from models.dev
   getModelInfo: t.procedure
     .input<{ modelId: string; providerId?: string }>()
     .action(async ({ input }) => {
-      // If providerId is given, use specific provider lookup
-      if (input.providerId) {
-        const model = getModelFromModelsDevByProviderId(
-          input.modelId,
-          input.providerId,
-        )
-        return model || null
-      }
-      // Otherwise, search across ALL providers using fuzzy matching
-      const matchResult = findBestModelMatch(input.modelId)
-      return matchResult?.model || null
+      return getManagedModelInfo(input.modelId, input.providerId)
     }),
 
   // Get all models.dev data
   getModelsDevData: t.procedure.action(async () => {
-    return await fetchModelsDevData()
+    return getManagedModelsDevData()
   }),
 
   // Force refresh models.dev cache
   refreshModelsData: t.procedure.action(async () => {
-    await refreshModelsDevCache()
-    return { success: true }
+    return refreshManagedModelsDevData()
   }),
 
   // Conversation Management

@@ -143,6 +143,11 @@ Inside the CLI, use:
 - `/note-delete-all` to delete all knowledge notes
 - `/settings` to print the shared remote/headless settings snapshot
 - `/settings-edit <json>` to update the shared settings subset from a JSON payload
+- `/models <provider-id>` to list available models for `openai`, `groq`, or `gemini`
+- `/models-preset <json>` to fetch models for an OpenAI-compatible preset via `{ "baseUrl": "...", "apiKey": "..." }`
+- `/model-info <model-id> [provider-id]` to inspect matched models.dev metadata for a model
+- `/models-dev` to summarize the cached models.dev provider/model catalog
+- `/models-refresh` to refresh the models.dev cache and print a fresh summary
 - `/parakeet-status` to inspect the local Parakeet STT model state
 - `/parakeet-download` to download the local Parakeet STT model
 - `/kitten-status` to inspect the local Kitten TTS model state
@@ -180,6 +185,8 @@ Inside the CLI, use:
 - `/archive [conversation-id-prefix]` to archive or unarchive the current or selected session
 - `/delete [conversation-id-prefix]` to delete the current or selected session
 - `/delete-all` to clear all saved sessions and pinned/archive state
+
+The headless model commands above now also share the same model-management path that desktop model selectors use through `tipc.ts`, while the remote `/v1/models/:providerId` route now also reuses that helper so provider validation, preset-scoped fetches, and models.dev lookups stay aligned before each surface formats the result.
 
 The local provider commands above now also share the same local-model management path that `Settings > Providers` uses in the desktop UI, so Parakeet, Kitten, and Supertonic status reads plus download flows stay aligned before the CLI or GUI formats progress.
 

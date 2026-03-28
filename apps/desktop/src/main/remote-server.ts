@@ -33,6 +33,11 @@ import {
   saveManagedConversation,
 } from "./conversation-management"
 import {
+  getManagedAvailableModels,
+  isManagedModelProviderId,
+  MANAGED_MODEL_PROVIDER_IDS,
+} from "./model-management"
+import {
   buildRemoteServerBaseUrl,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_PORT,
@@ -921,15 +926,13 @@ async function startRemoteServerInternal(
       const params = req.params as { providerId: string }
       const providerId = params.providerId
 
-      const validProviders = ["openai", "groq", "gemini"]
-      if (!validProviders.includes(providerId)) {
+      if (!isManagedModelProviderId(providerId)) {
         return reply.code(400).send({
-          error: `Invalid provider: ${providerId}. Valid providers: ${validProviders.join(", ")}`,
+          error: `Invalid provider: ${providerId}. Valid providers: ${MANAGED_MODEL_PROVIDER_IDS.join(", ")}`,
         })
       }
 
-      const { fetchAvailableModels } = await import("./models-service")
-      const models = await fetchAvailableModels(providerId)
+      const models = await getManagedAvailableModels(providerId)
 
       return reply.send({
         providerId,

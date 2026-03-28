@@ -140,6 +140,16 @@ import {
   saveManagedConfig,
 } from "./settings-management"
 import {
+  getManagedAvailableModels,
+  getManagedModelInfo,
+  getManagedModelsDevData,
+  getManagedPresetModels,
+  isManagedModelProviderId,
+  MANAGED_MODEL_PROVIDER_IDS,
+  refreshManagedModelsDevData,
+  type ManagedModelProviderId,
+} from "./model-management"
+import {
   exportManagedBundle,
   generateManagedBundlePublishPayload,
   getManagedBundleExportableItems,
@@ -204,6 +214,7 @@ import type {
   ConversationHistoryItem,
   KnowledgeNote,
   LoopSummary,
+  ModelInfo,
   QueuedMessage,
 } from "@shared/types"
 import type {
@@ -226,6 +237,15 @@ const colors = {
   dim: "\x1b[2m",
   bold: "\x1b[1m",
   reset: "\x1b[0m",
+}
+
+const managedModelProviderDisplayNames: Record<
+  ManagedModelProviderId,
+  string
+> = {
+  openai: "OpenAI",
+  groq: "Groq",
+  gemini: "Gemini",
 }
 
 let currentConversationId: string | undefined
@@ -432,6 +452,11 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/queue-resume [id]${colors.reset} - Resume queue processing for a conversation
   ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
   ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
+  ${colors.cyan}/models <provider-id>${colors.reset} - List available models for OpenAI, Groq, or Gemini
+  ${colors.cyan}/models-preset <json>${colors.reset} - Fetch models for an OpenAI-compatible preset
+  ${colors.cyan}/model-info <model-id> [provider-id]${colors.reset} - Show models.dev metadata for a model
+  ${colors.cyan}/models-dev${colors.reset}    - Summarize the cached models.dev catalog
+  ${colors.cyan}/models-refresh${colors.reset} - Refresh the models.dev cache and print a summary
   ${colors.cyan}/parakeet-status${colors.reset} - Show the local Parakeet STT model status
   ${colors.cyan}/parakeet-download${colors.reset} - Download the local Parakeet STT model
   ${colors.cyan}/kitten-status${colors.reset} - Show the local Kitten TTS model status
@@ -1656,6 +1681,180 @@ async function handleEditSettings(input: string): Promise<void> {
     remoteAccessLabel: "headless-cli-settings",
   })
   printColored(colors.green, `Updated settings: ${updatedKeys.join(", ")}`)
+}
+
+function formatModelContextLength(contextLength?: number): string {
+  if (!contextLength || !Number.isFinite(contextLength)) {
+    return "unknown"
+  }
+
+  return contextLength.toLocaleString()
+}
+
+function getManagedModelProviderLabel(providerId: ManagedModelProviderId): string {
+  return managedModelProviderDisplayNames[providerId]
+}
+
+function printManagedModels(label: string, models: ModelInfo[]): void {
+  console.log(`\n${colors.bold}${label} Models:${colors.reset}`)
+
+  if (models.length === 0) {
+    console.log(`${colors.dim}No models returned.${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const model of models) {
+    const chips = [
+      `ctx ${formatModelContextLength(model.context_length)}`,
+      model.supportsTranscription ? "stt" : "",
+    ].filter(Boolean)
+
+    console.log(
+      `- ${colors.cyan}${model.id}${colors.reset}${chips.length > 0 ? ` ${colors.dim}[${chips.join(", ")}]${colors.reset}` : ""}`,
+    )
+
+    if (model.name && model.name !== model.id) {
+      console.log(`  ${colors.dim}${model.name}${colors.reset}`)
+    }
+  }
+
+  console.log()
+}
+
+async function handleListAvailableModels(input: string): Promise<void> {
+  const providerId = input.trim().toLowerCase()
+  if (!providerId) {
+    printColored(
+      colors.yellow,
+      `Usage: /models <provider-id> (${MANAGED_MODEL_PROVIDER_IDS.join(", ")})`,
+    )
+    return
+  }
+
+  if (!isManagedModelProviderId(providerId)) {
+    printColored(
+      colors.red,
+      `Invalid provider: ${providerId}. Valid providers: ${MANAGED_MODEL_PROVIDER_IDS.join(", ")}`,
+    )
+    return
+  }
+
+  try {
+    const models = await getManagedAvailableModels(providerId)
+    printManagedModels(getManagedModelProviderLabel(providerId), models)
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleListPresetModels(input: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    input,
+    "Usage: /models-preset <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  const baseUrl =
+    typeof payload.baseUrl === "string" ? payload.baseUrl.trim() : ""
+  const apiKey = typeof payload.apiKey === "string" ? payload.apiKey.trim() : ""
+
+  if (!baseUrl || !apiKey) {
+    printColored(
+      colors.red,
+      "Preset payload must include string baseUrl and apiKey fields.",
+    )
+    return
+  }
+
+  try {
+    const models = await getManagedPresetModels(baseUrl, apiKey)
+    printManagedModels("Preset", models)
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleShowModelInfo(input: string): Promise<void> {
+  const [modelId = "", providerId = ""] = input.trim().split(/\s+/, 2)
+  if (!modelId) {
+    printColored(
+      colors.yellow,
+      "Usage: /model-info <model-id> [provider-id]",
+    )
+    return
+  }
+
+  const modelInfo = getManagedModelInfo(modelId, providerId || undefined)
+  if (!modelInfo) {
+    printColored(
+      colors.red,
+      providerId
+        ? `No models.dev entry matched ${modelId} for provider ${providerId}.`
+        : `No models.dev entry matched ${modelId}.`,
+    )
+    return
+  }
+
+  console.log(`\n${colors.bold}Model Info:${colors.reset}`)
+  console.log(formatApprovalArguments(modelInfo))
+  console.log()
+}
+
+function printModelsDevSummary(
+  data: Awaited<ReturnType<typeof getManagedModelsDevData>>,
+): void {
+  const providers = Object.values(data).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )
+  const modelCount = providers.reduce(
+    (total, provider) => total + Object.keys(provider.models ?? {}).length,
+    0,
+  )
+
+  console.log(`\n${colors.bold}models.dev Cache:${colors.reset}`)
+  console.log(`  Providers: ${colors.cyan}${providers.length}${colors.reset}`)
+  console.log(`  Models: ${colors.cyan}${modelCount}${colors.reset}`)
+
+  for (const provider of providers) {
+    console.log(
+      `  - ${colors.cyan}${provider.id}${colors.reset} ${colors.dim}(${Object.keys(provider.models ?? {}).length} models)${colors.reset}`,
+    )
+  }
+
+  console.log()
+}
+
+async function handleShowModelsDevData(): Promise<void> {
+  try {
+    printModelsDevSummary(await getManagedModelsDevData())
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleRefreshModelsDevData(): Promise<void> {
+  try {
+    await refreshManagedModelsDevData()
+    printColored(colors.green, "Refreshed models.dev cache.")
+    printModelsDevSummary(await getManagedModelsDevData())
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
 }
 
 function printLocalProviderModelStatus(
@@ -5265,6 +5464,21 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/settings-edit":
       await handleEditSettings(argumentsText)
+      return true
+    case "/models":
+      await handleListAvailableModels(argumentsText)
+      return true
+    case "/models-preset":
+      await handleListPresetModels(argumentsText)
+      return true
+    case "/model-info":
+      await handleShowModelInfo(argumentsText)
+      return true
+    case "/models-dev":
+      await handleShowModelsDevData()
+      return true
+    case "/models-refresh":
+      await handleRefreshModelsDevData()
       return true
     case "/parakeet-status":
       await handleShowParakeetModelStatus()

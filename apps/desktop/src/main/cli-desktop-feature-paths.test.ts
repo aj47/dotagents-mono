@@ -98,6 +98,10 @@ const localProviderManagementSource = readFileSync(
   new URL("./local-provider-management.ts", import.meta.url),
   "utf8",
 )
+const modelManagementSource = readFileSync(
+  new URL("./model-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -155,6 +159,17 @@ const knowledgePageSource = readFileSync(
 )
 const settingsModelsSource = readFileSync(
   new URL("../renderer/src/pages/settings-models.tsx", import.meta.url),
+  "utf8",
+)
+const queriesSource = readFileSync(
+  new URL("../renderer/src/lib/queries.ts", import.meta.url),
+  "utf8",
+)
+const presetModelSelectorSource = readFileSync(
+  new URL(
+    "../renderer/src/components/preset-model-selector.tsx",
+    import.meta.url,
+  ),
   "utf8",
 )
 const settingsGeneralMainAgentOptionsSource = readFileSync(
@@ -1172,6 +1187,51 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("`/supertonic-download`")
   })
 
+  it("shares model catalog management across headless, desktop, and remote surfaces", () => {
+    expect(modelManagementSource).toContain(
+      "export async function getManagedAvailableModels(",
+    )
+    expect(modelManagementSource).toContain(
+      "export async function getManagedPresetModels(",
+    )
+    expect(modelManagementSource).toContain(
+      "export function getManagedModelInfo(",
+    )
+    expect(modelManagementSource).toContain(
+      "export async function getManagedModelsDevData()",
+    )
+    expect(modelManagementSource).toContain(
+      "export async function refreshManagedModelsDevData()",
+    )
+    expect(headlessCliSource).toContain('case "/models":')
+    expect(headlessCliSource).toContain('case "/models-preset":')
+    expect(headlessCliSource).toContain('case "/model-info":')
+    expect(headlessCliSource).toContain('case "/models-dev":')
+    expect(headlessCliSource).toContain('case "/models-refresh":')
+    expect(headlessCliSource).toContain("await getManagedAvailableModels(")
+    expect(headlessCliSource).toContain("await getManagedPresetModels(")
+    expect(headlessCliSource).toContain("getManagedModelInfo(")
+    expect(headlessCliSource).toContain("await getManagedModelsDevData()")
+    expect(headlessCliSource).toContain("await refreshManagedModelsDevData()")
+    expect(tipcSource).toContain("return getManagedAvailableModels(")
+    expect(tipcSource).toContain("return getManagedPresetModels(")
+    expect(tipcSource).toContain("return getManagedModelInfo(")
+    expect(tipcSource).toContain("return getManagedModelsDevData()")
+    expect(tipcSource).toContain("return refreshManagedModelsDevData()")
+    expect(remoteServerSource).toContain("await getManagedAvailableModels(")
+    expect(queriesSource).toContain("tipcClient.fetchAvailableModels(")
+    expect(presetModelSelectorSource).toContain(
+      "tipcClient.fetchModelsForPreset(",
+    )
+    expect(presetModelSelectorSource).toContain("tipcClient.getModelInfo(")
+    expect(docsSource).toContain("## Shared model catalog management")
+    expect(docsSource).toContain("`/models`")
+    expect(docsSource).toContain("`/models-preset`")
+    expect(docsSource).toContain("`/model-info`")
+    expect(docsSource).toContain("`/models-dev`")
+    expect(docsSource).toContain("`/models-refresh`")
+  })
+
   it("shares remote-access management across headless and desktop surfaces", () => {
     expect(remoteAccessManagementSource).toContain(
       "export function getManagedRemoteServerStatus()",
@@ -1789,6 +1849,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared bundle management")
     expect(docsSource).toContain("Shared remote access management")
     expect(docsSource).toContain("Shared sandbox slot management")
+    expect(docsSource).toContain("Shared model catalog management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -1839,6 +1900,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI bundle management")
     expect(docsSource).toContain("Headless CLI remote access controls")
     expect(docsSource).toContain("Headless CLI sandbox slot management")
+    expect(docsSource).toContain("Headless CLI + desktop model catalog management")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")
