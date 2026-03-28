@@ -61,6 +61,7 @@ import {
   toggleManagedSkillForCurrentProfile,
 } from "./profile-skill-management"
 import {
+  cleanupManagedStaleSkillReferences,
   createManagedSkill,
   deleteManagedSkill,
   exportManagedSkillToMarkdown,
@@ -241,6 +242,7 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/skill-import-parent <path>${colors.reset} - Bulk import skill folders from a parent directory
   ${colors.cyan}/skill-import-github <repo>${colors.reset} - Import skills from a GitHub repository
   ${colors.cyan}/skill-scan${colors.reset}   - Reload skills from the layered .agents folders
+  ${colors.cyan}/skill-cleanup${colors.reset} - Remove stale skill references from agent profiles
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
@@ -917,9 +919,7 @@ function printAgentProfiles() {
       availableSkillCount,
     })
     if (summaryItems.length > 0) {
-      console.log(
-        `    ${colors.dim}${summaryItems.join(" • ")}${colors.reset}`,
-      )
+      console.log(`    ${colors.dim}${summaryItems.join(" • ")}${colors.reset}`)
     }
   }
 
@@ -1146,7 +1146,7 @@ function printSkills() {
 
   console.log()
   console.log(
-    `${colors.dim}Use /skill to toggle, or /skill-show, /skill-new, /skill-edit, /skill-delete, /skill-export, /skill-path, /skill-import-file, /skill-import-folder, /skill-import-parent, /skill-import-github, and /skill-scan to manage the catalog.${colors.reset}`,
+    `${colors.dim}Use /skill to toggle, or /skill-show, /skill-new, /skill-edit, /skill-delete, /skill-export, /skill-path, /skill-import-file, /skill-import-folder, /skill-import-parent, /skill-import-github, /skill-scan, and /skill-cleanup to manage the catalog.${colors.reset}`,
   )
   console.log()
 }
@@ -1278,13 +1278,12 @@ async function handleUseAgent(selection: string): Promise<void> {
     return
   }
 
-  printColored(
-    colors.red,
-    `Agent not found: ${query}`,
-  )
+  printColored(colors.red, `Agent not found: ${query}`)
 }
 
-function resolveManagedAgentSelectionForCli(selection: string): AgentProfile | null {
+function resolveManagedAgentSelectionForCli(
+  selection: string,
+): AgentProfile | null {
   const query = selection.trim()
   if (!query) {
     printColored(
@@ -2158,6 +2157,19 @@ async function handleScanSkills(): Promise<void> {
   }
 }
 
+async function handleCleanupSkillReferences(): Promise<void> {
+  const result = await cleanupManagedStaleSkillReferences()
+  if (result.removedReferenceCount === 0) {
+    printColored(colors.dim, "No stale skill references found.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Removed ${result.removedReferenceCount} stale skill reference${result.removedReferenceCount === 1 ? "" : "s"} across ${result.updatedProfileIds.length} profile${result.updatedProfileIds.length === 1 ? "" : "s"}.`,
+  )
+}
+
 async function toggleConversationSessionStateForCli(
   stateKey: ConversationSessionStateKey,
   selection: string,
@@ -2526,6 +2538,9 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/skill-scan":
       await handleScanSkills()
+      return true
+    case "/skill-cleanup":
+      await handleCleanupSkillReferences()
       return true
     case "/conversations":
       await printConversations()

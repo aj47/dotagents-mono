@@ -102,6 +102,7 @@ Inside the CLI, use:
 - `/skill-import-parent <path>` to bulk-import skill folders from a parent directory
 - `/skill-import-github <owner/repo[/path]>` to import skills from GitHub
 - `/skill-scan` to reload layered `.agents/skills` files
+- `/skill-cleanup` to remove stale skill references from agent profiles
 - `/loops` to list repeat tasks with live status, schedule, and agent info
 - `/loop-show <loop-id-or-name>` to inspect a repeat task before changing it
 - `/loop-new <json>` to create a repeat task from a JSON payload

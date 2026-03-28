@@ -605,9 +605,7 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain(
       "toggleManagedAgentProfileEnabled(profile.id)",
     )
-    expect(headlessCliSource).toContain(
-      "deleteManagedAgentProfile(profile.id)",
-    )
+    expect(headlessCliSource).toContain("deleteManagedAgentProfile(profile.id)")
     expect(tipcSource).toContain("return getManagedAgentProfiles()")
     expect(tipcSource).toContain("return getManagedAgentProfile(input.id)")
     expect(tipcSource).toContain("createManagedAgentProfile(input.profile)")
@@ -619,7 +617,7 @@ describe("CLI and desktop feature paths", () => {
       "return getManagedAgentProfiles({ role: input.role })",
     )
     expect(remoteServerSource).toContain(
-      'profiles: profiles.map(serializeManagedAgentProfileSummary)',
+      "profiles: profiles.map(serializeManagedAgentProfileSummary)",
     )
     expect(remoteServerSource).toContain(
       "toggleManagedAgentProfileEnabled(params.id)",
@@ -710,6 +708,7 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/skill-import-parent":')
     expect(headlessCliSource).toContain('case "/skill-import-github":')
     expect(headlessCliSource).toContain('case "/skill-scan":')
+    expect(headlessCliSource).toContain('case "/skill-cleanup":')
     expect(headlessCliSource).toContain("resolveManagedSkillSelection(")
     expect(headlessCliSource).toContain("createManagedSkill(")
     expect(headlessCliSource).toContain("updateManagedSkill(")
@@ -721,6 +720,7 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain("importManagedSkillsFromParentFolder(")
     expect(headlessCliSource).toContain("importManagedSkillFromGitHub(")
     expect(headlessCliSource).toContain("scanManagedSkillsFolder()")
+    expect(headlessCliSource).toContain("cleanupManagedStaleSkillReferences()")
     expect(tipcSource).toContain("return getManagedSkillsCatalog()")
     expect(tipcSource).toContain("return createManagedSkill(input)")
     expect(tipcSource).toContain("return updateManagedSkill(id, updates)")
