@@ -5,6 +5,8 @@ const headlessCliSource = readFileSync(new URL("./headless-cli.ts", import.meta.
 const remoteServerSource = readFileSync(new URL("./remote-server.ts", import.meta.url), "utf8")
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 const loopServiceSource = readFileSync(new URL("./loop-service.ts", import.meta.url), "utf8")
+const appRuntimeSource = readFileSync(new URL("./app-runtime.ts", import.meta.url), "utf8")
+const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 const docsSource = readFileSync(new URL("../../CLI_DESKTOP_FEATURE_PATHS.md", import.meta.url), "utf8")
 
 describe("CLI and desktop feature paths", () => {
@@ -27,11 +29,22 @@ describe("CLI and desktop feature paths", () => {
     expect(loopServiceSource).toContain("runAgentLoopSession(loop.prompt, conversation.id, sessionId, loop.maxIterations)")
   })
 
+  it("shares GUI and headless startup through the same bootstrap helpers", () => {
+    expect(appRuntimeSource).toContain("export function registerSharedMainProcessInfrastructure")
+    expect(appRuntimeSource).toContain("export async function initializeSharedRuntimeServices")
+    expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
+    expect(indexSource).toContain('label: "headless-runtime"')
+    expect(indexSource).toContain('label: "desktop-runtime"')
+    expect(indexSource).toContain("initializeSharedRuntimeServices({")
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
     expect(docsSource).toContain("Headless CLI prompt")
     expect(docsSource).toContain("Remote server prompt")
     expect(docsSource).toContain("Repeat tasks / loops")
+    expect(docsSource).toContain("Desktop GUI startup")
+    expect(docsSource).toContain("Headless CLI startup")
   })
 })

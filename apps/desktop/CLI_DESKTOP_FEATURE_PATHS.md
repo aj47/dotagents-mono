@@ -8,6 +8,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Conversation prep helper: `prepareConversationForPrompt(...)`
 - Top-level execution helper: `runTopLevelAgentMode(...)`
 
+## Shared startup runtime
+
+- Main-process bootstrap helper: `apps/desktop/src/main/app-runtime.ts`
+- Infrastructure helper: `registerSharedMainProcessInfrastructure(...)`
+- Service startup helper: `initializeSharedRuntimeServices(...)`
+
 ## Feature path matrix
 
 1. Desktop text input
@@ -20,6 +26,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
    `remote-server.ts` appends the user turn with `prepareConversationForPrompt(...)`, revives the matching session if present, and calls `runTopLevelAgentMode(...)`.
 5. Repeat tasks / loops
    `loop-service.ts` creates the conversation/session for the scheduled task and then calls `runAgentLoopSession(...)`, which forwards to `processWithAgentMode(...)` and ultimately `runTopLevelAgentMode(...)`.
+6. Desktop GUI startup
+   `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`.
+7. Headless CLI startup
+   `index.ts --headless` calls the same infrastructure and runtime helpers before forcing the remote server on `0.0.0.0` and launching the terminal CLI.
 
 ## Parity rules
 
@@ -27,6 +37,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Standard MCP approval flow is inline when the caller requests `approvalMode: "inline"`.
 - CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which lets terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
+- GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.
 
 ## Verification targets
 
@@ -35,4 +46,6 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/agent-mode-runner.test.ts`
   Confirms conversation prep, inline approval behavior, and ACP routing.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms desktop UI, headless CLI, remote server, and loop paths still point at the shared runner.
+  Confirms desktop UI, headless CLI, remote server, loop, GUI startup, and headless startup paths still point at shared helpers.
+- `apps/desktop/src/main/app-runtime.test.ts`
+  Confirms the shared startup helper registers IPC/serve infrastructure, supports awaited headless startup, and preserves background desktop startup.

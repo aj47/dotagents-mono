@@ -77,6 +77,8 @@ pnpm --filter @dotagents/desktop dev -- --qr
 
 The headless CLI, desktop UI, remote server, and loop scheduler all share the same top-level agent runner, so ACP routing and tool execution stay aligned across entry points. The repo-level path matrix lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 
+Headless and GUI startup also share the same runtime bootstrap for MCP, repeat tasks, ACP profile sync, bundled skills, and models.dev initialization, so `--headless` now boots the same service stack as the desktop app before it opens the terminal REPL.
+
 ## Common Debugging Scenarios
 
 ### Agent Not Responding

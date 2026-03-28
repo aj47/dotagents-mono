@@ -10,9 +10,7 @@ import {
   WINDOWS,
 } from "./window"
 import { listenToKeyboardEvents, stopListeningToKeyboardEvents } from "./keyboard"
-import { registerIpcMain } from "@egoist/tipc/main"
-import { router } from "./tipc"
-import { registerServeProtocol, registerServeSchema } from "./serve"
+import { registerServeSchema } from "./serve"
 import { createAppMenu } from "./menu"
 import { destroyTray, initTray } from "./tray"
 import { isAccessibilityGranted } from "./utils"
@@ -29,18 +27,15 @@ import {
   startRemoteServerForced,
 } from "./remote-server"
 import { acpService } from "./acp-service"
-import { agentProfileService } from "./agent-profile-service"
 import {
-  initializeBundledSkills,
-  skillsService,
-  startSkillsFolderWatcher,
-} from "./skills-service"
+  initializeSharedRuntimeServices,
+  registerSharedMainProcessInfrastructure,
+} from "./app-runtime"
 import {
   startCloudflareTunnel,
   startNamedCloudflareTunnel,
   checkCloudflaredInstalled,
 } from "./cloudflare-tunnel"
-import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
@@ -321,13 +316,8 @@ if (!gotSingleInstanceLock) {
         app.dock.hide()
       }
 
-      // Register IPC infrastructure (needed for remote-server agent execution)
-      registerIpcMain(router)
-      logApp("IPC main registered (headless)")
-
-      // Register serve protocol (safe in headless mode)
-      registerServeProtocol()
-      logApp("Serve protocol registered (headless)")
+      registerSharedMainProcessInfrastructure()
+      logApp("Shared main-process infrastructure registered (headless)")
 
       let isHeadlessShuttingDown = false
       const gracefulShutdown = async (exitCode: number) => {
@@ -347,40 +337,11 @@ if (!gotSingleInstanceLock) {
       })
 
       try {
-        // Initialize MCP service
-        await mcpService.initialize()
-        logApp("MCP service initialized (headless)")
-
-        // Start all enabled repeat tasks
-        loopService.startAllLoops()
-        logApp("Loop service started (headless)")
-
-        // Initialize ACP service
-        await acpService.initialize()
-        logApp("ACP service initialized (headless)")
-
-        // Sync agent profiles to ACP registry
-        try {
-          agentProfileService.syncAgentProfilesToACPRegistry()
-          logApp("Agent profiles synced to ACP registry (headless)")
-        } catch (error) {
-          logApp("Failed to sync agent profiles to ACP registry:", error)
-        }
-
-        // Initialize bundled skills
-        try {
-          const skillsResult = initializeBundledSkills()
-          logApp(
-            `Bundled skills: ${skillsResult.copied.length} copied, ${skillsResult.skipped.length} skipped (headless)`,
-          )
-          startSkillsFolderWatcher()
-        } catch (error) {
-          logApp("Failed to initialize bundled skills:", error)
-        }
-
-        // Initialize models.dev service
-        initModelsDevService()
-        logApp("Models.dev service initialized (headless)")
+        await initializeSharedRuntimeServices({
+          label: "headless-runtime",
+          mcpStrategy: "await",
+          acpStrategy: "await",
+        })
 
         // Force-start remote server bound to 0.0.0.0 for external access.
         // Use a runtime override to avoid mutating persisted user config.
@@ -426,10 +387,8 @@ if (!gotSingleInstanceLock) {
     Menu.setApplicationMenu(createAppMenu())
     logApp("Application menu created")
 
-    registerIpcMain(router)
-    logApp("IPC main registered")
-
-    registerServeProtocol()
+    registerSharedMainProcessInfrastructure()
+    logApp("Shared main-process infrastructure registered")
 
     try {
       if (
@@ -464,8 +423,6 @@ if (!gotSingleInstanceLock) {
         logApp("Failed to apply hideDockIcon on startup:", e)
       }
     }
-
-    logApp("Serve protocol registered")
 
     if (accessibilityGranted) {
       const cfg = configStore.get()
@@ -505,62 +462,18 @@ if (!gotSingleInstanceLock) {
     initTray()
     logApp("System tray initialized")
 
-    mcpService
-      .initialize()
-      .then(() => {
-        logApp("MCP service initialized successfully")
-      })
-      .catch((error) => {
-        diagnosticsService.logError(
-          "mcp-service",
-          "Failed to initialize MCP service on startup",
-          error,
-        )
-        logApp("Failed to initialize MCP service on startup:", error)
-      })
-
-    // Start all enabled repeat tasks
-    try {
-      loopService.startAllLoops()
-      logApp("Repeat tasks started")
-    } catch (error) {
-      logApp("Failed to start repeat tasks:", error)
-    }
-
-    // Initialize models.dev service (fetches model metadata in background)
-    initModelsDevService()
-    logApp("Models.dev service initialization started")
-
-    // Initialize ACP service (spawns auto-start agents)
-    acpService
-      .initialize()
-      .then(() => {
-        logApp("ACP service initialized successfully")
-
-        // Sync agent profiles to ACP registry (unified service - preferred)
-        try {
-          agentProfileService.syncAgentProfilesToACPRegistry()
-          logApp("Agent profiles synced to ACP registry")
-        } catch (error) {
-          logApp("Failed to sync agent profiles to ACP registry:", error)
-        }
-      })
-      .catch((error) => {
-        logApp("Failed to initialize ACP service:", error)
-      })
-
-    // Initialize bundled skills (copy from app resources to .agents/skills/ if needed)
-    try {
-      const skillsResult = initializeBundledSkills()
-      logApp(
-        `Bundled skills: ${skillsResult.copied.length} copied, ${skillsResult.skipped.length} skipped`,
+    initializeSharedRuntimeServices({
+      label: "desktop-runtime",
+      mcpStrategy: "background",
+      acpStrategy: "background",
+    }).catch((error) => {
+      diagnosticsService.logError(
+        "desktop-runtime",
+        "Unexpected shared runtime startup failure",
+        error,
       )
-
-      // Start watching .agents/skills/ for changes (auto-refresh without app restart)
-      startSkillsFolderWatcher()
-    } catch (error) {
-      logApp("Failed to initialize bundled skills:", error)
-    }
+      logApp("Unexpected shared runtime startup failure:", error)
+    })
 
     try {
       const cfg = configStore.get()

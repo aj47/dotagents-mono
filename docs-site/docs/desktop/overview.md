@@ -125,6 +125,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Headless CLI** starts the app with `--headless` and runs the same ACP/tool-routing path in a terminal.
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.
+- **Desktop and headless startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI or terminal flow begins.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 
