@@ -67,10 +67,9 @@ function applyInferredGrouping(note: KnowledgeNote, relativeDirSegments: string[
   const group = normalizePathLikeValue(note.group)
   const series = normalizePathLikeValue(note.series)
   const inferredGroup = group ?? (relativeDirSegments.length > 1 ? relativeDirSegments[0] : undefined)
-  const inferredSeries = series ?? (() => {
-    if (relativeDirSegments.length <= 2) return undefined
-    return normalizePathLikeValue(relativeDirSegments.slice(1, -1).join("/"))
-  })()
+  const inferredSeries = series ?? (relativeDirSegments.length > 2
+    ? normalizePathLikeValue(relativeDirSegments.slice(1, -1).join("/"))
+    : undefined)
   const entryType = VALID_ENTRY_TYPE_VALUES.has(note.entryType as KnowledgeNoteEntryType)
     ? note.entryType
     : inferEntryTypeFromLocation(relativeDirSegments)
