@@ -255,6 +255,10 @@ const settingsManagementSource = readFileSync(
   new URL("./settings-management.ts", import.meta.url),
   "utf8",
 )
+const whatsappManagementSource = readFileSync(
+  new URL("./whatsapp-management.ts", import.meta.url),
+  "utf8",
+)
 const mainAgentSelectionSource = readFileSync(
   new URL("./main-agent-selection.ts", import.meta.url),
   "utf8",
@@ -971,6 +975,38 @@ describe("CLI and desktop feature paths", () => {
     expect(tipcSource).toContain(
       "await refreshRuntimeAfterManagedBundleImport()",
     )
+  })
+
+  it("shares WhatsApp connection management across headless and desktop surfaces", () => {
+    expect(whatsappManagementSource).toContain(
+      "export async function getManagedWhatsappStatus()",
+    )
+    expect(whatsappManagementSource).toContain(
+      "export async function connectManagedWhatsapp()",
+    )
+    expect(whatsappManagementSource).toContain(
+      "export async function disconnectManagedWhatsapp()",
+    )
+    expect(whatsappManagementSource).toContain(
+      "export async function logoutManagedWhatsapp()",
+    )
+    expect(headlessCliSource).toContain('case "/whatsapp-status":')
+    expect(headlessCliSource).toContain('case "/whatsapp-connect":')
+    expect(headlessCliSource).toContain('case "/whatsapp-disconnect":')
+    expect(headlessCliSource).toContain('case "/whatsapp-logout":')
+    expect(headlessCliSource).toContain("await getManagedWhatsappStatus()")
+    expect(headlessCliSource).toContain("await connectManagedWhatsapp()")
+    expect(headlessCliSource).toContain("await disconnectManagedWhatsapp()")
+    expect(headlessCliSource).toContain("await logoutManagedWhatsapp()")
+    expect(tipcSource).toContain("return connectManagedWhatsapp()")
+    expect(tipcSource).toContain("return getManagedWhatsappStatus()")
+    expect(tipcSource).toContain("return disconnectManagedWhatsapp()")
+    expect(tipcSource).toContain("return logoutManagedWhatsapp()")
+    expect(docsSource).toContain("## Shared WhatsApp management")
+    expect(docsSource).toContain("`/whatsapp-status`")
+    expect(docsSource).toContain("`/whatsapp-connect`")
+    expect(docsSource).toContain("`/whatsapp-disconnect`")
+    expect(docsSource).toContain("`/whatsapp-logout`")
   })
 
   it("routes the remote server through the shared launcher and runner", () => {

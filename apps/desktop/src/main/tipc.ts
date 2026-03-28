@@ -211,6 +211,12 @@ import {
   previewManagedBundleWithConflicts,
   refreshRuntimeAfterManagedBundleImport,
 } from "./bundle-management"
+import {
+  connectManagedWhatsapp,
+  disconnectManagedWhatsapp,
+  getManagedWhatsappStatus,
+  logoutManagedWhatsapp,
+} from "./whatsapp-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -2353,177 +2359,19 @@ export const router = {
 
   // WhatsApp Integration
   whatsappConnect: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      // Check if WhatsApp server is available
-      const serverStatus = mcpService.getServerStatus()
-      const whatsappServer = serverStatus[WHATSAPP_SERVER_NAME]
-      if (!whatsappServer || !whatsappServer.connected) {
-        return {
-          success: false,
-          error:
-            "WhatsApp server is not running. Please enable WhatsApp in settings.",
-        }
-      }
-
-      // Call the whatsapp_connect tool
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_connect", arguments: {} },
-        undefined,
-        true, // skip approval check for internal calls
-      )
-
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText =
-          result.content?.find((c: any) => c.type === "text")?.text ||
-          "Connection failed"
-        return { success: false, error: errorText }
-      }
-
-      // Parse the result to extract QR code if present
-      const textContent = result.content?.find((c: any) => c.type === "text")
-      if (textContent?.text) {
-        try {
-          const parsed = JSON.parse(textContent.text)
-          if (parsed.qrCode) {
-            return {
-              success: true,
-              qrCode: parsed.qrCode,
-              status: "qr_required",
-            }
-          } else if (parsed.status === "qr_required") {
-            return {
-              success: true,
-              qrCode: parsed.qrCode,
-              status: "qr_required",
-            }
-          }
-        } catch {
-          // Not JSON, check for connection success message
-          if (textContent.text.includes("Connected successfully")) {
-            return {
-              success: true,
-              status: "connected",
-              message: textContent.text,
-            }
-          }
-          if (textContent.text.includes("Already connected")) {
-            return {
-              success: true,
-              status: "connected",
-              message: textContent.text,
-            }
-          }
-        }
-        return { success: true, message: textContent.text }
-      }
-
-      return { success: true, message: "Connection initiated" }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
+    return connectManagedWhatsapp()
   }),
 
   whatsappGetStatus: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      // Check if WhatsApp server is available
-      const serverStatus = mcpService.getServerStatus()
-      const whatsappServer = serverStatus[WHATSAPP_SERVER_NAME]
-      if (!whatsappServer || !whatsappServer.connected) {
-        return {
-          available: false,
-          connected: false,
-          error: "WhatsApp server is not running",
-        }
-      }
-
-      // Call the whatsapp_get_status tool
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_get_status", arguments: {} },
-        undefined,
-        true, // skip approval check for internal calls
-      )
-
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText =
-          result.content?.find((c: any) => c.type === "text")?.text ||
-          "Failed to get status"
-        return { available: true, connected: false, error: errorText }
-      }
-
-      // Parse the result
-      const textContent = result.content?.find((c: any) => c.type === "text")
-      if (textContent?.text) {
-        try {
-          const parsed = JSON.parse(textContent.text)
-          return { available: true, ...parsed }
-        } catch {
-          return { available: true, message: textContent.text }
-        }
-      }
-
-      return { available: true, connected: false }
-    } catch (error) {
-      return {
-        available: false,
-        connected: false,
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
+    return getManagedWhatsappStatus()
   }),
 
   whatsappDisconnect: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_disconnect", arguments: {} },
-        undefined,
-        true,
-      )
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText =
-          result.content?.find((c: any) => c.type === "text")?.text ||
-          "Disconnect failed"
-        return { success: false, error: errorText }
-      }
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
+    return disconnectManagedWhatsapp()
   }),
 
   whatsappLogout: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_logout", arguments: {} },
-        undefined,
-        true,
-      )
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText =
-          result.content?.find((c: any) => c.type === "text")?.text ||
-          "Logout failed"
-        return { success: false, error: errorText }
-      }
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
+    return logoutManagedWhatsapp()
   }),
 
   // Text-to-Speech

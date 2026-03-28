@@ -5,6 +5,7 @@
 import fs from "fs"
 import os from "os"
 import path from "path"
+import QRCode from "qrcode"
 import readline from "readline"
 import { configStore } from "./config"
 import { mcpService } from "./mcp-service"
@@ -122,6 +123,12 @@ import {
   importManagedBundle,
   previewManagedBundleWithConflicts,
 } from "./bundle-management"
+import {
+  connectManagedWhatsapp,
+  disconnectManagedWhatsapp,
+  getManagedWhatsappStatus,
+  logoutManagedWhatsapp,
+} from "./whatsapp-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
   type ConversationSessionState,
@@ -377,6 +384,10 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/queue-resume [id]${colors.reset} - Resume queue processing for a conversation
   ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
   ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
+  ${colors.cyan}/whatsapp-status${colors.reset} - Show WhatsApp connection status
+  ${colors.cyan}/whatsapp-connect${colors.reset} - Start or resume WhatsApp pairing
+  ${colors.cyan}/whatsapp-disconnect${colors.reset} - Disconnect the active WhatsApp session
+  ${colors.cyan}/whatsapp-logout${colors.reset} - Logout and clear saved WhatsApp credentials
   ${colors.cyan}/mcp${colors.reset}           - List MCP servers with live status and transport
   ${colors.cyan}/mcp-show <name>${colors.reset} - Show full MCP server details
   ${colors.cyan}/mcp-enable <name>${colors.reset} - Runtime-enable an MCP server for this profile
@@ -1407,6 +1418,132 @@ async function handleEditSettings(input: string): Promise<void> {
     remoteAccessLabel: "headless-cli-settings",
   })
   printColored(colors.green, `Updated settings: ${updatedKeys.join(", ")}`)
+}
+
+async function printWhatsappQrCode(qrValue: string): Promise<void> {
+  if (configStore.get().streamerModeEnabled) {
+    printColored(
+      colors.yellow,
+      "Streamer mode is enabled, so the WhatsApp QR code is hidden.",
+    )
+    return
+  }
+
+  try {
+    const qrString = await QRCode.toString(qrValue, {
+      type: "terminal",
+      small: true,
+      errorCorrectionLevel: "M",
+    })
+
+    console.log(`\n${colors.bold}WhatsApp QR Code${colors.reset}`)
+    console.log(
+      `${colors.dim}Scan this with WhatsApp on your phone to finish pairing.${colors.reset}`,
+    )
+    console.log()
+    console.log(qrString)
+    console.log()
+  } catch (error) {
+    printColored(
+      colors.red,
+      `Failed to render WhatsApp QR code: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+}
+
+async function handleShowWhatsappStatus(): Promise<void> {
+  const status = await getManagedWhatsappStatus()
+
+  console.log(`\n${colors.bold}WhatsApp Status:${colors.reset}`)
+  if (!status.available) {
+    console.log(
+      `  ${colors.yellow}${status.error || "WhatsApp server is not running"}${colors.reset}`,
+    )
+    console.log()
+    return
+  }
+
+  if (status.connected) {
+    const identityParts = [status.userName, status.phoneNumber].filter(Boolean)
+    console.log(
+      `  ${colors.green}connected${colors.reset}${identityParts.length > 0 ? ` ${colors.dim}(${identityParts.join(" • ")})${colors.reset}` : ""}`,
+    )
+  } else {
+    console.log(`  ${colors.dim}not connected${colors.reset}`)
+  }
+
+  const metadata: string[] = []
+  if (typeof status.hasCredentials === "boolean") {
+    metadata.push(`saved credentials: ${status.hasCredentials ? "yes" : "no"}`)
+  }
+  if (typeof status.hasQrCode === "boolean") {
+    metadata.push(`pending QR: ${status.hasQrCode ? "yes" : "no"}`)
+  }
+  if (metadata.length > 0) {
+    console.log(`  ${colors.dim}${metadata.join(" • ")}${colors.reset}`)
+  }
+
+  if (status.lastError) {
+    console.log(`  ${colors.yellow}${status.lastError}${colors.reset}`)
+  } else if (status.error) {
+    console.log(`  ${colors.yellow}${status.error}${colors.reset}`)
+  } else if (status.message) {
+    console.log(`  ${colors.dim}${status.message}${colors.reset}`)
+  }
+
+  console.log()
+
+  if (status.qrCode && !status.connected) {
+    await printWhatsappQrCode(status.qrCode)
+  }
+}
+
+async function handleConnectWhatsapp(): Promise<void> {
+  const result = await connectManagedWhatsapp()
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to connect WhatsApp.")
+    return
+  }
+
+  if (result.message) {
+    printColored(colors.green, result.message)
+  } else if (result.status === "connected") {
+    printColored(colors.green, "WhatsApp connected.")
+  } else {
+    printColored(colors.green, "WhatsApp connection started.")
+  }
+
+  if (result.qrCode) {
+    await printWhatsappQrCode(result.qrCode)
+  }
+}
+
+async function handleDisconnectWhatsapp(): Promise<void> {
+  const result = await disconnectManagedWhatsapp()
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to disconnect WhatsApp.")
+    return
+  }
+
+  printColored(colors.green, "Disconnected WhatsApp.")
+}
+
+async function handleLogoutWhatsapp(): Promise<void> {
+  const confirmed = await promptForConfirmation(
+    "Logout WhatsApp and clear saved credentials?",
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "WhatsApp logout cancelled.")
+    return
+  }
+
+  const result = await logoutManagedWhatsapp()
+  if (!result.success) {
+    printColored(colors.red, result.error || "Failed to logout WhatsApp.")
+    return
+  }
+
+  printColored(colors.green, "Logged out of WhatsApp.")
 }
 
 function printBundleExportableItemsSection(
@@ -4167,6 +4304,18 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/settings-edit":
       await handleEditSettings(argumentsText)
+      return true
+    case "/whatsapp-status":
+      await handleShowWhatsappStatus()
+      return true
+    case "/whatsapp-connect":
+      await handleConnectWhatsapp()
+      return true
+    case "/whatsapp-disconnect":
+      await handleDisconnectWhatsapp()
+      return true
+    case "/whatsapp-logout":
+      await handleLogoutWhatsapp()
       return true
     case "/mcp":
       printMcpServers()
