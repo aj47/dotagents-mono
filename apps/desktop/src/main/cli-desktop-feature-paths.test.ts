@@ -15,8 +15,10 @@ const docsSource = readFileSync(new URL("../../CLI_DESKTOP_FEATURE_PATHS.md", im
 describe("CLI and desktop feature paths", () => {
   it("routes fresh prompt entrypoints through the shared launcher and conversation/session bootstrap", () => {
     expect(agentModeRunnerSource).toContain("export async function startSharedPromptRun")
+    expect(agentModeRunnerSource).toContain("export async function startSharedResumeRun")
     expect(agentModeRunnerSource).toContain("export function ensureAgentSessionForConversation")
     expect(agentModeRunnerSource).toContain("export async function preparePromptExecutionContext")
+    expect(agentModeRunnerSource).toContain("export async function prepareResumeExecutionContext")
     expect(headlessCliSource).toContain("startSharedPromptRun({")
     expect(remoteServerSource).toContain("startSharedPromptRun({")
     expect(tipcSource).toContain("return startSharedPromptRun({")
@@ -39,15 +41,15 @@ describe("CLI and desktop feature paths", () => {
   })
 
   it("keeps desktop UI and loop entry points on the shared runner", () => {
-    expect(tipcSource).toContain("const result = await runTopLevelAgentMode({")
     expect(tipcSource).toContain("async function startDesktopPromptRun(")
+    expect(tipcSource).toContain("async function startDesktopResumeRun(")
     expect(tipcSource).toContain("maxIterationsOverride?: number")
     expect(loopServiceSource).toContain("maxIterationsOverride: loop.maxIterations")
   })
 
   it("keeps queued prompts and internal resume nudges on the resume-only runner path", () => {
-    expect(tipcSource).toContain("await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, shouldStartSnoozed)")
-    expect(tipcSource).toContain("return processWithAgentMode(text, conversationId, existingSessionId, true, maxIterationsOverride)")
+    expect(tipcSource).toContain("} = await startDesktopResumeRun({")
+    expect(tipcSource).toContain("candidateSessionIds: existingSessionId ? [existingSessionId] : [],")
     expect(acpBackgroundNotifierSource).toContain("await runAgentLoopSession(")
   })
 
@@ -67,6 +69,7 @@ describe("CLI and desktop feature paths", () => {
 
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
+    expect(docsSource).toContain("Shared resume runner")
     expect(docsSource).toContain("Shared prompt session bootstrap")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")

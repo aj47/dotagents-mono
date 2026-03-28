@@ -309,6 +309,113 @@ describe("agent-mode-runner", () => {
     expect(result.content).toBe("done")
   })
 
+  it("reuses the requested session when preparing resume execution context", async () => {
+    mocks.loadConversation.mockResolvedValue({
+      id: "conv-1",
+      messages: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+        {
+          role: "user",
+          content: "Queued follow-up",
+          timestamp: 20,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+    })
+    mocks.reviveSession.mockReturnValue(true)
+
+    const { prepareResumeExecutionContext } = await import("./agent-mode-runner")
+    const result = await prepareResumeExecutionContext({
+      conversationId: "conv-1",
+      candidateSessionIds: ["session-existing"],
+      startSnoozed: true,
+    })
+
+    expect(mocks.reviveSession).toHaveBeenCalledWith("session-existing", true)
+    expect(mocks.startSession).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      conversationId: "conv-1",
+      previousConversationHistory: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+      sessionId: "session-existing",
+      reusedExistingSession: true,
+    })
+  })
+
+  it("starts shared resume runs only after the prepared-session hook resolves", async () => {
+    mocks.loadConversation.mockResolvedValue({
+      id: "conv-1",
+      messages: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+        {
+          role: "user",
+          content: "Queued follow-up",
+          timestamp: 20,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+    })
+    mocks.reviveSession.mockReturnValue(true)
+
+    const events: string[] = []
+    mocks.processTranscriptWithAgentMode.mockImplementation(
+      async (_text, _tools, _executeToolCall, _maxIterations, previousConversationHistory, _conversationId, sessionId) => {
+        events.push(`run:${sessionId}:${previousConversationHistory?.length ?? 0}`)
+        return {
+          content: "done",
+          conversationHistory: [],
+        }
+      },
+    )
+
+    const onPreparedContext = vi.fn(async ({ conversationId, sessionId, previousConversationHistory }) => {
+      events.push(`prepared:${conversationId}:${sessionId}:${previousConversationHistory?.length ?? 0}`)
+    })
+
+    const { startSharedResumeRun } = await import("./agent-mode-runner")
+    const { preparedContext, runPromise } = await startSharedResumeRun({
+      text: "Queued follow-up",
+      conversationId: "conv-1",
+      candidateSessionIds: ["session-existing"],
+      startSnoozed: true,
+      onPreparedContext,
+    })
+    const result = await runPromise
+
+    expect(preparedContext).toMatchObject({
+      conversationId: "conv-1",
+      sessionId: "session-existing",
+      reusedExistingSession: true,
+    })
+    expect(onPreparedContext).toHaveBeenCalledTimes(1)
+    expect(events).toEqual([
+      "prepared:conv-1:session-existing:1",
+      "run:session-existing:1",
+    ])
+    expect(result.content).toBe("done")
+  })
+
   it("starts a new session when no tracked session can be reused", async () => {
     mocks.findSessionByConversationId.mockReturnValue("session-old")
     mocks.reviveSession.mockReturnValue(false)

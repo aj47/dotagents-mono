@@ -17,6 +17,14 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Prepared-context hook: `onPreparedContext(...)`
 - Returned execution handle: `runPromise`
 
+## Shared resume runner
+
+- Shared resume file: `apps/desktop/src/main/agent-mode-runner.ts`
+- Resume bootstrap helper: `prepareResumeExecutionContext(...)`
+- Resume launcher helper: `startSharedResumeRun(...)`
+- Prepared-context hook: `onPreparedContext(...)`
+- Returned execution handle: `runPromise`
+
 ## Shared prompt session bootstrap
 
 - Shared bootstrap file: `apps/desktop/src/main/agent-mode-runner.ts`
@@ -47,7 +55,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 5. Repeat tasks / loops
    `loop-service.ts` calls `startSharedPromptRun(...)` with the repeat-task session title and loop-specific `maxIterationsOverride`, then awaits the returned `runPromise`.
 6. Queued desktop follow-ups / ACP parent resume
-   `tipc.ts` and `acp/acp-background-notifier.ts` intentionally reuse `processWithAgentMode(...)` / `runAgentLoopSession(...)` and therefore only `runTopLevelAgentMode(...)`, because queued follow-ups already persisted the user turn and ACP completion nudges must stay ephemeral instead of being appended to conversation history.
+   `tipc.ts` now calls `startDesktopResumeRun(...)`, which wraps `startSharedResumeRun(...)`, so queued follow-ups revive candidate session IDs and reload prior history through the same shared resume bootstrap before `runPromise` enters `runTopLevelAgentMode(...)`; `acp/acp-background-notifier.ts` reuses the same path through `runAgentLoopSession(...)`, while both entry points still avoid appending persisted or synthetic turns.
 7. Desktop GUI startup
    `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`.
 8. Headless CLI startup
@@ -60,8 +68,9 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - ACP routing is decided in one place: `runTopLevelAgentMode(...)`.
 - Standard MCP approval flow is inline when the caller requests `approvalMode: "inline"`.
 - Fresh persisted prompt entrypoints share one launcher: `startSharedPromptRun(...)`.
+- Resume-only entrypoints share one launcher: `startSharedResumeRun(...)`.
 - Conversation/session bootstrap is decided in one place: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`.
-- Queued follow-ups and ACP parent-resume nudges intentionally bypass `preparePromptExecutionContext(...)` and reuse `runTopLevelAgentMode(...)` through `processWithAgentMode(...)` / `runAgentLoopSession(...)` so they do not duplicate persisted user turns.
+- Queued follow-ups and ACP parent-resume nudges intentionally bypass `preparePromptExecutionContext(...)` and reuse `prepareResumeExecutionContext(...)` / `startSharedResumeRun(...)` so they do not duplicate persisted user turns while still sharing session revival and history loading.
 - Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
 - CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which the shared launcher now wires up via `onPreparedContext(...)` before the run starts so terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
@@ -74,7 +83,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `packages/core/src/state.test.ts`
   Confirms session-scoped approval handlers auto-resolve requests and are cleaned up with the session.
 - `apps/desktop/src/main/agent-mode-runner.test.ts`
-  Confirms conversation/session bootstrap, inline approval behavior, and ACP routing.
+  Confirms prompt bootstrap, resume bootstrap, inline approval behavior, and ACP routing.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
   Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
@@ -84,4 +93,4 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/headless-runtime.test.ts`
   Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, and cleans up services through one graceful shutdown path.
 - `apps/desktop/src/main/loop-service.max-iterations.test.ts`
-  Confirms repeat tasks pass their max-iteration override through the shared prompt launcher while resume-only runs still keep the explicit override path.
+  Confirms repeat tasks pass their max-iteration override through the shared prompt launcher while resume-only runs keep the same override on the shared resume launcher.

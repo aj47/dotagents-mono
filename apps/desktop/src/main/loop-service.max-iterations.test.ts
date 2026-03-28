@@ -12,7 +12,8 @@ describe("repeat-task max-iterations plumbing", () => {
 
   it("allows resume-only agent runs to override the default iteration budget", () => {
     expect(tipcSource).toContain("maxIterationsOverride?: number")
-    expect(tipcSource).toContain('typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)')
-    expect(tipcSource).toContain("return processWithAgentMode(text, conversationId, existingSessionId, true, maxIterationsOverride)")
+    expect(tipcSource).toContain("return startSharedResumeRun({")
+    expect(tipcSource).toContain("candidateSessionIds: existingSessionId ? [existingSessionId] : [],")
+    expect(tipcSource).toContain("maxIterationsOverride,")
   })
 })

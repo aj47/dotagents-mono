@@ -58,6 +58,20 @@ export interface PreparedPromptExecutionContext extends PreparedConversationTurn
   reusedExistingSession: boolean
 }
 
+export interface PrepareResumeExecutionContextOptions {
+  conversationId?: string
+  startSnoozed?: boolean
+  candidateSessionIds?: readonly string[]
+  previousConversationHistory?: AgentConversationHistoryEntry[]
+}
+
+export interface PreparedResumeExecutionContext {
+  conversationId?: string
+  previousConversationHistory?: AgentConversationHistoryEntry[]
+  sessionId?: string
+  reusedExistingSession: boolean
+}
+
 export interface StartSharedPromptRunOptions extends PreparePromptExecutionContextOptions {
   maxIterationsOverride?: number
   approvalMode?: "inline" | "dialog"
@@ -65,6 +79,18 @@ export interface StartSharedPromptRunOptions extends PreparePromptExecutionConte
   focusSession?: (sessionId: string) => void | Promise<void>
   onPreparedContext?: (
     context: PreparedPromptExecutionContext,
+  ) => void | Promise<void>
+}
+
+export interface StartSharedResumeRunOptions extends PrepareResumeExecutionContextOptions {
+  text: string
+  maxIterationsOverride?: number
+  profileSnapshot?: SessionProfileSnapshot
+  approvalMode?: "inline" | "dialog"
+  onProgress?: (update: AgentProgressUpdate) => void
+  focusSession?: (sessionId: string) => void | Promise<void>
+  onPreparedContext?: (
+    context: PreparedResumeExecutionContext,
   ) => void | Promise<void>
 }
 
@@ -94,6 +120,11 @@ export interface StartedSharedPromptRun {
   runPromise: Promise<RunTopLevelAgentModeResult>
 }
 
+export interface StartedSharedResumeRun {
+  preparedContext: PreparedResumeExecutionContext
+  runPromise: Promise<RunTopLevelAgentModeResult>
+}
+
 function getEffectiveMaxIterations(config: Config, maxIterationsOverride?: number): number {
   if (typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)) {
     return Math.max(1, Math.floor(maxIterationsOverride))
@@ -120,6 +151,16 @@ function mapStoredConversationMessagesToAgentHistory(
       isError: !toolResult.success,
     })),
   }))
+}
+
+function getUniqueSessionCandidates(
+  candidateSessionIds: readonly string[],
+  fallbackSessionId?: string,
+): string[] {
+  return [...candidateSessionIds, fallbackSessionId].filter(
+    (sessionId, index, list): sessionId is string =>
+      typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
+  )
 }
 
 async function emitTopLevelProgress(
@@ -348,10 +389,7 @@ export function ensureAgentSessionForConversation(
   } = options
 
   const existingSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-  const sessionCandidates = [...candidateSessionIds, existingSessionId].filter(
-    (sessionId, index, list): sessionId is string =>
-      typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
-  )
+  const sessionCandidates = getUniqueSessionCandidates(candidateSessionIds, existingSessionId)
 
   for (const sessionId of sessionCandidates) {
     if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
@@ -476,6 +514,83 @@ export async function loadPreviousConversationHistory(
   return mapStoredConversationMessagesToAgentHistory(
     conversation.messages.slice(0, -1),
   )
+}
+
+export async function prepareResumeExecutionContext(
+  options: PrepareResumeExecutionContextOptions,
+): Promise<PreparedResumeExecutionContext> {
+  const {
+    conversationId,
+    startSnoozed = true,
+    candidateSessionIds = [],
+    previousConversationHistory,
+  } = options
+
+  const sessionCandidates = getUniqueSessionCandidates(candidateSessionIds)
+  for (const sessionId of sessionCandidates) {
+    if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
+      return {
+        conversationId,
+        previousConversationHistory: previousConversationHistory
+          ?? await loadPreviousConversationHistory(conversationId),
+        sessionId,
+        reusedExistingSession: true,
+      }
+    }
+  }
+
+  return {
+    conversationId,
+    previousConversationHistory: previousConversationHistory
+      ?? await loadPreviousConversationHistory(conversationId),
+    sessionId: undefined,
+    reusedExistingSession: false,
+  }
+}
+
+export async function startSharedResumeRun(
+  options: StartSharedResumeRunOptions,
+): Promise<StartedSharedResumeRun> {
+  const {
+    text,
+    conversationId,
+    startSnoozed = true,
+    candidateSessionIds = [],
+    previousConversationHistory,
+    profileSnapshot,
+    maxIterationsOverride,
+    approvalMode = "inline",
+    onProgress,
+    focusSession,
+    onPreparedContext,
+  } = options
+
+  const preparedContext = await prepareResumeExecutionContext({
+    conversationId,
+    startSnoozed,
+    candidateSessionIds,
+    previousConversationHistory,
+  })
+
+  if (onPreparedContext) {
+    await onPreparedContext(preparedContext)
+  }
+
+  return {
+    preparedContext,
+    runPromise: runTopLevelAgentMode({
+      text,
+      conversationId,
+      existingSessionId: preparedContext.sessionId,
+      previousConversationHistory: preparedContext.previousConversationHistory,
+      profileSnapshot,
+      startSnoozed,
+      maxIterationsOverride,
+      approvalMode,
+      onProgress,
+      focusSession,
+    }),
+  }
 }
 
 export async function runTopLevelAgentMode(

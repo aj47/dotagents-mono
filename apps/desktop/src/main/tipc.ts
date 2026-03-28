@@ -80,10 +80,10 @@ import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpS
 import { acpService, ACPRunRequest } from "./acp-service"
 import {
   type StartSharedPromptRunOptions,
+  type StartSharedResumeRunOptions,
   ensureAgentSessionForConversation,
-  loadPreviousConversationHistory,
   startSharedPromptRun,
-  runTopLevelAgentMode,
+  startSharedResumeRun,
 } from "./agent-mode-runner"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
@@ -159,36 +159,6 @@ function getRemoteSttModel(config: Config): string {
   return getConfiguredSttModel(config) || DEFAULT_STT_MODELS.openai
 }
 
-// Unified agent mode processing function
-async function processWithAgentMode(
-  text: string,
-  conversationId?: string,
-  existingSessionId?: string, // Optional: reuse existing session instead of creating new one
-  startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
-  maxIterationsOverride?: number,
-  previousConversationHistoryOverride?: Parameters<typeof runTopLevelAgentMode>[0]["previousConversationHistory"],
-): Promise<string> {
-  const normalizedMaxIterationsOverride =
-    typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
-      ? Math.max(1, Math.floor(maxIterationsOverride))
-      : undefined
-  const previousConversationHistory = previousConversationHistoryOverride
-    ?? await loadPreviousConversationHistory(conversationId)
-
-  const result = await runTopLevelAgentMode({
-    text,
-    conversationId,
-    existingSessionId,
-    previousConversationHistory,
-    startSnoozed,
-    maxIterationsOverride: normalizedMaxIterationsOverride,
-    approvalMode: "inline",
-    focusSession: focusDesktopSession,
-  })
-
-  return result.content
-}
-
 async function focusDesktopSession(sessionId: string): Promise<void> {
   try {
     getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
@@ -207,13 +177,32 @@ async function startDesktopPromptRun(
   })
 }
 
+async function startDesktopResumeRun(
+  options: Omit<StartSharedResumeRunOptions, "approvalMode" | "focusSession">,
+) {
+  return startSharedResumeRun({
+    ...options,
+    approvalMode: "inline",
+    focusSession: focusDesktopSession,
+  })
+}
+
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
   existingSessionId: string,
   maxIterationsOverride?: number,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true, maxIterationsOverride)
+  const { runPromise } = await startDesktopResumeRun({
+    text,
+    conversationId,
+    candidateSessionIds: existingSessionId ? [existingSessionId] : [],
+    startSnoozed: true,
+    maxIterationsOverride,
+  })
+
+  const result = await runPromise
+  return result.content
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -473,31 +462,35 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
 
         // Prefer the exact session captured at enqueue time for strict same-session semantics.
         // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
-        let existingSessionId: string | undefined
         const fallbackSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
         const candidateSessionIds = [queuedMessage.sessionId, fallbackSessionId].filter(
           (sessionId, index, list): sessionId is string =>
             typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
         )
+        const {
+          preparedContext: { sessionId: existingSessionId, reusedExistingSession },
+          runPromise,
+        } = await startDesktopResumeRun({
+          text: queuedMessage.text,
+          conversationId,
+          candidateSessionIds,
+          startSnoozed: shouldStartSnoozed,
+        })
 
-        for (const candidateSessionId of candidateSessionIds) {
-          // Only start snoozed if panel is not visible
-          const revived = agentSessionTracker.reviveSession(candidateSessionId, shouldStartSnoozed)
-          if (revived) {
-            existingSessionId = candidateSessionId
+        if (reusedExistingSession && existingSessionId) {
+          if (queuedMessage.sessionId && existingSessionId !== queuedMessage.sessionId) {
+            logLLM(`[processQueuedMessages] Preferred queued session ${queuedMessage.sessionId} could not be revived, reusing fallback session ${existingSessionId}`)
+          } else {
             logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${shouldStartSnoozed}`)
-            break
           }
-
-          if (candidateSessionId === queuedMessage.sessionId) {
-            logLLM(`[processQueuedMessages] Preferred queued session ${candidateSessionId} could not be revived, trying fallback lookup`)
-          }
+        } else if (queuedMessage.sessionId) {
+          logLLM(`[processQueuedMessages] Preferred queued session ${queuedMessage.sessionId} could not be revived, starting a new runtime session`)
         }
 
         // Process with agent mode
         // If panel is visible, user is watching - show the execution
         // If panel is hidden, run in background without pop-ups
-        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, shouldStartSnoozed)
+        await runPromise
 
         // Only remove the message after successful processing
         messageQueueService.markProcessed(conversationId, queuedMessage.id)
