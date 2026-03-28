@@ -79,9 +79,10 @@ import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { acpService, ACPRunRequest } from "./acp-service"
 import {
+  type StartSharedPromptRunOptions,
   ensureAgentSessionForConversation,
   loadPreviousConversationHistory,
-  preparePromptExecutionContext,
+  startSharedPromptRun,
   runTopLevelAgentMode,
 } from "./agent-mode-runner"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
@@ -182,16 +183,28 @@ async function processWithAgentMode(
     startSnoozed,
     maxIterationsOverride: normalizedMaxIterationsOverride,
     approvalMode: "inline",
-    focusSession: async (sessionId) => {
-      try {
-        getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
-      } catch (error) {
-        logApp("[tipc] Failed to focus new agent session:", error)
-      }
-    },
+    focusSession: focusDesktopSession,
   })
 
   return result.content
+}
+
+async function focusDesktopSession(sessionId: string): Promise<void> {
+  try {
+    getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
+  } catch (error) {
+    logApp("[tipc] Failed to focus new agent session:", error)
+  }
+}
+
+async function startDesktopPromptRun(
+  options: Omit<StartSharedPromptRunOptions, "approvalMode" | "focusSession">,
+) {
+  return startSharedPromptRun({
+    ...options,
+    approvalMode: "inline",
+    focusSession: focusDesktopSession,
+  })
 }
 
 export async function runAgentLoopSession(
@@ -1441,11 +1454,13 @@ export const router = {
 
       const startSnoozed = input.fromTile ?? false
       const {
-        conversationId,
-        previousConversationHistory,
-        sessionId: runtimeSessionId,
-        reusedExistingSession,
-      } = await preparePromptExecutionContext({
+        preparedContext: {
+          conversationId,
+          sessionId: runtimeSessionId,
+          reusedExistingSession,
+        },
+        runPromise,
+      } = await startDesktopPromptRun({
         prompt: input.text,
         requestedConversationId: input.conversationId,
         conversationTitle: input.text,
@@ -1467,15 +1482,8 @@ export const router = {
       // This allows multiple sessions to run concurrently
       // The session is prepared up front so typed, headless, and remote prompts
       // all reuse the same conversation/session bootstrap rules.
-      processWithAgentMode(
-        input.text,
-        conversationId,
-        runtimeSessionId,
-        startSnoozed,
-        undefined,
-        previousConversationHistory,
-      )
-        .then((finalResponse) => {
+      runPromise
+        .then(({ content: finalResponse }) => {
           // Save to history after completion
           const history = getRecordingHistory()
           const item: RecordingHistoryItem = {
@@ -1755,11 +1763,13 @@ export const router = {
         }
 
         const {
-          conversationId,
-          previousConversationHistory,
-          sessionId: runtimeSessionId,
-          reusedExistingSession,
-        } = await preparePromptExecutionContext({
+          preparedContext: {
+            conversationId,
+            sessionId: runtimeSessionId,
+            reusedExistingSession,
+          },
+          runPromise,
+        } = await startDesktopPromptRun({
           prompt: transcript,
           requestedConversationId: input.conversationId,
           conversationTitle: transcript,
@@ -1789,15 +1799,8 @@ export const router = {
         // Fire-and-forget: Start agent processing without blocking.
         // Preserve the tile/background snooze state after transcription so
         // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(
-          transcript,
-          conversationId,
-          runtimeSessionId,
-          startSnoozed,
-          undefined,
-          previousConversationHistory,
-        )
-          .then((finalResponse) => {
+        runPromise
+          .then(({ content: finalResponse }) => {
             // Save to history after completion
             const history = getRecordingHistory()
             const item: RecordingHistoryItem = {

@@ -58,6 +58,16 @@ export interface PreparedPromptExecutionContext extends PreparedConversationTurn
   reusedExistingSession: boolean
 }
 
+export interface StartSharedPromptRunOptions extends PreparePromptExecutionContextOptions {
+  maxIterationsOverride?: number
+  approvalMode?: "inline" | "dialog"
+  onProgress?: (update: AgentProgressUpdate) => void
+  focusSession?: (sessionId: string) => void | Promise<void>
+  onPreparedContext?: (
+    context: PreparedPromptExecutionContext,
+  ) => void | Promise<void>
+}
+
 export interface RunTopLevelAgentModeOptions {
   text: string
   conversationId?: string
@@ -77,6 +87,11 @@ export interface RunTopLevelAgentModeResult {
   sessionId: string
   runId: number
   usedAcp: boolean
+}
+
+export interface StartedSharedPromptRun {
+  preparedContext: PreparedPromptExecutionContext
+  runPromise: Promise<RunTopLevelAgentModeResult>
 }
 
 function getEffectiveMaxIterations(config: Config, maxIterationsOverride?: number): number {
@@ -396,6 +411,53 @@ export async function preparePromptExecutionContext(
     previousConversationHistory,
     sessionId,
     reusedExistingSession,
+  }
+}
+
+export async function startSharedPromptRun(
+  options: StartSharedPromptRunOptions,
+): Promise<StartedSharedPromptRun> {
+  const {
+    prompt,
+    requestedConversationId,
+    conversationTitle,
+    startSnoozed = true,
+    profileSnapshot,
+    candidateSessionIds = [],
+    maxIterationsOverride,
+    approvalMode = "inline",
+    onProgress,
+    focusSession,
+    onPreparedContext,
+  } = options
+
+  const preparedContext = await preparePromptExecutionContext({
+    prompt,
+    requestedConversationId,
+    conversationTitle,
+    startSnoozed,
+    profileSnapshot,
+    candidateSessionIds,
+  })
+
+  if (onPreparedContext) {
+    await onPreparedContext(preparedContext)
+  }
+
+  return {
+    preparedContext,
+    runPromise: runTopLevelAgentMode({
+      text: prompt,
+      conversationId: preparedContext.conversationId,
+      existingSessionId: preparedContext.sessionId,
+      previousConversationHistory: preparedContext.previousConversationHistory,
+      startSnoozed,
+      profileSnapshot,
+      maxIterationsOverride,
+      approvalMode,
+      onProgress,
+      focusSession,
+    }),
   }
 }
 

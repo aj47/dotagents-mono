@@ -9,8 +9,7 @@ import { toolApprovalManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import {
-  preparePromptExecutionContext,
-  runTopLevelAgentMode,
+  startSharedPromptRun,
 } from "./agent-mode-runner"
 import { emergencyStopAll } from "./emergency-stop"
 import { AgentProgressUpdate } from "@shared/types"
@@ -200,24 +199,6 @@ async function runAgentCLI(prompt: string): Promise<void> {
   isProcessing = true
   let activeSessionId: string | undefined
   try {
-    const {
-      conversationId,
-      previousConversationHistory,
-      sessionId,
-    } = await preparePromptExecutionContext({
-      prompt,
-      requestedConversationId: currentConversationId,
-      startSnoozed: true,
-    })
-    currentConversationId = conversationId
-
-    activeSessionId = sessionId
-
-    toolApprovalManager.registerSessionApprovalHandler(
-      sessionId,
-      ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
-    )
-
     // Track last shown step to avoid duplicates
     let lastShownStepId = ""
     let lastShownIteration = 0
@@ -250,15 +231,23 @@ async function runAgentCLI(prompt: string): Promise<void> {
 
     console.log(`${colors.dim}Processing...${colors.reset}`)
 
-    const agentResult = await runTopLevelAgentMode({
-      text: prompt,
-      conversationId,
-      existingSessionId: sessionId,
-      previousConversationHistory,
+    const { runPromise } = await startSharedPromptRun({
+      prompt,
+      requestedConversationId: currentConversationId,
       startSnoozed: true,
       approvalMode: "inline",
       onProgress,
+      onPreparedContext: ({ conversationId, sessionId }) => {
+        currentConversationId = conversationId
+        activeSessionId = sessionId
+
+        toolApprovalManager.registerSessionApprovalHandler(
+          sessionId,
+          ({ toolName, arguments: args }) => promptForToolApproval(toolName, args),
+        )
+      },
     })
+    const agentResult = await runPromise
 
     // Print the response
     console.log()

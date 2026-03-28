@@ -4,17 +4,18 @@ import { describe, expect, it } from "vitest"
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 
 describe("tipc selected-agent routing", () => {
-  it("delegates top-level routing to the shared runner while preserving prepared or revived session history", () => {
+  it("delegates fresh and resumed prompts to shared launch/run helpers while preserving session history", () => {
     expect(tipcSource).toContain(
       "const previousConversationHistory = previousConversationHistoryOverride",
     )
-    expect(tipcSource).toContain("preparePromptExecutionContext({")
+    expect(tipcSource).toContain("async function startDesktopPromptRun(")
+    expect(tipcSource).toContain("return startSharedPromptRun({")
     expect(tipcSource).toContain("const result = await runTopLevelAgentMode({")
     expect(tipcSource).toContain("existingSessionId")
   })
 
   it("passes panel focus through the shared runner instead of duplicating ACP selection logic", () => {
-    expect(tipcSource).toContain("focusSession: async (sessionId) => {")
+    expect(tipcSource).toContain("async function focusDesktopSession(sessionId: string): Promise<void>")
     expect(tipcSource).not.toContain("resolvePreferredTopLevelAcpAgentSelection({")
   })
 

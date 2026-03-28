@@ -126,7 +126,8 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **QR headless pairing** starts the app with `--qr`, boots the same non-GUI runtime stack, and then prints a pairing QR code for remote/mobile clients.
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.
-- **Desktop text, voice, CLI, remote, and loop entrypoints** now share the same conversation/session bootstrap helpers before they enter the top-level runner, and revived sessions refresh their metadata through the same shared path so transcription handoffs and resumed prompts stay aligned across surfaces.
+- **Desktop text, voice, CLI, remote, and loop entrypoints** now share the same fresh-prompt launcher above the top-level runner, while queued desktop follow-ups and ACP parent-resume nudges intentionally stay on the resume-only runner path so they do not duplicate persisted turns.
+- **Conversation/session bootstrap** still lives in one place underneath that launcher, and revived sessions refresh their metadata through the same shared path so transcription handoffs and resumed prompts stay aligned across surfaces.
 - **Runtime session state** is also owned by the shared session manager, so remote, loop, CLI, and desktop runs no longer reset the legacy active/stop/iteration flags independently.
 - **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins.
 

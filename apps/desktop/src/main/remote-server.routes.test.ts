@@ -48,8 +48,8 @@ describe("remote-server route registration", () => {
   it("routes mobile chat requests through the shared prompt runner", () => {
     const source = getRemoteServerSource()
 
-    expect(source).toContain("preparePromptExecutionContext({")
-    expect(source).toContain("runTopLevelAgentMode({")
+    expect(source).toContain("startSharedPromptRun({")
+    expect(source).toContain("const agentResult = await runPromise")
     expect(source).toContain('approvalMode: "dialog"')
     expect(source).not.toContain("processTranscriptWithACPAgent(")
     expect(source).not.toContain("resolvePreferredTopLevelAcpAgentSelection({")
@@ -58,8 +58,8 @@ describe("remote-server route registration", () => {
   it("leaves legacy runtime flag ownership to the shared session manager", () => {
     const source = getRemoteServerSource()
 
-    expect(source).toContain("preparePromptExecutionContext({")
-    expect(source).toContain("runTopLevelAgentMode({")
+    expect(source).toContain("startSharedPromptRun({")
+    expect(source).toContain("const agentResult = await runPromise")
     expect(source).not.toContain("state.isAgentModeActive = true")
     expect(source).not.toContain("state.shouldStopAgent = false")
     expect(source).not.toContain("state.agentIterationCount = 0")

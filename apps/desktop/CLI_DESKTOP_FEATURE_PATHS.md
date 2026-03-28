@@ -5,9 +5,17 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 ## Shared agent runner
 
 - Main runner: `apps/desktop/src/main/agent-mode-runner.ts`
+- Fresh-prompt launcher: `startSharedPromptRun(...)`
 - Conversation prep helper: `prepareConversationForPrompt(...)`
 - Prompt/session bootstrap helpers: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`
 - Top-level execution helper: `runTopLevelAgentMode(...)`
+
+## Shared prompt launcher
+
+- Shared launcher file: `apps/desktop/src/main/agent-mode-runner.ts`
+- Launcher helper: `startSharedPromptRun(...)`
+- Prepared-context hook: `onPreparedContext(...)`
+- Returned execution handle: `runPromise`
 
 ## Shared prompt session bootstrap
 
@@ -29,29 +37,33 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 ## Feature path matrix
 
 1. Desktop text input
-   `tipc.ts` queues follow-ups for active sessions when needed; otherwise `createMcpTextInput` calls `preparePromptExecutionContext(...)` so the desktop text prompt creates/appends the user turn and reuses the same session bootstrap as headless and remote before `processWithAgentMode(...)` delegates to `runTopLevelAgentMode(...)`.
+   `tipc.ts` queues follow-ups for active sessions when needed; otherwise `startDesktopPromptRun(...)` calls `startSharedPromptRun(...)` so the desktop text prompt creates/appends the user turn and reuses the same launcher/bootstrap as headless, remote, and loops before the returned `runPromise` enters `runTopLevelAgentMode(...)`.
 2. Desktop voice MCP mode
-   `tipc.ts` resolves the transcribing session through `ensureAgentSessionForConversation(...)`, emits transcription progress on that session, then calls `preparePromptExecutionContext(...)` after transcription so the persisted user turn and runtime session handoff follow the same shared bootstrap before reusing `processWithAgentMode(...)`.
+   `tipc.ts` resolves the transcribing session through `ensureAgentSessionForConversation(...)`, emits transcription progress on that session, then `startDesktopPromptRun(...)` calls `startSharedPromptRun(...)` after transcription so the persisted user turn and runtime session handoff follow the same shared launcher/bootstrap rules.
 3. Headless CLI prompt
-   `headless-cli.ts` calls `preparePromptExecutionContext(...)`, registers a terminal approval handler for the returned session, then calls `runTopLevelAgentMode(...)`.
+   `headless-cli.ts` calls `startSharedPromptRun(...)`, registers a terminal approval handler in `onPreparedContext(...)`, then awaits the returned `runPromise`.
 4. Remote server prompt
-   `remote-server.ts` calls the same `preparePromptExecutionContext(...)`, keeps its dialog-based approval policy, and calls `runTopLevelAgentMode(...)`.
+   `remote-server.ts` calls the same `startSharedPromptRun(...)`, keeps its dialog-based approval policy, and awaits the returned `runPromise`.
 5. Repeat tasks / loops
-   `loop-service.ts` creates the scheduled-task conversation, uses `ensureAgentSessionForConversation(...)` to create the runtime session, then calls `runAgentLoopSession(...)`, which forwards to `processWithAgentMode(...)` and ultimately `runTopLevelAgentMode(...)`.
-6. Desktop GUI startup
+   `loop-service.ts` calls `startSharedPromptRun(...)` with the repeat-task session title and loop-specific `maxIterationsOverride`, then awaits the returned `runPromise`.
+6. Queued desktop follow-ups / ACP parent resume
+   `tipc.ts` and `acp/acp-background-notifier.ts` intentionally reuse `processWithAgentMode(...)` / `runAgentLoopSession(...)` and therefore only `runTopLevelAgentMode(...)`, because queued follow-ups already persisted the user turn and ACP completion nudges must stay ephemeral instead of being appended to conversation history.
+7. Desktop GUI startup
    `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`.
-7. Headless CLI startup
+8. Headless CLI startup
    `index.ts --headless` calls the same infrastructure and runtime helpers before forcing the remote server on `0.0.0.0` and launching the terminal CLI.
-8. QR headless pairing startup
+9. QR headless pairing startup
    `index.ts --qr` calls `startSharedHeadlessRuntime(...)`, starts the remote server on `0.0.0.0`, optionally starts a Cloudflare tunnel, then prints the pairing QR code without creating windows.
 
 ## Parity rules
 
 - ACP routing is decided in one place: `runTopLevelAgentMode(...)`.
 - Standard MCP approval flow is inline when the caller requests `approvalMode: "inline"`.
+- Fresh persisted prompt entrypoints share one launcher: `startSharedPromptRun(...)`.
 - Conversation/session bootstrap is decided in one place: `preparePromptExecutionContext(...)` and `ensureAgentSessionForConversation(...)`.
+- Queued follow-ups and ACP parent-resume nudges intentionally bypass `preparePromptExecutionContext(...)` and reuse `runTopLevelAgentMode(...)` through `processWithAgentMode(...)` / `runAgentLoopSession(...)` so they do not duplicate persisted user turns.
 - Reused sessions are refreshed in one place: `ensureAgentSessionForConversation(...)` now updates revived session metadata so temporary desktop transcription sessions and resumed prompts converge on the same runtime state.
-- CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which lets terminal sessions resolve the same approval requests that the desktop UI uses.
+- CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which the shared launcher now wires up via `onPreparedContext(...)` before the run starts so terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
 - Legacy runtime flags stay session-manager-owned: prompt entrypoints do not reset `state.isAgentModeActive`, `state.shouldStopAgent`, or `state.agentIterationCount` directly, so overlapping desktop, CLI, remote, and loop sessions do not clobber each other.
 - GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.
@@ -64,10 +76,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/agent-mode-runner.test.ts`
   Confirms conversation/session bootstrap, inline approval behavior, and ACP routing.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms desktop UI, headless CLI, remote server, loop, GUI startup, headless startup, and QR startup paths still point at shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared startup helper registers IPC/serve infrastructure, supports awaited headless startup, and preserves background desktop startup.
 - `apps/desktop/src/main/headless-runtime.test.ts`
   Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, and cleans up services through one graceful shutdown path.
+- `apps/desktop/src/main/loop-service.max-iterations.test.ts`
+  Confirms repeat tasks pass their max-iteration override through the shared prompt launcher while resume-only runs still keep the explicit override path.

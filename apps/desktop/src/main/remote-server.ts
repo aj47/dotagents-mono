@@ -13,7 +13,7 @@ import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
-import { preparePromptExecutionContext, runTopLevelAgentMode } from "./agent-mode-runner"
+import { startSharedPromptRun } from "./agent-mode-runner"
 import { agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
@@ -545,14 +545,19 @@ async function runAgent(options: RunAgentOptions): Promise<{
   const startSnoozed = !cfg.remoteServerAutoShowPanel
 
   const {
-    conversationId,
-    previousConversationHistory,
-    sessionId,
-    reusedExistingSession,
-  } = await preparePromptExecutionContext({
+    preparedContext: {
+      conversationId,
+      previousConversationHistory,
+      sessionId,
+      reusedExistingSession,
+    },
+    runPromise,
+  } = await startSharedPromptRun({
     prompt,
     requestedConversationId: inputConversationId,
     startSnoozed,
+    approvalMode: "dialog",
+    onProgress,
   })
   const sessionSummary = reusedExistingSession
     ? `reused session ${sessionId}`
@@ -570,15 +575,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
   }
 
   try {
-    const agentResult = await runTopLevelAgentMode({
-      text: prompt,
-      conversationId,
-      existingSessionId: sessionId,
-      previousConversationHistory,
-      startSnoozed,
-      approvalMode: "dialog",
-      onProgress,
-    })
+    const agentResult = await runPromise
 
     // Format conversation history for API response (convert MCPToolResult to ToolResult format)
     const formattedHistory = await loadFormattedConversationHistory()

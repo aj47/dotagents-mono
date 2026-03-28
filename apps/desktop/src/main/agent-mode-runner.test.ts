@@ -249,6 +249,66 @@ describe("agent-mode-runner", () => {
     })
   })
 
+  it("starts shared prompt runs only after the prepared-session hook resolves", async () => {
+    mocks.addMessageToConversation.mockResolvedValue({
+      id: "conv-1",
+      messages: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+        {
+          role: "user",
+          content: "Current prompt",
+          timestamp: 20,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+    })
+    mocks.findSessionByConversationId.mockReturnValue("session-existing")
+    mocks.reviveSession.mockReturnValue(true)
+
+    const events: string[] = []
+    mocks.processTranscriptWithAgentMode.mockImplementation(
+      async (_text, _tools, _executeToolCall, _maxIterations, previousConversationHistory, _conversationId, sessionId) => {
+        events.push(`run:${sessionId}:${previousConversationHistory?.length ?? 0}`)
+        return {
+          content: "done",
+          conversationHistory: [],
+        }
+      },
+    )
+
+    const onPreparedContext = vi.fn(async ({ conversationId, sessionId, previousConversationHistory }) => {
+      events.push(`prepared:${conversationId}:${sessionId}:${previousConversationHistory.length}`)
+    })
+
+    const { startSharedPromptRun } = await import("./agent-mode-runner")
+    const { preparedContext, runPromise } = await startSharedPromptRun({
+      prompt: "Current prompt",
+      requestedConversationId: "conv-1",
+      startSnoozed: true,
+      onPreparedContext,
+    })
+    const result = await runPromise
+
+    expect(preparedContext).toMatchObject({
+      conversationId: "conv-1",
+      sessionId: "session-existing",
+      reusedExistingSession: true,
+    })
+    expect(onPreparedContext).toHaveBeenCalledTimes(1)
+    expect(events).toEqual([
+      "prepared:conv-1:session-existing:1",
+      "run:session-existing:1",
+    ])
+    expect(result.content).toBe("done")
+  })
+
   it("starts a new session when no tracked session can be reused", async () => {
     mocks.findSessionByConversationId.mockReturnValue("session-old")
     mocks.reviveSession.mockReturnValue(false)
