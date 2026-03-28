@@ -2,23 +2,39 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { AgentProfile } from "@shared/types"
 
 const {
+  activateAgentProfileByIdMock,
   createMock,
   deleteMock,
   exportProfileMock,
   getAllMock,
+  getAgentTargetsMock,
   getByIdMock,
   getByRoleMock,
+  getCurrentProfileMock,
+  getEnabledAgentTargetsMock,
+  getExternalAgentsMock,
+  getUserProfilesMock,
   importProfileMock,
   updateMock,
 } = vi.hoisted(() => ({
+  activateAgentProfileByIdMock: vi.fn(),
   createMock: vi.fn(),
   deleteMock: vi.fn(),
   exportProfileMock: vi.fn(),
   getAllMock: vi.fn(),
+  getAgentTargetsMock: vi.fn(),
   getByIdMock: vi.fn(),
   getByRoleMock: vi.fn(),
+  getCurrentProfileMock: vi.fn(),
+  getEnabledAgentTargetsMock: vi.fn(),
+  getExternalAgentsMock: vi.fn(),
+  getUserProfilesMock: vi.fn(),
   importProfileMock: vi.fn(),
   updateMock: vi.fn(),
+}))
+
+vi.mock("./agent-profile-activation", () => ({
+  activateAgentProfileById: activateAgentProfileByIdMock,
 }))
 
 vi.mock("./agent-profile-service", () => ({
@@ -27,8 +43,13 @@ vi.mock("./agent-profile-service", () => ({
     delete: deleteMock,
     exportProfile: exportProfileMock,
     getAll: getAllMock,
+    getAgentTargets: getAgentTargetsMock,
     getById: getByIdMock,
     getByRole: getByRoleMock,
+    getCurrentProfile: getCurrentProfileMock,
+    getEnabledAgentTargets: getEnabledAgentTargetsMock,
+    getExternalAgents: getExternalAgentsMock,
+    getUserProfiles: getUserProfilesMock,
     importProfile: importProfileMock,
     update: updateMock,
   },
@@ -38,10 +59,16 @@ import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
   exportManagedAgentProfile,
+  getManagedAgentTargets,
   getManagedAgentProfile,
   getManagedAgentProfiles,
+  getManagedCurrentAgentProfile,
+  getManagedEnabledAgentTargets,
+  getManagedExternalAgents,
+  getManagedUserAgentProfiles,
   importManagedAgentProfile,
   resolveManagedAgentProfileSelection,
+  setManagedCurrentAgentProfile,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
@@ -64,12 +91,18 @@ function createProfile(
 
 describe("agent profile management", () => {
   beforeEach(() => {
+    activateAgentProfileByIdMock.mockReset()
     createMock.mockReset()
     deleteMock.mockReset()
     exportProfileMock.mockReset()
     getAllMock.mockReset()
+    getAgentTargetsMock.mockReset()
     getByIdMock.mockReset()
     getByRoleMock.mockReset()
+    getCurrentProfileMock.mockReset()
+    getEnabledAgentTargetsMock.mockReset()
+    getExternalAgentsMock.mockReset()
+    getUserProfilesMock.mockReset()
     importProfileMock.mockReset()
     updateMock.mockReset()
   })
@@ -88,6 +121,56 @@ describe("agent profile management", () => {
     )
     expect(getManagedAgentProfiles({ role: "invalid-role" })).toEqual([])
     expect(getManagedAgentProfile("main-agent")).toEqual(allProfiles[0])
+  })
+
+  it("shares current-profile catalogs and switching through one helper", () => {
+    const currentProfile = createProfile("current-agent", {
+      displayName: "Current Agent",
+    })
+    const userProfile = createProfile("user-agent", {
+      displayName: "User Agent",
+      isUserProfile: true,
+    })
+    const enabledTarget = createProfile("ops-agent", {
+      displayName: "Ops Agent",
+      role: "delegation-target",
+    })
+    const externalAgent = createProfile("remote-agent", {
+      displayName: "Remote Agent",
+      role: "external-agent",
+      connection: {
+        type: "remote",
+        baseUrl: "https://agent.example.com",
+      },
+    })
+
+    getUserProfilesMock.mockReturnValue([userProfile])
+    getAgentTargetsMock.mockReturnValue([enabledTarget])
+    getEnabledAgentTargetsMock.mockReturnValue([enabledTarget])
+    getExternalAgentsMock.mockReturnValue([externalAgent])
+    getCurrentProfileMock.mockReturnValue(currentProfile)
+    getByIdMock.mockImplementation((profileId: string) => {
+      switch (profileId) {
+        case userProfile.id:
+          return userProfile
+        case enabledTarget.id:
+          return enabledTarget
+        default:
+          return undefined
+      }
+    })
+    activateAgentProfileByIdMock.mockReturnValue(enabledTarget)
+
+    expect(getManagedUserAgentProfiles()).toEqual([userProfile])
+    expect(getManagedAgentTargets()).toEqual([enabledTarget])
+    expect(getManagedEnabledAgentTargets()).toEqual([enabledTarget])
+    expect(getManagedExternalAgents()).toEqual([externalAgent])
+    expect(getManagedCurrentAgentProfile()).toEqual(currentProfile)
+    expect(setManagedCurrentAgentProfile(enabledTarget.id)).toEqual({
+      success: true,
+      profile: enabledTarget,
+    })
+    expect(activateAgentProfileByIdMock).toHaveBeenCalledWith(enabledTarget.id)
   })
 
   it("creates agent profiles from flattened payloads with shared defaults", () => {
@@ -300,6 +383,17 @@ describe("agent profile management", () => {
       success: false,
       errorCode: "delete_forbidden",
       error: "Cannot delete built-in agent profiles",
+    })
+
+    getByIdMock.mockReturnValue(
+      createProfile("disabled-agent", {
+        enabled: false,
+      }),
+    )
+    expect(setManagedCurrentAgentProfile("disabled-agent")).toEqual({
+      success: false,
+      errorCode: "invalid_input",
+      error: "Agent profile is disabled: disabled-agent",
     })
   })
 

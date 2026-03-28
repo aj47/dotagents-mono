@@ -34,15 +34,15 @@ import {
   type ManagedMcpServerSummary,
 } from "./mcp-management"
 import { mcpManagementStore } from "./mcp-management-store"
-import { agentProfileService } from "./agent-profile-service"
-import { activateAgentProfile } from "./agent-profile-activation"
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
   exportManagedAgentProfile,
+  getManagedCurrentAgentProfile,
   getManagedAgentProfiles,
   importManagedAgentProfile,
   resolveManagedAgentProfileSelection,
+  setManagedCurrentAgentProfile,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
@@ -322,20 +322,20 @@ function getAvailableAgentsForCli(): AgentProfile[] {
   return sortAgentProfilesByPriority(
     getEnabledAgentProfiles(getManagedAgentProfiles()),
     {
-      priorityProfileId: agentProfileService.getCurrentProfile()?.id,
+      priorityProfileId: getManagedCurrentAgentProfile()?.id,
     },
   )
 }
 
 function getManagedAgentsForCli(): AgentProfile[] {
   return sortAgentProfilesByPriority(getManagedAgentProfiles(), {
-    priorityProfileId: agentProfileService.getCurrentProfile()?.id,
+    priorityProfileId: getManagedCurrentAgentProfile()?.id,
   })
 }
 
 function formatAgentSelectionSummary(profile: AgentProfile): string {
   const labels = getAgentProfileStatusLabels(profile, {
-    isCurrent: profile.id === agentProfileService.getCurrentProfile()?.id,
+    isCurrent: profile.id === getManagedCurrentAgentProfile()?.id,
   })
   const labelSuffix = labels.length
     ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}`
@@ -921,7 +921,7 @@ async function handleEditSettings(input: string): Promise<void> {
 
 function printStatus() {
   const activeSessions = agentSessionTracker.getActiveSessions()
-  const currentAgent = agentProfileService.getCurrentProfile()
+  const currentAgent = getManagedCurrentAgentProfile()
   const { model, providerDisplayName } = resolveChatModelDisplayInfo(
     configStore.get(),
   )
@@ -1011,7 +1011,7 @@ function printAgentProfileDetails(profile: AgentProfile): void {
     availableSkillCount,
   })
   const statusLabels = getAgentProfileStatusLabels(profile, {
-    isCurrent: profile.id === agentProfileService.getCurrentProfile()?.id,
+    isCurrent: profile.id === getManagedCurrentAgentProfile()?.id,
   })
   const headerMetadata: string[] = [profile.connection.type]
 
@@ -1334,7 +1334,12 @@ async function handleUseAgent(selection: string): Promise<void> {
   const { selectedProfile: selectedAgent, ambiguousProfiles: ambiguousAgents } =
     resolveAgentProfileSelection(getAvailableAgentsForCli(), query)
   if (selectedAgent) {
-    const profile = activateAgentProfile(selectedAgent)
+    const result = setManagedCurrentAgentProfile(selectedAgent.id)
+    if (!result.success) {
+      printColored(colors.red, result.error)
+      return
+    }
+    const profile = result.profile
     printColored(
       colors.green,
       `Using agent ${getAgentProfileDisplayName(profile)} (${profile.id}) for future prompts.`,

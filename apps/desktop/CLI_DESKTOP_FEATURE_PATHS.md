@@ -106,7 +106,13 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 
 - Shared activation file: `apps/desktop/src/main/agent-profile-activation.ts`
 - Shared helpers: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`
-- Current callers: `headless-cli.ts` `/agent`; `tipc.ts` `setCurrentProfile(...)` and `setCurrentAgentProfile(...)`; and `remote-server.ts` `POST /v1/profiles/current`
+- Current callers: `agent-profile-management.ts` `setManagedCurrentAgentProfile(...)`
+
+## Shared current agent profile catalogs
+
+- Shared management file: `apps/desktop/src/main/agent-profile-management.ts`
+- Shared helpers: `getManagedUserAgentProfiles(...)`, `getManagedAgentTargets(...)`, `getManagedEnabledAgentTargets(...)`, `getManagedExternalAgents(...)`, `getManagedCurrentAgentProfile(...)`, and `setManagedCurrentAgentProfile(...)`
+- Current callers: `headless-cli.ts` `/status`, `/agents`, and `/agent`; `tipc.ts` `getUserProfiles(...)`, `getAgentTargets(...)`, `getEnabledAgentTargets(...)`, `getCurrentAgentProfile(...)`, `setCurrentProfile(...)`, `setCurrentAgentProfile(...)`, and `getExternalAgents(...)`; and `remote-server.ts` `/v1/profiles` plus `/v1/profiles/current`
 
 ## Shared agent profile management
 
@@ -276,11 +282,11 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 28. Desktop history management + runtime session-title sync
     `tipc.ts` now routes renderer rename/delete/delete-all actions through `conversation-management.ts`, while `runtime-tools.ts` `set_session_title` reuses the same rename helper, so desktop history actions and agent-driven title changes converge on one main-process path for session-title synchronization and session-state cleanup.
 29. Headless CLI agent selection
-    `headless-cli.ts` now routes `/agent <agent-id-or-name>` through `activateAgentProfile(...)`, so terminal agent switching reuses the same current-profile persistence, per-profile model/STT/TTS settings application, and MCP runtime tool/server activation that desktop and remote/mobile switches use.
+    `headless-cli.ts` now routes `/agent <agent-id-or-name>` through `setManagedCurrentAgentProfile(...)`, which then reuses `activateAgentProfileById(...)`, so terminal agent switching shares the same enabled-profile guard, current-profile persistence, per-profile model/STT/TTS settings application, and MCP runtime tool/server activation that desktop and remote/mobile switches use.
 30. Headless CLI agent profile management
     `headless-cli.ts` now routes `/agents`, `/agent-show <agent-id-or-name>`, `/agent-new <json>`, `/agent-edit <agent-id-or-name> <json>`, `/agent-toggle <agent-id-or-name>`, and `/agent-delete <agent-id-or-name>` through `agent-profile-management.ts`, while `tipc.ts` and `remote-server.ts` reuse the same profile list/detail/create/update/delete/toggle helpers, so terminal agent catalog browsing, selection by ID/display-name prefix, payload validation, built-in-safe remote edits, and current-profile fallback after deletes stay aligned with the desktop Agents settings screen and remote agent-profile API.
 31. Desktop agent selection + remote/mobile profile switching
-    `tipc.ts` `setCurrentProfile(...)` and `setCurrentAgentProfile(...)` plus `remote-server.ts` `POST /v1/profiles/current` now route through `activateAgentProfile(...)` / `activateAgentProfileById(...)`, so desktop agent selection, legacy profile switches, and remote/mobile profile switches all reapply the same model/transcript/TTS settings plus MCP runtime config.
+    `tipc.ts` `setCurrentProfile(...)` and `setCurrentAgentProfile(...)` plus `remote-server.ts` `POST /v1/profiles/current` now route through `setManagedCurrentAgentProfile(...)`, which reuses `activateAgentProfileById(...)`, so desktop agent selection, legacy profile switches, and remote/mobile profile switches all reapply the same model/transcript/TTS settings plus MCP runtime config while rejecting disabled profile selections consistently.
 32. Headless CLI and desktop agent picker
     `packages/shared/src/agent-profiles.ts` now resolves enabled-agent filtering, default-agent fallback, display-name/summary fallback, ACP-capable profile filtering, and `/agent` id-or-name matching in one place, so headless `/agent`, the desktop agent selector plus `apply-selected-agent.ts`, mobile selector lists, and ACP main-agent selection all reuse the same profile readiness plus ID/display-name/unique-prefix matching rules before activation or fallback selection happens.
 33. Desktop and mobile ACP main-agent pickers
@@ -315,6 +321,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now routes `/settings` and `/settings-edit <json>` through `settings-management.ts`, so the terminal prints the same normalized settings snapshot that `remote-server.ts` exposes from `/v1/settings`, including shared ACP main-agent options plus remote-access defaults, and validates JSON patch updates through the same settings-update helper before applying them.
 48. Desktop config saves + remote/mobile settings updates
     `tipc.ts` `saveConfig(...)` and `remote-server.ts` `PATCH /v1/settings` now both call `saveManagedConfig(...)`, so config persistence, model-cache invalidation, remote-access reconciliation, WhatsApp MCP auto-config/restarts, Langfuse reinitialization, and MCP profile cleanup all run through one main-process settings path whether the change comes from the desktop UI, headless CLI, or a remote/mobile client.
+49. Current agent profile catalogs + status surfaces
+    `headless-cli.ts` now routes `/status` current-agent reads plus `/agents` current markers through `getManagedCurrentAgentProfile(...)`, while `tipc.ts` `getUserProfiles(...)`, `getAgentTargets(...)`, `getEnabledAgentTargets(...)`, `getCurrentAgentProfile(...)`, and `getExternalAgents(...)` plus `remote-server.ts` `/v1/profiles` and `/v1/profiles/current` now reuse the same profile-catalog helpers, so terminal status output, desktop profile pickers, and remote/mobile profile settings all agree on the current profile plus user/target/external profile subsets before rendering diverges.
 
 ## Parity rules
 
@@ -342,7 +350,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Session-history pin/archive state is decided in one place: `orderItemsByPinnedFirst(...)`, `sanitizeConversationSessionState(...)`, `setConversationSessionStateMembership(...)`, `removeSessionIdFromConversationSessionState(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`, so headless CLI session controls, desktop session ordering/state, renderer config hydration, remote settings payloads, and mobile sync/toggles all treat pinned/archived conversation IDs the same way.
 - Conversation rename/delete flows are decided in one place: `conversation-management.ts`, so CLI session management, desktop history actions, and runtime `set_session_title` updates all reuse the same title-sync and pinned/archived cleanup path.
 - Conversation history/load/save/create/add flows are also decided in one place: `getManagedConversationHistory(...)`, `getManagedConversation(...)`, `saveManagedConversation(...)`, `createManagedConversation(...)`, and `addManagedMessageToConversation(...)`, so headless CLI conversation browsing, desktop session queries, remote conversation recovery/history routes, and queued desktop follow-up persistence all reuse the same main-process behavior before presentation diverges.
-- Agent profile activation is decided in one place: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`, so headless CLI agent switching, desktop agent selection, and remote/mobile profile switches all reuse the same current-profile persistence, model override application, and MCP runtime config path.
+- Agent profile activation is decided in one place: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`, so managed current-profile switches all reuse the same current-profile persistence, model override application, and MCP runtime config path.
+- Current agent profile catalogs and switches are decided in one place: `getManagedUserAgentProfiles(...)`, `getManagedAgentTargets(...)`, `getManagedEnabledAgentTargets(...)`, `getManagedExternalAgents(...)`, `getManagedCurrentAgentProfile(...)`, and `setManagedCurrentAgentProfile(...)`, so headless CLI status/switching, desktop TIPC profile pickers, and remote `/v1/profiles*` routes all reuse the same current-profile lookup plus disabled-profile guard before activation or presentation diverges.
 - Agent selector profile readiness is decided in one place: `getAgentProfileDisplayName(...)`, `getAgentProfileSummary(...)`, `getEnabledAgentProfiles(...)`, `sortAgentProfilesByPriority(...)`, `getDefaultAgentProfile(...)`, `resolveAgentProfileSelection(...)`, and `getAcpCapableAgentProfiles(...)`, so headless CLI `/agents` and `/agent`, desktop selector/apply-selected-agent flows, mobile selector lists, ACP-capable profile filtering, and ACP main-agent config matching all stay aligned before activation.
 - Agent profile list/detail/CRUD/toggle/import/export behavior is decided in one place: `getManagedAgentProfiles(...)`, `getManagedAgentProfile(...)`, `resolveManagedAgentProfileSelection(...)`, `createManagedAgentProfile(...)`, `updateManagedAgentProfile(...)`, `toggleManagedAgentProfileEnabled(...)`, `deleteManagedAgentProfile(...)`, `exportManagedAgentProfile(...)`, and `importManagedAgentProfile(...)`, so headless CLI agent-management commands, desktop settings TIPC handlers/file dialogs, and remote `/v1/agent-profiles*` plus `/v1/profiles/import|export` routes all reuse the same validation, connection sanitization, toggle, delete-protection, and import/export rules before presentation diverges.
 - ACP main-agent option lists are decided in one place: `getSelectableMainAcpAgents(...)`, so desktop settings main-agent dropdowns, mobile ACP selectors, and main-process ACP main-agent validation all dedupe profile and legacy stdio agent names the same way before selection or fallback repair happens.
@@ -370,9 +379,9 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-history-selection.test.ts`
   Confirms CLI conversation selection resolves exact IDs, unique prefixes, and ambiguity through one shared helper.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, headless CLI session-state controls, headless CLI skill toggles, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
+  Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, current-profile catalogs/switches, headless CLI session-state controls, headless CLI skill toggles, headless CLI knowledge-note controls, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
-  Confirms the remote server keeps using the shared prompt runner, routes knowledge-note CRUD through the shared note helper, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
+  Confirms the remote server keeps using the shared prompt runner, routes current-profile catalog/switch endpoints plus knowledge-note CRUD through the shared management helpers, does not reintroduce ad hoc legacy runtime flag resets, and sanitizes session-state payloads through the shared session helpers.
 - `apps/desktop/src/main/knowledge-note-management.test.ts`
   Confirms shared knowledge-note listing/search, summary-save behavior, CRUD validation, and delete failure handling stay aligned for CLI, desktop, and remote callers.
 - `apps/desktop/src/main/remote-server-qr.test.ts`
@@ -390,7 +399,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/conversation-management.test.ts`
   Confirms shared rename/delete/delete-all helpers synchronize tracked session titles and prune pinned/archived state for CLI, desktop, and runtime-tool callers.
 - `apps/desktop/src/main/agent-profile-management.test.ts`
-  Confirms shared agent-profile ordering, selection, create/update validation, import/export JSON handling, built-in update restrictions, enable/disable toggles, and current-profile fallback after deletes stay aligned for CLI, desktop, and remote callers.
+  Confirms shared current-profile catalogs/switches plus agent-profile ordering, selection, create/update validation, import/export JSON handling, built-in update restrictions, enable/disable toggles, and current-profile fallback after deletes stay aligned for CLI, desktop, and remote callers.
 - `apps/desktop/src/main/agent-profile-activation.test.ts`
   Confirms shared profile activation records the current profile ID and reapplies defined model overrides without clobbering unrelated runtime settings for CLI, desktop, and remote/mobile callers.
 - `apps/desktop/src/main/agent-profile-management.test.ts`

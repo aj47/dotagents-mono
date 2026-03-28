@@ -8,6 +8,7 @@ import type {
   ProfileSkillsConfig,
 } from "@shared/types"
 import { agentProfileService } from "./agent-profile-service"
+import { activateAgentProfileById } from "./agent-profile-activation"
 import {
   sanitizeAgentProfileConnection,
   VALID_AGENT_PROFILE_CONNECTION_TYPES,
@@ -520,6 +521,26 @@ export function getManagedAgentProfiles(options: {
   return []
 }
 
+export function getManagedUserAgentProfiles(): AgentProfile[] {
+  return agentProfileService.getUserProfiles()
+}
+
+export function getManagedAgentTargets(): AgentProfile[] {
+  return agentProfileService.getAgentTargets()
+}
+
+export function getManagedEnabledAgentTargets(): AgentProfile[] {
+  return agentProfileService.getEnabledAgentTargets()
+}
+
+export function getManagedExternalAgents(): AgentProfile[] {
+  return agentProfileService.getExternalAgents()
+}
+
+export function getManagedCurrentAgentProfile(): AgentProfile | undefined {
+  return agentProfileService.getCurrentProfile()
+}
+
 export function getManagedAgentProfile(profileId: string): AgentProfile | undefined {
   return agentProfileService.getById(profileId)
 }
@@ -528,6 +549,48 @@ export function resolveManagedAgentProfileSelection<
   TProfile extends ManagedAgentProfileSelectionCandidate,
 >(profiles: readonly TProfile[], query: string) {
   return resolveAgentProfileSelection(profiles, query)
+}
+
+export function setManagedCurrentAgentProfile(
+  profileId: string,
+): ManagedAgentProfileMutationResult {
+  const normalizedProfileId = profileId.trim()
+  if (!normalizedProfileId) {
+    return createManagedAgentProfileFailure(
+      "invalid_input",
+      "profileId is required and must be a non-empty string",
+    )
+  }
+
+  const existingProfile = agentProfileService.getById(normalizedProfileId)
+  if (!existingProfile) {
+    return createManagedAgentProfileFailure(
+      "not_found",
+      `Agent profile not found: ${normalizedProfileId}`,
+    )
+  }
+
+  if (!existingProfile.enabled) {
+    return createManagedAgentProfileFailure(
+      "invalid_input",
+      `Agent profile is disabled: ${normalizedProfileId}`,
+    )
+  }
+
+  try {
+    return {
+      success: true,
+      profile: activateAgentProfileById(normalizedProfileId),
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return createManagedAgentProfileFailure(
+      message.toLowerCase().includes("not found")
+        ? "not_found"
+        : "persist_failed",
+      message,
+    )
+  }
 }
 
 function isManagedAgentProfileValidationError(message: string): boolean {

@@ -69,13 +69,15 @@ import {
   exportManagedAgentProfile,
   getManagedAgentProfile,
   getManagedAgentProfiles,
+  getManagedCurrentAgentProfile,
+  getManagedUserAgentProfiles,
   importManagedAgentProfile,
+  setManagedCurrentAgentProfile,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService } from "./agent-profile-service"
-import { activateAgentProfileById } from "./agent-profile-activation"
 import {
   createManagedLoop,
   deleteManagedLoop,
@@ -957,8 +959,8 @@ async function startRemoteServerInternal(
   // GET /v1/profiles - List all profiles
   fastify.get("/v1/profiles", async (_req, reply) => {
     try {
-      const profiles = agentProfileService.getUserProfiles()
-      const currentProfile = agentProfileService.getCurrentProfile()
+      const profiles = getManagedUserAgentProfiles()
+      const currentProfile = getManagedCurrentAgentProfile()
       return reply.send({
         profiles: profiles.map((p) => ({
           id: p.id,
@@ -982,7 +984,7 @@ async function startRemoteServerInternal(
   // GET /v1/profiles/current - Get current profile details
   fastify.get("/v1/profiles/current", async (_req, reply) => {
     try {
-      const profile = agentProfileService.getCurrentProfile()
+      const profile = getManagedCurrentAgentProfile()
       if (!profile) {
         return reply.code(404).send({ error: "No current profile set" })
       }
@@ -1013,7 +1015,13 @@ async function startRemoteServerInternal(
       if (!profileId || typeof profileId !== "string") {
         return reply.code(400).send({ error: "Missing or invalid profileId" })
       }
-      const profile = activateAgentProfileById(profileId)
+      const result = setManagedCurrentAgentProfile(profileId)
+      if (!result.success) {
+        return reply
+          .code(result.errorCode === "not_found" ? 404 : 400)
+          .send({ error: result.error })
+      }
+      const profile = result.profile
       diagnosticsService.logInfo(
         "remote-server",
         `Switched to profile: ${profile.displayName}`,
@@ -1032,11 +1040,9 @@ async function startRemoteServerInternal(
         "Failed to set current profile",
         error,
       )
-      // Return 404 if profile was not found, otherwise 500
-      const isNotFound = error?.message?.includes("not found")
-      return reply
-        .code(isNotFound ? 404 : 500)
-        .send({ error: error?.message || "Failed to set current profile" })
+      return reply.code(500).send({
+        error: error?.message || "Failed to set current profile",
+      })
     }
   })
 

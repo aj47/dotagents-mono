@@ -145,6 +145,26 @@ Get current application settings (excluding sensitive data like API keys).
 
 ### Agent Profiles
 
+#### `GET /v1/profiles`
+
+List user-selectable profiles and the current active profile ID. This route now shares the same current-profile catalog helper path that powers desktop profile pickers and headless `/status`.
+
+#### `GET /v1/profiles/current`
+
+Get the current active profile.
+
+#### `POST /v1/profiles/current`
+
+Switch the current active profile. This route reuses the same managed current-profile switch helper that desktop selection surfaces use, so disabled profiles are rejected before activation.
+
+**Request:**
+
+```json
+{
+  "profileId": "ops-agent"
+}
+```
+
 #### `GET /v1/agent-profiles`
 
 These routes share the same main-process profile manager that powers desktop Settings > Agents and the headless CLI profile commands.

@@ -105,16 +105,18 @@ import {
   createSessionSnapshotFromProfile,
 } from "./agent-profile-service"
 import {
-  activateAgentProfile,
-  activateAgentProfileById,
-} from "./agent-profile-activation"
-import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
   exportManagedAgentProfile,
+  getManagedAgentTargets,
   getManagedAgentProfile,
   getManagedAgentProfiles,
+  getManagedCurrentAgentProfile,
+  getManagedEnabledAgentTargets,
+  getManagedExternalAgents,
+  getManagedUserAgentProfiles,
   importManagedAgentProfile,
+  setManagedCurrentAgentProfile,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
 import { acpService, ACPRunRequest } from "./acp-service"
@@ -3283,9 +3285,12 @@ export const router = {
   setCurrentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const profile = activateAgentProfileById(input.id)
+      const result = setManagedCurrentAgentProfile(input.id)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
-      return agentProfileService.getProfileLegacy(profile.id)
+      return agentProfileService.getProfileLegacy(result.profile.id)
     }),
 
   exportProfile: t.procedure
@@ -3970,29 +3975,28 @@ export const router = {
     }),
 
   getUserProfiles: t.procedure.action(async () => {
-    return agentProfileService.getUserProfiles()
+    return getManagedUserAgentProfiles()
   }),
 
   getAgentTargets: t.procedure.action(async () => {
-    return agentProfileService.getAgentTargets()
+    return getManagedAgentTargets()
   }),
 
   getEnabledAgentTargets: t.procedure.action(async () => {
-    return agentProfileService.getEnabledAgentTargets()
+    return getManagedEnabledAgentTargets()
   }),
 
   getCurrentAgentProfile: t.procedure.action(async () => {
-    return agentProfileService.getCurrentProfile()
+    return getManagedCurrentAgentProfile()
   }),
 
   setCurrentAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const profile = agentProfileService.getById(input.id)
-      if (!profile || !profile.enabled) {
+      const result = setManagedCurrentAgentProfile(input.id)
+      if (!result.success) {
         return { success: false }
       }
-      activateAgentProfile(profile)
       return { success: true }
     }),
 
@@ -4003,7 +4007,7 @@ export const router = {
     }),
 
   getExternalAgents: t.procedure.action(async () => {
-    return agentProfileService.getExternalAgents()
+    return getManagedExternalAgents()
   }),
 
   getAgentProfileConversation: t.procedure

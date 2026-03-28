@@ -421,16 +421,49 @@ describe("CLI and desktop feature paths", () => {
     expect(agentProfileActivationSource).toContain(
       "export function activateAgentProfileById(",
     )
+    expect(agentProfileManagementSource).toContain(
+      "export function setManagedCurrentAgentProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "activateAgentProfileById(normalizedProfileId)",
+    )
     expect(headlessCliSource).toContain('case "/agents":')
     expect(headlessCliSource).toContain('case "/agent":')
-    expect(headlessCliSource).toContain("activateAgentProfile(selectedAgent)")
+    expect(headlessCliSource).toContain(
+      "const result = setManagedCurrentAgentProfile(selectedAgent.id)",
+    )
     expect(tipcSource).toContain(
-      "const profile = activateAgentProfileById(input.id)",
+      "const result = setManagedCurrentAgentProfile(input.id)",
     )
-    expect(tipcSource).toContain("activateAgentProfile(profile)")
     expect(remoteServerSource).toContain(
-      "const profile = activateAgentProfileById(profileId)",
+      "const result = setManagedCurrentAgentProfile(profileId)",
     )
+  })
+
+  it("shares current agent profile catalog reads across CLI, desktop, and remote surfaces", () => {
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedUserAgentProfiles",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedAgentTargets",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedEnabledAgentTargets",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedExternalAgents",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function getManagedCurrentAgentProfile",
+    )
+    expect(headlessCliSource).toContain("getManagedCurrentAgentProfile()")
+    expect(tipcSource).toContain("return getManagedUserAgentProfiles()")
+    expect(tipcSource).toContain("return getManagedAgentTargets()")
+    expect(tipcSource).toContain("return getManagedEnabledAgentTargets()")
+    expect(tipcSource).toContain("return getManagedCurrentAgentProfile()")
+    expect(tipcSource).toContain("return getManagedExternalAgents()")
+    expect(remoteServerSource).toContain("getManagedUserAgentProfiles()")
+    expect(remoteServerSource).toContain("getManagedCurrentAgentProfile()")
   })
 
   it("shares agent profile management across CLI, desktop, and remote surfaces", () => {

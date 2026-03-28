@@ -81,22 +81,39 @@ describe("remote-server route registration", () => {
     expect(source).not.toContain("resolvePreferredTopLevelAcpAgentSelection({")
   })
 
-  it("routes remote profile switches through the shared activation helper", () => {
+  it("routes remote profile catalogs and switches through the shared management helper", () => {
     const source = getRemoteServerSource()
+    const profileListSection = getSection(
+      source,
+      "// GET /v1/profiles - List all profiles",
+      "// GET /v1/profiles/current - Get current profile details",
+    )
+    const currentProfileSection = getSection(
+      source,
+      "// GET /v1/profiles/current - Get current profile details",
+      "// POST /v1/profiles/current - Set current profile",
+    )
     const profileSwitchSection = getSection(
       source,
       'fastify.post("/v1/profiles/current"',
       "// GET /v1/profiles/:id/export - Export a profile as JSON",
     )
 
-    expect(source).toContain('from "./agent-profile-activation"')
+    expect(source).toContain('from "./agent-profile-management"')
+    expect(profileListSection).toContain("getManagedUserAgentProfiles()")
+    expect(profileListSection).toContain("getManagedCurrentAgentProfile()")
+    expect(currentProfileSection).toContain("getManagedCurrentAgentProfile()")
     expect(profileSwitchSection).toContain(
-      "const profile = activateAgentProfileById(profileId)",
+      "const result = setManagedCurrentAgentProfile(profileId)",
+    )
+    expect(profileSwitchSection).toContain(
+      '.code(result.errorCode === "not_found" ? 404 : 400)',
     )
     expect(profileSwitchSection).not.toContain(
       "mcpService.applyProfileMcpConfig(",
     )
     expect(profileSwitchSection).not.toContain("toolConfigToMcpServerConfig(")
+    expect(profileSwitchSection).not.toContain("activateAgentProfileById(")
   })
 
   it("shares remote settings snapshots and updates through the settings helper", () => {
