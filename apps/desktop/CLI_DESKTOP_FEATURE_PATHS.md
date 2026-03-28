@@ -96,6 +96,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `orderItemsByPinnedFirst(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`
 - Current callers: `headless-cli.ts` `/conversations`, `/pin`, and `/archive`; `remote-server.ts` `/v1/settings` session-state payloads; `agent-store.ts`; `pinned-session-history.ts`; `sidebar-sessions.ts`; and mobile session-store sync
 
+## Shared conversation management
+
+- Shared management file: `apps/desktop/src/main/conversation-management.ts`
+- Shared helpers: `renameConversationTitleAndSyncSession(...)`, `deleteConversationAndSyncSessionState(...)`, and `deleteAllConversationsAndSyncSessionState(...)`
+- Current callers: `headless-cli.ts` `/rename`, `/delete`, and `/delete-all`; `tipc.ts` renderer rename/delete/delete-all actions; and `runtime-tools.ts` `set_session_title`
+
 ## Shared chat model selection
 
 - Shared provider/model file: `packages/shared/src/providers.ts`
@@ -187,6 +193,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `settings-loops.tsx` now queries `tipc.ts getLoopSummaries(...)`, while `remote-server.ts` reuses `summarizeLoop(...)` and `summarizeLoops(...)` for `/v1/loops` plus repeat-task create/update responses, so profile names and runtime last-run/next-run/is-running fields are merged in one main-process path before either the desktop UI or remote clients render them.
 26. Desktop progress history + remote API conversation payloads
     `packages/shared/src/conversation-history.ts` now flattens tool calls and tool results into shared `ConversationHistoryMessage` / `ToolResult` shapes, so `llm.ts` incremental persistence, weak step summaries, and progress history payloads serialize the same way that `remote-server.ts` now serializes chat/conversation API history for mobile and other remote clients.
+27. Headless CLI conversation management
+    `headless-cli.ts` now routes `/rename`, `/delete [id]`, and `/delete-all` through `conversation-management.ts`, so terminal conversation edits/deletes reuse the same title normalization, tracked-session title sync, and pinned/archived cleanup path that the desktop app already uses.
+28. Desktop history management + runtime session-title sync
+    `tipc.ts` now routes renderer rename/delete/delete-all actions through `conversation-management.ts`, while `runtime-tools.ts` `set_session_title` reuses the same rename helper, so desktop history actions and agent-driven title changes converge on one main-process path for session-title synchronization and session-state cleanup.
 
 ## Parity rules
 
@@ -211,6 +221,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Remote server pairing URL/connectability rules are decided in one place: `apps/desktop/src/shared/remote-server-url.ts`, so desktop settings previews, main-process status payloads, QR defaults, and headless bind defaults stay aligned.
 - MCP server runtime state is decided in one place: `apps/desktop/src/shared/mcp-server-status.ts`, so CLI status output, desktop capability screens, and remote API status payloads all distinguish disabled vs stopped vs connected/error/disconnected the same way.
 - Session-history pin/archive state is decided in one place: `orderItemsByPinnedFirst(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`, so headless CLI session controls, desktop session ordering/state, remote settings payloads, and mobile sync all treat pinned/archived conversation IDs the same way.
+- Conversation rename/delete flows are decided in one place: `conversation-management.ts`, so CLI session management, desktop history actions, and runtime `set_session_title` updates all reuse the same title-sync and pinned/archived cleanup path.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -242,6 +253,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/session.test.ts`
   Confirms shared pinned-first ordering and session-ID membership helpers stay aligned for CLI session controls, desktop session ordering, remote settings payloads, and mobile sync.
+- `apps/desktop/src/main/conversation-management.test.ts`
+  Confirms shared rename/delete/delete-all helpers synchronize tracked session titles and prune pinned/archived state for CLI, desktop, and runtime-tool callers.
 - `packages/shared/src/conversation-history.test.ts`
   Confirms shared tool-call/result flattening and conversation-history serialization stay aligned for desktop runtime progress, persistence, and remote API callers.
 - `packages/shared/src/stt-models.test.ts`

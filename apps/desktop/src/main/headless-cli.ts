@@ -10,6 +10,11 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
+import {
+  deleteAllConversationsAndSyncSessionState,
+  deleteConversationAndSyncSessionState,
+  renameConversationTitleAndSyncSession,
+} from "./conversation-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
   orderItemsByPinnedFirst,
@@ -94,6 +99,18 @@ async function promptForToolApproval(
   })
 }
 
+async function promptForConfirmation(message: string): Promise<boolean> {
+  if (!rl) {
+    return false
+  }
+
+  return await new Promise<boolean>((resolve) => {
+    rl?.question(`${colors.yellow}${message} [y/N] ${colors.reset}`, (answer) => {
+      resolve(/^(y|yes)$/i.test(answer.trim()))
+    })
+  })
+}
+
 function printHelp() {
   console.log(`
 ${colors.bold}Available Commands:${colors.reset}
@@ -104,8 +121,11 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/use <id>${colors.reset}      - Continue a previous conversation by ID or unique prefix
   ${colors.cyan}/show [id]${colors.reset}     - Show recent messages for the current or selected conversation
+  ${colors.cyan}/rename <title>${colors.reset} - Rename the current conversation
   ${colors.cyan}/pin [id]${colors.reset}      - Pin or unpin the current or selected conversation
   ${colors.cyan}/archive [id]${colors.reset}  - Archive or unarchive the current or selected conversation
+  ${colors.cyan}/delete [id]${colors.reset}   - Delete the current or selected conversation
+  ${colors.cyan}/delete-all${colors.reset}    - Delete all conversations and clear session state
   ${colors.cyan}/new${colors.reset}           - Start a new conversation
 
 ${colors.dim}Type any message to interact with the agent.${colors.reset}
@@ -237,7 +257,7 @@ async function printConversations() {
     }
     console.log()
     console.log(
-      `${colors.dim}Use /use, /show, /pin, or /archive with a conversation ID prefix to manage it.${colors.reset}`,
+      `${colors.dim}Use /use, /show, /pin, /archive, or /delete with a conversation ID prefix to manage it.${colors.reset}`,
     )
   }
   console.log()
@@ -426,6 +446,83 @@ async function handleShowConversation(selection: string): Promise<void> {
   printConversationDetails(conversation)
 }
 
+async function handleRenameConversation(titleText: string): Promise<void> {
+  const nextTitle = titleText.trim()
+  if (!nextTitle) {
+    printColored(colors.yellow, "Usage: /rename <new-title>")
+    return
+  }
+
+  if (!currentConversationId) {
+    printColored(
+      colors.yellow,
+      "No conversation selected. Use /use <conversation-id-or-prefix> first.",
+    )
+    return
+  }
+
+  const updatedConversation = await renameConversationTitleAndSyncSession(
+    currentConversationId,
+    nextTitle,
+  )
+  if (!updatedConversation) {
+    printColored(
+      colors.red,
+      "Failed to rename conversation. Titles must contain visible text.",
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Renamed conversation ${updatedConversation.id}: ${updatedConversation.title}`,
+  )
+}
+
+async function handleDeleteConversation(selection: string): Promise<void> {
+  const selectedConversation = await resolveConversationSelectionForCli(
+    selection.trim() || currentConversationId,
+  )
+  if (!selectedConversation) {
+    return
+  }
+
+  const confirmed = await promptForConfirmation(
+    `Delete conversation ${selectedConversation.id} (${selectedConversation.title})?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Delete cancelled.")
+    return
+  }
+
+  await deleteConversationAndSyncSessionState(selectedConversation.id)
+  if (currentConversationId === selectedConversation.id) {
+    currentConversationId = undefined
+  }
+
+  printColored(
+    colors.green,
+    `Deleted conversation ${selectedConversation.id}: ${selectedConversation.title}`,
+  )
+}
+
+async function handleDeleteAllConversations(): Promise<void> {
+  const confirmed = await promptForConfirmation(
+    "Delete all conversations and clear pinned/archived session state?",
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Delete-all cancelled.")
+    return
+  }
+
+  await deleteAllConversationsAndSyncSessionState()
+  currentConversationId = undefined
+  printColored(
+    colors.green,
+    "Deleted all conversations and cleared pinned/archived session state.",
+  )
+}
+
 async function handleStop() {
   if (!isProcessing) {
     printColored(colors.yellow, "No agent session is currently running.")
@@ -478,6 +575,9 @@ async function handleSlashCommand(input: string): Promise<boolean> {
     case "/show":
       await handleShowConversation(argumentsText)
       return true
+    case "/rename":
+      await handleRenameConversation(argumentsText)
+      return true
     case "/pin":
       await toggleConversationSessionStateForCli(
         "pinnedSessionIds",
@@ -489,6 +589,12 @@ async function handleSlashCommand(input: string): Promise<boolean> {
         "archivedSessionIds",
         argumentsText,
       )
+      return true
+    case "/delete":
+      await handleDeleteConversation(argumentsText)
+      return true
+    case "/delete-all":
+      await handleDeleteAllConversations()
       return true
     case "/new":
       startNewConversation()

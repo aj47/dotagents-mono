@@ -68,6 +68,11 @@ import {
 } from "@dotagents/shared"
 import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
 import { conversationService } from "./conversation-service"
+import {
+  deleteAllConversationsAndSyncSessionState,
+  deleteConversationAndSyncSessionState,
+  renameConversationTitleAndSyncSession,
+} from "./conversation-management"
 import { RendererHandlers } from "./renderer-handlers"
 import { postProcessTranscript, processTranscriptWithTools } from "./llm"
 import {
@@ -3214,34 +3219,20 @@ export const router = {
   renameConversationTitle: t.procedure
     .input<{ conversationId: string; title: string }>()
     .action(async ({ input }) => {
-      const conversation = await conversationService.renameConversationTitle(
+      return renameConversationTitleAndSyncSession(
         input.conversationId,
         input.title,
       )
-
-      if (conversation) {
-        const activeSession = agentSessionTracker
-          .getActiveSessions()
-          .find((session) => session.conversationId === input.conversationId)
-
-        if (activeSession) {
-          agentSessionTracker.updateSession(activeSession.id, {
-            conversationTitle: conversation.title,
-          })
-        }
-      }
-
-      return conversation
     }),
 
   deleteConversation: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      await conversationService.deleteConversation(input.conversationId)
+      await deleteConversationAndSyncSessionState(input.conversationId)
     }),
 
   deleteAllConversations: t.procedure.action(async () => {
-    await conversationService.deleteAllConversations()
+    await deleteAllConversationsAndSyncSessionState()
   }),
 
   openConversationsFolder: t.procedure.action(async () => {

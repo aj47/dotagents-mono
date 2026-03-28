@@ -26,6 +26,10 @@ const conversationHistorySelectionSource = readFileSync(
   new URL("./conversation-history-selection.ts", import.meta.url),
   "utf8",
 )
+const conversationManagementSource = readFileSync(
+  new URL("./conversation-management.ts", import.meta.url),
+  "utf8",
+)
 const appRuntimeSource = readFileSync(
   new URL("./app-runtime.ts", import.meta.url),
   "utf8",
@@ -147,6 +151,10 @@ const summarizationServiceSource = readFileSync(
   new URL("./summarization-service.ts", import.meta.url),
   "utf8",
 )
+const runtimeToolsSource = readFileSync(
+  new URL("./runtime-tools.ts", import.meta.url),
+  "utf8",
+)
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 const docsSource = readFileSync(
   new URL("../../CLI_DESKTOP_FEATURE_PATHS.md", import.meta.url),
@@ -216,6 +224,36 @@ describe("CLI and desktop feature paths", () => {
     expect(pinnedSessionHistorySource).toContain("orderItemsByPinnedFirst(")
     expect(sidebarSessionsSource).toContain("orderItemsByPinnedFirst(")
     expect(remoteServerSource).toContain("sanitizeSessionIdList(")
+  })
+
+  it("shares conversation management across CLI, desktop, and runtime tool surfaces", () => {
+    expect(conversationManagementSource).toContain(
+      "export async function renameConversationTitleAndSyncSession",
+    )
+    expect(conversationManagementSource).toContain(
+      "export async function deleteConversationAndSyncSessionState",
+    )
+    expect(conversationManagementSource).toContain(
+      "export async function deleteAllConversationsAndSyncSessionState",
+    )
+    expect(headlessCliSource).toContain('case "/rename":')
+    expect(headlessCliSource).toContain('case "/delete":')
+    expect(headlessCliSource).toContain('case "/delete-all":')
+    expect(headlessCliSource).toContain("renameConversationTitleAndSyncSession(")
+    expect(headlessCliSource).toContain("deleteConversationAndSyncSessionState(")
+    expect(headlessCliSource).toContain(
+      "deleteAllConversationsAndSyncSessionState()",
+    )
+    expect(tipcSource).toContain("return renameConversationTitleAndSyncSession(")
+    expect(tipcSource).toContain(
+      "await deleteConversationAndSyncSessionState(input.conversationId)",
+    )
+    expect(tipcSource).toContain(
+      "await deleteAllConversationsAndSyncSessionState()",
+    )
+    expect(runtimeToolsSource).toContain(
+      "renameConversationTitleAndSyncSession(",
+    )
   })
 
   it("routes the remote server through the shared launcher and runner", () => {
@@ -454,6 +492,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared remote server URL rules")
     expect(docsSource).toContain("Shared MCP server status classification")
     expect(docsSource).toContain("Shared session history state")
+    expect(docsSource).toContain("Shared conversation management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -477,6 +516,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless non-GUI shutdown")
     expect(docsSource).toContain("Headless CLI conversation resume selection")
     expect(docsSource).toContain("Headless CLI session pin/archive controls")
+    expect(docsSource).toContain("Headless CLI conversation management")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")
@@ -493,6 +533,9 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop repeat task settings + remote loop API")
     expect(docsSource).toContain(
       "Desktop progress history + remote API conversation payloads",
+    )
+    expect(docsSource).toContain(
+      "Desktop history management + runtime session-title sync",
     )
   })
 })
