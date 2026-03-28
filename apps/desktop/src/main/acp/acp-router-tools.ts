@@ -11,11 +11,20 @@ import type {
 } from './types';
 import { acpBackgroundNotifier } from './acp-background-notifier';
 import { configStore } from '../config';
-import { acpService, ACPContentBlock, ACPToolCallUpdate } from '../acp-service';
+import {
+  acpService,
+  ACPAgentStatus,
+  ACPContentBlock,
+  ACPToolCallUpdate,
+} from '../acp-service';
 import { buildProfileContext, getPreferredDelegationOutput } from '../agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
-import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
+import type {
+  ACPDelegationProgress,
+  ACPAgentConfig,
+  ACPSubAgentMessage,
+} from '../../shared/types';
 import { RESPOND_TO_USER_TOOL } from '../../shared/runtime-tool-names';
 import { extractRespondToUserContentFromArgs } from '../respond-to-user-utils';
 import {
@@ -28,6 +37,73 @@ import {
 import { agentProfileService } from '../agent-profile-service';
 import type { AgentProfile } from '../../shared/types';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
+
+type ACPAgentListSource = "profile" | "legacy";
+type ACPAgentListStatus = {
+  status: ACPAgentStatus;
+  error?: string;
+}
+
+/**
+ * Centralized access to legacy ACP agents from config.json.
+ */
+function getLegacyAcpAgents(): ACPAgentConfig[] {
+  return configStore.get().acpAgents || [];
+}
+
+function getLegacyAcpAgent(agentName: string): ACPAgentConfig | undefined {
+  return getLegacyAcpAgents().find((agent) => agent.name === agentName);
+}
+
+function formatAgentStatus(
+  statusMap: Map<string, { status: ACPAgentStatus; error?: string }>,
+  agentName: string,
+  fallbackStatus: "ready" | "stopped",
+  includeRuntime = true,
+): ACPAgentListStatus {
+  if (!includeRuntime) {
+    return { status: fallbackStatus };
+  }
+
+  const runtime = statusMap.get(agentName);
+  return {
+    status: runtime?.status || fallbackStatus,
+    error: runtime?.error,
+  };
+}
+
+function formatListAgent(
+  name: string,
+  displayName: string,
+  description: string | undefined,
+  connectionType: 'acp' | 'stdio' | 'remote' | 'internal',
+  statusMap: Map<string, { status: ACPAgentStatus; error?: string }>,
+  source: ACPAgentListSource,
+  fallbackStatus: "ready" | "stopped",
+  includeRuntime = true,
+): Record<string, unknown> {
+  const { status, error } = formatAgentStatus(
+    statusMap,
+    name,
+    fallbackStatus,
+    includeRuntime,
+  );
+
+  const sourceFlags = source === 'profile'
+    ? { isAgentProfile: true }
+    : { isLegacy: true };
+
+  return {
+    name,
+    displayName,
+    description: description || "",
+    connectionType,
+    status,
+    error,
+    isInternal: connectionType === 'internal',
+    ...sourceFlags,
+  };
+}
 
 // ============================================================================
 // Consolidated Delegation State
@@ -586,10 +662,9 @@ export { acpRouterToolDefinitions } from './acp-router-tool-definitions';
  */
 export function getInternalAgentConfig(): import('../../shared/types').ACPAgentConfig {
   const internalInfo = getInternalAgentInfo();
-  const config = configStore.get();
 
   // Check if user has explicitly disabled internal agent
-  const userInternalConfig = config.acpAgents?.find(a => a.name === 'internal');
+  const userInternalConfig = getLegacyAcpAgent("internal");
   const enabled = userInternalConfig?.enabled !== false; // Default to true
 
   return {
@@ -627,56 +702,41 @@ export async function handleListAvailableAgents(args: {
 
     // Format agents for output
     const formattedAgents = agentTargets.map((agent) => {
-      // Internal agents are always ready
-      if (agent.connection.type === 'internal') {
-        return {
-          name: agent.name,
-          displayName: agent.displayName,
-          description: agent.description || '',
-          connectionType: agent.connection.type,
-          status: 'ready' as const,
-          error: undefined,
-          isInternal: true,
-          isAgentProfile: true,
-        };
-      }
+      const fallbackStatus = agent.connection.type === 'internal' || agent.connection.type === 'remote'
+        ? 'ready'
+        : 'stopped';
 
-      // External agents (acp, stdio, remote) - check runtime status
-      const runtime = statusMap.get(agent.name);
-      return {
-        name: agent.name,
-        displayName: agent.displayName,
-        description: agent.description || '',
-        connectionType: agent.connection.type,
-        status: runtime?.status || (agent.connection.type === 'remote' ? 'ready' : 'stopped'),
-        error: runtime?.error,
-        isInternal: false,
-        isAgentProfile: true,
-      };
+      return formatListAgent(
+        agent.name,
+        agent.displayName,
+        agent.description,
+        agent.connection.type,
+        statusMap,
+        "profile",
+        fallbackStatus,
+        agent.connection.type !== 'internal',
+      );
     });
 
     const agentTargetNames = new Set(agentTargets.map((a) => a.name));
 
     // BACKWARD COMPATIBILITY: Also include legacy ACP agents from config
-    const config = configStore.get();
-    const legacyAcpAgents = (config.acpAgents || []).filter(
+    const legacyAcpAgents = getLegacyAcpAgents().filter(
       (a) => a.name !== 'internal' && !agentTargetNames.has(a.name)
     );
 
     const formattedLegacyAcpAgents = legacyAcpAgents
       .filter((agent) => agent.enabled !== false)
       .map((agent) => {
-        const runtime = statusMap.get(agent.name);
-        return {
-          name: agent.name,
-          displayName: agent.displayName,
-          description: agent.description || '',
-          connectionType: agent.connection.type,
-          status: runtime?.status || 'stopped',
-          error: runtime?.error,
-          isInternal: agent.connection.type === 'internal',
-          isLegacy: true,
-        };
+        return formatListAgent(
+          agent.name,
+          agent.displayName,
+          agent.description,
+          agent.connection.type,
+          statusMap,
+          "legacy",
+          'stopped',
+        );
       });
 
     // Combine all agents
@@ -1010,8 +1070,7 @@ function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null
     };
   }
 
-  const config = configStore.get();
-  const legacy = config.acpAgents?.find((a) => a.name === agentName);
+  const legacy = getLegacyAcpAgent(agentName);
   if (!legacy) {
     return null;
   }
