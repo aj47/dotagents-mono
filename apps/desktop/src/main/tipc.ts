@@ -101,6 +101,11 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import {
+  clearManagedInactiveAgentSessions,
+  getManagedAgentSessions,
+  stopManagedAgentSession,
+} from "./agent-session-management"
+import {
   agentProfileService,
   createSessionSnapshotFromProfile,
 } from "./agent-profile-service"
@@ -771,11 +776,7 @@ export const router = {
     }),
 
   clearInactiveSessions: t.procedure.action(async () => {
-    // Clear completed sessions from the tracker
-    agentSessionTracker.clearCompletedSessions((session) => {
-      if (!session.conversationId) return true
-      return messageQueueService.getQueue(session.conversationId).length === 0
-    })
+    const { clearedCount } = clearManagedInactiveAgentSessions()
 
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {
@@ -788,7 +789,7 @@ export const router = {
       }
     }
 
-    return { success: true }
+    return { success: true, clearedCount }
   }),
 
   closeAgentModeAndHidePanelWindow: t.procedure.action(async () => {
@@ -806,10 +807,7 @@ export const router = {
   }),
 
   getAgentSessions: t.procedure.action(async () => {
-    return {
-      activeSessions: agentSessionTracker.getActiveSessions(),
-      recentSessions: agentSessionTracker.getRecentSessions(4),
-    }
+    return getManagedAgentSessions()
   }),
 
   // Get the profile snapshot for a specific session
@@ -826,87 +824,7 @@ export const router = {
   stopAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
-      // Stop the session in the state manager (aborts LLM requests, kills processes)
-      agentSessionStateManager.stopSession(input.sessionId)
-
-      // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
-      toolApprovalManager.cancelSessionApprovals(input.sessionId)
-
-      // Abort client-side tracking of ACP runs spawned by this session.
-      // This stops our polling/streaming but does NOT cancel the server-side run.
-      // Prevents completed remote runs from writing back to the dead session (zombie prevention).
-      try {
-        const { acpClientService } = await import("./acp")
-        const cancelledAcpRuns = acpClientService.cancelRunsByParentSession(
-          input.sessionId,
-        )
-        if (cancelledAcpRuns > 0) {
-          logLLM(
-            `[stopAgentSession] Cancelled ${cancelledAcpRuns} ACP run(s) for session ${input.sessionId}`,
-          )
-        }
-      } catch (error) {
-        logApp("[stopAgentSession] Error cancelling ACP runs:", error)
-      }
-
-      // Cancel any internal sub-sessions spawned by this session
-      try {
-        const { getChildSubSessions, cancelSubSession } =
-          await import("./acp/internal-agent")
-        const childSessions = getChildSubSessions(input.sessionId)
-        for (const child of childSessions) {
-          if (child.status === "running") {
-            cancelSubSession(child.id)
-            logLLM(
-              `[stopAgentSession] Cancelled internal sub-session ${child.id}`,
-            )
-          }
-        }
-      } catch (error) {
-        logApp(
-          "[stopAgentSession] Error cancelling internal sub-sessions:",
-          error,
-        )
-      }
-
-      // Pause the message queue for this conversation to prevent processing the next queued message
-      // The user can resume the queue later if they want to continue
-      const session = agentSessionTracker.getSession(input.sessionId)
-      if (session?.conversationId) {
-        messageQueueService.pauseQueue(session.conversationId)
-        logLLM(
-          `[stopAgentSession] Paused queue for conversation ${session.conversationId}`,
-        )
-      }
-
-      const runId = agentSessionStateManager.getSessionRunId(input.sessionId)
-
-      // Immediately emit a final progress update with isComplete: true
-      // This ensures the UI updates immediately without waiting for the agent loop
-      // to detect the stop signal and emit its own final update
-      await emitAgentProgress({
-        sessionId: input.sessionId,
-        runId,
-        currentIteration: 0,
-        maxIterations: 0,
-        steps: [
-          {
-            id: `stop_${Date.now()}`,
-            type: "completion",
-            title: "Agent stopped",
-            description:
-              "Agent mode was stopped by emergency kill switch. Queue paused.",
-            status: "error",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: true,
-        finalContent: "(Agent mode was stopped by emergency kill switch)",
-        conversationHistory: [],
-      })
-
-      // Mark the session as stopped in the tracker (removes from active sessions UI)
-      agentSessionTracker.stopSession(input.sessionId)
+      await stopManagedAgentSession(input.sessionId)
 
       return { success: true }
     }),

@@ -101,6 +101,10 @@ const sharedSessionSource = readFileSync(
   new URL("../../../../packages/shared/src/session.ts", import.meta.url),
   "utf8",
 )
+const agentSessionManagementSource = readFileSync(
+  new URL("./agent-session-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedAgentProfilesSource = readFileSync(
   new URL("../../../../packages/shared/src/agent-profiles.ts", import.meta.url),
   "utf8",
@@ -348,6 +352,35 @@ describe("CLI and desktop feature paths", () => {
     expect(mobileSessionsSource).toContain(
       "setConversationSessionStateMembership(",
     )
+  })
+
+  it("shares tracked agent-session snapshots and stop/clear actions across CLI and desktop surfaces", () => {
+    expect(agentSessionManagementSource).toContain(
+      "export function getManagedAgentSessions(",
+    )
+    expect(agentSessionManagementSource).toContain(
+      "export function clearManagedInactiveAgentSessions(",
+    )
+    expect(agentSessionManagementSource).toContain(
+      "export async function stopManagedAgentSession(",
+    )
+    expect(agentSessionManagementSource).toContain(
+      "export function resolveManagedAgentSessionSelection",
+    )
+    expect(headlessCliSource).toContain("getManagedAgentSessions()")
+    expect(headlessCliSource).toContain('case "/sessions":')
+    expect(headlessCliSource).toContain('case "/session-stop":')
+    expect(headlessCliSource).toContain('case "/sessions-clear":')
+    expect(headlessCliSource).toContain("resolveManagedAgentSessionSelection(")
+    expect(headlessCliSource).toContain("await stopManagedAgentSession(")
+    expect(headlessCliSource).toContain("clearManagedInactiveAgentSessions()")
+    expect(tipcSource).toContain("const { clearedCount } = clearManagedInactiveAgentSessions()")
+    expect(tipcSource).toContain("return getManagedAgentSessions()")
+    expect(tipcSource).toContain("await stopManagedAgentSession(input.sessionId)")
+    expect(docsSource).toContain("## Shared agent session management")
+    expect(docsSource).toContain("`/sessions`")
+    expect(docsSource).toContain("`/session-stop`")
+    expect(docsSource).toContain("`/sessions-clear`")
   })
 
   it("shares conversation browsing and management across CLI, desktop, remote, and runtime tool surfaces", () => {

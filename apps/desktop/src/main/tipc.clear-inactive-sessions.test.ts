@@ -6,11 +6,21 @@ const trackerSource = readFileSync(
   new URL("./agent-session-tracker.ts", import.meta.url),
   "utf8",
 )
+const sessionManagementSource = readFileSync(
+  new URL("./agent-session-management.ts", import.meta.url),
+  "utf8",
+)
 
 describe("tipc clearInactiveSessions", () => {
   it("keeps completed sessions with queued follow-ups out of bulk inactive cleanup", () => {
-    expect(tipcSource).toContain("agentSessionTracker.clearCompletedSessions((session) => {")
-    expect(tipcSource).toContain("messageQueueService.getQueue(session.conversationId).length === 0")
+    expect(sessionManagementSource).toContain(
+      "agentSessionTracker.clearCompletedSessions((session) => {",
+    )
+    expect(sessionManagementSource).toContain(
+      "messageQueueService.getQueue(session.conversationId).length === 0",
+    )
+    expect(tipcSource).toContain("const { clearedCount } = clearManagedInactiveAgentSessions()")
+    expect(tipcSource).toContain("return { success: true, clearedCount }")
     expect(trackerSource).toContain("clearCompletedSessions(")
     expect(trackerSource).toContain("shouldClear: (session: AgentSession) => boolean = () => true")
     expect(trackerSource).toContain("if (shouldClear(session)) {")

@@ -9,8 +9,14 @@ import readline from "readline"
 import { configStore } from "./config"
 import { mcpService } from "./mcp-service"
 import { toolApprovalManager } from "./state"
-import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
+import type { AgentSession } from "./agent-session-tracker"
+import {
+  clearManagedInactiveAgentSessions,
+  getManagedAgentSessions,
+  resolveManagedAgentSessionSelection,
+  stopManagedAgentSession,
+} from "./agent-session-management"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
 import {
   createManagedLoop,
@@ -156,6 +162,7 @@ const RECENT_CONVERSATION_LIMIT = 10
 const SHOWN_CONVERSATION_MESSAGE_LIMIT = 12
 const SHOWN_MCP_SERVER_LOG_LIMIT = 20
 const SHOWN_KNOWLEDGE_NOTE_LIST_LIMIT = 25
+const SHOWN_AGENT_SESSION_LIMIT = 8
 let onShutdown: () => Promise<void> = async () => {
   process.exit(0)
 }
@@ -226,6 +233,9 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/quit${colors.reset}, ${colors.cyan}/exit${colors.reset}  - Exit the CLI
   ${colors.cyan}/stop${colors.reset}          - Emergency stop current agent session
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
+  ${colors.cyan}/sessions${colors.reset}      - List active and recent tracked agent sessions
+  ${colors.cyan}/session-stop <id>${colors.reset} - Stop one tracked agent session by ID or prefix
+  ${colors.cyan}/sessions-clear${colors.reset} - Clear inactive sessions without queued follow-ups
   ${colors.cyan}/settings${colors.reset}      - Show the shared remote/headless settings snapshot
   ${colors.cyan}/settings-edit <json>${colors.reset} - Update the shared settings subset from a JSON payload
   ${colors.cyan}/mcp${colors.reset}           - List MCP servers with live status and transport
@@ -1491,7 +1501,7 @@ async function handleBundlePublishPayload(input: string): Promise<void> {
 }
 
 function printStatus() {
-  const activeSessions = agentSessionTracker.getActiveSessions()
+  const { activeSessions } = getManagedAgentSessions()
   const currentAgent = getManagedCurrentAgentProfile()
   const { model, providerDisplayName } = resolveChatModelDisplayInfo(
     configStore.get(),
@@ -1513,16 +1523,92 @@ function printStatus() {
 
   printMcpServers({ includeHint: false })
 
-  console.log(`\n${colors.bold}Active Sessions:${colors.reset}`)
-  if (activeSessions.length === 0) {
-    console.log(`  ${colors.dim}(no active sessions)${colors.reset}`)
-  } else {
-    for (const session of activeSessions) {
-      console.log(
-        `  ${session.id}: ${session.conversationTitle || "(untitled)"}`,
+  printAgentSessionSection("Active Sessions", activeSessions, {
+    emptyMessage: "(no active sessions)",
+    limit: SHOWN_AGENT_SESSION_LIMIT,
+  })
+  console.log()
+}
+
+function getAgentSessionTimestampLabel(session: AgentSession): string {
+  const timestamp =
+    session.status === "active"
+      ? session.startTime
+      : session.endTime ?? session.startTime
+  const prefix = session.status === "active" ? "started" : "updated"
+  return `${prefix} ${new Date(timestamp).toLocaleString()}`
+}
+
+function formatAgentSessionSelectionSummary(session: AgentSession): string {
+  const title = session.conversationTitle || "(untitled)"
+  const statusLabels: string[] = [session.status]
+  if (session.isSnoozed) {
+    statusLabels.push("snoozed")
+  }
+
+  return `${session.id} (${title}, ${statusLabels.join(", ")}, ${getAgentSessionTimestampLabel(session)})`
+}
+
+function printAgentSessionSection(
+  title: string,
+  sessions: AgentSession[],
+  options: {
+    emptyMessage: string
+    limit?: number
+  },
+): void {
+  console.log(`\n${colors.bold}${title}:${colors.reset}`)
+  if (sessions.length === 0) {
+    console.log(`  ${colors.dim}${options.emptyMessage}${colors.reset}`)
+    return
+  }
+
+  const shownSessions = sessions.slice(0, options.limit ?? sessions.length)
+  for (const session of shownSessions) {
+    const labels: string[] = [session.status]
+    if (session.isSnoozed) {
+      labels.push("snoozed")
+    }
+    if (
+      typeof session.currentIteration === "number" &&
+      typeof session.maxIterations === "number" &&
+      session.maxIterations > 0
+    ) {
+      labels.push(
+        `${Math.min(session.currentIteration, session.maxIterations)}/${session.maxIterations} iters`,
       )
     }
+
+    console.log(
+      `  ${session.id}: ${session.conversationTitle || "(untitled)"} ${colors.dim}[${labels.join(", ")} | ${getAgentSessionTimestampLabel(session)}]${colors.reset}`,
+    )
   }
+
+  if (sessions.length > shownSessions.length) {
+    console.log(
+      `  ${colors.dim}Showing ${shownSessions.length} of ${sessions.length} sessions.${colors.reset}`,
+    )
+  }
+}
+
+function printAgentSessions(): void {
+  const { activeSessions, recentSessions } = getManagedAgentSessions({
+    recentLimit: SHOWN_AGENT_SESSION_LIMIT,
+  })
+
+  printAgentSessionSection("Active Sessions", activeSessions, {
+    emptyMessage: "(no active sessions)",
+    limit: SHOWN_AGENT_SESSION_LIMIT,
+  })
+  printAgentSessionSection("Recent Sessions", recentSessions, {
+    emptyMessage: "(no recent sessions)",
+    limit: SHOWN_AGENT_SESSION_LIMIT,
+  })
+
+  console.log()
+  console.log(
+    `${colors.dim}Use /session-stop <session-id-or-prefix> to stop a tracked run, or /sessions-clear to remove inactive sessions without queued follow-ups.${colors.reset}`,
+  )
   console.log()
 }
 
@@ -3128,6 +3214,70 @@ async function handleDeleteAllConversations(): Promise<void> {
   )
 }
 
+function resolveAgentSessionSelectionForCli(
+  selection: string,
+  usage: string,
+): AgentSession | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const { activeSessions } = getManagedAgentSessions({
+    recentLimit: SHOWN_AGENT_SESSION_LIMIT,
+  })
+  const { selectedSession, ambiguousSessions } =
+    resolveManagedAgentSessionSelection(activeSessions, query)
+
+  if (selectedSession) {
+    return selectedSession
+  }
+
+  if (ambiguousSessions?.length) {
+    printColored(
+      colors.yellow,
+      `Session selector "${query}" matches multiple active sessions:`,
+    )
+    for (const session of ambiguousSessions.slice(0, SHOWN_AGENT_SESSION_LIMIT)) {
+      console.log(`  ${formatAgentSessionSelectionSummary(session)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `Active session not found: ${query}`)
+  return null
+}
+
+async function handleStopAgentSession(selection: string): Promise<void> {
+  const selectedSession = resolveAgentSessionSelectionForCli(
+    selection,
+    "Usage: /session-stop <session-id-or-prefix>",
+  )
+  if (!selectedSession) {
+    return
+  }
+
+  await stopManagedAgentSession(selectedSession.id)
+  printColored(
+    colors.green,
+    `Stopped session ${selectedSession.id}: ${selectedSession.conversationTitle || "(untitled)"}`,
+  )
+}
+
+function handleClearInactiveAgentSessions(): void {
+  const { clearedCount } = clearManagedInactiveAgentSessions()
+  if (clearedCount === 0) {
+    printColored(colors.dim, "No inactive sessions were eligible for cleanup.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Cleared ${clearedCount} inactive session${clearedCount === 1 ? "" : "s"}.`,
+  )
+}
+
 async function handleStop() {
   if (!isProcessing) {
     printColored(colors.yellow, "No agent session is currently running.")
@@ -3170,6 +3320,15 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/status":
       printStatus()
+      return true
+    case "/sessions":
+      printAgentSessions()
+      return true
+    case "/session-stop":
+      await handleStopAgentSession(argumentsText)
+      return true
+    case "/sessions-clear":
+      handleClearInactiveAgentSessions()
       return true
     case "/settings":
       printSettings()
