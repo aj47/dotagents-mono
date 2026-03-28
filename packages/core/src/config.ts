@@ -358,13 +358,12 @@ const getConfig = (): LoadedConfig => {
   delete (mergedConfig as Record<string, unknown>).panelAgentModeSize
   delete (mergedConfig as Record<string, unknown>).panelTextInputModeSize
 
-  const legacyExists = (() => {
-    try {
-      return fs.existsSync(configFilePath)
-    } catch {
-      return false
-    }
-  })()
+  let legacyExists = false
+  try {
+    legacyExists = fs.existsSync(configFilePath)
+  } catch {
+    legacyExists = false
+  }
 
   return {
     config: migrateGroqTtsConfig(mergedConfig),
