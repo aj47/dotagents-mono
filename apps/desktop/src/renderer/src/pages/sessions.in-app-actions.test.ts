@@ -37,7 +37,14 @@ describe("sessions in-app actions", () => {
 
   it("keeps sidebar session clicks always selecting the expanded session", () => {
     expect(sidebarSource).toContain("setExpandedSessionId(sessionId)")
+    expect(sidebarSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
     expect(sidebarSource).not.toContain("setExpandedSessionId(null)")
+  })
+
+  it("clears stale pending past-session state when returning to an active session", () => {
+    expect(appLayoutSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
+    expect(sessionsSource).toContain("if (!navigationState?.clearPendingConversation) return")
+    expect(sessionsSource).toContain('navigate(`${location.pathname}${location.search}`, { replace: true, state: null })')
   })
 
   it("routes start and prompt controls through the sidebar instead of the sessions top bar", () => {

@@ -443,7 +443,7 @@ export function ActiveAgentsSidebar({
   const handleSessionClick = (sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Session clicked:", sessionId)
     // Navigate to sessions page and focus this session
-    navigate("/")
+    navigate("/", { state: { clearPendingConversation: true } })
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
   }

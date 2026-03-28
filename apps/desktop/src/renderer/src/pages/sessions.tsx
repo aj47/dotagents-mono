@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
-import { useParams, useOutletContext } from "react-router-dom"
+import { useParams, useOutletContext, useLocation, useNavigate } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { AgentProgress } from "@renderer/components/agent-progress"
@@ -40,6 +40,10 @@ interface LayoutContext {
     agentName?: string
     onSubmitted?: () => void
   }) => void
+}
+
+type SessionsNavigationState = {
+  clearPendingConversation?: boolean
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -272,6 +276,8 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
 export function Component() {
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
   const layoutContext = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const {
     onOpenPastSessionsDialog,
@@ -318,6 +324,7 @@ export function Component() {
   const [pendingContinuationStartedAt, setPendingContinuationStartedAt] = useState<number | null>(null)
   const pendingConversationIdRef = useRef<string | null>(pendingConversationId)
   const pendingContinuationStartedAtRef = useRef<number | null>(pendingContinuationStartedAt)
+  const navigationState = location.state as SessionsNavigationState | null
 
   useEffect(() => {
     pendingConversationIdRef.current = pendingConversationId
@@ -455,6 +462,14 @@ export function Component() {
       window.history.replaceState(null, "", "/")
     }
   }, [routeHistoryItemId, agentProgressById, setExpandedSessionId, setFocusedSessionId])
+
+  useEffect(() => {
+    if (!navigationState?.clearPendingConversation) return
+
+    setPendingContinuationStartedAt(null)
+    setPendingConversationId(null)
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+  }, [location.pathname, location.search, navigationState, navigate])
 
   // Load the pending conversation data when one is selected
   const pendingConversationQuery = useQuery({

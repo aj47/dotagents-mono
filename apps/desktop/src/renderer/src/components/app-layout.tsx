@@ -270,7 +270,7 @@ export const Component = () => {
 
   const handleCollapsedSessionClick = useCallback(
     (sessionId: string) => {
-      navigate("/")
+      navigate("/", { state: { clearPendingConversation: true } })
       setFocusedSessionId(sessionId)
       setScrollToSessionId(sessionId)
     },
