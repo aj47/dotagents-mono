@@ -77,6 +77,11 @@ function readJsonFileSync<T>(filePath: string, onError?: (error: unknown) => voi
   }
 }
 
+function mergeById<T extends { id: string }>(primary: T[], fallback: T[]): T[] {
+  const primaryIds = new Set(primary.map((item) => item.id))
+  return [...primary, ...fallback.filter((item) => !primaryIds.has(item.id))]
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string")
 }
@@ -286,7 +291,10 @@ class AgentProfileService {
    */
   private loadProfiles(): AgentProfilesData {
     // 1. Try loading from modular .agents/agents/ directory
-    const legacyProfileData = readJsonFileSync<AgentProfilesData>(agentProfilesPath)
+    let legacyProfileDataError: unknown
+    const legacyProfileData = readJsonFileSync<AgentProfilesData>(agentProfilesPath, (error) => {
+      legacyProfileDataError = error
+    })
 
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
     const globalResult = loadAgentProfilesLayer(globalLayer)
@@ -318,15 +326,15 @@ class AgentProfileService {
     }
 
     // 2. Try loading from legacy agent-profiles.json and migrate to modular
-    const legacyProfileDataForMigration = readJsonFileSync<AgentProfilesData>(agentProfilesPath, (error) =>
-      logApp("Error loading agent profiles:", error)
-    )
-    if (legacyProfileDataForMigration) {
-      this.profilesData = legacyProfileDataForMigration
+    if (legacyProfileData) {
+      this.profilesData = legacyProfileData
       this.syncPromptsFromLayer(this.profilesData)
       // Migrate: write each profile as modular files
-      this.migrateToModularFiles(legacyProfileDataForMigration.profiles)
-      return legacyProfileDataForMigration
+      this.migrateToModularFiles(legacyProfileData.profiles)
+      return legacyProfileData
+    }
+    if (legacyProfileDataError) {
+      logApp("Error loading agent profiles:", legacyProfileDataError)
     }
 
     // 3. Try to migrate from very old legacy formats
@@ -623,9 +631,7 @@ class AgentProfileService {
     // Use getByRole, but also include legacy isUserProfile for backward compatibility
     const byRole = this.getByRole("user-profile")
     const byLegacy = this.getAll().filter((p) => p.isUserProfile && !p.role)
-    // Combine and deduplicate by id
-    const ids = new Set(byRole.map(p => p.id))
-    return [...byRole, ...byLegacy.filter(p => !ids.has(p.id))]
+    return mergeById(byRole, byLegacy)
   }
 
   /**
@@ -636,9 +642,7 @@ class AgentProfileService {
     // Use getByRole, but also include legacy isAgentTarget for backward compatibility
     const byRole = this.getByRole("delegation-target")
     const byLegacy = this.getAll().filter((p) => p.isAgentTarget && !p.role)
-    // Combine and deduplicate by id
-    const ids = new Set(byRole.map(p => p.id))
-    return [...byRole, ...byLegacy.filter(p => !ids.has(p.id))]
+    return mergeById(byRole, byLegacy)
   }
 
   /**
