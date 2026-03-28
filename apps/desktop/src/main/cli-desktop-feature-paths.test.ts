@@ -38,6 +38,10 @@ const cloudflareRuntimeSource = readFileSync(
   new URL("./cloudflare-runtime.ts", import.meta.url),
   "utf8",
 )
+const remoteServerQrSource = readFileSync(
+  new URL("./remote-server-qr.ts", import.meta.url),
+  "utf8",
+)
 const headlessRuntimeSource = readFileSync(
   new URL("./headless-runtime.ts", import.meta.url),
   "utf8",
@@ -150,8 +154,14 @@ describe("CLI and desktop feature paths", () => {
     expect(remoteAccessRuntimeSource).toContain(
       "startConfiguredCloudflareTunnel",
     )
+    expect(remoteServerQrSource).toContain(
+      "export async function printSharedRemoteServerQrCode",
+    )
     expect(remoteAccessRuntimeSource).toContain("startRemoteServerForced({")
     expect(remoteAccessRuntimeSource).toContain("return startRemoteServer()")
+    expect(remoteServerSource).toContain("printSharedRemoteServerQrCode({")
+    expect(remoteServerSource).toContain('mode: "auto"')
+    expect(remoteServerSource).toContain('mode: "manual"')
     expect(headlessRuntimeSource).toContain("shutdownSharedRuntimeServices({")
     expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
     expect(indexSource).toContain("syncConfiguredRemoteAccess({")
@@ -178,6 +188,7 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(docsSource).toContain("Shared non-GUI mode launcher")
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
+    expect(docsSource).toContain("Shared remote server QR printing")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -195,5 +206,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Desktop GUI shutdown")
     expect(docsSource).toContain("Headless non-GUI shutdown")
     expect(docsSource).toContain("Headless CLI conversation resume selection")
+    expect(docsSource).toContain("Desktop/manual remote server QR print")
+    expect(docsSource).toContain("Remote server startup QR auto-print")
   })
 })

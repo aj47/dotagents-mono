@@ -135,6 +135,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Headless CLI Ctrl+C** stays owned by the terminal REPL, while the shared non-GUI launcher only claims `SIGTERM` for that mode so stop-or-exit behavior matches the CLI surface instead of racing a global shutdown handler.
 - **Desktop remote access, headless CLI, and QR pairing** now share the same remote-access bootstrap, so remote-server startup plus config-driven Cloudflare auto-start and QR fallback behavior stay aligned across surfaces.
 - **Desktop startup and desktop settings reconfiguration** now also share the same config-driven remote-access reconciler, so enabling, disabling, or restarting the remote server from settings follows the same Cloudflare auto-start/stop rules as app startup.
+- **Terminal QR printing** now also shares one helper, so headless auto-print, desktop manual QR printing, and `--qr` override URLs all apply the same API-key, streamer-mode, and URL-resolution rules before printing pairing output.
 - **Desktop quit and non-GUI graceful shutdown** now also share the same runtime teardown helper, so loop shutdown plus ACP, MCP, and remote-server cleanup stay aligned while the GUI layers keyboard-listener cleanup on top.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.

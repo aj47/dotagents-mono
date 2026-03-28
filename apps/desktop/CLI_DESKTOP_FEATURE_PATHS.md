@@ -72,6 +72,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Tunnel bootstrap helper: `startConfiguredCloudflareTunnel(...)`
 - Activation modes: `"auto"` for config-driven startup and `"force"` for QR pairing
 
+## Shared remote server QR printing
+
+- Shared QR file: `apps/desktop/src/main/remote-server-qr.ts`
+- Shared helper: `printSharedRemoteServerQrCode(...)`
+- Current callers: `remote-server.ts` startup auto-print and `printQRCodeToTerminal(...)` for GUI/manual/QR-triggered printing
+
 ## Shared runtime shutdown
 
 - Shared shutdown file: `apps/desktop/src/main/app-runtime.ts`
@@ -108,6 +114,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-runtime.ts` logs the mode-specific shutdown banner, then calls `shutdownSharedRuntimeServices(...)` before `process.exit(...)` so `--headless` and `--qr` tear down loops, ACP, MCP, and the remote server through the same helper the GUI uses.
 14. Headless CLI conversation resume selection
     `headless-cli.ts` now resolves `/use` and `/show` targets through `resolveConversationHistorySelection(...)`, so selecting a prior conversation by full ID or unique prefix goes through one shared lookup path before the next CLI prompt reuses `startSharedPromptRun(...)` with that conversation ID.
+15. Desktop/manual remote server QR print
+    `tipc.ts printRemoteServerQRCode` calls `printQRCodeToTerminal(...)`, which now delegates to `printSharedRemoteServerQrCode(...)` so manual terminal QR output shares the same server/api-key guards and URL normalization path as startup auto-print and `--qr`.
+16. Remote server startup QR auto-print
+    `remote-server.ts startRemoteServerInternal(...)` now also calls `printSharedRemoteServerQrCode(...)` in `auto` mode, so headless auto-print and the desktop "Terminal QR Code" setting share one enablement, streamer-mode, and LAN URL-resolution path before printing.
 
 ## Parity rules
 
@@ -128,6 +138,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `--headless` and `--qr` now also share the same top-level non-GUI launcher through `launchSharedHeadlessMode(...)`, so startup failures and signal registration are decided in one place.
 - Headless CLI intentionally narrows that shared launcher to `SIGTERM` so `headless-cli.ts` keeps owning terminal `SIGINT` / Ctrl+C behavior for stop-or-exit parity instead of racing a global shutdown handler.
 - Cloudflare tunnel startup is decided in one place: `startConfiguredCloudflareTunnel(...)`, so desktop auto-start, headless CLI auto-start, and QR pairing all converge on the same named-vs-quick tunnel logic.
+- Remote server QR printing is decided in one place: `printSharedRemoteServerQrCode(...)`, so startup auto-print, manual terminal QR printing, and QR-mode override URLs all share the same guard and URL-resolution rules before printing.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 - Runtime teardown is decided in one place: `shutdownSharedRuntimeServices(...)`, so GUI quit and non-GUI graceful shutdown both stop loops and clean up ACP, MCP, and remote-server state through the same helper.
 
@@ -143,6 +154,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms fresh desktop UI, queued desktop follow-ups, headless CLI, remote server, loop, GUI startup, headless startup, QR startup, headless CLI conversation selection, and ACP parent-resume paths still point at the intended shared helpers.
 - `apps/desktop/src/main/remote-server.routes.test.ts`
   Confirms the remote server keeps using the shared prompt runner and does not reintroduce ad hoc legacy runtime flag resets.
+- `apps/desktop/src/main/remote-server-qr.test.ts`
+  Confirms startup auto-print, manual terminal QR printing, streamer-mode suppression, and QR-mode override URLs all converge on the shared remote-server QR helper.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared runtime helpers register IPC/serve infrastructure, support awaited headless startup, preserve background desktop startup, and centralize GUI/headless teardown.
 - `apps/desktop/src/main/headless-runtime.test.ts`

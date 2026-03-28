@@ -9,7 +9,9 @@ function getRemoteServerSource(): string {
   return readFileSync(remoteServerPath, "utf8")
 }
 
-function getDuplicateRoutes(source: string): Array<{ key: string; lines: number[] }> {
+function getDuplicateRoutes(
+  source: string,
+): Array<{ key: string; lines: number[] }> {
   const routeRegex = /fastify\.(get|post|patch|delete|put)\("([^"]+)"/g
   const linesByRoute = new Map<string, number[]>()
 
@@ -27,7 +29,11 @@ function getDuplicateRoutes(source: string): Array<{ key: string; lines: number[
     .map(([key, lines]) => ({ key, lines }))
 }
 
-function getSection(source: string, startMarker: string, endMarker: string): string {
+function getSection(
+  source: string,
+  startMarker: string,
+  endMarker: string,
+): string {
   const startIndex = source.indexOf(startMarker)
   const endIndex = source.indexOf(endMarker)
 
@@ -65,11 +71,33 @@ describe("remote-server route registration", () => {
     expect(source).not.toContain("state.agentIterationCount = 0")
   })
 
+  it("routes startup and manual terminal QR printing through the shared helper", () => {
+    const source = getRemoteServerSource()
+
+    expect(source).toContain("printSharedRemoteServerQrCode({")
+    expect(source).toContain('mode: "auto"')
+    expect(source).toContain('mode: "manual"')
+    expect(source).not.toContain('urlOverride.endsWith("/v1")')
+    expect(source).not.toContain("printTerminalQRCode(serverUrl")
+  })
+
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
-    const listInjectedMcpToolsSection = getSection(source, "const listInjectedMcpTools = async", "const callInjectedMcpTool = async")
-    const callInjectedMcpToolSection = getSection(source, "const callInjectedMcpTool = async", "const handleInjectedMcpProtocolRequest = async")
-    const streamableMcpSection = getSection(source, "const handleInjectedMcpProtocolRequest = async", "// POST /mcp/tools/list - List all available injected runtime tools")
+    const listInjectedMcpToolsSection = getSection(
+      source,
+      "const listInjectedMcpTools = async",
+      "const callInjectedMcpTool = async",
+    )
+    const callInjectedMcpToolSection = getSection(
+      source,
+      "const callInjectedMcpTool = async",
+      "const handleInjectedMcpProtocolRequest = async",
+    )
+    const streamableMcpSection = getSection(
+      source,
+      "const handleInjectedMcpProtocolRequest = async",
+      "// POST /mcp/tools/list - List all available injected runtime tools",
+    )
 
     expect(source).toContain("function getAcpMcpRequestContext")
     expect(source).toContain("function getInjectedRuntimeToolsForAcpSession")
@@ -83,19 +111,43 @@ describe("remote-server route registration", () => {
     expect(source).toContain("INVALID_ACP_SESSION_CONTEXT_ERROR")
     expect(source).toContain("StreamableHTTPServerTransport")
     expect(source).toContain("isInitializeRequest(req.body)")
-    expect(listInjectedMcpToolsSection).toContain("getInjectedRuntimeToolsForAcpSession(acpSessionToken)")
-    expect(listInjectedMcpToolsSection).toContain("reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })")
-    expect(listInjectedMcpToolsSection).toContain("reply.send({ tools: injectedRuntimeTools.tools })")
-    expect(listInjectedMcpToolsSection).not.toContain("mcpService.getAvailableTools()")
-    expect(source).toContain("?? getPendingAppSessionForClientSessionToken(acpSessionToken)")
-    expect(callInjectedMcpToolSection).toContain("getInjectedRuntimeToolsForAcpSession(acpSessionToken)")
-    expect(callInjectedMcpToolSection).toContain("reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })")
-    expect(callInjectedMcpToolSection).toContain("injectedRuntimeTools.requestContext.appSessionId")
-    expect(callInjectedMcpToolSection).toContain("injectedRuntimeTools.requestContext.profileSnapshot.mcpServerConfig")
-    expect(callInjectedMcpToolSection).not.toContain("profileSnapshot?.mcpServerConfig")
+    expect(listInjectedMcpToolsSection).toContain(
+      "getInjectedRuntimeToolsForAcpSession(acpSessionToken)",
+    )
+    expect(listInjectedMcpToolsSection).toContain(".code(401)")
+    expect(listInjectedMcpToolsSection).toContain(
+      ".send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })",
+    )
+    expect(listInjectedMcpToolsSection).toContain(
+      "reply.send({ tools: injectedRuntimeTools.tools })",
+    )
+    expect(listInjectedMcpToolsSection).not.toContain(
+      "mcpService.getAvailableTools()",
+    )
+    expect(source).toContain(
+      "getPendingAppSessionForClientSessionToken(acpSessionToken)",
+    )
+    expect(callInjectedMcpToolSection).toContain(
+      "getInjectedRuntimeToolsForAcpSession(acpSessionToken)",
+    )
+    expect(callInjectedMcpToolSection).toContain(".code(401)")
+    expect(callInjectedMcpToolSection).toContain(
+      ".send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })",
+    )
+    expect(callInjectedMcpToolSection).toContain(
+      "injectedRuntimeTools.requestContext.appSessionId",
+    )
+    expect(callInjectedMcpToolSection).toContain(
+      "injectedRuntimeTools.requestContext.profileSnapshot.mcpServerConfig",
+    )
+    expect(callInjectedMcpToolSection).not.toContain(
+      "profileSnapshot?.mcpServerConfig",
+    )
     expect(streamableMcpSection).toContain("new StreamableHTTPServerTransport")
     expect(streamableMcpSection).toContain("reply.hijack()")
-    expect(streamableMcpSection).toContain("transport.handleRequest(req.raw, reply.raw, req.body)")
+    expect(streamableMcpSection).toContain(
+      "transport.handleRequest(req.raw, reply.raw, req.body)",
+    )
   })
 
   it("registers note-only knowledge routes", () => {
@@ -115,14 +167,27 @@ describe("remote-server route registration", () => {
 
   it("does not report repeat task toggles as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
-    const toggleLoopSection = getSection(source, 'fastify.post("/v1/loops/:id/toggle"', '// POST /v1/loops/:id/run - Run a repeat task immediately')
+    const toggleLoopSection = getSection(
+      source,
+      'fastify.post("/v1/loops/:id/toggle"',
+      "// POST /v1/loops/:id/run - Run a repeat task immediately",
+    )
 
-    expect(toggleLoopSection).toContain("const saved = loopService.saveLoop(updated)")
-    expect(toggleLoopSection).toContain('if (!saved) {')
-    expect(toggleLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task toggle" })')
+    expect(toggleLoopSection).toContain(
+      "const saved = loopService.saveLoop(updated)",
+    )
+    expect(toggleLoopSection).toContain("if (!saved) {")
+    expect(toggleLoopSection).toContain(".code(500)")
+    expect(toggleLoopSection).toContain(
+      '.send({ error: "Failed to persist repeat task toggle" })',
+    )
 
-    const saveIndex = toggleLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
-    const failureIndex = toggleLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task toggle" })')
+    const saveIndex = toggleLoopSection.indexOf(
+      "const saved = loopService.saveLoop(updated)",
+    )
+    const failureIndex = toggleLoopSection.indexOf(
+      '.send({ error: "Failed to persist repeat task toggle" })',
+    )
     const successIndex = toggleLoopSection.indexOf("return reply.send({")
 
     expect(saveIndex).toBeGreaterThanOrEqual(0)
@@ -132,15 +197,28 @@ describe("remote-server route registration", () => {
 
   it("does not report repeat task creation as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
-    const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+    const createLoopSection = getSection(
+      source,
+      'fastify.post("/v1/loops"',
+      "// PATCH /v1/loops/:id - Update a loop/repeat task",
+    )
 
-    expect(createLoopSection).toContain("const saved = loopService.saveLoop(newLoop)")
-    expect(createLoopSection).toContain('if (!saved) {')
-    expect(createLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+    expect(createLoopSection).toContain(
+      "const saved = loopService.saveLoop(newLoop)",
+    )
+    expect(createLoopSection).toContain("if (!saved) {")
+    expect(createLoopSection).toContain(".code(500)")
+    expect(createLoopSection).toContain(
+      '.send({ error: "Failed to persist repeat task" })',
+    )
 
-    const saveIndex = createLoopSection.indexOf("const saved = loopService.saveLoop(newLoop)")
-    const failureIndex = createLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task" })')
-    const successIndex = createLoopSection.indexOf('return reply.send({ loop: await formatLoopResponse(loopService?.getLoop(newLoop.id) ?? newLoop) })')
+    const saveIndex = createLoopSection.indexOf(
+      "const saved = loopService.saveLoop(newLoop)",
+    )
+    const failureIndex = createLoopSection.indexOf(
+      '.send({ error: "Failed to persist repeat task" })',
+    )
+    const successIndex = createLoopSection.indexOf("return reply.send({")
 
     expect(saveIndex).toBeGreaterThanOrEqual(0)
     expect(failureIndex).toBeGreaterThan(saveIndex)
@@ -149,15 +227,28 @@ describe("remote-server route registration", () => {
 
   it("does not report repeat task updates as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
-    const updateLoopSection = getSection(source, 'fastify.patch("/v1/loops/:id"', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+    const updateLoopSection = getSection(
+      source,
+      'fastify.patch("/v1/loops/:id"',
+      "// DELETE /v1/loops/:id - Delete a loop/repeat task",
+    )
 
-    expect(updateLoopSection).toContain("const saved = loopService.saveLoop(updated)")
-    expect(updateLoopSection).toContain('if (!saved) {')
-    expect(updateLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+    expect(updateLoopSection).toContain(
+      "const saved = loopService.saveLoop(updated)",
+    )
+    expect(updateLoopSection).toContain("if (!saved) {")
+    expect(updateLoopSection).toContain(".code(500)")
+    expect(updateLoopSection).toContain(
+      '.send({ error: "Failed to persist repeat task" })',
+    )
 
-    const saveIndex = updateLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
-    const failureIndex = updateLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task" })')
-    const successIndex = updateLoopSection.indexOf('return reply.send({ success: true, loop: await formatLoopResponse(loopService?.getLoop(params.id) ?? updated) })')
+    const saveIndex = updateLoopSection.indexOf(
+      "const saved = loopService.saveLoop(updated)",
+    )
+    const failureIndex = updateLoopSection.indexOf(
+      '.send({ error: "Failed to persist repeat task" })',
+    )
+    const successIndex = updateLoopSection.indexOf("return reply.send({")
 
     expect(saveIndex).toBeGreaterThanOrEqual(0)
     expect(failureIndex).toBeGreaterThan(saveIndex)
