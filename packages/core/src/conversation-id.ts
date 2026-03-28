@@ -59,11 +59,7 @@ function getConversationIdStorageError(conversationId: string): string | null {
   return null
 }
 
-export function sanitizeConversationId(conversationId: string): string {
-  return conversationId.replace(/[^a-zA-Z0-9_\-@.]/g, "_")
-}
-
-export function getConversationIdValidationError(conversationId: string): string | null {
+function validateConversationIdInput(conversationId: string): string | null {
   if (!conversationId || conversationId.trim().length === 0) {
     return "Invalid conversation ID: empty value not allowed"
   }
@@ -72,6 +68,19 @@ export function getConversationIdValidationError(conversationId: string): string
   }
   if (conversationId.includes("..") || conversationId.includes("/") || conversationId.includes("\\")) {
     return "Invalid conversation ID: path traversal characters not allowed"
+  }
+
+  return null
+}
+
+export function sanitizeConversationId(conversationId: string): string {
+  return conversationId.replace(/[^a-zA-Z0-9_\-@.]/g, "_")
+}
+
+export function getConversationIdValidationError(conversationId: string): string | null {
+  const validationError = validateConversationIdInput(conversationId)
+  if (validationError) {
+    return validationError
   }
 
   const storageError = getConversationIdStorageError(conversationId)
@@ -94,14 +103,9 @@ export function assertSafeConversationId(conversationId: string): void {
 }
 
 export function validateAndSanitizeConversationId(conversationId: string): string {
-  if (!conversationId || conversationId.trim().length === 0) {
-    throw new Error("Invalid conversation ID: empty value not allowed")
-  }
-  if (conversationId.includes("\0")) {
-    throw new Error("Invalid conversation ID: null bytes not allowed")
-  }
-  if (conversationId.includes("..") || conversationId.includes("/") || conversationId.includes("\\")) {
-    throw new Error("Invalid conversation ID: path traversal characters not allowed")
+  const validationError = validateConversationIdInput(conversationId)
+  if (validationError) {
+    throw new Error(validationError)
   }
 
   const sanitized = sanitizeConversationId(conversationId)
