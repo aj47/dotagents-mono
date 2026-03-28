@@ -240,16 +240,31 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
   win.on("blur", () => {
     const config = configStore.get()
     if (config.hidePanelWhenMainFocused !== false && panelHiddenByMainFocus) {
-      const panel = WINDOWS.get("panel")
-      if (panel && !panel.isVisible()) {
-        logApp("[createMainWindow] Main window blurred - restoring floating panel")
-        panelHiddenByMainFocus = false
-        // Use showInactive() directly to avoid stealing focus from other apps.
-        // showPanelWindow() would call win.focus() on Windows which is undesirable
-        // when the user is switching away from the main app.
-        panel.showInactive()
-        ensurePanelZOrder(panel)
-      }
+      // Let the native app activation state settle before deciding whether to
+      // restore the floating panel. On macOS, immediately re-showing our
+      // always-on-top panel during app deactivation can re-activate the app,
+      // which then triggers the global activation handler and steals focus
+      // back to the main window.
+      setTimeout(() => {
+        if (!panelHiddenByMainFocus) return
+
+        if (!BrowserWindow.getFocusedWindow()) {
+          logApp("[createMainWindow] Main window blurred while app deactivated - leaving floating panel hidden")
+          panelHiddenByMainFocus = false
+          return
+        }
+
+        const panel = WINDOWS.get("panel")
+        if (panel && !panel.isVisible()) {
+          logApp("[createMainWindow] Main window blurred - restoring floating panel")
+          panelHiddenByMainFocus = false
+          // Use showInactive() directly to avoid stealing focus from other apps.
+          // showPanelWindow() would call win.focus() on Windows which is undesirable
+          // when the user is switching away from the main app.
+          panel.showInactive()
+          ensurePanelZOrder(panel)
+        }
+      }, 0)
     }
   })
 

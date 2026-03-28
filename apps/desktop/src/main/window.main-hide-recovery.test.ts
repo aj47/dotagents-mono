@@ -13,6 +13,7 @@ const mockApp = {
 }
 
 const mockEnsureAppSwitcherPresence = vi.fn()
+const mockGetFocusedWindow = vi.fn()
 
 let mockConfig = {
   hideDockIcon: false,
@@ -32,13 +33,19 @@ class MockBrowserWindow extends EventEmitter {
     this.visible = true
     this.emit("show")
   })
+  showInactive = vi.fn(() => {
+    this.visible = true
+    this.emit("show")
+  })
   hide = vi.fn(() => {
     this.visible = false
     this.emit("hide")
   })
   isVisible = vi.fn(() => this.visible)
   isMinimized = vi.fn(() => this.minimized)
+  setAlwaysOnTop = vi.fn()
   setClosable = vi.fn()
+  setVisibleOnAllWorkspaces = vi.fn()
   isClosable = vi.fn(() => true)
   webContents = Object.assign(new EventEmitter(), {
     id: 1,
@@ -48,7 +55,9 @@ class MockBrowserWindow extends EventEmitter {
 }
 
 vi.mock("electron", () => ({
-  BrowserWindow: MockBrowserWindow,
+  BrowserWindow: Object.assign(MockBrowserWindow, {
+    getFocusedWindow: mockGetFocusedWindow,
+  }),
   app: mockApp,
   screen: {},
   shell: { openExternal: vi.fn() },
@@ -103,6 +112,7 @@ describe("main window hide recovery", () => {
       hideDockIcon: false,
       hidePanelWhenMainFocused: true,
     }
+    mockGetFocusedWindow.mockReturnValue(null)
     process.env.IS_MAC = true
   })
 
@@ -151,6 +161,62 @@ describe("main window hide recovery", () => {
       expect(mockEnsureAppSwitcherPresence).not.toHaveBeenCalled()
       expect(mockApp.show).not.toHaveBeenCalled()
       expect(win?.show).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not restore the floating panel when the app is deactivating", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { WINDOWS, createMainWindow } = await import("./window")
+      const win = createMainWindow()
+      const panel = new MockBrowserWindow()
+      panel.visible = true
+      WINDOWS.set("panel", panel as any)
+
+      expect(win).toBeDefined()
+
+      win?.emit("focus")
+      expect(panel.hide).toHaveBeenCalledTimes(1)
+      expect(panel.isVisible()).toBe(false)
+
+      mockGetFocusedWindow.mockReturnValue(null)
+      win?.emit("blur")
+      await vi.runAllTimersAsync()
+
+      expect(panel.showInactive).not.toHaveBeenCalled()
+      expect(panel.isVisible()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("restores the floating panel when the app remains active", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { WINDOWS, createMainWindow } = await import("./window")
+      const win = createMainWindow()
+      const panel = new MockBrowserWindow()
+      panel.visible = true
+      WINDOWS.set("panel", panel as any)
+
+      expect(win).toBeDefined()
+
+      win?.emit("focus")
+      expect(panel.hide).toHaveBeenCalledTimes(1)
+      expect(panel.isVisible()).toBe(false)
+
+      mockGetFocusedWindow.mockReturnValue(panel)
+      win?.emit("blur")
+      await vi.runAllTimersAsync()
+
+      expect(panel.showInactive).toHaveBeenCalledTimes(1)
+      expect(panel.setVisibleOnAllWorkspaces).toHaveBeenCalled()
+      expect(panel.setAlwaysOnTop).toHaveBeenCalled()
+      expect(panel.isVisible()).toBe(true)
     } finally {
       vi.useRealTimers()
     }
