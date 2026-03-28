@@ -204,7 +204,6 @@ export async function checkServerConnection(
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
     const responseTime = Date.now() - startTime;
 
     if (response.ok) {
@@ -271,7 +270,6 @@ export async function checkServerConnection(
       responseTime,
     };
   } catch (error: unknown) {
-    clearTimeout(timeoutId);
     const responseTime = Date.now() - startTime;
     const err = error as Error & { name?: string };
 
@@ -315,6 +313,7 @@ export async function checkServerConnection(
       error: err.message || 'Unknown connection error',
       responseTime,
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
-
