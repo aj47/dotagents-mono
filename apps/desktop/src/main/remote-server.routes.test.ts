@@ -51,6 +51,26 @@ describe("remote-server route registration", () => {
     expect(duplicates).toEqual([])
   })
 
+  it("shares MCP server list and runtime toggles through the management helper", () => {
+    const source = getRemoteServerSource()
+    const mcpSection = getSection(
+      source,
+      '// GET /v1/mcp/servers - List MCP servers with status',
+      '// GET /v1/settings - Get relevant settings for mobile app',
+    )
+
+    expect(source).toContain('from "./mcp-management"')
+    expect(source).toContain('from "./mcp-management-store"')
+    expect(mcpSection).toContain(
+      "const servers = getManagedMcpServerSummaries(mcpManagementStore)",
+    )
+    expect(mcpSection).toContain(
+      "const result = setManagedMcpServerRuntimeEnabled(",
+    )
+    expect(mcpSection).not.toContain("listMcpServerStatusSummaries(")
+    expect(mcpSection).not.toContain("mcpService.setServerRuntimeEnabled(")
+  })
+
   it("routes mobile chat requests through the shared prompt runner", () => {
     const source = getRemoteServerSource()
 

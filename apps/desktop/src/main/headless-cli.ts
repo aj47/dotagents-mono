@@ -16,6 +16,18 @@ import {
   toggleManagedLoopEnabled,
   triggerManagedLoop,
 } from "./loop-management"
+import {
+  getManagedMcpServerLogs,
+  getManagedMcpServerSummary,
+  getManagedMcpServerSummaries,
+  resolveManagedMcpServerSelection,
+  restartManagedMcpServer,
+  setManagedMcpServerRuntimeEnabled,
+  stopManagedMcpServer,
+  type ManagedMcpServerDetails,
+  type ManagedMcpServerSummary,
+} from "./mcp-management"
+import { mcpManagementStore } from "./mcp-management-store"
 import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfile } from "./agent-profile-activation"
 import { loopService } from "./loop-service"
@@ -74,6 +86,7 @@ let rl: readline.Interface | null = null
 let shutdownRequested = false
 const RECENT_CONVERSATION_LIMIT = 10
 const SHOWN_CONVERSATION_MESSAGE_LIMIT = 12
+const SHOWN_MCP_SERVER_LOG_LIMIT = 20
 let onShutdown: () => Promise<void> = async () => {
   process.exit(0)
 }
@@ -141,6 +154,13 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/quit${colors.reset}, ${colors.cyan}/exit${colors.reset}  - Exit the CLI
   ${colors.cyan}/stop${colors.reset}          - Emergency stop current agent session
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
+  ${colors.cyan}/mcp${colors.reset}           - List MCP servers with live status and transport
+  ${colors.cyan}/mcp-show <name>${colors.reset} - Show full MCP server details
+  ${colors.cyan}/mcp-enable <name>${colors.reset} - Runtime-enable an MCP server for this profile
+  ${colors.cyan}/mcp-disable <name>${colors.reset} - Runtime-disable an MCP server for this profile
+  ${colors.cyan}/mcp-restart <name>${colors.reset} - Restart an MCP server process
+  ${colors.cyan}/mcp-stop <name>${colors.reset} - Stop an MCP server process
+  ${colors.cyan}/mcp-logs <name>${colors.reset} - Show recent MCP server logs
   ${colors.cyan}/agents${colors.reset}        - List enabled agents and the active selection
   ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
   ${colors.cyan}/loops${colors.reset}         - List repeat tasks with live status and profile info
@@ -203,6 +223,12 @@ function describeCliMcpServerState(status: McpServerStatusSnapshot): {
   }
 }
 
+function formatManagedMcpServerSelectionSummary(
+  server: ManagedMcpServerSummary,
+): string {
+  return `${server.name} (${server.transport}, ${server.state})`
+}
+
 function getAvailableAgentsForCli(): AgentProfile[] {
   return sortAgentProfilesByPriority(
     getEnabledAgentProfiles(agentProfileService.getAll()),
@@ -256,6 +282,35 @@ function formatLoopSelectionSummary(loop: LoopSummary): string {
   return `${loop.id} (${loop.name}, ${formatRelativeLoopInterval(loop.intervalMinutes)})`
 }
 
+function printMcpServers(options: { includeHint?: boolean } = {}): void {
+  const servers = getManagedMcpServerSummaries(mcpManagementStore)
+
+  console.log(`\n${colors.bold}MCP Servers:${colors.reset}`)
+  if (servers.length === 0) {
+    console.log(`  ${colors.dim}(no servers configured)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const server of servers) {
+    const { color, label } = describeCliMcpServerState(server)
+    console.log(
+      `  ${server.name}: ${color}${label}${colors.reset} (${server.transport}, ${server.toolCount} tools)`,
+    )
+    if (server.error && server.state === "error") {
+      console.log(`    ${colors.dim}${server.error}${colors.reset}`)
+    }
+  }
+
+  if (options.includeHint !== false) {
+    console.log()
+    console.log(
+      `${colors.dim}Use /mcp-show, /mcp-enable, /mcp-disable, /mcp-restart, /mcp-stop, or /mcp-logs with a server name prefix.${colors.reset}`,
+    )
+  }
+  console.log()
+}
+
 function printLoops() {
   const loops = getManagedLoopSummaries(loopService)
 
@@ -294,7 +349,6 @@ function printLoops() {
 }
 
 function printStatus() {
-  const serverStatus = mcpService.getServerStatus()
   const activeSessions = agentSessionTracker.getActiveSessions()
   const currentAgent = agentProfileService.getCurrentProfile()
   const { model, providerDisplayName } = resolveChatModelDisplayInfo(
@@ -315,22 +369,7 @@ function printStatus() {
     `  Processing: ${isProcessing ? colors.yellow + "yes" : colors.green + "no"}${colors.reset}`,
   )
 
-  console.log(`\n${colors.bold}MCP Servers:${colors.reset}`)
-  const serverNames = Object.keys(serverStatus)
-  if (serverNames.length === 0) {
-    console.log(`  ${colors.dim}(no servers configured)${colors.reset}`)
-  } else {
-    for (const name of serverNames) {
-      const s = serverStatus[name]
-      const { color, label } = describeCliMcpServerState(s)
-      console.log(
-        `  ${name}: ${color}${label}${colors.reset} (${s.toolCount} tools)`,
-      )
-      if (s.error && resolveMcpServerRuntimeState(s) === "error") {
-        console.log(`    ${colors.dim}${s.error}${colors.reset}`)
-      }
-    }
-  }
+  printMcpServers({ includeHint: false })
 
   console.log(`\n${colors.bold}Active Sessions:${colors.reset}`)
   if (activeSessions.length === 0) {
@@ -538,6 +577,196 @@ async function handleUseAgent(selection: string): Promise<void> {
   }
 
   printColored(colors.red, `Agent not found: ${query}`)
+}
+
+function printMcpServerDetails(server: ManagedMcpServerDetails): void {
+  console.log(`\n${colors.bold}${server.name}${colors.reset}`)
+  console.log(
+    `  ${colors.dim}${server.transport} • ${server.state} • ${server.toolCount} tools${colors.reset}`,
+  )
+  console.log(
+    `  ${colors.dim}connected=${server.connected ? "yes" : "no"} runtime-enabled=${server.runtimeEnabled ? "yes" : "no"} config-disabled=${server.configDisabled ? "yes" : "no"}${colors.reset}`,
+  )
+
+  if (server.config?.command) {
+    const commandParts = [server.config.command, ...(server.config.args || [])]
+    console.log(`  ${colors.dim}command ${commandParts.join(" ")}${colors.reset}`)
+  }
+
+  if (server.config?.url) {
+    console.log(`  ${colors.dim}url ${server.config.url}${colors.reset}`)
+  }
+
+  if (typeof server.config?.timeout === "number") {
+    console.log(`  ${colors.dim}timeout ${server.config.timeout}ms${colors.reset}`)
+  }
+
+  if (server.envCount > 0) {
+    console.log(`  ${colors.dim}${server.envCount} env vars configured${colors.reset}`)
+  }
+
+  if (server.headerCount > 0) {
+    console.log(
+      `  ${colors.dim}${server.headerCount} HTTP headers configured${colors.reset}`,
+    )
+  }
+
+  if (server.error) {
+    console.log()
+    console.log(`${colors.red}${server.error}${colors.reset}`)
+  }
+
+  console.log()
+}
+
+function resolveMcpServerSelectionForCli(
+  selection: string,
+): ManagedMcpServerDetails | null {
+  const query = selection.trim()
+  if (!query) {
+    printColored(
+      colors.yellow,
+      "Usage: /mcp-show|/mcp-enable|/mcp-disable|/mcp-restart|/mcp-stop|/mcp-logs <server-name-or-prefix>",
+    )
+    return null
+  }
+
+  const servers = getManagedMcpServerSummaries(mcpManagementStore)
+  const { selectedServer, ambiguousServers } = resolveManagedMcpServerSelection(
+    servers,
+    query,
+  )
+
+  if (selectedServer) {
+    return getManagedMcpServerSummary(selectedServer.name, mcpManagementStore) || null
+  }
+
+  if (ambiguousServers?.length) {
+    printColored(
+      colors.yellow,
+      `MCP server selector "${query}" matches multiple servers:`,
+    )
+    for (const server of ambiguousServers) {
+      console.log(`  ${formatManagedMcpServerSelectionSummary(server)}`)
+    }
+    return null
+  }
+
+  printColored(colors.red, `MCP server not found: ${query}`)
+  return null
+}
+
+function handleShowMcpServer(selection: string): void {
+  const selectedServer = resolveMcpServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  printMcpServerDetails(selectedServer)
+}
+
+function handleSetMcpServerRuntimeEnabled(
+  selection: string,
+  enabled: boolean,
+): void {
+  const selectedServer = resolveMcpServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = setManagedMcpServerRuntimeEnabled(
+    selectedServer.name,
+    enabled,
+    mcpManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || `Failed to update MCP server ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `${enabled ? "Runtime-enabled" : "Runtime-disabled"} MCP server ${selectedServer.name} for the current profile.`,
+  )
+}
+
+async function handleRestartMcpServer(selection: string): Promise<void> {
+  const selectedServer = resolveMcpServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = await restartManagedMcpServer(
+    selectedServer.name,
+    mcpManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || `Failed to restart MCP server ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  printColored(colors.green, `Restarted MCP server ${selectedServer.name}.`)
+}
+
+async function handleStopMcpServer(selection: string): Promise<void> {
+  const selectedServer = resolveMcpServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = await stopManagedMcpServer(
+    selectedServer.name,
+    mcpManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || `Failed to stop MCP server ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  printColored(colors.green, `Stopped MCP server ${selectedServer.name}.`)
+}
+
+function handleShowMcpServerLogs(selection: string): void {
+  const selectedServer = resolveMcpServerSelectionForCli(selection)
+  if (!selectedServer) {
+    return
+  }
+
+  const result = getManagedMcpServerLogs(
+    selectedServer.name,
+    mcpManagementStore,
+  )
+  if (!result.success) {
+    printColored(
+      colors.red,
+      result.error || `Failed to load logs for MCP server ${selectedServer.name}.`,
+    )
+    return
+  }
+
+  const logs = result.logs || []
+  console.log(`\n${colors.bold}MCP Logs: ${selectedServer.name}${colors.reset}`)
+  if (logs.length === 0) {
+    console.log(`  ${colors.dim}(no logs)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const entry of logs.slice(-SHOWN_MCP_SERVER_LOG_LIMIT)) {
+    console.log(
+      `  ${colors.dim}${new Date(entry.timestamp).toLocaleString()}${colors.reset} ${entry.message}`,
+    )
+  }
+  console.log()
 }
 
 function printLoopDetails(loop: LoopSummary): void {
@@ -940,6 +1169,27 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/status":
       printStatus()
+      return true
+    case "/mcp":
+      printMcpServers()
+      return true
+    case "/mcp-show":
+      handleShowMcpServer(argumentsText)
+      return true
+    case "/mcp-enable":
+      handleSetMcpServerRuntimeEnabled(argumentsText, true)
+      return true
+    case "/mcp-disable":
+      handleSetMcpServerRuntimeEnabled(argumentsText, false)
+      return true
+    case "/mcp-restart":
+      await handleRestartMcpServer(argumentsText)
+      return true
+    case "/mcp-stop":
+      await handleStopMcpServer(argumentsText)
+      return true
+    case "/mcp-logs":
+      handleShowMcpServerLogs(argumentsText)
       return true
     case "/agents":
       printAgents()

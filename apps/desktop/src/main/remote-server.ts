@@ -47,7 +47,6 @@ import {
   isWildcardRemoteServerHost as isWildcardBindHost,
   normalizeRemoteServerHostForComparison as normalizeHostForComparison,
 } from "../shared/remote-server-url"
-import { listMcpServerStatusSummaries } from "../shared/mcp-server-status"
 import {
   AgentProgressUpdate,
   SessionProfileSnapshot,
@@ -79,6 +78,11 @@ import {
   toggleManagedLoopEnabled,
   triggerManagedLoop,
 } from "./loop-management"
+import {
+  getManagedMcpServerSummaries,
+  setManagedMcpServerRuntimeEnabled,
+} from "./mcp-management"
+import { mcpManagementStore } from "./mcp-management-store"
 import { summarizeLoop, summarizeLoops } from "./loop-summaries"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
@@ -1017,7 +1021,7 @@ async function startRemoteServerInternal(
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get("/v1/mcp/servers", async (_req, reply) => {
     try {
-      const servers = listMcpServerStatusSummaries(mcpService.getServerStatus())
+      const servers = getManagedMcpServerSummaries(mcpManagementStore)
       return reply.send({ servers })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -1043,11 +1047,15 @@ async function startRemoteServerInternal(
           .send({ error: "Missing or invalid 'enabled' boolean" })
       }
 
-      const success = mcpService.setServerRuntimeEnabled(serverName, enabled)
-      if (!success) {
+      const result = setManagedMcpServerRuntimeEnabled(
+        serverName,
+        enabled,
+        mcpManagementStore,
+      )
+      if (!result.success) {
         return reply
           .code(404)
-          .send({ error: `Server '${serverName}' not found` })
+          .send({ error: result.error || `Server '${serverName}' not found` })
       }
 
       diagnosticsService.logInfo(
@@ -1058,6 +1066,7 @@ async function startRemoteServerInternal(
         success: true,
         server: serverName,
         enabled,
+        state: result.server?.state,
       })
     } catch (error: any) {
       diagnosticsService.logError(

@@ -163,6 +163,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `getManagedLoopSummary(...)`, `getManagedLoopSummaries(...)`, `resolveManagedLoopSelection(...)`, `saveManagedLoop(...)`, `toggleManagedLoopEnabled(...)`, `triggerManagedLoop(...)`, and `deleteManagedLoop(...)`
 - Current callers: `headless-cli.ts` `/loops`, `/loop-show`, `/loop-toggle`, and `/loop-run`; `tipc.ts` `getLoopSummaries(...)`; and `remote-server.ts` `/v1/loops`, `/v1/loops/:id/toggle`, `/v1/loops/:id/run`, plus repeat-task create/update/delete responses
 
+## Shared MCP server management
+
+- Shared MCP management file: `apps/desktop/src/main/mcp-management.ts`
+- Shared helpers: `getManagedMcpServerSummaries(...)`, `getManagedMcpServerSummary(...)`, `resolveManagedMcpServerSelection(...)`, `setManagedMcpServerRuntimeEnabled(...)`, `restartManagedMcpServer(...)`, `stopManagedMcpServer(...)`, and `getManagedMcpServerLogs(...)`
+- Current callers: `headless-cli.ts` `/mcp`, `/mcp-show`, `/mcp-enable`, `/mcp-disable`, `/mcp-restart`, `/mcp-stop`, and `/mcp-logs`; `tipc.ts` `setMcpServerRuntimeEnabled(...)`, `restartMcpServer(...)`, `stopMcpServer(...)`, and `getMcpServerLogs(...)`; and `remote-server.ts` `/v1/mcp/servers` plus `/v1/mcp/servers/:name/toggle`
+
 ## Shared conversation history serialization
 
 - Shared conversation history file: `packages/shared/src/conversation-history.ts`
@@ -249,6 +255,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now also exposes `/skills` and `/skill <id>` through the same profile-skill helper path used elsewhere, so terminal skill visibility and per-profile toggles reuse the same “all enabled unless opt-in mode is active” semantics that the desktop agent editor and remote/mobile settings already use.
 36. Desktop/mobile per-profile skill enablement
     `packages/shared/src/agent-profiles.ts` now also resolves effective enabled skill IDs plus toggle transitions in one place, so `settings-agents.tsx`, `agent-capabilities-sidebar.tsx`, `agent-profile-service.ts`, and `remote-server.ts` `/v1/skills` all agree on which skills are enabled for the current profile and when a profile should collapse back to the default “all skills enabled” state.
+37. Headless CLI MCP server controls
+    `headless-cli.ts` now routes `/mcp`, `/mcp-show`, `/mcp-enable`, `/mcp-disable`, `/mcp-restart`, `/mcp-stop`, and `/mcp-logs` through `mcp-management.ts`, while `tipc.ts` reuses the same runtime-enable, restart, stop, and log helpers for the desktop capabilities UI and `remote-server.ts` reuses the same list/toggle helpers for `/v1/mcp/servers`, so MCP server selection by exact name or unique prefix plus runtime enablement, restart/stop lifecycle actions, and recent log lookup stay aligned across terminal, desktop UI, and remote clients.
 
 ## Parity rules
 
@@ -280,6 +288,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Profile skill enablement is decided in one place: `areAllSkillsEnabledForAgentProfile(...)`, `isSkillEnabledForAgentProfile(...)`, `getEnabledSkillIdsForAgentProfile(...)`, and `toggleSkillForAgentProfile(...)`, so headless CLI `/skills` and `/skill`, desktop agent skill editors, `agent-profile-service.ts`, and remote/mobile `/v1/skills` payloads all interpret default-vs-opt-in skill access the same way.
 - Agent catalog descriptions, metadata chips, and status badges are decided in one place: `getAgentProfileCatalogDescription(...)`, `getAgentProfileCatalogSummaryItems(...)`, and `getAgentProfileStatusLabels(...)`, so headless `/agents` and the desktop Settings > Agents catalog render the same fallback description and capability summary fields before presentation diverges into terminal lines or cards.
 - Repeat task summaries and runtime actions are decided in one place: `getManagedLoopSummary(...)`, `getManagedLoopSummaries(...)`, `saveManagedLoop(...)`, `toggleManagedLoopEnabled(...)`, `triggerManagedLoop(...)`, and `deleteManagedLoop(...)`, so headless CLI repeat-task controls, desktop loop summaries, and remote repeat-task endpoints all reuse the same profile-name enrichment and runtime start/stop/trigger behavior before the UI or API response diverges.
+- MCP server selection, summaries, runtime toggles, restart/stop lifecycle actions, and log lookup are decided in one place: `getManagedMcpServerSummaries(...)`, `getManagedMcpServerSummary(...)`, `resolveManagedMcpServerSelection(...)`, `setManagedMcpServerRuntimeEnabled(...)`, `restartManagedMcpServer(...)`, `stopManagedMcpServer(...)`, and `getManagedMcpServerLogs(...)`, so headless CLI MCP controls, the desktop capabilities UI, and the remote MCP status/toggle routes all reuse the same main-process behavior before presentation diverges into terminal output, TIPC responses, or HTTP payloads.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -325,6 +334,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms repeat-task summaries prefer runtime timestamps when available and merge profile names consistently for desktop and remote callers.
 - `apps/desktop/src/main/loop-management.test.ts`
   Confirms shared repeat-task selection, summary enrichment, enable/disable persistence, manual trigger conflicts, and delete behavior stay aligned for headless CLI, desktop summaries, and remote loop endpoints.
+- `apps/desktop/src/main/mcp-management.test.ts`
+  Confirms shared MCP server summary building, exact/prefix selection, runtime enable/disable behavior, restart/stop helpers, and log lookup stay aligned for headless CLI, desktop capabilities actions, and remote MCP routes.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`
   Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
 - `apps/desktop/src/renderer/src/lib/apply-selected-agent.test.ts`

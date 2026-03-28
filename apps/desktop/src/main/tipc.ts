@@ -124,6 +124,13 @@ import {
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { getManagedLoopSummaries } from "./loop-management"
+import {
+  getManagedMcpServerLogs,
+  restartManagedMcpServer,
+  setManagedMcpServerRuntimeEnabled,
+  stopManagedMcpServer,
+} from "./mcp-management"
+import { mcpManagementStore } from "./mcp-management-store"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -2742,11 +2749,11 @@ export const router = {
   setMcpServerRuntimeEnabled: t.procedure
     .input<{ serverName: string; enabled: boolean }>()
     .action(async ({ input }) => {
-      const success = mcpService.setServerRuntimeEnabled(
+      return setManagedMcpServerRuntimeEnabled(
         input.serverName,
         input.enabled,
+        mcpManagementStore,
       )
-      return { success }
     }),
 
   getMcpServerRuntimeState: t.procedure
@@ -2835,19 +2842,22 @@ export const router = {
     .input<{ serverName: string }>()
 
     .action(async ({ input }) => {
-      return mcpService.restartServer(input.serverName)
+      return restartManagedMcpServer(input.serverName, mcpManagementStore)
     }),
 
   stopMcpServer: t.procedure
     .input<{ serverName: string }>()
     .action(async ({ input }) => {
-      return mcpService.stopServer(input.serverName)
+      return stopManagedMcpServer(input.serverName, mcpManagementStore)
     }),
 
   getMcpServerLogs: t.procedure
     .input<{ serverName: string }>()
     .action(async ({ input }) => {
-      return mcpService.getServerLogs(input.serverName)
+      return getManagedMcpServerLogs(
+        input.serverName,
+        mcpManagementStore,
+      ).logs || []
     }),
 
   clearMcpServerLogs: t.procedure

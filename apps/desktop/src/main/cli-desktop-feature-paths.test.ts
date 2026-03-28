@@ -62,6 +62,10 @@ const mcpServerStatusSource = readFileSync(
   new URL("../shared/mcp-server-status.ts", import.meta.url),
   "utf8",
 )
+const mcpManagementSource = readFileSync(
+  new URL("./mcp-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -623,9 +627,9 @@ describe("CLI and desktop feature paths", () => {
     expect(mcpServerStatusSource).toContain(
       "export function listMcpServerStatusSummaries",
     )
+    expect(mcpManagementSource).toContain("listMcpServerStatusSummaries({")
     expect(headlessCliSource).toContain("resolveMcpServerRuntimeState(")
     expect(headlessCliSource).toContain("countConnectedMcpServers(")
-    expect(remoteServerSource).toContain("listMcpServerStatusSummaries(")
     expect(settingsAgentsSource).toContain("resolveMcpServerRuntimeState(")
     expect(mcpConfigManagerSource).toContain("resolveMcpServerRuntimeState(")
   })
@@ -696,6 +700,53 @@ describe("CLI and desktop feature paths", () => {
     expect(settingsLoopsSource).toContain('queryKey: ["loop-summaries"]')
   })
 
+  it("shares MCP server management across CLI, desktop, and remote surfaces", () => {
+    expect(mcpManagementSource).toContain(
+      "export function getManagedMcpServerSummaries",
+    )
+    expect(mcpManagementSource).toContain(
+      "export function getManagedMcpServerSummary",
+    )
+    expect(mcpManagementSource).toContain(
+      "export function resolveManagedMcpServerSelection",
+    )
+    expect(mcpManagementSource).toContain(
+      "export function setManagedMcpServerRuntimeEnabled",
+    )
+    expect(mcpManagementSource).toContain(
+      "export async function restartManagedMcpServer",
+    )
+    expect(mcpManagementSource).toContain(
+      "export async function stopManagedMcpServer",
+    )
+    expect(mcpManagementSource).toContain(
+      "export function getManagedMcpServerLogs",
+    )
+    expect(headlessCliSource).toContain("getManagedMcpServerSummaries(")
+    expect(headlessCliSource).toContain("resolveManagedMcpServerSelection(")
+    expect(headlessCliSource).toContain("getManagedMcpServerSummary(")
+    expect(headlessCliSource).toContain("setManagedMcpServerRuntimeEnabled(")
+    expect(headlessCliSource).toContain("restartManagedMcpServer(")
+    expect(headlessCliSource).toContain("stopManagedMcpServer(")
+    expect(headlessCliSource).toContain("getManagedMcpServerLogs(")
+    expect(tipcSource).toContain('from "./mcp-management"')
+    expect(tipcSource).toContain('from "./mcp-management-store"')
+    expect(tipcSource).toContain("setManagedMcpServerRuntimeEnabled(")
+    expect(tipcSource).toContain("restartManagedMcpServer(")
+    expect(tipcSource).toContain("stopManagedMcpServer(")
+    expect(tipcSource).toContain("getManagedMcpServerLogs(")
+    expect(remoteServerSource).toContain('from "./mcp-management"')
+    expect(remoteServerSource).toContain('from "./mcp-management-store"')
+    expect(remoteServerSource).toContain("getManagedMcpServerSummaries(")
+    expect(remoteServerSource).toContain("setManagedMcpServerRuntimeEnabled(")
+    expect(mcpConfigManagerSource).toContain(
+      "tipcClient.restartMcpServer({ serverName })",
+    )
+    expect(mcpConfigManagerSource).toContain(
+      "tipcClient.stopMcpServer({ serverName })",
+    )
+  })
+
   it("shares conversation-history serialization across runtime and remote surfaces", () => {
     expect(sharedConversationHistorySource).toContain(
       "export function formatConversationHistoryMessages",
@@ -740,6 +791,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
     expect(docsSource).toContain("Shared repeat task summaries")
     expect(docsSource).toContain("Shared repeat task management")
+    expect(docsSource).toContain("Shared MCP server management")
     expect(docsSource).toContain("Shared conversation history serialization")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
@@ -780,6 +832,7 @@ describe("CLI and desktop feature paths", () => {
       "Runtime speech generation + remote settings payload",
     )
     expect(docsSource).toContain("CLI/desktop MCP server status surfaces")
+    expect(docsSource).toContain("Headless CLI MCP server controls")
     expect(docsSource).toContain("Preset-aware CLI labels + preset surfaces")
     expect(docsSource).toContain(
       "Desktop repeat task settings + remote loop API",
