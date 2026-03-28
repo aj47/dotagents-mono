@@ -108,6 +108,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`
 - Current callers: `headless-cli.ts` `/agents` and `/agent`; `tipc.ts` `setCurrentProfile(...)` and `setCurrentAgentProfile(...)`; and `remote-server.ts` `POST /v1/profiles/current`
 
+## Shared agent selector profiles
+
+- Shared selector file: `packages/shared/src/agent-profiles.ts`
+- Shared helpers: `getAgentProfileDisplayName(...)`, `getAgentProfileSummary(...)`, `getEnabledAgentProfiles(...)`, `sortAgentProfilesByPriority(...)`, `getDefaultAgentProfile(...)`, `resolveAgentProfileSelection(...)`, and `getAcpCapableAgentProfiles(...)`
+- Current callers: `headless-cli.ts` `/agents` and `/agent`; `agent-selector.tsx`; `apply-selected-agent.ts`; mobile `agentSelectorOptions.ts` and `mainAgentOptions.ts`; and `main-agent-selection.ts`
+
 ## Shared chat model selection
 
 - Shared provider/model file: `packages/shared/src/providers.ts`
@@ -207,6 +213,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `headless-cli.ts` now lists `/agents` and routes `/agent <agent-id-or-name>` through `activateAgentProfile(...)`, so terminal agent switching reuses the same current-profile persistence, per-profile model/STT/TTS settings application, and MCP runtime tool/server activation that desktop and remote/mobile switches use.
 30. Desktop agent selection + remote/mobile profile switching
     `tipc.ts` `setCurrentProfile(...)` and `setCurrentAgentProfile(...)` plus `remote-server.ts` `POST /v1/profiles/current` now route through `activateAgentProfile(...)` / `activateAgentProfileById(...)`, so desktop agent selection, legacy profile switches, and remote/mobile profile switches all reapply the same model/transcript/TTS settings plus MCP runtime config.
+31. Headless CLI and desktop agent picker
+    `packages/shared/src/agent-profiles.ts` now resolves enabled-agent filtering, default-agent fallback, display-name/summary fallback, ACP-capable profile filtering, and `/agent` id-or-name matching in one place, so headless `/agents` and `/agent`, the desktop agent selector plus `apply-selected-agent.ts`, mobile selector lists, and ACP main-agent selection all reuse the same profile readiness rules before activation or fallback selection happens.
 
 ## Parity rules
 
@@ -233,6 +241,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Session-history pin/archive state is decided in one place: `orderItemsByPinnedFirst(...)`, `sanitizeConversationSessionState(...)`, `setConversationSessionStateMembership(...)`, `removeSessionIdFromConversationSessionState(...)`, `sanitizeSessionIdList(...)`, and `setSessionIdMembership(...)`, so headless CLI session controls, desktop session ordering/state, renderer config hydration, remote settings payloads, and mobile sync/toggles all treat pinned/archived conversation IDs the same way.
 - Conversation rename/delete flows are decided in one place: `conversation-management.ts`, so CLI session management, desktop history actions, and runtime `set_session_title` updates all reuse the same title-sync and pinned/archived cleanup path.
 - Agent profile activation is decided in one place: `buildConfigForActivatedProfile(...)`, `activateAgentProfile(...)`, and `activateAgentProfileById(...)`, so headless CLI agent switching, desktop agent selection, and remote/mobile profile switches all reuse the same current-profile persistence, model override application, and MCP runtime config path.
+- Agent selector profile readiness is decided in one place: `getAgentProfileDisplayName(...)`, `getAgentProfileSummary(...)`, `getEnabledAgentProfiles(...)`, `sortAgentProfilesByPriority(...)`, `getDefaultAgentProfile(...)`, `resolveAgentProfileSelection(...)`, and `getAcpCapableAgentProfiles(...)`, so headless CLI `/agents` and `/agent`, desktop selector/apply-selected-agent flows, mobile selector lists, and ACP-capable profile filtering all stay aligned before activation.
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
@@ -268,6 +277,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms shared rename/delete/delete-all helpers synchronize tracked session titles and prune pinned/archived state for CLI, desktop, and runtime-tool callers.
 - `apps/desktop/src/main/agent-profile-activation.test.ts`
   Confirms shared profile activation records the current profile ID and reapplies defined model overrides without clobbering unrelated runtime settings for CLI, desktop, and remote/mobile callers.
+- `packages/shared/src/agent-profiles.test.ts`
+  Confirms shared enabled/default agent selection, display-name/summary fallback, ACP-capable filtering, and CLI selector matching stay aligned for headless CLI, desktop selector/apply flows, mobile selectors, and ACP main-agent selection.
 - `packages/shared/src/conversation-history.test.ts`
   Confirms shared tool-call/result flattening and conversation-history serialization stay aligned for desktop runtime progress, persistence, and remote API callers.
 - `packages/shared/src/stt-models.test.ts`
@@ -276,6 +287,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms repeat-task summaries prefer runtime timestamps when available and merge profile names consistently for desktop and remote callers.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`
   Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
+- `apps/desktop/src/renderer/src/lib/apply-selected-agent.test.ts`
+  Confirms desktop next-session agent application still uses the shared enabled/default agent helpers and rejects stale selector state before the run starts.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared runtime helpers register IPC/serve infrastructure, support awaited headless startup, preserve background desktop startup, and centralize GUI/headless teardown.
 - `apps/desktop/src/main/headless-runtime.test.ts`
@@ -284,5 +297,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms remote server startup plus config-driven remote access reconciliation converge in shared helpers for desktop startup, settings changes, headless CLI, and QR runtime paths.
 - `apps/desktop/src/main/cloudflare-runtime.test.ts`
   Confirms the shared Cloudflare tunnel bootstrap skips disabled auto-start, honors named-tunnel config, and falls back to quick tunnels for forced QR pairing.
+- `apps/mobile/src/ui/agentSelectorOptions.test.ts`
+  Confirms mobile selector profile lists still reuse the shared enabled-agent filtering plus display-name/summary helpers and the shared ACP-capable profile list.
 - `apps/desktop/src/main/loop-service.max-iterations.test.ts`
   Confirms repeat tasks pass their max-iteration override through the shared prompt launcher while resume-only runs keep the same override on the shared resume launcher.

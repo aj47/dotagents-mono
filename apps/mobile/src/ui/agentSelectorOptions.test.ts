@@ -17,6 +17,25 @@ describe('buildSelectorProfiles', () => {
     expect(result.profiles.map((profile) => profile.name)).toEqual(['Main Agent', 'Augustus']);
   });
 
+  it('uses shared display-name and summary fallbacks for selector profiles', () => {
+    const result = buildSelectorProfiles(
+      { mainAgentMode: 'api' } as any,
+      [
+        { id: 'main', name: 'main-agent', displayName: '   ', guidelines: 'Core helper', enabled: true, connectionType: 'internal', role: 'user-profile' },
+      ] as any
+    );
+
+    expect(result.selectorMode).toBe('profile');
+    expect(result.profiles).toEqual([
+      expect.objectContaining({
+        id: 'main',
+        name: 'main-agent',
+        description: 'Core helper',
+        guidelines: 'Core helper',
+      }),
+    ]);
+  });
+
   it('uses ACP-capable agent profiles when ACP mode is enabled', () => {
     const result = buildSelectorProfiles(
       {

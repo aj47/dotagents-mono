@@ -15,6 +15,7 @@ export {
 } from './providers';
 export * from './languages';
 export * from './session';
+export * from './agent-profiles';
 export * from './shell-parse';
 export * from './connection-recovery';
 export * from './api-types';

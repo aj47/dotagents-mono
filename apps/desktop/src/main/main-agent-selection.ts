@@ -1,3 +1,8 @@
+import {
+  getAcpCapableAgentProfiles,
+  getAgentProfileDisplayName,
+  isAcpCapableAgentProfile,
+} from "@dotagents/shared"
 import type { ACPAgentConfig, AgentProfile } from "../shared/types"
 
 export type MainAcpAgentSelection =
@@ -16,10 +21,7 @@ export function resolveMainAcpAgentSelection(
   const normalizedMainAgentName = configuredName.trim().toLowerCase()
   const hasConfiguredName = normalizedMainAgentName.length > 0
 
-  const spawnableProfileCandidates = profileAgents.filter((profile) =>
-    profile.enabled !== false
-    && (profile.connection.type === "acp" || profile.connection.type === "stdio")
-  )
+  const spawnableProfileCandidates = getAcpCapableAgentProfiles(profileAgents)
 
   const fallbackLegacyAgents = legacyAgents.filter((agent) =>
     agent.enabled !== false && agent.connection.type === "stdio"
@@ -27,7 +29,7 @@ export function resolveMainAcpAgentSelection(
 
   const configuredProfile = spawnableProfileCandidates.find((profile) =>
     profile.name.trim().toLowerCase() === normalizedMainAgentName
-    || profile.displayName.trim().toLowerCase() === normalizedMainAgentName
+    || getAgentProfileDisplayName(profile).trim().toLowerCase() === normalizedMainAgentName
   )
 
   const legacyAgentMatch = fallbackLegacyAgents.find((agent) =>
@@ -95,8 +97,7 @@ export function resolvePreferredTopLevelAcpAgentSelection({
 
   if (
     selectedProfile
-    && selectedProfile.enabled !== false
-    && (selectedProfile.connection.type === "acp" || selectedProfile.connection.type === "stdio")
+    && isAcpCapableAgentProfile(selectedProfile)
   ) {
     return {
       resolvedName: selectedProfile.name,

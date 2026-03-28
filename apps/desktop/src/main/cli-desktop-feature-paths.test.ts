@@ -70,6 +70,10 @@ const sharedSessionSource = readFileSync(
   new URL("../../../../packages/shared/src/session.ts", import.meta.url),
   "utf8",
 )
+const sharedAgentProfilesSource = readFileSync(
+  new URL("../../../../packages/shared/src/agent-profiles.ts", import.meta.url),
+  "utf8",
+)
 const sharedSttModelsSource = readFileSync(
   new URL("../../../../packages/shared/src/stt-models.ts", import.meta.url),
   "utf8",
@@ -100,6 +104,10 @@ const modelPresetManagerSource = readFileSync(
 )
 const modelSelectorSource = readFileSync(
   new URL("../renderer/src/components/model-selector.tsx", import.meta.url),
+  "utf8",
+)
+const agentSelectorSource = readFileSync(
+  new URL("../renderer/src/components/agent-selector.tsx", import.meta.url),
   "utf8",
 )
 const settingsProvidersSource = readFileSync(
@@ -142,6 +150,14 @@ const mobileSessionsSource = readFileSync(
   new URL("../../../mobile/src/store/sessions.ts", import.meta.url),
   "utf8",
 )
+const mobileAgentSelectorOptionsSource = readFileSync(
+  new URL("../../../mobile/src/ui/agentSelectorOptions.ts", import.meta.url),
+  "utf8",
+)
+const mobileMainAgentOptionsSource = readFileSync(
+  new URL("../../../mobile/src/lib/mainAgentOptions.ts", import.meta.url),
+  "utf8",
+)
 const aiSdkProviderSource = readFileSync(
   new URL("./ai-sdk-provider.ts", import.meta.url),
   "utf8",
@@ -165,6 +181,14 @@ const summarizationServiceSource = readFileSync(
 )
 const runtimeToolsSource = readFileSync(
   new URL("./runtime-tools.ts", import.meta.url),
+  "utf8",
+)
+const mainAgentSelectionSource = readFileSync(
+  new URL("./main-agent-selection.ts", import.meta.url),
+  "utf8",
+)
+const applySelectedAgentSource = readFileSync(
+  new URL("../renderer/src/lib/apply-selected-agent.ts", import.meta.url),
   "utf8",
 )
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
@@ -307,6 +331,45 @@ describe("CLI and desktop feature paths", () => {
     expect(remoteServerSource).toContain(
       "const profile = activateAgentProfileById(profileId)",
     )
+  })
+
+  it("shares agent selector profile helpers across CLI, desktop, mobile, and ACP selection surfaces", () => {
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getAgentProfileDisplayName",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getEnabledAgentProfiles",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function sortAgentProfilesByPriority",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getDefaultAgentProfile",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function resolveAgentProfileSelection",
+    )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getAcpCapableAgentProfiles",
+    )
+    expect(headlessCliSource).toContain("resolveAgentProfileSelection(")
+    expect(headlessCliSource).toContain("sortAgentProfilesByPriority(")
+    expect(headlessCliSource).toContain("getAgentProfileDisplayName(")
+    expect(agentSelectorSource).toContain("getEnabledAgentProfiles(")
+    expect(agentSelectorSource).toContain("sortAgentProfilesByPriority(")
+    expect(agentSelectorSource).toContain("getDefaultAgentProfile(")
+    expect(agentSelectorSource).toContain("getAgentProfileDisplayName(")
+    expect(applySelectedAgentSource).toContain("getEnabledAgentProfiles(")
+    expect(applySelectedAgentSource).toContain("getDefaultAgentProfile(")
+    expect(mobileAgentSelectorOptionsSource).toContain(
+      "getAgentProfileDisplayName(",
+    )
+    expect(mobileAgentSelectorOptionsSource).toContain("getAgentProfileSummary(")
+    expect(mobileMainAgentOptionsSource).toContain(
+      "getAcpCapableAgentProfiles(",
+    )
+    expect(mainAgentSelectionSource).toContain("getAcpCapableAgentProfiles(")
+    expect(mainAgentSelectionSource).toContain("isAcpCapableAgentProfile(")
   })
 
   it("routes the remote server through the shared launcher and runner", () => {
@@ -547,6 +610,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared session history state")
     expect(docsSource).toContain("Shared conversation management")
     expect(docsSource).toContain("Shared agent profile activation")
+    expect(docsSource).toContain("Shared agent selector profiles")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -572,6 +636,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI session pin/archive controls")
     expect(docsSource).toContain("Headless CLI conversation management")
     expect(docsSource).toContain("Headless CLI agent selection")
+    expect(docsSource).toContain("Headless CLI and desktop agent picker")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")

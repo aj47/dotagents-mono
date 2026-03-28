@@ -1,3 +1,4 @@
+import { getAgentProfileDisplayName, getAgentProfileSummary, getEnabledAgentProfiles } from '@dotagents/shared';
 import type { AgentProfile, Profile, Settings } from '../lib/settingsApi';
 import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
 
@@ -8,11 +9,11 @@ export interface SelectableProfile extends Profile {
 }
 
 export function toSelectableAgentProfile(profile: AgentProfile): SelectableProfile {
-  const summary = profile.description || profile.guidelines || '';
+  const summary = getAgentProfileSummary(profile) || '';
 
   return {
     id: profile.id,
-    name: profile.displayName || profile.name,
+    name: getAgentProfileDisplayName(profile),
     guidelines: summary,
     description: summary,
     selectorMode: 'profile',
@@ -24,7 +25,7 @@ export function buildSelectorProfiles(
   settings?: Settings | null,
   agentProfiles: AgentProfile[] = []
 ): { selectorMode: 'profile' | 'acp'; profiles: SelectableProfile[] } {
-  const enabledAgentProfiles = agentProfiles.filter((profile) => profile.enabled !== false);
+  const enabledAgentProfiles = getEnabledAgentProfiles(agentProfiles);
 
   if (settings?.mainAgentMode === 'acp') {
     return {

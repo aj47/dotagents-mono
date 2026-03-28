@@ -1,3 +1,4 @@
+import { getAcpCapableAgentProfiles, getAgentProfileDisplayName } from '@dotagents/shared';
 import type { AgentProfile, Profile, Settings } from './settingsApi';
 
 export interface MainAgentOption {
@@ -12,13 +13,11 @@ export function getAcpMainAgentOptions(
   const seen = new Set<string>();
   const options: MainAgentOption[] = [];
 
-  for (const profile of agentProfiles) {
-    if (!profile.enabled) continue;
-    if (profile.connectionType !== 'acp' && profile.connectionType !== 'stdio') continue;
+  for (const profile of getAcpCapableAgentProfiles(agentProfiles)) {
     const key = profile.name.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    options.push({ name: profile.name, displayName: profile.displayName || profile.name });
+    options.push({ name: profile.name, displayName: getAgentProfileDisplayName(profile) });
   }
 
   for (const agent of settings?.acpAgents || []) {

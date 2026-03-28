@@ -21,10 +21,16 @@ import { emergencyStopAll } from "./emergency-stop"
 import {
   type ConversationSessionState,
   type ConversationSessionStateKey,
+  getAgentProfileConnectionType,
+  getAgentProfileDisplayName,
+  getAgentProfileSummary,
+  getEnabledAgentProfiles,
   orderItemsByPinnedFirst,
+  resolveAgentProfileSelection,
   resolveChatModelDisplayInfo,
   sanitizeConversationSessionState,
   setConversationSessionStateMembership,
+  sortAgentProfilesByPriority,
 } from "@dotagents/shared"
 import {
   countConnectedMcpServers,
@@ -178,31 +184,13 @@ function describeCliMcpServerState(status: McpServerStatusSnapshot): {
   }
 }
 
-function getAgentSelectionCandidates(profile: AgentProfile): string[] {
-  return [profile.id, profile.name, profile.displayName]
-    .filter((value): value is string => typeof value === "string" && value.length > 0)
-    .map((value) => value.toLowerCase())
-}
-
 function getAvailableAgentsForCli(): AgentProfile[] {
-  const currentAgentId = agentProfileService.getCurrentProfile()?.id
-
-  return agentProfileService
-    .getAll()
-    .filter((profile) => profile.enabled)
-    .sort((left, right) => {
-      const leftPriority =
-        (left.id === currentAgentId ? -2 : 0) + (left.isDefault ? -1 : 0)
-      const rightPriority =
-        (right.id === currentAgentId ? -2 : 0) + (right.isDefault ? -1 : 0)
-      if (leftPriority !== rightPriority) {
-        return leftPriority - rightPriority
-      }
-
-      const leftLabel = (left.displayName || left.name || left.id).toLowerCase()
-      const rightLabel = (right.displayName || right.name || right.id).toLowerCase()
-      return leftLabel.localeCompare(rightLabel)
-    })
+  return sortAgentProfilesByPriority(
+    getEnabledAgentProfiles(agentProfileService.getAll()),
+    {
+      priorityProfileId: agentProfileService.getCurrentProfile()?.id,
+    },
+  )
 }
 
 function formatAgentSelectionSummary(profile: AgentProfile): string {
@@ -213,49 +201,20 @@ function formatAgentSelectionSummary(profile: AgentProfile): string {
   if (profile.isDefault) {
     labels.push("default")
   }
-  if (profile.connection.type !== "internal") {
-    labels.push(profile.connection.type)
+  const connectionType = getAgentProfileConnectionType(profile)
+  if (connectionType && connectionType !== "internal") {
+    labels.push(connectionType)
   }
 
   const labelSuffix = labels.length
     ? ` ${colors.dim}[${labels.join(", ")}]${colors.reset}`
     : ""
-  const description = profile.description?.trim()
-    ? ` ${colors.dim}- ${profile.description.trim()}${colors.reset}`
+  const summary = getAgentProfileSummary(profile)
+  const description = summary
+    ? ` ${colors.dim}- ${summary}${colors.reset}`
     : ""
 
-  return `${profile.id}: ${profile.displayName}${labelSuffix}${description}`
-}
-
-function resolveAgentSelectionForCli(selection: string): {
-  ambiguousAgents?: AgentProfile[]
-  selectedAgent?: AgentProfile
-} {
-  const query = selection.trim().toLowerCase()
-  const availableAgents = getAvailableAgentsForCli()
-
-  const exactAgent = availableAgents.find((profile) => {
-    const exactCandidates = new Set(getAgentSelectionCandidates(profile))
-
-    return exactCandidates.has(query)
-  })
-  if (exactAgent) {
-    return { selectedAgent: exactAgent }
-  }
-
-  const matchingAgents = availableAgents.filter((profile) => {
-    const prefixCandidates = new Set(getAgentSelectionCandidates(profile))
-
-    return [...prefixCandidates].some((candidate) => candidate.startsWith(query))
-  })
-  if (matchingAgents.length === 1) {
-    return { selectedAgent: matchingAgents[0] }
-  }
-  if (matchingAgents.length > 1) {
-    return { ambiguousAgents: matchingAgents }
-  }
-
-  return {}
+  return `${profile.id}: ${getAgentProfileDisplayName(profile)}${labelSuffix}${description}`
 }
 
 function printStatus() {
@@ -271,7 +230,7 @@ function printStatus() {
     `  Model: ${colors.cyan}${providerDisplayName}/${model}${colors.reset}`,
   )
   console.log(
-    `  Current agent: ${colors.cyan}${currentAgent?.displayName || "(none)"}${colors.reset}${currentAgent ? `${colors.dim} (${currentAgent.id})${colors.reset}` : ""}`,
+    `  Current agent: ${colors.cyan}${currentAgent ? getAgentProfileDisplayName(currentAgent) : "(none)"}${colors.reset}${currentAgent ? `${colors.dim} (${currentAgent.id})${colors.reset}` : ""}`,
   )
   console.log(
     `  Current conversation: ${colors.cyan}${currentConversationId || "(none)"}${colors.reset}`,
@@ -429,12 +388,13 @@ async function handleUseAgent(selection: string): Promise<void> {
     return
   }
 
-  const { selectedAgent, ambiguousAgents } = resolveAgentSelectionForCli(query)
+  const { selectedProfile: selectedAgent, ambiguousProfiles: ambiguousAgents } =
+    resolveAgentProfileSelection(getAvailableAgentsForCli(), query)
   if (selectedAgent) {
     const profile = activateAgentProfile(selectedAgent)
     printColored(
       colors.green,
-      `Using agent ${profile.displayName} (${profile.id}) for future prompts.`,
+      `Using agent ${getAgentProfileDisplayName(profile)} (${profile.id}) for future prompts.`,
     )
     return
   }
