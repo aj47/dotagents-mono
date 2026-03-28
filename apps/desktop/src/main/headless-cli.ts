@@ -11,6 +11,7 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
 import { emergencyStopAll } from "./emergency-stop"
+import { resolveChatModelDisplayInfo } from "@dotagents/shared"
 import type {
   AgentProgressUpdate,
   Conversation,
@@ -101,20 +102,14 @@ ${colors.dim}Type any message to interact with the agent.${colors.reset}
 function printStatus() {
   const serverStatus = mcpService.getServerStatus()
   const activeSessions = agentSessionTracker.getActiveSessions()
-  const cfg = configStore.get()
-
-  // Determine current model info
-  const provider = cfg.mcpToolsProviderId || "openai"
-  let modelName = "default"
-  if (provider === "openai")
-    modelName = cfg.mcpToolsOpenaiModel || "gpt-4.1-mini"
-  else if (provider === "groq")
-    modelName = cfg.mcpToolsGroqModel || "openai/gpt-oss-120b"
-  else if (provider === "gemini")
-    modelName = cfg.mcpToolsGeminiModel || "gemini-2.5-flash"
+  const { model, providerDisplayName } = resolveChatModelDisplayInfo(
+    configStore.get(),
+  )
 
   console.log(`\n${colors.bold}Server Status:${colors.reset}`)
-  console.log(`  Model: ${colors.cyan}${provider}/${modelName}${colors.reset}`)
+  console.log(
+    `  Model: ${colors.cyan}${providerDisplayName}/${model}${colors.reset}`,
+  )
   console.log(
     `  Current conversation: ${colors.cyan}${currentConversationId || "(none)"}${colors.reset}`,
   )

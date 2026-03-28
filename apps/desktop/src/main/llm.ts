@@ -16,7 +16,6 @@ import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
-import { getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
   endAgentTrace,
@@ -63,6 +62,7 @@ import { buildVerificationMessagesFromAgentState } from "./llm-verification-repl
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
 import {
   normalizeAgentConversationState,
+  resolveChatModelDisplayInfo,
   type AgentConversationState,
 } from "@dotagents/shared"
 
@@ -568,18 +568,9 @@ export async function processTranscriptWithAgentMode(
   let contextInfoRef: { estTokens: number; maxTokens: number } | undefined = undefined
 
   // Get model info for progress display
-  const providerId = config.mcpToolsProviderId || "openai"
-  const modelName = providerId === "openai"
-    ? config.mcpToolsOpenaiModel || "gpt-4.1-mini"
-    : providerId === "groq"
-    ? config.mcpToolsGroqModel || "openai/gpt-oss-120b"
-    : providerId === "gemini"
-    ? config.mcpToolsGeminiModel || "gemini-2.5-flash"
-    : "gpt-4.1-mini"
-  // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
-  const providerDisplayName = providerId === "openai"
-    ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)
-    : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId
+  const { model: modelName, providerDisplayName } = resolveChatModelDisplayInfo(
+    config,
+  )
   const modelInfoRef = { provider: providerDisplayName, model: modelName }
   // Seed lastEmittedUserResponse with the latest respond_to_user content from
   // previous conversation history. This prevents the emit() guard from

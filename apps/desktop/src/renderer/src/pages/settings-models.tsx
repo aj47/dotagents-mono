@@ -34,6 +34,8 @@ import {
   SUPERTONIC_TTS_VOICES,
   DEFAULT_MODEL_PRESET_ID,
   getBuiltInModelPresets,
+  resolveChatModelSelection,
+  resolveChatProviderId,
 } from "@dotagents/shared"
 import { getDefaultSttModel } from "@dotagents/shared/stt-models"
 import { Mic, FileText, Volume2, Bot, Zap, BookOpen, Settings2 } from "lucide-react"
@@ -148,19 +150,21 @@ export function Component() {
 
   const config = configQuery.data
   const sttProviderId = config.sttProviderId || "openai"
-  const transcriptProcessingProviderId = config.transcriptPostProcessingProviderId || "openai"
+  const transcriptProcessingProviderId = resolveChatProviderId(
+    config,
+    "transcript",
+  )
   const ttsProviderId = config.ttsProviderId || "openai"
-  const agentProviderId = config.mcpToolsProviderId || "openai"
+  const agentProviderId = resolveChatProviderId(config)
   const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
   const usesOpenAiCompatiblePreset =
     agentProviderId === "openai" ||
     (transcriptProcessingEnabled && transcriptProcessingProviderId === "openai") ||
     (config.dualModelEnabled ?? false)
-  const transcriptProcessingModel = transcriptProcessingProviderId === "openai"
-    ? config.transcriptPostProcessingOpenaiModel
-    : transcriptProcessingProviderId === "groq"
-      ? config.transcriptPostProcessingGroqModel
-      : config.transcriptPostProcessingGeminiModel
+  const { model: transcriptProcessingModel } = resolveChatModelSelection(
+    config,
+    "transcript",
+  )
   const dualModelEnabled = config.dualModelEnabled ?? false
   const strongPresetId = config.dualModelStrongPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
   const weakPresetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
@@ -507,7 +511,7 @@ export function Component() {
             </div>
           )}
 
-          {!usesOpenAiCompatiblePreset && agentProviderId === "openai" && (
+          {!usesOpenAiCompatiblePreset && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
               OpenAI-compatible preset controls appear here when Agent/MCP Tools or Transcript Processing uses that provider.
             </p>

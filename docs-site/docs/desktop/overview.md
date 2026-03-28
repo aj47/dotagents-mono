@@ -137,6 +137,7 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Desktop startup and desktop settings reconfiguration** now also share the same config-driven remote-access reconciler, so enabling, disabling, or restarting the remote server from settings follows the same Cloudflare auto-start/stop rules as app startup.
 - **Terminal QR printing** now also shares one helper, so headless auto-print, desktop manual QR printing, and `--qr` override URLs all apply the same API-key, streamer-mode, and URL-resolution rules before printing pairing output.
 - **Remote server settings previews and runtime status** now also share the same mobile-pairing URL helper, so loopback/wildcard warnings, IPv6 URL formatting, and default bind/port fallbacks stay aligned between the settings page, QR logic, and headless defaults.
+- **Agent/MCP model resolution** now also shares one provider/model resolver, so the settings page defaults, headless CLI status output, desktop progress metadata, remote API model payloads, MCP sampling defaults, and AI SDK runtime model creation all use the same fallback and OpenAI-compatible provider-label rules.
 - **Desktop quit and non-GUI graceful shutdown** now also share the same runtime teardown helper, so loop shutdown plus ACP, MCP, and remote-server cleanup stay aligned while the GUI layers keyboard-listener cleanup on top.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.

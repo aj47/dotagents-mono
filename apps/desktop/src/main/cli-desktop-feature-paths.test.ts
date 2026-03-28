@@ -46,12 +46,33 @@ const remoteServerUrlSource = readFileSync(
   new URL("../shared/remote-server-url.ts", import.meta.url),
   "utf8",
 )
+const sharedProvidersSource = readFileSync(
+  new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
+  "utf8",
+)
 const headlessRuntimeSource = readFileSync(
   new URL("./headless-runtime.ts", import.meta.url),
   "utf8",
 )
 const settingsRemoteServerSource = readFileSync(
   new URL("../renderer/src/pages/settings-remote-server.tsx", import.meta.url),
+  "utf8",
+)
+const settingsModelsSource = readFileSync(
+  new URL("../renderer/src/pages/settings-models.tsx", import.meta.url),
+  "utf8",
+)
+const aiSdkProviderSource = readFileSync(
+  new URL("./ai-sdk-provider.ts", import.meta.url),
+  "utf8",
+)
+const contextBudgetSource = readFileSync(
+  new URL("./context-budget.ts", import.meta.url),
+  "utf8",
+)
+const llmSource = readFileSync(new URL("./llm.ts", import.meta.url), "utf8")
+const mcpSamplingSource = readFileSync(
+  new URL("./mcp-sampling.ts", import.meta.url),
   "utf8",
 )
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
@@ -204,6 +225,27 @@ describe("CLI and desktop feature paths", () => {
     )
   })
 
+  it("shares active chat provider/model resolution across CLI, desktop, and renderer surfaces", () => {
+    expect(sharedProvidersSource).toContain(
+      "export function resolveChatModelSelection",
+    )
+    expect(sharedProvidersSource).toContain(
+      "export function resolveChatModelDisplayInfo",
+    )
+    expect(sharedProvidersSource).toContain(
+      "export function resolveChatProviderId",
+    )
+    expect(aiSdkProviderSource).toContain("resolveChatModelSelection")
+    expect(aiSdkProviderSource).toContain("resolveChatProviderId")
+    expect(headlessCliSource).toContain("resolveChatModelDisplayInfo(")
+    expect(remoteServerSource).toContain("resolveChatModelSelection(")
+    expect(contextBudgetSource).toContain("return resolveChatModelSelection(")
+    expect(llmSource).toContain("resolveChatModelDisplayInfo(")
+    expect(mcpSamplingSource).toContain("resolveChatModelSelection(config)")
+    expect(settingsModelsSource).toContain("resolveChatProviderId(")
+    expect(settingsModelsSource).toContain("resolveChatModelSelection(")
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -217,6 +259,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared Cloudflare tunnel bootstrap")
     expect(docsSource).toContain("Shared remote server QR printing")
     expect(docsSource).toContain("Shared remote server URL rules")
+    expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -240,5 +283,6 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain(
       "Remote server status + headless pairing defaults",
     )
+    expect(docsSource).toContain("Shared active model selection")
   })
 })

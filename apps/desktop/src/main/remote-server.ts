@@ -11,6 +11,7 @@ import crypto from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
+import { resolveChatModelSelection } from "@dotagents/shared"
 import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
@@ -363,14 +364,6 @@ function getConnectableBaseUrlForMobilePairing(
     return undefined
   }
   return buildRemoteServerBaseUrl(connectableHost, port)
-}
-
-function resolveActiveModelId(cfg: any): string {
-  const provider = cfg.mcpToolsProviderId || "openai"
-  if (provider === "openai") return cfg.mcpToolsOpenaiModel || "openai"
-  if (provider === "groq") return cfg.mcpToolsGroqModel || "groq"
-  if (provider === "gemini") return cfg.mcpToolsGeminiModel || "gemini"
-  return String(provider)
 }
 
 function toOpenAIChatResponse(content: string, model: string) {
@@ -747,7 +740,7 @@ async function startRemoteServerInternal(
           // Record as if user submitted a text input
           recordHistory(result.content)
 
-          const model = resolveActiveModelId(configStore.get())
+          const { model } = resolveChatModelSelection(configStore.get())
 
           // Send final "done" event with full response data
           writeSSE({
@@ -800,7 +793,7 @@ async function startRemoteServerInternal(
       // Record as if user submitted a text input
       recordHistory(result.content)
 
-      const model = resolveActiveModelId(configStore.get())
+      const { model } = resolveChatModelSelection(configStore.get())
       // Return standard OpenAI response with conversation_id as custom field
       const response = toOpenAIChatResponse(result.content, model)
 
@@ -842,7 +835,7 @@ async function startRemoteServerInternal(
   })
 
   fastify.get("/v1/models", async (_req, reply) => {
-    const model = resolveActiveModelId(configStore.get())
+    const { model } = resolveChatModelSelection(configStore.get())
     return reply.send({
       object: "list",
       data: [{ id: model, object: "model", owned_by: "system" }],

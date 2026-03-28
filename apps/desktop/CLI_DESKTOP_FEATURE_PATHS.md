@@ -84,6 +84,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `buildRemoteServerBaseUrl(...)` and `resolveRemoteServerPairingPreview(...)`
 - Current callers: `remote-server.ts` status/connectability resolution, `settings-remote-server.tsx` base URL preview and bind warnings, `remote-server-qr.ts` default bind/port fallback, and `headless-runtime.ts` forced LAN bind default
 
+## Shared chat model selection
+
+- Shared provider/model file: `packages/shared/src/providers.ts`
+- Shared helpers: `resolveChatModelSelection(...)`, `resolveChatModelDisplayInfo(...)`, and `resolveChatProviderId(...)`
+- Current callers: `ai-sdk-provider.ts` runtime model creation, `llm.ts` progress metadata, `context-budget.ts` summarization/context-window budgeting, `remote-server.ts` response/model metadata, `mcp-sampling.ts` default sampling model reporting, `headless-cli.ts` status output, and `settings-models.tsx` provider/model defaults
+
 ## Shared runtime shutdown
 
 - Shared shutdown file: `apps/desktop/src/main/app-runtime.ts`
@@ -128,6 +134,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `settings-remote-server.tsx` now calls `resolveRemoteServerPairingPreview(...)`, so the settings page base URL preview plus wildcard/loopback warnings use the same bind classification and default URL builder that the main-process remote server status path uses.
 18. Remote server status + headless pairing defaults
     `remote-server.ts` now builds runtime status URLs through `buildRemoteServerBaseUrl(...)`, while `remote-server-qr.ts` and `headless-runtime.ts` reuse the same shared bind/port constants, so desktop pairing previews, remote status payloads, QR fallback URLs, and headless defaults stay aligned.
+19. Shared active model selection
+    `packages/shared/src/providers.ts` now resolves the effective chat provider/model once, so runtime model creation, desktop progress metadata, context budgeting, remote API model payloads, MCP sampling defaults, headless CLI status output, and the renderer model settings page all use the same provider fallback, STT-model sanitization, and OpenAI-compatible provider label rules.
 
 ## Parity rules
 
@@ -150,6 +158,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Cloudflare tunnel startup is decided in one place: `startConfiguredCloudflareTunnel(...)`, so desktop auto-start, headless CLI auto-start, and QR pairing all converge on the same named-vs-quick tunnel logic.
 - Remote server QR printing is decided in one place: `printSharedRemoteServerQrCode(...)`, so startup auto-print, manual terminal QR printing, and QR-mode override URLs all share the same guard and URL-resolution rules before printing.
 - Remote server pairing URL/connectability rules are decided in one place: `apps/desktop/src/shared/remote-server-url.ts`, so desktop settings previews, main-process status payloads, QR defaults, and headless bind defaults stay aligned.
+- Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 - Runtime teardown is decided in one place: `shutdownSharedRuntimeServices(...)`, so GUI quit and non-GUI graceful shutdown both stop loops and clean up ACP, MCP, and remote-server state through the same helper.
 
@@ -169,6 +178,10 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
   Confirms startup auto-print, manual terminal QR printing, streamer-mode suppression, and QR-mode override URLs all converge on the shared remote-server QR helper.
 - `apps/desktop/src/shared/remote-server-url.test.ts`
   Confirms loopback/wildcard host classification, IPv6 URL formatting, and desktop pairing preview warnings/base URLs stay aligned across renderer and main-process callers.
+- `packages/shared/src/providers.test.ts`
+  Confirms shared chat provider/model resolution, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
+- `apps/desktop/src/main/ai-sdk-provider.test.ts`
+  Confirms runtime language-model creation still uses the shared chat model resolver and preserves the STT-only fallback behavior for transcript/chat usage.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared runtime helpers register IPC/serve infrastructure, support awaited headless startup, preserve background desktop startup, and centralize GUI/headless teardown.
 - `apps/desktop/src/main/headless-runtime.test.ts`
