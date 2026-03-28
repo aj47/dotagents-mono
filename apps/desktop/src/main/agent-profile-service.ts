@@ -280,6 +280,43 @@ class AgentProfileService {
     )
   }
 
+  private createInternalDelegationProfileInput(
+    name: string,
+    displayName: string,
+    guidelines: string,
+    systemPrompt?: string,
+  ): Omit<AgentProfile, "id" | "createdAt" | "updatedAt"> {
+    const config = configStore.get()
+    const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
+    const runtimeToolNames = getRuntimeToolNames()
+
+    return {
+      name,
+      displayName,
+      guidelines,
+      systemPrompt,
+      connection: { type: "internal" },
+      role: "delegation-target",
+      enabled: true,
+      isUserProfile: false,
+      isAgentTarget: true,
+      toolConfig: {
+        disabledServers: allServerNames,
+        disabledTools: runtimeToolNames,
+        allServersDisabledByDefault: true,
+      },
+    }
+  }
+
+  private getProfilesByRoleWithLegacyFallback(
+    role: AgentProfileRole,
+    legacyMatcher: (profile: AgentProfile) => boolean,
+  ): AgentProfile[] {
+    const byRole = this.getByRole(role)
+    const byLegacy = this.getAll().filter((p) => !p.role && legacyMatcher(p))
+    return mergeById(byRole, byLegacy)
+  }
+
   /**
    * Load profiles from storage, migrating from legacy formats if needed.
    *
@@ -629,9 +666,7 @@ class AgentProfileService {
    */
   getUserProfiles(): AgentProfile[] {
     // Use getByRole, but also include legacy isUserProfile for backward compatibility
-    const byRole = this.getByRole("user-profile")
-    const byLegacy = this.getAll().filter((p) => p.isUserProfile && !p.role)
-    return mergeById(byRole, byLegacy)
+    return this.getProfilesByRoleWithLegacyFallback("user-profile", (p) => p.isUserProfile)
   }
 
   /**
@@ -640,9 +675,10 @@ class AgentProfileService {
    */
   getAgentTargets(): AgentProfile[] {
     // Use getByRole, but also include legacy isAgentTarget for backward compatibility
-    const byRole = this.getByRole("delegation-target")
-    const byLegacy = this.getAll().filter((p) => p.isAgentTarget && !p.role)
-    return mergeById(byRole, byLegacy)
+    return this.getProfilesByRoleWithLegacyFallback(
+      "delegation-target",
+      (p) => p.isAgentTarget,
+    )
   }
 
   /**
@@ -1074,32 +1110,21 @@ class AgentProfileService {
         throw new Error("Invalid profile data: systemPrompt must be a string")
       }
 
-      // Create default tool config with all servers disabled
       const appConfig = configStore.get()
-      const allServerNames = Object.keys(appConfig.mcpConfig?.mcpServers || {})
-      const runtimeToolNames = getRuntimeToolNames()
+      const existingMcpServers = appConfig.mcpConfig?.mcpServers || {}
 
-      const newProfile = this.create({
-        name: importData.name,
-        displayName: importData.name,
-        guidelines: importData.guidelines || "",
-        systemPrompt: importData.systemPrompt,
-        connection: { type: "internal" },
-        role: "delegation-target",
-        enabled: true,
-        isUserProfile: false,
-        isAgentTarget: true,
-        toolConfig: {
-          disabledServers: allServerNames,
-            disabledTools: runtimeToolNames,
-          allServersDisabledByDefault: true,
-        },
-      })
+      const defaultProfileInput = this.createInternalDelegationProfileInput(
+        importData.name,
+        importData.name,
+        importData.guidelines || "",
+        importData.systemPrompt,
+      )
+      const newProfile = this.create(defaultProfileInput)
 
       // Import MCP server definitions if present
       const importedServerNames: string[] = []
       if (importData.mcpServers && typeof importData.mcpServers === "object" && !Array.isArray(importData.mcpServers)) {
-        const currentMcpServers = appConfig.mcpConfig?.mcpServers || {}
+        const currentMcpServers = existingMcpServers
         const mergedServers = { ...currentMcpServers }
         let newServersAdded = 0
 
@@ -1208,26 +1233,14 @@ class AgentProfileService {
    * Used by backward-compatible IPC handlers and runtime tools.
    */
   createUserProfile(name: string, guidelines: string, systemPrompt?: string): AgentProfile {
-    const config = configStore.get()
-    const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
-    const runtimeToolNames = getRuntimeToolNames()
-
-    return this.create({
-      name,
-      displayName: name,
-      guidelines,
-      systemPrompt,
-      connection: { type: "internal" },
-      role: "delegation-target",
-      enabled: true,
-      isUserProfile: false,
-      isAgentTarget: true,
-      toolConfig: {
-        disabledServers: allServerNames,
-          disabledTools: runtimeToolNames,
-        allServersDisabledByDefault: true,
-      },
-    })
+    return this.create(
+      this.createInternalDelegationProfileInput(
+        name,
+        name,
+        guidelines,
+        systemPrompt,
+      ),
+    )
   }
 
   /**
