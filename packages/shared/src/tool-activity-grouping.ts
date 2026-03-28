@@ -66,8 +66,10 @@ export const TOOL_GROUP_MIN_SIZE = 2
  * which means it carries user-visible output and must NOT be grouped.
  */
 function hasRespondToUserCall(message: GroupableMessage): boolean {
-  if (message.role !== 'assistant' || !message.toolCalls?.length) return false
-  return message.toolCalls.some((tc) => tc.name === RESPOND_TO_USER_TOOL)
+  return (
+    message.role === 'assistant'
+    && (message.toolCalls?.some((tc) => tc.name === RESPOND_TO_USER_TOOL) ?? false)
+  )
 }
 
 /**
