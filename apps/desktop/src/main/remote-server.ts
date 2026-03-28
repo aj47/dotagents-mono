@@ -36,6 +36,11 @@ import { startSharedPromptRun } from "./agent-mode-runner"
 import { agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import {
+  getManagedConversation,
+  getManagedConversationHistory,
+  saveManagedConversation,
+} from "./conversation-management"
+import {
   buildRemoteServerBaseUrl,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_PORT,
@@ -1638,8 +1643,7 @@ async function startRemoteServerInternal(
         return reply.code(400).send({ error: conversationIdError })
       }
 
-      const conversation =
-        await conversationService.loadConversation(conversationId)
+      const conversation = await getManagedConversation(conversationId)
 
       if (!conversation) {
         return reply.code(404).send({ error: "Conversation not found" })
@@ -1865,7 +1869,7 @@ async function startRemoteServerInternal(
   // GET /v1/conversations - List all conversations
   fastify.get("/v1/conversations", async (_req, reply) => {
     try {
-      const conversations = await conversationService.getConversationHistory()
+      const conversations = await getManagedConversationHistory()
       diagnosticsService.logInfo(
         "remote-server",
         `Listed ${conversations.length} conversations`,
@@ -1959,7 +1963,7 @@ async function startRemoteServerInternal(
         messages,
       }
 
-      await conversationService.saveConversation(conversation, true)
+      await saveManagedConversation(conversation, { preserveTimestamp: true })
       diagnosticsService.logInfo(
         "remote-server",
         `Created conversation ${conversationId} with ${messages.length} messages`,
@@ -2041,8 +2045,7 @@ async function startRemoteServerInternal(
       }
 
       const now = Date.now()
-      let conversation =
-        await conversationService.loadConversation(conversationId)
+      let conversation = await getManagedConversation(conversationId)
 
       if (!conversation) {
         // Create new conversation with the provided ID
@@ -2087,7 +2090,9 @@ async function startRemoteServerInternal(
           messages,
         }
 
-        await conversationService.saveConversation(conversation, true)
+        await saveManagedConversation(conversation, {
+          preserveTimestamp: true,
+        })
         diagnosticsService.logInfo(
           "remote-server",
           `Created conversation ${conversationId} via PUT with ${messages.length} messages`,
@@ -2123,7 +2128,9 @@ async function startRemoteServerInternal(
 
         conversation.updatedAt = body.updatedAt ?? now
 
-        await conversationService.saveConversation(conversation, true)
+        await saveManagedConversation(conversation, {
+          preserveTimestamp: true,
+        })
         diagnosticsService.logInfo(
           "remote-server",
           `Updated conversation ${conversationId}`,

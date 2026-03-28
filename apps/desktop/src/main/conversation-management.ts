@@ -5,9 +5,16 @@ import {
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { conversationService } from "./conversation-service"
-import type { Conversation, Config } from "@shared/types"
+import type {
+  Conversation,
+  ConversationHistoryItem,
+  Config,
+} from "@shared/types"
 
-function areStringListsEqual(a: readonly string[], b: readonly string[]): boolean {
+function areStringListsEqual(
+  a: readonly string[],
+  b: readonly string[],
+): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index])
 }
 
@@ -75,6 +82,53 @@ function syncConversationTitleAcrossTrackedSessions(
   }
 }
 
+export async function getManagedConversationHistory(): Promise<
+  ConversationHistoryItem[]
+> {
+  return conversationService.getConversationHistory()
+}
+
+export async function getManagedConversation(
+  conversationId: string,
+): Promise<Conversation | null> {
+  return conversationService.loadConversation(conversationId)
+}
+
+export async function saveManagedConversation(
+  conversation: Conversation,
+  options: {
+    preserveTimestamp?: boolean
+  } = {},
+): Promise<void> {
+  await conversationService.saveConversation(
+    conversation,
+    options.preserveTimestamp ?? false,
+  )
+}
+
+export async function createManagedConversation(
+  firstMessage: string,
+  role: "user" | "assistant" = "user",
+): Promise<Conversation> {
+  return conversationService.createConversation(firstMessage, role)
+}
+
+export async function addManagedMessageToConversation(
+  conversationId: string,
+  content: string,
+  role: "user" | "assistant" | "tool",
+  toolCalls?: Array<{ name: string; arguments: any }>,
+  toolResults?: Array<{ success: boolean; content: string; error?: string }>,
+): Promise<Conversation | null> {
+  return conversationService.addMessageToConversation(
+    conversationId,
+    content,
+    role,
+    toolCalls,
+    toolResults,
+  )
+}
+
 export async function renameConversationTitleAndSyncSession(
   conversationId: string,
   title: string,
@@ -85,7 +139,10 @@ export async function renameConversationTitleAndSyncSession(
   )
 
   if (conversation) {
-    syncConversationTitleAcrossTrackedSessions(conversationId, conversation.title)
+    syncConversationTitleAcrossTrackedSessions(
+      conversationId,
+      conversation.title,
+    )
   }
 
   return conversation

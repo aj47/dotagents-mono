@@ -340,7 +340,22 @@ describe("CLI and desktop feature paths", () => {
     )
   })
 
-  it("shares conversation management across CLI, desktop, and runtime tool surfaces", () => {
+  it("shares conversation browsing and management across CLI, desktop, remote, and runtime tool surfaces", () => {
+    expect(conversationManagementSource).toContain(
+      "export async function getManagedConversationHistory",
+    )
+    expect(conversationManagementSource).toContain(
+      "export async function getManagedConversation(",
+    )
+    expect(conversationManagementSource).toContain(
+      "export async function saveManagedConversation(",
+    )
+    expect(conversationManagementSource).toContain(
+      "export async function createManagedConversation(",
+    )
+    expect(conversationManagementSource).toContain(
+      "export async function addManagedMessageToConversation(",
+    )
     expect(conversationManagementSource).toContain(
       "export async function renameConversationTitleAndSyncSession",
     )
@@ -353,6 +368,8 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/rename":')
     expect(headlessCliSource).toContain('case "/delete":')
     expect(headlessCliSource).toContain('case "/delete-all":')
+    expect(headlessCliSource).toContain("getManagedConversationHistory()")
+    expect(headlessCliSource).toContain("getManagedConversation(")
     expect(headlessCliSource).toContain(
       "renameConversationTitleAndSyncSession(",
     )
@@ -362,6 +379,11 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain(
       "deleteAllConversationsAndSyncSessionState()",
     )
+    expect(tipcSource).toContain("return getManagedConversationHistory()")
+    expect(tipcSource).toContain("return getManagedConversation(")
+    expect(tipcSource).toContain("await saveManagedConversation(")
+    expect(tipcSource).toContain("return createManagedConversation(")
+    expect(tipcSource).toContain("return addManagedMessageToConversation(")
     expect(tipcSource).toContain(
       "return renameConversationTitleAndSyncSession(",
     )
@@ -371,6 +393,13 @@ describe("CLI and desktop feature paths", () => {
     expect(tipcSource).toContain(
       "await deleteAllConversationsAndSyncSessionState()",
     )
+    expect(remoteServerSource).toContain(
+      "const conversations = await getManagedConversationHistory()",
+    )
+    expect(remoteServerSource).toContain(
+      "const conversation = await getManagedConversation(conversationId)",
+    )
+    expect(remoteServerSource).toContain("await saveManagedConversation(")
     expect(runtimeToolsSource).toContain(
       "renameConversationTitleAndSyncSession(",
     )
@@ -1187,6 +1216,8 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI conversation resume selection")
     expect(docsSource).toContain("Headless CLI session pin/archive controls")
     expect(docsSource).toContain("Headless CLI conversation management")
+    expect(docsSource).toContain("Headless CLI + desktop conversation browsing")
+    expect(docsSource).toContain("Remote conversation history + recovery API")
     expect(docsSource).toContain("Headless CLI agent selection")
     expect(docsSource).toContain("Headless CLI agent profile management")
     expect(docsSource).toContain("Headless CLI repeat-task controls")

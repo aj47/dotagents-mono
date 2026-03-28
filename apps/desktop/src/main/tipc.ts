@@ -67,8 +67,12 @@ import {
   resolveTtsSelection,
 } from "@dotagents/shared"
 import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
-import { conversationService } from "./conversation-service"
 import {
+  addManagedMessageToConversation,
+  createManagedConversation,
+  getManagedConversation,
+  getManagedConversationHistory,
+  saveManagedConversation,
   deleteAllConversationsAndSyncSessionState,
   deleteConversationAndSyncSessionState,
   renameConversationTitleAndSyncSession,
@@ -571,7 +575,7 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
         // Only add to conversation history if not already added (prevents duplicates on retry)
         if (!queuedMessage.addedToHistory) {
           // Add the queued message to the conversation
-          const addResult = await conversationService.addMessageToConversation(
+          const addResult = await addManagedMessageToConversation(
             conversationId,
             queuedMessage.text,
             "user",
@@ -3227,29 +3231,25 @@ export const router = {
   // Conversation Management
   getConversationHistory: t.procedure.action(async () => {
     logApp("[tipc] getConversationHistory called")
-    const result = await conversationService.getConversationHistory()
-    return result
+    return getManagedConversationHistory()
   }),
 
   loadConversation: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      return conversationService.loadConversation(input.conversationId)
+      return getManagedConversation(input.conversationId)
     }),
 
   saveConversation: t.procedure
     .input<{ conversation: Conversation }>()
     .action(async ({ input }) => {
-      await conversationService.saveConversation(input.conversation)
+      await saveManagedConversation(input.conversation)
     }),
 
   createConversation: t.procedure
     .input<{ firstMessage: string; role?: "user" | "assistant" }>()
     .action(async ({ input }) => {
-      return conversationService.createConversation(
-        input.firstMessage,
-        input.role,
-      )
+      return createManagedConversation(input.firstMessage, input.role)
     }),
 
   addMessageToConversation: t.procedure
@@ -3261,7 +3261,7 @@ export const router = {
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
     }>()
     .action(async ({ input }) => {
-      return conversationService.addMessageToConversation(
+      return addManagedMessageToConversation(
         input.conversationId,
         input.content,
         input.role,

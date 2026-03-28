@@ -8,7 +8,6 @@ import readline from "readline"
 import { configStore } from "./config"
 import { mcpService } from "./mcp-service"
 import { toolApprovalManager } from "./state"
-import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
@@ -76,6 +75,8 @@ import {
   updateManagedSkill,
 } from "./skill-management"
 import {
+  getManagedConversation,
+  getManagedConversationHistory,
   deleteAllConversationsAndSyncSessionState,
   deleteConversationAndSyncSessionState,
   renameConversationTitleAndSyncSession,
@@ -1152,7 +1153,7 @@ function printSkills() {
 }
 
 async function printConversations() {
-  const history = await conversationService.getConversationHistory()
+  const history = await getManagedConversationHistory()
   const sessionState = getConfiguredConversationSessionState()
   const pinnedSessionIds = new Set(sessionState.pinnedSessionIds)
   console.log(`\n${colors.bold}Recent Conversations:${colors.reset}`)
@@ -1204,7 +1205,7 @@ async function resolveConversationSelectionForCli(
     return null
   }
 
-  const history = await conversationService.getConversationHistory()
+  const history = await getManagedConversationHistory()
   const { selectedConversation, ambiguousConversations } =
     resolveConversationHistorySelection(history, query)
 
@@ -2278,9 +2279,7 @@ async function handleShowConversation(selection: string): Promise<void> {
     return
   }
 
-  const conversation = await conversationService.loadConversation(
-    selectedConversation.id,
-  )
+  const conversation = await getManagedConversation(selectedConversation.id)
   if (!conversation) {
     printColored(
       colors.red,

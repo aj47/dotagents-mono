@@ -99,6 +99,52 @@ describe("remote-server route registration", () => {
     expect(profileSwitchSection).not.toContain("toolConfigToMcpServerConfig(")
   })
 
+  it("shares remote conversation browsing and save routes with the conversation-management helper", () => {
+    const source = getRemoteServerSource()
+    const historySection = getSection(
+      source,
+      "// GET /v1/conversations - List all conversations",
+      "// POST /v1/conversations - Create a new conversation from mobile data",
+    )
+    const recoverySection = getSection(
+      source,
+      "// GET /v1/conversations/:id - Fetch conversation state for recovery",
+      "// ============================================\n  // Push Notification Endpoints (for mobile app)",
+    )
+    const createSection = getSection(
+      source,
+      "// POST /v1/conversations - Create a new conversation from mobile data",
+      "// PUT /v1/conversations/:id - Update an existing conversation",
+    )
+    const updateSection = getSection(
+      source,
+      "// PUT /v1/conversations/:id - Update an existing conversation",
+      `fastify.post("/v1/emergency-stop"`,
+    )
+
+    expect(source).toContain('from "./conversation-management"')
+    expect(historySection).toContain("getManagedConversationHistory()")
+    expect(historySection).not.toContain(
+      "conversationService.getConversationHistory()",
+    )
+    expect(recoverySection).toContain("getManagedConversation(conversationId)")
+    expect(recoverySection).not.toContain(
+      "conversationService.loadConversation(conversationId)",
+    )
+    expect(createSection).toContain("saveManagedConversation(conversation, {")
+    expect(createSection).not.toContain(
+      "conversationService.saveConversation(conversation, true)",
+    )
+    expect(updateSection).toContain("getManagedConversation(conversationId)")
+    expect(updateSection).toContain("saveManagedConversation(conversation, {")
+    expect(updateSection).not.toContain(
+      "conversationService.loadConversation(conversationId)",
+    )
+    expect(updateSection).not.toContain(
+      "conversationService.saveConversation(conversation, true)",
+    )
+  })
+
   it("shares agent profile CRUD routes with the main-process management helper", () => {
     const source = getRemoteServerSource()
     const agentProfileSection = getSection(
