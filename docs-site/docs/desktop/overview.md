@@ -123,9 +123,10 @@ The desktop app exposes multiple top-level ways to run the same agent engine:
 - **Desktop text input** uses the renderer/TIPC path for typed requests.
 - **Desktop voice MCP mode** transcribes audio, then reuses the same top-level runner.
 - **Headless CLI** starts the app with `--headless` and runs the same ACP/tool-routing path in a terminal.
+- **QR headless pairing** starts the app with `--qr`, boots the same non-GUI runtime stack, and then prints a pairing QR code for remote/mobile clients.
 - **Remote server** accepts API requests and forwards them through the same runner used by desktop and CLI.
 - **Loops** create background sessions and then call into the same shared top-level execution path.
-- **Desktop and headless startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI or terminal flow begins.
+- **Desktop, headless CLI, and QR startup** now share the same MCP, loop, ACP, bundled-skill, and models.dev initialization path before their mode-specific UI, terminal, or pairing flow begins.
 
 The repo-level feature matrix for these paths lives in `apps/desktop/CLI_DESKTOP_FEATURE_PATHS.md`.
 

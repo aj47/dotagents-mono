@@ -16,6 +16,7 @@ import { destroyTray, initTray } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { mcpService } from "./mcp-service"
 import { initDebugFlags, logApp } from "./debug"
+import { startSharedHeadlessRuntime } from "./headless-runtime"
 import { initializeDeepLinkHandling } from "./oauth-deeplink-handler"
 import { diagnosticsService } from "./diagnostics"
 import { ensureAppSwitcherPresence } from "./app-switcher"
@@ -24,7 +25,6 @@ import { configStore } from "./config"
 import {
   startRemoteServer,
   printQRCodeToTerminal,
-  startRemoteServerForced,
 } from "./remote-server"
 import { acpService } from "./acp-service"
 import {
@@ -37,8 +37,6 @@ import {
   checkCloudflaredInstalled,
 } from "./cloudflare-tunnel"
 import { loopService } from "./loop-service"
-import { setHeadlessMode } from "./state"
-import { stopRemoteServer } from "./remote-server"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
   downloadHubBundleToTempFile,
@@ -53,6 +51,8 @@ import {
 const isQRMode = process.argv.includes("--qr")
 // Check for --headless flag (headless mode without GUI)
 const isHeadlessMode = process.argv.includes("--headless")
+const isNoGuiMode = isQRMode || isHeadlessMode
+const HEADLESS_REMOTE_SERVER_BIND_ADDRESS = "0.0.0.0"
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
 // This must be called before app.whenReady()
@@ -85,7 +85,7 @@ let pendingHubBundleHandoffPath = findHubBundleHandoffFilePath(process.argv)
 const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
-const shouldEnforceSingleInstance = !isQRMode && !isHeadlessMode
+const shouldEnforceSingleInstance = !isNoGuiMode
 const CLEANUP_TIMEOUT_MS = 5000
 const GUI_SIGNAL_FORCE_EXIT_DELAY_MS = 500
 
@@ -95,6 +95,16 @@ function releaseAppSingleInstanceLock() {
   try {
     app.releaseSingleInstanceLock()
   } catch {}
+}
+
+function registerHeadlessTerminationHandlers(
+  gracefulShutdown: (exitCode: number) => Promise<void>,
+): void {
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      void gracefulShutdown(0)
+    })
+  }
 }
 
 function openPendingHubBundleInstall(): boolean {
@@ -213,23 +223,18 @@ if (!gotSingleInstanceLock) {
     // Handle --qr mode: start remote server, start tunnel, print QR code, run headlessly
     if (isQRMode) {
       logApp("Running in --qr mode (headless with QR code)")
-
-      // Hide dock icon on macOS for headless mode
-      if (process.platform === "darwin" && app.dock) {
-        app.dock.hide()
-      }
+      let gracefulShutdown:
+        | ((exitCode: number) => Promise<void>)
+        | undefined
 
       try {
-        // Start remote server (force enabled for --qr mode, bypassing config check)
-        const serverResult = await startRemoteServerForced()
-        if (!serverResult.running) {
-          console.error(
-            "[QR Mode] Failed to start remote server:",
-            serverResult.error || "Unknown error",
-          )
-          process.exit(1)
-        }
-        logApp("Remote server started in --qr mode")
+        const sharedHeadlessRuntime = await startSharedHeadlessRuntime({
+          label: "qr-runtime",
+          shutdownLabel: "QR Mode",
+          remoteServerBindAddress: HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
+        })
+        gracefulShutdown = sharedHeadlessRuntime.gracefulShutdown
+        registerHeadlessTerminationHandlers(sharedHeadlessRuntime.gracefulShutdown)
 
         // Start Cloudflare tunnel for remote access
         const cfg = configStore.get()
@@ -296,9 +301,13 @@ if (!gotSingleInstanceLock) {
         console.log("[QR Mode] Server running. Press Ctrl+C to exit.")
       } catch (err) {
         console.error(
-          "[QR Mode] Failed to start remote server:",
+          "[QR Mode] Failed to initialize:",
           err instanceof Error ? err.message : String(err),
         )
+        if (gracefulShutdown) {
+          await gracefulShutdown(1)
+          return
+        }
         process.exit(1)
       }
 
@@ -308,67 +317,35 @@ if (!gotSingleInstanceLock) {
 
     // Handle --headless mode: initialize services and start CLI without any GUI
     if (isHeadlessMode) {
-      setHeadlessMode(true)
       logApp("Running in --headless mode")
-
-      // Hide dock icon on macOS for headless mode
-      if (process.platform === "darwin" && app.dock) {
-        app.dock.hide()
-      }
-
-      registerSharedMainProcessInfrastructure()
-      logApp("Shared main-process infrastructure registered (headless)")
-
-      let isHeadlessShuttingDown = false
-      const gracefulShutdown = async (exitCode: number) => {
-        if (isHeadlessShuttingDown) return
-        isHeadlessShuttingDown = true
-        console.log("\n[Headless] Shutting down...")
-        releaseAppSingleInstanceLock()
-        loopService.stopAllLoops()
-        await acpService.shutdown().catch(() => {})
-        await mcpService.cleanup().catch(() => {})
-        await stopRemoteServer().catch(() => {})
-        process.exit(exitCode)
-      }
-
-      process.on("SIGTERM", () => {
-        void gracefulShutdown(0)
-      })
+      let gracefulShutdown:
+        | ((exitCode: number) => Promise<void>)
+        | undefined
 
       try {
-        await initializeSharedRuntimeServices({
+        const sharedHeadlessRuntime = await startSharedHeadlessRuntime({
           label: "headless-runtime",
-          mcpStrategy: "await",
-          acpStrategy: "await",
+          shutdownLabel: "Headless",
+          remoteServerBindAddress: HEADLESS_REMOTE_SERVER_BIND_ADDRESS,
         })
-
-        // Force-start remote server bound to 0.0.0.0 for external access.
-        // Use a runtime override to avoid mutating persisted user config.
-        const serverResult = await startRemoteServerForced({
-          bindAddressOverride: "0.0.0.0",
-        })
-        if (!serverResult.running) {
-          console.error(
-            "[Headless] Failed to start remote server:",
-            serverResult.error || "Unknown error",
-          )
-          await gracefulShutdown(1)
-          return
-        }
-        logApp("Remote server started on 0.0.0.0 (headless)")
+        gracefulShutdown = sharedHeadlessRuntime.gracefulShutdown
+        registerHeadlessTerminationHandlers(sharedHeadlessRuntime.gracefulShutdown)
 
         // Start headless CLI
         const { startHeadlessCLI } = await import("./headless-cli")
         await startHeadlessCLI(async () => {
-          await gracefulShutdown(0)
+          await sharedHeadlessRuntime.gracefulShutdown(0)
         })
       } catch (err) {
         console.error(
           "[Headless] Failed to initialize:",
           err instanceof Error ? err.message : String(err),
         )
-        await gracefulShutdown(1)
+        if (gracefulShutdown) {
+          await gracefulShutdown(1)
+          return
+        }
+        process.exit(1)
         return
       }
 
@@ -715,16 +692,18 @@ app.on("window-all-closed", () => {
 // On macOS, app.quit() alone doesn't terminate the process because
 // window-all-closed intentionally skips quitting. Without these handlers,
 // Electron processes leak as orphans.
-for (const signal of ["SIGTERM", "SIGINT"] as const) {
-  process.on(signal, () => {
-    logApp(`Received ${signal}, forcing exit`)
-    releaseAppSingleInstanceLock()
-    destroyTray()
-    // Synchronously kill MCP server processes to prevent orphans
-    mcpService.emergencyStopAllProcesses()
-    app.quit()
-    // Short grace period — electron-vite --watch spawns a new process quickly,
-    // so the old one must die fast to avoid duplicate Electron processes.
-    setTimeout(() => process.exit(0), GUI_SIGNAL_FORCE_EXIT_DELAY_MS).unref()
-  })
+if (!isNoGuiMode) {
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      logApp(`Received ${signal}, forcing exit`)
+      releaseAppSingleInstanceLock()
+      destroyTray()
+      // Synchronously kill MCP server processes to prevent orphans
+      mcpService.emergencyStopAllProcesses()
+      app.quit()
+      // Short grace period: electron-vite --watch spawns a new process quickly,
+      // so the old one must die fast to avoid duplicate Electron processes.
+      setTimeout(() => process.exit(0), GUI_SIGNAL_FORCE_EXIT_DELAY_MS).unref()
+    })
+  }
 }

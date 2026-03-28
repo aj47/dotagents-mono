@@ -14,6 +14,11 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Infrastructure helper: `registerSharedMainProcessInfrastructure(...)`
 - Service startup helper: `initializeSharedRuntimeServices(...)`
 
+## Shared headless runtime
+
+- Headless bootstrap helper: `apps/desktop/src/main/headless-runtime.ts`
+- Non-GUI startup helper: `startSharedHeadlessRuntime(...)`
+
 ## Feature path matrix
 
 1. Desktop text input
@@ -30,6 +35,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
    `index.ts` calls `registerSharedMainProcessInfrastructure(...)`, creates windows/tray, then starts MCP, loops, ACP sync, bundled skills, and models.dev via `initializeSharedRuntimeServices(...)`.
 7. Headless CLI startup
    `index.ts --headless` calls the same infrastructure and runtime helpers before forcing the remote server on `0.0.0.0` and launching the terminal CLI.
+8. QR headless pairing startup
+   `index.ts --qr` calls `startSharedHeadlessRuntime(...)`, starts the remote server on `0.0.0.0`, optionally starts a Cloudflare tunnel, then prints the pairing QR code without creating windows.
 
 ## Parity rules
 
@@ -38,6 +45,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - CLI parity comes from `toolApprovalManager.registerSessionApprovalHandler(...)`, which lets terminal sessions resolve the same approval requests that the desktop UI uses.
 - Remote server currently keeps `approvalMode: "dialog"` to preserve its existing approval behavior.
 - GUI and headless startup now share the same MCP/loop/ACP/skills/models initialization path through `initializeSharedRuntimeServices(...)`.
+- `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 
 ## Verification targets
 
@@ -46,6 +54,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/main/agent-mode-runner.test.ts`
   Confirms conversation prep, inline approval behavior, and ACP routing.
 - `apps/desktop/src/main/cli-desktop-feature-paths.test.ts`
-  Confirms desktop UI, headless CLI, remote server, loop, GUI startup, and headless startup paths still point at shared helpers.
+  Confirms desktop UI, headless CLI, remote server, loop, GUI startup, headless startup, and QR startup paths still point at shared helpers.
 - `apps/desktop/src/main/app-runtime.test.ts`
   Confirms the shared startup helper registers IPC/serve infrastructure, supports awaited headless startup, and preserves background desktop startup.
+- `apps/desktop/src/main/headless-runtime.test.ts`
+  Confirms non-GUI startup reuses the shared runtime bootstrap, forces the external remote-server bind, and cleans up services through one graceful shutdown path.

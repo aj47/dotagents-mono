@@ -6,6 +6,7 @@ const remoteServerSource = readFileSync(new URL("./remote-server.ts", import.met
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 const loopServiceSource = readFileSync(new URL("./loop-service.ts", import.meta.url), "utf8")
 const appRuntimeSource = readFileSync(new URL("./app-runtime.ts", import.meta.url), "utf8")
+const headlessRuntimeSource = readFileSync(new URL("./headless-runtime.ts", import.meta.url), "utf8")
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 const docsSource = readFileSync(new URL("../../CLI_DESKTOP_FEATURE_PATHS.md", import.meta.url), "utf8")
 
@@ -29,11 +30,16 @@ describe("CLI and desktop feature paths", () => {
     expect(loopServiceSource).toContain("runAgentLoopSession(loop.prompt, conversation.id, sessionId, loop.maxIterations)")
   })
 
-  it("shares GUI and headless startup through the same bootstrap helpers", () => {
+  it("shares GUI, headless CLI, and QR startup through the same bootstrap helpers", () => {
     expect(appRuntimeSource).toContain("export function registerSharedMainProcessInfrastructure")
     expect(appRuntimeSource).toContain("export async function initializeSharedRuntimeServices")
+    expect(headlessRuntimeSource).toContain("export async function startSharedHeadlessRuntime")
+    expect(headlessRuntimeSource).toContain('mcpStrategy: "await"')
+    expect(headlessRuntimeSource).toContain('acpStrategy: "await"')
     expect(indexSource).toContain("registerSharedMainProcessInfrastructure()")
+    expect(indexSource).toContain("startSharedHeadlessRuntime({")
     expect(indexSource).toContain('label: "headless-runtime"')
+    expect(indexSource).toContain('label: "qr-runtime"')
     expect(indexSource).toContain('label: "desktop-runtime"')
     expect(indexSource).toContain("initializeSharedRuntimeServices({")
   })
@@ -46,5 +52,6 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Repeat tasks / loops")
     expect(docsSource).toContain("Desktop GUI startup")
     expect(docsSource).toContain("Headless CLI startup")
+    expect(docsSource).toContain("QR headless pairing startup")
   })
 })
