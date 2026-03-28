@@ -6,6 +6,7 @@ import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
 import { queryClient } from '@renderer/lib/queries'
 import { ttsManager } from '@renderer/lib/tts-manager'
 import { logUI } from '@renderer/lib/debug'
+import { sanitizeConversationSessionState } from '@dotagents/shared'
 
 const areStringArraysEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) return false
@@ -154,9 +155,8 @@ export function useStoreSync() {
     }).then((config) => {
       if (cancelled) return
 
-      const nextPinnedSessionIds = Array.isArray(config?.pinnedSessionIds)
-        ? config.pinnedSessionIds.filter((sessionId): sessionId is string => typeof sessionId === 'string')
-        : []
+      const nextPinnedSessionIds =
+        sanitizeConversationSessionState(config).pinnedSessionIds
 
       lastPersistedPinnedSessionIdsRef.current = nextPinnedSessionIds
       pinnedSessionIdsHydratedRef.current = true
@@ -234,9 +234,8 @@ export function useStoreSync() {
     }).then((config) => {
       if (cancelled) return
 
-      const nextArchivedSessionIds = Array.isArray(config?.archivedSessionIds)
-        ? config.archivedSessionIds.filter((id): id is string => typeof id === 'string')
-        : []
+      const nextArchivedSessionIds =
+        sanitizeConversationSessionState(config).archivedSessionIds
 
       lastPersistedArchivedSessionIdsRef.current = nextArchivedSessionIds
       archivedSessionIdsHydratedRef.current = true

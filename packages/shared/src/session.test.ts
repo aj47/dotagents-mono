@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
+  sanitizeConversationSessionState,
+  setConversationSessionStateMembership,
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
+  orderItemsByPinnedFirst,
+  removeSessionIdFromConversationSessionState,
+  sanitizeSessionIdList,
+  setSessionIdMembership,
   sortSessionsByPinnedFirst,
   sanitizeSessionText,
   sessionToListItem,
@@ -72,6 +78,37 @@ describe('generateSessionTitle', () => {
   })
 })
 
+// ── orderItemsByPinnedFirst ──────────────────────────────────────────────────
+
+describe('orderItemsByPinnedFirst', () => {
+  it('moves pinned items to the front while preserving each group order', () => {
+    const ordered = orderItemsByPinnedFirst(
+      [
+        { id: 'session-4', isPinned: false },
+        { id: 'session-3', isPinned: true },
+        { id: 'session-2', isPinned: false },
+        { id: 'session-1', isPinned: true },
+      ],
+      (session) => session.isPinned,
+    )
+
+    expect(ordered.map((session) => session.id)).toEqual([
+      'session-3',
+      'session-1',
+      'session-4',
+      'session-2',
+    ])
+  })
+
+  it('returns a shallow copy when every item is in the same pin group', () => {
+    const sessions = [{ id: 'session-1' }, { id: 'session-2' }]
+    const ordered = orderItemsByPinnedFirst(sessions, () => false)
+
+    expect(ordered).toEqual(sessions)
+    expect(ordered).not.toBe(sessions)
+  })
+})
+
 // ── sortSessionsByPinnedFirst ────────────────────────────────────────────────
 
 describe('sortSessionsByPinnedFirst', () => {
@@ -110,6 +147,116 @@ describe('sortSessionsByPinnedFirst', () => {
     const original = [...sessions]
     sortSessionsByPinnedFirst(sessions)
     expect(sessions).toEqual(original)
+  })
+})
+
+// ── sanitizeSessionIdList ────────────────────────────────────────────────────
+
+describe('sanitizeSessionIdList', () => {
+  it('returns only string entries from array input', () => {
+    expect(
+      sanitizeSessionIdList(['session-1', 2, null, 'session-2'])
+    ).toEqual(['session-1', 'session-2'])
+  })
+
+  it('returns an empty array for non-array input', () => {
+    expect(sanitizeSessionIdList('session-1')).toEqual([])
+  })
+})
+
+describe('sanitizeConversationSessionState', () => {
+  it('sanitizes both pinned and archived session id lists together', () => {
+    expect(
+      sanitizeConversationSessionState({
+        pinnedSessionIds: ['session-1', 2, 'session-2'],
+        archivedSessionIds: ['session-3', null, 'session-4'],
+      })
+    ).toEqual({
+      pinnedSessionIds: ['session-1', 'session-2'],
+      archivedSessionIds: ['session-3', 'session-4'],
+    })
+  })
+
+  it('returns empty lists when session state is missing', () => {
+    expect(sanitizeConversationSessionState(undefined)).toEqual({
+      pinnedSessionIds: [],
+      archivedSessionIds: [],
+    })
+  })
+})
+
+// ── setSessionIdMembership ───────────────────────────────────────────────────
+
+describe('setSessionIdMembership', () => {
+  it('adds missing session ids when enabling membership', () => {
+    expect(
+      setSessionIdMembership(['session-1'], 'session-2', true)
+    ).toEqual(['session-1', 'session-2'])
+  })
+
+  it('removes existing session ids when disabling membership', () => {
+    expect(
+      setSessionIdMembership(['session-1', 'session-2'], 'session-1', false)
+    ).toEqual(['session-2'])
+  })
+
+  it('does not duplicate ids when enabling an existing membership', () => {
+    expect(
+      setSessionIdMembership(['session-1'], 'session-1', true)
+    ).toEqual(['session-1'])
+  })
+})
+
+describe('setConversationSessionStateMembership', () => {
+  it('updates pinned session ids while keeping archived ids intact', () => {
+    expect(
+      setConversationSessionStateMembership(
+        {
+          pinnedSessionIds: ['session-1'],
+          archivedSessionIds: ['session-3'],
+        },
+        'pinnedSessionIds',
+        'session-2',
+        true,
+      )
+    ).toEqual({
+      pinnedSessionIds: ['session-1', 'session-2'],
+      archivedSessionIds: ['session-3'],
+    })
+  })
+
+  it('updates archived session ids with sanitized input state', () => {
+    expect(
+      setConversationSessionStateMembership(
+        {
+          pinnedSessionIds: ['session-1', 2],
+          archivedSessionIds: ['session-3'],
+        },
+        'archivedSessionIds',
+        'session-3',
+        false,
+      )
+    ).toEqual({
+      pinnedSessionIds: ['session-1'],
+      archivedSessionIds: [],
+    })
+  })
+})
+
+describe('removeSessionIdFromConversationSessionState', () => {
+  it('removes a session id from both pinned and archived state lists', () => {
+    expect(
+      removeSessionIdFromConversationSessionState(
+        {
+          pinnedSessionIds: ['session-1', 'session-2'],
+          archivedSessionIds: ['session-3', 'session-1'],
+        },
+        'session-1',
+      )
+    ).toEqual({
+      pinnedSessionIds: ['session-2'],
+      archivedSessionIds: ['session-3'],
+    })
   })
 })
 

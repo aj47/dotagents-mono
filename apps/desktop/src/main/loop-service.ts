@@ -9,9 +9,8 @@
 
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { logApp } from "./debug"
-import { conversationService } from "./conversation-service"
-import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import { startSharedPromptRun } from "./agent-mode-runner"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
@@ -324,20 +323,29 @@ class LoopService {
         }
       }
 
-      const conversation = await conversationService.createConversation(loop.prompt, "user")
       const conversationTitle = `[Repeat] ${loop.name}`
-      const sessionId = agentSessionTracker.startSession(
-        conversation.id,
+      const {
+        preparedContext: {
+          conversationId,
+          sessionId,
+          reusedExistingSession,
+        },
+        runPromise,
+      } = await startSharedPromptRun({
+        prompt: loop.prompt,
         conversationTitle,
-        true,
-        profileSnapshot
+        startSnoozed: true,
+        profileSnapshot,
+        maxIterationsOverride: loop.maxIterations,
+        approvalMode: "inline",
+      })
+
+      logApp(
+        reusedExistingSession
+          ? `[LoopService] Reused session ${sessionId} for loop "${loop.name}" in conversation ${conversationId}`
+          : `[LoopService] Created session ${sessionId} for loop "${loop.name}" in conversation ${conversationId}`,
       )
-
-      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
-
-      // Reuse the main agent execution flow.
-      const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      await runPromise
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
     } finally {

@@ -38,6 +38,13 @@ interface PendingToolApproval {
   resolve: (approved: boolean) => void
 }
 
+type SessionApprovalHandler = (approval: {
+  approvalId: string
+  sessionId: string
+  toolName: string
+  arguments: unknown
+}) => boolean | Promise<boolean>
+
 export const state = {
   isRecording: false,
   isTextInputActive: false,
@@ -56,6 +63,7 @@ export const state = {
   agentSessionRunCounters: new Map<string, number>(),
   panelAutoShowSuppressedUntil: 0,
   pendingToolApprovals: new Map<string, PendingToolApproval>(),
+  sessionApprovalHandlers: new Map<string, SessionApprovalHandler>(),
 }
 
 const MAX_TRACKED_SESSION_RUN_COUNTERS = 1000
@@ -268,6 +276,7 @@ export const agentSessionStateManager = {
     }
 
     toolApprovalManager.cancelSessionApprovals(sessionId)
+    toolApprovalManager.unregisterSessionApprovalHandler(sessionId)
   },
 
   // Stop all sessions
@@ -336,6 +345,7 @@ export const agentSessionStateManager = {
       abortAndUnregisterSessionControllers(session.abortControllers)
       killSessionProcesses(session.processes)
       toolApprovalManager.cancelSessionApprovals(sessionId)
+      toolApprovalManager.unregisterSessionApprovalHandler(sessionId)
 
       // Remove session
       state.agentSessions.delete(sessionId)
@@ -352,6 +362,7 @@ export const agentSessionStateManager = {
     }
 
     toolApprovalManager.cancelSessionApprovals(sessionId)
+    toolApprovalManager.unregisterSessionApprovalHandler(sessionId)
   },
 
   // Get count of active sessions
@@ -362,6 +373,22 @@ export const agentSessionStateManager = {
 
 // Tool approval manager for inline approval in agent progress UI
 export const toolApprovalManager = {
+  registerSessionApprovalHandler(
+    sessionId: string,
+    handler: (approval: {
+      approvalId: string
+      sessionId: string
+      toolName: string
+      arguments: unknown
+    }) => boolean | Promise<boolean>,
+  ): void {
+    state.sessionApprovalHandlers.set(sessionId, handler)
+  },
+
+  unregisterSessionApprovalHandler(sessionId: string): void {
+    state.sessionApprovalHandlers.delete(sessionId)
+  },
+
   // Request approval for a tool call - returns approvalId and a promise that resolves when user responds
   requestApproval(sessionId: string, toolName: string, args: unknown): { approvalId: string; promise: Promise<boolean> } {
     const approvalId = `${sessionId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -376,6 +403,23 @@ export const toolApprovalManager = {
       }
       state.pendingToolApprovals.set(approvalId, approval)
     })
+
+    const sessionApprovalHandler = state.sessionApprovalHandlers.get(sessionId)
+    if (sessionApprovalHandler) {
+      queueMicrotask(async () => {
+        try {
+          const approved = await sessionApprovalHandler({
+            approvalId,
+            sessionId,
+            toolName,
+            arguments: args,
+          })
+          this.respondToApproval(approvalId, approved)
+        } catch {
+          this.respondToApproval(approvalId, false)
+        }
+      })
+    }
 
     return { approvalId, promise }
   },

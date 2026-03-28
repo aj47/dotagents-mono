@@ -4,7 +4,10 @@ import { makeTextCompletionWithFetch } from "./llm-fetch"
 import { constructMinimalSystemPrompt } from "./system-prompts"
 import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import {
+  resolveChatModelSelection,
+  sanitizeMessageContentForDisplay,
+} from "@dotagents/shared"
 
 export type LLMMessage = { role: string; content: string }
 
@@ -728,17 +731,7 @@ export function clearIterativeSummary(sessionId: string): void {
 }
 
 function getProviderAndModel(): { providerId: string; model: string } {
-  const config = configStore.get()
-  const providerId = config.mcpToolsProviderId || "openai"
-  let model = "gpt-4.1-mini"
-  if (providerId === "openai") {
-    model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
-  } else if (providerId === "groq") {
-    model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
-  } else if (providerId === "gemini") {
-    model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
-  }
-  return { providerId, model }
+  return resolveChatModelSelection(configStore.get())
 }
 
 export async function summarizeContent(content: string, sessionId?: string): Promise<string> {

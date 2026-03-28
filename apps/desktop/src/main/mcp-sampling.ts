@@ -1,4 +1,5 @@
 import { BrowserWindow } from "electron"
+import { resolveChatModelSelection } from "@dotagents/shared"
 import { diagnosticsService } from "./diagnostics"
 import { configStore } from "./config"
 import type { SamplingRequest, SamplingResult, SamplingMessage, SamplingMessageContent } from "../shared/types"
@@ -87,8 +88,8 @@ export async function executeSampling(
 
     // Determine which provider to use
     // Use modelPreferences hints if provided, otherwise use configured defaults
-    let providerId = config.mcpToolsProviderId || "openai"
-    let model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
+    const { providerId, model: defaultModel } = resolveChatModelSelection(config)
+    let model = defaultModel
 
     if (request.modelPreferences?.hints) {
       const hint = request.modelPreferences.hints[0]

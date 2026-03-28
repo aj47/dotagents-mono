@@ -66,7 +66,18 @@ import {
   MoreHorizontal,
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
-import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry, DetailedToolInfo } from "@shared/types"
+import {
+  MCPConfig,
+  MCPServerConfig,
+  MCPTransportType,
+  OAuthConfig,
+  ServerLogEntry,
+  DetailedToolInfo,
+} from "@shared/types"
+import {
+  resolveMcpServerRuntimeState,
+  type McpServerStatusSnapshot,
+} from "@shared/mcp-server-status"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@shared/runtime-tool-names"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
@@ -74,11 +85,7 @@ import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES } from "@shared/oauth-examples"
 import { parseShellCommand } from "@dotagents/shared"
 
-
-
 type DetailedTool = DetailedToolInfo
-
-
 
 interface MCPConfigManagerProps {
   config: MCPConfig
@@ -105,10 +112,19 @@ interface ServerDialogProps {
 // Reserved internal server aliases that cannot be used by user-defined MCP servers.
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
 
-function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFromText, isOpen }: ServerDialogProps) {
+function ServerDialog({
+  server,
+  onSave,
+  onCancel,
+  onImportFromFile,
+  onImportFromText,
+  isOpen,
+}: ServerDialogProps) {
   const [name, setName] = useState(server?.name || "")
   // Default to 'examples' tab when adding a new server, 'manual' when editing
-  const [activeTab, setActiveTab] = useState<'manual' | 'file' | 'paste' | 'examples'>(server ? 'manual' : 'examples')
+  const [activeTab, setActiveTab] = useState<
+    "manual" | "file" | "paste" | "examples"
+  >(server ? "manual" : "examples")
   const [jsonInputText, setJsonInputText] = useState("")
   const [isValidatingJson, setIsValidatingJson] = useState(false)
   const [transport, setTransport] = useState<MCPTransportType>(
@@ -143,7 +159,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
       : "",
   )
   const [oauthConfig, setOAuthConfig] = useState<OAuthConfig>(
-    server?.config.oauth || {}
+    server?.config.oauth || {},
   )
   // OAuth configuration is automatically shown for streamableHttp transport
 
@@ -151,8 +167,8 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   useEffect(() => {
     setName(server?.name || "")
     // Default to 'examples' tab when adding a new server, 'manual' when editing
-    setActiveTab(server ? 'manual' : 'examples')
-    setJsonInputText("")  // Clear pasted JSON to prevent data/secrets from persisting across dialog close/open
+    setActiveTab(server ? "manual" : "examples")
+    setJsonInputText("") // Clear pasted JSON to prevent data/secrets from persisting across dialog close/open
     setTransport(server?.config.transport || "stdio")
 
     // Combine command and args for editing, or reset to empty
@@ -170,7 +186,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         ? Object.entries(server.config.env)
             .map(([k, v]) => `${k}=${v}`)
             .join("\n")
-        : ""
+        : "",
     )
     setTimeout(server?.config.timeout?.toString() || "")
     setSelectedExample("")
@@ -180,7 +196,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         ? Object.entries(server.config.headers)
             .map(([k, v]) => `${k}=${v}`)
             .join("\n")
-        : ""
+        : "",
     )
     setOAuthConfig(server?.config.oauth || {})
   }, [server])
@@ -193,7 +209,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
       // Only reset for Add mode (server is undefined)
       // Edit mode is handled by the server dependency useEffect above
       setName("")
-      setActiveTab('examples')  // Default to 'examples' tab when adding a new server
+      setActiveTab("examples") // Default to 'examples' tab when adding a new server
       setJsonInputText("")
       setIsValidatingJson(false) // Reset validation state to prevent UI getting stuck
       setTransport("stdio")
@@ -289,29 +305,29 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         url: url.trim(),
       }),
       ...(Object.keys(envObject).length > 0 && { env: envObject }),
-      ...(transport === "streamableHttp" && Object.keys(headersObject).length > 0 && { headers: headersObject }),
+      ...(transport === "streamableHttp" &&
+        Object.keys(headersObject).length > 0 && { headers: headersObject }),
       ...(timeout && { timeout: parseInt(timeout) }),
       ...(disabled && { disabled }),
-      ...(transport === "streamableHttp" && Object.keys(oauthConfig).length > 0 && { oauth: oauthConfig }),
+      ...(transport === "streamableHttp" &&
+        Object.keys(oauthConfig).length > 0 && { oauth: oauthConfig }),
     }
 
     onSave(name.trim(), serverConfig)
   }
 
   return (
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{server ? "Edit Server" : "Add Server"}</DialogTitle>
-        <DialogDescription>
-          Add or configure an MCP server
-        </DialogDescription>
+        <DialogDescription>Add or configure an MCP server</DialogDescription>
       </DialogHeader>
 
       <div className="w-full">
-        <div className="flex space-x-1 mb-4">
+        <div className="mb-4 flex space-x-1">
           <Button
-            variant={activeTab === 'manual' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('manual')}
+            variant={activeTab === "manual" ? "default" : "outline"}
+            onClick={() => setActiveTab("manual")}
             className="flex-1"
             size="sm"
           >
@@ -320,8 +336,8 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
           {/* Only show import tabs when adding a new server (not editing) */}
           {!server && onImportFromFile && (
             <Button
-              variant={activeTab === 'file' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('file')}
+              variant={activeTab === "file" ? "default" : "outline"}
+              onClick={() => setActiveTab("file")}
               className="flex-1 gap-1"
               size="sm"
             >
@@ -331,8 +347,8 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
           )}
           {!server && onImportFromText && (
             <Button
-              variant={activeTab === 'paste' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('paste')}
+              variant={activeTab === "paste" ? "default" : "outline"}
+              onClick={() => setActiveTab("paste")}
               className="flex-1 gap-1"
               size="sm"
             >
@@ -341,8 +357,8 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             </Button>
           )}
           <Button
-            variant={activeTab === 'examples' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('examples')}
+            variant={activeTab === "examples" ? "default" : "outline"}
+            onClick={() => setActiveTab("examples")}
             className="flex-1"
             size="sm"
           >
@@ -351,7 +367,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         </div>
 
         {/* Manual Configuration Tab */}
-        {activeTab === 'manual' && (
+        {activeTab === "manual" && (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="server-name">Server Name</Label>
@@ -369,16 +385,21 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 value={transport}
                 onValueChange={(value: MCPTransportType) => setTransport(value)}
               >
-                <SelectTrigger id="transport" className="border border-primary/40">
+                <SelectTrigger
+                  id="transport"
+                  className="border-primary/40 border"
+                >
                   <SelectValue placeholder="Select transport type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="stdio">Local Command (stdio)</SelectItem>
                   <SelectItem value="websocket">WebSocket</SelectItem>
-                  <SelectItem value="streamableHttp">Streamable HTTP</SelectItem>
+                  <SelectItem value="streamableHttp">
+                    Streamable HTTP
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Choose how to connect to the MCP server
               </p>
             </div>
@@ -392,7 +413,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   onChange={(e) => setFullCommand(e.target.value)}
                   placeholder="e.g., npx -y @modelcontextprotocol/server-google-maps"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Full command with arguments (space-separated)
                 </p>
               </div>
@@ -409,7 +430,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       : "http://localhost:8080"
                   }
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {transport === "websocket"
                     ? "WebSocket URL (e.g., ws://localhost:8080 or wss://example.com/mcp)"
                     : "HTTP URL for streamable HTTP transport (e.g., http://localhost:8080/mcp)"}
@@ -428,8 +449,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   placeholder="X-API-Key=your-api-key&#10;User-Agent=MyApp/1.0&#10;Content-Type=application/json"
                   rows={4}
                 />
-                <p className="text-xs text-muted-foreground">
-                  One per line in Header-Name=value format. These headers will be included in all HTTP requests to the server.
+                <p className="text-muted-foreground text-xs">
+                  One per line in Header-Name=value format. These headers will
+                  be included in all HTTP requests to the server.
                 </p>
               </div>
             )}
@@ -443,7 +465,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 placeholder="API_KEY=your-key-here&#10;ANOTHER_VAR=value"
                 rows={4}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 One per line in KEY=value format
               </p>
             </div>
@@ -484,9 +506,13 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   }
                   try {
                     await window.electronAPI.initiateOAuthFlow(name)
-                    toast.success("OAuth authentication started. Please complete the flow in your browser.")
+                    toast.success(
+                      "OAuth authentication started. Please complete the flow in your browser.",
+                    )
                   } catch (error) {
-                    toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
+                    toast.error(
+                      `Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`,
+                    )
                   }
                 }}
                 onRevokeAuth={async () => {
@@ -495,7 +521,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                     await window.electronAPI.revokeOAuthTokens(name)
                     toast.success("OAuth tokens revoked successfully")
                   } catch (error) {
-                    toast.error(`Failed to revoke OAuth tokens: ${error instanceof Error ? error.message : String(error)}`)
+                    toast.error(
+                      `Failed to revoke OAuth tokens: ${error instanceof Error ? error.message : String(error)}`,
+                    )
                   }
                 }}
                 onTestConnection={async () => {
@@ -520,7 +548,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       headers.split("\n").forEach((line) => {
                         const [key, ...valueParts] = line.split("=")
                         if (key && valueParts.length > 0) {
-                          headersObject[key.trim()] = valueParts.join("=").trim()
+                          headersObject[key.trim()] = valueParts
+                            .join("=")
+                            .trim()
                         }
                       })
                     }
@@ -538,7 +568,10 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                     if (Object.keys(envObject).length > 0) {
                       testServerConfig.env = envObject
                     }
-                    if (transport === "streamableHttp" && Object.keys(headersObject).length > 0) {
+                    if (
+                      transport === "streamableHttp" &&
+                      Object.keys(headersObject).length > 0
+                    ) {
                       testServerConfig.headers = headersObject
                     }
                     if (timeout) {
@@ -547,18 +580,26 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                     if (disabled) {
                       testServerConfig.disabled = disabled
                     }
-                    if (transport === "streamableHttp" && Object.keys(oauthConfig).length > 0) {
+                    if (
+                      transport === "streamableHttp" &&
+                      Object.keys(oauthConfig).length > 0
+                    ) {
                       testServerConfig.oauth = oauthConfig
                     }
 
-                    const result = await window.electronAPI.testMCPServer(name, testServerConfig)
+                    const result = await window.electronAPI.testMCPServer(
+                      name,
+                      testServerConfig,
+                    )
                     if (result.success) {
                       toast.success("Connection test successful!")
                     } else {
                       toast.error(`Connection test failed: ${result.error}`)
                     }
                   } catch (error) {
-                    toast.error(`Connection test failed: ${error instanceof Error ? error.message : String(error)}`)
+                    toast.error(
+                      `Connection test failed: ${error instanceof Error ? error.message : String(error)}`,
+                    )
                   }
                 }}
               />
@@ -567,17 +608,21 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         )}
 
         {/* From File Tab */}
-        {activeTab === 'file' && onImportFromFile && (
+        {activeTab === "file" && onImportFromFile && (
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Import from JSON file</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+            <div className="border-border rounded-lg border-2 border-dashed p-8 text-center">
+              <Upload className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+              <h3 className="mb-2 text-lg font-medium">
+                Import from JSON file
+              </h3>
+              <p className="text-muted-foreground mb-4 text-sm">
                 Select a JSON file containing MCP server configurations
               </p>
-              <Button onClick={async () => {
-                await onImportFromFile()
-              }}>
+              <Button
+                onClick={async () => {
+                  await onImportFromFile()
+                }}
+              >
                 Choose File
               </Button>
             </div>
@@ -585,17 +630,23 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         )}
 
         {/* Paste JSON Tab */}
-        {activeTab === 'paste' && onImportFromText && (
+        {activeTab === "paste" && onImportFromText && (
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="json-text-dialog">Paste JSON Configuration</Label>
+                <Label htmlFor="json-text-dialog">
+                  Paste JSON Configuration
+                </Label>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     try {
-                      const formatted = JSON.stringify(JSON.parse(jsonInputText), null, 2)
+                      const formatted = JSON.stringify(
+                        JSON.parse(jsonInputText),
+                        null,
+                        2,
+                      )
                       setJsonInputText(formatted)
                     } catch {
                       // Ignore formatting errors
@@ -619,10 +670,11 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   }
 }'
                 rows={12}
-                className="font-mono text-sm whitespace-pre"
+                className="whitespace-pre font-mono text-sm"
               />
-              <p className="text-xs text-muted-foreground">
-                Paste valid JSON configuration. New servers will be merged. Duplicate names will be replaced by imported versions.
+              <p className="text-muted-foreground text-xs">
+                Paste valid JSON configuration. New servers will be merged.
+                Duplicate names will be replaced by imported versions.
               </p>
             </div>
             <Button
@@ -654,34 +706,36 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         )}
 
         {/* Examples Tab */}
-        {activeTab === 'examples' && (
+        {activeTab === "examples" && (
           <div className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-4">
-              Choose from popular MCP server configurations to get started quickly.
+            <div className="text-muted-foreground mb-4 text-sm">
+              Choose from popular MCP server configurations to get started
+              quickly.
             </div>
 
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="max-h-96 space-y-3 overflow-y-auto">
               {/* Standard MCP Examples */}
               <div className="space-y-2">
-                <h4 className="font-medium text-sm">Standard MCP Servers</h4>
+                <h4 className="text-sm font-medium">Standard MCP Servers</h4>
                 {Object.entries(MCP_EXAMPLES).map(([key, example]) => (
                   <Card key={key} className="p-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h5 className="font-medium text-sm">{example.name}</h5>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <h5 className="text-sm font-medium">{example.name}</h5>
+                        <p className="text-muted-foreground mt-1 text-xs">
                           {example.config.transport === "stdio"
                             ? `Command: ${example.config.command} ${example.config.args?.join(" ") || ""}`
-                            : `URL: ${example.config.url}`
-                          }
+                            : `URL: ${example.config.url}`}
                         </p>
-                        {example.config.env && Object.keys(example.config.env).length > 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Environment: {Object.keys(example.config.env).join(", ")}
-                          </p>
-                        )}
+                        {example.config.env &&
+                          Object.keys(example.config.env).length > 0 && (
+                            <p className="text-muted-foreground mt-1 text-xs">
+                              Environment:{" "}
+                              {Object.keys(example.config.env).join(", ")}
+                            </p>
+                          )}
                         {example.note && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                             ⚠️ {example.note}
                           </p>
                         )}
@@ -702,7 +756,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                               ? Object.entries(example.config.env)
                                   .map(([k, v]) => `${k}=${v}`)
                                   .join("\n")
-                              : ""
+                              : "",
                           )
                           setTimeout(example.config.timeout?.toString() || "")
                           setDisabled(example.config.disabled || false)
@@ -712,11 +766,11 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                               ? Object.entries(example.config.headers)
                                   .map(([k, v]) => `${k}=${v}`)
                                   .join("\n")
-                              : ""
+                              : "",
                           )
                           // Reset OAuth config when switching examples to prevent stale fields
                           setOAuthConfig({})
-                          setActiveTab('manual')
+                          setActiveTab("manual")
                         }}
                       >
                         Use
@@ -729,20 +783,24 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               {/* OAuth MCP Examples */}
               {Object.keys(OAUTH_MCP_EXAMPLES).length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">OAuth-Enabled MCP Servers</h4>
+                  <h4 className="text-sm font-medium">
+                    OAuth-Enabled MCP Servers
+                  </h4>
                   {Object.entries(OAUTH_MCP_EXAMPLES).map(([key, example]) => (
                     <Card key={key} className="p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h5 className="font-medium text-sm">{example.name}</h5>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <h5 className="text-sm font-medium">
+                            {example.name}
+                          </h5>
+                          <p className="text-muted-foreground mt-1 text-xs">
                             {example.description}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-muted-foreground mt-1 text-xs">
                             URL: {example.config.url}
                           </p>
                           {example.requiredScopes && (
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-muted-foreground mt-1 text-xs">
                               Scopes: {example.requiredScopes.join(", ")}
                             </p>
                           )}
@@ -763,12 +821,12 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                                 ? Object.entries(example.config.env)
                                     .map(([k, v]) => `${k}=${v}`)
                                     .join("\n")
-                                : ""
+                                : "",
                             )
                             setTimeout(example.config.timeout?.toString() || "")
                             setDisabled(example.config.disabled || false)
                             setOAuthConfig(example.config.oauth || {})
-                            setActiveTab('manual')
+                            setActiveTab("manual")
                           }}
                         >
                           Use
@@ -789,8 +847,10 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         </Button>
         {/* Only show Add/Update Server button on manual and examples tabs */}
         {/* File and paste tabs have their own action buttons */}
-        {(activeTab === 'manual' || activeTab === 'examples') && (
-          <Button onClick={handleSave}>{server ? "Update" : "Add"} Server</Button>
+        {(activeTab === "manual" || activeTab === "examples") && (
+          <Button onClick={handleSave}>
+            {server ? "Update" : "Add"} Server
+          </Button>
         )}
       </DialogFooter>
     </DialogContent>
@@ -798,7 +858,10 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
 }
 
 // Example MCP server configurations
-const MCP_EXAMPLES: Record<string, { name: string; config: MCPServerConfig; note?: string }> = {
+const MCP_EXAMPLES: Record<
+  string,
+  { name: string; config: MCPServerConfig; note?: string }
+> = {
   github: {
     name: "github",
     config: {
@@ -892,23 +955,26 @@ export function MCPConfigManager({
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
   const [serverStatus, setServerStatus] = useState<
-    Record<
-      string,
-      {
-        connected: boolean
-        toolCount: number
-        error?: string
-        runtimeEnabled?: boolean
-        configDisabled?: boolean
-      }
-    >
+    Record<string, McpServerStatusSnapshot>
   >({})
   const [initializationStatus, setInitializationStatus] = useState<{
     isInitializing: boolean
     progress: { current: number; total: number; currentServer?: string }
   }>({ isInitializing: false, progress: { current: 0, total: 0 } })
-  const [oauthStatus, setOAuthStatus] = useState<Record<string, { configured: boolean; authenticated: boolean; tokenExpiry?: number; error?: string }>>({})
-  const [serverLogs, setServerLogs] = useState<Record<string, ServerLogEntry[]>>({})
+  const [oauthStatus, setOAuthStatus] = useState<
+    Record<
+      string,
+      {
+        configured: boolean
+        authenticated: boolean
+        tokenExpiry?: number
+        error?: string
+      }
+    >
+  >({})
+  const [serverLogs, setServerLogs] = useState<
+    Record<string, ServerLogEntry[]>
+  >({})
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
   // Initialize expandedServers from persisted expanded state
   // All servers are collapsed by default - only expand those explicitly persisted as expanded
@@ -927,20 +993,21 @@ export function MCPConfigManager({
     // If collapsedServers is an empty array, user explicitly set "no servers collapsed" (all expanded)
     // Otherwise, expand servers not in the collapsed list
     const collapsedSet = new Set(collapsedServers)
-    return new Set(allServerNames.filter(name => !collapsedSet.has(name)))
+    return new Set(allServerNames.filter((name) => !collapsedSet.has(name)))
   })
   // Tool management state
   const [tools, setTools] = useState<DetailedTool[]>([])
   const [toolSearchQuery, setToolSearchQuery] = useState("")
   const [showDisabledTools, setShowDisabledTools] = useState(true)
   // Initialize expandedTools (servers in Tools section) - all expanded by default except those persisted as collapsed
-  const [expandedToolServers, setExpandedToolServers] = useState<Set<string>>(() => {
-    // We don't know server names yet, so start with empty set meaning "all expanded"
-    // When collapsedToolServers is provided, those will be collapsed
-    return new Set<string>() // Will be populated when tools load
-  })
+  const [expandedToolServers, setExpandedToolServers] = useState<Set<string>>(
+    () => {
+      // We don't know server names yet, so start with empty set meaning "all expanded"
+      // When collapsedToolServers is provided, those will be collapsed
+      return new Set<string>() // Will be populated when tools load
+    },
+  )
   const [toolServersInitialized, setToolServersInitialized] = useState(false)
-
 
   // Define servers early so it can be used in hooks below
   const servers = config.mcpServers || {}
@@ -949,7 +1016,13 @@ export function MCPConfigManager({
   const warnedReservedServersRef = useRef<Set<string>>(new Set())
 
   // Track known server names to detect new servers
-  const [knownServers, setKnownServers] = useState<Set<string>>(() => new Set([...Object.keys(config.mcpServers || {}), ...RESERVED_SERVER_NAMES]))
+  const [knownServers, setKnownServers] = useState<Set<string>>(
+    () =>
+      new Set([
+        ...Object.keys(config.mcpServers || {}),
+        ...RESERVED_SERVER_NAMES,
+      ]),
+  )
 
   // Track if we've completed the initial config hydration
   // This prevents treating all servers as "new" when settings-mcp-tools initially renders
@@ -958,19 +1031,27 @@ export function MCPConfigManager({
     // If config already has servers on mount, we're hydrated.
     // Also treat persisted collapse state as a signal that config is hydrated,
     // even when the config legitimately has zero servers.
-    collapsedServers !== undefined || Object.keys(config.mcpServers || {}).length > 0
+    collapsedServers !== undefined ||
+      Object.keys(config.mcpServers || {}).length > 0,
   )
 
   // Handle server changes: prune stale entries (new servers stay collapsed by default)
   // Include reserved runtime-tool server names so they don't get pruned
   useEffect(() => {
-    const currentServerNames = new Set([...Object.keys(servers), ...RESERVED_SERVER_NAMES])
+    const currentServerNames = new Set([
+      ...Object.keys(servers),
+      ...RESERVED_SERVER_NAMES,
+    ])
 
     // Find new servers (not in knownServers)
-    const newServers = [...currentServerNames].filter(name => !knownServers.has(name))
+    const newServers = [...currentServerNames].filter(
+      (name) => !knownServers.has(name),
+    )
 
     // Prune stale entries (remove servers that no longer exist)
-    const prunedSet = new Set([...expandedServers].filter(name => currentServerNames.has(name)))
+    const prunedSet = new Set(
+      [...expandedServers].filter((name) => currentServerNames.has(name)),
+    )
 
     // New servers stay collapsed by default - don't add them to expanded set
 
@@ -981,10 +1062,15 @@ export function MCPConfigManager({
     // Check if we're still in initial hydration phase
     // If knownServers only had RESERVED_SERVER_NAMES and now we're seeing user servers,
     // this is the initial config load, not new servers being added
-    const wasEmptyOnMount = knownServers.size <= RESERVED_SERVER_NAMES.length &&
-      [...knownServers].every(name => RESERVED_SERVER_NAMES.includes(name))
+    const wasEmptyOnMount =
+      knownServers.size <= RESERVED_SERVER_NAMES.length &&
+      [...knownServers].every((name) => RESERVED_SERVER_NAMES.includes(name))
 
-    if (wasEmptyOnMount && newServers.length > 0 && !initialHydrationCompleteRef.current) {
+    if (
+      wasEmptyOnMount &&
+      newServers.length > 0 &&
+      !initialHydrationCompleteRef.current
+    ) {
       // This is the initial config load - don't persist, just update knownServers
       initialHydrationCompleteRef.current = true
       setKnownServers(currentServerNames)
@@ -1002,28 +1088,40 @@ export function MCPConfigManager({
     // and we're past the initial hydration phase
     // This ensures that when a new server is added and we want it collapsed,
     // it's added to the persisted collapsed list so it stays collapsed after reopening
-    if (newServers.length > 0 && collapsedServers !== undefined && onCollapsedServersChange && initialHydrationCompleteRef.current) {
-      const updatedCollapsed = [...new Set([...collapsedServers, ...newServers])]
+    if (
+      newServers.length > 0 &&
+      collapsedServers !== undefined &&
+      onCollapsedServersChange &&
+      initialHydrationCompleteRef.current
+    ) {
+      const updatedCollapsed = [
+        ...new Set([...collapsedServers, ...newServers]),
+      ]
       onCollapsedServersChange(updatedCollapsed)
     }
 
     // Update known servers
-    if (newServers.length > 0 || [...knownServers].some(name => !currentServerNames.has(name))) {
+    if (
+      newServers.length > 0 ||
+      [...knownServers].some((name) => !currentServerNames.has(name))
+    ) {
       setKnownServers(currentServerNames)
     }
   }, [servers, collapsedServers])
 
   // Warn about servers with reserved names that are being filtered out
   useEffect(() => {
-    const hiddenServers = Object.keys(servers).filter(
-      (name) => RESERVED_SERVER_NAMES.some(
-        (reserved) => name.trim().toLowerCase() === reserved.toLowerCase()
-      )
+    const hiddenServers = Object.keys(servers).filter((name) =>
+      RESERVED_SERVER_NAMES.some(
+        (reserved) => name.trim().toLowerCase() === reserved.toLowerCase(),
+      ),
     )
     for (const serverName of hiddenServers) {
       if (!warnedReservedServersRef.current.has(serverName)) {
         warnedReservedServersRef.current.add(serverName)
-        toast.warning(`Server "${serverName}" uses a reserved name and has been hidden. Please rename or remove it from your MCP configuration.`)
+        toast.warning(
+          `Server "${serverName}" uses a reserved name and has been hidden. Please rename or remove it from your MCP configuration.`,
+        )
       }
     }
   }, [servers])
@@ -1042,12 +1140,15 @@ export function MCPConfigManager({
     const collapsedChanged =
       wasUndefined !== isUndefined ||
       prevSet.size !== currentSet.size ||
-      [...prevSet].some(s => !currentSet.has(s))
+      [...prevSet].some((s) => !currentSet.has(s))
 
     if (collapsedChanged) {
       prevCollapsedServersRef.current = collapsedServers
       // Re-sync expandedServers from the new collapsed list
-      const currentServerNames = new Set([...Object.keys(servers), ...RESERVED_SERVER_NAMES])
+      const currentServerNames = new Set([
+        ...Object.keys(servers),
+        ...RESERVED_SERVER_NAMES,
+      ])
 
       // undefined = never persisted (first time) → all collapsed
       if (collapsedServers === undefined) {
@@ -1056,7 +1157,9 @@ export function MCPConfigManager({
         // [] = explicitly "no servers collapsed" (all expanded)
         // [...names] = specific servers are collapsed
         const collapsedSet = new Set<string>(collapsedServers)
-        const newExpanded = new Set<string>([...currentServerNames].filter(name => !collapsedSet.has(name)))
+        const newExpanded = new Set<string>(
+          [...currentServerNames].filter((name) => !collapsedSet.has(name)),
+        )
         setExpandedServers(newExpanded)
       }
     }
@@ -1067,7 +1170,7 @@ export function MCPConfigManager({
     try {
       if (serverName) {
         const status = await window.electronAPI.getOAuthStatus(serverName)
-        setOAuthStatus(prev => ({ ...prev, [serverName]: status }))
+        setOAuthStatus((prev) => ({ ...prev, [serverName]: status }))
       } else {
         // Load status for all servers
         const newStatus: Record<string, any> = {}
@@ -1080,7 +1183,7 @@ export function MCPConfigManager({
         setOAuthStatus(newStatus)
       }
     } catch (error) {
-      console.error('Failed to load OAuth status:', error)
+      console.error("Failed to load OAuth status:", error)
     }
   }
 
@@ -1088,7 +1191,10 @@ export function MCPConfigManager({
   const fetchLogsForServer = async (serverName: string) => {
     try {
       const logs = await tipcClient.getMcpServerLogs({ serverName })
-      setServerLogs(prev => ({ ...prev, [serverName]: logs as ServerLogEntry[] }))
+      setServerLogs((prev) => ({
+        ...prev,
+        [serverName]: logs as ServerLogEntry[],
+      }))
     } catch (error) {
       console.error(`Failed to fetch logs for ${serverName}:`, error)
     }
@@ -1136,33 +1242,41 @@ export function MCPConfigManager({
   }, [fetchTools])
 
   // Track known tool source names to detect new sources
-  const [knownToolServers, setKnownToolServers] = useState<Set<string>>(new Set())
+  const [knownToolServers, setKnownToolServers] = useState<Set<string>>(
+    new Set(),
+  )
 
   // Initialize expanded tool groups when tools are first loaded.
   // All sources are expanded by default; only persisted collapsed groups stay collapsed.
   useEffect(() => {
     if (tools.length > 0) {
-      const allToolServerNames = [...new Set<string>(tools.map(t => t.sourceName))]
+      const allToolServerNames = [
+        ...new Set<string>(tools.map((t) => t.sourceName)),
+      ]
       const collapsedSet = new Set<string>(collapsedToolServers ?? [])
 
       if (!toolServersInitialized) {
         // Initial setup: all sources expanded by default, except those persisted as collapsed
-        const expanded = new Set<string>(allToolServerNames.filter(name => !collapsedSet.has(name)))
+        const expanded = new Set<string>(
+          allToolServerNames.filter((name) => !collapsedSet.has(name)),
+        )
         setExpandedToolServers(expanded)
         setKnownToolServers(new Set<string>(allToolServerNames))
         setToolServersInitialized(true)
       } else {
         // After initialization: detect new sources and expand them by default
-        const newServers = allToolServerNames.filter(name => !knownToolServers.has(name))
+        const newServers = allToolServerNames.filter(
+          (name) => !knownToolServers.has(name),
+        )
         if (newServers.length > 0) {
-          setExpandedToolServers(prev => {
+          setExpandedToolServers((prev) => {
             const updated = new Set<string>(prev)
-            newServers.forEach(name => updated.add(name))
+            newServers.forEach((name) => updated.add(name))
             return updated
           })
-          setKnownToolServers(prev => {
+          setKnownToolServers((prev) => {
             const updated = new Set<string>(prev)
-            newServers.forEach(name => updated.add(name))
+            newServers.forEach((name) => updated.add(name))
             return updated
           })
         }
@@ -1171,7 +1285,9 @@ export function MCPConfigManager({
   }, [tools, collapsedToolServers, toolServersInitialized, knownToolServers])
 
   // Sync expandedToolServers when collapsedToolServers prop changes (e.g., after async config load)
-  const prevCollapsedToolServersRef = useRef<string[] | undefined>(collapsedToolServers)
+  const prevCollapsedToolServersRef = useRef<string[] | undefined>(
+    collapsedToolServers,
+  )
   useEffect(() => {
     // Check if collapsedToolServers prop actually changed (use set comparison for robustness)
     const prevCollapsed = prevCollapsedToolServersRef.current
@@ -1179,19 +1295,21 @@ export function MCPConfigManager({
     const currentSet = new Set<string>(collapsedToolServers ?? [])
     const collapsedChanged =
       prevSet.size !== currentSet.size ||
-      [...prevSet].some(s => !currentSet.has(s))
+      [...prevSet].some((s) => !currentSet.has(s))
 
     if (collapsedChanged && toolServersInitialized) {
       prevCollapsedToolServersRef.current = collapsedToolServers
       // Re-sync expandedToolServers from the new collapsed list
-      const allToolServerNames = [...new Set<string>(tools.map(t => t.sourceName))]
+      const allToolServerNames = [
+        ...new Set<string>(tools.map((t) => t.sourceName)),
+      ]
       const collapsedSet = new Set<string>(collapsedToolServers ?? [])
-      const newExpanded = new Set<string>(allToolServerNames.filter(name => !collapsedSet.has(name)))
+      const newExpanded = new Set<string>(
+        allToolServerNames.filter((name) => !collapsedSet.has(name)),
+      )
       setExpandedToolServers(newExpanded)
     }
   }, [collapsedToolServers, tools, toolServersInitialized])
-
-
 
   // Group tools by source
   const toolsByServer = tools.reduce(
@@ -1256,7 +1374,10 @@ export function MCPConfigManager({
     }
   }
 
-  const handleToggleAllToolsForServer = async (serverName: string, enable: boolean) => {
+  const handleToggleAllToolsForServer = async (
+    serverName: string,
+    enable: boolean,
+  ) => {
     const serverTools = tools.filter((tool) => tool.sourceName === serverName)
     if (serverTools.length === 0) return
     const sourceLabel = serverTools[0]?.sourceLabel || serverName
@@ -1270,35 +1391,27 @@ export function MCPConfigManager({
     })
     setTools(updatedTools)
 
-    // Track promises for all backend calls
-    const promises = serverTools.map((tool) =>
-      tipcClient.setMcpToolEnabled({ toolName: tool.name, enabled: enable }),
-    )
-
     try {
-      const results = await Promise.allSettled(promises)
-      // A fulfilled promise with { success: false } (e.g. essential tool that
-      // cannot be disabled) should also be treated as a failure.
-      const successful = results.filter(
-        (r) => r.status === "fulfilled" && (r.value as any)?.success,
-      ).length
-      const failed = results.length - successful
+      const result = await tipcClient.setMcpToolSourceEnabled({
+        sourceName: serverName,
+        enabled: enable,
+      })
+      const updatedSourceTools = ((result as any)?.tools ||
+        []) as DetailedTool[]
+      const updatedToolMap = new Map(
+        updatedSourceTools.map((tool) => [tool.name, tool]),
+      )
+      const successful = (result as any)?.updatedCount || 0
+      const failed = ((result as any)?.failedTools || []).length
 
       if (failed === 0) {
         toast.success(
           `All ${serverTools.length} tools for ${sourceLabel} ${enable ? "enabled" : "disabled"}`,
         )
       } else {
-        // Revert local state for failed calls (rejected OR success:false)
-        const failedTools = serverTools.filter(
-          (_, index) => {
-            const r = results[index]
-            return r.status === "rejected" || !(r.value as any)?.success
-          },
-        )
         const revertedTools = tools.map((tool) => {
-          if (tool.sourceName === serverName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
+          if (tool.sourceName === serverName) {
+            return updatedToolMap.get(tool.name) || tool
           }
           return tool
         })
@@ -1322,15 +1435,19 @@ export function MCPConfigManager({
   }
 
   const toggleToolsExpansion = (serverName: string) => {
-    setExpandedToolServers(prev => {
-      const allToolServerNames = [...new Set<string>(tools.map(t => t.sourceName))]
+    setExpandedToolServers((prev) => {
+      const allToolServerNames = [
+        ...new Set<string>(tools.map((t) => t.sourceName)),
+      ]
       const collapsedSet = new Set<string>(collapsedToolServers ?? [])
 
       // If not yet initialized, start with all sources expanded (minus persisted collapsed ones)
       // This ensures first toggle behaves correctly even before useEffect runs
       let newSet: Set<string>
       if (!toolServersInitialized && prev.size === 0) {
-        newSet = new Set<string>(allToolServerNames.filter(name => !collapsedSet.has(name)))
+        newSet = new Set<string>(
+          allToolServerNames.filter((name) => !collapsedSet.has(name)),
+        )
       } else {
         newSet = new Set<string>(prev)
       }
@@ -1342,14 +1459,17 @@ export function MCPConfigManager({
       }
       // Persist the collapsed state (servers NOT in expanded set are collapsed)
       if (onCollapsedToolServersChange) {
-        const collapsed = allToolServerNames.filter(name => !newSet.has(name))
+        const collapsed = allToolServerNames.filter((name) => !newSet.has(name))
         onCollapsedToolServersChange(collapsed)
       }
       return newSet
     })
   }
 
-  const handleAddServer = async (name: string, serverConfig: MCPServerConfig) => {
+  const handleAddServer = async (
+    name: string,
+    serverConfig: MCPServerConfig,
+  ) => {
     const newConfig = {
       ...config,
       mcpServers: {
@@ -1383,7 +1503,9 @@ export function MCPConfigManager({
             toast.error(`Failed to connect server: ${(result as any).error}`)
           }
         } catch (error) {
-          toast.error(`Failed to connect server: ${error instanceof Error ? error.message : String(error)}`)
+          toast.error(
+            `Failed to connect server: ${error instanceof Error ? error.message : String(error)}`,
+          )
         }
       }, 500)
     }
@@ -1426,9 +1548,15 @@ export function MCPConfigManager({
         // Filter out reserved server names (case-insensitive to match ServerDialog validation)
         const filteredServers: Record<string, any> = {}
         const skippedNames: string[] = []
-        for (const [serverName, serverConfig] of Object.entries(importedConfig.mcpServers)) {
+        for (const [serverName, serverConfig] of Object.entries(
+          importedConfig.mcpServers,
+        )) {
           const normalizedName = serverName.trim().toLowerCase()
-          if (RESERVED_SERVER_NAMES.some(reserved => reserved.toLowerCase() === normalizedName)) {
+          if (
+            RESERVED_SERVER_NAMES.some(
+              (reserved) => reserved.toLowerCase() === normalizedName,
+            )
+          ) {
             skippedNames.push(serverName)
           } else {
             filteredServers[serverName] = serverConfig
@@ -1437,7 +1565,9 @@ export function MCPConfigManager({
 
         // Warn about skipped reserved names
         for (const skippedName of skippedNames) {
-          toast.warning(`Skipped importing reserved server name: ${skippedName}`)
+          toast.warning(
+            `Skipped importing reserved server name: ${skippedName}`,
+          )
         }
 
         const importedCount = Object.keys(filteredServers).length
@@ -1459,7 +1589,9 @@ export function MCPConfigManager({
         toast.success(`Successfully imported ${importedCount} server(s)`)
       }
     } catch (error) {
-      toast.error(`Failed to import config: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to import config: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -1470,7 +1602,9 @@ export function MCPConfigManager({
         toast.success("MCP configuration exported successfully")
       }
     } catch (error) {
-      toast.error(`Failed to export config: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to export config: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -1491,15 +1625,23 @@ export function MCPConfigManager({
       // is performed by validateMcpConfigText which will catch any JSON syntax errors
       const formattedJson = formatJsonPreview(text)
 
-      const importedConfig = await tipcClient.validateMcpConfigText({ text: formattedJson })
+      const importedConfig = await tipcClient.validateMcpConfigText({
+        text: formattedJson,
+      })
 
       if (importedConfig) {
         // Filter out reserved server names (case-insensitive to match ServerDialog validation)
         const filteredServers: Record<string, any> = {}
         const skippedNames: string[] = []
-        for (const [serverName, serverConfig] of Object.entries(importedConfig.mcpServers)) {
+        for (const [serverName, serverConfig] of Object.entries(
+          importedConfig.mcpServers,
+        )) {
           const normalizedName = serverName.trim().toLowerCase()
-          if (RESERVED_SERVER_NAMES.some(reserved => reserved.toLowerCase() === normalizedName)) {
+          if (
+            RESERVED_SERVER_NAMES.some(
+              (reserved) => reserved.toLowerCase() === normalizedName,
+            )
+          ) {
             skippedNames.push(serverName)
           } else {
             filteredServers[serverName] = serverConfig
@@ -1508,7 +1650,9 @@ export function MCPConfigManager({
 
         // Warn about skipped reserved names
         for (const skippedName of skippedNames) {
-          toast.warning(`Skipped importing reserved server name: ${skippedName}`)
+          toast.warning(
+            `Skipped importing reserved server name: ${skippedName}`,
+          )
         }
 
         const importedCount = Object.keys(filteredServers).length
@@ -1532,7 +1676,9 @@ export function MCPConfigManager({
       }
       return false
     } catch (error) {
-      toast.error(`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      )
       return false
     }
   }
@@ -1571,7 +1717,9 @@ export function MCPConfigManager({
         toast.error(`Failed to restart server: ${(result as any).error}`)
       }
     } catch (error) {
-      toast.error(`Failed to restart server: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to restart server: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -1597,7 +1745,9 @@ export function MCPConfigManager({
         toast.error(`Failed to stop server: ${(result as any).error}`)
       }
     } catch (error) {
-      toast.error(`Failed to stop server: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to stop server: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -1633,7 +1783,9 @@ export function MCPConfigManager({
       toast.success("OAuth authentication revoked")
       refreshOAuthStatus(serverName)
     } catch (error) {
-      toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -1651,12 +1803,14 @@ export function MCPConfigManager({
       }, 2000)
       setTimeout(() => clearInterval(checkCompletion), 60000)
     } catch (error) {
-      toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
   const toggleLogs = (serverName: string) => {
-    setExpandedLogs(prev => {
+    setExpandedLogs((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(serverName)) {
         newSet.delete(serverName)
@@ -1672,17 +1826,19 @@ export function MCPConfigManager({
   // Build the user-configurable server list only.
   // Filter out any user servers with reserved names to prevent collisions
   // Defined before toggleServerExpansion so it can use allServers for persistence
-  const filteredUserServers: Record<string, MCPServerConfig> = Object.fromEntries(
-    Object.entries(servers).filter(
-      ([name]) => !RESERVED_SERVER_NAMES.some(
-        (reserved) => name.trim().toLowerCase() === reserved.toLowerCase()
-      )
-    )
-  ) as Record<string, MCPServerConfig>
+  const filteredUserServers: Record<string, MCPServerConfig> =
+    Object.fromEntries(
+      Object.entries(servers).filter(
+        ([name]) =>
+          !RESERVED_SERVER_NAMES.some(
+            (reserved) => name.trim().toLowerCase() === reserved.toLowerCase(),
+          ),
+      ),
+    ) as Record<string, MCPServerConfig>
   const allServers: Record<string, MCPServerConfig> = filteredUserServers
 
   const toggleServerExpansion = (serverName: string) => {
-    setExpandedServers(prev => {
+    setExpandedServers((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(serverName)) {
         newSet.delete(serverName)
@@ -1692,7 +1848,7 @@ export function MCPConfigManager({
       // Persist the collapsed state (servers NOT in expanded set are collapsed)
       if (onCollapsedServersChange) {
         const allServerNames = Object.keys(allServers)
-        const collapsed = allServerNames.filter(name => !newSet.has(name))
+        const collapsed = allServerNames.filter((name) => !newSet.has(name))
         onCollapsedServersChange(collapsed)
       }
       return newSet
@@ -1719,17 +1875,21 @@ export function MCPConfigManager({
   const handleClearLogs = async (serverName: string) => {
     try {
       await tipcClient.clearMcpServerLogs({ serverName })
-      setServerLogs(prev => ({ ...prev, [serverName]: [] }))
+      setServerLogs((prev) => ({ ...prev, [serverName]: [] }))
       toast.success(`Logs cleared for ${serverName}`)
     } catch (error) {
-      toast.error(`Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        `Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
   // Calculate total tools count (only from enabled servers)
   const toolsFromEnabledServers = tools.filter((t) => t.serverEnabled)
   const totalToolsCount = toolsFromEnabledServers.length
-  const enabledToolsCount = toolsFromEnabledServers.filter((t) => t.enabled).length
+  const enabledToolsCount = toolsFromEnabledServers.filter(
+    (t) => t.enabled,
+  ).length
   const disabledToolsCount = totalToolsCount - enabledToolsCount
 
   // State for collapsible sections
@@ -1757,13 +1917,13 @@ export function MCPConfigManager({
 
     // Capture original enabled states before any changes
     const originalStates = new Map<string, boolean>()
-    filteredTools.forEach(tool => {
+    filteredTools.forEach((tool) => {
       originalStates.set(tool.name, tool.enabled)
     })
 
     // Update local state immediately for better UX
     const updatedTools = tools.map((tool) => {
-      if (filteredTools.some(ft => ft.name === tool.name)) {
+      if (filteredTools.some((ft) => ft.name === tool.name)) {
         return { ...tool, enabled: enable }
       }
       return tool
@@ -1784,18 +1944,24 @@ export function MCPConfigManager({
       const failed = results.length - successful
 
       if (failed === 0) {
-        toast.success(`All ${filteredTools.length} tools ${enable ? "enabled" : "disabled"}`)
+        toast.success(
+          `All ${filteredTools.length} tools ${enable ? "enabled" : "disabled"}`,
+        )
       } else {
         // Revert local state for failed calls (rejected OR success: false)
         const failedTools = filteredTools.filter(
           (_, index) =>
             results[index].status === "rejected" ||
             (results[index].status === "fulfilled" &&
-              (results[index] as PromiseFulfilledResult<any>).value.success !== true),
+              (results[index] as PromiseFulfilledResult<any>).value.success !==
+                true),
         )
         const revertedTools = updatedTools.map((tool) => {
-          if (failedTools.some(ft => ft.name === tool.name)) {
-            return { ...tool, enabled: originalStates.get(tool.name) ?? tool.enabled }
+          if (failedTools.some((ft) => ft.name === tool.name)) {
+            return {
+              ...tool,
+              enabled: originalStates.get(tool.name) ?? tool.enabled,
+            }
           }
           return tool
         })
@@ -1808,8 +1974,11 @@ export function MCPConfigManager({
     } catch (error: any) {
       // Revert all tools on error
       const revertedTools = updatedTools.map((tool) => {
-        if (filteredTools.some(ft => ft.name === tool.name)) {
-          return { ...tool, enabled: originalStates.get(tool.name) ?? tool.enabled }
+        if (filteredTools.some((ft) => ft.name === tool.name)) {
+          return {
+            ...tool,
+            enabled: originalStates.get(tool.name) ?? tool.enabled,
+          }
         }
         return tool
       })
@@ -1867,10 +2036,10 @@ export function MCPConfigManager({
           tabIndex={0}
           aria-expanded={toolsSectionExpanded}
           aria-label="Toggle tools section"
-          className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="hover:bg-accent/50 focus:ring-ring flex cursor-pointer items-center justify-between px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
           onClick={() => setToolsSectionExpanded(!toolsSectionExpanded)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault()
               setToolsSectionExpanded(!toolsSectionExpanded)
             }
@@ -1878,9 +2047,9 @@ export function MCPConfigManager({
         >
           <div className="flex items-center gap-2">
             {toolsSectionExpanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground h-4 w-4" />
             ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="text-muted-foreground h-4 w-4" />
             )}
             <Wrench className="h-4 w-4" />
             <span className="font-medium">Tools</span>
@@ -1893,10 +2062,10 @@ export function MCPConfigManager({
         {toolsSectionExpanded && (
           <CardContent className="border-t pt-4">
             {/* Tool Search and Filter Controls */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-1 items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative max-w-sm flex-1">
+                  <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <Input
                     placeholder="Search tools..."
                     value={toolSearchQuery}
@@ -1941,155 +2110,181 @@ export function MCPConfigManager({
             </div>
 
             {/* Tools List - Grouped by Server with Collapsible Groups */}
-            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
               {getAllFilteredTools().length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-4">
+                <div className="text-muted-foreground py-4 text-center text-sm">
                   {totalToolsCount === 0
                     ? "No tools available. Connect a server to see its tools."
                     : "No tools match your search"}
                 </div>
               ) : (
                 // Group filtered tools by source
-                (Object.entries(
-                  getAllFilteredTools().reduce((acc, tool) => {
-                    if (!acc[tool.sourceName]) {
-                      acc[tool.sourceName] = []
-                    }
-                    acc[tool.sourceName].push(tool)
-                    return acc
-                  }, {} as Record<string, DetailedTool[]>)
-                ) as Array<[string, DetailedTool[]]>).map(([serverName, serverTools]) => {
+                (
+                  Object.entries(
+                    getAllFilteredTools().reduce(
+                      (acc, tool) => {
+                        if (!acc[tool.sourceName]) {
+                          acc[tool.sourceName] = []
+                        }
+                        acc[tool.sourceName].push(tool)
+                        return acc
+                      },
+                      {} as Record<string, DetailedTool[]>,
+                    ),
+                  ) as Array<[string, DetailedTool[]]>
+                ).map(([serverName, serverTools]) => {
                   const sourceLabel = serverTools[0]?.sourceLabel || serverName
-                  const isRuntimeBuiltinSource = serverTools[0]?.sourceKind === "runtime"
+                  const isRuntimeBuiltinSource =
+                    serverTools[0]?.sourceKind === "runtime"
                   // Before initialization: expanded unless in collapsedToolServers (respects persisted state)
                   // After initialization: use the expandedToolServers set
                   const isExpanded = !toolServersInitialized
                     ? !(collapsedToolServers ?? []).includes(serverName)
                     : expandedToolServers.has(serverName)
                   return (
-                  <div key={serverName} className="space-y-2">
-                    {/* Server Header - Clickable for collapse/expand */}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-expanded={isExpanded}
-                      aria-label={`Toggle ${sourceLabel} tools`}
-                      className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/70 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                      onClick={() => toggleToolsExpansion(serverName)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          toggleToolsExpansion(serverName)
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
-                        )}
-                        {isRuntimeBuiltinSource
-                          ? <Wrench className="h-4 w-4 text-muted-foreground" />
-                          : <Server className="h-4 w-4 text-muted-foreground" />}
-                        <span className="text-sm font-medium">{sourceLabel}</span>
-                        <Badge variant="secondary" className="text-xs">
-                          {serverTools.filter(t => t.enabled).length}/{serverTools.length} enabled
-                        </Badge>
-
-                      </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleAllToolsForServer(serverName, true)}
-                          className="h-6 gap-1 px-2 text-xs"
+                    <div key={serverName} className="space-y-2">
+                      {/* Server Header - Clickable for collapse/expand */}
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        aria-label={`Toggle ${sourceLabel} tools`}
+                        className="bg-muted/50 hover:bg-muted/70 focus:ring-ring flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1"
+                        onClick={() => toggleToolsExpansion(serverName)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            toggleToolsExpansion(serverName)
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <ChevronDown className="text-muted-foreground h-4 w-4 transition-transform" />
+                          ) : (
+                            <ChevronRight className="text-muted-foreground h-4 w-4 transition-transform" />
+                          )}
+                          {isRuntimeBuiltinSource ? (
+                            <Wrench className="text-muted-foreground h-4 w-4" />
+                          ) : (
+                            <Server className="text-muted-foreground h-4 w-4" />
+                          )}
+                          <span className="text-sm font-medium">
+                            {sourceLabel}
+                          </span>
+                          <Badge variant="secondary" className="text-xs">
+                            {serverTools.filter((t) => t.enabled).length}/
+                            {serverTools.length} enabled
+                          </Badge>
+                        </div>
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
-                          <Power className="h-3 w-3" />
-                          ON
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleAllToolsForServer(serverName, false)}
-                          className="h-6 gap-1 px-2 text-xs"
-                        >
-                          <PowerOff className="h-3 w-3" />
-                          OFF
-                        </Button>
-                      </div>
-                    </div>
-                    {/* Tools for this server - Collapsible with animation */}
-                    {isExpanded && (
-                      <div className="space-y-2 pl-6 animate-in fade-in slide-in-from-top-1 duration-200">
-                        {serverTools.map((tool) => (
-                          <div
-                            key={tool.name}
-                            className="flex items-center justify-between rounded-lg border p-3"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleToggleAllToolsForServer(serverName, true)
+                            }
+                            className="h-6 gap-1 px-2 text-xs"
                           >
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-1 flex items-center gap-2">
-                                <h4 className="truncate text-sm font-medium">
-                                  {tool.name.includes(":")
-                                    ? tool.name.split(":").slice(1).join(":")
-                                    : tool.name}
-                                </h4>
-                                {!tool.enabled && (
-                                  <Badge variant="secondary" className="text-xs shrink-0">
-                                    Disabled
-                                  </Badge>
-                                )}
-
-	                              </div>
-                            </div>
-                            <div className="ml-4 flex items-center gap-2">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl w-[90vw] max-h-[85vh] overflow-y-auto">
-                                  <DialogHeader className="min-w-0">
-                                    <DialogTitle className="break-words">{tool.name}</DialogTitle>
-                                    <DialogDescription className="break-words">
-                                      {tool.description}
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <div className="space-y-4 min-w-0">
-                                    <div className="min-w-0">
-                                      <Label className="text-sm font-medium">
-                                        Source
-                                      </Label>
-                                      <p className="text-sm text-muted-foreground mt-1 break-words">
-                                        {tool.sourceLabel}
-                                      </p>
-                                    </div>
-                                    <div className="min-w-0">
-                                      <Label className="text-sm font-medium">
-                                        Input Schema
-                                      </Label>
-                                      <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-words">
-                                        {JSON.stringify(tool.inputSchema, null, 2)}
-                                      </pre>
-                                    </div>
-                                  </div>
-
-                              </DialogContent>
-                            </Dialog>
-                            <Switch
-                              checked={tool.enabled}
-                              onCheckedChange={(enabled) =>
-                                handleToolToggle(tool.name, enabled)
-                              }
-                            />
-                          </div>
-	                        </div>
-                        ))}
+                            <Power className="h-3 w-3" />
+                            ON
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleToggleAllToolsForServer(serverName, false)
+                            }
+                            className="h-6 gap-1 px-2 text-xs"
+                          >
+                            <PowerOff className="h-3 w-3" />
+                            OFF
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )})
+                      {/* Tools for this server - Collapsible with animation */}
+                      {isExpanded && (
+                        <div className="animate-in fade-in slide-in-from-top-1 space-y-2 pl-6 duration-200">
+                          {serverTools.map((tool) => (
+                            <div
+                              key={tool.name}
+                              className="flex items-center justify-between rounded-lg border p-3"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-1 flex items-center gap-2">
+                                  <h4 className="truncate text-sm font-medium">
+                                    {tool.name.includes(":")
+                                      ? tool.name.split(":").slice(1).join(":")
+                                      : tool.name}
+                                  </h4>
+                                  {!tool.enabled && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="shrink-0 text-xs"
+                                    >
+                                      Disabled
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="ml-4 flex items-center gap-2">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-h-[85vh] w-[90vw] max-w-2xl overflow-y-auto">
+                                    <DialogHeader className="min-w-0">
+                                      <DialogTitle className="break-words">
+                                        {tool.name}
+                                      </DialogTitle>
+                                      <DialogDescription className="break-words">
+                                        {tool.description}
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="min-w-0 space-y-4">
+                                      <div className="min-w-0">
+                                        <Label className="text-sm font-medium">
+                                          Source
+                                        </Label>
+                                        <p className="text-muted-foreground mt-1 break-words text-sm">
+                                          {tool.sourceLabel}
+                                        </p>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <Label className="text-sm font-medium">
+                                          Input Schema
+                                        </Label>
+                                        <pre className="bg-muted mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md p-3 text-xs">
+                                          {JSON.stringify(
+                                            tool.inputSchema,
+                                            null,
+                                            2,
+                                          )}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                                <Switch
+                                  checked={tool.enabled}
+                                  onCheckedChange={(enabled) =>
+                                    handleToolToggle(tool.name, enabled)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
               )}
             </div>
           </CardContent>
@@ -2103,10 +2298,10 @@ export function MCPConfigManager({
           tabIndex={0}
           aria-expanded={serversSectionExpanded}
           aria-label="Toggle servers section"
-          className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="hover:bg-accent/50 focus:ring-ring flex cursor-pointer items-center justify-between px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
           onClick={() => setServersSectionExpanded(!serversSectionExpanded)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault()
               setServersSectionExpanded(!serversSectionExpanded)
             }
@@ -2114,9 +2309,9 @@ export function MCPConfigManager({
         >
           <div className="flex items-center gap-2">
             {serversSectionExpanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground h-4 w-4" />
             ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="text-muted-foreground h-4 w-4" />
             )}
             <Server className="h-4 w-4" />
             <span className="font-medium">Servers</span>
@@ -2129,7 +2324,12 @@ export function MCPConfigManager({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleExportConfig}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleExportConfig}
+            >
               <Download className="h-4 w-4" />
               Export
             </Button>
@@ -2157,7 +2357,17 @@ export function MCPConfigManager({
               {Object.entries(allServers).map(([name, serverConfig]) => {
                 const status = serverStatus[name]
                 const serverTools = toolsByServer[name] || []
-                const enabledToolCount = serverTools.filter((t) => t.enabled).length
+                const enabledToolCount = serverTools.filter(
+                  (t) => t.enabled,
+                ).length
+                const effectiveStatus: McpServerStatusSnapshot = status ?? {
+                  connected: false,
+                  toolCount: serverTools.length,
+                  runtimeEnabled: serverConfig.disabled !== true,
+                  configDisabled: serverConfig.disabled === true,
+                }
+                const runtimeState =
+                  resolveMcpServerRuntimeState(effectiveStatus)
 
                 return (
                   <Card key={name} className="overflow-hidden">
@@ -2167,10 +2377,10 @@ export function MCPConfigManager({
                       tabIndex={0}
                       aria-expanded={expandedServers.has(name)}
                       aria-label={`Toggle ${name} server details`}
-                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      className="hover:bg-accent/50 focus:ring-ring flex cursor-pointer items-center justify-between px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
                       onClick={() => toggleServerExpansion(name)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
+                        if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault()
                           toggleServerExpansion(name)
                         }
@@ -2178,43 +2388,52 @@ export function MCPConfigManager({
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         {expandedServers.has(name) ? (
-                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
                         )}
-                        <span className="font-medium truncate">{name}</span>
-                        {serverConfig?.disabled ? (
-                          <Badge variant="secondary" className="shrink-0">Disabled</Badge>
-                        ) : status?.runtimeEnabled === false ? (
+                        <span className="truncate font-medium">{name}</span>
+                        {runtimeState === "disabled" ? (
+                          <Badge variant="secondary" className="shrink-0">
+                            Disabled
+                          </Badge>
+                        ) : runtimeState === "stopped" ? (
                           <div className="flex shrink-0 items-center gap-1">
                             <Square className="h-3 w-3 text-orange-500" />
                             <Badge
                               variant="outline"
-                              className="border-orange-300 text-orange-600 text-xs"
+                              className="border-orange-300 text-xs text-orange-600"
                             >
                               Stopped
                             </Badge>
                           </div>
                         ) : (
                           <>
-                            {status?.connected ? (
+                            {runtimeState === "connected" ? (
                               <div className="flex shrink-0 items-center gap-1">
                                 <CheckCircle className="h-3 w-3 text-green-500" />
                                 <Badge variant="default" className="text-xs">
                                   {serverTools.length > 0
                                     ? `${enabledToolCount}/${serverTools.length} tools`
-                                    : `${status.toolCount} tools`}
+                                    : `${effectiveStatus.toolCount} tools`}
                                 </Badge>
                               </div>
-                            ) : status?.error ? (
+                            ) : runtimeState === "error" ? (
                               <div className="flex shrink-0 items-center gap-1">
                                 <XCircle className="h-3 w-3 text-red-500" />
-                                <Badge variant="destructive" className="text-xs">Error</Badge>
+                                <Badge
+                                  variant="destructive"
+                                  className="text-xs"
+                                >
+                                  Error
+                                </Badge>
                               </div>
                             ) : (
                               <div className="flex shrink-0 items-center gap-1">
                                 <AlertCircle className="h-3 w-3 text-yellow-500" />
-                                <Badge variant="outline" className="text-xs">Disconnected</Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Disconnected
+                                </Badge>
                               </div>
                             )}
                           </>
@@ -2232,7 +2451,7 @@ export function MCPConfigManager({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                                className="text-muted-foreground hover:text-foreground h-7 gap-1 px-2 text-[11px]"
                                 aria-label={`Actions for ${name} server`}
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
@@ -2240,20 +2459,28 @@ export function MCPConfigManager({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {!serverConfig.disabled && (
+                              {runtimeState !== "disabled" && (
                                 <>
-                                  {status?.runtimeEnabled === false ? (
-                                    <DropdownMenuItem onClick={() => handleStartServer(name)}>
+                                  {runtimeState === "stopped" ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStartServer(name)}
+                                    >
                                       <Play className="h-3.5 w-3.5" />
                                       Start server
                                     </DropdownMenuItem>
                                   ) : (
                                     <>
-                                      <DropdownMenuItem onClick={() => handleRestartServer(name)}>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleRestartServer(name)
+                                        }
+                                      >
                                         <RotateCcw className="h-3.5 w-3.5" />
                                         Restart server
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleStopServer(name)}>
+                                      <DropdownMenuItem
+                                        onClick={() => handleStopServer(name)}
+                                      >
                                         <Square className="h-3.5 w-3.5" />
                                         Stop server
                                       </DropdownMenuItem>
@@ -2262,28 +2489,40 @@ export function MCPConfigManager({
                                   <DropdownMenuSeparator />
                                 </>
                               )}
-                              <DropdownMenuItem onClick={() => setEditingServer({ name, config: serverConfig })}>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setEditingServer({
+                                    name,
+                                    config: serverConfig,
+                                  })
+                                }
+                              >
                                 <Edit className="h-3.5 w-3.5" />
                                 Edit server
                               </DropdownMenuItem>
-                              {serverConfig.transport === "streamableHttp" && serverConfig.url && (
-                                <>
-                                  {oauthStatus[name]?.authenticated ? (
-                                    <DropdownMenuItem
-                                      onClick={() => handleRevokeOAuth(name)}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <XCircle className="h-3.5 w-3.5" />
-                                      Revoke OAuth
-                                    </DropdownMenuItem>
-                                  ) : oauthStatus[name]?.configured ? (
-                                    <DropdownMenuItem onClick={() => handleInitiateOAuth(name)}>
-                                      <ExternalLink className="h-3.5 w-3.5" />
-                                      Start OAuth
-                                    </DropdownMenuItem>
-                                  ) : null}
-                                </>
-                              )}
+                              {serverConfig.transport === "streamableHttp" &&
+                                serverConfig.url && (
+                                  <>
+                                    {oauthStatus[name]?.authenticated ? (
+                                      <DropdownMenuItem
+                                        onClick={() => handleRevokeOAuth(name)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <XCircle className="h-3.5 w-3.5" />
+                                        Revoke OAuth
+                                      </DropdownMenuItem>
+                                    ) : oauthStatus[name]?.configured ? (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleInitiateOAuth(name)
+                                        }
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Start OAuth
+                                      </DropdownMenuItem>
+                                    ) : null}
+                                  </>
+                                )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => handleDeleteServer(name)}
@@ -2301,44 +2540,58 @@ export function MCPConfigManager({
                     {/* Expanded Details Section */}
                     {expandedServers.has(name) && (
                       <>
-                        <CardContent className="pt-0 border-t">
+                        <CardContent className="border-t pt-0">
                           <div className="space-y-3 py-3">
                             {serverConfig && (
                               <>
                                 {/* Command/Transport Info */}
                                 <div className="text-sm">
-                                  <span className="font-medium text-muted-foreground">
-                                    {serverConfig.transport === "stdio" || !serverConfig.transport ? "Command:" : "Transport:"}
+                                  <span className="text-muted-foreground font-medium">
+                                    {serverConfig.transport === "stdio" ||
+                                    !serverConfig.transport
+                                      ? "Command:"
+                                      : "Transport:"}
                                   </span>{" "}
-                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                    {serverConfig.transport === "stdio" || !serverConfig.transport
+                                  <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
+                                    {serverConfig.transport === "stdio" ||
+                                    !serverConfig.transport
                                       ? `${serverConfig.command || ""} ${serverConfig.args ? serverConfig.args.join(" ") : ""}`
                                       : `${serverConfig.transport}: ${serverConfig.url || ""}`}
                                   </code>
                                 </div>
 
                                 {/* Environment Variables */}
-                                {serverConfig.env && Object.keys(serverConfig.env).length > 0 && (
-                                  <div className="text-sm">
-                                    <span className="font-medium text-muted-foreground">Environment:</span>{" "}
-                                    <span className="text-xs text-muted-foreground">
-                                      {Object.keys(serverConfig.env).join(", ")}
-                                    </span>
-                                  </div>
-                                )}
+                                {serverConfig.env &&
+                                  Object.keys(serverConfig.env).length > 0 && (
+                                    <div className="text-sm">
+                                      <span className="text-muted-foreground font-medium">
+                                        Environment:
+                                      </span>{" "}
+                                      <span className="text-muted-foreground text-xs">
+                                        {Object.keys(serverConfig.env).join(
+                                          ", ",
+                                        )}
+                                      </span>
+                                    </div>
+                                  )}
 
                                 {/* Timeout */}
                                 {serverConfig.timeout && (
                                   <div className="text-sm">
-                                    <span className="font-medium text-muted-foreground">Timeout:</span>{" "}
-                                    <span className="text-xs text-muted-foreground">{serverConfig.timeout}ms</span>
+                                    <span className="text-muted-foreground font-medium">
+                                      Timeout:
+                                    </span>{" "}
+                                    <span className="text-muted-foreground text-xs">
+                                      {serverConfig.timeout}ms
+                                    </span>
                                   </div>
                                 )}
 
                                 {/* Error (if any) */}
                                 {status?.error && (
                                   <div className="text-sm text-red-500">
-                                    <span className="font-medium">Error:</span> {status.error}
+                                    <span className="font-medium">Error:</span>{" "}
+                                    {status.error}
                                   </div>
                                 )}
                               </>
@@ -2347,59 +2600,68 @@ export function MCPConfigManager({
                         </CardContent>
 
                         {/* Server Logs Section - only show for stdio servers */}
-                        {serverConfig && (serverConfig.transport === "stdio" || !serverConfig.transport) && (
-                          <CardContent className="pt-0 border-t">
-                            <div className="space-y-2 py-2">
-                              <div className="flex items-center justify-between">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleLogs(name)}
-                                  className="flex items-center gap-2 -ml-2"
-                                >
-                                  <Terminal className="h-4 w-4" />
-                                  <span>Server Logs</span>
-                                  {expandedLogs.has(name) ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                {expandedLogs.has(name) && (
+                        {serverConfig &&
+                          (serverConfig.transport === "stdio" ||
+                            !serverConfig.transport) && (
+                            <CardContent className="border-t pt-0">
+                              <div className="space-y-2 py-2">
+                                <div className="flex items-center justify-between">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleClearLogs(name)}
-                                    title="Clear logs"
+                                    onClick={() => toggleLogs(name)}
+                                    className="-ml-2 flex items-center gap-2"
                                   >
-                                    <Trash className="h-4 w-4" />
+                                    <Terminal className="h-4 w-4" />
+                                    <span>Server Logs</span>
+                                    {expandedLogs.has(name) ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
                                   </Button>
-                                )}
-                              </div>
-
-                              {expandedLogs.has(name) && (
-                                <div className="bg-black/90 rounded-md p-3 max-h-64 overflow-y-auto font-mono text-xs">
-                                  {serverLogs[name]?.length > 0 ? (
-                                    <div className="space-y-1">
-                                      {serverLogs[name].map((log, idx) => (
-                                        <div key={idx} className="text-green-400">
-                                          <span className="text-gray-500">
-                                            [{new Date(log.timestamp).toLocaleTimeString()}]
-                                          </span>{' '}
-                                          {log.message}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="text-gray-500 text-center py-4">
-                                      No logs available
-                                    </div>
+                                  {expandedLogs.has(name) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleClearLogs(name)}
+                                      title="Clear logs"
+                                    >
+                                      <Trash className="h-4 w-4" />
+                                    </Button>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        )}
+
+                                {expandedLogs.has(name) && (
+                                  <div className="max-h-64 overflow-y-auto rounded-md bg-black/90 p-3 font-mono text-xs">
+                                    {serverLogs[name]?.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {serverLogs[name].map((log, idx) => (
+                                          <div
+                                            key={idx}
+                                            className="text-green-400"
+                                          >
+                                            <span className="text-gray-500">
+                                              [
+                                              {new Date(
+                                                log.timestamp,
+                                              ).toLocaleTimeString()}
+                                              ]
+                                            </span>{" "}
+                                            {log.message}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="py-4 text-center text-gray-500">
+                                        No logs available
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          )}
                       </>
                     )}
                   </Card>

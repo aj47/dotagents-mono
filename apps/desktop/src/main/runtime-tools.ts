@@ -15,7 +15,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
 import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
-import { conversationService } from "./conversation-service"
+import { renameConversationTitleAndSyncSession } from "./conversation-management"
 import { readMoreContext } from "./context-budget"
 import { getAppSessionForAcpSession } from "./acp-session-state"
 import { promises as fs } from "fs"
@@ -527,7 +527,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const updatedConversation = await conversationService.renameConversationTitle(
+    const updatedConversation = await renameConversationTitleAndSyncSession(
       session.conversationId,
       args.title,
     )
@@ -538,11 +538,6 @@ const toolHandlers: Record<string, ToolHandler> = {
         isError: true,
       }
     }
-
-    agentSessionTracker.updateSession(trackedSessionId, {
-      conversationTitle: updatedConversation.title,
-    })
-
     return {
       content: [{ type: "text", text: JSON.stringify({ success: true, title: updatedConversation.title }, null, 2) }],
       isError: false,

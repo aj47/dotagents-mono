@@ -80,28 +80,27 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   )
 
   // Filter tools based on search and server selection
-  const filteredToolsBySource = (Object.entries(toolsBySource) as Array<[string, DetailedTool[]]>).reduce<Record<string, DetailedTool[]>>(
-    (acc, [sourceName, sourceTools]) => {
-      if (selectedSource !== "all" && sourceName !== selectedSource) {
-        return acc
-      }
-
-      const filteredTools = sourceTools.filter((tool) => {
-        const matchesSearch =
-          tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          tool.description.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesVisibility = showDisabledTools || tool.enabled
-        return matchesSearch && matchesVisibility
-      })
-
-      if (filteredTools.length > 0) {
-        acc[sourceName] = filteredTools
-      }
-
+  const filteredToolsBySource = (
+    Object.entries(toolsBySource) as Array<[string, DetailedTool[]]>
+  ).reduce<Record<string, DetailedTool[]>>((acc, [sourceName, sourceTools]) => {
+    if (selectedSource !== "all" && sourceName !== selectedSource) {
       return acc
-    },
-    {},
-  )
+    }
+
+    const filteredTools = sourceTools.filter((tool) => {
+      const matchesSearch =
+        tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tool.description.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesVisibility = showDisabledTools || tool.enabled
+      return matchesSearch && matchesVisibility
+    })
+
+    if (filteredTools.length > 0) {
+      acc[sourceName] = filteredTools
+    }
+
+    return acc
+  }, {})
 
   const handleToolToggle = async (toolName: string, enabled: boolean) => {
     try {
@@ -169,35 +168,27 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     })
     setTools(updatedTools)
 
-    // Track promises for all backend calls
-    const promises = sourceTools.map((tool) =>
-      tipcClient.setMcpToolEnabled({ toolName: tool.name, enabled: enable }),
-    )
-
     try {
-      const results = await Promise.allSettled(promises)
-      // A fulfilled promise with { success: false } (e.g. essential tool that
-      // cannot be disabled) should also be treated as a failure.
-      const successful = results.filter(
-        (r) => r.status === "fulfilled" && (r.value as any)?.success,
-      ).length
-      const failed = results.length - successful
+      const result = await tipcClient.setMcpToolSourceEnabled({
+        sourceName,
+        enabled: enable,
+      })
+      const updatedSourceTools = ((result as any)?.tools ||
+        []) as DetailedTool[]
+      const updatedToolMap = new Map(
+        updatedSourceTools.map((tool) => [tool.name, tool]),
+      )
+      const successful = (result as any)?.updatedCount || 0
+      const failed = ((result as any)?.failedTools || []).length
 
       if (failed === 0) {
         toast.success(
           `All ${sourceTools.length} tools for ${sourceLabel} ${enable ? "enabled" : "disabled"}`,
         )
       } else {
-        // Revert local state for failed calls (rejected OR success:false)
-        const failedTools = sourceTools.filter(
-          (_, index) => {
-            const r = results[index]
-            return r.status === "rejected" || !(r.value as any)?.success
-          },
-        )
         const revertedTools = tools.map((tool) => {
-          if (tool.sourceName === sourceName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
+          if (tool.sourceName === sourceName) {
+            return updatedToolMap.get(tool.name) || tool
           }
           return tool
         })
@@ -222,7 +213,9 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
 
   const sourceNames = Object.keys(toolsBySource)
   const totalTools = toolsFromEnabledSources.length
-  const enabledTools = toolsFromEnabledSources.filter((tool) => tool.enabled).length
+  const enabledTools = toolsFromEnabledSources.filter(
+    (tool) => tool.enabled,
+  ).length
 
   return (
     <div className="min-w-0 space-y-6">
@@ -254,7 +247,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="min-w-0 flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
             <Input
               placeholder="Search tools..."
               value={searchQuery}
@@ -267,12 +260,13 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
           <select
             value={selectedSource}
             onChange={(e) => setSelectedSource(e.target.value)}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
           >
             <option value="all">All Sources</option>
             {sourceNames.map((sourceName) => (
               <option key={sourceName} value={sourceName}>
-                {toolsBySource[sourceName][0]?.sourceLabel || sourceName} ({toolsBySource[sourceName].length})
+                {toolsBySource[sourceName][0]?.sourceLabel || sourceName} (
+                {toolsBySource[sourceName].length})
               </option>
             ))}
           </select>
@@ -284,8 +278,8 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
         {Object.keys(filteredToolsBySource).length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
-              <Settings className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-center text-muted-foreground">
+              <Settings className="text-muted-foreground mb-4 h-12 w-12" />
+              <p className="text-muted-foreground text-center">
                 {tools.length === 0
                   ? "No tools available."
                   : toolsFromEnabledSources.length === 0
@@ -299,7 +293,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
             ([sourceName, sourceTools]) => (
               <Card key={sourceName}>
                 <CardHeader
-                  className="cursor-pointer transition-colors hover:bg-accent/50"
+                  className="hover:bg-accent/50 cursor-pointer transition-colors"
                   onClick={() => toggleSourceExpansion(sourceName)}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -309,10 +303,14 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
                       ) : (
                         <ChevronRight className="h-4 w-4 shrink-0" />
                       )}
-                      {sourceTools[0]?.sourceKind === "runtime"
-                        ? <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        : <Server className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                      <CardTitle className="truncate text-base">{sourceTools[0]?.sourceLabel || sourceName}</CardTitle>
+                      {sourceTools[0]?.sourceKind === "runtime" ? (
+                        <Wrench className="text-muted-foreground h-4 w-4 shrink-0" />
+                      ) : (
+                        <Server className="text-muted-foreground h-4 w-4 shrink-0" />
+                      )}
+                      <CardTitle className="truncate text-base">
+                        {sourceTools[0]?.sourceLabel || sourceName}
+                      </CardTitle>
                       <Badge variant="secondary" className="shrink-0">
                         {sourceTools.filter((t) => t.enabled).length}/
                         {sourceTools.length} enabled
@@ -367,7 +365,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
                                 </Badge>
                               )}
                             </div>
-                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                            <p className="text-muted-foreground line-clamp-2 text-xs">
                               {tool.description}
                             </p>
                           </div>
@@ -378,19 +376,21 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent className="max-w-2xl w-[90vw] max-h-[85vh] overflow-y-auto">
+                              <DialogContent className="max-h-[85vh] w-[90vw] max-w-2xl overflow-y-auto">
                                 <DialogHeader className="min-w-0">
-                                  <DialogTitle className="break-words">{tool.name}</DialogTitle>
+                                  <DialogTitle className="break-words">
+                                    {tool.name}
+                                  </DialogTitle>
                                   <DialogDescription className="break-words">
                                     {tool.description}
                                   </DialogDescription>
                                 </DialogHeader>
-                                <div className="space-y-4 min-w-0">
+                                <div className="min-w-0 space-y-4">
                                   <div className="min-w-0">
                                     <Label className="text-sm font-medium">
                                       Input Schema
                                     </Label>
-                                    <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-words">
+                                    <pre className="bg-muted mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md p-3 text-xs">
                                       {JSON.stringify(
                                         tool.inputSchema,
                                         null,

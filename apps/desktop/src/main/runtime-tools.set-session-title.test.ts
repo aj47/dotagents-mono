@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mockRenameConversationTitle = vi.fn()
+const mockRenameConversationTitleAndSyncSession = vi.fn()
 const mockGetSession = vi.fn()
-const mockUpdateSession = vi.fn()
 const mockGetAppSessionForAcpSession = vi.fn()
 
 vi.mock("./mcp-service", () => ({
@@ -12,7 +11,6 @@ vi.mock("./mcp-service", () => ({
 vi.mock("./agent-session-tracker", () => ({
   agentSessionTracker: {
     getSession: mockGetSession,
-    updateSession: mockUpdateSession,
     getActiveSessions: vi.fn(() => []),
   },
 }))
@@ -26,7 +24,9 @@ vi.mock("./emergency-stop", () => ({ emergencyStopAll: vi.fn() }))
 vi.mock("./acp/acp-router-tools", () => ({ executeACPRouterTool: vi.fn(), isACPRouterTool: vi.fn(() => false) }))
 vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))
 vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.fn() }))
-vi.mock("./conversation-service", () => ({ conversationService: { renameConversationTitle: mockRenameConversationTitle } }))
+vi.mock("./conversation-management", () => ({
+  renameConversationTitleAndSyncSession: mockRenameConversationTitleAndSyncSession,
+}))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./acp-session-state", () => ({ getAppSessionForAcpSession: mockGetAppSessionForAcpSession }))
 
@@ -41,7 +41,7 @@ describe("runtime-tools set_session_title", () => {
         ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title" }
         : undefined,
     )
-    mockRenameConversationTitle.mockResolvedValue({ id: "conversation-1", title: "Delegated title" })
+    mockRenameConversationTitleAndSyncSession.mockResolvedValue({ id: "conversation-1", title: "Delegated title" })
   })
 
   it("updates the parent app session title when invoked from a delegated session", async () => {
@@ -51,8 +51,7 @@ describe("runtime-tools set_session_title", () => {
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "delegated-session-1")
 
     expect(mockGetAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
-    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
-    expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
+    expect(mockRenameConversationTitleAndSyncSession).toHaveBeenCalledWith("conversation-1", "Delegated title")
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
       isError: false,

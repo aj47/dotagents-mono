@@ -8,7 +8,10 @@ import { makeTextCompletionWithFetch } from "./llm-fetch"
 import { configStore } from "./config"
 import { Config } from "@shared/types"
 import { diagnosticsService } from "./diagnostics"
-import { preprocessTextForTTS as regexPreprocessTextForTTS } from "@dotagents/shared"
+import {
+  preprocessTextForTTS as regexPreprocessTextForTTS,
+  resolveChatProviderId,
+} from "@dotagents/shared"
 
 /**
  * Builds a dynamic TTS preprocessing prompt based on user config settings.
@@ -19,7 +22,9 @@ function buildTTSPreprocessingPrompt(config: Config): string {
 
   // Only add instructions for enabled options
   if (config.ttsRemoveCodeBlocks ?? true) {
-    instructions.push("- Remove code blocks and replace with brief description if relevant")
+    instructions.push(
+      "- Remove code blocks and replace with brief description if relevant",
+    )
   }
   if (config.ttsRemoveUrls ?? true) {
     instructions.push("- Remove URLs but mention if a link was shared")
@@ -29,11 +34,19 @@ function buildTTSPreprocessingPrompt(config: Config): string {
   }
 
   // Always include these LLM-specific enhancements (the main value of LLM preprocessing)
-  instructions.push("- Expand abbreviations and acronyms appropriately (e.g., \"Dr.\" → \"Doctor\", \"API\" → \"A P I\")")
-  instructions.push("- Convert technical symbols to spoken words (e.g., \"&&\" → \"and\", \"=>\" → \"arrow\")")
-  instructions.push("- Remove or describe any content that wouldn't make sense when spoken aloud")
+  instructions.push(
+    '- Expand abbreviations and acronyms appropriately (e.g., "Dr." → "Doctor", "API" → "A P I")',
+  )
+  instructions.push(
+    '- Convert technical symbols to spoken words (e.g., "&&" → "and", "=>" → "arrow")',
+  )
+  instructions.push(
+    "- Remove or describe any content that wouldn't make sense when spoken aloud",
+  )
   instructions.push("- Keep the core meaning but optimize for listening")
-  instructions.push("- Do NOT add any commentary, just output the converted text")
+  instructions.push(
+    "- Do NOT add any commentary, just output the converted text",
+  )
 
   return `Convert this AI response to natural spoken text.
 ${instructions.join("\n")}
@@ -47,37 +60,44 @@ Text to convert:
 /**
  * Preprocesses text for TTS using an LLM for more natural speech output.
  * Falls back to regex-based preprocessing if LLM call fails.
- * 
+ *
  * @param text The raw text to preprocess for TTS
  * @param providerId Optional provider ID for the LLM call
  * @returns Preprocessed text suitable for TTS
  */
 export async function preprocessTextForTTSWithLLM(
   text: string,
-  providerId?: string
+  providerId?: string,
 ): Promise<string> {
   const config = configStore.get()
-  
+
   // Use the configured TTS LLM provider, or fall back to transcript post-processing provider, or openai
-  const llmProviderId = providerId || config.ttsLLMPreprocessingProviderId || config.transcriptPostProcessingProviderId || "openai"
-  
+  const llmProviderId =
+    providerId ||
+    config.ttsLLMPreprocessingProviderId ||
+    resolveChatProviderId(config, "transcript")
+
   try {
     // Build the dynamic prompt based on user config, then append the text
     const prompt = buildTTSPreprocessingPrompt(config) + text
 
     // Make the LLM call
     const result = await makeTextCompletionWithFetch(prompt, llmProviderId)
-    
+
     // If we got a result, return it
     if (result && result.trim().length > 0) {
-      diagnosticsService.logInfo("tts-llm-preprocessing", "LLM preprocessing succeeded", {
-        inputLength: text.length,
-        outputLength: result.length,
-        provider: llmProviderId
-      })
+      diagnosticsService.logInfo(
+        "tts-llm-preprocessing",
+        "LLM preprocessing succeeded",
+        {
+          inputLength: text.length,
+          outputLength: result.length,
+          provider: llmProviderId,
+        },
+      )
       return result.trim()
     }
-    
+
     // If empty result, fall back to regex
     throw new Error("LLM returned empty result")
   } catch (error) {
@@ -85,7 +105,7 @@ export async function preprocessTextForTTSWithLLM(
     diagnosticsService.logWarning(
       "tts-llm-preprocessing",
       "LLM preprocessing failed, falling back to regex",
-      error
+      error,
     )
 
     // Fall back to regex-based preprocessing with user-configured options
@@ -97,4 +117,3 @@ export async function preprocessTextForTTSWithLLM(
     return regexPreprocessTextForTTS(text, preprocessingOptions)
   }
 }
-

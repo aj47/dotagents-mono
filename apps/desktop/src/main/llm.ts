@@ -16,7 +16,6 @@ import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
-import { getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
   endAgentTrace,
@@ -62,7 +61,11 @@ import {
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
 import {
+  formatConversationHistoryMessages,
+  formatConversationToolCalls,
+  formatConversationToolResults,
   normalizeAgentConversationState,
+  resolveChatModelDisplayInfo,
   type AgentConversationState,
 } from "@dotagents/shared"
 
@@ -568,18 +571,9 @@ export async function processTranscriptWithAgentMode(
   let contextInfoRef: { estTokens: number; maxTokens: number } | undefined = undefined
 
   // Get model info for progress display
-  const providerId = config.mcpToolsProviderId || "openai"
-  const modelName = providerId === "openai"
-    ? config.mcpToolsOpenaiModel || "gpt-4.1-mini"
-    : providerId === "groq"
-    ? config.mcpToolsGroqModel || "openai/gpt-oss-120b"
-    : providerId === "gemini"
-    ? config.mcpToolsGeminiModel || "gemini-2.5-flash"
-    : "gpt-4.1-mini"
-  // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
-  const providerDisplayName = providerId === "openai"
-    ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)
-    : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId
+  const { model: modelName, providerDisplayName } = resolveChatModelDisplayInfo(
+    config,
+  )
   const modelInfoRef = { provider: providerDisplayName, model: modelName }
   // Seed lastEmittedUserResponse with the latest respond_to_user content from
   // previous conversation history. This prevents the emit() guard from
@@ -697,16 +691,7 @@ export async function processTranscriptWithAgentMode(
     }
 
     try {
-      // Convert toolResults from MCPToolResult format to stored format
-      const convertedToolResults = toolResults?.map(tr => ({
-        success: !tr.isError,
-        content: Array.isArray(tr.content)
-          ? tr.content.map(c => c.text).join("\n")
-          : String(tr.content || ""),
-        error: tr.isError
-          ? (Array.isArray(tr.content) ? tr.content.map(c => c.text).join("\n") : String(tr.content || ""))
-          : undefined
-      }))
+      const convertedToolResults = formatConversationToolResults(toolResults)
 
       const updatedConversation = await conversationService.addMessageToConversation(
         currentConversationId,
@@ -780,19 +765,8 @@ export async function processTranscriptWithAgentMode(
     const input: SummarizationInput = {
       sessionId: currentSessionId,
       stepNumber,
-      toolCalls: toolCalls?.map(tc => ({
-        name: tc.name,
-        arguments: tc.arguments,
-      })),
-      toolResults: toolResults?.map(tr => ({
-        success: !tr.isError,
-        content: Array.isArray(tr.content)
-          ? tr.content.map(c => c.text).join("\n")
-          : String(tr.content || ""),
-        error: tr.isError
-          ? (Array.isArray(tr.content) ? tr.content.map(c => c.text).join("\n") : String(tr.content || ""))
-          : undefined,
-      })),
+      toolCalls: formatConversationToolCalls(toolCalls),
+      toolResults: formatConversationToolResults(toolResults),
       assistantResponse,
       recentMessages: conversationHistory.slice(-5).map(m => ({
         role: m.role,
@@ -1081,31 +1055,12 @@ export async function processTranscriptWithAgentMode(
   const formatConversationForProgress = (
     history: typeof conversationHistory,
   ) => {
-    return history
-      .filter((entry) => !entry.ephemeral)
-      .filter((entry) => !(entry.role === "user" && isInternalNudgeContent(entry.content)))
-      .map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-        toolCalls: entry.toolCalls?.map((tc) => ({
-          name: tc.name,
-          arguments: tc.arguments,
-        })),
-        toolResults: entry.toolResults?.map((tr) => {
-          // Safely handle content - it should be an array, but add defensive check
-          const contentText = Array.isArray(tr.content)
-            ? tr.content.map((c) => c.text).join("\n")
-            : String(tr.content || "")
-
-          return {
-            success: !tr.isError,
-            content: contentText,
-            error: tr.isError ? contentText : undefined,
-          }
-        }),
-        // Preserve original timestamp if available, otherwise use current time
-        timestamp: entry.timestamp || Date.now(),
-      }))
+    return formatConversationHistoryMessages(history, {
+      includeEntry: (entry) =>
+        !entry.ephemeral &&
+        !(entry.role === "user" && isInternalNudgeContent(entry.content)),
+      fallbackTimestamp: () => Date.now(),
+    })
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {

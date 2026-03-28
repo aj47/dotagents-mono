@@ -5,6 +5,12 @@
 
 import React from "react"
 import { useQuery } from "@tanstack/react-query"
+import {
+  getAgentProfileDisplayName,
+  getDefaultAgentProfile,
+  getEnabledAgentProfiles,
+  sortAgentProfilesByPriority,
+} from "@dotagents/shared"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { Bot, Check } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
@@ -103,9 +109,12 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
     queryFn: () => tipcClient.getAgentProfiles(),
   })
 
-  const enabledAgents = agents.filter((a) => a.enabled)
+  const unsortedEnabledAgents = getEnabledAgentProfiles(agents)
+  const defaultAgent = getDefaultAgentProfile(unsortedEnabledAgents)
+  const enabledAgents = sortAgentProfilesByPriority(unsortedEnabledAgents, {
+    priorityProfileId: selectedAgentId ?? defaultAgent?.id ?? null,
+  })
   const selectedAgent = enabledAgents.find((a) => a.id === selectedAgentId)
-  const defaultAgent = enabledAgents.find((a) => a.isDefault) ?? enabledAgents[0]
 
   // If the selected agent was disabled/deleted, reset to default
   React.useEffect(() => {
@@ -120,7 +129,9 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
 
   // When no agent is explicitly selected, show the default agent's avatar
   const displayAgent = selectedAgent ?? defaultAgent
-  const displayName = displayAgent?.displayName || displayAgent?.name || "Default Agent"
+  const displayName = displayAgent
+    ? getAgentProfileDisplayName(displayAgent)
+    : "Default Agent"
 
   return (
     <DropdownMenu>
@@ -151,7 +162,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
         >
           <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
             {defaultAgent?.avatarDataUrl ? (
-              <img src={defaultAgent.avatarDataUrl} alt={defaultAgent?.displayName || "Default Agent"} className="h-full w-full object-cover" />
+              <img src={defaultAgent.avatarDataUrl} alt={defaultAgent ? getAgentProfileDisplayName(defaultAgent) : "Default Agent"} className="h-full w-full object-cover" />
             ) : defaultAgent ? (
               <Facehash name={defaultAgent.id} size={20} colors={agentColors(defaultAgent.id)} />
             ) : (
@@ -172,12 +183,12 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
           >
             <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
               {agent.avatarDataUrl ? (
-                <img src={agent.avatarDataUrl} alt={agent.displayName || agent.name} className="h-full w-full object-cover" />
+                <img src={agent.avatarDataUrl} alt={getAgentProfileDisplayName(agent)} className="h-full w-full object-cover" />
               ) : (
                 <Facehash name={agent.id} size={20} colors={agentColors(agent.id)} />
               )}
             </div>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.displayName || agent.name}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{getAgentProfileDisplayName(agent)}</span>
             <Check className={cn("h-3.5 w-3.5 shrink-0", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
           </DropdownMenuItem>
         ))}

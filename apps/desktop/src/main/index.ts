@@ -9,41 +9,32 @@ import {
   setAppQuitting,
   WINDOWS,
 } from "./window"
-import { listenToKeyboardEvents, stopListeningToKeyboardEvents } from "./keyboard"
-import { registerIpcMain } from "@egoist/tipc/main"
-import { router } from "./tipc"
-import { registerServeProtocol, registerServeSchema } from "./serve"
+import {
+  listenToKeyboardEvents,
+  stopListeningToKeyboardEvents,
+} from "./keyboard"
+import { registerServeSchema } from "./serve"
 import { createAppMenu } from "./menu"
 import { destroyTray, initTray } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { mcpService } from "./mcp-service"
 import { initDebugFlags, logApp } from "./debug"
+import { launchSharedHeadlessMode } from "./headless-runtime"
 import { initializeDeepLinkHandling } from "./oauth-deeplink-handler"
 import { diagnosticsService } from "./diagnostics"
 import { ensureAppSwitcherPresence } from "./app-switcher"
 
 import { configStore } from "./config"
+import { printQRCodeToTerminal } from "./remote-server"
 import {
-  startRemoteServer,
-  printQRCodeToTerminal,
-  startRemoteServerForced,
-} from "./remote-server"
-import { acpService } from "./acp-service"
-import { agentProfileService } from "./agent-profile-service"
+  startSharedRemoteAccessRuntime,
+  syncConfiguredRemoteAccess,
+} from "./remote-access-runtime"
 import {
-  initializeBundledSkills,
-  skillsService,
-  startSkillsFolderWatcher,
-} from "./skills-service"
-import {
-  startCloudflareTunnel,
-  startNamedCloudflareTunnel,
-  checkCloudflaredInstalled,
-} from "./cloudflare-tunnel"
-import { initModelsDevService } from "./models-dev-service"
-import { loopService } from "./loop-service"
-import { setHeadlessMode } from "./state"
-import { stopRemoteServer } from "./remote-server"
+  initializeSharedRuntimeServices,
+  registerSharedMainProcessInfrastructure,
+  shutdownSharedRuntimeServices,
+} from "./app-runtime"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
   downloadHubBundleToTempFile,
@@ -58,6 +49,7 @@ import {
 const isQRMode = process.argv.includes("--qr")
 // Check for --headless flag (headless mode without GUI)
 const isHeadlessMode = process.argv.includes("--headless")
+const isNoGuiMode = isQRMode || isHeadlessMode
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
 // This must be called before app.whenReady()
@@ -90,8 +82,8 @@ let pendingHubBundleHandoffPath = findHubBundleHandoffFilePath(process.argv)
 const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
-const shouldEnforceSingleInstance = !isQRMode && !isHeadlessMode
-const CLEANUP_TIMEOUT_MS = 5000
+const shouldEnforceSingleInstance = !isNoGuiMode
+const SHARED_RUNTIME_CLEANUP_TIMEOUT_MS = 5000
 const GUI_SIGNAL_FORCE_EXIT_DELAY_MS = 500
 
 function releaseAppSingleInstanceLock() {
@@ -218,94 +210,25 @@ if (!gotSingleInstanceLock) {
     // Handle --qr mode: start remote server, start tunnel, print QR code, run headlessly
     if (isQRMode) {
       logApp("Running in --qr mode (headless with QR code)")
-
-      // Hide dock icon on macOS for headless mode
-      if (process.platform === "darwin" && app.dock) {
-        app.dock.hide()
-      }
-
-      try {
-        // Start remote server (force enabled for --qr mode, bypassing config check)
-        const serverResult = await startRemoteServerForced()
-        if (!serverResult.running) {
-          console.error(
-            "[QR Mode] Failed to start remote server:",
-            serverResult.error || "Unknown error",
-          )
-          process.exit(1)
-        }
-        logApp("Remote server started in --qr mode")
-
-        // Start Cloudflare tunnel for remote access
-        const cfg = configStore.get()
-        let tunnelUrl: string | undefined
-
-        // Check if cloudflared is installed
-        const cloudflaredInstalled = await checkCloudflaredInstalled()
-        if (!cloudflaredInstalled) {
-          console.log(
-            "[QR Mode] cloudflared not installed - QR code will use local address",
-          )
-          console.log(
-            "[QR Mode] Install cloudflared for remote access: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
-          )
-        } else {
-          // Prefer named tunnel if configured, otherwise use quick tunnel
-          const tunnelMode = cfg.cloudflareTunnelMode || "quick"
-
-          if (
-            tunnelMode === "named" &&
-            cfg.cloudflareTunnelId &&
-            cfg.cloudflareTunnelHostname
-          ) {
-            console.log("[QR Mode] Starting named Cloudflare tunnel...")
-            const result = await startNamedCloudflareTunnel({
-              tunnelId: cfg.cloudflareTunnelId,
-              hostname: cfg.cloudflareTunnelHostname,
-              credentialsPath: cfg.cloudflareTunnelCredentialsPath || undefined,
-            })
-            if (result.success && result.url) {
-              tunnelUrl = result.url
-              logApp(`Named tunnel started: ${tunnelUrl}`)
-            } else {
-              console.error(`[QR Mode] Named tunnel failed: ${result.error}`)
-              console.log("[QR Mode] Falling back to quick tunnel...")
-            }
+      await launchSharedHeadlessMode({
+        label: "qr-runtime",
+        shutdownLabel: "QR Mode",
+        cloudflareTunnelActivation: "force",
+        onStarted: async ({ cloudflareTunnelUrl }) => {
+          // Print QR code to terminal (with tunnel URL if available)
+          const printed = await printQRCodeToTerminal(cloudflareTunnelUrl)
+          if (!printed) {
+            console.error(
+              "[QR Mode] Failed to print QR code. Ensure remoteServerApiKey is configured.",
+            )
+            console.log(
+              "[QR Mode] You can set an API key in the config or run the app normally first.",
+            )
           }
 
-          // If named tunnel wasn't used or failed, try quick tunnel
-          if (!tunnelUrl) {
-            console.log("[QR Mode] Starting Cloudflare quick tunnel...")
-            const result = await startCloudflareTunnel()
-            if (result.success && result.url) {
-              tunnelUrl = result.url
-              logApp(`Quick tunnel started: ${tunnelUrl}`)
-            } else {
-              console.error(`[QR Mode] Quick tunnel failed: ${result.error}`)
-              console.log("[QR Mode] QR code will use local address instead")
-            }
-          }
-        }
-
-        // Print QR code to terminal (with tunnel URL if available)
-        const printed = await printQRCodeToTerminal(tunnelUrl)
-        if (!printed) {
-          console.error(
-            "[QR Mode] Failed to print QR code. Ensure remoteServerApiKey is configured.",
-          )
-          console.log(
-            "[QR Mode] You can set an API key in the config or run the app normally first.",
-          )
-        }
-
-        console.log("[QR Mode] Server running. Press Ctrl+C to exit.")
-      } catch (err) {
-        console.error(
-          "[QR Mode] Failed to start remote server:",
-          err instanceof Error ? err.message : String(err),
-        )
-        process.exit(1)
-      }
+          console.log("[QR Mode] Server running. Press Ctrl+C to exit.")
+        },
+      })
 
       // Keep the process running - don't create any windows
       return
@@ -313,103 +236,20 @@ if (!gotSingleInstanceLock) {
 
     // Handle --headless mode: initialize services and start CLI without any GUI
     if (isHeadlessMode) {
-      setHeadlessMode(true)
       logApp("Running in --headless mode")
-
-      // Hide dock icon on macOS for headless mode
-      if (process.platform === "darwin" && app.dock) {
-        app.dock.hide()
-      }
-
-      // Register IPC infrastructure (needed for remote-server agent execution)
-      registerIpcMain(router)
-      logApp("IPC main registered (headless)")
-
-      // Register serve protocol (safe in headless mode)
-      registerServeProtocol()
-      logApp("Serve protocol registered (headless)")
-
-      let isHeadlessShuttingDown = false
-      const gracefulShutdown = async (exitCode: number) => {
-        if (isHeadlessShuttingDown) return
-        isHeadlessShuttingDown = true
-        console.log("\n[Headless] Shutting down...")
-        releaseAppSingleInstanceLock()
-        loopService.stopAllLoops()
-        await acpService.shutdown().catch(() => {})
-        await mcpService.cleanup().catch(() => {})
-        await stopRemoteServer().catch(() => {})
-        process.exit(exitCode)
-      }
-
-      process.on("SIGTERM", () => {
-        void gracefulShutdown(0)
+      await launchSharedHeadlessMode({
+        label: "headless-runtime",
+        shutdownLabel: "Headless",
+        cloudflareTunnelActivation: "auto",
+        terminationSignals: ["SIGTERM"],
+        onStarted: async (runtimeHandle) => {
+          // Start headless CLI
+          const { startHeadlessCLI } = await import("./headless-cli")
+          await startHeadlessCLI(async () => {
+            await runtimeHandle.gracefulShutdown(0)
+          })
+        },
       })
-
-      try {
-        // Initialize MCP service
-        await mcpService.initialize()
-        logApp("MCP service initialized (headless)")
-
-        // Start all enabled repeat tasks
-        loopService.startAllLoops()
-        logApp("Loop service started (headless)")
-
-        // Initialize ACP service
-        await acpService.initialize()
-        logApp("ACP service initialized (headless)")
-
-        // Sync agent profiles to ACP registry
-        try {
-          agentProfileService.syncAgentProfilesToACPRegistry()
-          logApp("Agent profiles synced to ACP registry (headless)")
-        } catch (error) {
-          logApp("Failed to sync agent profiles to ACP registry:", error)
-        }
-
-        // Initialize bundled skills
-        try {
-          const skillsResult = initializeBundledSkills()
-          logApp(
-            `Bundled skills: ${skillsResult.copied.length} copied, ${skillsResult.skipped.length} skipped (headless)`,
-          )
-          startSkillsFolderWatcher()
-        } catch (error) {
-          logApp("Failed to initialize bundled skills:", error)
-        }
-
-        // Initialize models.dev service
-        initModelsDevService()
-        logApp("Models.dev service initialized (headless)")
-
-        // Force-start remote server bound to 0.0.0.0 for external access.
-        // Use a runtime override to avoid mutating persisted user config.
-        const serverResult = await startRemoteServerForced({
-          bindAddressOverride: "0.0.0.0",
-        })
-        if (!serverResult.running) {
-          console.error(
-            "[Headless] Failed to start remote server:",
-            serverResult.error || "Unknown error",
-          )
-          await gracefulShutdown(1)
-          return
-        }
-        logApp("Remote server started on 0.0.0.0 (headless)")
-
-        // Start headless CLI
-        const { startHeadlessCLI } = await import("./headless-cli")
-        await startHeadlessCLI(async () => {
-          await gracefulShutdown(0)
-        })
-      } catch (err) {
-        console.error(
-          "[Headless] Failed to initialize:",
-          err instanceof Error ? err.message : String(err),
-        )
-        await gracefulShutdown(1)
-        return
-      }
 
       // Keep the process running - don't create any windows
       return
@@ -426,10 +266,8 @@ if (!gotSingleInstanceLock) {
     Menu.setApplicationMenu(createAppMenu())
     logApp("Application menu created")
 
-    registerIpcMain(router)
-    logApp("IPC main registered")
-
-    registerServeProtocol()
+    registerSharedMainProcessInfrastructure()
+    logApp("Shared main-process infrastructure registered")
 
     try {
       if (
@@ -464,8 +302,6 @@ if (!gotSingleInstanceLock) {
         logApp("Failed to apply hideDockIcon on startup:", e)
       }
     }
-
-    logApp("Serve protocol registered")
 
     if (accessibilityGranted) {
       const cfg = configStore.get()
@@ -505,153 +341,29 @@ if (!gotSingleInstanceLock) {
     initTray()
     logApp("System tray initialized")
 
-    mcpService
-      .initialize()
-      .then(() => {
-        logApp("MCP service initialized successfully")
-      })
-      .catch((error) => {
-        diagnosticsService.logError(
-          "mcp-service",
-          "Failed to initialize MCP service on startup",
-          error,
-        )
-        logApp("Failed to initialize MCP service on startup:", error)
-      })
-
-    // Start all enabled repeat tasks
-    try {
-      loopService.startAllLoops()
-      logApp("Repeat tasks started")
-    } catch (error) {
-      logApp("Failed to start repeat tasks:", error)
-    }
-
-    // Initialize models.dev service (fetches model metadata in background)
-    initModelsDevService()
-    logApp("Models.dev service initialization started")
-
-    // Initialize ACP service (spawns auto-start agents)
-    acpService
-      .initialize()
-      .then(() => {
-        logApp("ACP service initialized successfully")
-
-        // Sync agent profiles to ACP registry (unified service - preferred)
-        try {
-          agentProfileService.syncAgentProfilesToACPRegistry()
-          logApp("Agent profiles synced to ACP registry")
-        } catch (error) {
-          logApp("Failed to sync agent profiles to ACP registry:", error)
-        }
-      })
-      .catch((error) => {
-        logApp("Failed to initialize ACP service:", error)
-      })
-
-    // Initialize bundled skills (copy from app resources to .agents/skills/ if needed)
-    try {
-      const skillsResult = initializeBundledSkills()
-      logApp(
-        `Bundled skills: ${skillsResult.copied.length} copied, ${skillsResult.skipped.length} skipped`,
+    initializeSharedRuntimeServices({
+      label: "desktop-runtime",
+      mcpStrategy: "background",
+      acpStrategy: "background",
+    }).catch((error) => {
+      diagnosticsService.logError(
+        "desktop-runtime",
+        "Unexpected shared runtime startup failure",
+        error,
       )
-
-      // Start watching .agents/skills/ for changes (auto-refresh without app restart)
-      startSkillsFolderWatcher()
-    } catch (error) {
-      logApp("Failed to initialize bundled skills:", error)
-    }
+      logApp("Unexpected shared runtime startup failure:", error)
+    })
 
     try {
       const cfg = configStore.get()
-      if (cfg.remoteServerEnabled) {
-        startRemoteServer()
-          .then(async (result) => {
-            if (!result.running) {
-              logApp(
-                `Remote server failed to start: ${result.error || "Unknown error"}`,
-              )
-              return
-            }
-
-            logApp("Remote server started")
-
-            // Auto-start Cloudflare tunnel if enabled
-            // Wrapped in try/catch to isolate tunnel errors from remote server startup reporting
-            if (cfg.cloudflareTunnelAutoStart) {
-              try {
-                const cloudflaredInstalled = await checkCloudflaredInstalled()
-                if (!cloudflaredInstalled) {
-                  logApp(
-                    "Cloudflare tunnel auto-start skipped: cloudflared not installed",
-                  )
-                  return
-                }
-
-                const tunnelMode = cfg.cloudflareTunnelMode || "quick"
-
-                if (tunnelMode === "named") {
-                  // For named tunnels, we need tunnel ID and hostname
-                  if (
-                    !cfg.cloudflareTunnelId ||
-                    !cfg.cloudflareTunnelHostname
-                  ) {
-                    logApp(
-                      "Cloudflare tunnel auto-start skipped: named tunnel requires tunnel ID and hostname",
-                    )
-                    return
-                  }
-                  startNamedCloudflareTunnel({
-                    tunnelId: cfg.cloudflareTunnelId,
-                    hostname: cfg.cloudflareTunnelHostname,
-                    credentialsPath:
-                      cfg.cloudflareTunnelCredentialsPath || undefined,
-                  })
-                    .then((result) => {
-                      if (result.success) {
-                        logApp(`Cloudflare named tunnel started: ${result.url}`)
-                      } else {
-                        logApp(
-                          `Cloudflare named tunnel failed to start: ${result.error}`,
-                        )
-                      }
-                    })
-                    .catch((err) =>
-                      logApp(
-                        `Cloudflare named tunnel error: ${err instanceof Error ? err.message : String(err)}`,
-                      ),
-                    )
-                } else {
-                  // Quick tunnel
-                  startCloudflareTunnel()
-                    .then((result) => {
-                      if (result.success) {
-                        logApp(`Cloudflare quick tunnel started: ${result.url}`)
-                      } else {
-                        logApp(
-                          `Cloudflare quick tunnel failed to start: ${result.error}`,
-                        )
-                      }
-                    })
-                    .catch((err) =>
-                      logApp(
-                        `Cloudflare quick tunnel error: ${err instanceof Error ? err.message : String(err)}`,
-                      ),
-                    )
-                }
-              } catch (err) {
-                logApp(
-                  `Cloudflare tunnel auto-start error: ${err instanceof Error ? err.message : String(err)}`,
-                )
-              }
-            }
-          })
-          .catch((err) =>
-            logApp(
-              `Remote server failed to start: ${err instanceof Error ? err.message : String(err)}`,
-            ),
-          )
-      }
+      void syncConfiguredRemoteAccess({
+        label: "desktop-runtime",
+        nextConfig: cfg,
+      }).catch((err) =>
+        logApp(
+          `Remote access startup failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      )
     } catch (_e) {}
 
     import("./updater").then((res) => res.init()).catch(console.error)
@@ -663,13 +375,18 @@ if (!gotSingleInstanceLock) {
     const MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS = 250
     let lastMacAppActivationAt = 0
 
-    const handleAppActivation = (reason: "app.activate" | "app.did-become-active") => {
+    const handleAppActivation = (
+      reason: "app.activate" | "app.did-become-active",
+    ) => {
       const mainWin = WINDOWS.get("main")
       const cfg = configStore.get()
 
       if (process.platform === "darwin") {
         const now = Date.now()
-        if (now - lastMacAppActivationAt < MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS) {
+        if (
+          now - lastMacAppActivationAt <
+          MACOS_APP_ACTIVATION_DEDUPE_WINDOW_MS
+        ) {
           logApp(`[${reason}] Skipping duplicate macOS activation pulse`)
           return
         }
@@ -724,7 +441,6 @@ if (!gotSingleInstanceLock) {
       releaseAppSingleInstanceLock()
       destroyTray()
       makePanelWindowClosable()
-      loopService.stopAllLoops()
 
       // Prevent re-entry during cleanup
       if (isCleaningUp) {
@@ -735,47 +451,13 @@ if (!gotSingleInstanceLock) {
       event.preventDefault()
       isCleaningUp = true
 
-      const withCleanupTimeout = async (
-        label: string,
-        cleanup: () => Promise<void>,
-      ): Promise<void> => {
-        let timeoutId: ReturnType<typeof setTimeout> | undefined
-        try {
-          await Promise.race([
-            cleanup(),
-            new Promise<void>((_, reject) => {
-              const id = setTimeout(
-                () => reject(new Error(`${label} cleanup timeout`)),
-                CLEANUP_TIMEOUT_MS,
-              )
-              timeoutId = id
-              // unref() ensures this timer won't keep the event loop alive
-              // if cleanup finishes quickly (only available in Node.js)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (id && typeof (id as any).unref === "function") {
-                ;(id as any).unref()
-              }
-            }),
-          ])
-        } finally {
-          if (timeoutId !== undefined) {
-            clearTimeout(timeoutId)
-          }
-        }
-      }
-
       try {
-        const cleanupResults = await Promise.allSettled([
-          withCleanupTimeout("keyboard", () => stopListeningToKeyboardEvents()),
-          withCleanupTimeout("ACP", () => acpService.shutdown()),
-          withCleanupTimeout("MCP", () => mcpService.cleanup()),
-        ])
-
-        for (const result of cleanupResults) {
-          if (result.status === "rejected") {
-            logApp("Error during service cleanup on quit:", result.reason)
-          }
-        }
+        await shutdownSharedRuntimeServices({
+          label: "desktop-runtime",
+          cleanupTimeoutMs: SHARED_RUNTIME_CLEANUP_TIMEOUT_MS,
+          keyboardCleanup: stopListeningToKeyboardEvents,
+          stopRemoteServer: true,
+        })
       } catch (error) {
         logApp("Unexpected error during service cleanup on quit:", error)
       }
@@ -802,16 +484,18 @@ app.on("window-all-closed", () => {
 // On macOS, app.quit() alone doesn't terminate the process because
 // window-all-closed intentionally skips quitting. Without these handlers,
 // Electron processes leak as orphans.
-for (const signal of ["SIGTERM", "SIGINT"] as const) {
-  process.on(signal, () => {
-    logApp(`Received ${signal}, forcing exit`)
-    releaseAppSingleInstanceLock()
-    destroyTray()
-    // Synchronously kill MCP server processes to prevent orphans
-    mcpService.emergencyStopAllProcesses()
-    app.quit()
-    // Short grace period — electron-vite --watch spawns a new process quickly,
-    // so the old one must die fast to avoid duplicate Electron processes.
-    setTimeout(() => process.exit(0), GUI_SIGNAL_FORCE_EXIT_DELAY_MS).unref()
-  })
+if (!isNoGuiMode) {
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      logApp(`Received ${signal}, forcing exit`)
+      releaseAppSingleInstanceLock()
+      destroyTray()
+      // Synchronously kill MCP server processes to prevent orphans
+      mcpService.emergencyStopAllProcesses()
+      app.quit()
+      // Short grace period: electron-vite --watch spawns a new process quickly,
+      // so the old one must die fast to avoid duplicate Electron processes.
+      setTimeout(() => process.exit(0), GUI_SIGNAL_FORCE_EXIT_DELAY_MS).unref()
+    })
+  }
 }

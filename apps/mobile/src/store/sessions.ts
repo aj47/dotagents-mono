@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
+import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sanitizeConversationSessionState, setConversationSessionStateMembership, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';
@@ -299,15 +299,15 @@ export function useSessions(): SessionStore {
           const serverSettings = await client.getSettings().catch(() => null);
           // Only merge+push when we successfully fetched settings with the relevant field
           if (serverSettings && 'pinnedSessionIds' in serverSettings) {
-            const serverPinnedIds = new Set<string>(
-              Array.isArray(serverSettings.pinnedSessionIds) ? serverSettings.pinnedSessionIds : []
-            );
-            if (toggledSession.isPinned) {
-              serverPinnedIds.add(toggledSession.serverConversationId);
-            } else {
-              serverPinnedIds.delete(toggledSession.serverConversationId);
-            }
-            await client.updateSettings({ pinnedSessionIds: [...serverPinnedIds] });
+            const serverSessionState = sanitizeConversationSessionState(serverSettings);
+            await client.updateSettings({
+              pinnedSessionIds: setConversationSessionStateMembership(
+                serverSessionState,
+                'pinnedSessionIds',
+                toggledSession.serverConversationId,
+                !!toggledSession.isPinned,
+              ).pinnedSessionIds,
+            });
           }
         }
       } catch {
@@ -345,15 +345,15 @@ export function useSessions(): SessionStore {
           const serverSettings = await client.getSettings().catch(() => null);
           // Only merge+push when we successfully fetched settings with the relevant field
           if (serverSettings && 'archivedSessionIds' in serverSettings) {
-            const serverArchivedIds = new Set<string>(
-              Array.isArray(serverSettings.archivedSessionIds) ? serverSettings.archivedSessionIds : []
-            );
-            if (toggledSession.isArchived) {
-              serverArchivedIds.add(toggledSession.serverConversationId);
-            } else {
-              serverArchivedIds.delete(toggledSession.serverConversationId);
-            }
-            await client.updateSettings({ archivedSessionIds: [...serverArchivedIds] });
+            const serverSessionState = sanitizeConversationSessionState(serverSettings);
+            await client.updateSettings({
+              archivedSessionIds: setConversationSessionStateMembership(
+                serverSessionState,
+                'archivedSessionIds',
+                toggledSession.serverConversationId,
+                !!toggledSession.isArchived,
+              ).archivedSessionIds,
+            });
           }
         }
       } catch {
@@ -631,12 +631,9 @@ export function useSessions(): SessionStore {
       ]);
 
       // Build server-side pinned/archived sets keyed by conversation ID
-      const serverPinnedIds = new Set(
-        Array.isArray(serverSettings?.pinnedSessionIds) ? serverSettings.pinnedSessionIds : []
-      );
-      const serverArchivedIds = new Set(
-        Array.isArray(serverSettings?.archivedSessionIds) ? serverSettings.archivedSessionIds : []
-      );
+      const serverSessionState = sanitizeConversationSessionState(serverSettings);
+      const serverPinnedIds = new Set(serverSessionState.pinnedSessionIds);
+      const serverArchivedIds = new Set(serverSessionState.archivedSessionIds);
 
       // Determine if we need to update sessions
       const hasConversationChanges = result.pulled > 0 || result.pushed > 0 || result.updated > 0;

@@ -20,7 +20,7 @@ import {
   showPanelWindowAndShowTextInput,
   showPanelWindowAndStartMcpRecording,
   WAVEFORM_MIN_HEIGHT,
-    TEXT_INPUT_MIN_WIDTH,
+  TEXT_INPUT_MIN_WIDTH,
   TEXT_INPUT_MIN_HEIGHT,
   PROGRESS_MIN_HEIGHT,
   MIN_WAVEFORM_WIDTH,
@@ -41,7 +41,12 @@ import {
   BrowserWindow,
 } from "electron"
 import path from "path"
-import { configStore, recordingsFolder, conversationsFolder, trySaveConfig } from "./config"
+import {
+  configStore,
+  recordingsFolder,
+  conversationsFolder,
+  trySaveConfig,
+} from "./config"
 import {
   Config,
   RecordingHistoryItem,
@@ -54,86 +59,216 @@ import {
   SessionProfileSnapshot,
   LoopConfig,
 } from "../shared/types"
-import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
-import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
-import { conversationService } from "./conversation-service"
-import { RendererHandlers } from "./renderer-handlers"
 import {
-  postProcessTranscript,
-  processTranscriptWithTools,
-  processTranscriptWithAgentMode,
-} from "./llm"
-import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
+  DEFAULT_STT_MODELS,
+  getConfiguredSttModel,
+  resolveSttModelSelection,
+} from "@dotagents/shared"
+import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
+import {
+  addManagedMessageToConversation,
+  createManagedConversation,
+  getManagedConversation,
+  getManagedConversationHistory,
+  saveManagedConversation,
+  deleteAllConversationsAndSyncSessionState,
+  deleteConversationAndSyncSessionState,
+  renameConversationTitleAndSyncSession,
+} from "./conversation-management"
+import { RendererHandlers } from "./renderer-handlers"
+import { postProcessTranscript, processTranscriptWithTools } from "./llm"
+import { mcpService } from "./mcp-service"
 import {
   saveCustomPosition,
   updatePanelPosition,
   constrainPositionToScreen,
   PanelPosition,
 } from "./panel-position"
-import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
-
-
-import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
+import {
+  state,
+  agentProcessManager,
+  suppressPanelAutoShow,
+  isPanelAutoShowSuppressed,
+  toolApprovalManager,
+  agentSessionStateManager,
+} from "./state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
-import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
-import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
+import {
+  clearManagedInactiveAgentSessions,
+  getManagedAgentSessions,
+  stopManagedAgentSession,
+} from "./agent-session-management"
+import {
+  downloadManagedKittenModel,
+  downloadManagedParakeetModel,
+  downloadManagedSupertonicModel,
+  getManagedKittenModelStatus,
+  getManagedParakeetModelStatus,
+  getManagedSupertonicModelStatus,
+} from "./local-provider-management"
+import {
+  agentProfileService,
+  createSessionSnapshotFromProfile,
+} from "./agent-profile-service"
+import {
+  createManagedAgentProfile,
+  createManagedLegacyProfile,
+  deleteManagedAgentProfile,
+  deleteManagedLegacyProfile,
+  exportManagedAgentProfile,
+  getManagedAgentTargets,
+  getManagedAgentProfile,
+  getManagedAgentProfiles,
+  getManagedCurrentAgentProfile,
+  getManagedCurrentLegacyProfile,
+  getManagedEnabledAgentTargets,
+  getManagedExternalAgents,
+  getManagedLegacyProfile,
+  getManagedLegacyProfiles,
+  getManagedUserAgentProfiles,
+  importManagedAgentProfile,
+  setManagedCurrentAgentProfile,
+  setManagedCurrentLegacyProfile,
+  updateManagedLegacyProfile,
+  updateManagedAgentProfile,
+} from "./agent-profile-management"
 import { acpService, ACPRunRequest } from "./acp-service"
-import { processTranscriptWithACPAgent } from "./acp-main-agent"
-import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
+import {
+  type StartSharedPromptRunOptions,
+  type StartSharedResumeRunOptions,
+  ensureAgentSessionForConversation,
+  startSharedPromptRun,
+  startSharedResumeRun,
+} from "./agent-mode-runner"
+import {
+  getManagedAvailableModels,
+  getManagedModelInfo,
+  getManagedModelsDevData,
+  getManagedPresetModels,
+  refreshManagedModelsDevData,
+} from "./model-management"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
+import {
+  deleteManagedLoop,
+  getManagedLoopSummaries,
+  saveManagedLoop,
+  triggerManagedLoop,
+} from "./loop-management"
+import {
+  getManagedMcpServerLogs,
+  restartManagedMcpServer,
+  setManagedMcpServerRuntimeEnabled,
+  stopManagedMcpServer,
+} from "./mcp-management"
+import {
+  getManagedMcpTools,
+  setManagedMcpToolEnabled,
+  setManagedMcpToolSourceEnabled,
+} from "./mcp-tool-management"
+import {
+  completeManagedMcpOAuthFlow,
+  getManagedMcpOAuthStatus,
+  revokeManagedMcpOAuthTokens,
+  startManagedMcpOAuthFlow,
+} from "./mcp-oauth-management"
+import {
+  mcpManagementStore,
+  mcpOAuthManagementStore,
+  mcpToolManagementStore,
+} from "./mcp-management-store"
+import {
+  deleteAllManagedKnowledgeNotes,
+  deleteManagedKnowledgeNote,
+  deleteMultipleManagedKnowledgeNotes,
+  getManagedKnowledgeNote,
+  getManagedKnowledgeNotes,
+  isManagedKnowledgeNoteFailure,
+  saveManagedKnowledgeNote,
+  saveManagedKnowledgeNoteFromSummary,
+  searchManagedKnowledgeNotes,
+  updateManagedKnowledgeNote,
+} from "./knowledge-note-management"
+import {
+  cleanupManagedStaleSkillReferences,
+  createManagedSkill,
+  deleteManagedSkill,
+  deleteManagedSkills,
+  ensureManagedSkillFile,
+  exportManagedSkillToMarkdown,
+  getManagedSkill,
+  getManagedSkillsCatalog,
+  importManagedSkillFromFile,
+  importManagedSkillFromFolder,
+  importManagedSkillFromGitHub,
+  importManagedSkillFromMarkdown,
+  importManagedSkillsFromParentFolder,
+  scanManagedSkillsFolder,
+  updateManagedSkill,
+} from "./skill-management"
+import { toggleManagedSkillForProfile } from "./profile-skill-management"
+import { saveManagedConfig } from "./settings-management"
+import {
+  clearManagedMessageQueue,
+  getManagedMessageQueue,
+  getManagedMessageQueues,
+  pauseManagedMessageQueue,
+  processManagedQueuedMessages,
+  removeManagedMessageFromQueue,
+  reorderManagedMessageQueue,
+  resumeManagedMessageQueue,
+  retryManagedQueuedMessage,
+  updateManagedQueuedMessageText,
+} from "./message-queue-management"
+import {
+  exportManagedBundleToFile,
+  generateManagedBundlePublishPayload,
+  getManagedBundleExportableItems,
+  importManagedBundle,
+  previewManagedBundleWithConflicts,
+  refreshRuntimeAfterManagedBundleImport,
+} from "./bundle-management"
+import {
+  deleteManagedSandboxSlot,
+  getManagedSandboxState,
+  importManagedBundleToSandbox,
+  renameManagedSandboxSlot,
+  restoreManagedSandboxBaseline,
+  saveManagedCurrentSandboxSlot,
+  saveManagedSandboxBaseline,
+  switchManagedSandboxSlot,
+} from "./sandbox-management"
+import {
+  connectManagedWhatsapp,
+  disconnectManagedWhatsapp,
+  getManagedWhatsappStatus,
+  logoutManagedWhatsapp,
+} from "./whatsapp-management"
+import {
+  checkManagedCloudflaredInstalled,
+  checkManagedCloudflaredLoggedIn,
+  getManagedCloudflareTunnelStatus,
+  getManagedRemoteServerStatus,
+  listManagedCloudflareTunnels,
+  printManagedRemoteServerQrCode,
+  startManagedCloudflareNamedTunnel,
+  startManagedCloudflareQuickTunnel,
+  stopManagedCloudflareTunnel,
+} from "./remote-access-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+import {
+  generateManagedSpeech,
+  synthesizeManagedKittenSpeech,
+  synthesizeManagedSupertonicSpeech,
+} from "./speech-management"
 
-/**
- * Convert Float32Array audio samples to WAV format buffer
- */
-function float32ToWav(samples: Float32Array, sampleRate: number): Buffer {
-  const numChannels = 1
-  const bitsPerSample = 16
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8)
-  const blockAlign = numChannels * (bitsPerSample / 8)
-  const dataSize = samples.length * (bitsPerSample / 8)
-  const headerSize = 44
-  const totalSize = headerSize + dataSize
-
-  const buffer = Buffer.alloc(totalSize)
-  let offset = 0
-
-  // RIFF header
-  buffer.write('RIFF', offset); offset += 4
-  buffer.writeUInt32LE(totalSize - 8, offset); offset += 4
-  buffer.write('WAVE', offset); offset += 4
-
-  // fmt subchunk
-  buffer.write('fmt ', offset); offset += 4
-  buffer.writeUInt32LE(16, offset); offset += 4 // subchunk1Size (16 for PCM)
-  buffer.writeUInt16LE(1, offset); offset += 2  // audioFormat (1 = PCM)
-  buffer.writeUInt16LE(numChannels, offset); offset += 2
-  buffer.writeUInt32LE(sampleRate, offset); offset += 4
-  buffer.writeUInt32LE(byteRate, offset); offset += 4
-  buffer.writeUInt16LE(blockAlign, offset); offset += 2
-  buffer.writeUInt16LE(bitsPerSample, offset); offset += 2
-
-  // data subchunk
-  buffer.write('data', offset); offset += 4
-  buffer.writeUInt32LE(dataSize, offset); offset += 4
-
-  // Convert Float32 samples to 16-bit PCM
-  for (let i = 0; i < samples.length; i++) {
-    // Clamp to [-1, 1] and scale to 16-bit signed integer range
-    const sample = Math.max(-1, Math.min(1, samples[i]))
-    const intSample = Math.round(sample * 32767)
-    buffer.writeInt16LE(intSample, offset)
-    offset += 2
-  }
-
-  return buffer
-}
-
-async function postProcessTranscriptSafely(transcript: string, context: string): Promise<string> {
+async function postProcessTranscriptSafely(
+  transcript: string,
+  context: string,
+): Promise<string> {
   const config = configStore.get()
 
   if (
@@ -146,405 +281,66 @@ async function postProcessTranscriptSafely(transcript: string, context: string):
   try {
     return await postProcessTranscript(transcript)
   } catch (error) {
-    logLLM(`[${context}] Transcript post-processing failed, using raw transcript instead:`, error)
+    logLLM(
+      `[${context}] Transcript post-processing failed, using raw transcript instead:`,
+      error,
+    )
     return transcript
   }
 }
 
 function getRemoteSttModel(config: Config): string {
-  return getConfiguredSttModel(config) || DEFAULT_STT_MODELS.openai
+  return (
+    resolveSttModelSelection(config).model ||
+    getConfiguredSttModel(config) ||
+    DEFAULT_STT_MODELS.openai
+  )
 }
 
-async function initializeMcpWithProgress(config: Config, sessionId: string, runId?: number): Promise<void> {
-  const shouldStop = () => agentSessionStateManager.shouldStopSession(sessionId)
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
-
-  if (shouldStop()) {
-    return
-  }
-
-  const initStatus = mcpService.getInitializationStatus()
-
-  await emitAgentProgress({
-    sessionId,
-    runId,
-    currentIteration: 0,
-    maxIterations: effectiveMaxIterations,
-    steps: [
-      {
-        id: `mcp_init_${Date.now()}`,
-        type: "thinking",
-        title: "Initializing MCP tools",
-        description: initStatus.progress.currentServer
-          ? `Initializing ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
-          : `Initializing MCP servers (${initStatus.progress.current}/${initStatus.progress.total})`,
-        status: "in_progress",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: false,
-  })
-
-  const progressInterval = setInterval(async () => {
-    if (shouldStop()) {
-      clearInterval(progressInterval)
-      return
-    }
-
-    const currentStatus = mcpService.getInitializationStatus()
-    if (currentStatus.isInitializing) {
-      await emitAgentProgress({
-        sessionId,
-        runId,
-        currentIteration: 0,
-        maxIterations: effectiveMaxIterations,
-        steps: [
-          {
-            id: `mcp_init_${Date.now()}`,
-            type: "thinking",
-            title: "Initializing MCP tools",
-            description: currentStatus.progress.currentServer
-              ? `Initializing ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
-              : `Initializing MCP servers (${currentStatus.progress.current}/${currentStatus.progress.total})`,
-            status: "in_progress",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: false,
-      })
-    } else {
-      clearInterval(progressInterval)
-    }
-  }, 500)
-
+async function focusDesktopSession(sessionId: string): Promise<void> {
   try {
-    await mcpService.initialize()
-  } finally {
-    clearInterval(progressInterval)
-  }
-
-  if (shouldStop()) {
-    return
-  }
-
-  await emitAgentProgress({
-    sessionId,
-    runId,
-    currentIteration: 0,
-    maxIterations: effectiveMaxIterations,
-    steps: [
-      {
-        id: `mcp_init_complete_${Date.now()}`,
-        type: "thinking",
-        title: "MCP tools initialized",
-        description: `Successfully initialized ${mcpService.getAvailableTools().length} tools`,
-        status: "completed",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: false,
-  })
-}
-
-// Unified agent mode processing function
-async function processWithAgentMode(
-  text: string,
-  conversationId?: string,
-  existingSessionId?: string, // Optional: reuse existing session instead of creating new one
-  startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
-): Promise<string> {
-  const config = configStore.get()
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
-  const allProfiles = agentProfileService.getAll()
-  const currentProfile = agentProfileService.getCurrentProfile()
-  const existingProfileSnapshot = existingSessionId
-    ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
-    : undefined
-  const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
-    currentProfile,
-    sessionProfileId: existingProfileSnapshot?.profileId,
-    mainAgentMode: config.mainAgentMode,
-    mainAgentName: config.mainAgentName,
-    profileAgents: allProfiles,
-    legacyAgents: config.acpAgents || [],
-  })
-
-  // Route via ACP when the selected profile itself is ACP-backed, or when global ACP main-agent mode is enabled.
-  if (topLevelAcpSelection) {
-    if ("error" in topLevelAcpSelection) {
-      logLLM(`[processWithAgentMode] ${topLevelAcpSelection.error}`)
-      return topLevelAcpSelection.error
-    }
-
-    const resolvedMainAgentName = topLevelAcpSelection.resolvedName
-    if (
-      topLevelAcpSelection.source === "main-agent"
-      && topLevelAcpSelection.repairedName
-      && topLevelAcpSelection.repairedName !== config.mainAgentName
-    ) {
-      // Persist the repaired selection so future runs don't fail on stale names.
-      const saveError = trySaveConfig({ ...config, mainAgentName: resolvedMainAgentName })
-      if (saveError) {
-        logLLM(
-          `[processWithAgentMode] Failed to persist repaired ACP main agent name "${resolvedMainAgentName}": ${saveError.message}`
-        )
-      }
-      logLLM(
-        `[processWithAgentMode] ACP main agent \"${config.mainAgentName}\" not found. ` +
-        `Auto-switched to \"${resolvedMainAgentName}\".`
-      )
-    }
-
-    logLLM(`[processWithAgentMode] ACP routing via ${topLevelAcpSelection.source}, agent: ${resolvedMainAgentName}`)
-
-    // Create conversation title for session tracking
-    const conversationTitle = text
-    const profileSnapshot = existingProfileSnapshot
-      ?? (currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined)
-
-    // Start tracking this agent session (or reuse existing one)
-    const sessionId = existingSessionId
-      || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-    try {
-      // Process with ACP agent
-      const result = await processTranscriptWithACPAgent(text, {
-        agentName: resolvedMainAgentName,
-        conversationId: conversationId || sessionId,
-        sessionId,
-        runId,
-        profileSnapshot,
-      })
-
-      // Mark session as completed
-      if (result.success) {
-        logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
-        agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
-      } else {
-        logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
-        agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
-      }
-
-      logLLM(`[processWithAgentMode] ACP mode returning, queue processing should trigger in .finally()`)
-      return result.response || result.error || "No response from agent"
-    } finally {
-      agentSessionStateManager.cleanupSession(sessionId)
-    }
-  }
-
-  // NOTE: Don't clear all agent progress here - we support multiple concurrent sessions
-  // Each session manages its own progress lifecycle independently
-
-  // Agent mode state is managed per-session via agentSessionStateManager
-
-  // Determine profile snapshot for session isolation
-  // If reusing an existing session, use its stored snapshot to maintain isolation
-  // Only capture a new snapshot from the current global profile when creating a new session
-  let profileSnapshot: SessionProfileSnapshot | undefined = existingProfileSnapshot
-
-  // Only capture a new snapshot if we don't have one from an existing session
-  if (!profileSnapshot && currentProfile) {
-    profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-  }
-
-  // Start tracking this agent session (or reuse existing one)
-  let conversationTitle = text
-  // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
-  const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-  try {
-    // Initialize MCP with progress feedback
-    await initializeMcpWithProgress(config, sessionId, runId)
-
-    // Register any existing MCP server processes with the agent process manager
-    // This handles the case where servers were already initialized before agent mode was activated
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    // Use agent mode for iterative tool calling
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      // Handle inline tool approval if enabled in config
-      if (config.mcpRequireApprovalBeforeToolCall) {
-        // Request approval and wait for user response via the UI
-        const { approvalId, promise: approvalPromise } = toolApprovalManager.requestApproval(
-          sessionId,
-          toolCall.name,
-          toolCall.arguments
-        )
-
-        // Emit progress update with pending approval to show approve/deny buttons
-        await emitAgentProgress({
-          sessionId,
-          runId,
-          currentIteration: 0, // Will be updated by the agent loop
-          maxIterations: effectiveMaxIterations,
-          steps: [],
-          isComplete: false,
-          pendingToolApproval: {
-            approvalId,
-            toolName: toolCall.name,
-            arguments: toolCall.arguments,
-          },
-        })
-
-        // Wait for user response
-        const approved = await approvalPromise
-
-        // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
-        await emitAgentProgress({
-          sessionId,
-          runId,
-          currentIteration: 0,
-          maxIterations: effectiveMaxIterations,
-          steps: [],
-          isComplete: false,
-          pendingToolApproval: undefined, // Explicitly clear to sync state across all windows
-        })
-
-        if (!approved) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Tool call denied by user: ${toolCall.name}`,
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
-
-      // Execute the tool call (approval either not required or was granted)
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, profileSnapshot?.mcpServerConfig)
-    }
-
-    // Load previous conversation history if continuing a conversation.
-    // IMPORTANT: Load this BEFORE emitting initial progress to ensure consistency.
-    // Do not block follow-up startup on lazy conversation compaction.
-    let previousConversationHistory:
-      | Array<{
-          role: "user" | "assistant" | "tool"
-          content: string
-          toolCalls?: any[]
-          toolResults?: any[]
-          timestamp?: number
-        }>
-      | undefined
-
-    if (conversationId) {
-      logLLM(`[tipc.ts processWithAgentMode] Loading conversation history for conversationId: ${conversationId}`)
-      const conversation = await conversationService.loadConversation(conversationId)
-
-      if (conversation && conversation.messages.length > 0) {
-        logLLM(`[tipc.ts processWithAgentMode] Loaded conversation with ${conversation.messages.length} messages`)
-
-        // Convert conversation messages to the format expected by agent mode
-        // Exclude the last message since it's the current user input that will be added
-        const messagesToConvert = conversation.messages.slice(0, -1)
-        logLLM(`[tipc.ts processWithAgentMode] Converting ${messagesToConvert.length} messages (excluding last message)`)
-        previousConversationHistory = messagesToConvert.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-          toolCalls: msg.toolCalls,
-          timestamp: msg.timestamp,
-          // Convert toolResults from stored format (content as string) to MCPToolResult format (content as array)
-          toolResults: msg.toolResults?.map((tr) => ({
-            content: [
-              {
-                type: "text" as const,
-                // Use content for successful results, error message for failures
-                text: tr.success ? tr.content : (tr.error || tr.content),
-              },
-            ],
-            isError: !tr.success,
-          })),
-        }))
-
-        logLLM(`[tipc.ts processWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
-      } else {
-        logLLM(`[tipc.ts processWithAgentMode] No conversation found or conversation is empty`)
-      }
-    } else {
-      logLLM(`[tipc.ts processWithAgentMode] No conversationId provided, starting fresh conversation`)
-    }
-
-    // Focus interactive sessions in the panel window.
-    // Background/snoozed sessions (e.g. scheduled loops) should not steal focus.
-    if (!startSnoozed) {
-      try {
-        getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
-      } catch (e) {
-        logApp("[tipc] Failed to focus new agent session:", e)
-      }
-    }
-
-    const agentResult = await processTranscriptWithAgentMode(
-      text,
-      availableTools,
-      executeToolCall,
-      effectiveMaxIterations, // Use configured max iterations or Infinity if unlimited mode
-      previousConversationHistory,
-      conversationId, // Pass conversation ID for linking to conversation history
-      sessionId, // Pass session ID for progress routing and isolation
-      undefined, // onProgress callback (not used here, progress is emitted via emitAgentProgress)
-      profileSnapshot, // Pass profile snapshot for session isolation
-      runId,
-    )
-
-    // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
-
-    return agentResult.content
+    getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
   } catch (error) {
-    // Mark session as errored
-    const errorMessage = getErrorMessage(error)
-    agentSessionTracker.errorSession(sessionId, errorMessage)
-
-    // Emit error progress update to the UI so users see the error message
-    await emitAgentProgress({
-      sessionId,
-      runId,
-      conversationId: conversationId || "",
-      conversationTitle: conversationTitle,
-      currentIteration: 1,
-      maxIterations: effectiveMaxIterations,
-      steps: [{
-        id: `error_${Date.now()}`,
-        type: "thinking",
-        title: "Error",
-        description: errorMessage,
-        status: "error",
-        timestamp: Date.now(),
-      }],
-      isComplete: true,
-      finalContent: `Error: ${errorMessage}`,
-      conversationHistory: [
-        { role: "user", content: text, timestamp: Date.now() },
-        { role: "assistant", content: `Error: ${errorMessage}`, timestamp: Date.now() }
-      ],
-    })
-
-    throw error
-  } finally {
-
+    logApp("[tipc] Failed to focus new agent session:", error)
   }
+}
+
+async function startDesktopPromptRun(
+  options: Omit<StartSharedPromptRunOptions, "approvalMode" | "focusSession">,
+) {
+  return startSharedPromptRun({
+    ...options,
+    approvalMode: "inline",
+    focusSession: focusDesktopSession,
+  })
+}
+
+async function startDesktopResumeRun(
+  options: Omit<StartSharedResumeRunOptions, "approvalMode" | "focusSession">,
+) {
+  return startSharedResumeRun({
+    ...options,
+    approvalMode: "inline",
+    focusSession: focusDesktopSession,
+  })
 }
 
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
-  existingSessionId: string
+  existingSessionId: string,
+  maxIterationsOverride?: number,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true)
+  const { runPromise } = await startDesktopResumeRun({
+    text,
+    conversationId,
+    candidateSessionIds: existingSessionId ? [existingSessionId] : [],
+    startSnoozed: true,
+    maxIterationsOverride,
+  })
+
+  const result = await runPromise
+  return result.content
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -552,9 +348,6 @@ import { summarizationService } from "./summarization-service"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText, writeTextWithFocusRestore } from "./keyboard"
-import { preprocessTextForTTS, validateTTSText } from "@dotagents/shared"
-import { preprocessTextForTTSWithLLM } from "./tts-llm-preprocessing"
-
 
 const t = tipc.create()
 
@@ -578,275 +371,19 @@ const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
   )
 }
 
-async function refreshRuntimeAfterBundleImport(): Promise<void> {
-  try {
-    configStore.reload()
-  } catch (error) {
-    logApp("[tipc] Failed to reload config after bundle load", { error })
-  }
-
-  try {
-    agentProfileService.reload()
-    agentProfileService.syncAgentProfilesToACPRegistry()
-  } catch (error) {
-    logApp("[tipc] Failed to reload agent profiles after bundle load", { error })
-  }
-
-  try {
-    const { skillsService } = await import("./skills-service")
-    skillsService.scanSkillsFolder()
-  } catch (error) {
-    logApp("[tipc] Failed to reload skills after bundle load", { error })
-  }
-
-  try {
-    loopService.stopAllLoops()
-    loopService.reload()
-    loopService.resumeScheduling()
-    loopService.startAllLoops()
-  } catch (error) {
-    logApp("[tipc] Failed to reload repeat tasks after bundle load", { error })
-    // Avoid leaving loop scheduling paused if stopAllLoops() succeeded but reload/start failed.
-    try {
-      loopService.resumeScheduling()
-    } catch {
-      // best-effort
-    }
-  }
-
-  try {
-    await knowledgeNotesService.reload()
-  } catch (error) {
-    logApp("[tipc] Failed to reload knowledge notes after bundle load", { error })
-  }
-
-  try {
-    const config = configStore.get()
-    const configuredServers = config.mcpConfig?.mcpServers || {}
-    const serverStatusBeforeRefresh = mcpService.getServerStatus()
-
-    // Stop servers that were removed/disabled by the imported bundle.
-    for (const [serverName, status] of Object.entries(serverStatusBeforeRefresh)) {
-      const serverConfig = configuredServers[serverName]
-      const shouldBeStopped = !serverConfig || !!(serverConfig as MCPServerConfig).disabled
-      if (!shouldBeStopped) continue
-
-      const stopResult = await mcpService.stopServer(serverName)
-      if (!stopResult.success) {
-        logApp("[tipc] Failed to stop MCP server after bundle load", {
-          serverName,
-          error: stopResult.error,
-          wasConnected: status.connected,
-        })
-      }
-    }
-
-    const serverStatusAfterStops = mcpService.getServerStatus()
-
-    // Restart currently connected enabled servers so overwritten configs take effect immediately.
-    for (const [serverName, serverConfig] of Object.entries(configuredServers)) {
-      if ((serverConfig as MCPServerConfig).disabled) continue
-      const status = serverStatusAfterStops[serverName]
-      if (status?.runtimeEnabled === false) continue
-      if (!status?.connected) continue
-
-      const restartResult = await mcpService.restartServer(serverName)
-      if (!restartResult.success) {
-        logApp("[tipc] Failed to restart MCP server after bundle load", {
-          serverName,
-          error: restartResult.error,
-        })
-      }
-    }
-
-    // Start any newly imported enabled servers that were previously absent.
-    await mcpService.initialize()
-  } catch (error) {
-    logApp("[tipc] Failed to reinitialize MCP after bundle load", { error })
-  }
-}
-
-type BundleConflictItem = {
-  id: string
-  name: string
-  existingName?: string
-}
-
-type BundleConflictMap = {
-  agentProfiles: BundleConflictItem[]
-  mcpServers: BundleConflictItem[]
-  skills: BundleConflictItem[]
-  repeatTasks: BundleConflictItem[]
-  knowledgeNotes: BundleConflictItem[]
-}
-
-type BundleConflictPreview = {
-  success: boolean
-  conflicts?: BundleConflictMap
-}
-
-const BUNDLE_CONFLICT_KEYS: Array<keyof BundleConflictMap> = [
-  "agentProfiles",
-  "mcpServers",
-  "skills",
-  "repeatTasks",
-  "knowledgeNotes",
-]
-
-function mergeConflictItems(
-  primary: BundleConflictItem[] | undefined,
-  secondary: BundleConflictItem[] | undefined
-): BundleConflictItem[] {
-  const merged = new Map<string, BundleConflictItem>()
-
-  for (const item of primary || []) {
-    if (!item?.id) continue
-    merged.set(item.id, item)
-  }
-  for (const item of secondary || []) {
-    if (!item?.id) continue
-    merged.set(item.id, item)
-  }
-
-  return Array.from(merged.values())
-}
-
-function mergeConflictMaps(
-  primary: BundleConflictMap | undefined,
-  secondary: BundleConflictMap | undefined
-): BundleConflictMap | undefined {
-  if (!primary && !secondary) return undefined
-
-  const merged: BundleConflictMap = {
-    agentProfiles: [],
-    mcpServers: [],
-    skills: [],
-    repeatTasks: [],
-    knowledgeNotes: [],
-  }
-
-  for (const key of BUNDLE_CONFLICT_KEYS) {
-    merged[key] = mergeConflictItems(primary?.[key], secondary?.[key])
-  }
-
-  return merged
-}
-
-/**
- * Process queued messages for a conversation after the current session completes.
- * This function peeks at messages and only removes them after successful processing.
- * Uses a per-conversation lock to prevent concurrent processing of the same queue.
- */
 async function processQueuedMessages(conversationId: string): Promise<void> {
-  logLLM(`[processQueuedMessages] Starting queue processing for ${conversationId}`)
-
-  // Try to acquire processing lock - if another processor is already running, skip
-  if (!messageQueueService.tryAcquireProcessingLock(conversationId)) {
-    logLLM(`[processQueuedMessages] Failed to acquire lock for ${conversationId}`)
-    return
-  }
-  logLLM(`[processQueuedMessages] Acquired lock for ${conversationId}`)
-
-  try {
-    while (true) {
-      // Check if queue is paused (e.g., by kill switch) before processing next message
-      if (messageQueueService.isQueuePaused(conversationId)) {
-        logLLM(`[processQueuedMessages] Queue is paused for ${conversationId}, stopping processing`)
-        return
-      }
-
-      // Peek at the next message without removing it
-      const queuedMessage = messageQueueService.peek(conversationId)
-      if (!queuedMessage) {
-        logLLM(`[processQueuedMessages] No more pending messages in queue for ${conversationId}`)
-        // Debug: log the actual queue state
-        const allMessages = messageQueueService.getQueue(conversationId)
-        if (allMessages.length > 0) {
-          logLLM(`[processQueuedMessages] Queue has ${allMessages.length} messages but peek returned null. First message status: ${allMessages[0]?.status}`)
-        }
-        return // No more messages in queue
-      }
-
-      logLLM(`[processQueuedMessages] Processing queued message ${queuedMessage.id} for ${conversationId}`)
-
-      // Mark as processing - if this fails, the message was removed/modified between peek and now
-      const markingSucceeded = messageQueueService.markProcessing(conversationId, queuedMessage.id)
-      if (!markingSucceeded) {
-        logLLM(`[processQueuedMessages] Message ${queuedMessage.id} was removed/modified before processing, re-checking queue`)
-        continue
-      }
-
-      try {
-        // Only add to conversation history if not already added (prevents duplicates on retry)
-        if (!queuedMessage.addedToHistory) {
-          // Add the queued message to the conversation
-          const addResult = await conversationService.addMessageToConversation(
-            conversationId,
-            queuedMessage.text,
-            "user",
-          )
-          // If adding to history failed (conversation not found/IO error), treat as failure
-          // Don't continue processing since the message wasn't recorded
-          if (!addResult) {
-            throw new Error("Failed to add message to conversation history")
-          }
-          // Mark as added to history so retries don't duplicate
-          messageQueueService.markAddedToHistory(conversationId, queuedMessage.id)
-        }
-
-        // Determine if we should start snoozed based on panel visibility
-        // If the panel is currently visible, the user is actively watching - don't snooze
-        // If the panel is hidden, process in background to avoid unwanted pop-ups
-        const panelWindow = WINDOWS.get("panel")
-        const isPanelVisible = panelWindow?.isVisible() ?? false
-        const shouldStartSnoozed = !isPanelVisible
-        logLLM(`[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${shouldStartSnoozed}`)
-
-        // Prefer the exact session captured at enqueue time for strict same-session semantics.
-        // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
-        let existingSessionId: string | undefined
-        const fallbackSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-        const candidateSessionIds = [queuedMessage.sessionId, fallbackSessionId].filter(
-          (sessionId, index, list): sessionId is string =>
-            typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
-        )
-
-        for (const candidateSessionId of candidateSessionIds) {
-          // Only start snoozed if panel is not visible
-          const revived = agentSessionTracker.reviveSession(candidateSessionId, shouldStartSnoozed)
-          if (revived) {
-            existingSessionId = candidateSessionId
-            logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${shouldStartSnoozed}`)
-            break
-          }
-
-          if (candidateSessionId === queuedMessage.sessionId) {
-            logLLM(`[processQueuedMessages] Preferred queued session ${candidateSessionId} could not be revived, trying fallback lookup`)
-          }
-        }
-
-        // Process with agent mode
-        // If panel is visible, user is watching - show the execution
-        // If panel is hidden, run in background without pop-ups
-        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, shouldStartSnoozed)
-
-        // Only remove the message after successful processing
-        messageQueueService.markProcessed(conversationId, queuedMessage.id)
-
-        // Continue to check for more queued messages
-      } catch (error) {
-        logLLM(`[processQueuedMessages] Error processing queued message ${queuedMessage.id}:`, error)
-        // Mark the message as failed so users can see it in the UI
-        const errorMessage = getErrorMessage(error)
-        messageQueueService.markFailed(conversationId, queuedMessage.id, errorMessage)
-        // Stop processing - user needs to handle the failed message
-        break
-      }
-    }
-  } finally {
-    // Always release the lock when done
-    messageQueueService.releaseProcessingLock(conversationId)
-  }
+  await processManagedQueuedMessages({
+    conversationId,
+    startResumeRun: (options) => startDesktopResumeRun(options),
+    resolveStartSnoozed: () => {
+      const panelWindow = WINDOWS.get("panel")
+      const isPanelVisible = panelWindow?.isVisible() ?? false
+      logLLM(
+        `[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${!isPanelVisible}`,
+      )
+      return !isPanelVisible
+    },
+  })
 }
 
 type OpenFileResult = {
@@ -1030,7 +567,9 @@ export const router = {
     let windowsNotified = 0
     for (const [id, win] of WINDOWS.entries()) {
       try {
-        const stopAllTtsHandler = getRendererHandlers<RendererHandlers>(win.webContents).stopAllTts
+        const stopAllTtsHandler = getRendererHandlers<RendererHandlers>(
+          win.webContents,
+        ).stopAllTts
         if (!stopAllTtsHandler) continue
         stopAllTtsHandler.send()
         windowsNotified += 1
@@ -1050,7 +589,9 @@ export const router = {
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {
       try {
-        getRendererHandlers<RendererHandlers>(win.webContents).clearAgentProgress.send()
+        getRendererHandlers<RendererHandlers>(
+          win.webContents,
+        ).clearAgentProgress.send()
       } catch (e) {
         logApp(`[tipc] clearAgentProgress send to ${id} failed:`, e)
       }
@@ -1073,7 +614,9 @@ export const router = {
       // Send to all windows (panel and main) so both can update their state
       for (const [id, win] of WINDOWS.entries()) {
         try {
-          getRendererHandlers<RendererHandlers>(win.webContents).clearAgentSessionProgress?.send(input.sessionId)
+          getRendererHandlers<RendererHandlers>(
+            win.webContents,
+          ).clearAgentSessionProgress?.send(input.sessionId)
         } catch (e) {
           logApp(`[tipc] clearAgentSessionProgress send to ${id} failed:`, e)
         }
@@ -1082,22 +625,20 @@ export const router = {
     }),
 
   clearInactiveSessions: t.procedure.action(async () => {
-    // Clear completed sessions from the tracker
-    agentSessionTracker.clearCompletedSessions((session) => {
-      if (!session.conversationId) return true
-      return messageQueueService.getQueue(session.conversationId).length === 0
-    })
+    const { clearedCount } = clearManagedInactiveAgentSessions()
 
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {
       try {
-        getRendererHandlers<RendererHandlers>(win.webContents).clearInactiveSessions?.send()
+        getRendererHandlers<RendererHandlers>(
+          win.webContents,
+        ).clearInactiveSessions?.send()
       } catch (e) {
         logApp(`[tipc] clearInactiveSessions send to ${id} failed:`, e)
       }
     }
 
-    return { success: true }
+    return { success: true, clearedCount }
   }),
 
   closeAgentModeAndHidePanelWindow: t.procedure.action(async () => {
@@ -1115,10 +656,7 @@ export const router = {
   }),
 
   getAgentSessions: t.procedure.action(async () => {
-      return {
-      activeSessions: agentSessionTracker.getActiveSessions(),
-      recentSessions: agentSessionTracker.getRecentSessions(4),
-    }
+    return getManagedAgentSessions()
   }),
 
   // Get the profile snapshot for a specific session
@@ -1126,82 +664,16 @@ export const router = {
   getSessionProfileSnapshot: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
-      return agentSessionStateManager.getSessionProfileSnapshot(input.sessionId)
-        ?? agentSessionTracker.getSessionProfileSnapshot(input.sessionId)
+      return (
+        agentSessionStateManager.getSessionProfileSnapshot(input.sessionId) ??
+        agentSessionTracker.getSessionProfileSnapshot(input.sessionId)
+      )
     }),
 
   stopAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
-
-      // Stop the session in the state manager (aborts LLM requests, kills processes)
-      agentSessionStateManager.stopSession(input.sessionId)
-
-      // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
-      toolApprovalManager.cancelSessionApprovals(input.sessionId)
-
-      // Abort client-side tracking of ACP runs spawned by this session.
-      // This stops our polling/streaming but does NOT cancel the server-side run.
-      // Prevents completed remote runs from writing back to the dead session (zombie prevention).
-      try {
-        const { acpClientService } = await import("./acp")
-        const cancelledAcpRuns = acpClientService.cancelRunsByParentSession(input.sessionId)
-        if (cancelledAcpRuns > 0) {
-          logLLM(`[stopAgentSession] Cancelled ${cancelledAcpRuns} ACP run(s) for session ${input.sessionId}`)
-        }
-      } catch (error) {
-        logApp("[stopAgentSession] Error cancelling ACP runs:", error)
-      }
-
-      // Cancel any internal sub-sessions spawned by this session
-      try {
-        const { getChildSubSessions, cancelSubSession } = await import("./acp/internal-agent")
-        const childSessions = getChildSubSessions(input.sessionId)
-        for (const child of childSessions) {
-          if (child.status === "running") {
-            cancelSubSession(child.id)
-            logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
-          }
-        }
-      } catch (error) {
-        logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
-      }
-
-      // Pause the message queue for this conversation to prevent processing the next queued message
-      // The user can resume the queue later if they want to continue
-      const session = agentSessionTracker.getSession(input.sessionId)
-      if (session?.conversationId) {
-        messageQueueService.pauseQueue(session.conversationId)
-        logLLM(`[stopAgentSession] Paused queue for conversation ${session.conversationId}`)
-      }
-
-      const runId = agentSessionStateManager.getSessionRunId(input.sessionId)
-
-      // Immediately emit a final progress update with isComplete: true
-      // This ensures the UI updates immediately without waiting for the agent loop
-      // to detect the stop signal and emit its own final update
-      await emitAgentProgress({
-        sessionId: input.sessionId,
-        runId,
-        currentIteration: 0,
-        maxIterations: 0,
-        steps: [
-          {
-            id: `stop_${Date.now()}`,
-            type: "completion",
-            title: "Agent stopped",
-            description: "Agent mode was stopped by emergency kill switch. Queue paused.",
-            status: "error",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: true,
-        finalContent: "(Agent mode was stopped by emergency kill switch)",
-        conversationHistory: [],
-      })
-
-      // Mark the session as stopped in the tracker (removes from active sessions UI)
-      agentSessionTracker.stopSession(input.sessionId)
+      await stopManagedAgentSession(input.sessionId)
 
       return { success: true }
     }),
@@ -1228,8 +700,13 @@ export const router = {
   respondToToolApproval: t.procedure
     .input<{ approvalId: string; approved: boolean }>()
     .action(async ({ input }) => {
-      logApp(`[Tool Approval] respondToToolApproval called: approvalId=${input.approvalId}, approved=${input.approved}`)
-      const success = toolApprovalManager.respondToApproval(input.approvalId, input.approved)
+      logApp(
+        `[Tool Approval] respondToToolApproval called: approvalId=${input.approvalId}, approved=${input.approved}`,
+      )
+      const success = toolApprovalManager.respondToApproval(
+        input.approvalId,
+        input.approved,
+      )
       logApp(`[Tool Approval] respondToApproval result: success=${success}`)
       return { success }
     }),
@@ -1239,7 +716,9 @@ export const router = {
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
       try {
-        getWindowRendererHandlers("panel")?.focusAgentSession.send(input.sessionId)
+        getWindowRendererHandlers("panel")?.focusAgentSession.send(
+          input.sessionId,
+        )
       } catch (e) {
         logApp("[tipc] focusAgentSession send failed:", e)
       }
@@ -1351,12 +830,21 @@ export const router = {
     }),
 
   triggerMcpRecording: t.procedure
-    .input<{ conversationId?: string; sessionId?: string; fromTile?: boolean }>()
+    .input<{
+      conversationId?: string
+      sessionId?: string
+      fromTile?: boolean
+    }>()
     .action(async ({ input }) => {
       // Always show the panel during recording for waveform feedback
       // The fromTile flag tells the panel to hide after recording ends
       // fromButtonClick=true indicates this was triggered via UI button (not keyboard shortcut)
-      await showPanelWindowAndStartMcpRecording(input.conversationId, input.sessionId, input.fromTile, true)
+      await showPanelWindowAndStartMcpRecording(
+        input.conversationId,
+        input.sessionId,
+        input.fromTile,
+        true,
+      )
     }),
 
   showMainWindow: t.procedure
@@ -1393,35 +881,52 @@ export const router = {
   initiateOAuthFlow: t.procedure
     .input<string>()
     .action(async ({ input: serverName }) => {
-      return mcpService.initiateOAuthFlow(serverName)
+      const result = await startManagedMcpOAuthFlow(
+        serverName,
+        mcpOAuthManagementStore,
+      )
+      if (!result.success || !result.authorizationUrl || !result.state) {
+        throw new Error(
+          result.error || `Failed to initiate OAuth for ${serverName}`,
+        )
+      }
+
+      return {
+        authorizationUrl: result.authorizationUrl,
+        state: result.state,
+      }
     }),
 
   completeOAuthFlow: t.procedure
     .input<{ serverName: string; code: string; state: string }>()
     .action(async ({ input }) => {
-      return mcpService.completeOAuthFlow(input.serverName, input.code, input.state)
+      return completeManagedMcpOAuthFlow(
+        input.serverName,
+        input.code,
+        input.state,
+        mcpOAuthManagementStore,
+      )
     }),
 
   getOAuthStatus: t.procedure
     .input<string>()
     .action(async ({ input: serverName }) => {
-      return mcpService.getOAuthStatus(serverName)
+      return getManagedMcpOAuthStatus(serverName, mcpOAuthManagementStore)
     }),
 
   revokeOAuthTokens: t.procedure
     .input<string>()
     .action(async ({ input: serverName }) => {
-      return mcpService.revokeOAuthTokens(serverName)
+      return revokeManagedMcpOAuthTokens(serverName, mcpOAuthManagementStore)
     }),
 
   // Parakeet (local) STT model management
   getParakeetModelStatus: t.procedure.action(async () => {
-    return parakeetStt.getModelStatus()
+    return getManagedParakeetModelStatus()
   }),
 
   downloadParakeetModel: t.procedure.action(async () => {
-    await parakeetStt.downloadModel()
-    return { success: true }
+    return downloadManagedParakeetModel()
   }),
 
   initializeParakeetRecognizer: t.procedure
@@ -1433,21 +938,18 @@ export const router = {
 
   // Kitten (local) TTS model management
   getKittenModelStatus: t.procedure.action(async () => {
-    const { getKittenModelStatus } = await import('./kitten-tts')
-    return getKittenModelStatus()
+    return getManagedKittenModelStatus()
   }),
 
   downloadKittenModel: t.procedure.action(async () => {
-    const { downloadKittenModel } = await import('./kitten-tts')
-    await downloadKittenModel((progress) => {
+    return downloadManagedKittenModel((progress) => {
       // Send progress to renderer via webContents, guarding against destroyed windows
-      BrowserWindow.getAllWindows().forEach(win => {
+      BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
-          win.webContents.send('kitten-model-download-progress', progress)
+          win.webContents.send("kitten-model-download-progress", progress)
         }
       })
     })
-    return { success: true }
   }),
 
   synthesizeWithKitten: t.procedure
@@ -1457,32 +959,26 @@ export const router = {
       speed?: number
     }>()
     .action(async ({ input }) => {
-      const { synthesize } = await import('./kitten-tts')
-      const result = await synthesize(input.text, input.voiceId, input.speed)
-      // Convert Float32Array samples to WAV format
-      const wavBuffer = float32ToWav(result.samples, result.sampleRate)
+      const result = await synthesizeManagedKittenSpeech(input)
       return {
-        audio: wavBuffer.toString('base64'),
-        sampleRate: result.sampleRate
+        audio: Buffer.from(result.audio).toString("base64"),
+        sampleRate: result.sampleRate,
       }
     }),
 
   // Supertonic (local) TTS model management
   getSupertonicModelStatus: t.procedure.action(async () => {
-    const { getSupertonicModelStatus } = await import('./supertonic-tts')
-    return getSupertonicModelStatus()
+    return getManagedSupertonicModelStatus()
   }),
 
   downloadSupertonicModel: t.procedure.action(async () => {
-    const { downloadSupertonicModel } = await import('./supertonic-tts')
-    await downloadSupertonicModel((progress) => {
-      BrowserWindow.getAllWindows().forEach(win => {
+    return downloadManagedSupertonicModel((progress) => {
+      BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
-          win.webContents.send('supertonic-model-download-progress', progress)
+          win.webContents.send("supertonic-model-download-progress", progress)
         }
       })
     })
-    return { success: true }
   }),
 
   synthesizeWithSupertonic: t.procedure
@@ -1494,18 +990,10 @@ export const router = {
       steps?: number
     }>()
     .action(async ({ input }) => {
-      const { synthesize } = await import('./supertonic-tts')
-      const result = await synthesize(
-        input.text,
-        input.voice,
-        input.lang,
-        input.speed,
-        input.steps,
-      )
-      const wavBuffer = float32ToWav(result.samples, result.sampleRate)
+      const result = await synthesizeManagedSupertonicSpeech(input)
       return {
-        audio: wavBuffer.toString('base64'),
-        sampleRate: result.sampleRate
+        audio: Buffer.from(result.audio).toString("base64"),
+        sampleRate: result.sampleRate,
       }
     }),
 
@@ -1524,17 +1012,24 @@ export const router = {
       if (config.sttProviderId === "parakeet") {
         // Use Parakeet (local) STT
         if (!parakeetStt.isModelReady()) {
-          throw new Error("Parakeet model not downloaded. Please download it in Settings.")
+          throw new Error(
+            "Parakeet model not downloaded. Please download it in Settings.",
+          )
         }
 
         // Initialize recognizer if needed
         await parakeetStt.initializeRecognizer(config.parakeetNumThreads)
 
         if (!input.pcmRecording) {
-          throw new Error("Parakeet STT requires pre-decoded float32 PCM audio. pcmRecording was not provided.")
+          throw new Error(
+            "Parakeet STT requires pre-decoded float32 PCM audio. pcmRecording was not provided.",
+          )
         }
         transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
-        transcript = await postProcessTranscriptSafely(transcript, "createRecording")
+        transcript = await postProcessTranscriptSafely(
+          transcript,
+          "createRecording",
+        )
       } else {
         // Use OpenAI or Groq for transcription
         const form = new FormData()
@@ -1542,10 +1037,7 @@ export const router = {
           "file",
           new File([input.recording], "recording.webm", { type: "audio/webm" }),
         )
-        form.append(
-          "model",
-          getRemoteSttModel(config),
-        )
+        form.append("model", getRemoteSttModel(config))
         form.append("response_format", "json")
 
         // Add prompt parameter for Groq if provided
@@ -1554,16 +1046,19 @@ export const router = {
         }
 
         // Add language parameter if specified
-        const languageCode = config.sttProviderId === "groq"
-          ? config.groqSttLanguage || config.sttLanguage
-          : config.openaiSttLanguage || config.sttLanguage;
+        const languageCode =
+          config.sttProviderId === "groq"
+            ? config.groqSttLanguage || config.sttLanguage
+            : config.openaiSttLanguage || config.sttLanguage
 
         if (languageCode && languageCode !== "auto") {
           form.append("language", languageCode)
         }
 
-        const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-        const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+        const groqBaseUrl =
+          config.groqBaseUrl || "https://api.groq.com/openai/v1"
+        const openaiBaseUrl =
+          config.openaiBaseUrl || "https://api.openai.com/v1"
 
         const transcriptResponse = await fetch(
           config.sttProviderId === "groq"
@@ -1585,7 +1080,10 @@ export const router = {
         }
 
         const json: { text: string } = await transcriptResponse.json()
-        transcript = await postProcessTranscriptSafely(json.text, "createRecording")
+        transcript = await postProcessTranscriptSafely(
+          json.text,
+          "createRecording",
+        )
       }
 
       const history = getRecordingHistory()
@@ -1658,26 +1156,26 @@ export const router = {
           "file",
           new File([input.recording], "recording.webm", { type: "audio/webm" }),
         )
-        form.append(
-          "model",
-          getRemoteSttModel(config),
-        )
+        form.append("model", getRemoteSttModel(config))
         form.append("response_format", "json")
 
         if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
           form.append("prompt", config.groqSttPrompt.trim())
         }
 
-        const languageCode = config.sttProviderId === "groq"
-          ? config.groqSttLanguage || config.sttLanguage
-          : config.openaiSttLanguage || config.sttLanguage;
+        const languageCode =
+          config.sttProviderId === "groq"
+            ? config.groqSttLanguage || config.sttLanguage
+            : config.openaiSttLanguage || config.sttLanguage
 
         if (languageCode && languageCode !== "auto") {
           form.append("language", languageCode)
         }
 
-        const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-        const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+        const groqBaseUrl =
+          config.groqBaseUrl || "https://api.groq.com/openai/v1"
+        const openaiBaseUrl =
+          config.openaiBaseUrl || "https://api.openai.com/v1"
 
         const transcriptResponse = await fetch(
           config.sttProviderId === "groq"
@@ -1693,7 +1191,9 @@ export const router = {
         )
 
         if (!transcriptResponse.ok) {
-          const errBody = await transcriptResponse.text().catch(() => "<unreadable>")
+          const errBody = await transcriptResponse
+            .text()
+            .catch(() => "<unreadable>")
           console.error(
             `[transcribeChunk] API error ${transcriptResponse.status} ${transcriptResponse.statusText}: ${errBody}`,
           )
@@ -1769,74 +1269,64 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
-        
-      // Create or get conversation ID
-      let conversationId = input.conversationId
-      if (!conversationId) {
-        const conversation = await conversationService.createConversation(
-          input.text,
-          "user",
+
+      if (input.conversationId && config.mcpMessageQueueEnabled !== false) {
+        const activeSessionId = agentSessionTracker.findSessionByConversationId(
+          input.conversationId,
         )
-        conversationId = conversation.id
-      } else {
-        // Check if message queuing is enabled and there's an active session
-        if (config.mcpMessageQueueEnabled !== false) {
-          const activeSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-          if (activeSessionId) {
-            const session = agentSessionTracker.getSession(activeSessionId)
-            if (session && session.status === "active") {
-              // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, input.text, activeSessionId)
-              logApp(`[createMcpTextInput] Queued message ${queuedMessage.id} for active session ${activeSessionId}`)
-              return { conversationId, queued: true, queuedMessageId: queuedMessage.id }
+        if (activeSessionId) {
+          const session = agentSessionTracker.getSession(activeSessionId)
+          if (session && session.status === "active") {
+            // Queue the message instead of starting a new session
+            const queuedMessage = messageQueueService.enqueue(
+              input.conversationId,
+              input.text,
+              activeSessionId,
+            )
+            logApp(
+              `[createMcpTextInput] Queued message ${queuedMessage.id} for active session ${activeSessionId}`,
+            )
+            return {
+              conversationId: input.conversationId,
+              queued: true,
+              queuedMessageId: queuedMessage.id,
             }
           }
         }
+      }
 
-        // Add user message to existing conversation
-        await conversationService.addMessageToConversation(
+      const startSnoozed = input.fromTile ?? false
+      const {
+        preparedContext: {
           conversationId,
-          input.text,
-          "user",
-        )
-      }
+          sessionId: runtimeSessionId,
+          reusedExistingSession,
+        },
+        runPromise,
+      } = await startDesktopPromptRun({
+        prompt: input.text,
+        requestedConversationId: input.conversationId,
+        conversationTitle: input.text,
+        startSnoozed,
+      })
 
-      // Try to find and revive an existing session for this conversation
-      // This handles the case where user continues from history
-      let existingSessionId: string | undefined
-      if (input.conversationId) {
-        const foundSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-        if (foundSessionId) {
-          // Pass fromTile to reviveSession so it stays snoozed when continuing from a tile
-          const revived = agentSessionTracker.reviveSession(foundSessionId, input.fromTile ?? false)
-          if (revived) {
-            existingSessionId = foundSessionId
-            logApp("[createMcpTextInput] Revived existing session", {
-              conversationId: input.conversationId,
-              sessionId: foundSessionId,
-              fromTile: input.fromTile ?? false,
-            })
-          } else {
-            logApp("[createMcpTextInput] Found session but failed to revive", {
-              conversationId: input.conversationId,
-              sessionId: foundSessionId,
-              fromTile: input.fromTile ?? false,
-            })
-          }
-        } else {
-          logApp("[createMcpTextInput] No runtime session found for conversation; starting new session", {
-            conversationId: input.conversationId,
-            fromTile: input.fromTile ?? false,
-          })
-        }
-      }
+      logApp(
+        reusedExistingSession
+          ? "[createMcpTextInput] Reused runtime session for conversation"
+          : "[createMcpTextInput] Started runtime session for conversation",
+        {
+          conversationId,
+          sessionId: runtimeSessionId,
+          fromTile: startSnoozed,
+        },
+      )
 
       // Fire-and-forget: Start agent processing without blocking
       // This allows multiple sessions to run concurrently
-      // Pass existingSessionId to reuse the session if found
-      // When fromTile=true, start snoozed so the floating panel doesn't appear
-      processWithAgentMode(input.text, conversationId, existingSessionId, input.fromTile ?? false)
-        .then((finalResponse) => {
+      // The session is prepared up front so typed, headless, and remote prompts
+      // all reuse the same conversation/session bootstrap rules.
+      runPromise
+        .then(({ content: finalResponse }) => {
           // Save to history after completion
           const history = getRecordingHistory()
           const item: RecordingHistoryItem = {
@@ -1857,7 +1347,10 @@ export const router = {
 
           // Auto-paste if enabled
           const pasteConfig = configStore.get()
-          if (pasteConfig.mcpAutoPasteEnabled && state.focusedAppBeforeRecording) {
+          if (
+            pasteConfig.mcpAutoPasteEnabled &&
+            state.focusedAppBeforeRecording
+          ) {
             setTimeout(async () => {
               try {
                 await writeText(finalResponse)
@@ -1872,9 +1365,14 @@ export const router = {
         })
         .finally(() => {
           // Process queued messages after this session completes (success or error)
-          logLLM(`[createMcpTextInput] .finally() triggered for conversation ${conversationId}, calling processQueuedMessages`)
+          logLLM(
+            `[createMcpTextInput] .finally() triggered for conversation ${conversationId}, calling processQueuedMessages`,
+          )
           processQueuedMessages(conversationId!).catch((err) => {
-            logLLM("[createMcpTextInput] Error processing queued messages:", err)
+            logLLM(
+              "[createMcpTextInput] Error processing queued messages:",
+              err,
+            )
           })
         })
 
@@ -1901,52 +1399,68 @@ export const router = {
       // Check if message queuing is enabled and there's an active session for this conversation
       // If so, we'll transcribe the audio and queue the transcript instead of processing immediately
       if (input.conversationId && config.mcpMessageQueueEnabled !== false) {
-        const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
+        const activeSessionId = agentSessionTracker.findSessionByConversationId(
+          input.conversationId,
+        )
         if (activeSessionId) {
           const session = agentSessionTracker.getSession(activeSessionId)
           if (session && session.status === "active") {
             // Active session exists - transcribe audio and queue the result
-            logApp(`[createMcpRecording] Active session ${activeSessionId} found for conversation ${input.conversationId}, will queue transcript`)
+            logApp(
+              `[createMcpRecording] Active session ${activeSessionId} found for conversation ${input.conversationId}, will queue transcript`,
+            )
 
             // Transcribe the audio first
             if (config.sttProviderId === "parakeet") {
               // Use Parakeet (local) STT
               if (!parakeetStt.isModelReady()) {
-                throw new Error("Parakeet model not downloaded. Please download it in Settings.")
+                throw new Error(
+                  "Parakeet model not downloaded. Please download it in Settings.",
+                )
               }
 
               await parakeetStt.initializeRecognizer(config.parakeetNumThreads)
 
               if (!input.pcmRecording) {
-                throw new Error("Parakeet STT requires pre-decoded float32 PCM audio. pcmRecording was not provided.")
+                throw new Error(
+                  "Parakeet STT requires pre-decoded float32 PCM audio. pcmRecording was not provided.",
+                )
               }
-              transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
+              transcript = await parakeetStt.transcribe(
+                input.pcmRecording,
+                16000,
+              )
             } else {
               const form = new FormData()
               form.append(
                 "file",
-                new File([input.recording], "recording.webm", { type: "audio/webm" }),
+                new File([input.recording], "recording.webm", {
+                  type: "audio/webm",
+                }),
               )
-              form.append(
-                "model",
-                getRemoteSttModel(config),
-              )
+              form.append("model", getRemoteSttModel(config))
               form.append("response_format", "json")
 
-              if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
+              if (
+                config.sttProviderId === "groq" &&
+                config.groqSttPrompt?.trim()
+              ) {
                 form.append("prompt", config.groqSttPrompt.trim())
               }
 
-              const languageCode = config.sttProviderId === "groq"
-                ? config.groqSttLanguage || config.sttLanguage
-                : config.openaiSttLanguage || config.sttLanguage
+              const languageCode =
+                config.sttProviderId === "groq"
+                  ? config.groqSttLanguage || config.sttLanguage
+                  : config.openaiSttLanguage || config.sttLanguage
 
               if (languageCode && languageCode !== "auto") {
                 form.append("language", languageCode)
               }
 
-              const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-              const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+              const groqBaseUrl =
+                config.groqBaseUrl || "https://api.groq.com/openai/v1"
+              const openaiBaseUrl =
+                config.openaiBaseUrl || "https://api.openai.com/v1"
 
               const transcriptResponse = await fetch(
                 config.sttProviderId === "groq"
@@ -1978,10 +1492,20 @@ export const router = {
             )
 
             // Queue the transcript instead of processing immediately
-            const queuedMessage = messageQueueService.enqueue(input.conversationId, transcript, activeSessionId)
-            logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
+            const queuedMessage = messageQueueService.enqueue(
+              input.conversationId,
+              transcript,
+              activeSessionId,
+            )
+            logApp(
+              `[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`,
+            )
 
-            return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
+            return {
+              conversationId: input.conversationId,
+              queued: true,
+              queuedMessageId: queuedMessage.id,
+            }
           }
         }
       }
@@ -1998,14 +1522,19 @@ export const router = {
 
       if (input.sessionId) {
         // Try to get the stored profile snapshot from the existing session
-        profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(input.sessionId)
-          ?? agentSessionTracker.getSessionProfileSnapshot(input.sessionId)
+        profileSnapshot =
+          agentSessionStateManager.getSessionProfileSnapshot(input.sessionId) ??
+          agentSessionTracker.getSessionProfileSnapshot(input.sessionId)
       } else if (input.conversationId) {
         // Try to find existing session for this conversation and get its profile snapshot
-        const existingSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
+        const existingSessionId =
+          agentSessionTracker.findSessionByConversationId(input.conversationId)
         if (existingSessionId) {
-          profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-            ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
+          profileSnapshot =
+            agentSessionStateManager.getSessionProfileSnapshot(
+              existingSessionId,
+            ) ??
+            agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
         }
       }
 
@@ -2017,52 +1546,18 @@ export const router = {
         }
       }
 
-      // If sessionId is provided, try to revive that session.
-      // Otherwise, if conversationId is provided, try to find and revive a session for that conversation.
-      // This handles the case where user continues from history (only conversationId is set).
-      // When fromTile=true, sessions start snoozed so the floating panel doesn't appear.
       const startSnoozed = input.fromTile ?? false
-      let sessionId: string
-      if (input.sessionId) {
-        // Try to revive the existing session by ID
-        // Pass startSnoozed so session stays snoozed when continuing from a tile
-        const revived = agentSessionTracker.reviveSession(input.sessionId, startSnoozed)
-        if (revived) {
-          sessionId = input.sessionId
-          // Update the session title while transcribing
-          agentSessionTracker.updateSession(sessionId, {
-            conversationTitle: "Transcribing...",
-            lastActivity: "Transcribing audio...",
-          })
-        } else {
-          // Session not found, create a new one with profile snapshot
-          sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-        }
-      } else if (input.conversationId) {
-        // No sessionId but have conversationId - try to find existing session for this conversation
-        const existingSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-        if (existingSessionId) {
-          // Pass startSnoozed so session stays snoozed when continuing from a tile
-          const revived = agentSessionTracker.reviveSession(existingSessionId, startSnoozed)
-          if (revived) {
-            sessionId = existingSessionId
-            // Update the session title while transcribing
-            agentSessionTracker.updateSession(sessionId, {
-              conversationTitle: "Transcribing...",
-              lastActivity: "Transcribing audio...",
-            })
-          } else {
-            // Revive failed, create new session with profile snapshot
-            sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-          }
-        } else {
-          // No existing session for this conversation, create new with profile snapshot
-          sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-        }
-      } else {
-        // No sessionId or conversationId provided, create a new session with profile snapshot
-        sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-      }
+      const { sessionId } = ensureAgentSessionForConversation({
+        conversationId: tempConversationId,
+        conversationTitle: "Transcribing...",
+        startSnoozed,
+        profileSnapshot,
+        candidateSessionIds: input.sessionId ? [input.sessionId] : [],
+      })
+      agentSessionTracker.updateSession(sessionId, {
+        conversationTitle: "Transcribing...",
+        lastActivity: "Transcribing audio...",
+      })
 
       try {
         // Emit initial "initializing" progress update
@@ -2071,14 +1566,16 @@ export const router = {
           conversationId: tempConversationId,
           currentIteration: 0,
           maxIterations: 1,
-          steps: [{
-            id: `transcribe_${Date.now()}`,
-            type: "thinking",
-            title: "Transcribing audio",
-            description: "Processing audio input...",
-            status: "in_progress",
-            timestamp: Date.now(),
-          }],
+          steps: [
+            {
+              id: `transcribe_${Date.now()}`,
+              type: "thinking",
+              title: "Transcribing audio",
+              description: "Processing audio input...",
+              status: "in_progress",
+              timestamp: Date.now(),
+            },
+          ],
           isComplete: false,
           isSnoozed: startSnoozed,
           conversationTitle: "Transcribing...",
@@ -2089,13 +1586,17 @@ export const router = {
         if (config.sttProviderId === "parakeet") {
           // Use Parakeet (local) STT
           if (!parakeetStt.isModelReady()) {
-            throw new Error("Parakeet model not downloaded. Please download it in Settings.")
+            throw new Error(
+              "Parakeet model not downloaded. Please download it in Settings.",
+            )
           }
 
           await parakeetStt.initializeRecognizer(config.parakeetNumThreads)
 
           if (!input.pcmRecording) {
-            throw new Error("Parakeet STT requires pre-decoded float32 PCM audio. pcmRecording was not provided.")
+            throw new Error(
+              "Parakeet STT requires pre-decoded float32 PCM audio. pcmRecording was not provided.",
+            )
           }
           transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
         } else {
@@ -2103,12 +1604,11 @@ export const router = {
           const form = new FormData()
           form.append(
             "file",
-            new File([input.recording], "recording.webm", { type: "audio/webm" }),
+            new File([input.recording], "recording.webm", {
+              type: "audio/webm",
+            }),
           )
-          form.append(
-            "model",
-            getRemoteSttModel(config),
-          )
+          form.append("model", getRemoteSttModel(config))
           form.append("response_format", "json")
 
           if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
@@ -2116,16 +1616,19 @@ export const router = {
           }
 
           // Add language parameter if specified
-          const languageCode = config.sttProviderId === "groq"
-            ? config.groqSttLanguage || config.sttLanguage
-            : config.openaiSttLanguage || config.sttLanguage;
+          const languageCode =
+            config.sttProviderId === "groq"
+              ? config.groqSttLanguage || config.sttLanguage
+              : config.openaiSttLanguage || config.sttLanguage
 
           if (languageCode && languageCode !== "auto") {
             form.append("language", languageCode)
           }
 
-          const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-          const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+          const groqBaseUrl =
+            config.groqBaseUrl || "https://api.groq.com/openai/v1"
+          const openaiBaseUrl =
+            config.openaiBaseUrl || "https://api.openai.com/v1"
 
           const transcriptResponse = await fetch(
             config.sttProviderId === "groq"
@@ -2149,80 +1652,73 @@ export const router = {
           transcript = json.text
         }
 
-      // Create or continue conversation
-      let conversationId = input.conversationId
-      let conversation: Conversation | null = null
-
-      if (!conversationId) {
-        // Create new conversation with the transcript
-        conversation = await conversationService.createConversation(
-          transcript,
-          "user",
-        )
-        conversationId = conversation.id
-      } else {
-        // Load existing conversation and add user message
-        conversation =
-          await conversationService.loadConversation(conversationId)
-        if (conversation) {
-          await conversationService.addMessageToConversation(
+        const {
+          preparedContext: {
             conversationId,
-            transcript,
-            "user",
-          )
-        } else {
-          conversation = await conversationService.createConversation(
-            transcript,
-            "user",
-          )
-          conversationId = conversation.id
-        }
-      }
+            sessionId: runtimeSessionId,
+            reusedExistingSession,
+          },
+          runPromise,
+        } = await startDesktopPromptRun({
+          prompt: transcript,
+          requestedConversationId: input.conversationId,
+          conversationTitle: transcript,
+          startSnoozed,
+          profileSnapshot,
+          candidateSessionIds: [sessionId],
+        })
 
-      // Update session with actual conversation ID and title after transcription
-      const conversationTitle = transcript
-      agentSessionTracker.updateSession(sessionId, {
-        conversationId,
-        conversationTitle,
-      })
+        logApp(
+          reusedExistingSession
+            ? "[createMcpRecording] Reused runtime session after transcription"
+            : "[createMcpRecording] Started runtime session after transcription",
+          {
+            conversationId,
+            sessionId: runtimeSessionId,
+            fromTile: startSnoozed,
+          },
+        )
 
-      // Save the recording file immediately
-      const recordingId = Date.now().toString()
-      fs.writeFileSync(
-        path.join(recordingsFolder, `${recordingId}.webm`),
-        Buffer.from(input.recording),
-      )
+        // Save the recording file immediately
+        const recordingId = Date.now().toString()
+        fs.writeFileSync(
+          path.join(recordingsFolder, `${recordingId}.webm`),
+          Buffer.from(input.recording),
+        )
 
         // Fire-and-forget: Start agent processing without blocking.
         // Preserve the tile/background snooze state after transcription so
         // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(transcript, conversationId, sessionId, startSnoozed)
-        .then((finalResponse) => {
-          // Save to history after completion
-          const history = getRecordingHistory()
-          const item: RecordingHistoryItem = {
-            id: recordingId,
-            createdAt: Date.now(),
-            duration: input.duration,
-            transcript: finalResponse,
-          }
-          history.push(item)
-          saveRecordingsHitory(history)
+        runPromise
+          .then(({ content: finalResponse }) => {
+            // Save to history after completion
+            const history = getRecordingHistory()
+            const item: RecordingHistoryItem = {
+              id: recordingId,
+              createdAt: Date.now(),
+              duration: input.duration,
+              transcript: finalResponse,
+            }
+            history.push(item)
+            saveRecordingsHitory(history)
 
-          const main = WINDOWS.get("main")
-          if (main) {
-            getRendererHandlers<RendererHandlers>(
-              main.webContents,
-            ).refreshRecordingHistory.send()
-          }
-        })
+            const main = WINDOWS.get("main")
+            if (main) {
+              getRendererHandlers<RendererHandlers>(
+                main.webContents,
+              ).refreshRecordingHistory.send()
+            }
+          })
           .catch((error) => {
             logLLM("[createMcpRecording] Agent processing error:", error)
           })
           .finally(() => {
             // Process queued messages after this session completes (success or error)
             processQueuedMessages(conversationId!).catch((err) => {
-              logLLM("[createMcpRecording] Error processing queued messages:", err)
+              logLLM(
+                "[createMcpRecording] Error processing queued messages:",
+                err,
+              )
             })
           })
 
@@ -2239,14 +1735,19 @@ export const router = {
           conversationId: tempConversationId,
           currentIteration: 1,
           maxIterations: 1,
-          steps: [{
-            id: `transcribe_error_${Date.now()}`,
-            type: "completion",
-            title: "Transcription failed",
-            description: getErrorMessage(error, "Unknown transcription error"),
-            status: "error",
-            timestamp: Date.now(),
-          }],
+          steps: [
+            {
+              id: `transcribe_error_${Date.now()}`,
+              type: "completion",
+              title: "Transcription failed",
+              description: getErrorMessage(
+                error,
+                "Unknown transcription error",
+              ),
+              status: "error",
+              timestamp: Date.now(),
+            },
+          ],
           isComplete: true,
           isSnoozed: startSnoozed,
           conversationTitle: "Transcription Error",
@@ -2255,7 +1756,10 @@ export const router = {
         })
 
         // Mark the session as errored to clean up the UI
-        agentSessionTracker.errorSession(sessionId, getErrorMessage(error, "Transcription failed"))
+        agentSessionTracker.errorSession(
+          sessionId,
+          getErrorMessage(error, "Transcription failed"),
+        )
 
         // Re-throw the error so the caller knows transcription failed
         throw error
@@ -2287,17 +1791,25 @@ export const router = {
   // ============================================================================
 
   getAgentsFolders: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { getAgentsKnowledgeDir } = await import("./agents-files/knowledge-notes")
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
+      await import("./config")
+    const { getAgentsLayerPaths } =
+      await import("./agents-files/modular-config")
+    const { getAgentsKnowledgeDir } =
+      await import("./agents-files/knowledge-notes")
     const { getAgentsSkillsDir } = await import("./agents-files/skills")
 
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
+    const workspaceLayer = workspaceAgentsFolder
+      ? getAgentsLayerPaths(workspaceAgentsFolder)
+      : null
 
     const workspaceSource = workspaceLayer
-      ? (process.env.DOTAGENTS_WORKSPACE_DIR && process.env.DOTAGENTS_WORKSPACE_DIR.trim() ? "env" : "upward")
+      ? process.env.DOTAGENTS_WORKSPACE_DIR &&
+        process.env.DOTAGENTS_WORKSPACE_DIR.trim()
+        ? "env"
+        : "upward"
       : null
 
     return {
@@ -2329,7 +1841,8 @@ export const router = {
   openWorkspaceAgentsFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder detected" }
+    if (!workspaceAgentsFolder)
+      return { success: false, error: "No workspace .agents folder detected" }
 
     fs.mkdirSync(workspaceAgentsFolder, { recursive: true })
     const error = await shell.openPath(workspaceAgentsFolder)
@@ -2337,8 +1850,10 @@ export const router = {
   }),
 
   openSystemPromptFile: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
+      await import("./config")
+    const { getAgentsLayerPaths, writeAgentsPrompts } =
+      await import("./agents-files/modular-config")
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -2361,8 +1876,10 @@ export const router = {
   }),
 
   openAgentsGuidelinesFile: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
+      await import("./config")
+    const { getAgentsLayerPaths, writeAgentsPrompts } =
+      await import("./agents-files/modular-config")
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -2395,7 +1912,8 @@ export const router = {
   openWorkspaceKnowledgeFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder detected" }
+    if (!workspaceAgentsFolder)
+      return { success: false, error: "No workspace .agents folder detected" }
 
     const knowledgeDir = path.join(workspaceAgentsFolder, "knowledge")
     fs.mkdirSync(knowledgeDir, { recursive: true })
@@ -2411,194 +1929,9 @@ export const router = {
   saveConfig: t.procedure
     .input<{ config: Config }>()
     .action(async ({ input }) => {
-      const prev = configStore.get()
-      const next = input.config
-      const merged = { ...(prev as any), ...(next as any) } as Config
-
-      // Persist merged config (ensures partial updates don't lose existing settings)
-      configStore.save(merged)
-
-      try {
-        const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-        const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-        const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
-
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
-
-        const validServerNames = Object.keys(merged.mcpConfig?.mcpServers || {})
-        const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
-        if (cleanupResult.updatedProfileIds.length > 0) {
-          agentProfileService.reload()
-        }
-      } catch (_e) {
-        // best-effort cleanup only
-      }
-
-      // Clear models cache if provider endpoints or API keys changed
-      try {
-        const providerConfigChanged =
-          (prev as any)?.openaiBaseUrl !== (merged as any)?.openaiBaseUrl ||
-          (prev as any)?.openaiApiKey !== (merged as any)?.openaiApiKey ||
-          (prev as any)?.groqBaseUrl !== (merged as any)?.groqBaseUrl ||
-          (prev as any)?.groqApiKey !== (merged as any)?.groqApiKey ||
-          (prev as any)?.geminiBaseUrl !== (merged as any)?.geminiBaseUrl ||
-          (prev as any)?.geminiApiKey !== (merged as any)?.geminiApiKey
-
-        if (providerConfigChanged) {
-          const { clearModelsCache } = await import("./models-service")
-          clearModelsCache()
-        }
-      } catch (_e) {
-        // best-effort only; cache will eventually expire
-      }
-
-      // Apply login item setting when configuration changes (production only; dev would launch bare Electron)
-      try {
-        if ((process.env.NODE_ENV === "production" || !process.env.ELECTRON_RENDERER_URL) && process.platform !== "linux") {
-          app.setLoginItemSettings({
-            openAtLogin: !!merged.launchAtLogin,
-            openAsHidden: true,
-          })
-        }
-      } catch (_e) {
-        // best-effort only
-      }
-
-      // Apply dock icon visibility changes immediately (macOS only)
-      if (process.env.IS_MAC) {
-        try {
-          const prevHideDock = !!(prev as any)?.hideDockIcon
-          const nextHideDock = !!(merged as any)?.hideDockIcon
-
-          if (prevHideDock !== nextHideDock) {
-            if (nextHideDock) {
-              // User wants to hide dock icon - hide it now
-              app.setActivationPolicy("accessory")
-              app.dock.hide()
-            } else {
-              // User wants to show dock icon - show it now
-              app.dock.show()
-              app.setActivationPolicy("regular")
-            }
-          }
-        } catch (_e) {
-          // best-effort only
-        }
-      }
-
-      // Manage Remote Server lifecycle on config changes
-      try {
-        const prevEnabled = !!(prev as any)?.remoteServerEnabled
-        const nextEnabled = !!(merged as any)?.remoteServerEnabled
-
-        if (prevEnabled !== nextEnabled) {
-          if (nextEnabled) {
-            await startRemoteServer()
-          } else {
-            await stopRemoteServer()
-          }
-        } else if (nextEnabled) {
-          const changed =
-            (prev as any)?.remoteServerPort !== (merged as any)?.remoteServerPort ||
-            (prev as any)?.remoteServerBindAddress !== (merged as any)?.remoteServerBindAddress ||
-            (prev as any)?.remoteServerApiKey !== (merged as any)?.remoteServerApiKey ||
-            (prev as any)?.remoteServerLogLevel !== (merged as any)?.remoteServerLogLevel
-
-          if (changed) {
-            await restartRemoteServer()
-          }
-        }
-      } catch (_e) {
-        // lifecycle is best-effort
-      }
-
-      // Manage WhatsApp MCP server auto-configuration
-      // Note: The actual server path is determined at runtime in mcp-service.ts createTransport()
-      // This ensures the correct internal bundled path is always used, regardless of what's in config
-      try {
-        const prevWhatsappEnabled = !!(prev as any)?.whatsappEnabled
-        const nextWhatsappEnabled = !!(merged as any)?.whatsappEnabled
-
-        if (prevWhatsappEnabled !== nextWhatsappEnabled) {
-          const currentMcpConfig = merged.mcpConfig || { mcpServers: {} }
-          const hasWhatsappServer = !!currentMcpConfig.mcpServers?.[WHATSAPP_SERVER_NAME]
-
-          if (nextWhatsappEnabled) {
-            // WhatsApp is being enabled
-            const { mcpService } = await import("./mcp-service")
-            if (!hasWhatsappServer) {
-              // Auto-add WhatsApp MCP server config when enabled
-              // The path in config is just a placeholder - the actual path is determined
-              // at runtime in createTransport() to ensure the correct bundled path is used
-              const updatedMcpConfig: MCPConfig = {
-                ...currentMcpConfig,
-                mcpServers: {
-                  ...currentMcpConfig.mcpServers,
-                  [WHATSAPP_SERVER_NAME]: {
-                    command: "node",
-                    args: [getInternalWhatsAppServerPath()],
-                    transport: "stdio",
-                  },
-                },
-              }
-              merged.mcpConfig = updatedMcpConfig
-              configStore.save(merged)
-            }
-            // Start/restart the WhatsApp server (handles both new and existing configs)
-            await mcpService.restartServer(WHATSAPP_SERVER_NAME)
-          } else if (!nextWhatsappEnabled && hasWhatsappServer) {
-            // Stop the WhatsApp server when disabled (but keep config for re-enabling)
-            const { mcpService } = await import("./mcp-service")
-            await mcpService.stopServer(WHATSAPP_SERVER_NAME)
-          }
-        } else if (nextWhatsappEnabled) {
-          // Check if WhatsApp settings changed - restart server to pick up new env vars
-          // Also watch Remote Server settings since prepareEnvironment() derives callback URL/API key from them
-          const whatsappSettingsChanged =
-            JSON.stringify((prev as any)?.whatsappAllowFrom) !== JSON.stringify((merged as any)?.whatsappAllowFrom) ||
-            (prev as any)?.whatsappAutoReply !== (merged as any)?.whatsappAutoReply ||
-            (prev as any)?.whatsappLogMessages !== (merged as any)?.whatsappLogMessages
-
-          // If auto-reply is enabled, also restart when Remote Server settings change
-          // This includes remoteServerEnabled because prepareEnvironment() only enables
-          // callback URL/API key injection when remote server is enabled
-          const remoteServerSettingsChanged = (merged as any)?.whatsappAutoReply && (
-            (prev as any)?.remoteServerEnabled !== (merged as any)?.remoteServerEnabled ||
-            (prev as any)?.remoteServerPort !== (merged as any)?.remoteServerPort ||
-            (prev as any)?.remoteServerApiKey !== (merged as any)?.remoteServerApiKey
-          )
-
-          if (whatsappSettingsChanged || remoteServerSettingsChanged) {
-            const { mcpService } = await import("./mcp-service")
-            const currentMcpConfig = merged.mcpConfig || { mcpServers: {} }
-            if (currentMcpConfig.mcpServers?.[WHATSAPP_SERVER_NAME]) {
-              await mcpService.restartServer(WHATSAPP_SERVER_NAME)
-            }
-          }
-        }
-      } catch (_e) {
-        // lifecycle is best-effort
-      }
-
-      // Reinitialize Langfuse if any Langfuse config fields changed
-      // This ensures config changes take effect without requiring app restart
-      try {
-        const langfuseConfigChanged =
-          (prev as any)?.langfuseEnabled !== (merged as any)?.langfuseEnabled ||
-          (prev as any)?.langfuseSecretKey !== (merged as any)?.langfuseSecretKey ||
-          (prev as any)?.langfusePublicKey !== (merged as any)?.langfusePublicKey ||
-          (prev as any)?.langfuseBaseUrl !== (merged as any)?.langfuseBaseUrl
-
-        if (langfuseConfigChanged) {
-          const { reinitializeLangfuse } = await import("./langfuse-service")
-          reinitializeLangfuse()
-        }
-      } catch (_e) {
-        // Langfuse reinitialization is best-effort
-      }
+      await saveManagedConfig(input.config, {
+        remoteAccessLabel: "desktop-runtime",
+      })
     }),
 
   // Check if langfuse package is installed (for UI to show install instructions)
@@ -2652,7 +1985,10 @@ export const router = {
       const { normalized: normalizedConfig } = normalizeMcpConfig(mcpConfig)
 
       // Basic validation
-      if (!normalizedConfig.mcpServers || typeof normalizedConfig.mcpServers !== "object") {
+      if (
+        !normalizedConfig.mcpServers ||
+        typeof normalizedConfig.mcpServers !== "object"
+      ) {
         throw new Error("Invalid MCP config: missing or invalid mcpServers")
       }
 
@@ -2669,7 +2005,10 @@ export const router = {
               `Invalid server config for "${serverName}": stdio transport requires "command" and "args" fields. For HTTP servers, use "transport": "streamableHttp" with "url" field.`,
             )
           }
-        } else if (transportType === "websocket" || transportType === "streamableHttp") {
+        } else if (
+          transportType === "websocket" ||
+          transportType === "streamableHttp"
+        ) {
           // Remote transports require url
           if (!serverConfig.url) {
             throw new Error(
@@ -2699,7 +2038,10 @@ export const router = {
         const { normalized: normalizedConfig } = normalizeMcpConfig(mcpConfig)
 
         // Basic validation - same as file upload
-        if (!normalizedConfig.mcpServers || typeof normalizedConfig.mcpServers !== "object") {
+        if (
+          !normalizedConfig.mcpServers ||
+          typeof normalizedConfig.mcpServers !== "object"
+        ) {
           throw new Error("Invalid MCP config: missing or invalid mcpServers")
         }
 
@@ -2716,7 +2058,10 @@ export const router = {
                 `Invalid server config for "${serverName}": stdio transport requires "command" and "args" fields. For HTTP servers, use "transport": "streamableHttp" with "url" field.`,
               )
             }
-          } else if (transportType === "websocket" || transportType === "streamableHttp") {
+          } else if (
+            transportType === "websocket" ||
+            transportType === "streamableHttp"
+          ) {
             // Remote transports require url
             if (!serverConfig.url) {
               throw new Error(
@@ -2768,9 +2113,14 @@ export const router = {
     .input<{ config: MCPConfig }>()
     .action(async ({ input }) => {
       try {
-        const { normalized: normalizedConfig } = normalizeMcpConfig(input.config)
+        const { normalized: normalizedConfig } = normalizeMcpConfig(
+          input.config,
+        )
 
-        if (!normalizedConfig.mcpServers || typeof normalizedConfig.mcpServers !== "object") {
+        if (
+          !normalizedConfig.mcpServers ||
+          typeof normalizedConfig.mcpServers !== "object"
+        ) {
           return { valid: false, error: "Missing or invalid mcpServers" }
         }
 
@@ -2794,7 +2144,10 @@ export const router = {
                 error: `Server "${serverName}": stdio transport requires "args" as an array`,
               }
             }
-          } else if (transportType === "websocket" || transportType === "streamableHttp") {
+          } else if (
+            transportType === "websocket" ||
+            transportType === "streamableHttp"
+          ) {
             // Remote transports require url
             if (!serverConfig.url) {
               return {
@@ -2854,24 +2207,37 @@ export const router = {
   }),
 
   getMcpDetailedToolList: t.procedure.action(async () => {
-    return mcpService.getDetailedToolList()
+    return getManagedMcpTools(mcpToolManagementStore)
   }),
 
   setMcpToolEnabled: t.procedure
     .input<{ toolName: string; enabled: boolean }>()
     .action(async ({ input }) => {
-      const success = mcpService.setToolEnabled(input.toolName, input.enabled)
-      return { success }
+      return setManagedMcpToolEnabled(
+        input.toolName,
+        input.enabled,
+        mcpToolManagementStore,
+      )
+    }),
+
+  setMcpToolSourceEnabled: t.procedure
+    .input<{ sourceName: string; enabled: boolean }>()
+    .action(async ({ input }) => {
+      return setManagedMcpToolSourceEnabled(
+        input.sourceName,
+        input.enabled,
+        mcpToolManagementStore,
+      )
     }),
 
   setMcpServerRuntimeEnabled: t.procedure
     .input<{ serverName: string; enabled: boolean }>()
     .action(async ({ input }) => {
-      const success = mcpService.setServerRuntimeEnabled(
+      return setManagedMcpServerRuntimeEnabled(
         input.serverName,
         input.enabled,
+        mcpManagementStore,
       )
-      return { success }
     }),
 
   getMcpServerRuntimeState: t.procedure
@@ -2909,7 +2275,6 @@ export const router = {
           input.filePath,
         )
         return { success: true, filePath: savedPath }
-
       } catch (error) {
         diagnosticsService.logError(
           "tipc",
@@ -2961,19 +2326,21 @@ export const router = {
     .input<{ serverName: string }>()
 
     .action(async ({ input }) => {
-      return mcpService.restartServer(input.serverName)
+      return restartManagedMcpServer(input.serverName, mcpManagementStore)
     }),
 
   stopMcpServer: t.procedure
     .input<{ serverName: string }>()
     .action(async ({ input }) => {
-      return mcpService.stopServer(input.serverName)
+      return stopManagedMcpServer(input.serverName, mcpManagementStore)
     }),
 
   getMcpServerLogs: t.procedure
     .input<{ serverName: string }>()
     .action(async ({ input }) => {
-      return mcpService.getServerLogs(input.serverName)
+      return (
+        getManagedMcpServerLogs(input.serverName, mcpManagementStore).logs || []
+      )
     }),
 
   clearMcpServerLogs: t.procedure
@@ -2985,304 +2352,87 @@ export const router = {
 
   // WhatsApp Integration
   whatsappConnect: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      // Check if WhatsApp server is available
-      const serverStatus = mcpService.getServerStatus()
-      const whatsappServer = serverStatus[WHATSAPP_SERVER_NAME]
-      if (!whatsappServer || !whatsappServer.connected) {
-        return { success: false, error: "WhatsApp server is not running. Please enable WhatsApp in settings." }
-      }
-
-      // Call the whatsapp_connect tool
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_connect", arguments: {} },
-        undefined,
-        true // skip approval check for internal calls
-      )
-
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText = result.content?.find((c: any) => c.type === "text")?.text || "Connection failed"
-        return { success: false, error: errorText }
-      }
-
-      // Parse the result to extract QR code if present
-      const textContent = result.content?.find((c: any) => c.type === "text")
-      if (textContent?.text) {
-        try {
-          const parsed = JSON.parse(textContent.text)
-          if (parsed.qrCode) {
-            return { success: true, qrCode: parsed.qrCode, status: "qr_required" }
-          } else if (parsed.status === "qr_required") {
-            return { success: true, qrCode: parsed.qrCode, status: "qr_required" }
-          }
-        } catch {
-          // Not JSON, check for connection success message
-          if (textContent.text.includes("Connected successfully")) {
-            return { success: true, status: "connected", message: textContent.text }
-          }
-          if (textContent.text.includes("Already connected")) {
-            return { success: true, status: "connected", message: textContent.text }
-          }
-        }
-        return { success: true, message: textContent.text }
-      }
-
-      return { success: true, message: "Connection initiated" }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
-    }
+    return connectManagedWhatsapp()
   }),
 
   whatsappGetStatus: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      // Check if WhatsApp server is available
-      const serverStatus = mcpService.getServerStatus()
-      const whatsappServer = serverStatus[WHATSAPP_SERVER_NAME]
-      if (!whatsappServer || !whatsappServer.connected) {
-        return { available: false, connected: false, error: "WhatsApp server is not running" }
-      }
-
-      // Call the whatsapp_get_status tool
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_get_status", arguments: {} },
-        undefined,
-        true // skip approval check for internal calls
-      )
-
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText = result.content?.find((c: any) => c.type === "text")?.text || "Failed to get status"
-        return { available: true, connected: false, error: errorText }
-      }
-
-      // Parse the result
-      const textContent = result.content?.find((c: any) => c.type === "text")
-      if (textContent?.text) {
-        try {
-          const parsed = JSON.parse(textContent.text)
-          return { available: true, ...parsed }
-        } catch {
-          return { available: true, message: textContent.text }
-        }
-      }
-
-      return { available: true, connected: false }
-    } catch (error) {
-      return { available: false, connected: false, error: error instanceof Error ? error.message : String(error) }
-    }
+    return getManagedWhatsappStatus()
   }),
 
   whatsappDisconnect: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_disconnect", arguments: {} },
-        undefined,
-        true
-      )
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText = result.content?.find((c: any) => c.type === "text")?.text || "Disconnect failed"
-        return { success: false, error: errorText }
-      }
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
-    }
+    return disconnectManagedWhatsapp()
   }),
 
   whatsappLogout: t.procedure.action(async () => {
-    const WHATSAPP_SERVER_NAME = "whatsapp"
-    try {
-      const result = await mcpService.executeToolCall(
-        { name: "whatsapp_logout", arguments: {} },
-        undefined,
-        true
-      )
-      // Check if the tool returned an error result
-      if (result.isError) {
-        const errorText = result.content?.find((c: any) => c.type === "text")?.text || "Logout failed"
-        return { success: false, error: errorText }
-      }
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
-    }
+    return logoutManagedWhatsapp()
   }),
 
   // Text-to-Speech
   generateSpeech: t.procedure
     .input<{
       text: string
-      providerId?: string
+      providerId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
       voice?: string
       model?: string
       speed?: number
     }>()
     .action(async ({ input }) => {
-
-
-
-
-
-
-
-
-
-      const config = configStore.get()
-
-
-
-      if (!config.ttsEnabled) {
-        throw new Error("Text-to-Speech is not enabled")
-      }
-
-      const providerId = input.providerId || config.ttsProviderId || "openai"
-
-      // Preprocess text for TTS
-      let processedText = input.text
-
-      if (config.ttsPreprocessingEnabled !== false) {
-        // Use LLM-based preprocessing if enabled, otherwise fall back to regex
-        if (config.ttsUseLLMPreprocessing) {
-          processedText = await preprocessTextForTTSWithLLM(input.text, config.ttsLLMPreprocessingProviderId)
-        } else {
-          // Use regex-based preprocessing
-          const preprocessingOptions = {
-            removeCodeBlocks: config.ttsRemoveCodeBlocks ?? true,
-            removeUrls: config.ttsRemoveUrls ?? true,
-            convertMarkdown: config.ttsConvertMarkdown ?? true,
-          }
-          processedText = preprocessTextForTTS(input.text, preprocessingOptions)
-        }
-      }
-
-      // Validate processed text
-      const validation = validateTTSText(processedText)
-      if (!validation.isValid) {
-        throw new Error(`TTS validation failed: ${validation.issues.join(", ")}`)
-      }
-
-      try {
-        let ttsResult: TTSGenerationResult
-
-
-
-        if (providerId === "openai") {
-          ttsResult = await generateOpenAITTS(processedText, input, config)
-        } else if (providerId === "groq") {
-          ttsResult = await generateGroqTTS(processedText, input, config)
-        } else if (providerId === "gemini") {
-          ttsResult = await generateGeminiTTS(processedText, input, config)
-        } else if (providerId === "kitten") {
-          const { synthesize } = await import('./kitten-tts')
-          const voiceId = config.kittenVoiceId ?? 0 // Default to Voice 2 - Male
-          const result = await synthesize(processedText, voiceId, input.speed)
-          const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          ttsResult = {
-            audio: new Uint8Array(wavBuffer).buffer,
-            mimeType: "audio/wav",
-          }
-        } else if (providerId === "supertonic") {
-          const { synthesize } = await import('./supertonic-tts')
-          const voice = config.supertonicVoice ?? "M1"
-          const lang = config.supertonicLanguage ?? "en"
-          const speed = input.speed ?? config.supertonicSpeed ?? 1.05
-          const steps = config.supertonicSteps ?? 5
-          const result = await synthesize(processedText, voice, lang, speed, steps)
-          const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          ttsResult = {
-            audio: new Uint8Array(wavBuffer).buffer,
-            mimeType: "audio/wav",
-          }
-        } else {
-          throw new Error(`Unsupported TTS provider: ${providerId}`)
-        }
-
-
-
-        return {
-          audio: ttsResult.audio,
-          mimeType: ttsResult.mimeType,
-          processedText,
-          provider: providerId,
-        }
-      } catch (error) {
-        diagnosticsService.logError("tts", "TTS generation failed", error)
-        throw error
-      }
+      return generateManagedSpeech(input)
     }),
 
   // Models Management
   fetchAvailableModels: t.procedure
     .input<{ providerId: string }>()
     .action(async ({ input }) => {
-      const { fetchAvailableModels } = await import("./models-service")
-      return fetchAvailableModels(input.providerId)
+      return getManagedAvailableModels(input.providerId)
     }),
 
   // Fetch models for a specific preset (base URL + API key)
   fetchModelsForPreset: t.procedure
     .input<{ baseUrl: string; apiKey: string }>()
     .action(async ({ input }) => {
-      const { fetchModelsForPreset } = await import("./models-service")
-      return fetchModelsForPreset(input.baseUrl, input.apiKey)
+      return getManagedPresetModels(input.baseUrl, input.apiKey)
     }),
 
   // Get enhanced model info from models.dev
   getModelInfo: t.procedure
     .input<{ modelId: string; providerId?: string }>()
     .action(async ({ input }) => {
-      // If providerId is given, use specific provider lookup
-      if (input.providerId) {
-        const model = getModelFromModelsDevByProviderId(input.modelId, input.providerId)
-        return model || null
-      }
-      // Otherwise, search across ALL providers using fuzzy matching
-      const matchResult = findBestModelMatch(input.modelId)
-      return matchResult?.model || null
+      return getManagedModelInfo(input.modelId, input.providerId)
     }),
 
   // Get all models.dev data
   getModelsDevData: t.procedure.action(async () => {
-    return await fetchModelsDevData()
+    return getManagedModelsDevData()
   }),
 
   // Force refresh models.dev cache
   refreshModelsData: t.procedure.action(async () => {
-    await refreshModelsDevCache()
-    return { success: true }
+    return refreshManagedModelsDevData()
   }),
 
   // Conversation Management
   getConversationHistory: t.procedure.action(async () => {
     logApp("[tipc] getConversationHistory called")
-    const result = await conversationService.getConversationHistory()
-    return result
+    return getManagedConversationHistory()
   }),
 
   loadConversation: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      return conversationService.loadConversation(input.conversationId)
+      return getManagedConversation(input.conversationId)
     }),
 
   saveConversation: t.procedure
     .input<{ conversation: Conversation }>()
     .action(async ({ input }) => {
-      await conversationService.saveConversation(input.conversation)
+      await saveManagedConversation(input.conversation)
     }),
 
   createConversation: t.procedure
     .input<{ firstMessage: string; role?: "user" | "assistant" }>()
     .action(async ({ input }) => {
-      return conversationService.createConversation(
-        input.firstMessage,
-        input.role,
-      )
+      return createManagedConversation(input.firstMessage, input.role)
     }),
 
   addMessageToConversation: t.procedure
@@ -3294,7 +2444,7 @@ export const router = {
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
     }>()
     .action(async ({ input }) => {
-      return conversationService.addMessageToConversation(
+      return addManagedMessageToConversation(
         input.conversationId,
         input.content,
         input.role,
@@ -3306,34 +2456,20 @@ export const router = {
   renameConversationTitle: t.procedure
     .input<{ conversationId: string; title: string }>()
     .action(async ({ input }) => {
-      const conversation = await conversationService.renameConversationTitle(
+      return renameConversationTitleAndSyncSession(
         input.conversationId,
         input.title,
       )
-
-      if (conversation) {
-        const activeSession = agentSessionTracker
-          .getActiveSessions()
-          .find((session) => session.conversationId === input.conversationId)
-
-        if (activeSession) {
-          agentSessionTracker.updateSession(activeSession.id, {
-            conversationTitle: conversation.title,
-          })
-        }
-      }
-
-      return conversation
     }),
 
   deleteConversation: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      await conversationService.deleteConversation(input.conversationId)
+      await deleteConversationAndSyncSessionState(input.conversationId)
     }),
 
   deleteAllConversations: t.procedure.action(async () => {
-    await conversationService.deleteAllConversations()
+    await deleteAllConversationsAndSyncSessionState()
   }),
 
   openConversationsFolder: t.procedure.action(async () => {
@@ -3359,7 +2495,10 @@ export const router = {
       }
 
       const mode = getCurrentPanelMode()
-      const minWidth = mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
+      const minWidth =
+        mode === "textInput"
+          ? TEXT_INPUT_MIN_WIDTH
+          : Math.max(200, MIN_WAVEFORM_WIDTH)
       const minHeight =
         mode === "agent"
           ? PROGRESS_MIN_HEIGHT
@@ -3389,7 +2528,7 @@ export const router = {
       const config = configStore.get()
       const updatedConfig = {
         ...config,
-        panelCustomSize: { width, height }
+        panelCustomSize: { width, height },
       }
       configStore.save(updatedConfig)
       return updatedConfig.panelCustomSize
@@ -3397,9 +2536,16 @@ export const router = {
 
   // Save panel size with mode-specific persistence
   savePanelModeSize: t.procedure
-    .input<{ mode: "normal" | "agent" | "textInput"; width: number; height: number }>()
+    .input<{
+      mode: "normal" | "agent" | "textInput"
+      width: number
+      height: number
+    }>()
     .action(async ({ input }) => {
-      const minWidth = input.mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
+      const minWidth =
+        input.mode === "textInput"
+          ? TEXT_INPUT_MIN_WIDTH
+          : Math.max(200, MIN_WAVEFORM_WIDTH)
       const minHeight =
         input.mode === "agent"
           ? PROGRESS_MIN_HEIGHT
@@ -3455,17 +2601,15 @@ export const router = {
 
   // Profile Management
   getProfiles: t.procedure.action(async () => {
-    return agentProfileService.getProfilesLegacy()
+    return getManagedLegacyProfiles()
   }),
 
-  getProfile: t.procedure
-    .input<{ id: string }>()
-    .action(async ({ input }) => {
-        return agentProfileService.getProfileLegacy(input.id)
-    }),
+  getProfile: t.procedure.input<{ id: string }>().action(async ({ input }) => {
+    return getManagedLegacyProfile(input.id)
+  }),
 
   getCurrentProfile: t.procedure.action(async () => {
-    return agentProfileService.getCurrentProfileLegacy()
+    return getManagedCurrentLegacyProfile()
   }),
 
   // Get the default system prompt for restore functionality
@@ -3477,117 +2621,72 @@ export const router = {
   createProfile: t.procedure
     .input<{ name: string; guidelines: string; systemPrompt?: string }>()
     .action(async ({ input }) => {
-        const profile = agentProfileService.createUserProfile(input.name, input.guidelines, input.systemPrompt)
-        return agentProfileService.getProfileLegacy(profile.id)
+      const result = createManagedLegacyProfile(input)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   updateProfile: t.procedure
-    .input<{ id: string; name?: string; guidelines?: string; systemPrompt?: string }>()
+    .input<{
+      id: string
+      name?: string
+      guidelines?: string
+      systemPrompt?: string
+    }>()
     .action(async ({ input }) => {
-        const updates: Partial<import("@shared/types").AgentProfile> = {}
-      if (input.name !== undefined) { updates.displayName = input.name }
-      if (input.guidelines !== undefined) updates.guidelines = input.guidelines
-      if (input.systemPrompt !== undefined) updates.systemPrompt = input.systemPrompt
-      agentProfileService.update(input.id, updates)
-
-      return agentProfileService.getProfileLegacy(input.id)
+      const result = updateManagedLegacyProfile(input.id, {
+        name: input.name,
+        guidelines: input.guidelines,
+        systemPrompt: input.systemPrompt,
+      })
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   deleteProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-        return agentProfileService.delete(input.id)
+      return deleteManagedLegacyProfile(input.id)
     }),
 
   setCurrentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-        const profile = agentProfileService.setCurrentProfileStrict(input.id)
-
-      // Update the config with the profile's guidelines, system prompt, and model config
-      const config = configStore.get()
-      const updatedConfig = {
-        ...config,
-        mcpCurrentProfileId: profile.id,
-        // Apply model config if it exists
-        // Agent/MCP Tools settings
-        ...(profile.modelConfig?.mcpToolsProviderId && {
-          mcpToolsProviderId: profile.modelConfig.mcpToolsProviderId,
-        }),
-        ...(profile.modelConfig?.mcpToolsOpenaiModel && {
-          mcpToolsOpenaiModel: profile.modelConfig.mcpToolsOpenaiModel,
-        }),
-        ...(profile.modelConfig?.mcpToolsGroqModel && {
-          mcpToolsGroqModel: profile.modelConfig.mcpToolsGroqModel,
-        }),
-        ...(profile.modelConfig?.mcpToolsGeminiModel && {
-          mcpToolsGeminiModel: profile.modelConfig.mcpToolsGeminiModel,
-        }),
-        ...(profile.modelConfig?.currentModelPresetId && {
-          currentModelPresetId: profile.modelConfig.currentModelPresetId,
-        }),
-        // STT Provider settings
-        ...(profile.modelConfig?.sttProviderId && {
-          sttProviderId: profile.modelConfig.sttProviderId,
-        }),
-        ...(profile.modelConfig?.openaiSttModel && {
-          openaiSttModel: profile.modelConfig.openaiSttModel,
-        }),
-        ...(profile.modelConfig?.groqSttModel && {
-          groqSttModel: profile.modelConfig.groqSttModel,
-        }),
-        // Transcript Post-Processing settings
-        ...(profile.modelConfig?.transcriptPostProcessingProviderId && {
-          transcriptPostProcessingProviderId: profile.modelConfig.transcriptPostProcessingProviderId,
-        }),
-        ...(profile.modelConfig?.transcriptPostProcessingOpenaiModel && {
-          transcriptPostProcessingOpenaiModel: profile.modelConfig.transcriptPostProcessingOpenaiModel,
-        }),
-        ...(profile.modelConfig?.transcriptPostProcessingGroqModel && {
-          transcriptPostProcessingGroqModel: profile.modelConfig.transcriptPostProcessingGroqModel,
-        }),
-        ...(profile.modelConfig?.transcriptPostProcessingGeminiModel && {
-          transcriptPostProcessingGeminiModel: profile.modelConfig.transcriptPostProcessingGeminiModel,
-        }),
-        // TTS Provider settings
-        ...(profile.modelConfig?.ttsProviderId && {
-          ttsProviderId: profile.modelConfig.ttsProviderId,
-        }),
+      const result = setManagedCurrentLegacyProfile(input.id)
+      if (!result.success) {
+        throw new Error(result.error)
       }
-      configStore.save(updatedConfig)
-
-      // Apply the profile's MCP server configuration
-      // If the profile has no toolConfig, we pass empty arrays to reset to default (all enabled)
-      const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
-      mcpService.applyProfileMcpConfig(
-        mcpServerConfig?.disabledServers ?? [],
-        mcpServerConfig?.disabledTools ?? [],
-        mcpServerConfig?.allServersDisabledByDefault ?? false,
-
-        mcpServerConfig?.enabledServers ?? [],
-        mcpServerConfig?.enabledRuntimeTools ?? [],
-      )
-
-      return agentProfileService.getProfileLegacy(profile.id)
+      return result.profile
     }),
 
   exportProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-        return agentProfileService.exportProfile(input.id)
+      const result = exportManagedAgentProfile(input.id)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profileJson
     }),
 
   importProfile: t.procedure
     .input<{ profileJson: string }>()
     .action(async ({ input }) => {
-        return agentProfileService.importProfile(input.profileJson)
+      const result = importManagedAgentProfile(input.profileJson)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   // Save current MCP server state to a profile
   saveCurrentMcpStateToProfile: t.procedure
     .input<{ profileId: string }>()
     .action(async ({ input }) => {
-
       const currentState = mcpService.getCurrentMcpConfigState()
       return agentProfileService.saveCurrentMcpStateToProfile(
         input.profileId,
@@ -3622,26 +2721,33 @@ export const router = {
   saveCurrentModelStateToProfile: t.procedure
     .input<{ profileId: string }>()
     .action(async ({ input }) => {
-        const config = configStore.get()
-      return agentProfileService.saveCurrentModelStateToProfile(input.profileId, {
-        // Agent/MCP Tools settings
-        mcpToolsProviderId: config.mcpToolsProviderId,
-        mcpToolsOpenaiModel: config.mcpToolsOpenaiModel,
-        mcpToolsGroqModel: config.mcpToolsGroqModel,
-        mcpToolsGeminiModel: config.mcpToolsGeminiModel,
-        currentModelPresetId: config.currentModelPresetId,
-        // STT Provider settings
-        sttProviderId: config.sttProviderId,
-        openaiSttModel: config.openaiSttModel,
-        groqSttModel: config.groqSttModel,
-        // Transcript Post-Processing settings
-        transcriptPostProcessingProviderId: config.transcriptPostProcessingProviderId,
-        transcriptPostProcessingOpenaiModel: config.transcriptPostProcessingOpenaiModel,
-        transcriptPostProcessingGroqModel: config.transcriptPostProcessingGroqModel,
-        transcriptPostProcessingGeminiModel: config.transcriptPostProcessingGeminiModel,
-        // TTS Provider settings
-        ttsProviderId: config.ttsProviderId,
-      })
+      const config = configStore.get()
+      return agentProfileService.saveCurrentModelStateToProfile(
+        input.profileId,
+        {
+          // Agent/MCP Tools settings
+          mcpToolsProviderId: config.mcpToolsProviderId,
+          mcpToolsOpenaiModel: config.mcpToolsOpenaiModel,
+          mcpToolsGroqModel: config.mcpToolsGroqModel,
+          mcpToolsGeminiModel: config.mcpToolsGeminiModel,
+          currentModelPresetId: config.currentModelPresetId,
+          // STT Provider settings
+          sttProviderId: config.sttProviderId,
+          openaiSttModel: config.openaiSttModel,
+          groqSttModel: config.groqSttModel,
+          // Transcript Post-Processing settings
+          transcriptPostProcessingProviderId:
+            config.transcriptPostProcessingProviderId,
+          transcriptPostProcessingOpenaiModel:
+            config.transcriptPostProcessingOpenaiModel,
+          transcriptPostProcessingGroqModel:
+            config.transcriptPostProcessingGroqModel,
+          transcriptPostProcessingGeminiModel:
+            config.transcriptPostProcessingGeminiModel,
+          // TTS Provider settings
+          ttsProviderId: config.ttsProviderId,
+        },
+      )
     }),
 
   // Update profile model configuration
@@ -3667,7 +2773,7 @@ export const router = {
       ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
     }>()
     .action(async ({ input }) => {
-        return agentProfileService.updateProfileModelConfig(input.profileId, {
+      return agentProfileService.updateProfileModelConfig(input.profileId, {
         // Agent/MCP Tools settings
         mcpToolsProviderId: input.mcpToolsProviderId,
         mcpToolsOpenaiModel: input.mcpToolsOpenaiModel,
@@ -3679,10 +2785,14 @@ export const router = {
         openaiSttModel: input.openaiSttModel,
         groqSttModel: input.groqSttModel,
         // Transcript Post-Processing settings
-        transcriptPostProcessingProviderId: input.transcriptPostProcessingProviderId,
-        transcriptPostProcessingOpenaiModel: input.transcriptPostProcessingOpenaiModel,
-        transcriptPostProcessingGroqModel: input.transcriptPostProcessingGroqModel,
-        transcriptPostProcessingGeminiModel: input.transcriptPostProcessingGeminiModel,
+        transcriptPostProcessingProviderId:
+          input.transcriptPostProcessingProviderId,
+        transcriptPostProcessingOpenaiModel:
+          input.transcriptPostProcessingOpenaiModel,
+        transcriptPostProcessingGroqModel:
+          input.transcriptPostProcessingGroqModel,
+        transcriptPostProcessingGeminiModel:
+          input.transcriptPostProcessingGeminiModel,
         // TTS Provider settings
         ttsProviderId: input.ttsProviderId,
       })
@@ -3691,7 +2801,10 @@ export const router = {
   saveProfileFile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-        const profileJson = agentProfileService.exportProfile(input.id)
+      const exportResult = exportManagedAgentProfile(input.id)
+      if (!exportResult.success) {
+        throw new Error(exportResult.error)
+      }
 
       const result = await dialog.showSaveDialog({
         title: "Export Profile",
@@ -3707,7 +2820,7 @@ export const router = {
       }
 
       try {
-        fs.writeFileSync(result.filePath, profileJson)
+        fs.writeFileSync(result.filePath, exportResult.profileJson)
         return true
       } catch (error) {
         throw new Error(
@@ -3732,7 +2845,11 @@ export const router = {
 
     try {
       const profileJson = fs.readFileSync(result.filePaths[0], "utf8")
-        return agentProfileService.importProfile(profileJson)
+      const importResult = importManagedAgentProfile(profileJson)
+      if (!importResult.success) {
+        throw new Error(importResult.error)
+      }
+      return importResult.profile
     } catch (error) {
       throw new Error(
         `Failed to import profile: ${error instanceof Error ? error.message : String(error)}`,
@@ -3742,13 +2859,11 @@ export const router = {
 
   // Cloudflare Tunnel handlers
   checkCloudflaredInstalled: t.procedure.action(async () => {
-    const { checkCloudflaredInstalled } = await import("./cloudflare-tunnel")
-    return checkCloudflaredInstalled()
+    return checkManagedCloudflaredInstalled()
   }),
 
   startCloudflareTunnel: t.procedure.action(async () => {
-    const { startCloudflareTunnel } = await import("./cloudflare-tunnel")
-    return startCloudflareTunnel()
+    return startManagedCloudflareQuickTunnel()
   }),
 
   startNamedCloudflareTunnel: t.procedure
@@ -3758,37 +2873,32 @@ export const router = {
       credentialsPath?: string
     }>()
     .action(async ({ input }) => {
-      const { startNamedCloudflareTunnel } = await import("./cloudflare-tunnel")
-      return startNamedCloudflareTunnel(input)
+      return startManagedCloudflareNamedTunnel(input)
     }),
 
   stopCloudflareTunnel: t.procedure.action(async () => {
-    const { stopCloudflareTunnel } = await import("./cloudflare-tunnel")
-    return stopCloudflareTunnel()
+    return stopManagedCloudflareTunnel()
   }),
 
   getCloudflareTunnelStatus: t.procedure.action(async () => {
-    const { getCloudflareTunnelStatus } = await import("./cloudflare-tunnel")
-    return getCloudflareTunnelStatus()
+    return getManagedCloudflareTunnelStatus()
   }),
 
   listCloudflareTunnels: t.procedure.action(async () => {
-    const { listCloudflareTunnels } = await import("./cloudflare-tunnel")
-    return listCloudflareTunnels()
+    return listManagedCloudflareTunnels()
   }),
 
   checkCloudflaredLoggedIn: t.procedure.action(async () => {
-    const { checkCloudflaredLoggedIn } = await import("./cloudflare-tunnel")
-    return checkCloudflaredLoggedIn()
+    return checkManagedCloudflaredLoggedIn()
   }),
 
   getRemoteServerStatus: t.procedure.action(async () => {
-    return getRemoteServerStatus()
+    return getManagedRemoteServerStatus()
   }),
 
   // Remote Server QR Code handler
   printRemoteServerQRCode: t.procedure.action(async () => {
-    return printQRCodeToTerminal()
+    return printManagedRemoteServerQrCode()
   }),
 
   // MCP Elicitation handlers (Protocol 2025-11-25)
@@ -3821,52 +2931,48 @@ export const router = {
   getMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-          return messageQueueService.getQueue(input.conversationId)
+      return getManagedMessageQueue(input.conversationId).messages
     }),
 
   getAllMessageQueues: t.procedure.action(async () => {
-      const queues = messageQueueService.getAllQueues()
-      // Include isPaused state for each queue
-      return queues.map(q => ({
-        ...q,
-        isPaused: messageQueueService.isQueuePaused(q.conversationId),
-      }))
+    return getManagedMessageQueues()
   }),
 
   removeFromMessageQueue: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-          return messageQueueService.removeFromQueue(input.conversationId, input.messageId)
+      return removeManagedMessageFromQueue(
+        input.conversationId,
+        input.messageId,
+      )
     }),
 
   clearMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-          return messageQueueService.clearQueue(input.conversationId)
+      return clearManagedMessageQueue(input.conversationId)
     }),
 
   reorderMessageQueue: t.procedure
     .input<{ conversationId: string; messageIds: string[] }>()
     .action(async ({ input }) => {
-          return messageQueueService.reorderQueue(input.conversationId, input.messageIds)
+      return reorderManagedMessageQueue(input.conversationId, input.messageIds)
     }),
 
   updateQueuedMessageText: t.procedure
     .input<{ conversationId: string; messageId: string; text: string }>()
     .action(async ({ input }) => {
-    
-      // Check if this was a failed message before updating
-      const queue = messageQueueService.getQueue(input.conversationId)
-      const message = queue.find((m) => m.id === input.messageId)
-      const wasFailed = message?.status === "failed"
+      const result = updateManagedQueuedMessageText(
+        input.conversationId,
+        input.messageId,
+        input.text,
+      )
+      if (!result.success) return false
 
-      const success = messageQueueService.updateMessageText(input.conversationId, input.messageId, input.text)
-      if (!success) return false
-
-      // If this was a failed message that's now reset to pending,
-      // check if conversation is idle and trigger queue processing
-      if (wasFailed) {
-              const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
+      if (result.shouldProcessQueue) {
+        const activeSessionId = agentSessionTracker.findSessionByConversationId(
+          input.conversationId,
+        )
         if (activeSessionId) {
           const session = agentSessionTracker.getSession(activeSessionId)
           if (session && session.status === "active") {
@@ -3875,9 +2981,11 @@ export const router = {
           }
         }
 
-        // Conversation is idle, trigger queue processing
         processQueuedMessages(input.conversationId).catch((err) => {
-          logLLM("[updateQueuedMessageText] Error processing queued messages:", err)
+          logLLM(
+            "[updateQueuedMessageText] Error processing queued messages:",
+            err,
+          )
         })
       }
 
@@ -3887,26 +2995,17 @@ export const router = {
   retryQueuedMessage: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-        
-      // Use resetToPending to reset failed message status without modifying text
-      // This works even for addedToHistory messages since we're not changing the text
-      const success = messageQueueService.resetToPending(input.conversationId, input.messageId)
-      if (!success) return false
+      const result = retryManagedQueuedMessage(
+        input.conversationId,
+        input.messageId,
+      )
+      if (!result.success) return false
 
-      // Check if conversation is idle (no active session)
-      const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-      if (activeSessionId) {
-        const session = agentSessionTracker.getSession(activeSessionId)
-        if (session && session.status === "active") {
-          // Session is active, queue will be processed when it completes
-          return true
-        }
+      if (result.shouldProcessQueue) {
+        processQueuedMessages(input.conversationId).catch((err) => {
+          logLLM("[retryQueuedMessage] Error processing queued messages:", err)
+        })
       }
-
-      // Conversation is idle, trigger queue processing
-      processQueuedMessages(input.conversationId).catch((err) => {
-        logLLM("[retryQueuedMessage] Error processing queued messages:", err)
-      })
 
       return true
     }),
@@ -3914,37 +3013,24 @@ export const router = {
   isMessageQueuePaused: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-          return messageQueueService.isQueuePaused(input.conversationId)
+      return getManagedMessageQueue(input.conversationId).isPaused
     }),
 
   pauseMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      messageQueueService.pauseQueue(input.conversationId)
-      return true
+      return pauseManagedMessageQueue(input.conversationId)
     }),
 
   resumeMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-        
-      // Resume the queue
-      messageQueueService.resumeQueue(input.conversationId)
-
-      // Check if conversation is idle (no active session) and trigger queue processing
-      const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-      if (activeSessionId) {
-        const session = agentSessionTracker.getSession(activeSessionId)
-        if (session && session.status === "active") {
-          // Session is active, queue will be processed when it completes
-          return true
-        }
+      const result = resumeManagedMessageQueue(input.conversationId)
+      if (result.shouldProcessQueue) {
+        processQueuedMessages(input.conversationId).catch((err) => {
+          logLLM("[resumeMessageQueue] Error processing queued messages:", err)
+        })
       }
-
-      // Conversation is idle, trigger queue processing
-      processQueuedMessages(input.conversationId).catch((err) => {
-        logLLM("[resumeMessageQueue] Error processing queued messages:", err)
-      })
 
       return true
     }),
@@ -3955,14 +3041,21 @@ export const router = {
     const externalAgents = config.acpAgents || []
     // Include internal agent in the list, but filter out any persisted 'internal' entries
     // from externalAgents to avoid duplicates (can happen after toggling enabled state)
-    const { getInternalAgentConfig } = await import('./acp/acp-router-tools')
+    const { getInternalAgentConfig } = await import("./acp/acp-router-tools")
     const internalAgent = getInternalAgentConfig()
     // Merge any persisted enabled state from config into the internal agent
-    const persistedInternalAgent = externalAgents.find(a => a.name === 'internal')
-    if (persistedInternalAgent && typeof persistedInternalAgent.enabled === 'boolean') {
+    const persistedInternalAgent = externalAgents.find(
+      (a) => a.name === "internal",
+    )
+    if (
+      persistedInternalAgent &&
+      typeof persistedInternalAgent.enabled === "boolean"
+    ) {
       internalAgent.enabled = persistedInternalAgent.enabled
     }
-    const filteredExternalAgents = externalAgents.filter(a => a.name !== 'internal')
+    const filteredExternalAgents = externalAgents.filter(
+      (a) => a.name !== "internal",
+    )
     return [internalAgent, ...filteredExternalAgents]
   }),
 
@@ -3971,15 +3064,18 @@ export const router = {
     .action(async ({ input }) => {
       // Block saving agent with reserved name "internal" to avoid config conflicts
       // The internal agent is a built-in and should not be persisted as an external agent
-      if (input.agent.name === 'internal') {
-        return { success: false, error: 'Cannot save agent with reserved name "internal"' }
+      if (input.agent.name === "internal") {
+        return {
+          success: false,
+          error: 'Cannot save agent with reserved name "internal"',
+        }
       }
 
       const config = configStore.get()
       const agents = config.acpAgents || []
 
       // Check if agent with this name already exists
-      const existingIndex = agents.findIndex(a => a.name === input.agent.name)
+      const existingIndex = agents.findIndex((a) => a.name === input.agent.name)
 
       if (existingIndex >= 0) {
         // Update existing agent
@@ -3999,7 +3095,7 @@ export const router = {
       const config = configStore.get()
       const agents = config.acpAgents || []
 
-      const filteredAgents = agents.filter(a => a.name !== input.agentName)
+      const filteredAgents = agents.filter((a) => a.name !== input.agentName)
 
       configStore.save({ ...config, acpAgents: filteredAgents })
       return { success: true }
@@ -4011,7 +3107,7 @@ export const router = {
       const config = configStore.get()
       const agents = config.acpAgents || []
 
-      const agentIndex = agents.findIndex(a => a.name === input.agentName)
+      const agentIndex = agents.findIndex((a) => a.name === input.agentName)
       if (agentIndex >= 0) {
         agents[agentIndex] = { ...agents[agentIndex], enabled: input.enabled }
       } else {
@@ -4019,11 +3115,14 @@ export const router = {
         // We include displayName to satisfy the ACPAgentConfig contract and avoid undefined issues
         agents.push({
           name: input.agentName,
-          displayName: input.agentName === 'internal' ? 'DotAgents Internal' : input.agentName,
+          displayName:
+            input.agentName === "internal"
+              ? "DotAgents Internal"
+              : input.agentName,
           enabled: input.enabled,
-          isInternal: input.agentName === 'internal',
-          connection: { type: 'internal' as const }
-        } as import('../shared/types').ACPAgentConfig)
+          isInternal: input.agentName === "internal",
+          connection: { type: "internal" as const },
+        } as import("../shared/types").ACPAgentConfig)
       }
 
       configStore.save({ ...config, acpAgents: agents })
@@ -4031,12 +3130,18 @@ export const router = {
       // When disabling an agent, automatically stop it if it's running
       if (!input.enabled) {
         const agentStatus = acpService.getAgentStatus(input.agentName)
-        if (agentStatus && (agentStatus.status === "ready" || agentStatus.status === "starting")) {
+        if (
+          agentStatus &&
+          (agentStatus.status === "ready" || agentStatus.status === "starting")
+        ) {
           try {
             await acpService.stopAgent(input.agentName)
           } catch (error) {
             // Log but don't fail the toggle operation
-            logApp(`[ACP] Failed to auto-stop agent ${input.agentName} on disable:`, error)
+            logApp(
+              `[ACP] Failed to auto-stop agent ${input.agentName} on disable:`,
+              error,
+            )
           }
         }
       }
@@ -4050,9 +3155,15 @@ export const router = {
   }),
 
   verifyExternalAgentCommand: t.procedure
-    .input<{ command: string; args?: string[]; cwd?: string; probeArgs?: string[] }>()
+    .input<{
+      command: string
+      args?: string[]
+      cwd?: string
+      probeArgs?: string[]
+    }>()
     .action(async ({ input }) => {
-      const { verifyExternalAgentCommand } = await import("./command-verification-service")
+      const { verifyExternalAgentCommand } =
+        await import("./command-verification-service")
       return verifyExternalAgentCommand(input)
     }),
 
@@ -4067,7 +3178,7 @@ export const router = {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         }
       }
     }),
@@ -4081,7 +3192,7 @@ export const router = {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         }
       }
     }),
@@ -4096,7 +3207,8 @@ export const router = {
   getSubagentDelegations: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
-      const { getAllDelegationsForSession } = await import("./acp/acp-router-tools")
+      const { getAllDelegationsForSession } =
+        await import("./acp/acp-router-tools")
       return getAllDelegationsForSession(input.sessionId)
     }),
 
@@ -4113,13 +3225,13 @@ export const router = {
   // ============================================================================
 
   getAgentProfiles: t.procedure.action(async () => {
-    return agentProfileService.getAll()
+    return getManagedAgentProfiles()
   }),
 
   getAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.getById(input.id)
+      return getManagedAgentProfile(input.id)
     }),
 
   getAgentProfileByName: t.procedure
@@ -4131,9 +3243,10 @@ export const router = {
   createAgentProfile: t.procedure
     .input<{
       profile: {
-        name: string
+        name?: string
         displayName: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
 
@@ -4151,7 +3264,11 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      return agentProfileService.create(input.profile)
+      const result = createManagedAgentProfile(input.profile)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   updateAgentProfile: t.procedure
@@ -4160,50 +3277,57 @@ export const router = {
       updates: Partial<import("@shared/types").AgentProfile>
     }>()
     .action(async ({ input }) => {
-      return agentProfileService.update(input.id, input.updates)
+      const result = updateManagedAgentProfile(input.id, input.updates)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   deleteAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.delete(input.id)
+      const result = deleteManagedAgentProfile(input.id)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return true
     }),
 
   getUserProfiles: t.procedure.action(async () => {
-    return agentProfileService.getUserProfiles()
+    return getManagedUserAgentProfiles()
   }),
 
   getAgentTargets: t.procedure.action(async () => {
-    return agentProfileService.getAgentTargets()
+    return getManagedAgentTargets()
   }),
 
   getEnabledAgentTargets: t.procedure.action(async () => {
-    return agentProfileService.getEnabledAgentTargets()
+    return getManagedEnabledAgentTargets()
   }),
 
   getCurrentAgentProfile: t.procedure.action(async () => {
-    return agentProfileService.getCurrentProfile()
+    return getManagedCurrentAgentProfile()
   }),
 
   setCurrentAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const profile = agentProfileService.getById(input.id)
-      if (!profile || !profile.enabled) {
+      const result = setManagedCurrentAgentProfile(input.id)
+      if (!result.success) {
         return { success: false }
       }
-      agentProfileService.setCurrentProfile(input.id)
       return { success: true }
     }),
 
   getAgentProfilesByRole: t.procedure
     .input<{ role: import("@shared/types").AgentProfileRole }>()
     .action(async ({ input }) => {
-      return agentProfileService.getByRole(input.role)
+      return getManagedAgentProfiles({ role: input.role })
     }),
 
   getExternalAgents: t.procedure.action(async () => {
-    return agentProfileService.getExternalAgents()
+    return getManagedExternalAgents()
   }),
 
   getAgentProfileConversation: t.procedure
@@ -4236,113 +3360,71 @@ export const router = {
 
   // Agent Skills Management
   getSkills: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
-    return skillsService.getSkills()
+    return getManagedSkillsCatalog()
   }),
 
-  getSkill: t.procedure
-    .input<{ id: string }>()
-    .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      return skillsService.getSkill(input.id)
-    }),
+  getSkill: t.procedure.input<{ id: string }>().action(async ({ input }) => {
+    return getManagedSkill(input.id)
+  }),
 
   createSkill: t.procedure
     .input<{ name: string; description: string; instructions: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const skill = skillsService.createSkill(input.name, input.description, input.instructions)
-      // Auto-enable the new skill for the current profile so it's immediately usable
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-      return skill
+      return createManagedSkill(input)
     }),
 
   updateSkill: t.procedure
-    .input<{ id: string; name?: string; description?: string; instructions?: string; enabled?: boolean }>()
+    .input<{
+      id: string
+      name?: string
+      description?: string
+      instructions?: string
+      enabled?: boolean
+    }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
       const { id, ...updates } = input
-      return skillsService.updateSkill(id, updates)
+      return updateManagedSkill(id, updates)
     }),
 
-  deleteSkill: t.procedure
-    .input<{ id: string }>()
-    .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const success = skillsService.deleteSkill(input.id)
-      if (!success) return false
-
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-      const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
-
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const layers = workspaceAgentsFolder
-        ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-        : [getAgentsLayerPaths(globalAgentsFolder)]
-
-      cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
-      agentProfileService.reload()
-      return true
-    }),
+  deleteSkill: t.procedure.input<{ id: string }>().action(async ({ input }) => {
+    const result = await deleteManagedSkill(input.id)
+    return result.success
+  }),
 
   deleteSkills: t.procedure
     .input<{ ids: string[] }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const results: { id: string; success: boolean }[] = []
-      for (const id of input.ids) {
-        const success = skillsService.deleteSkill(id)
-        results.push({ id, success })
-      }
-
-      if (results.some(result => result.success)) {
-        const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-        const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-        const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
-
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
-
-        cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
-        agentProfileService.reload()
-      }
-
-      return results
+      const result = await deleteManagedSkills(input.ids)
+      return result.results
     }),
 
   cleanupStaleSkillReferences: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
-
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
-
-    const result = cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
-    if (result.updatedProfileIds.length > 0) {
-      agentProfileService.reload()
-    }
-    return result
+    return cleanupManagedStaleSkillReferences()
   }),
 
   cleanupStaleMcpServerReferences: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
+      await import("./config")
+    const { getAgentsLayerPaths } =
+      await import("./agents-files/modular-config")
+    const { cleanupInvalidMcpServerReferencesInLayers } =
+      await import("./agent-profile-mcp-cleanup")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
     const layers = workspaceAgentsFolder
-      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
+      ? [
+          getAgentsLayerPaths(globalAgentsFolder),
+          getAgentsLayerPaths(workspaceAgentsFolder),
+        ]
       : [getAgentsLayerPaths(globalAgentsFolder)]
 
-    const validServerNames = Object.keys(configStore.get().mcpConfig?.mcpServers || {})
-    const result = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
+    const validServerNames = Object.keys(
+      configStore.get().mcpConfig?.mcpServers || {},
+    )
+    const result = cleanupInvalidMcpServerReferencesInLayers(
+      layers,
+      validServerNames,
+    )
     if (result.updatedProfileIds.length > 0) {
       agentProfileService.reload()
     }
@@ -4352,23 +3434,17 @@ export const router = {
   importSkillFromMarkdown: t.procedure
     .input<{ content: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const skill = skillsService.importSkillFromMarkdown(input.content)
-      // Auto-enable the imported skill for the current profile so it's immediately usable
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-      return skill
+      return importManagedSkillFromMarkdown(input.content)
     }),
 
   exportSkillToMarkdown: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      return skillsService.exportSkillToMarkdown(input.id)
+      return exportManagedSkillToMarkdown(input.id)
     }),
 
   // Import a single skill - can be a .md file or a folder containing SKILL.md
   importSkillFile: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
     const result = await dialog.showOpenDialog({
       title: "Import Skill",
       filters: [
@@ -4382,15 +3458,11 @@ export const router = {
       return null
     }
 
-    const skill = skillsService.importSkillFromFile(result.filePaths[0])
-    // Auto-enable the imported skill for the current profile so it's immediately usable
-    agentProfileService.enableSkillForCurrentProfile(skill.id)
-    return skill
+    return importManagedSkillFromFile(result.filePaths[0])
   }),
 
   // Import a skill from a folder containing SKILL.md
   importSkillFolder: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
     const result = await dialog.showOpenDialog({
       title: "Import Skill Folder",
       message: "Select a folder containing SKILL.md",
@@ -4401,18 +3473,15 @@ export const router = {
       return null
     }
 
-    const skill = skillsService.importSkillFromFolder(result.filePaths[0])
-    // Auto-enable the imported skill for the current profile so it's immediately usable
-    agentProfileService.enableSkillForCurrentProfile(skill.id)
-    return skill
+    return importManagedSkillFromFolder(result.filePaths[0])
   }),
 
   // Bulk import all skill folders from a parent directory
   importSkillsFromParentFolder: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
     const result = await dialog.showOpenDialog({
       title: "Import Skills from Folder",
-      message: "Select a folder containing multiple skill folders (each with SKILL.md)",
+      message:
+        "Select a folder containing multiple skill folders (each with SKILL.md)",
       properties: ["openDirectory", "showHiddenFiles"],
     })
 
@@ -4420,19 +3489,13 @@ export const router = {
       return null
     }
 
-    const importResult = skillsService.importSkillsFromParentFolder(result.filePaths[0])
-    // Auto-enable all imported skills for the current profile so they're immediately usable
-    for (const skill of importResult.imported) {
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-    }
-    return importResult
+    return importManagedSkillsFromParentFolder(result.filePaths[0])
   }),
 
   saveSkillFile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const skill = skillsService.getSkill(input.id)
+      const skill = getManagedSkill(input.id)
       if (!skill) {
         throw new Error(`Skill with id ${input.id} not found`)
       }
@@ -4440,23 +3503,22 @@ export const router = {
       const result = await dialog.showSaveDialog({
         title: "Export Skill",
         defaultPath: `${skill.name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.md`,
-        filters: [
-          { name: "Markdown Files", extensions: ["md"] },
-        ],
+        filters: [{ name: "Markdown Files", extensions: ["md"] }],
       })
 
       if (result.canceled || !result.filePath) {
         return false
       }
 
-      const content = skillsService.exportSkillToMarkdown(input.id)
+      const content = exportManagedSkillToMarkdown(input.id)
       fs.writeFileSync(result.filePath, content)
       return true
     }),
 
   openSkillsFolder: t.procedure.action(async () => {
     const { globalAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } =
+      await import("./agents-files/modular-config")
     const { getAgentsSkillsDir } = await import("./agents-files/skills")
 
     // Canonical skills location is the global layer.
@@ -4470,11 +3532,13 @@ export const router = {
 
   openWorkspaceSkillsFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } =
+      await import("./agents-files/modular-config")
     const { getAgentsSkillsDir } = await import("./agents-files/skills")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder detected" }
+    if (!workspaceAgentsFolder)
+      return { success: false, error: "No workspace .agents folder detected" }
 
     const layer = getAgentsLayerPaths(workspaceAgentsFolder)
     const skillsDir = getAgentsSkillsDir(layer)
@@ -4487,55 +3551,23 @@ export const router = {
   openSkillFile: t.procedure
     .input<{ skillId: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-
-      const skill = skillsService.getSkill(input.skillId)
-      if (!skill) {
-        return { success: false, error: `Skill with id ${input.skillId} not found` }
+      const ensuredFile = ensureManagedSkillFile(input.skillId)
+      if (!ensuredFile.success || !ensuredFile.path) {
+        return ensuredFile
       }
 
-      const filePath = skillsService.getSkillCanonicalFilePath(input.skillId)
-      if (!filePath) {
-        return { success: false, error: `No file path found for skill ${input.skillId}` }
-      }
-
-      if (!fs.existsSync(filePath)) {
-        try {
-          fs.mkdirSync(path.dirname(filePath), { recursive: true })
-          fs.writeFileSync(filePath, skillsService.exportSkillToMarkdown(input.skillId), "utf8")
-        } catch (error) {
-          return {
-            success: false,
-            path: filePath,
-            error: error instanceof Error ? error.message : String(error),
-          }
-        }
-      }
-
-      return revealFileInFolder(filePath)
+      return revealFileInFolder(ensuredFile.path)
     }),
 
   scanSkillsFolder: t.procedure.action(async () => {
-    const { skillsService } = await import("./skills-service")
-    const importedSkills = skillsService.scanSkillsFolder()
-    // Auto-enable all newly imported skills for the current profile so they're immediately usable
-    for (const skill of importedSkills) {
-      agentProfileService.enableSkillForCurrentProfile(skill.id)
-    }
-    return importedSkills
+    return scanManagedSkillsFolder()
   }),
 
   // Import skill(s) from a GitHub repository
   importSkillFromGitHub: t.procedure
     .input<{ repoIdentifier: string }>()
     .action(async ({ input }) => {
-      const { skillsService } = await import("./skills-service")
-      const result = await skillsService.importSkillFromGitHub(input.repoIdentifier)
-      // Auto-enable all imported skills for the current profile so they're immediately usable
-      for (const skill of result.imported) {
-        agentProfileService.enableSkillForCurrentProfile(skill.id)
-      }
-      return result
+      return importManagedSkillFromGitHub(input.repoIdentifier)
     }),
 
   // Per-profile skill management
@@ -4544,11 +3576,20 @@ export const router = {
     .action(async ({ input }) => {
       const profile = agentProfileService.getById(input.profileId)
       // When skillsConfig is undefined, all skills are enabled by default
-      return profile?.skillsConfig ?? { enabledSkillIds: [], allSkillsDisabledByDefault: false }
+      return (
+        profile?.skillsConfig ?? {
+          enabledSkillIds: [],
+          allSkillsDisabledByDefault: false,
+        }
+      )
     }),
 
   updateProfileSkillsConfig: t.procedure
-    .input<{ profileId: string; enabledSkillIds?: string[]; allSkillsDisabledByDefault?: boolean }>()
+    .input<{
+      profileId: string
+      enabledSkillIds?: string[]
+      allSkillsDisabledByDefault?: boolean
+    }>()
     .action(async ({ input }) => {
       const { profileId, ...config } = input
       return agentProfileService.updateProfileSkillsConfig(profileId, config)
@@ -4557,27 +3598,32 @@ export const router = {
   toggleProfileSkill: t.procedure
     .input<{ profileId: string; skillId: string }>()
     .action(async ({ input }) => {
-      // Pass all available skill IDs so the toggle can properly transition
-      // from "all enabled by default" to explicit opt-in mode
-      const { skillsService } = await import("./skills-service")
-      const allSkillIds = skillsService.getSkills().map(s => s.id)
-      return agentProfileService.toggleProfileSkill(input.profileId, input.skillId, allSkillIds)
+      const result = toggleManagedSkillForProfile(
+        input.profileId,
+        input.skillId,
+      )
+      return result.success ? result.profile : undefined
     }),
 
   isSkillEnabledForProfile: t.procedure
     .input<{ profileId: string; skillId: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.isSkillEnabledForProfile(input.profileId, input.skillId)
+      return agentProfileService.isSkillEnabledForProfile(
+        input.profileId,
+        input.skillId,
+      )
     }),
 
   getEnabledSkillIdsForProfile: t.procedure
     .input<{ profileId: string }>()
     .action(async ({ input }) => {
-      const enabledSkillIds = agentProfileService.getEnabledSkillIdsForProfile(input.profileId)
+      const enabledSkillIds = agentProfileService.getEnabledSkillIdsForProfile(
+        input.profileId,
+      )
       if (enabledSkillIds === null) {
         // null means "all skills enabled" — return all available skill IDs
         const { skillsService } = await import("./skills-service")
-        return skillsService.getSkills().map(s => s.id)
+        return skillsService.getSkills().map((s) => s.id)
       }
       return enabledSkillIds
     }),
@@ -4587,13 +3633,17 @@ export const router = {
     .input<{ profileId: string }>()
     .action(async ({ input }) => {
       const { skillsService } = await import("./skills-service")
-      const enabledSkillIds = agentProfileService.getEnabledSkillIdsForProfile(input.profileId)
+      const enabledSkillIds = agentProfileService.getEnabledSkillIdsForProfile(
+        input.profileId,
+      )
       if (enabledSkillIds === null) {
         // null means "all skills enabled" — use all available skill IDs
-        const allSkillIds = skillsService.getSkills().map(s => s.id)
+        const allSkillIds = skillsService.getSkills().map((s) => s.id)
         return skillsService.getEnabledSkillsInstructionsForProfile(allSkillIds)
       }
-      return skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
+      return skillsService.getEnabledSkillsInstructionsForProfile(
+        enabledSkillIds,
+      )
     }),
 
   // ============================================================================
@@ -4601,52 +3651,44 @@ export const router = {
   // ============================================================================
 
   getBundleExportableItems: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getBundleExportableItemsFromLayers } = await import("./bundle-service")
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-
-    return getBundleExportableItemsFromLayers(
-      workspaceAgentsFolder
-        ? [globalAgentsFolder, workspaceAgentsFolder]
-        : [globalAgentsFolder]
-    )
+    return getManagedBundleExportableItems()
   }),
 
   exportBundle: t.procedure
-    .input<{
-      name?: string
-      description?: string
-      publicMetadata?: {
-        summary: string
-        author: {
-          displayName: string
-          handle?: string
-          url?: string
+    .input<
+      | {
+          name?: string
+          description?: string
+          publicMetadata?: {
+            summary: string
+            author: {
+              displayName: string
+              handle?: string
+              url?: string
+            }
+            tags: string[]
+            compatibility?: {
+              minDesktopVersion?: string
+              notes?: string[]
+            }
+          }
+          agentProfileIds?: string[]
+          mcpServerNames?: string[]
+          skillIds?: string[]
+          repeatTaskIds?: string[]
+          knowledgeNoteIds?: string[]
+          components?: {
+            agentProfiles?: boolean
+            mcpServers?: boolean
+            skills?: boolean
+            repeatTasks?: boolean
+            knowledgeNotes?: boolean
+          }
         }
-        tags: string[]
-        compatibility?: {
-          minDesktopVersion?: string
-          notes?: string[]
-        }
-      }
-      agentProfileIds?: string[]
-      mcpServerNames?: string[]
-      skillIds?: string[]
-      repeatTaskIds?: string[]
-      knowledgeNoteIds?: string[]
-      components?: {
-        agentProfiles?: boolean
-        mcpServers?: boolean
-        skills?: boolean
-        repeatTasks?: boolean
-        knowledgeNotes?: boolean
-      }
-    } | undefined>()
+      | undefined
+    >()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { exportBundleToFile, exportBundleToFileFromLayers } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const exportOptions = {
+      return exportManagedBundleToFile({
         name: input?.name,
         description: input?.description,
         publicMetadata: input?.publicMetadata,
@@ -4656,14 +3698,7 @@ export const router = {
         repeatTaskIds: input?.repeatTaskIds,
         knowledgeNoteIds: input?.knowledgeNoteIds,
         components: input?.components,
-      }
-
-      // Export from merged layers when a workspace overlay exists (workspace wins on conflicts).
-      if (workspaceAgentsFolder) {
-        return exportBundleToFileFromLayers([globalAgentsFolder, workspaceAgentsFolder], exportOptions)
-      }
-
-      return exportBundleToFile(globalAgentsFolder, exportOptions)
+      })
     }),
 
   generatePublishPayload: t.procedure
@@ -4699,13 +3734,7 @@ export const router = {
       knowledgeNoteIds?: string[]
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { generatePublishPayload } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const dirs = workspaceAgentsFolder
-        ? [globalAgentsFolder, workspaceAgentsFolder]
-        : [globalAgentsFolder]
-      return generatePublishPayload(dirs, {
+      return generateManagedBundlePublishPayload({
         name: input.name,
         catalogId: input.catalogId,
         artifactUrl: input.artifactUrl,
@@ -4726,11 +3755,11 @@ export const router = {
       payloadJson: string
     }>()
     .action(async ({ input }) => {
-      const safeBaseName = (input.catalogId || "hub-publish")
-        .replace(/[^a-z0-9-_]+/gi, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")
-        || "hub-publish"
+      const safeBaseName =
+        (input.catalogId || "hub-publish")
+          .replace(/[^a-z0-9-_]+/gi, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "") || "hub-publish"
 
       const result = await dialog.showSaveDialog({
         title: "Save Hub Publish Package",
@@ -4757,32 +3786,7 @@ export const router = {
   previewBundleWithConflicts: t.procedure
     .input<{ filePath: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { previewBundleWithConflicts } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const targetDir = workspaceAgentsFolder || globalAgentsFolder
-      const targetPreview = previewBundleWithConflicts(input.filePath, targetDir)
-
-      // With workspace overlays, merge conflicts from global + workspace so preview
-      // matches the merged UI view and catches shadowing collisions.
-      if (!workspaceAgentsFolder || !targetPreview.success) {
-        return targetPreview
-      }
-
-      const globalPreview = previewBundleWithConflicts(input.filePath, globalAgentsFolder)
-      if (!globalPreview.success) {
-        return targetPreview
-      }
-
-      const mergedConflicts = mergeConflictMaps(
-        (globalPreview as BundleConflictPreview).conflicts,
-        (targetPreview as BundleConflictPreview).conflicts
-      )
-
-      return {
-        ...targetPreview,
-        conflicts: mergedConflicts,
-      }
+      return previewManagedBundleWithConflicts(input.filePath)
     }),
 
   importBundle: t.procedure
@@ -4798,16 +3802,10 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { importBundle } = await import("./bundle-service")
-      // Use workspace layer if present, otherwise global
-      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
-      const result = await importBundle(input.filePath, targetDir, {
+      return importManagedBundle(input.filePath, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
       })
-      await refreshRuntimeAfterBundleImport()
-      return result
     }),
 
   importBundleFromDialog: t.procedure
@@ -4822,7 +3820,8 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
+        await import("./config")
       const { importBundleFromDialog } = await import("./bundle-service")
       // Use workspace layer if present, otherwise global
       const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
@@ -4831,7 +3830,7 @@ export const router = {
         components: input.components,
       })
       if (result) {
-        await refreshRuntimeAfterBundleImport()
+        await refreshRuntimeAfterManagedBundleImport()
       }
       return result
     }),
@@ -4840,57 +3839,35 @@ export const router = {
   // Sandbox Slots (Issue #141: bundle sandbox/profile slots)
   // ============================================================================
   getSandboxState: t.procedure.action(async () => {
-    const { globalAgentsFolder } = await import("./config")
-    const { getSandboxState } = await import("./sandbox-service")
-    return getSandboxState(globalAgentsFolder)
+    return getManagedSandboxState()
   }),
   saveBaseline: t.procedure.action(async () => {
-    const { globalAgentsFolder } = await import("./config")
-    const { saveBaseline } = await import("./sandbox-service")
-    return saveBaseline(globalAgentsFolder)
+    return saveManagedSandboxBaseline()
   }),
   saveCurrentAsSlot: t.procedure
     .input<{ name: string; sourceBundleName?: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder } = await import("./config")
-      const { saveCurrentAsSlot } = await import("./sandbox-service")
-      return saveCurrentAsSlot(globalAgentsFolder, input.name, {
+      return saveManagedCurrentSandboxSlot(input.name, {
         sourceBundleName: input.sourceBundleName,
       })
     }),
   switchToSlot: t.procedure
     .input<{ name: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder } = await import("./config")
-      const { switchToSlot } = await import("./sandbox-service")
-      const result = switchToSlot(globalAgentsFolder, input.name)
-      if (result.success) {
-        await refreshRuntimeAfterBundleImport()
-      }
-      return result
+      return switchManagedSandboxSlot(input.name)
     }),
   restoreBaseline: t.procedure.action(async () => {
-    const { globalAgentsFolder } = await import("./config")
-    const { restoreBaseline } = await import("./sandbox-service")
-    const result = restoreBaseline(globalAgentsFolder)
-    if (result.success) {
-      await refreshRuntimeAfterBundleImport()
-    }
-    return result
+    return restoreManagedSandboxBaseline()
   }),
   deleteSlot: t.procedure
     .input<{ name: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder } = await import("./config")
-      const { deleteSlot } = await import("./sandbox-service")
-      return deleteSlot(globalAgentsFolder, input.name)
+      return deleteManagedSandboxSlot(input.name)
     }),
   renameSlot: t.procedure
     .input<{ oldName: string; newName: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder } = await import("./config")
-      const { renameSlot } = await import("./sandbox-service")
-      return renameSlot(globalAgentsFolder, input.oldName, input.newName)
+      return renameManagedSandboxSlot(input.oldName, input.newName)
     }),
   importBundleToSandbox: t.procedure
     .input<{
@@ -4906,62 +3883,25 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder } = await import("./config")
-      const { createSlotFromCurrentState, switchToSlot } = await import("./sandbox-service")
-      const { importBundle, previewBundle } = await import("./bundle-service")
-
-      // Get bundle name for the slot metadata
-      const bundle = previewBundle(input.filePath)
-      const sourceBundleName = bundle?.manifest.name
-
-      // Reject reserved slot names to prevent overwriting the baseline
-      const { sanitizeSlotName } = await import("./sandbox-service")
-      if (sanitizeSlotName(input.slotName) === "default") {
-        return { success: false, errors: ["Cannot import a bundle into the reserved \"default\" baseline slot"] }
-      }
-
-      // Save baseline if needed, then create the new slot from current state
-      const slotResult = createSlotFromCurrentState(
-        globalAgentsFolder,
-        input.slotName,
-        { sourceBundleName }
-      )
-      if (!slotResult.success) {
-        return { success: false, errors: [slotResult.error || "Failed to create sandbox slot"] }
-      }
-
-      // Switch to the new slot
-      const switchResult = switchToSlot(globalAgentsFolder, input.slotName)
-      if (!switchResult.success) {
-        return { success: false, errors: [switchResult.error || "Failed to switch to sandbox slot"] }
-      }
-
-      // Import the bundle into the now-active slot
-      const importResult = await importBundle(input.filePath, globalAgentsFolder, {
-        conflictStrategy: input.conflictStrategy,
-        components: input.components,
+      return importManagedBundleToSandbox({
+        filePath: input.filePath,
+        slotName: input.slotName,
+        importOptions: {
+          conflictStrategy: input.conflictStrategy,
+          components: input.components,
+        },
       })
-
-      // Re-save the slot with the imported bundle state
-      const { saveCurrentAsSlot } = await import("./sandbox-service")
-      const saveResult = saveCurrentAsSlot(globalAgentsFolder, input.slotName, { sourceBundleName })
-      if (!saveResult.success) {
-        return { success: false, errors: [saveResult.error || "Failed to save sandbox slot after importing bundle"] }
-      }
-
-      await refreshRuntimeAfterBundleImport()
-      return importResult
     }),
 
   // Knowledge notes service handlers
   getAllKnowledgeNotes: t.procedure.action(async () => {
-    return knowledgeNotesService.getAllNotes()
+    return getManagedKnowledgeNotes()
   }),
 
   getKnowledgeNote: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.getNote(input.id)
+      return getManagedKnowledgeNote(input.id)
     }),
 
   saveKnowledgeNoteFromSummary: t.procedure
@@ -4974,19 +3914,7 @@ export const router = {
       conversationId?: string
     }>()
     .action(async ({ input }) => {
-      const note = knowledgeNotesService.createNoteFromSummary(
-        input.summary,
-        input.title,
-        input.userNotes,
-        input.tags,
-        input.conversationTitle,
-        input.conversationId,
-      )
-      if (!note) {
-        return { success: true, note: null, reason: "no_durable_content" as const }
-      }
-      const success = await knowledgeNotesService.saveNote(note)
-      return { success, note: success ? note : null }
+      return saveManagedKnowledgeNoteFromSummary(input)
     }),
 
   saveKnowledgeNote: t.procedure
@@ -4994,47 +3922,51 @@ export const router = {
       note: import("../shared/types").KnowledgeNote
     }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.saveNote(input.note)
+      const result = await saveManagedKnowledgeNote(input.note)
+      return result.success
     }),
 
   updateKnowledgeNote: t.procedure
     .input<{
       id: string
-      updates: Partial<Omit<import("../shared/types").KnowledgeNote, "id" | "createdAt">>
+      updates: Partial<
+        Omit<import("../shared/types").KnowledgeNote, "id" | "createdAt">
+      >
     }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.updateNote(input.id, input.updates)
+      const result = await updateManagedKnowledgeNote(input.id, input.updates)
+      return result.success
     }),
 
   deleteKnowledgeNote: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.deleteNote(input.id)
+      const result = await deleteManagedKnowledgeNote(input.id)
+      return result.success
     }),
 
   deleteMultipleKnowledgeNotes: t.procedure
     .input<{ ids: string[] }>()
     .action(async ({ input }) => {
-      const result = await knowledgeNotesService.deleteMultipleNotes(input.ids)
-      if (result.error) {
+      const result = await deleteMultipleManagedKnowledgeNotes(input.ids)
+      if (isManagedKnowledgeNoteFailure(result)) {
         throw new Error(result.error)
       }
       return result.deletedCount
     }),
 
-  deleteAllKnowledgeNotes: t.procedure
-    .action(async () => {
-      const result = await knowledgeNotesService.deleteAllNotes()
-      if (result.error) {
-        throw new Error(result.error)
-      }
-      return result.deletedCount
-    }),
+  deleteAllKnowledgeNotes: t.procedure.action(async () => {
+    const result = await deleteAllManagedKnowledgeNotes()
+    if (isManagedKnowledgeNoteFailure(result)) {
+      throw new Error(result.error)
+    }
+    return result.deletedCount
+  }),
 
   searchKnowledgeNotes: t.procedure
     .input<{ query: string }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.searchNotes(input.query)
+      return searchManagedKnowledgeNotes(input.query)
     }),
 
   // Summarization service handlers
@@ -5059,21 +3991,33 @@ export const router = {
     return loopService.getLoopStatuses()
   }),
 
+  getLoopSummaries: t.procedure.action(async () => {
+    return getManagedLoopSummaries(loopService)
+  }),
+
   openLoopTaskFile: t.procedure
     .input<{ loopId: string }>()
     .action(async ({ input }) => {
       const loop = loopService.getLoop(input.loopId)
       if (!loop) {
-        return { success: false, error: `Task with id ${input.loopId} not found` }
+        return {
+          success: false,
+          error: `Task with id ${input.loopId} not found`,
+        }
       }
 
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-      const { loadTasksLayer, taskIdToFilePath, writeTaskFile } = await import("./agents-files/tasks")
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } =
+        await import("./config")
+      const { getAgentsLayerPaths } =
+        await import("./agents-files/modular-config")
+      const { loadTasksLayer, taskIdToFilePath, writeTaskFile } =
+        await import("./agents-files/tasks")
 
       const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
       const workspaceDir = resolveWorkspaceAgentsFolder()
-      const workspaceLayer = workspaceDir ? getAgentsLayerPaths(workspaceDir) : null
+      const workspaceLayer = workspaceDir
+        ? getAgentsLayerPaths(workspaceDir)
+        : null
 
       let filePath: string | undefined
 
@@ -5098,13 +4042,15 @@ export const router = {
   saveLoop: t.procedure
     .input<{ loop: LoopConfig }>()
     .action(async ({ input }) => {
-      return { success: loopService.saveLoop(input.loop) }
+      const result = saveManagedLoop(loopService, input.loop)
+      return { success: result.success }
     }),
 
   deleteLoop: t.procedure
     .input<{ loopId: string }>()
     .action(async ({ input }) => {
-      return { success: loopService.deleteLoop(input.loopId) }
+      const result = deleteManagedLoop(loopService, input.loopId)
+      return { success: result.success }
     }),
 
   startLoop: t.procedure
@@ -5122,7 +4068,8 @@ export const router = {
   triggerLoop: t.procedure
     .input<{ loopId: string }>()
     .action(async ({ input }) => {
-      return { success: await loopService.triggerLoop(input.loopId) }
+      const result = await triggerManagedLoop(loopService, input.loopId)
+      return { success: result.success }
     }),
 
   startAllLoops: t.procedure.action(async () => {
@@ -5134,222 +4081,6 @@ export const router = {
     loopService.stopAllLoops()
     return { success: true }
   }),
-}
-
-// TTS Provider Implementation Functions
-
-type TTSGenerationResult = {
-  audio: ArrayBuffer
-  mimeType: string
-}
-
-function getOpenAITTSMimeType(responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"): string {
-  switch (responseFormat) {
-    case "mp3":
-      return "audio/mpeg"
-    case "opus":
-      return "audio/opus"
-    case "aac":
-      return "audio/aac"
-    case "flac":
-      return "audio/flac"
-    case "pcm":
-      return "audio/L16"
-    case "wav":
-    default:
-      return "audio/wav"
-  }
-}
-
-async function generateOpenAITTS(
-  text: string,
-  input: { voice?: string; model?: string; speed?: number },
-  config: Config
-): Promise<TTSGenerationResult> {
-  const model = input.model || config.openaiTtsModel || "gpt-4o-mini-tts"
-  const voice = input.voice || config.openaiTtsVoice || "alloy"
-  const speed = input.speed || config.openaiTtsSpeed || 1.0
-  const responseFormat = config.openaiTtsResponseFormat || "mp3"
-
-  const baseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-  const apiKey = config.openaiApiKey
-
-
-
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required for TTS")
-  }
-
-  const requestBody = {
-    model,
-    input: text,
-    voice,
-    speed,
-    response_format: responseFormat,
-  }
-
-
-
-  const response = await fetch(`${baseUrl}/audio/speech`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`OpenAI TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const audioBuffer = await response.arrayBuffer()
-
-  return {
-    audio: audioBuffer,
-    mimeType: getOpenAITTSMimeType(responseFormat),
-  }
-}
-
-async function generateGroqTTS(
-  text: string,
-  input: { voice?: string; model?: string },
-  config: Config
-): Promise<TTSGenerationResult> {
-  const model = input.model || config.groqTtsModel || "canopylabs/orpheus-v1-english"
-  // Choose default voice based on model - Arabic model should use Arabic voice
-  const defaultVoice = model === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy"
-  const voice = input.voice || config.groqTtsVoice || defaultVoice
-
-  const baseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-  const apiKey = config.groqApiKey
-
-
-
-  if (!apiKey) {
-    throw new Error("Groq API key is required for TTS")
-  }
-
-  const requestBody = {
-    model,
-    input: text,
-    voice,
-    response_format: "wav",
-  }
-
-
-
-  const response = await fetch(`${baseUrl}/audio/speech`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-
-
-  if (!response.ok) {
-    const errorText = await response.text()
-
-    // Check for specific error cases and provide helpful messages
-    if (errorText.includes("requires terms acceptance")) {
-      // The model parameter determines which terms page to show
-      const modelParam = model === "canopylabs/orpheus-arabic-saudi"
-        ? "canopylabs%2Forpheus-arabic-saudi"
-        : "canopylabs%2Forpheus-v1-english"
-      throw new Error(`Groq TTS model requires terms acceptance. Please visit https://console.groq.com/playground?model=${modelParam} and accept the terms when prompted, then try again.`)
-    }
-
-    throw new Error(`Groq TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const audioBuffer = await response.arrayBuffer()
-
-  return {
-    audio: audioBuffer,
-    mimeType: "audio/wav",
-  }
-}
-
-async function generateGeminiTTS(
-  text: string,
-  input: { voice?: string; model?: string },
-  config: Config
-): Promise<TTSGenerationResult> {
-  const model = input.model || config.geminiTtsModel || "gemini-2.5-flash-preview-tts"
-  const voice = input.voice || config.geminiTtsVoice || "Kore"
-
-  const baseUrl = config.geminiBaseUrl || "https://generativelanguage.googleapis.com"
-  const apiKey = config.geminiApiKey
-
-  if (!apiKey) {
-    throw new Error("Gemini API key is required for TTS")
-  }
-
-  const requestBody = {
-    contents: [{
-      parts: [{ text }]
-    }],
-    generationConfig: {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: {
-            voiceName: voice
-          }
-        }
-      }
-    }
-  }
-
-  const url = `${baseUrl}/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Gemini TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const result = await response.json()
-
-
-
-  const inlineAudioData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData
-  const audioData = inlineAudioData?.data
-
-  if (!audioData) {
-    throw new Error("No audio data received from Gemini TTS API")
-  }
-
-  // Convert base64 to ArrayBuffer
-  const binaryString = atob(audioData)
-  const bytes = new Uint8Array(binaryString.length)
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i)
-  }
-
-
-
-  return {
-    audio: bytes.buffer,
-    mimeType: inlineAudioData?.mimeType || "audio/L16",
-  }
 }
 
 export type Router = typeof router

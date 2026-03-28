@@ -22,6 +22,7 @@ async function loadIndexForHubInstall(
   const createSetupWindow = vi.fn()
   const showMainWindow = vi.fn()
   const stopListeningToKeyboardEvents = vi.fn(() => Promise.resolve())
+  const stopRemoteServer = vi.fn(() => Promise.resolve())
   const requestSingleInstanceLock = vi.fn(() => gotSingleInstanceLock)
   const releaseSingleInstanceLock = vi.fn()
   const quit = vi.fn()
@@ -126,7 +127,7 @@ async function loadIndexForHubInstall(
     startRemoteServer: vi.fn(() => Promise.resolve({ running: false })),
     printQRCodeToTerminal: vi.fn(),
     startRemoteServerForced: vi.fn(() => Promise.resolve({ running: false })),
-    stopRemoteServer: vi.fn(() => Promise.resolve()),
+    stopRemoteServer,
   }))
   vi.doMock("./acp-service", () => ({
     acpService: {
@@ -171,6 +172,7 @@ async function loadIndexForHubInstall(
     requestSingleInstanceLock,
     releaseSingleInstanceLock,
     stopListeningToKeyboardEvents,
+    stopRemoteServer,
     quit,
   }
 }
@@ -256,18 +258,19 @@ describe("Hub install handoff routing", () => {
   })
 
   it("stops the keyboard listener during before-quit cleanup", async () => {
-    const { handlers, quit, stopListeningToKeyboardEvents } =
+    const { handlers, quit, stopListeningToKeyboardEvents, stopRemoteServer } =
       await loadIndexForHubInstall(["electron"])
 
-    const beforeQuitHandler = handlers.get("before-quit")?.[0] as (
-      event: { preventDefault: () => void },
-    ) => Promise<void>
+    const beforeQuitHandler = handlers.get("before-quit")?.[0] as (event: {
+      preventDefault: () => void
+    }) => Promise<void>
     const event = { preventDefault: vi.fn() }
 
     await beforeQuitHandler(event)
 
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(stopListeningToKeyboardEvents).toHaveBeenCalledTimes(1)
+    expect(stopRemoteServer).toHaveBeenCalledTimes(1)
     expect(quit).toHaveBeenCalled()
   })
 
@@ -297,8 +300,12 @@ describe("Hub install handoff routing", () => {
   })
 
   it("reopens the main window when the app becomes active via the macOS app switcher", async () => {
-    const { handlers, showMainWindow, windows } = await loadIndexForHubInstall(["electron"])
-    const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+    const { handlers, showMainWindow, windows } = await loadIndexForHubInstall([
+      "electron",
+    ])
+    const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as
+      | (() => void)
+      | undefined
 
     expect(didBecomeActiveHandler).toBeTypeOf("function")
 
@@ -316,9 +323,14 @@ describe("Hub install handoff routing", () => {
     try {
       vi.setSystemTime(new Date("2026-03-20T12:00:00Z"))
 
-      const { handlers, showMainWindow, windows } = await loadIndexForHubInstall(["electron"])
-      const activateHandler = handlers.get("activate")?.[0] as (() => void) | undefined
-      const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as (() => void) | undefined
+      const { handlers, showMainWindow, windows } =
+        await loadIndexForHubInstall(["electron"])
+      const activateHandler = handlers.get("activate")?.[0] as
+        | (() => void)
+        | undefined
+      const didBecomeActiveHandler = handlers.get("did-become-active")?.[0] as
+        | (() => void)
+        | undefined
 
       windows.set("main", { id: "main" })
       showMainWindow.mockClear()

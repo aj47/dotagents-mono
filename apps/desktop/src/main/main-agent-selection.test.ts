@@ -15,6 +15,23 @@ describe("resolveMainAcpAgentSelection", () => {
     expect(result).toEqual({ resolvedName: "claude-code" })
   })
 
+  it("resolves ACP profile ids and unique prefixes through the shared selector rules", () => {
+    const profile = {
+      id: "augustus-profile",
+      name: "augustus",
+      displayName: "Augustus Prime",
+      enabled: true,
+      connection: { type: "acp", command: "auggie", args: ["--acp"] },
+    } as any
+
+    expect(resolveMainAcpAgentSelection("augustus-profile", [profile])).toEqual({
+      resolvedName: "augustus",
+    })
+    expect(resolveMainAcpAgentSelection("augustus-p", [profile])).toEqual({
+      resolvedName: "augustus",
+    })
+  })
+
   it("repairs stale selections when exactly one ACP-capable agent is available", () => {
     const result = resolveMainAcpAgentSelection("missing-agent", [
       {
@@ -26,6 +43,29 @@ describe("resolveMainAcpAgentSelection", () => {
     ])
 
     expect(result).toEqual({ resolvedName: "augustus", repairedName: "augustus" })
+  })
+
+  it("returns a clearer error when a shared selector query is ambiguous", () => {
+    const result = resolveMainAcpAgentSelection("agent-", [
+      {
+        id: "agent-alpha-profile",
+        name: "agent-alpha",
+        displayName: "Agent Alpha",
+        enabled: true,
+        connection: { type: "acp", command: "agent-alpha" },
+      } as any,
+      {
+        id: "agent-beta-profile",
+        name: "agent-beta",
+        displayName: "Agent Beta",
+        enabled: true,
+        connection: { type: "stdio", command: "agent-beta" },
+      } as any,
+    ])
+
+    expect(result).toEqual({
+      error: 'ACP main agent "agent-" matches multiple enabled ACP/stdio agents: agent-alpha, agent-beta. Configure mainAgentName to a more specific agent ID, name, or display name.',
+    })
   })
 
   it("returns a helpful error when multiple ACP-capable agents are available", () => {

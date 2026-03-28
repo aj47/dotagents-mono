@@ -16,6 +16,7 @@ The remote server starts automatically with the desktop app and exposes an HTTP 
 - Sending messages to agents
 - Managing conversations
 - Transcribing audio
+- Managing agent profiles
 - Managing MCP servers
 - Health checks
 
@@ -28,6 +29,7 @@ The remote server starts automatically with the desktop app and exposes an HTTP 
 Send a message to the agent and get a response.
 
 **Request:**
+
 ```json
 {
   "message": "Search for recent AI news",
@@ -45,6 +47,7 @@ Send a message to the agent and get a response.
 Continue an existing conversation.
 
 **Request:**
+
 ```json
 {
   "message": "Tell me more about the first result"
@@ -58,6 +61,7 @@ Continue an existing conversation.
 List all conversations.
 
 **Response:**
+
 ```json
 [
   {
@@ -84,6 +88,7 @@ Transcribe audio using the configured STT provider.
 **Request:** Multipart form data with audio file.
 
 **Response:**
+
 ```json
 {
   "text": "Search for the latest AI news",
@@ -99,6 +104,7 @@ Transcribe audio using the configured STT provider.
 List all configured MCP servers and their status.
 
 **Response:**
+
 ```json
 [
   {
@@ -114,6 +120,7 @@ List all configured MCP servers and their status.
 Execute an MCP tool directly.
 
 **Request:**
+
 ```json
 {
   "server": "github",
@@ -136,6 +143,129 @@ Emergency stop a specific agent session.
 
 Get current application settings (excluding sensitive data like API keys).
 
+### Agent Profiles
+
+#### `GET /v1/profiles`
+
+List user-selectable profiles and the current active profile ID. This route now shares the same current-profile catalog helper path that powers desktop profile pickers and headless `/status`.
+
+#### `GET /v1/profiles/current`
+
+Get the current active profile.
+
+#### `POST /v1/profiles/current`
+
+Switch the current active profile. This route reuses the same managed current-profile switch helper that desktop selection surfaces use, so disabled profiles are rejected before activation.
+
+**Request:**
+
+```json
+{
+  "profileId": "ops-agent"
+}
+```
+
+#### `GET /v1/agent-profiles`
+
+These routes share the same main-process profile manager that powers desktop Settings > Agents and the headless CLI profile commands.
+
+#### `GET /v1/agent-profiles`
+
+List agent profiles. Pass `?role=user-profile|delegation-target|external-agent` to filter the catalog.
+
+#### `GET /v1/agent-profiles/{id}`
+
+Get one agent profile with its connection, model, tool, skill, and property config.
+
+#### `POST /v1/agent-profiles`
+
+Create an agent profile.
+
+**Request:**
+
+```json
+{
+  "displayName": "Codex ACP",
+  "description": "OpenAI Codex via ACP",
+  "connectionType": "acp",
+  "connectionCommand": "codex-acp",
+  "connectionArgs": "--help",
+  "connectionCwd": "/Users/alice/project",
+  "enabled": true,
+  "autoSpawn": true
+}
+```
+
+You can also send a `connection` object instead of the flattened `connectionType` / `connectionCommand` / `connectionArgs` / `connectionBaseUrl` / `connectionCwd` fields.
+
+#### `PATCH /v1/agent-profiles/{id}`
+
+Update an agent profile. The request body accepts the same fields as create.
+
+#### `POST /v1/agent-profiles/{id}/toggle`
+
+Toggle an agent profile between enabled and disabled.
+
+#### `DELETE /v1/agent-profiles/{id}`
+
+Delete an agent profile. Built-in profiles cannot be deleted.
+
+#### `GET /v1/profiles/{id}/export`
+
+Export one agent profile as portable JSON. This route shares the same import/export helper that powers the headless CLI `/agent-export*` commands and desktop profile export flows.
+
+#### `POST /v1/profiles/import`
+
+Import one agent profile from portable JSON. This route shares the same validation path that powers the headless CLI `/agent-import*` commands and desktop profile import flows.
+
+**Request:**
+
+```json
+{
+  "profileJson": "{\n  \"version\": 1,\n  \"name\": \"Ops Agent\",\n  \"guidelines\": \"Keep changes surgical.\"\n}"
+}
+```
+
+### Repeat Tasks
+
+#### `GET /v1/loops`
+
+List repeat tasks with their merged runtime state.
+
+#### `POST /v1/loops`
+
+Create a repeat task.
+
+**Request:**
+
+```json
+{
+  "name": "Inbox sweep",
+  "prompt": "Check inbox for urgent mail",
+  "intervalMinutes": 15,
+  "enabled": true,
+  "runOnStartup": true,
+  "maxIterations": 4,
+  "profileId": "ops-agent"
+}
+```
+
+#### `PATCH /v1/loops/{id}`
+
+Update a repeat task. Set `"profileId": null` to clear the assigned agent and `"maxIterations": null` to clear the override.
+
+#### `POST /v1/loops/{id}/toggle`
+
+Toggle a repeat task between enabled and disabled.
+
+#### `POST /v1/loops/{id}/run`
+
+Trigger a repeat task immediately.
+
+#### `DELETE /v1/loops/{id}`
+
+Delete a repeat task.
+
 ### Health
 
 #### `GET /health`
@@ -143,6 +273,7 @@ Get current application settings (excluding sensitive data like API keys).
 Health check endpoint.
 
 **Response:**
+
 ```json
 {
   "status": "ok",

@@ -2,31 +2,112 @@ import Fastify, { FastifyInstance } from "fastify"
 import cors from "@fastify/cors"
 import { Server as MCPServer } from "@modelcontextprotocol/sdk/server/index.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-import { CallToolRequestSchema, ListToolsRequestSchema, isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  isInitializeRequest,
+} from "@modelcontextprotocol/sdk/types.js"
 import crypto from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import QRCode from "qrcode"
+import {
+  formatConversationHistoryMessages,
+  resolveChatModelSelection,
+} from "@dotagents/shared"
 import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
-import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
-import { processTranscriptWithAgentMode } from "./llm"
-import { processTranscriptWithACPAgent } from "./acp-main-agent"
-import { resolveMainAcpAgentSelection } from "./main-agent-selection"
-import { state, agentProcessManager, agentSessionStateManager } from "./state"
+import { mcpService } from "./mcp-service"
+import {
+  isHeadlessEnvironment,
+  printSharedRemoteServerQrCode,
+} from "./remote-server-qr"
+import { startSharedPromptRun } from "./agent-mode-runner"
+import { agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
+import {
+  getManagedConversation,
+  getManagedConversationHistory,
+  saveManagedConversation,
+} from "./conversation-management"
+import {
+  getManagedAvailableModels,
+  isManagedModelProviderId,
+  MANAGED_MODEL_PROVIDER_IDS,
+} from "./model-management"
+import {
+  buildRemoteServerBaseUrl,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_PORT,
+  isConnectableRemoteServerIpv6Address as isConnectableIpv6Address,
+  isLoopbackRemoteServerHost as isLoopbackHost,
+  isUnconnectableRemoteServerHostForMobilePairing as isUnconnectableHostForMobilePairing,
+  isWildcardRemoteServerHost as isWildcardBindHost,
+  normalizeRemoteServerHostForComparison as normalizeHostForComparison,
+} from "../shared/remote-server-url"
+import {
+  AgentProfile,
+  AgentProgressUpdate,
+  SessionProfileSnapshot,
+  LoopConfig,
+} from "../shared/types"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
-import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
-import { skillsService } from "./skills-service"
-import { knowledgeNotesService } from "./knowledge-notes-service"
-import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
+import {
+  sendMessageNotification,
+  isPushEnabled,
+  clearBadgeCount,
+} from "./push-notification-service"
+import {
+  createManagedKnowledgeNote,
+  deleteManagedKnowledgeNote,
+  getManagedKnowledgeNote,
+  getManagedKnowledgeNotes,
+  isManagedKnowledgeNoteFailure,
+  updateManagedKnowledgeNote,
+} from "./knowledge-note-management"
+import {
+  createManagedAgentProfile,
+  deleteManagedAgentProfile,
+  exportManagedAgentProfile,
+  getManagedAgentProfile,
+  getManagedAgentProfiles,
+  getManagedCurrentAgentProfile,
+  getManagedUserAgentProfiles,
+  importManagedAgentProfile,
+  setManagedCurrentAgentProfile,
+  toggleManagedAgentProfileEnabled,
+  updateManagedAgentProfile,
+} from "./agent-profile-management"
 import { isRuntimeTool } from "./runtime-tools"
-import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { agentProfileService } from "./agent-profile-service"
+import {
+  createManagedLoop,
+  deleteManagedLoop,
+  getManagedLoopSummaries,
+  getManagedLoopSummary,
+  saveManagedLoop,
+  toggleManagedLoopEnabled,
+  triggerManagedLoop,
+  updateManagedLoop,
+} from "./loop-management"
+import {
+  getManagedMcpServerSummaries,
+  setManagedMcpServerRuntimeEnabled,
+} from "./mcp-management"
+import { mcpManagementStore } from "./mcp-management-store"
+import {
+  getManagedCurrentProfileSkills,
+  toggleManagedSkillForCurrentProfile,
+} from "./profile-skill-management"
+import { summarizeLoop, summarizeLoops } from "./loop-summaries"
+import {
+  getManagedSettingsSnapshot,
+  getManagedSettingsUpdates,
+  saveManagedConfig,
+} from "./settings-management"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -66,9 +147,14 @@ function notifyConversationHistoryChanged(): void {
     const sendNotification = () => {
       pendingNotificationWebContentsIds.delete(win.webContents.id)
       try {
-        getRendererHandlers<RendererHandlers>(win.webContents).conversationHistoryChanged?.send()
+        getRendererHandlers<RendererHandlers>(
+          win.webContents,
+        ).conversationHistoryChanged?.send()
       } catch (err) {
-        diagnosticsService.logWarning("remote-server", `Failed to notify ${windowId} window about conversation history changes: ${err instanceof Error ? err.message : String(err)}`)
+        diagnosticsService.logWarning(
+          "remote-server",
+          `Failed to notify ${windowId} window about conversation history changes: ${err instanceof Error ? err.message : String(err)}`,
+        )
       }
     }
 
@@ -90,19 +176,86 @@ function notifyConversationHistoryChanged(): void {
   }
 }
 
+function serializeManagedAgentProfileSummary(profile: AgentProfile) {
+  return {
+    id: profile.id,
+    name: profile.name,
+    displayName: profile.displayName,
+    description: profile.description,
+    enabled: profile.enabled,
+    isBuiltIn: profile.isBuiltIn,
+    isUserProfile: profile.isUserProfile,
+    isAgentTarget: profile.isAgentTarget,
+    isDefault: profile.isDefault,
+    role: profile.role,
+    connectionType: profile.connection.type,
+    autoSpawn: profile.autoSpawn,
+    guidelines: profile.guidelines,
+    systemPrompt: profile.systemPrompt,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  }
+}
+
+function serializeManagedAgentProfile(profile: AgentProfile) {
+  return {
+    id: profile.id,
+    name: profile.name,
+    displayName: profile.displayName,
+    description: profile.description,
+    avatarDataUrl: profile.avatarDataUrl,
+    systemPrompt: profile.systemPrompt,
+    guidelines: profile.guidelines,
+    properties: profile.properties,
+    modelConfig: profile.modelConfig,
+    toolConfig: profile.toolConfig,
+    skillsConfig: profile.skillsConfig,
+    connection: profile.connection,
+    isStateful: profile.isStateful,
+    conversationId: profile.conversationId,
+    role: profile.role,
+    enabled: profile.enabled,
+    isBuiltIn: profile.isBuiltIn,
+    isUserProfile: profile.isUserProfile,
+    isAgentTarget: profile.isAgentTarget,
+    isDefault: profile.isDefault,
+    autoSpawn: profile.autoSpawn,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  }
+}
+
+function getManagedAgentProfileErrorStatusCode(errorCode: string): number {
+  switch (errorCode) {
+    case "invalid_input":
+      return 400
+    case "delete_forbidden":
+      return 403
+    case "not_found":
+      return 404
+    case "persist_failed":
+    default:
+      return 500
+  }
+}
+
 interface AcpMcpRequestContext {
   appSessionId: string
   profileSnapshot: SessionProfileSnapshot
 }
 
-const INVALID_ACP_SESSION_CONTEXT_ERROR = "Unauthorized: invalid ACP session context"
+const INVALID_ACP_SESSION_CONTEXT_ERROR =
+  "Unauthorized: invalid ACP session context"
 
 interface InjectedMcpTransportState {
   server: MCPServer
   transport: StreamableHTTPServerTransport
 }
 
-const injectedMcpTransportsByToken = new Map<string, Map<string, InjectedMcpTransportState>>()
+const injectedMcpTransportsByToken = new Map<
+  string,
+  Map<string, InjectedMcpTransportState>
+>()
 
 function getAcpMcpRequestContext(
   acpSessionToken: string | undefined,
@@ -110,13 +263,14 @@ function getAcpMcpRequestContext(
   if (!acpSessionToken) return undefined
 
   const acpSessionId = getAcpSessionForClientSessionToken(acpSessionToken)
-  const appSessionId = (acpSessionId
-    ? getAppSessionForAcpSession(acpSessionId)
-    : undefined) ?? getPendingAppSessionForClientSessionToken(acpSessionToken)
+  const appSessionId =
+    (acpSessionId ? getAppSessionForAcpSession(acpSessionId) : undefined) ??
+    getPendingAppSessionForClientSessionToken(acpSessionToken)
   if (!appSessionId) return undefined
 
-  const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(appSessionId)
-    ?? agentSessionTracker.getSessionProfileSnapshot(appSessionId)
+  const profileSnapshot =
+    agentSessionStateManager.getSessionProfileSnapshot(appSessionId) ??
+    agentSessionTracker.getSessionProfileSnapshot(appSessionId)
 
   if (!profileSnapshot) return undefined
 
@@ -128,11 +282,17 @@ function getAcpMcpRequestContext(
 
 function getInjectedRuntimeToolsForAcpSession(
   acpSessionToken: string | undefined,
-): { requestContext: AcpMcpRequestContext; tools: Array<{ name: string; description: string; inputSchema: unknown }> } | undefined {
+):
+  | {
+      requestContext: AcpMcpRequestContext
+      tools: Array<{ name: string; description: string; inputSchema: unknown }>
+    }
+  | undefined {
   const requestContext = getAcpMcpRequestContext(acpSessionToken)
   if (!requestContext) return undefined
 
-  const tools = mcpService.getAvailableToolsForProfile(requestContext.profileSnapshot.mcpServerConfig)
+  const tools = mcpService
+    .getAvailableToolsForProfile(requestContext.profileSnapshot.mcpServerConfig)
     .filter((tool) => isRuntimeTool(tool.name))
     .map((tool) => ({
       name: tool.name,
@@ -143,7 +303,9 @@ function getInjectedRuntimeToolsForAcpSession(
   return { requestContext, tools }
 }
 
-function getInjectedMcpTransportSessionMap(acpSessionToken: string): Map<string, InjectedMcpTransportState> {
+function getInjectedMcpTransportSessionMap(
+  acpSessionToken: string,
+): Map<string, InjectedMcpTransportState> {
   const existing = injectedMcpTransportsByToken.get(acpSessionToken)
   if (existing) return existing
 
@@ -166,7 +328,8 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
   )
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
+    const injectedRuntimeTools =
+      getInjectedRuntimeToolsForAcpSession(acpSessionToken)
     if (!injectedRuntimeTools) {
       throw new Error(INVALID_ACP_SESSION_CONTEXT_ERROR)
     }
@@ -175,7 +338,8 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
   })
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
+    const injectedRuntimeTools =
+      getInjectedRuntimeToolsForAcpSession(acpSessionToken)
     if (!injectedRuntimeTools) {
       return {
         content: [{ type: "text", text: INVALID_ACP_SESSION_CONTEXT_ERROR }],
@@ -186,7 +350,9 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
     const { name, arguments: args } = request.params
     if (!name || typeof name !== "string") {
       return {
-        content: [{ type: "text", text: "Missing or invalid 'name' parameter" }],
+        content: [
+          { type: "text", text: "Missing or invalid 'name' parameter" },
+        ],
         isError: true,
       }
     }
@@ -208,76 +374,16 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
 
     return result
       ? {
-        content: result.content,
-        isError: result.isError,
-      }
+          content: result.content,
+          isError: result.isError,
+        }
       : {
-        content: [{ type: "text", text: "Tool execution returned null" }],
-        isError: true,
-      }
+          content: [{ type: "text", text: "Tool execution returned null" }],
+          isError: true,
+        }
   })
 
   return server
-}
-
-/**
- * Detects if we're running in a headless/terminal environment
- * This helps auto-print QR codes when no GUI is available
- */
-function isHeadlessEnvironment(): boolean {
-  // Linux without DISPLAY or WAYLAND_DISPLAY is headless
-  if (process.platform === "linux") {
-    const hasDisplay = process.env.DISPLAY || process.env.WAYLAND_DISPLAY
-    if (!hasDisplay) {
-      return true
-    }
-  }
-  // Check for explicit terminal mode flag
-  if (process.env.DOTAGENTS_TERMINAL_MODE === "1") {
-    return true
-  }
-  return false
-}
-
-/**
- * Prints a QR code to the terminal for mobile app pairing
- * @param url The server URL (e.g., http://192.168.1.100:3210/v1)
- * @param apiKey The API key for authentication
- * @returns true if QR code was printed successfully, false on error
- */
-async function printTerminalQRCode(url: string, apiKey: string): Promise<boolean> {
-  const qrValue = `dotagents://config?baseUrl=${encodeURIComponent(url)}&apiKey=${encodeURIComponent(apiKey)}`
-
-  try {
-    // Generate QR code as terminal-friendly ASCII art
-    const qrString = await QRCode.toString(qrValue, {
-      type: "terminal",
-      small: true,
-      errorCorrectionLevel: "M"
-    })
-
-    console.log("\n" + "=".repeat(60))
-    console.log("📱 Mobile App Connection QR Code")
-    console.log("=".repeat(60))
-    console.log("\nScan this QR code with the DotAgents mobile app to connect:\n")
-    console.log(qrString)
-    console.log("Server URL:", url)
-    console.log("API Key:", redact(apiKey))
-    console.log("\n" + "=".repeat(60) + "\n")
-
-    diagnosticsService.logInfo("remote-server", "Terminal QR code printed for mobile app pairing")
-    return true
-  } catch (err) {
-    console.error("[Remote Server] Failed to generate terminal QR code:", err)
-    diagnosticsService.logError("remote-server", "Failed to generate terminal QR code", err)
-    return false
-  }
-}
-
-function redact(value?: string) {
-  if (!value) return ""
-  if (value.length <= 8) return "***"
-  return `${value.slice(0, 4)}...${value.slice(-4)}`
 }
 
 /**
@@ -290,51 +396,10 @@ interface ConnectableIpOptions {
   warn?: boolean
 }
 
-function normalizeHostForComparison(host: string): string {
-  const normalized = host.trim().toLowerCase()
-  if (normalized.startsWith("[") && normalized.endsWith("]")) {
-    return normalized.slice(1, -1)
-  }
-  return normalized
-}
-
-function isWildcardBindHost(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  return normalizedHost === "0.0.0.0" || normalizedHost === "::"
-}
-
-function isLoopbackHost(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  return normalizedHost === "127.0.0.1" || normalizedHost === "localhost" || normalizedHost === "::1"
-}
-
-function isConnectableIpv6Address(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  // Zone-scoped addresses (e.g. fe80::1%en0) are not reliable for QR/deep-link URLs.
-  if (normalizedHost.includes("%")) {
-    return false
-  }
-  // Exclude unspecified/loopback/link-local/multicast ranges.
-  if (normalizedHost === "::" || normalizedHost === "::1" || /^fe[89ab]/.test(normalizedHost) || normalizedHost.startsWith("ff")) {
-    return false
-  }
-  return true
-}
-
-function formatHostForHttpUrl(host: string): string {
-  const normalizedHost = host.trim()
-  // IPv6 literals must be bracketed in URLs: http://[::1]:3210/v1
-  if (normalizedHost.includes(":") && !normalizedHost.startsWith("[") && !normalizedHost.endsWith("]")) {
-    return `[${normalizedHost}]`
-  }
-  return normalizedHost
-}
-
-function buildRemoteServerBaseUrl(host: string, port: number): string {
-  return `http://${formatHostForHttpUrl(host)}:${port}/v1`
-}
-
-function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): string {
+function getConnectableIp(
+  bind: string,
+  options: ConnectableIpOptions = {},
+): string {
   const { warn = true } = options
   const normalizedBind = normalizeHostForComparison(bind)
 
@@ -343,8 +408,8 @@ function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): str
     if (warn) {
       console.warn(
         `[Remote Server] Warning: Server is bound to ${normalizedBind} (loopback only). ` +
-        `Mobile devices on the same network cannot connect. ` +
-        `Change bind address to 0.0.0.0 or your LAN IP for mobile access.`
+          `Mobile devices on the same network cannot connect. ` +
+          `Change bind address to 0.0.0.0 or your LAN IP for mobile access.`,
       )
     }
     return normalizedBind
@@ -371,7 +436,11 @@ function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): str
       if (addr.family === "IPv4" && !firstIpv4Address) {
         firstIpv4Address = addr.address
       }
-      if (addr.family === "IPv6" && !firstIpv6Address && isConnectableIpv6Address(addr.address)) {
+      if (
+        addr.family === "IPv6" &&
+        !firstIpv6Address &&
+        isConnectableIpv6Address(addr.address)
+      ) {
         firstIpv6Address = addr.address
       }
     }
@@ -393,14 +462,10 @@ function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): str
   if (warn) {
     const expectedFamily = wildcardWantsIpv6 ? "IPv6" : "IPv4"
     console.warn(
-      `[Remote Server] Warning: Could not find LAN ${expectedFamily} address. QR code will use ${normalizedBind} which may not be reachable from mobile devices.`
+      `[Remote Server] Warning: Could not find LAN ${expectedFamily} address. QR code will use ${normalizedBind} which may not be reachable from mobile devices.`,
     )
   }
   return normalizedBind
-}
-
-function isUnconnectableHostForMobilePairing(host: string): boolean {
-  return isWildcardBindHost(host) || isLoopbackHost(host)
 }
 
 function getConnectableBaseUrlForMobilePairing(
@@ -413,14 +478,6 @@ function getConnectableBaseUrlForMobilePairing(
     return undefined
   }
   return buildRemoteServerBaseUrl(connectableHost, port)
-}
-
-function resolveActiveModelId(cfg: any): string {
-  const provider = cfg.mcpToolsProviderId || "openai"
-  if (provider === "openai") return cfg.mcpToolsOpenaiModel || "openai"
-  if (provider === "groq") return cfg.mcpToolsGroqModel || "groq"
-  if (provider === "gemini") return cfg.mcpToolsGeminiModel || "gemini"
-  return String(provider)
 }
 
 function toOpenAIChatResponse(content: string, model: string) {
@@ -494,43 +551,6 @@ interface RunAgentOptions {
   onProgress?: (update: AgentProgressUpdate) => void
 }
 
-function formatConversationHistoryForApi(
-  history: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: any[]
-    toolResults?: any[]
-    timestamp?: number
-  }>
-): Array<{
-  role: "user" | "assistant" | "tool"
-  content: string
-  toolCalls?: Array<{ name: string; arguments: any }>
-  toolResults?: Array<{ success: boolean; content: string; error?: string }>
-  timestamp?: number
-}> {
-  return history.map((entry) => ({
-    role: entry.role,
-    content: entry.content,
-    toolCalls: entry.toolCalls?.map((tc: any) => ({
-      name: tc.name,
-      arguments: tc.arguments,
-    })),
-    toolResults: entry.toolResults?.map((tr: any) => {
-      const contentText = Array.isArray(tr.content)
-        ? tr.content.map((c: any) => c.text || c).join("\n")
-        : String(tr.content || "")
-      const isError = tr.isError ?? (tr.success === false)
-      return {
-        success: !isError,
-        content: contentText,
-        error: isError ? contentText : undefined,
-      }
-    }),
-    timestamp: entry.timestamp,
-  }))
-}
-
 async function runAgent(options: RunAgentOptions): Promise<{
   content: string
   conversationId: string
@@ -544,241 +564,60 @@ async function runAgent(options: RunAgentOptions): Promise<{
 }> {
   const { prompt, conversationId: inputConversationId, onProgress } = options
   const cfg = configStore.get()
-
-  // Set agent mode state for process management - ensure clean state
-  state.isAgentModeActive = true
-  state.shouldStopAgent = false
-  state.agentIterationCount = 0
-
-  // Load previous conversation history if conversationId is provided
-  let previousConversationHistory: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: any[]
-    toolResults?: any[]
-  }> | undefined
-  let conversationId = inputConversationId
-
-  // Create or continue conversation - matching tipc.ts createMcpTextInput logic
-  if (conversationId) {
-    // Add user message to existing conversation BEFORE processing
-    const updatedConversation = await conversationService.addMessageToConversation(
-      conversationId,
-      prompt,
-      "user"
-    )
-
-    if (updatedConversation) {
-      // Load conversation history excluding the message we just added (the current user input)
-      // This matches tipc.ts processWithAgentMode behavior
-      const messagesToConvert = updatedConversation.messages.slice(0, -1)
-
-
-
-      diagnosticsService.logInfo("remote-server", `Continuing conversation ${conversationId} with ${messagesToConvert.length} previous messages`)
-
-      previousConversationHistory = messagesToConvert.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        toolCalls: msg.toolCalls,
-        // Preserve timestamp for correct ordering in UI (matching tipc.ts)
-        timestamp: msg.timestamp,
-        // Convert toolResults from stored format to MCPToolResult format (matching tipc.ts)
-        toolResults: msg.toolResults?.map((tr) => ({
-          content: [
-            {
-              type: "text" as const,
-              text: tr.success ? tr.content : (tr.error || tr.content),
-            },
-          ],
-          isError: !tr.success,
-        })),
-      }))
-    } else {
-      // Conversation not found - create it with the provided ID to maintain session continuity
-      diagnosticsService.logInfo("remote-server", `Conversation ${conversationId} not found, creating with provided ID`)
-      const newConversation = await conversationService.createConversationWithId(conversationId, prompt, "user")
-      // Update conversationId to use the actual persisted ID (which may be sanitized)
-      // This ensures session lookup and later operations use the correct ID
-      conversationId = newConversation.id
-      // Mark that we've just created the conversation so we don't try to add another message below
-      previousConversationHistory = []
-      diagnosticsService.logInfo("remote-server", `Created new conversation with ID ${newConversation.id}`)
-    }
-  }
-
-  // Create a new conversation if none exists (only when no conversationId was provided at all)
-  if (!conversationId) {
-    const newConversation = await conversationService.createConversationWithId(
-      conversationService.generateConversationIdPublic(),
-      prompt,
-      "user"
-    )
-    conversationId = newConversation.id
-    diagnosticsService.logInfo("remote-server", `Created new conversation ${conversationId}`)
-  }
-
-  // Try to find and revive an existing session for this conversation (matching tipc.ts)
-  // Note: We use `conversationId` (which may be newly created) instead of `inputConversationId`
-  // to ensure we find sessions for both existing and newly created conversations.
-  // This fixes a bug where inputConversationId pointed to a non-existent conversation,
-  // causing session lookup to fail and creating duplicate sessions.
-  // Start snoozed unless remoteServerAutoShowPanel is enabled (affects both new and revived sessions)
   const startSnoozed = !cfg.remoteServerAutoShowPanel
-  let existingSessionId: string | undefined
-  if (conversationId) {
-    const foundSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-    if (foundSessionId) {
-      // Check if session is already active - if so, preserve its current snooze state
-      // This prevents unexpectedly hiding the progress UI for a session the user is watching
-      const existingSession = agentSessionTracker.getSession(foundSessionId)
-      const isAlreadyActive = existingSession && existingSession.status === "active"
-      const snoozeForRevive = isAlreadyActive ? existingSession.isSnoozed ?? false : startSnoozed
-      const revived = agentSessionTracker.reviveSession(foundSessionId, snoozeForRevive)
-      if (revived) {
-        existingSessionId = foundSessionId
-        diagnosticsService.logInfo("remote-server", `Revived existing session ${existingSessionId}`)
-      }
-    }
-  }
 
-  // Determine profile snapshot for session isolation
-  // If reusing an existing session, use its stored snapshot to maintain isolation
-  // Only capture a new snapshot when creating a new session
-  let profileSnapshot: SessionProfileSnapshot | undefined
-
-  if (existingSessionId) {
-    // Try to get the stored profile snapshot from the existing session
-    profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
-  }
-
-  // Only capture a new snapshot if we don't have one from an existing session
-  if (!profileSnapshot) {
-    const currentProfile = agentProfileService.getCurrentProfile()
-    if (currentProfile) {
-      profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-    }
-  }
-
-  // Start or reuse agent session
-  const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
-  const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+  const {
+    preparedContext: {
+      conversationId,
+      previousConversationHistory,
+      sessionId,
+      reusedExistingSession,
+    },
+    runPromise,
+  } = await startSharedPromptRun({
+    prompt,
+    requestedConversationId: inputConversationId,
+    startSnoozed,
+    preserveActiveSessionSnoozeState: true,
+    approvalMode: "dialog",
+    onProgress,
+  })
+  const sessionSummary = reusedExistingSession
+    ? `reused session ${sessionId}`
+    : "started a new session"
+  diagnosticsService.logInfo(
+    "remote-server",
+    previousConversationHistory.length > 0
+      ? `Prepared conversation ${conversationId} with ${previousConversationHistory.length} previous messages (${sessionSummary})`
+      : `Prepared conversation ${conversationId} for a new run (${sessionSummary})`,
+  )
 
   const loadFormattedConversationHistory = async () => {
-    const latestConversation = await conversationService.loadConversation(conversationId)
-    return formatConversationHistoryForApi(latestConversation?.messages || [])
+    const latestConversation =
+      await conversationService.loadConversation(conversationId)
+    return formatConversationHistoryMessages(latestConversation?.messages || [])
   }
 
   try {
-    if (cfg.mainAgentMode === "acp" && cfg.mainAgentName) {
-      const mainAgentSelection = resolveMainAcpAgentSelection(
-        cfg.mainAgentName,
-        agentProfileService.getAll(),
-        cfg.acpAgents || []
-      )
-
-      if ("error" in mainAgentSelection) {
-        diagnosticsService.logWarning("remote-server", mainAgentSelection.error)
-        return {
-          content: mainAgentSelection.error,
-          conversationId,
-          conversationHistory: await loadFormattedConversationHistory(),
-        }
-      }
-
-      const resolvedMainAgentName = mainAgentSelection.resolvedName
-      if (mainAgentSelection.repairedName && mainAgentSelection.repairedName !== cfg.mainAgentName) {
-        configStore.save({ ...cfg, mainAgentName: resolvedMainAgentName })
-        diagnosticsService.logInfo(
-          "remote-server",
-          `ACP main agent \"${cfg.mainAgentName}\" not found. Auto-switched to \"${resolvedMainAgentName}\".`
-        )
-      }
-
-      const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-      try {
-        const result = await processTranscriptWithACPAgent(prompt, {
-          agentName: resolvedMainAgentName,
-          conversationId,
-          sessionId,
-          runId,
-          onProgress,
-          profileSnapshot,
-        })
-
-        if (result.success) {
-          agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
-        } else {
-          agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
-        }
-
-        const formattedHistory = await loadFormattedConversationHistory()
-        notifyConversationHistoryChanged()
-
-        return {
-          content: result.response || result.error || "No response from agent",
-          conversationId,
-          conversationHistory: formattedHistory,
-        }
-      } finally {
-        agentSessionStateManager.cleanupSession(sessionId)
-      }
-    }
-
-    await mcpService.initialize()
-
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
-    }
-
-    const agentResult = await processTranscriptWithAgentMode(
-      prompt,
-      availableTools,
-      executeToolCall,
-      cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
-      previousConversationHistory,
-      conversationId,
-      sessionId, // Pass session ID for progress routing
-      onProgress, // Pass progress callback for SSE streaming
-      profileSnapshot, // Pass profile snapshot for session isolation
-    )
-
-    // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    const agentResult = await runPromise
 
     // Format conversation history for API response (convert MCPToolResult to ToolResult format)
-    const formattedHistory = formatConversationHistoryForApi(agentResult.conversationHistory)
+    const formattedHistory = await loadFormattedConversationHistory()
 
     // Notify renderer that conversation history has changed (for sidebar refresh)
     notifyConversationHistoryChanged()
 
-    return { content: agentResult.content, conversationId, conversationHistory: formattedHistory }
+    return {
+      content: agentResult.content,
+      conversationId,
+      conversationHistory: formattedHistory,
+    }
   } catch (error) {
-    // Mark session as errored
-    const errorMessage = getErrorMessage(error)
-    agentSessionTracker.errorSession(sessionId, errorMessage)
-
     // Conversation was already created/updated before agent execution started.
     // Refresh renderer history even on failure so UI reflects the latest persisted state.
     notifyConversationHistoryChanged()
 
     throw error
-  } finally {
-    // Clean up agent state to ensure next session starts fresh
-    state.isAgentModeActive = false
-    state.shouldStopAgent = false
-    state.agentIterationCount = 0
   }
 }
 
@@ -786,7 +625,12 @@ function recordHistory(transcript: string) {
   try {
     fs.mkdirSync(recordingsFolder, { recursive: true })
     const historyPath = path.join(recordingsFolder, "history.json")
-    let history: Array<{ id: string; createdAt: number; duration: number; transcript: string }>
+    let history: Array<{
+      id: string
+      createdAt: number
+      duration: number
+      transcript: string
+    }>
     try {
       history = JSON.parse(fs.readFileSync(historyPath, "utf8"))
     } catch {
@@ -815,7 +659,9 @@ function recordHistory(transcript: string) {
  * Used by --qr mode to ensure the server starts even if remoteServerEnabled is false.
  * Also skips the auto-print of QR codes since --qr mode handles that separately.
  */
-export async function startRemoteServerForced(options: { bindAddressOverride?: string } = {}) {
+export async function startRemoteServerForced(
+  options: { bindAddressOverride?: string } = {},
+) {
   return startRemoteServerInternal({
     forceEnabled: true,
     skipAutoPrintQR: true,
@@ -824,7 +670,10 @@ export async function startRemoteServerForced(options: { bindAddressOverride?: s
 }
 
 export async function startRemoteServer() {
-  return startRemoteServerInternal({ forceEnabled: false, skipAutoPrintQR: false })
+  return startRemoteServerInternal({
+    forceEnabled: false,
+    skipAutoPrintQR: false,
+  })
 }
 
 interface StartRemoteServerOptions {
@@ -833,8 +682,14 @@ interface StartRemoteServerOptions {
   bindAddressOverride?: string
 }
 
-async function startRemoteServerInternal(options: StartRemoteServerOptions = {}) {
-  const { forceEnabled = false, skipAutoPrintQR = false, bindAddressOverride } = options
+async function startRemoteServerInternal(
+  options: StartRemoteServerOptions = {},
+) {
+  const {
+    forceEnabled = false,
+    skipAutoPrintQR = false,
+    bindAddressOverride,
+  } = options
   const cfg = configStore.get()
   if (!forceEnabled && !cfg.remoteServerEnabled) {
     diagnosticsService.logInfo(
@@ -860,8 +715,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   lastError = undefined
   const logLevel = cfg.remoteServerLogLevel || "info"
-  const bind = bindAddressOverride || cfg.remoteServerBindAddress || "127.0.0.1"
-  const port = cfg.remoteServerPort || 3210
+  const bind =
+    bindAddressOverride ||
+    cfg.remoteServerBindAddress ||
+    DEFAULT_REMOTE_SERVER_BIND_ADDRESS
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
 
   const fastify = Fastify({ logger: { level: logLevel } })
 
@@ -906,10 +764,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       // Extract conversationId from request body (custom extension to OpenAI API)
       // Use undefined for absent/non-string values; treat empty string as absent
-      const rawConversationId = typeof body.conversation_id === "string" ? body.conversation_id : undefined
-      const conversationId = rawConversationId !== "" ? rawConversationId : undefined
+      const rawConversationId =
+        typeof body.conversation_id === "string"
+          ? body.conversation_id
+          : undefined
+      const conversationId =
+        rawConversationId !== "" ? rawConversationId : undefined
       if (conversationId) {
-        const conversationIdError = getConversationIdValidationError(conversationId)
+        const conversationIdError =
+          getConversationIdValidationError(conversationId)
         if (conversationIdError) {
           return reply.code(400).send({ error: conversationIdError })
         }
@@ -917,8 +780,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Check if client wants SSE streaming
       const isStreaming = body.stream === true
 
-      console.log("[remote-server] Chat request:", { conversationId: conversationId || "new", promptLength: prompt.length, streaming: isStreaming })
-      diagnosticsService.logInfo("remote-server", `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ""}${isStreaming ? " (streaming)" : ""}`)
+      console.log("[remote-server] Chat request:", {
+        conversationId: conversationId || "new",
+        promptLength: prompt.length,
+        streaming: isStreaming,
+      })
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ""}${isStreaming ? " (streaming)" : ""}`,
+      )
 
       if (isStreaming) {
         // SSE streaming mode
@@ -927,7 +797,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
+          Connection: "keep-alive",
           "Access-Control-Allow-Origin": requestOrigin,
           "Access-Control-Allow-Credentials": "true",
         })
@@ -948,7 +818,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           // Record as if user submitted a text input
           recordHistory(result.content)
 
-          const model = resolveActiveModelId(configStore.get())
+          const { model } = resolveChatModelSelection(configStore.get())
 
           // Send final "done" event with full response data
           writeSSE({
@@ -963,12 +833,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
           // Send push notification by default if tokens are registered
           // Client can set send_push_notification: false to explicitly disable
-          const shouldSendPush = body.send_push_notification !== false && isPushEnabled()
+          const shouldSendPush =
+            body.send_push_notification !== false && isPushEnabled()
           if (shouldSendPush) {
-            const conversationTitle = prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
+            const conversationTitle =
+              prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
             // Fire and forget - don't block the response
-            sendMessageNotification(result.conversationId, conversationTitle, result.content).catch((err) => {
-              diagnosticsService.logWarning("remote-server", "Failed to send push notification", err)
+            sendMessageNotification(
+              result.conversationId,
+              conversationTitle,
+              result.content,
+            ).catch((err) => {
+              diagnosticsService.logWarning(
+                "remote-server",
+                "Failed to send push notification",
+                err,
+              )
             })
           }
         } catch (error: any) {
@@ -991,20 +871,33 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Record as if user submitted a text input
       recordHistory(result.content)
 
-      const model = resolveActiveModelId(configStore.get())
+      const { model } = resolveChatModelSelection(configStore.get())
       // Return standard OpenAI response with conversation_id as custom field
       const response = toOpenAIChatResponse(result.content, model)
 
-      console.log("[remote-server] Chat response:", { conversationId: result.conversationId, responseLength: result.content.length })
+      console.log("[remote-server] Chat response:", {
+        conversationId: result.conversationId,
+        responseLength: result.content.length,
+      })
 
       // Send push notification by default if tokens are registered
       // Client can set send_push_notification: false to explicitly disable
-      const shouldSendPush = body.send_push_notification !== false && isPushEnabled()
+      const shouldSendPush =
+        body.send_push_notification !== false && isPushEnabled()
       if (shouldSendPush) {
-        const conversationTitle = prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
+        const conversationTitle =
+          prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
         // Fire and forget - don't block the response
-        sendMessageNotification(result.conversationId, conversationTitle, result.content).catch((err) => {
-          diagnosticsService.logWarning("remote-server", "Failed to send push notification", err)
+        sendMessageNotification(
+          result.conversationId,
+          conversationTitle,
+          result.content,
+        ).catch((err) => {
+          diagnosticsService.logWarning(
+            "remote-server",
+            "Failed to send push notification",
+            err,
+          )
         })
       }
 
@@ -1020,7 +913,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   })
 
   fastify.get("/v1/models", async (_req, reply) => {
-    const model = resolveActiveModelId(configStore.get())
+    const { model } = resolveChatModelSelection(configStore.get())
     return reply.send({
       object: "list",
       data: [{ id: model, object: "model", owned_by: "system" }],
@@ -1033,17 +926,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const params = req.params as { providerId: string }
       const providerId = params.providerId
 
-      const validProviders = ["openai", "groq", "gemini"]
-      if (!validProviders.includes(providerId)) {
-        return reply.code(400).send({ error: `Invalid provider: ${providerId}. Valid providers: ${validProviders.join(", ")}` })
+      if (!isManagedModelProviderId(providerId)) {
+        return reply.code(400).send({
+          error: `Invalid provider: ${providerId}. Valid providers: ${MANAGED_MODEL_PROVIDER_IDS.join(", ")}`,
+        })
       }
 
-      const { fetchAvailableModels } = await import("./models-service")
-      const models = await fetchAvailableModels(providerId)
+      const models = await getManagedAvailableModels(providerId)
 
       return reply.send({
         providerId,
-        models: models.map(m => ({
+        models: models.map((m) => ({
           id: m.id,
           name: m.name,
           description: m.description,
@@ -1051,8 +944,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         })),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to fetch models", error)
-      return reply.code(500).send({ error: error?.message || "Failed to fetch models" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to fetch models",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to fetch models" })
     }
   })
 
@@ -1063,10 +962,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // GET /v1/profiles - List all profiles
   fastify.get("/v1/profiles", async (_req, reply) => {
     try {
-      const profiles = agentProfileService.getUserProfiles()
-      const currentProfile = agentProfileService.getCurrentProfile()
+      const profiles = getManagedUserAgentProfiles()
+      const currentProfile = getManagedCurrentAgentProfile()
       return reply.send({
-        profiles: profiles.map(p => ({
+        profiles: profiles.map((p) => ({
           id: p.id,
           name: p.displayName,
           isDefault: p.isDefault,
@@ -1076,7 +975,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         currentProfileId: currentProfile?.id,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get profiles", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get profiles",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get profiles" })
     }
   })
@@ -1084,7 +987,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // GET /v1/profiles/current - Get current profile details
   fastify.get("/v1/profiles/current", async (_req, reply) => {
     try {
-      const profile = agentProfileService.getCurrentProfile()
+      const profile = getManagedCurrentAgentProfile()
       if (!profile) {
         return reply.code(404).send({ error: "No current profile set" })
       }
@@ -1098,7 +1001,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updatedAt: profile.updatedAt,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get current profile", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get current profile",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get current profile" })
     }
   })
@@ -1111,17 +1018,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (!profileId || typeof profileId !== "string") {
         return reply.code(400).send({ error: "Missing or invalid profileId" })
       }
-      const profile = agentProfileService.setCurrentProfileStrict(profileId)
-      // Apply the profile's MCP configuration
-      const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
-      mcpService.applyProfileMcpConfig(
-        mcpServerConfig?.disabledServers,
-        mcpServerConfig?.disabledTools,
-        mcpServerConfig?.allServersDisabledByDefault,
-        mcpServerConfig?.enabledServers,
-          mcpServerConfig?.enabledRuntimeTools,
+      const result = setManagedCurrentAgentProfile(profileId)
+      if (!result.success) {
+        return reply
+          .code(result.errorCode === "not_found" ? 404 : 400)
+          .send({ error: result.error })
+      }
+      const profile = result.profile
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Switched to profile: ${profile.displayName}`,
       )
-      diagnosticsService.logInfo("remote-server", `Switched to profile: ${profile.displayName}`)
       return reply.send({
         success: true,
         profile: {
@@ -1131,10 +1038,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         },
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to set current profile", error)
-      // Return 404 if profile was not found, otherwise 500
-      const isNotFound = error?.message?.includes("not found")
-      return reply.code(isNotFound ? 404 : 500).send({ error: error?.message || "Failed to set current profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to set current profile",
+        error,
+      )
+      return reply.code(500).send({
+        error: error?.message || "Failed to set current profile",
+      })
     }
   })
 
@@ -1142,12 +1053,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.get("/v1/profiles/:id/export", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const profileJson = agentProfileService.exportProfile(params.id)
-      return reply.send({ profileJson })
+      const result = exportManagedAgentProfile(params.id)
+      if (!result.success) {
+        return reply
+          .code(result.errorCode === "not_found" ? 404 : 500)
+          .send({ error: result.error })
+      }
+      return reply.send({ profileJson: result.profileJson })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to export profile", error)
-      const isNotFound = error?.message?.includes("not found")
-      return reply.code(isNotFound ? 404 : 500).send({ error: error?.message || "Failed to export profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to export profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to export profile" })
     }
   })
 
@@ -1159,8 +1080,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (!profileJson || typeof profileJson !== "string") {
         return reply.code(400).send({ error: "Missing or invalid profileJson" })
       }
-      const profile = agentProfileService.importProfile(profileJson)
-      diagnosticsService.logInfo("remote-server", `Imported profile: ${profile.displayName}`)
+      const result = importManagedAgentProfile(profileJson)
+      if (!result.success) {
+        return reply
+          .code(result.errorCode === "invalid_input" ? 400 : 500)
+          .send({ error: result.error })
+      }
+      const profile = result.profile
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Imported profile: ${profile.displayName}`,
+      )
       return reply.send({
         success: true,
         profile: {
@@ -1170,34 +1100,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         },
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to import profile", error)
-      // Return 400 for JSON/validation errors, 500 for server errors
-      const errorMessage = (error?.message ?? "").toLowerCase()
-      const isValidationError = error instanceof SyntaxError ||
-        errorMessage.includes("json") ||
-        errorMessage.includes("invalid") ||
-        errorMessage.includes("missing")
-      return reply.code(isValidationError ? 400 : 500).send({ error: error?.message || "Failed to import profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to import profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to import profile" })
     }
   })
 
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get("/v1/mcp/servers", async (_req, reply) => {
     try {
-      const serverStatus = mcpService.getServerStatus()
-      const servers = Object.entries(serverStatus)
-        .map(([name, status]) => ({
-          name,
-          connected: status.connected,
-          toolCount: status.toolCount,
-          enabled: status.runtimeEnabled && !status.configDisabled,
-          runtimeEnabled: status.runtimeEnabled,
-          configDisabled: status.configDisabled,
-          error: status.error,
-        }))
+      const servers = getManagedMcpServerSummaries(mcpManagementStore)
       return reply.send({ servers })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get MCP servers", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get MCP servers",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get MCP servers" })
     }
   })
@@ -1211,140 +1135,54 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const enabled = body?.enabled
 
       if (typeof enabled !== "boolean") {
-        return reply.code(400).send({ error: "Missing or invalid 'enabled' boolean" })
+        return reply
+          .code(400)
+          .send({ error: "Missing or invalid 'enabled' boolean" })
       }
 
-      const success = mcpService.setServerRuntimeEnabled(serverName, enabled)
-      if (!success) {
-        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      const result = setManagedMcpServerRuntimeEnabled(
+        serverName,
+        enabled,
+        mcpManagementStore,
+      )
+      if (!result.success) {
+        return reply
+          .code(404)
+          .send({ error: result.error || `Server '${serverName}' not found` })
       }
 
-      diagnosticsService.logInfo("remote-server", `Toggled MCP server ${serverName} to ${enabled ? "enabled" : "disabled"}`)
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Toggled MCP server ${serverName} to ${enabled ? "enabled" : "disabled"}`,
+      )
       return reply.send({
         success: true,
         server: serverName,
         enabled,
+        state: result.server?.state,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to toggle MCP server", error)
-      return reply.code(500).send({ error: error?.message || "Failed to toggle MCP server" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to toggle MCP server",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to toggle MCP server" })
     }
   })
 
   // GET /v1/settings - Get relevant settings for mobile app
   fastify.get("/v1/settings", async (_req, reply) => {
     try {
-      const cfg = configStore.get()
-      const { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } = await import("@dotagents/shared")
-      const builtInPresets = getBuiltInModelPresets()
-      const savedPresets = cfg.modelPresets || []
-
-      // Merge built-in presets with any saved overrides (e.g., edited baseUrl/name)
-      // and include custom (non-built-in) presets
-      const builtInIds = new Set(builtInPresets.map(p => p.id))
-      const mergedPresets = builtInPresets.map(builtIn => {
-        const savedOverride = savedPresets.find(p => p.id === builtIn.id)
-        if (savedOverride) {
-          // Apply saved overrides to built-in preset
-          return { ...builtIn, ...savedOverride }
-        }
-        return builtIn
-      })
-      // Filter custom presets by excluding any IDs that match built-in presets
-      // This prevents duplicates from older entries where isBuiltIn was unset
-      const customPresets = savedPresets.filter(p => !builtInIds.has(p.id))
-
-      return reply.send({
-        // Model settings
-        mcpToolsProviderId: cfg.mcpToolsProviderId || "openai",
-        mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
-        mcpToolsGroqModel: cfg.mcpToolsGroqModel,
-        mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
-        // OpenAI compatible preset settings
-        currentModelPresetId: cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID,
-        availablePresets: [...mergedPresets, ...customPresets].map(p => ({
-          id: p.id,
-          name: p.name,
-          baseUrl: p.baseUrl,
-          isBuiltIn: p.isBuiltIn ?? false,
-        })),
-        predefinedPrompts: (cfg.predefinedPrompts || []).map(prompt => ({
-          id: prompt.id,
-          name: prompt.name,
-          content: prompt.content,
-          createdAt: prompt.createdAt,
-          updatedAt: prompt.updatedAt,
-        })),
-        // Feature toggles
-        transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
-        mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? false,
-        ttsEnabled: cfg.ttsEnabled ?? true,
-        whatsappEnabled: cfg.whatsappEnabled ?? false,
-        // Agent settings
-        mcpMaxIterations: cfg.mcpMaxIterations ?? 10,
-        // Streamer Mode
-        streamerModeEnabled: cfg.streamerModeEnabled ?? false,
-        // Speech-to-Text
-        sttLanguage: cfg.sttLanguage ?? "",
-        transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
-        transcriptPostProcessingPrompt: cfg.transcriptPostProcessingPrompt ?? "",
-        // Text-to-Speech
-        ttsAutoPlay: cfg.ttsAutoPlay ?? true,
-        ttsPreprocessingEnabled: cfg.ttsPreprocessingEnabled ?? true,
-        ttsRemoveCodeBlocks: cfg.ttsRemoveCodeBlocks ?? true,
-        ttsRemoveUrls: cfg.ttsRemoveUrls ?? true,
-        ttsConvertMarkdown: cfg.ttsConvertMarkdown ?? true,
-        ttsUseLLMPreprocessing: cfg.ttsUseLLMPreprocessing ?? false,
-        // Agent settings (extended)
-        mainAgentMode: cfg.mainAgentMode ?? "api",
-        mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
-        mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
-        mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
-        dualModelEnabled: cfg.dualModelEnabled ?? false,
-        mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? true,
-        // Tool Execution
-        mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
-        mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? true,
-        mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
-        // WhatsApp (extended)
-        whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
-        whatsappAutoReply: cfg.whatsappAutoReply ?? false,
-        whatsappLogMessages: cfg.whatsappLogMessages ?? false,
-        // Langfuse
-        langfuseEnabled: cfg.langfuseEnabled ?? false,
-        langfusePublicKey: cfg.langfusePublicKey ?? "",
-        langfuseSecretKey: cfg.langfuseSecretKey ? "••••••••" : "",
-        langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
-        // STT/TTS/Post-Processing Provider settings
-        sttProviderId: cfg.sttProviderId || "openai",
-        openaiSttModel: cfg.openaiSttModel || "whisper-1",
-        groqSttModel: cfg.groqSttModel || "whisper-large-v3-turbo",
-        ttsProviderId: cfg.ttsProviderId || "openai",
-        transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || "openai",
-        transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || "",
-        transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || "",
-        transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || "",
-        // ACP Agent settings
-        mainAgentName: cfg.mainAgentName || "",
-        acpInjectRuntimeTools: cfg.acpInjectRuntimeTools !== false,
-        // TTS voice/model per provider
-        openaiTtsModel: cfg.openaiTtsModel || "gpt-4o-mini-tts",
-        openaiTtsVoice: cfg.openaiTtsVoice || "alloy",
-        openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
-        groqTtsModel: cfg.groqTtsModel || "canopylabs/orpheus-v1-english",
-        groqTtsVoice: cfg.groqTtsVoice || "autumn",
-        geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash-preview-tts",
-        geminiTtsVoice: cfg.geminiTtsVoice || "Kore",
-        // ACP Agent list for agent selection
-        acpAgents: agentProfileService.getAll()
-          .filter(p => p.connection.type === 'acp' && p.enabled !== false)
-          .map(p => ({ name: p.name, displayName: p.displayName })),
-        // Session History (pinned/archived conversation IDs)
-        pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds) ? cfg.pinnedSessionIds.filter((id: unknown): id is string => typeof id === 'string') : [],
-        archivedSessionIds: Array.isArray(cfg.archivedSessionIds) ? cfg.archivedSessionIds.filter((id: unknown): id is string => typeof id === 'string') : [],
-      })
+      return reply.send(getManagedSettingsSnapshot())
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get settings", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get settings",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get settings" })
     }
   })
@@ -1353,242 +1191,32 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.patch("/v1/settings", async (req, reply) => {
     try {
       const body = req.body as any
-      const cfg = configStore.get()
-      const updates: Partial<typeof cfg> = {}
-
-      // Only allow updating specific settings
-      if (typeof body.transcriptPostProcessingEnabled === "boolean") {
-        updates.transcriptPostProcessingEnabled = body.transcriptPostProcessingEnabled
-      }
-      if (typeof body.mcpRequireApprovalBeforeToolCall === "boolean") {
-        updates.mcpRequireApprovalBeforeToolCall = body.mcpRequireApprovalBeforeToolCall
-      }
-      if (typeof body.ttsEnabled === "boolean") {
-        updates.ttsEnabled = body.ttsEnabled
-      }
-      if (typeof body.whatsappEnabled === "boolean") {
-        updates.whatsappEnabled = body.whatsappEnabled
-      }
-      if (typeof body.mcpMaxIterations === "number" && body.mcpMaxIterations >= 1 && body.mcpMaxIterations <= 100) {
-        // Coerce to integer to avoid surprising iteration counts with floats
-        updates.mcpMaxIterations = Math.floor(body.mcpMaxIterations)
-      }
-      // Model settings
-      const validProviders = ["openai", "groq", "gemini"]
-      if (typeof body.mcpToolsProviderId === "string" && validProviders.includes(body.mcpToolsProviderId)) {
-        updates.mcpToolsProviderId = body.mcpToolsProviderId as "openai" | "groq" | "gemini"
-      }
-      if (typeof body.mcpToolsOpenaiModel === "string") {
-        updates.mcpToolsOpenaiModel = body.mcpToolsOpenaiModel
-      }
-      if (typeof body.mcpToolsGroqModel === "string") {
-        updates.mcpToolsGroqModel = body.mcpToolsGroqModel
-      }
-      if (typeof body.mcpToolsGeminiModel === "string") {
-        updates.mcpToolsGeminiModel = body.mcpToolsGeminiModel
-      }
-      // OpenAI compatible preset - validate against known preset IDs
-      if (typeof body.currentModelPresetId === "string") {
-        const { getBuiltInModelPresets } = await import("@dotagents/shared")
-        const builtInPresets = getBuiltInModelPresets()
-        const savedPresets = cfg.modelPresets || []
-        const builtInIds = new Set(builtInPresets.map(p => p.id))
-        const allValidIds = new Set([...builtInIds, ...savedPresets.filter(p => !builtInIds.has(p.id)).map(p => p.id)])
-
-        if (allValidIds.has(body.currentModelPresetId)) {
-          updates.currentModelPresetId = body.currentModelPresetId
-        }
-        // If preset ID is invalid, silently ignore to avoid breaking client
-      }
-      // Streamer Mode
-      if (typeof body.streamerModeEnabled === "boolean") {
-        updates.streamerModeEnabled = body.streamerModeEnabled
-      }
-      // Speech-to-Text
-      if (typeof body.sttLanguage === "string") {
-        updates.sttLanguage = body.sttLanguage
-      }
-      if (typeof body.transcriptionPreviewEnabled === "boolean") {
-        updates.transcriptionPreviewEnabled = body.transcriptionPreviewEnabled
-      }
-      if (typeof body.transcriptPostProcessingPrompt === "string") {
-        updates.transcriptPostProcessingPrompt = body.transcriptPostProcessingPrompt
-      }
-      // Text-to-Speech
-      if (typeof body.ttsAutoPlay === "boolean") {
-        updates.ttsAutoPlay = body.ttsAutoPlay
-      }
-      if (typeof body.ttsPreprocessingEnabled === "boolean") {
-        updates.ttsPreprocessingEnabled = body.ttsPreprocessingEnabled
-      }
-      if (typeof body.ttsRemoveCodeBlocks === "boolean") {
-        updates.ttsRemoveCodeBlocks = body.ttsRemoveCodeBlocks
-      }
-      if (typeof body.ttsRemoveUrls === "boolean") {
-        updates.ttsRemoveUrls = body.ttsRemoveUrls
-      }
-      if (typeof body.ttsConvertMarkdown === "boolean") {
-        updates.ttsConvertMarkdown = body.ttsConvertMarkdown
-      }
-      if (typeof body.ttsUseLLMPreprocessing === "boolean") {
-        updates.ttsUseLLMPreprocessing = body.ttsUseLLMPreprocessing
-      }
-      // Agent settings
-      const validAgentModes = ["api", "acp"]
-      if (typeof body.mainAgentMode === "string" && validAgentModes.includes(body.mainAgentMode)) {
-        updates.mainAgentMode = body.mainAgentMode as "api" | "acp"
-      }
-      if (typeof body.mcpMessageQueueEnabled === "boolean") {
-        updates.mcpMessageQueueEnabled = body.mcpMessageQueueEnabled
-      }
-      if (typeof body.mcpVerifyCompletionEnabled === "boolean") {
-        updates.mcpVerifyCompletionEnabled = body.mcpVerifyCompletionEnabled
-      }
-      if (typeof body.mcpFinalSummaryEnabled === "boolean") {
-        updates.mcpFinalSummaryEnabled = body.mcpFinalSummaryEnabled
-      }
-
-      if (typeof body.dualModelEnabled === "boolean") {
-        updates.dualModelEnabled = body.dualModelEnabled
-      }
-
-      if (typeof body.mcpUnlimitedIterations === "boolean") {
-        updates.mcpUnlimitedIterations = body.mcpUnlimitedIterations
-      }
-      // Tool Execution
-      if (typeof body.mcpContextReductionEnabled === "boolean") {
-        updates.mcpContextReductionEnabled = body.mcpContextReductionEnabled
-      }
-      if (typeof body.mcpToolResponseProcessingEnabled === "boolean") {
-        updates.mcpToolResponseProcessingEnabled = body.mcpToolResponseProcessingEnabled
-      }
-      if (typeof body.mcpParallelToolExecution === "boolean") {
-        updates.mcpParallelToolExecution = body.mcpParallelToolExecution
-      }
-      // WhatsApp (extended)
-      if (Array.isArray(body.whatsappAllowFrom)) {
-        updates.whatsappAllowFrom = body.whatsappAllowFrom.filter((n: unknown) => typeof n === "string")
-      }
-      if (typeof body.whatsappAutoReply === "boolean") {
-        updates.whatsappAutoReply = body.whatsappAutoReply
-      }
-      if (typeof body.whatsappLogMessages === "boolean") {
-        updates.whatsappLogMessages = body.whatsappLogMessages
-      }
-      // Langfuse
-      if (typeof body.langfuseEnabled === "boolean") {
-        updates.langfuseEnabled = body.langfuseEnabled
-      }
-      if (typeof body.langfusePublicKey === "string") {
-        updates.langfusePublicKey = body.langfusePublicKey
-      }
-      if (typeof body.langfuseSecretKey === "string" && body.langfuseSecretKey !== "••••••••") {
-        updates.langfuseSecretKey = body.langfuseSecretKey
-      }
-      if (typeof body.langfuseBaseUrl === "string") {
-        updates.langfuseBaseUrl = body.langfuseBaseUrl
-      }
-      // STT Provider
-      const validSttProviders = ["openai", "groq", "parakeet"]
-      if (typeof body.sttProviderId === "string" && validSttProviders.includes(body.sttProviderId)) {
-        updates.sttProviderId = body.sttProviderId as "openai" | "groq" | "parakeet"
-      }
-      if (typeof body.openaiSttModel === "string") {
-        updates.openaiSttModel = body.openaiSttModel
-      }
-      if (typeof body.groqSttModel === "string") {
-        updates.groqSttModel = body.groqSttModel
-      }
-      // TTS Provider
-      const validTtsProviders = ["openai", "groq", "gemini", "kitten", "supertonic"]
-      if (typeof body.ttsProviderId === "string" && validTtsProviders.includes(body.ttsProviderId)) {
-        updates.ttsProviderId = body.ttsProviderId as "openai" | "groq" | "gemini" | "kitten" | "supertonic"
-      }
-      // Transcript Post-Processing Provider
-      const validPostProcessingProviders = ["openai", "groq", "gemini"]
-      if (typeof body.transcriptPostProcessingProviderId === "string" && validPostProcessingProviders.includes(body.transcriptPostProcessingProviderId)) {
-        updates.transcriptPostProcessingProviderId = body.transcriptPostProcessingProviderId as "openai" | "groq" | "gemini"
-      }
-      if (typeof body.transcriptPostProcessingOpenaiModel === "string") {
-        updates.transcriptPostProcessingOpenaiModel = body.transcriptPostProcessingOpenaiModel
-      }
-      if (typeof body.transcriptPostProcessingGroqModel === "string") {
-        updates.transcriptPostProcessingGroqModel = body.transcriptPostProcessingGroqModel
-      }
-      if (typeof body.transcriptPostProcessingGeminiModel === "string") {
-        updates.transcriptPostProcessingGeminiModel = body.transcriptPostProcessingGeminiModel
-      }
-      // ACP Agent settings
-      if (typeof body.mainAgentName === "string") {
-        updates.mainAgentName = body.mainAgentName
-      }
-      if (typeof body.acpInjectRuntimeTools === "boolean") {
-        updates.acpInjectRuntimeTools = body.acpInjectRuntimeTools
-      }
-      // OpenAI TTS settings
-      if (typeof body.openaiTtsModel === "string") {
-        updates.openaiTtsModel = body.openaiTtsModel as "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd"
-      }
-      if (typeof body.openaiTtsVoice === "string") {
-        updates.openaiTtsVoice = body.openaiTtsVoice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
-      }
-      if (typeof body.openaiTtsSpeed === "number" && body.openaiTtsSpeed >= 0.25 && body.openaiTtsSpeed <= 4.0) {
-        updates.openaiTtsSpeed = body.openaiTtsSpeed
-      }
-      // Groq TTS settings
-      const validGroqTtsModels = ["canopylabs/orpheus-v1-english", "canopylabs/orpheus-arabic-saudi"] as const
-      if (typeof body.groqTtsModel === "string" && validGroqTtsModels.includes(body.groqTtsModel as typeof validGroqTtsModels[number])) {
-        updates.groqTtsModel = body.groqTtsModel as typeof validGroqTtsModels[number]
-      }
-      if (typeof body.groqTtsVoice === "string") {
-        updates.groqTtsVoice = body.groqTtsVoice
-      }
-      // Gemini TTS settings
-      const validGeminiTtsModels = ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"] as const
-      if (typeof body.geminiTtsModel === "string" && validGeminiTtsModels.includes(body.geminiTtsModel as typeof validGeminiTtsModels[number])) {
-        updates.geminiTtsModel = body.geminiTtsModel as typeof validGeminiTtsModels[number]
-      }
-      if (typeof body.geminiTtsVoice === "string") {
-        updates.geminiTtsVoice = body.geminiTtsVoice
-      }
-
-      // Session History (pinned/archived conversation IDs)
-      if (Array.isArray(body.pinnedSessionIds) && body.pinnedSessionIds.every((id: unknown) => typeof id === "string")) {
-        updates.pinnedSessionIds = body.pinnedSessionIds
-      }
-      if (Array.isArray(body.archivedSessionIds) && body.archivedSessionIds.every((id: unknown) => typeof id === "string")) {
-        updates.archivedSessionIds = body.archivedSessionIds
-      }
-
-      // Predefined Prompts
-      if (Array.isArray(body.predefinedPrompts)) {
-        updates.predefinedPrompts = body.predefinedPrompts
-      }
-
+      const updates = getManagedSettingsUpdates(body)
       if (Object.keys(updates).length === 0) {
         return reply.code(400).send({ error: "No valid settings to update" })
       }
 
-      configStore.save({ ...cfg, ...updates })
-      diagnosticsService.logInfo("remote-server", `Updated settings: ${Object.keys(updates).join(", ")}`)
-
-      // Trigger WhatsApp MCP server lifecycle if whatsappEnabled changed
-      if (updates.whatsappEnabled !== undefined) {
-        try {
-          const prevEnabled = cfg.whatsappEnabled ?? false
-          await handleWhatsAppToggle(prevEnabled, updates.whatsappEnabled)
-        } catch (_e) {
-          // lifecycle is best-effort
-        }
-      }
+      await saveManagedConfig(updates, {
+        remoteAccessLabel: "remote-settings",
+      })
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Updated settings: ${Object.keys(updates).join(", ")}`,
+      )
 
       return reply.send({
         success: true,
         updated: Object.keys(updates),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to update settings", error)
-      return reply.code(500).send({ error: error?.message || "Failed to update settings" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to update settings",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to update settings" })
     }
   })
 
@@ -1603,29 +1231,35 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const conversationId = params.id
 
       if (!conversationId || typeof conversationId !== "string") {
-        return reply.code(400).send({ error: "Missing or invalid conversation ID" })
+        return reply
+          .code(400)
+          .send({ error: "Missing or invalid conversation ID" })
       }
 
       // Validate conversation ID format to prevent path traversal attacks
-      const conversationIdError = getConversationIdValidationError(conversationId)
+      const conversationIdError =
+        getConversationIdValidationError(conversationId)
       if (conversationIdError) {
         return reply.code(400).send({ error: conversationIdError })
       }
 
-      const conversation = await conversationService.loadConversation(conversationId)
+      const conversation = await getManagedConversation(conversationId)
 
       if (!conversation) {
         return reply.code(404).send({ error: "Conversation not found" })
       }
 
-      diagnosticsService.logInfo("remote-server", `Fetched conversation ${conversationId} for recovery`)
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Fetched conversation ${conversationId} for recovery`,
+      )
 
       return reply.send({
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        messages: conversation.messages.map(msg => ({
+        messages: conversation.messages.map((msg) => ({
           id: msg.id,
           role: msg.role,
           content: msg.content,
@@ -1636,8 +1270,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         metadata: conversation.metadata,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to fetch conversation", error)
-      return reply.code(500).send({ error: error?.message || "Failed to fetch conversation" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to fetch conversation",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to fetch conversation" })
     }
   })
 
@@ -1648,21 +1288,30 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // POST /v1/push/register - Register a push notification token
   fastify.post("/v1/push/register", async (req, reply) => {
     try {
-      const body = req.body as { token?: string; type?: string; platform?: string; deviceId?: string }
+      const body = req.body as {
+        token?: string
+        type?: string
+        platform?: string
+        deviceId?: string
+      }
 
       if (!body.token || typeof body.token !== "string") {
         return reply.code(400).send({ error: "Missing or invalid token" })
       }
 
       if (!body.platform || !["ios", "android"].includes(body.platform)) {
-        return reply.code(400).send({ error: "Invalid platform. Must be 'ios' or 'android'" })
+        return reply
+          .code(400)
+          .send({ error: "Invalid platform. Must be 'ios' or 'android'" })
       }
 
       const cfg = configStore.get()
       const existingTokens = cfg.pushNotificationTokens || []
 
       // Check if token already exists
-      const existingIndex = existingTokens.findIndex(t => t.token === body.token)
+      const existingIndex = existingTokens.findIndex(
+        (t) => t.token === body.token,
+      )
       const newToken = {
         token: body.token,
         type: "expo" as const,
@@ -1676,11 +1325,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Update existing token
         updatedTokens = [...existingTokens]
         updatedTokens[existingIndex] = newToken
-        diagnosticsService.logInfo("remote-server", `Updated push notification token for ${body.platform}`)
+        diagnosticsService.logInfo(
+          "remote-server",
+          `Updated push notification token for ${body.platform}`,
+        )
       } else {
         // Add new token
         updatedTokens = [...existingTokens, newToken]
-        diagnosticsService.logInfo("remote-server", `Registered new push notification token for ${body.platform}`)
+        diagnosticsService.logInfo(
+          "remote-server",
+          `Registered new push notification token for ${body.platform}`,
+        )
       }
 
       configStore.save({ ...cfg, pushNotificationTokens: updatedTokens })
@@ -1691,8 +1346,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         tokenCount: updatedTokens.length,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to register push token", error)
-      return reply.code(500).send({ error: error?.message || "Failed to register push token" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to register push token",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to register push token" })
     }
   })
 
@@ -1708,12 +1369,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const cfg = configStore.get()
       const existingTokens = cfg.pushNotificationTokens || []
 
-      const filteredTokens = existingTokens.filter(t => t.token !== body.token)
+      const filteredTokens = existingTokens.filter(
+        (t) => t.token !== body.token,
+      )
       const removed = existingTokens.length > filteredTokens.length
 
       if (removed) {
         configStore.save({ ...cfg, pushNotificationTokens: filteredTokens })
-        diagnosticsService.logInfo("remote-server", "Unregistered push notification token")
+        diagnosticsService.logInfo(
+          "remote-server",
+          "Unregistered push notification token",
+        )
       }
 
       return reply.send({
@@ -1722,8 +1388,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         tokenCount: filteredTokens.length,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to unregister push token", error)
-      return reply.code(500).send({ error: error?.message || "Failed to unregister push token" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to unregister push token",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to unregister push token" })
     }
   })
 
@@ -1736,11 +1408,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       return reply.send({
         enabled: tokens.length > 0,
         tokenCount: tokens.length,
-        platforms: [...new Set(tokens.map(t => t.platform))],
+        platforms: [...new Set(tokens.map((t) => t.platform))],
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get push status", error)
-      return reply.code(500).send({ error: error?.message || "Failed to get push status" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get push status",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to get push status" })
     }
   })
 
@@ -1757,13 +1435,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       return reply.send({ success: true })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to clear badge count", error)
-      return reply.code(500).send({ error: error?.message || "Failed to clear badge count" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to clear badge count",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to clear badge count" })
     }
   })
 
   // Helper function to validate message objects
-  const validateMessages = (messages: Array<{ role: string; content: unknown }>): string | null => {
+  const validateMessages = (
+    messages: Array<{ role: string; content: unknown }>,
+  ): string | null => {
     const validRoles = ["user", "assistant", "tool"]
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i]
@@ -1783,12 +1469,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // GET /v1/conversations - List all conversations
   fastify.get("/v1/conversations", async (_req, reply) => {
     try {
-      const conversations = await conversationService.getConversationHistory()
-      diagnosticsService.logInfo("remote-server", `Listed ${conversations.length} conversations`)
+      const conversations = await getManagedConversationHistory()
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Listed ${conversations.length} conversations`,
+      )
       return reply.send({ conversations })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to list conversations", error)
-      return reply.code(500).send({ error: error?.message || "Failed to list conversations" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to list conversations",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to list conversations" })
     }
   })
 
@@ -1796,8 +1491,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.post("/v1/conversations", async (req, reply) => {
     try {
       // Validate request body is a valid object
-      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
-        return reply.code(400).send({ error: "Request body must be a JSON object" })
+      if (
+        !req.body ||
+        typeof req.body !== "object" ||
+        Array.isArray(req.body)
+      ) {
+        return reply
+          .code(400)
+          .send({ error: "Request body must be a JSON object" })
       }
 
       const body = req.body as {
@@ -1807,14 +1508,24 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           content: string
           timestamp?: number
           toolCalls?: Array<{ name: string; arguments: any }>
-          toolResults?: Array<{ success: boolean; content: string; error?: string }>
+          toolResults?: Array<{
+            success: boolean
+            content: string
+            error?: string
+          }>
         }>
         createdAt?: number
         updatedAt?: number
       }
 
-      if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
-        return reply.code(400).send({ error: "Missing or invalid messages array" })
+      if (
+        !body.messages ||
+        !Array.isArray(body.messages) ||
+        body.messages.length === 0
+      ) {
+        return reply
+          .code(400)
+          .send({ error: "Missing or invalid messages array" })
       }
 
       // Validate each message object
@@ -1828,9 +1539,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       // Generate title from first message if not provided
       const firstMessageContent = body.messages[0]?.content || ""
-      const title = body.title || (firstMessageContent.length > 50
-        ? `${firstMessageContent.slice(0, 50)}...`
-        : firstMessageContent || "New Conversation")
+      const title =
+        body.title ||
+        (firstMessageContent.length > 50
+          ? `${firstMessageContent.slice(0, 50)}...`
+          : firstMessageContent || "New Conversation")
 
       // Convert input messages to ConversationMessage format with IDs
       const messages = body.messages.map((msg, index) => ({
@@ -1850,8 +1563,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         messages,
       }
 
-      await conversationService.saveConversation(conversation, true)
-      diagnosticsService.logInfo("remote-server", `Created conversation ${conversationId} with ${messages.length} messages`)
+      await saveManagedConversation(conversation, { preserveTimestamp: true })
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Created conversation ${conversationId} with ${messages.length} messages`,
+      )
 
       // Notify renderer that conversation history has changed (for sidebar refresh)
       notifyConversationHistoryChanged()
@@ -1861,7 +1577,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         title: conversation.title,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        messages: conversation.messages.map(msg => ({
+        messages: conversation.messages.map((msg) => ({
           id: msg.id,
           role: msg.role,
           content: msg.content,
@@ -1871,8 +1587,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         })),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to create conversation", error)
-      return reply.code(500).send({ error: error?.message || "Failed to create conversation" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to create conversation",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to create conversation" })
     }
   })
 
@@ -1883,18 +1605,27 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const conversationId = params.id
 
       if (!conversationId || typeof conversationId !== "string") {
-        return reply.code(400).send({ error: "Missing or invalid conversation ID" })
+        return reply
+          .code(400)
+          .send({ error: "Missing or invalid conversation ID" })
       }
 
       // Validate conversation ID format to prevent path traversal attacks
-      const conversationIdError = getConversationIdValidationError(conversationId)
+      const conversationIdError =
+        getConversationIdValidationError(conversationId)
       if (conversationIdError) {
         return reply.code(400).send({ error: conversationIdError })
       }
 
       // Validate request body is a valid object
-      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
-        return reply.code(400).send({ error: "Request body must be a JSON object" })
+      if (
+        !req.body ||
+        typeof req.body !== "object" ||
+        Array.isArray(req.body)
+      ) {
+        return reply
+          .code(400)
+          .send({ error: "Request body must be a JSON object" })
       }
 
       const body = req.body as {
@@ -1904,18 +1635,29 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           content: string
           timestamp?: number
           toolCalls?: Array<{ name: string; arguments: any }>
-          toolResults?: Array<{ success: boolean; content: string; error?: string }>
+          toolResults?: Array<{
+            success: boolean
+            content: string
+            error?: string
+          }>
         }>
         updatedAt?: number
       }
 
       const now = Date.now()
-      let conversation = await conversationService.loadConversation(conversationId)
+      let conversation = await getManagedConversation(conversationId)
 
       if (!conversation) {
         // Create new conversation with the provided ID
-        if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
-          return reply.code(400).send({ error: "Conversation not found and no messages provided to create it" })
+        if (
+          !body.messages ||
+          !Array.isArray(body.messages) ||
+          body.messages.length === 0
+        ) {
+          return reply.code(400).send({
+            error:
+              "Conversation not found and no messages provided to create it",
+          })
         }
 
         // Validate each message object
@@ -1925,9 +1667,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         }
 
         const firstMessageContent = body.messages[0]?.content || ""
-        const title = body.title || (firstMessageContent.length > 50
-          ? `${firstMessageContent.slice(0, 50)}...`
-          : firstMessageContent || "New Conversation")
+        const title =
+          body.title ||
+          (firstMessageContent.length > 50
+            ? `${firstMessageContent.slice(0, 50)}...`
+            : firstMessageContent || "New Conversation")
 
         const messages = body.messages.map((msg, index) => ({
           id: `msg_${now}_${index}_${Math.random().toString(36).substr(2, 9)}`,
@@ -1946,8 +1690,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           messages,
         }
 
-        await conversationService.saveConversation(conversation, true)
-        diagnosticsService.logInfo("remote-server", `Created conversation ${conversationId} via PUT with ${messages.length} messages`)
+        await saveManagedConversation(conversation, {
+          preserveTimestamp: true,
+        })
+        diagnosticsService.logInfo(
+          "remote-server",
+          `Created conversation ${conversationId} via PUT with ${messages.length} messages`,
+        )
       } else {
         // Update existing conversation
         if (body.title !== undefined) {
@@ -1955,7 +1704,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         }
 
         if (body.messages !== undefined && !Array.isArray(body.messages)) {
-          return reply.code(400).send({ error: "messages field must be an array" })
+          return reply
+            .code(400)
+            .send({ error: "messages field must be an array" })
         }
 
         if (body.messages && Array.isArray(body.messages)) {
@@ -1977,8 +1728,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
         conversation.updatedAt = body.updatedAt ?? now
 
-        await conversationService.saveConversation(conversation, true)
-        diagnosticsService.logInfo("remote-server", `Updated conversation ${conversationId}`)
+        await saveManagedConversation(conversation, {
+          preserveTimestamp: true,
+        })
+        diagnosticsService.logInfo(
+          "remote-server",
+          `Updated conversation ${conversationId}`,
+        )
       }
 
       // Notify renderer that conversation history has changed (for sidebar refresh)
@@ -1989,7 +1745,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         title: conversation.title,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        messages: conversation.messages.map(msg => ({
+        messages: conversation.messages.map((msg) => ({
           id: msg.id,
           role: msg.role,
           content: msg.content,
@@ -1999,8 +1755,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         })),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to update conversation", error)
-      return reply.code(500).send({ error: error?.message || "Failed to update conversation" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to update conversation",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to update conversation" })
     }
   })
 
@@ -2009,12 +1771,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     console.log("[KILLSWITCH] /v1/emergency-stop endpoint called")
     try {
       console.log("[KILLSWITCH] Loading emergency-stop module...")
-      diagnosticsService.logInfo("remote-server", "Emergency stop triggered via API")
+      diagnosticsService.logInfo(
+        "remote-server",
+        "Emergency stop triggered via API",
+      )
 
       console.log("[KILLSWITCH] Calling emergencyStopAll()...")
       const { before, after } = await emergencyStopAll()
 
-      console.log(`[KILLSWITCH] Emergency stop completed. Killed ${before} processes. Remaining: ${after}`)
+      console.log(
+        `[KILLSWITCH] Emergency stop completed. Killed ${before} processes. Remaining: ${after}`,
+      )
       diagnosticsService.logInfo(
         "remote-server",
         `Emergency stop completed. Killed ${before} processes. Remaining: ${after}`,
@@ -2028,7 +1795,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       })
     } catch (error: any) {
       console.error("[KILLSWITCH] Error during emergency stop:", error)
-      diagnosticsService.logError("remote-server", "Emergency stop error", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Emergency stop error",
+        error,
+      )
       return reply.code(500).send({
         success: false,
         error: error?.message || "Emergency stop failed",
@@ -2044,16 +1815,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     reply: any,
   ) => {
     try {
-      const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
+      const injectedRuntimeTools =
+        getInjectedRuntimeToolsForAcpSession(acpSessionToken)
       if (!injectedRuntimeTools) {
-        diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/list request without valid ACP session context")
-        return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
+        diagnosticsService.logWarning(
+          "remote-server",
+          "Denied injected MCP tools/list request without valid ACP session context",
+        )
+        return reply
+          .code(401)
+          .send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
       }
 
       return reply.send({ tools: injectedRuntimeTools.tools })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "MCP tools/list error", error)
-      return reply.code(500).send({ error: error?.message || "Failed to list tools" })
+      diagnosticsService.logError(
+        "remote-server",
+        "MCP tools/list error",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to list tools" })
     }
   }
 
@@ -2063,17 +1846,25 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     acpSessionToken: string | undefined,
   ) => {
     try {
-      const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
+      const injectedRuntimeTools =
+        getInjectedRuntimeToolsForAcpSession(acpSessionToken)
       if (!injectedRuntimeTools) {
-        diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/call request without valid ACP session context")
-        return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
+        diagnosticsService.logWarning(
+          "remote-server",
+          "Denied injected MCP tools/call request without valid ACP session context",
+        )
+        return reply
+          .code(401)
+          .send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
       }
 
       const body = req.body as any
       const { name, arguments: args } = body
 
       if (!name || typeof name !== "string") {
-        return reply.code(400).send({ error: "Missing or invalid 'name' parameter" })
+        return reply
+          .code(400)
+          .send({ error: "Missing or invalid 'name' parameter" })
       }
 
       if (!injectedRuntimeTools.tools.some((tool) => tool.name === name)) {
@@ -2097,9 +1888,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         isError: result.isError,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "MCP tools/call error", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "MCP tools/call error",
+        error,
+      )
       return reply.code(500).send({
-        content: [{ type: "text", text: error?.message || "Tool execution failed" }],
+        content: [
+          { type: "text", text: error?.message || "Tool execution failed" },
+        ],
         isError: true,
       })
     }
@@ -2117,12 +1914,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
     const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(token)
     if (!injectedRuntimeTools) {
-      diagnosticsService.logWarning("remote-server", `Denied injected MCP ${req.method} request without valid ACP session context`)
+      diagnosticsService.logWarning(
+        "remote-server",
+        `Denied injected MCP ${req.method} request without valid ACP session context`,
+      )
       return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
     }
 
     const rawSessionId = req.headers["mcp-session-id"]
-    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId
+    const sessionId = Array.isArray(rawSessionId)
+      ? rawSessionId[0]
+      : rawSessionId
     const sessions = getInjectedMcpTransportSessionMap(token)
 
     try {
@@ -2141,7 +1943,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           if (!isInitializeRequest(req.body)) {
             return reply.code(400).send({
               jsonrpc: "2.0",
-              error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+              error: {
+                code: -32000,
+                message: "Bad Request: No valid session ID provided",
+              },
               id: null,
             })
           }
@@ -2192,11 +1997,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       await sessionState.transport.handleRequest(req.raw, reply.raw)
       return reply
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", `Injected MCP ${req.method} error`, error)
+      diagnosticsService.logError(
+        "remote-server",
+        `Injected MCP ${req.method} error`,
+        error,
+      )
       if (!reply.sent) {
         return reply.code(500).send({
           jsonrpc: "2.0",
-          error: { code: -32603, message: error?.message || "Internal server error" },
+          error: {
+            code: -32603,
+            message: error?.message || "Internal server error",
+          },
           id: null,
         })
       }
@@ -2248,26 +2060,26 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // GET /v1/skills - List all skills
   fastify.get("/v1/skills", async (_req, reply) => {
     try {
-      const skills = skillsService.getSkills()
-      const currentProfile = agentProfileService.getCurrentProfile()
-      // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
-      const allEnabledByDefault = !currentProfile?.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault
-      const enabledSkillIds = allEnabledByDefault ? skills.map(s => s.id) : (currentProfile?.skillsConfig?.enabledSkillIds || [])
+      const managedSkills = getManagedCurrentProfileSkills()
 
       return reply.send({
-        skills: skills.map(s => ({
+        skills: managedSkills.skills.map((s) => ({
           id: s.id,
           name: s.name,
           description: s.description,
-          enabledForProfile: enabledSkillIds.includes(s.id),
+          enabledForProfile: s.enabledForProfile,
           source: s.source,
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
         })),
-        currentProfileId: currentProfile?.id,
+        currentProfileId: managedSkills.currentProfile?.id,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get skills", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get skills",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get skills" })
     }
   })
@@ -2276,34 +2088,31 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.post("/v1/skills/:id/toggle-profile", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-
-      // Validate the skill exists
-      const skills = skillsService.getSkills()
-      const skillExists = skills.some(s => s.id === params.id)
-      if (!skillExists) {
-        return reply.code(404).send({ error: "Skill not found" })
+      const result = toggleManagedSkillForCurrentProfile(params.id)
+      if (!result.success) {
+        if (result.errorCode === "skill_not_found") {
+          return reply.code(404).send({ error: result.error })
+        }
+        if (result.errorCode === "profile_not_found") {
+          return reply.code(400).send({ error: result.error })
+        }
+        return reply.code(500).send({ error: result.error })
       }
-
-      const currentProfile = agentProfileService.getCurrentProfile()
-      if (!currentProfile) {
-        return reply.code(400).send({ error: "No current profile set" })
-      }
-
-      const allSkillIds = skills.map(s => s.id)
-      const updatedProfile = agentProfileService.toggleProfileSkill(currentProfile.id, params.id, allSkillIds)
-      // Check enablement using the new semantics
-      const isNowEnabled = !updatedProfile?.skillsConfig || !updatedProfile.skillsConfig.allSkillsDisabledByDefault
-        ? true
-        : (updatedProfile.skillsConfig.enabledSkillIds || []).includes(params.id)
 
       return reply.send({
         success: true,
         skillId: params.id,
-        enabledForProfile: isNowEnabled,
+        enabledForProfile: result.enabledForProfile,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to toggle skill", error)
-      return reply.code(500).send({ error: error?.message || "Failed to toggle skill" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to toggle skill",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to toggle skill" })
     }
   })
 
@@ -2311,25 +2120,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Knowledge Notes Management Endpoints (for mobile app)
   // ============================================
 
-  const serializeKnowledgeNote = (note: import("../shared/types").KnowledgeNote) => ({
-    id: note.id,
-    title: note.title,
-    body: note.body,
-    summary: note.summary,
-    context: note.context,
-    tags: note.tags,
-    references: note.references,
-    createdAt: note.createdAt,
-    updatedAt: note.updatedAt,
-  })
-
   // GET /v1/knowledge/notes - List all knowledge notes
   fastify.get("/v1/knowledge/notes", async (_req, reply) => {
     try {
-      const notes = await knowledgeNotesService.getAllNotes()
-      return reply.send({ notes: notes.map(serializeKnowledgeNote) })
+      const notes = await getManagedKnowledgeNotes()
+      return reply.send({ notes })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get knowledge notes", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get knowledge notes",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get knowledge notes" })
     }
   })
@@ -2338,12 +2139,19 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.get("/v1/knowledge/notes/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const note = await knowledgeNotesService.getNote(params.id)
-      if (!note) return reply.code(404).send({ error: "Knowledge note not found" })
-      return reply.send({ note: serializeKnowledgeNote(note) })
+      const note = await getManagedKnowledgeNote(params.id)
+      if (!note)
+        return reply.code(404).send({ error: "Knowledge note not found" })
+      return reply.send({ note })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get knowledge note", error)
-      return reply.code(500).send({ error: error?.message || "Failed to get knowledge note" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get knowledge note",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to get knowledge note" })
     }
   })
 
@@ -2351,18 +2159,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.delete("/v1/knowledge/notes/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const note = await knowledgeNotesService.getNote(params.id)
-      if (!note) return reply.code(404).send({ error: "Knowledge note not found" })
-
-      const success = await knowledgeNotesService.deleteNote(params.id)
-      if (!success) {
-        return reply.code(500).send({ error: "Failed to persist knowledge note deletion" })
+      const result = await deleteManagedKnowledgeNote(params.id)
+      if (isManagedKnowledgeNoteFailure(result)) {
+        const statusCode = result.errorCode === "not_found" ? 404 : 500
+        return reply.code(statusCode).send({ error: result.error })
       }
 
       return reply.send({ success: true, id: params.id })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to delete knowledge note", error)
-      return reply.code(500).send({ error: error?.message || "Failed to delete knowledge note" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to delete knowledge note",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to delete knowledge note" })
     }
   })
 
@@ -2370,42 +2182,48 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Agent Management Endpoints (for mobile app)
   // ============================================
 
+  const serializeRemoteAgentProfile = (profile: AgentProfile) => ({
+    id: profile.id,
+    name: profile.name,
+    displayName: profile.displayName,
+    description: profile.description,
+    avatarDataUrl: profile.avatarDataUrl,
+    systemPrompt: profile.systemPrompt,
+    guidelines: profile.guidelines,
+    properties: profile.properties,
+    modelConfig: profile.modelConfig,
+    toolConfig: profile.toolConfig,
+    skillsConfig: profile.skillsConfig,
+    connection: profile.connection,
+    isStateful: profile.isStateful,
+    conversationId: profile.conversationId,
+    role: profile.role,
+    enabled: profile.enabled,
+    isBuiltIn: profile.isBuiltIn,
+    isUserProfile: profile.isUserProfile,
+    isAgentTarget: profile.isAgentTarget,
+    isDefault: profile.isDefault,
+    autoSpawn: profile.autoSpawn,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+    connectionType: profile.connection.type,
+  })
+
   // GET /v1/agent-profiles - List all agent profiles (supports ?role=user-profile|delegation-target|external-agent filter)
   fastify.get("/v1/agent-profiles", async (req, reply) => {
     try {
       const query = req.query as { role?: string }
-      let profiles = agentProfileService.getAll()
-
-      // Filter by role if specified
-      if (query.role) {
-        profiles = profiles.filter(p => {
-          const role = p.role || (p.isUserProfile ? "user-profile" : p.isAgentTarget ? "delegation-target" : "delegation-target")
-          return role === query.role
-        })
-      }
+      const profiles = getManagedAgentProfiles({ role: query.role })
 
       return reply.send({
-        profiles: profiles.map(p => ({
-          id: p.id,
-          name: p.name,
-          displayName: p.displayName,
-          description: p.description,
-          enabled: p.enabled,
-          isBuiltIn: p.isBuiltIn,
-          isUserProfile: p.isUserProfile,
-          isAgentTarget: p.isAgentTarget,
-          isDefault: p.isDefault,
-          role: p.role,
-          connectionType: p.connection.type,
-          autoSpawn: p.autoSpawn,
-          guidelines: p.guidelines,
-          systemPrompt: p.systemPrompt,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-        })),
+        profiles: profiles.map(serializeManagedAgentProfileSummary),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get agent profiles", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get agent profiles",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get agent profiles" })
     }
   })
@@ -2414,24 +2232,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.post("/v1/agent-profiles/:id/toggle", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const profile = agentProfileService.getById(params.id)
+      const result = toggleManagedAgentProfileEnabled(params.id)
 
-      if (!profile) {
-        return reply.code(404).send({ error: "Agent profile not found" })
+      if (!result.success) {
+        return reply
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
-
-      const updated = agentProfileService.update(params.id, {
-        enabled: !profile.enabled,
-      })
 
       return reply.send({
         success: true,
         id: params.id,
-        enabled: updated?.enabled ?? !profile.enabled,
+        enabled: result.profile.enabled,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to toggle agent profile", error)
-      return reply.code(500).send({ error: error?.message || "Failed to toggle agent profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to toggle agent profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to toggle agent profile" })
     }
   })
 
@@ -2439,42 +2261,24 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.get("/v1/agent-profiles/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const profile = agentProfileService.getById(params.id)
+      const profile = getManagedAgentProfile(params.id)
 
       if (!profile) {
         return reply.code(404).send({ error: "Agent profile not found" })
       }
 
       return reply.send({
-        profile: {
-          id: profile.id,
-          name: profile.name,
-          displayName: profile.displayName,
-          description: profile.description,
-          avatarDataUrl: profile.avatarDataUrl,
-          systemPrompt: profile.systemPrompt,
-          guidelines: profile.guidelines,
-          properties: profile.properties,
-          modelConfig: profile.modelConfig,
-          toolConfig: profile.toolConfig,
-          skillsConfig: profile.skillsConfig,
-          connection: profile.connection,
-          isStateful: profile.isStateful,
-          conversationId: profile.conversationId,
-          role: profile.role,
-          enabled: profile.enabled,
-          isBuiltIn: profile.isBuiltIn,
-          isUserProfile: profile.isUserProfile,
-          isAgentTarget: profile.isAgentTarget,
-          isDefault: profile.isDefault,
-          autoSpawn: profile.autoSpawn,
-          createdAt: profile.createdAt,
-          updatedAt: profile.updatedAt,
-        },
+        profile: serializeManagedAgentProfile(profile),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get agent profile", error)
-      return reply.code(500).send({ error: error?.message || "Failed to get agent profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get agent profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to get agent profile" })
     }
   })
 
@@ -2482,13 +2286,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.post("/v1/agent-profiles", async (req, reply) => {
     try {
       const body = req.body as {
+        name?: string
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
+        connection?: import("@shared/types").AgentProfileConnection
         connectionType?: string
         connectionCommand?: string
-        connectionArgs?: string
+        connectionArgs?: string | string[]
         connectionBaseUrl?: string
         connectionCwd?: string
         enabled?: boolean
@@ -2497,75 +2304,32 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         toolConfig?: any
         skillsConfig?: any
         properties?: Record<string, string>
+        role?: import("@shared/types").AgentProfileRole
+        isUserProfile?: boolean
+        isAgentTarget?: boolean
+        isDefault?: boolean
+        isStateful?: boolean
       }
+      const result = createManagedAgentProfile(body)
 
-      // Validate displayName
-      if (!body.displayName || typeof body.displayName !== "string" || body.displayName.trim() === "") {
-        return reply.code(400).send({ error: "displayName is required and must be a non-empty string" })
+      if (!result.success) {
+        return reply
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
-
-      // Validate connectionType
-      const connectionType = body.connectionType ?? "internal"
-      if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
-        return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
-      }
-
-      const connection: import("@shared/types").AgentProfileConnection = sanitizeAgentProfileConnection({
-        connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
-        connectionCommand: body.connectionCommand,
-        connectionArgs: body.connectionArgs,
-        connectionBaseUrl: body.connectionBaseUrl,
-        connectionCwd: body.connectionCwd,
-      })
-
-      // Create the profile
-      const newProfile = agentProfileService.create({
-        name: body.displayName.trim(),
-        displayName: body.displayName.trim(),
-        description: body.description,
-        systemPrompt: body.systemPrompt,
-        guidelines: body.guidelines,
-        connection,
-        enabled: body.enabled !== false,
-        autoSpawn: body.autoSpawn,
-        modelConfig: body.modelConfig,
-        toolConfig: body.toolConfig,
-        skillsConfig: body.skillsConfig,
-        properties: body.properties,
-        role: "delegation-target",
-        isUserProfile: false,
-        isAgentTarget: true,
-      })
 
       return reply.code(201).send({
-        profile: {
-          id: newProfile.id,
-          name: newProfile.name,
-          displayName: newProfile.displayName,
-          description: newProfile.description,
-          avatarDataUrl: newProfile.avatarDataUrl,
-          systemPrompt: newProfile.systemPrompt,
-          guidelines: newProfile.guidelines,
-          properties: newProfile.properties,
-          modelConfig: newProfile.modelConfig,
-          toolConfig: newProfile.toolConfig,
-          skillsConfig: newProfile.skillsConfig,
-          connection: newProfile.connection,
-          isStateful: newProfile.isStateful,
-          role: newProfile.role,
-          enabled: newProfile.enabled,
-          isBuiltIn: newProfile.isBuiltIn,
-          isUserProfile: newProfile.isUserProfile,
-          isAgentTarget: newProfile.isAgentTarget,
-          isDefault: newProfile.isDefault,
-          autoSpawn: newProfile.autoSpawn,
-          createdAt: newProfile.createdAt,
-          updatedAt: newProfile.updatedAt,
-        },
+        profile: serializeManagedAgentProfile(result.profile),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to create agent profile", error)
-      return reply.code(500).send({ error: error?.message || "Failed to create agent profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to create agent profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to create agent profile" })
     }
   })
 
@@ -2574,13 +2338,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     try {
       const params = req.params as { id: string }
       const body = req.body as {
+        name?: string
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
+        connection?: import("@shared/types").AgentProfileConnection
         connectionType?: string
         connectionCommand?: string
-        connectionArgs?: string
+        connectionArgs?: string | string[]
         connectionBaseUrl?: string
         connectionCwd?: string
         enabled?: boolean
@@ -2589,99 +2356,33 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         toolConfig?: any
         skillsConfig?: any
         properties?: Record<string, string>
+        role?: import("@shared/types").AgentProfileRole
+        isUserProfile?: boolean
+        isAgentTarget?: boolean
+        isDefault?: boolean
+        isStateful?: boolean
       }
+      const result = updateManagedAgentProfile(params.id, body)
 
-      const profile = agentProfileService.getById(params.id)
-      if (!profile) {
-        return reply.code(404).send({ error: "Agent profile not found" })
-      }
-
-      // Build updates object
-      const updates: Partial<import("@shared/types").AgentProfile> = {}
-
-      // For built-in agents, only allow updating certain fields
-      if (profile.isBuiltIn) {
-        // Allow toggling enabled, updating guidelines for built-in agents
-        if (body.enabled !== undefined) updates.enabled = body.enabled
-        if (body.guidelines !== undefined) updates.guidelines = body.guidelines
-        if (body.autoSpawn !== undefined) updates.autoSpawn = body.autoSpawn
-      } else {
-        // For non-built-in agents, allow all field updates
-        if (body.displayName !== undefined) {
-          if (typeof body.displayName !== "string" || body.displayName.trim() === "") {
-            return reply.code(400).send({ error: "displayName must be a non-empty string" })
-          }
-          updates.displayName = body.displayName.trim()
-          updates.name = body.displayName.trim()
-        }
-        if (body.description !== undefined) updates.description = body.description
-        if (body.systemPrompt !== undefined) updates.systemPrompt = body.systemPrompt
-        if (body.guidelines !== undefined) updates.guidelines = body.guidelines
-        if (body.enabled !== undefined) updates.enabled = body.enabled
-        if (body.autoSpawn !== undefined) updates.autoSpawn = body.autoSpawn
-        if (body.modelConfig !== undefined) updates.modelConfig = body.modelConfig
-        if (body.toolConfig !== undefined) updates.toolConfig = body.toolConfig
-        if (body.skillsConfig !== undefined) updates.skillsConfig = body.skillsConfig
-        if (body.properties !== undefined) updates.properties = body.properties
-
-        // Handle connection updates
-        if (body.connectionType !== undefined || body.connectionCommand !== undefined ||
-            body.connectionArgs !== undefined || body.connectionBaseUrl !== undefined ||
-            body.connectionCwd !== undefined) {
-          const connectionType = body.connectionType ?? profile.connection.type
-          if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
-            return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
-          }
-
-          updates.connection = sanitizeAgentProfileConnection(
-            {
-              connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
-              connectionCommand: body.connectionCommand,
-              connectionArgs: body.connectionArgs,
-              connectionBaseUrl: body.connectionBaseUrl,
-              connectionCwd: body.connectionCwd,
-            },
-            profile.connection,
-          )
-        }
-      }
-
-      const updatedProfile = agentProfileService.update(params.id, updates)
-      if (!updatedProfile) {
-        return reply.code(500).send({ error: "Failed to update agent profile" })
+      if (!result.success) {
+        return reply
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
 
       return reply.send({
         success: true,
-        profile: {
-          id: updatedProfile.id,
-          name: updatedProfile.name,
-          displayName: updatedProfile.displayName,
-          description: updatedProfile.description,
-          avatarDataUrl: updatedProfile.avatarDataUrl,
-          systemPrompt: updatedProfile.systemPrompt,
-          guidelines: updatedProfile.guidelines,
-          properties: updatedProfile.properties,
-          modelConfig: updatedProfile.modelConfig,
-          toolConfig: updatedProfile.toolConfig,
-          skillsConfig: updatedProfile.skillsConfig,
-          connection: updatedProfile.connection,
-          isStateful: updatedProfile.isStateful,
-          conversationId: updatedProfile.conversationId,
-          role: updatedProfile.role,
-          enabled: updatedProfile.enabled,
-          isBuiltIn: updatedProfile.isBuiltIn,
-          isUserProfile: updatedProfile.isUserProfile,
-          isAgentTarget: updatedProfile.isAgentTarget,
-          isDefault: updatedProfile.isDefault,
-          autoSpawn: updatedProfile.autoSpawn,
-          createdAt: updatedProfile.createdAt,
-          updatedAt: updatedProfile.updatedAt,
-        },
+        profile: serializeManagedAgentProfile(result.profile),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to update agent profile", error)
-      return reply.code(500).send({ error: error?.message || "Failed to update agent profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to update agent profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to update agent profile" })
     }
   })
 
@@ -2689,34 +2390,30 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.delete("/v1/agent-profiles/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const profile = agentProfileService.getById(params.id)
+      const result = deleteManagedAgentProfile(params.id)
 
-      if (!profile) {
-        return reply.code(404).send({ error: "Agent profile not found" })
-      }
-
-      if (profile.isBuiltIn) {
-        return reply.code(403).send({ error: "Cannot delete built-in agent profiles" })
-      }
-
-      const success = agentProfileService.delete(params.id)
-      if (!success) {
-        return reply.code(500).send({ error: "Failed to delete agent profile" })
+      if (!result.success) {
+        return reply
+          .code(getManagedAgentProfileErrorStatusCode(result.errorCode))
+          .send({ error: result.error })
       }
 
       return reply.send({ success: true })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to delete agent profile", error)
-      return reply.code(500).send({ error: error?.message || "Failed to delete agent profile" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to delete agent profile",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to delete agent profile" })
     }
   })
 
   // ============================================
   // Repeat Tasks Management Endpoints (for mobile app)
   // ============================================
-
-  const getLoopProfileName = (profileId?: string) =>
-    profileId ? agentProfileService.getById(profileId)?.displayName : undefined
 
   const loadLoopService = async () => {
     try {
@@ -2728,52 +2425,45 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   }
 
   const formatLoopResponse = async (loop: LoopConfig) => {
-    const status = (await loadLoopService())?.getLoopStatus(loop.id)
-
-    return {
-      id: loop.id,
-      name: loop.name,
-      prompt: loop.prompt,
-      intervalMinutes: loop.intervalMinutes,
-      enabled: loop.enabled,
-      profileId: loop.profileId,
-      profileName: getLoopProfileName(loop.profileId),
-      runOnStartup: loop.runOnStartup,
-      lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
-      isRunning: status?.isRunning ?? false,
-      nextRunAt: status?.nextRunAt,
+    const loopService = await loadLoopService()
+    if (loopService) {
+      return getManagedLoopSummary(loopService, loop)
     }
+
+    return summarizeLoop(loop, {
+      profileName: loop.profileId
+        ? agentProfileService.getById(loop.profileId)?.displayName
+        : undefined,
+    })
   }
 
   // GET /v1/loops - List all repeat tasks
   fastify.get("/v1/loops", async (_req, reply) => {
     try {
       const loopService = await loadLoopService()
-      const loops = loopService?.getLoops() ?? (configStore.get().loops || [])
-      const statuses = loopService?.getLoopStatuses() ?? []
 
-      const statusById = new Map(statuses.map(s => [s.id, s]))
+      if (loopService) {
+        return reply.send({
+          loops: getManagedLoopSummaries(loopService),
+        })
+      }
+
+      const loops = configStore.get().loops || []
 
       return reply.send({
-        loops: loops.map(l => {
-          const status = statusById.get(l.id)
-          return {
-            id: l.id,
-            name: l.name,
-            prompt: l.prompt,
-            intervalMinutes: l.intervalMinutes,
-            enabled: l.enabled,
-            profileId: l.profileId,
-            profileName: getLoopProfileName(l.profileId),
-            runOnStartup: l.runOnStartup,
-            lastRunAt: status?.lastRunAt ?? l.lastRunAt,
-            isRunning: status?.isRunning ?? false,
-            nextRunAt: status?.nextRunAt,
-          }
+        loops: summarizeLoops(loops, {
+          getProfileName: (profileId) =>
+            profileId
+              ? agentProfileService.getById(profileId)?.displayName
+              : undefined,
         }),
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to get repeat tasks", error)
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to get repeat tasks",
+        error,
+      )
       return reply.code(500).send({ error: "Failed to get repeat tasks" })
     }
   })
@@ -2785,33 +2475,27 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const loopService = await loadLoopService()
 
       if (loopService) {
-        const existing = loopService.getLoop(params.id)
-        if (!existing) {
-          return reply.code(404).send({ error: "Repeat task not found" })
-        }
+        const result = toggleManagedLoopEnabled(loopService, params.id)
+        if (!result.success) {
+          if (result.error === "not_found") {
+            return reply.code(404).send({ error: "Repeat task not found" })
+          }
 
-        const updated = { ...existing, enabled: !existing.enabled }
-        const saved = loopService.saveLoop(updated)
-        if (!saved) {
-          return reply.code(500).send({ error: "Failed to persist repeat task toggle" })
-        }
-
-        if (updated.enabled) {
-          loopService.startLoop(params.id)
-        } else {
-          loopService.stopLoop(params.id)
+          return reply
+            .code(500)
+            .send({ error: "Failed to persist repeat task toggle" })
         }
 
         return reply.send({
           success: true,
           id: params.id,
-          enabled: updated.enabled,
+          enabled: result.loop?.enabled ?? false,
         })
       }
 
       const cfg = configStore.get()
       const loops = cfg.loops || []
-      const loopIndex = loops.findIndex(l => l.id === params.id)
+      const loopIndex = loops.findIndex((l) => l.id === params.id)
 
       if (loopIndex === -1) {
         return reply.code(404).send({ error: "Repeat task not found" })
@@ -2831,8 +2515,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         enabled: updatedLoops[loopIndex].enabled,
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to toggle repeat task", error)
-      return reply.code(500).send({ error: error?.message || "Failed to toggle repeat task" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to toggle repeat task",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to toggle repeat task" })
     }
   })
 
@@ -2843,24 +2533,30 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const loopService = await loadLoopService()
 
       if (loopService) {
-        const loopExists = loopService.getLoop(params.id)
-        if (!loopExists) {
-          return reply.code(404).send({ error: "Repeat task not found" })
-        }
+        const result = await triggerManagedLoop(loopService, params.id)
+        if (!result.success) {
+          if (result.error === "not_found") {
+            return reply.code(404).send({ error: "Repeat task not found" })
+          }
 
-        const triggered = await loopService.triggerLoop(params.id)
-
-        if (!triggered) {
           return reply.code(409).send({ error: "Task is already running" })
         }
 
         return reply.send({ success: true, id: params.id })
       }
 
-      return reply.code(503).send({ error: "Repeat task service is unavailable" })
+      return reply
+        .code(503)
+        .send({ error: "Repeat task service is unavailable" })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to run repeat task", error)
-      return reply.code(500).send({ error: error?.message || "Failed to run repeat task" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to run repeat task",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to run repeat task" })
     }
   })
 
@@ -2877,37 +2573,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         references?: unknown
       }
 
-      const noteBody = typeof body.body === "string" ? body.body.trim() : ""
-      if (!noteBody) {
-        return reply.code(400).send({ error: "body is required and must be a non-empty string" })
+      const result = await createManagedKnowledgeNote(body)
+      if (isManagedKnowledgeNoteFailure(result)) {
+        const statusCode = result.errorCode === "invalid_input" ? 400 : 500
+        return reply.code(statusCode).send({ error: result.error })
       }
 
-      const note = knowledgeNotesService.createNote({
-        id: typeof body.id === "string" && body.id.trim() ? body.id.trim() : undefined,
-        title: typeof body.title === "string" && body.title.trim() ? body.title.trim() : undefined,
-        body: noteBody,
-        summary: typeof body.summary === "string" && body.summary.trim() ? body.summary.trim() : undefined,
-        context: body.context === "auto" || body.context === "search-only" ? body.context : "search-only",
-        tags: Array.isArray(body.tags) ? body.tags.filter((tag): tag is string => typeof tag === "string") : [],
-        references: Array.isArray(body.references)
-          ? body.references.filter((ref): ref is string => typeof ref === "string")
-          : [],
-      })
-
-      const success = await knowledgeNotesService.saveNote(note)
-      if (!success) {
-        return reply.code(500).send({ error: "Failed to save knowledge note" })
-      }
-
-      const savedNote = await knowledgeNotesService.getNote(note.id)
-      if (!savedNote) {
-        return reply.code(500).send({ error: "Failed to load saved knowledge note" })
-      }
-
-      return reply.code(201).send({ note: serializeKnowledgeNote(savedNote) })
+      return reply.code(201).send({ note: result.note })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to create knowledge note", error)
-      return reply.code(500).send({ error: error?.message || "Failed to create knowledge note" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to create knowledge note",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to create knowledge note" })
     }
   })
 
@@ -2924,67 +2605,30 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         references?: unknown
       }
 
-      const existing = await knowledgeNotesService.getNote(params.id)
-      if (!existing) {
-        return reply.code(404).send({ error: "Knowledge note not found" })
+      const result = await updateManagedKnowledgeNote(params.id, body)
+      if (isManagedKnowledgeNoteFailure(result)) {
+        const statusCode =
+          result.errorCode === "invalid_input"
+            ? 400
+            : result.errorCode === "not_found"
+              ? 404
+              : 500
+        return reply.code(statusCode).send({ error: result.error })
       }
 
-      const updates: Record<string, unknown> = {}
-      if (body.title !== undefined) {
-        if (typeof body.title !== "string" || body.title.trim() === "") {
-          return reply.code(400).send({ error: "title must be a non-empty string when provided" })
-        }
-        updates.title = body.title.trim()
-      }
-      if (body.body !== undefined) {
-        if (typeof body.body !== "string" || body.body.trim() === "") {
-          return reply.code(400).send({ error: "body must be a non-empty string when provided" })
-        }
-        updates.body = body.body.trim()
-      }
-      if (body.summary !== undefined) {
-        if (typeof body.summary !== "string") {
-          return reply.code(400).send({ error: "summary must be a string when provided" })
-        }
-        updates.summary = body.summary.trim() || undefined
-      }
-      if (body.context !== undefined) {
-        if (body.context === "auto" || body.context === "search-only") {
-          updates.context = body.context
-        } else {
-          return reply.code(400).send({ error: "context must be one of: auto, search-only" })
-        }
-      }
-      if (body.tags !== undefined) {
-        if (!Array.isArray(body.tags) || !body.tags.every((tag): tag is string => typeof tag === "string")) {
-          return reply.code(400).send({ error: "tags must be an array of strings when provided" })
-        }
-        updates.tags = body.tags
-      }
-      if (body.references !== undefined) {
-        if (!Array.isArray(body.references) || !body.references.every((ref): ref is string => typeof ref === "string")) {
-          return reply.code(400).send({ error: "references must be an array of strings when provided" })
-        }
-        updates.references = body.references
-      }
-
-      const success = await knowledgeNotesService.updateNote(
-        params.id,
-        updates as Partial<Omit<import("../shared/types").KnowledgeNote, "id" | "createdAt">>,
-      )
-      if (!success) {
-        return reply.code(500).send({ error: "Failed to update knowledge note" })
-      }
-
-      const updated = await knowledgeNotesService.getNote(params.id)
-      if (!updated) {
-        return reply.code(500).send({ error: "Failed to load updated knowledge note" })
-      }
-
-      return reply.send({ success: true, note: serializeKnowledgeNote(updated) })
+      return reply.send({
+        success: true,
+        note: result.note,
+      })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to update knowledge note", error)
-      return reply.code(500).send({ error: error?.message || "Failed to update knowledge note" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to update knowledge note",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to update knowledge note" })
     }
   })
 
@@ -2997,66 +2641,71 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        maxIterations?: unknown
+        runOnStartup?: unknown
+      }
+
+      const loopService = await loadLoopService()
+      if (loopService) {
+        const result = createManagedLoop(loopService, body)
+        if (!result.success) {
+          const statusCode = result.error === "invalid_input" ? 400 : 500
+          return reply.code(statusCode).send({
+            error: result.errorMessage || "Failed to persist repeat task",
+          })
+        }
+
+        return reply.send({
+          loop: result.summary ?? (await formatLoopResponse(result.loop!)),
+        })
       }
 
       const name = typeof body.name === "string" ? body.name.trim() : ""
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : ""
       if (!name || !prompt) {
-        return reply.code(400).send({ error: "name and prompt are required and must be non-empty strings" })
+        return reply.code(400).send({
+          error: "name and prompt are required and must be non-empty strings",
+        })
       }
 
-      if (
-        body.intervalMinutes !== undefined
-        && (
-          typeof body.intervalMinutes !== "number"
-          || !Number.isFinite(body.intervalMinutes)
-          || !Number.isInteger(body.intervalMinutes)
-          || body.intervalMinutes < 1
-        )
-      ) {
-        return reply.code(400).send({ error: "intervalMinutes must be a finite integer >= 1 when provided" })
-      }
-      const intervalMinutes = typeof body.intervalMinutes === "number" ? body.intervalMinutes : 60
-      if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
-        return reply.code(400).send({ error: "enabled must be a boolean when provided" })
-      }
-      if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
-        return reply.code(400).send({ error: "profileId must be a string when provided" })
-      }
-      const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
-      const enabled = typeof body.enabled === "boolean" ? body.enabled : true
+      const cfg = configStore.get()
+      const loops = [
+        ...(cfg.loops || []),
+        {
+          id: `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+          name,
+          prompt,
+          intervalMinutes:
+            typeof body.intervalMinutes === "number"
+              ? body.intervalMinutes
+              : 60,
+          enabled: typeof body.enabled === "boolean" ? body.enabled : true,
+          profileId:
+            typeof body.profileId === "string"
+              ? body.profileId.trim() || undefined
+              : undefined,
+          maxIterations:
+            typeof body.maxIterations === "number"
+              ? body.maxIterations
+              : undefined,
+          runOnStartup:
+            typeof body.runOnStartup === "boolean" ? body.runOnStartup : false,
+        },
+      ]
+      configStore.save({ ...cfg, loops })
 
-      const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-
-      const newLoop = {
-        id,
-        name,
-        prompt,
-        intervalMinutes,
-        enabled,
-        profileId: profileId || undefined,
-      }
-
-      const loopService = await loadLoopService()
-      if (loopService) {
-        const saved = loopService.saveLoop(newLoop)
-        if (!saved) {
-          return reply.code(500).send({ error: "Failed to persist repeat task" })
-        }
-
-        if (newLoop.enabled) {
-          loopService.startLoop(newLoop.id)
-        }
-      } else {
-        const cfg = configStore.get()
-        const loops = [...(cfg.loops || []), newLoop]
-        configStore.save({ ...cfg, loops })
-      }
-
-      return reply.send({ loop: await formatLoopResponse(loopService?.getLoop(newLoop.id) ?? newLoop) })
+      return reply.send({
+        loop: await formatLoopResponse(loops[loops.length - 1]),
+      })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to create repeat task", error)
-      return reply.code(500).send({ error: error?.message || "Failed to create repeat task" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to create repeat task",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to create repeat task" })
     }
   })
 
@@ -3070,6 +2719,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        maxIterations?: unknown
+        runOnStartup?: unknown
       }
 
       const loopService = await loadLoopService()
@@ -3083,7 +2734,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       } else {
         cfg = configStore.get()
         loops = cfg.loops || []
-        loopIndex = loops.findIndex(l => l.id === params.id)
+        loopIndex = loops.findIndex((l) => l.id === params.id)
         existing = loopIndex >= 0 ? loops[loopIndex] : undefined
       }
 
@@ -3091,69 +2742,70 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(404).send({ error: "Repeat task not found" })
       }
 
-      if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim() === "")) {
-        return reply.code(400).send({ error: "name must be a non-empty string when provided" })
-      }
-      if (body.prompt !== undefined && (typeof body.prompt !== "string" || body.prompt.trim() === "")) {
-        return reply.code(400).send({ error: "prompt must be a non-empty string when provided" })
-      }
-      if (
-        body.intervalMinutes !== undefined
-        && (
-          typeof body.intervalMinutes !== "number"
-          || !Number.isFinite(body.intervalMinutes)
-          || !Number.isInteger(body.intervalMinutes)
-          || body.intervalMinutes < 1
-        )
-      ) {
-        return reply.code(400).send({ error: "intervalMinutes must be a finite integer >= 1 when provided" })
-      }
-      if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
-        return reply.code(400).send({ error: "enabled must be a boolean when provided" })
-      }
-      if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
-        return reply.code(400).send({ error: "profileId must be a string when provided" })
+      if (loopService) {
+        const result = updateManagedLoop(loopService, params.id, body)
+        if (!result.success) {
+          const statusCode =
+            result.error === "invalid_input"
+              ? 400
+              : result.error === "not_found"
+                ? 404
+                : 500
+          return reply.code(statusCode).send({
+            error: result.errorMessage || "Failed to persist repeat task",
+          })
+        }
+
+        return reply.send({
+          success: true,
+          loop: result.summary ?? (await formatLoopResponse(result.loop!)),
+        })
       }
 
-      const name = typeof body.name === "string" ? body.name.trim() : undefined
-      const prompt = typeof body.prompt === "string" ? body.prompt.trim() : undefined
-      const intervalMinutes =
-        typeof body.intervalMinutes === "number"
-          ? body.intervalMinutes
-          : undefined
-      const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
-      const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const updated = {
         ...existing,
-        ...(name !== undefined && { name }),
-        ...(prompt !== undefined && { prompt }),
-        ...(intervalMinutes !== undefined && { intervalMinutes }),
-        ...(enabled !== undefined && { enabled }),
-        ...(body.profileId !== undefined && { profileId: profileId || undefined }),
+        ...(typeof body.name === "string" && { name: body.name.trim() }),
+        ...(typeof body.prompt === "string" && { prompt: body.prompt.trim() }),
+        ...(typeof body.intervalMinutes === "number" && {
+          intervalMinutes: body.intervalMinutes,
+        }),
+        ...(typeof body.enabled === "boolean" && { enabled: body.enabled }),
+        ...(body.profileId !== undefined && {
+          profileId:
+            typeof body.profileId === "string"
+              ? body.profileId.trim() || undefined
+              : undefined,
+        }),
+        ...(body.maxIterations !== undefined && {
+          maxIterations:
+            typeof body.maxIterations === "number"
+              ? body.maxIterations
+              : undefined,
+        }),
+        ...(typeof body.runOnStartup === "boolean" && {
+          runOnStartup: body.runOnStartup,
+        }),
       }
 
-      if (loopService) {
-        const saved = loopService.saveLoop(updated)
-        if (!saved) {
-          return reply.code(500).send({ error: "Failed to persist repeat task" })
-        }
-
-        if (updated.enabled) {
-          loopService.stopLoop(params.id)
-          loopService.startLoop(params.id)
-        } else {
-          loopService.stopLoop(params.id)
-        }
-      } else if (cfg && loopIndex >= 0) {
+      if (cfg && loopIndex >= 0) {
         const updatedLoops = [...loops]
         updatedLoops[loopIndex] = updated
         configStore.save({ ...cfg, loops: updatedLoops })
       }
 
-      return reply.send({ success: true, loop: await formatLoopResponse(loopService?.getLoop(params.id) ?? updated) })
+      return reply.send({
+        success: true,
+        loop: await formatLoopResponse(updated),
+      })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to update repeat task", error)
-      return reply.code(500).send({ error: error?.message || "Failed to update repeat task" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to update repeat task",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to update repeat task" })
     }
   })
 
@@ -3164,13 +2816,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const loopService = await loadLoopService()
 
       if (loopService) {
-        const existing = loopService.getLoop(params.id)
-        if (!existing) {
-          return reply.code(404).send({ error: "Repeat task not found" })
-        }
+        const result = deleteManagedLoop(loopService, params.id)
+        if (!result.success) {
+          if (result.error === "not_found") {
+            return reply.code(404).send({ error: "Repeat task not found" })
+          }
 
-        const deleted = loopService.deleteLoop(params.id)
-        if (!deleted) {
           return reply.code(500).send({ error: "Failed to delete repeat task" })
         }
 
@@ -3179,19 +2830,25 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const cfg = configStore.get()
       const loops = cfg.loops || []
-      const loopIndex = loops.findIndex(l => l.id === params.id)
+      const loopIndex = loops.findIndex((l) => l.id === params.id)
 
       if (loopIndex === -1) {
         return reply.code(404).send({ error: "Repeat task not found" })
       }
 
-      const updatedLoops = loops.filter(l => l.id !== params.id)
+      const updatedLoops = loops.filter((l) => l.id !== params.id)
       configStore.save({ ...cfg, loops: updatedLoops })
 
       return reply.send({ success: true, id: params.id })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to delete repeat task", error)
-      return reply.code(500).send({ error: error?.message || "Failed to delete repeat task" })
+      diagnosticsService.logError(
+        "remote-server",
+        "Failed to delete repeat task",
+        error,
+      )
+      return reply
+        .code(500)
+        .send({ error: error?.message || "Failed to delete repeat task" })
     }
   })
 
@@ -3206,22 +2863,20 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     // Print QR code to terminal for mobile app pairing
     // Auto-print in headless environments, or when explicitly requested
     // Skip if caller handles QR printing separately (e.g., --qr mode)
-    // Suppress when streamer mode is enabled to prevent credential leakage
     if (!skipAutoPrintQR) {
       const currentCfg = configStore.get()
-      if (currentCfg.remoteServerApiKey && !currentCfg.streamerModeEnabled) {
-        // In headless environments, always print the QR code
-        // Otherwise, print if terminal QR is explicitly enabled
-        if (isHeadlessEnvironment() || currentCfg.remoteServerTerminalQrEnabled) {
-          const serverUrl = getConnectableBaseUrlForMobilePairing(bind, port)
-          if (serverUrl) {
-            await printTerminalQRCode(serverUrl, currentCfg.remoteServerApiKey)
-          } else {
-            console.warn(
-              `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`
-            )
-          }
-        }
+      const qrPrintResult = await printSharedRemoteServerQrCode({
+        mode: "auto",
+        config: currentCfg,
+        serverRunning: true,
+        isHeadlessEnvironment: isHeadlessEnvironment(),
+        resolveConnectableBaseUrl: (remoteBind, remotePort) =>
+          getConnectableBaseUrlForMobilePairing(remoteBind, remotePort),
+      })
+      if (qrPrintResult.skippedReason === "unreachable-base-url") {
+        console.warn(
+          `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`,
+        )
       }
     }
 
@@ -3254,11 +2909,13 @@ export async function restartRemoteServer() {
 
 export function getRemoteServerStatus() {
   const cfg = configStore.get()
-  const bind = cfg.remoteServerBindAddress || "127.0.0.1"
-  const port = cfg.remoteServerPort || 3210
+  const bind = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
   const running = !!server
   const url = running ? buildRemoteServerBaseUrl(bind, port) : undefined
-  const connectableUrl = running ? getConnectableBaseUrlForMobilePairing(bind, port, { warn: false }) : undefined
+  const connectableUrl = running
+    ? getConnectableBaseUrlForMobilePairing(bind, port, { warn: false })
+    : undefined
   return { running, url, connectableUrl, bind, port, lastError }
 }
 
@@ -3268,35 +2925,42 @@ export function getRemoteServerStatus() {
  * @param urlOverride Optional URL to use instead of the local server URL (e.g., Cloudflare tunnel URL)
  * @returns true if QR code was printed successfully, false if server is not running, no API key, streamer mode enabled, or QR generation failed
  */
-export async function printQRCodeToTerminal(urlOverride?: string): Promise<boolean> {
+export async function printQRCodeToTerminal(
+  urlOverride?: string,
+): Promise<boolean> {
   const cfg = configStore.get()
-  if (!server || !cfg.remoteServerApiKey) {
-    console.log("[Remote Server] Cannot print QR code: server not running or no API key configured")
+  const qrPrintResult = await printSharedRemoteServerQrCode({
+    mode: "manual",
+    config: cfg,
+    serverRunning: !!server,
+    urlOverride,
+    resolveConnectableBaseUrl: (bind, port) =>
+      getConnectableBaseUrlForMobilePairing(bind, port),
+  })
+
+  if (
+    qrPrintResult.skippedReason === "server-unavailable" ||
+    qrPrintResult.skippedReason === "missing-api-key"
+  ) {
+    console.log(
+      "[Remote Server] Cannot print QR code: server not running or no API key configured",
+    )
     return false
   }
 
-  // Suppress QR output when streamer mode is enabled to prevent credential leakage
-  if (cfg.streamerModeEnabled) {
-    console.log("[Remote Server] Cannot print QR code: streamer mode is enabled")
+  if (qrPrintResult.skippedReason === "streamer-mode") {
+    console.log(
+      "[Remote Server] Cannot print QR code: streamer mode is enabled",
+    )
     return false
   }
 
-  let serverUrl: string
-  if (urlOverride) {
-    // Use the override URL (e.g., Cloudflare tunnel URL)
-    // Ensure it ends with /v1
-    serverUrl = urlOverride.endsWith("/v1") ? urlOverride : `${urlOverride}/v1`
-  } else {
-    const bind = cfg.remoteServerBindAddress || "127.0.0.1"
-    const port = cfg.remoteServerPort || 3210
-    const connectableBaseUrl = getConnectableBaseUrlForMobilePairing(bind, port)
-    if (!connectableBaseUrl) {
-      console.log("[Remote Server] Cannot print QR code: unable to resolve a LAN-reachable URL for the current bind address")
-      return false
-    }
-    serverUrl = connectableBaseUrl
+  if (qrPrintResult.skippedReason === "unreachable-base-url") {
+    console.log(
+      "[Remote Server] Cannot print QR code: unable to resolve a LAN-reachable URL for the current bind address",
+    )
+    return false
   }
 
-  // Return the actual result from printTerminalQRCode to indicate success/failure
-  return await printTerminalQRCode(serverUrl, cfg.remoteServerApiKey)
+  return qrPrintResult.printed
 }

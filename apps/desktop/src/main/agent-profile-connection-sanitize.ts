@@ -13,7 +13,7 @@ export interface AgentProfileConnectionDraft {
 export interface AgentProfileConnectionInput {
   connectionType?: AgentProfileConnectionTypeValue;
   connectionCommand?: string;
-  connectionArgs?: string;
+  connectionArgs?: string | string[];
   connectionBaseUrl?: string;
   connectionCwd?: string;
 }

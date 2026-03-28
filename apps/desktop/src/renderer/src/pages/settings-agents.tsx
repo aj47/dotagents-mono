@@ -13,6 +13,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/u
 import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe } from "lucide-react"
 import { Facehash } from "facehash"
 import { toast } from "sonner"
+import {
+  getEnabledSkillIdsForAgentProfile,
+  getAgentProfileCatalogDescription,
+  getAgentProfileCatalogSummaryItems,
+  getAgentProfileDisplayName,
+  getAgentProfileStatusLabels,
+  isSkillEnabledForAgentProfile,
+  toggleSkillForAgentProfile,
+} from "@dotagents/shared"
 
 // Curated palette of vivid colors to pick from deterministically
 const AVATAR_PALETTE = [
@@ -37,6 +46,11 @@ import {
   AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill, DetailedToolInfo,
 } from "../../../shared/types"
+import {
+  resolveMcpServerRuntimeState,
+  type McpServerRuntimeState,
+  type McpServerStatusSnapshot,
+} from "@shared/mcp-server-status"
 
 type ConnectionType = AgentProfileConnectionType
 
@@ -81,7 +95,48 @@ interface ExternalAgentCommandVerificationResult {
   warnings?: string[]
 }
 
-type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
+type ServerInfo = McpServerStatusSnapshot
+
+function getSettingsServerRuntimeState(
+  status: ServerInfo | undefined,
+  enabled: boolean,
+  toolCount: number,
+): McpServerRuntimeState {
+  return resolveMcpServerRuntimeState(
+    status ?? {
+      connected: false,
+      toolCount,
+      runtimeEnabled: enabled,
+      configDisabled: !enabled,
+    },
+  )
+}
+
+function getSettingsServerBadgeProps(
+  runtimeState: McpServerRuntimeState,
+): {
+  className?: string
+  label: string
+  variant: "destructive" | "outline" | "secondary"
+} {
+  switch (runtimeState) {
+    case "connected":
+      return { label: "connected", variant: "secondary" }
+    case "disabled":
+      return { label: "disabled", variant: "outline" }
+    case "stopped":
+      return {
+        label: "stopped",
+        variant: "outline",
+        className: "border-orange-300 text-orange-600",
+      }
+    case "error":
+      return { label: "error", variant: "destructive" }
+    case "disconnected":
+    default:
+      return { label: "offline", variant: "outline" }
+  }
+}
 
 const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   auggie: {
@@ -149,31 +204,11 @@ function emptyAgent(): EditingAgent {
   }
 }
 
-function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number): string[] {
-  const items: string[] = [agent.connection.type]
-
-  if (agent.modelConfig?.mcpToolsProviderId) {
-    items.push(agent.modelConfig.mcpToolsProviderId)
-  }
-
-  const enabledServerCount = agent.toolConfig?.enabledServers?.length ?? 0
-  if (enabledServerCount > 0) {
-    items.push(`${enabledServerCount} server${enabledServerCount === 1 ? "" : "s"}`)
-  }
-
-  if (availableSkillCount > 0) {
-    const enabledSkillCount = (!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault)
-      ? availableSkillCount
-      : (agent.skillsConfig.enabledSkillIds?.length ?? 0)
-    items.push(`${enabledSkillCount} skill${enabledSkillCount === 1 ? "" : "s"}`)
-  }
-
-  const propertyCount = agent.properties ? Object.keys(agent.properties).length : 0
-  if (propertyCount > 0) {
-    items.push(`${propertyCount} prop${propertyCount === 1 ? "" : "s"}`)
-  }
-
-  return items
+function formatAgentCatalogStatusLabel(label: string): string {
+  return label
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-")
 }
 
 export function SettingsAgents() {
@@ -347,6 +382,7 @@ export function SettingsAgents() {
   const runtimeTools = typedTools.filter(t => t.sourceKind === "runtime")
   const externalTools = typedTools.filter(t => t.sourceKind === "mcp")
   const serverNames = Object.keys(serverStatus)
+  const allSkillIds = skills.map((skill) => skill.id)
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.sourceName === serverName)
 
   // Tool config helpers
@@ -369,9 +405,7 @@ export function SettingsAgents() {
   }
 
   const isSkillEnabled = (skillId: string): boolean => {
-    // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
-    if (!editing?.skillsConfig || !editing.skillsConfig.allSkillsDisabledByDefault) return true
-    return (editing.skillsConfig.enabledSkillIds || []).includes(skillId)
+    return isSkillEnabledForAgentProfile(editing, skillId)
   }
 
   const toggleServer = (serverName: string) => {
@@ -418,21 +452,10 @@ export function SettingsAgents() {
 
   const toggleSkill = (skillId: string) => {
     if (!editing) return
-    // Transitioning from "all enabled by default" to explicit opt-in mode
-    if (!editing.skillsConfig || !editing.skillsConfig.allSkillsDisabledByDefault) {
-      const allExcept = skills.map(s => s.id).filter(id => id !== skillId)
-      setEditing({ ...editing, skillsConfig: { enabledSkillIds: allExcept, allSkillsDisabledByDefault: true } })
-      return
-    }
-    const ids = [...(editing.skillsConfig.enabledSkillIds || [])]
-    const idx = ids.indexOf(skillId)
-    if (idx >= 0) ids.splice(idx, 1); else ids.push(skillId)
-    // If all skills are re-enabled, reset to default state
-    if (ids.length === skills.length) {
-      setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: false } })
-    } else {
-      setEditing({ ...editing, skillsConfig: { ...editing.skillsConfig, enabledSkillIds: ids } })
-    }
+    setEditing({
+      ...editing,
+      skillsConfig: toggleSkillForAgentProfile(editing, skillId, allSkillIds),
+    })
   }
 
   // Bulk toggle helpers
@@ -444,8 +467,9 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: true } })
   }
-  const allSkillsEnabled = !editing?.skillsConfig?.allSkillsDisabledByDefault || (editing?.skillsConfig?.enabledSkillIds?.length === skills.length)
-  const allSkillsDisabled = !!editing?.skillsConfig?.allSkillsDisabledByDefault && (editing?.skillsConfig?.enabledSkillIds?.length ?? 0) === 0
+  const enabledSkillIds = getEnabledSkillIdsForAgentProfile(editing, allSkillIds)
+  const allSkillsEnabled = enabledSkillIds.length === allSkillIds.length
+  const allSkillsDisabled = !!editing?.skillsConfig?.allSkillsDisabledByDefault && enabledSkillIds.length === 0
 
   const enableAllServers = () => {
     if (!editing) return
@@ -619,38 +643,53 @@ export function SettingsAgents() {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
         {sortedAgents.map(agent => {
-          const summaryItems = getAgentCardSummaryItems(agent, skills.length)
+          const summaryItems = getAgentProfileCatalogSummaryItems(agent, {
+            availableSkillCount: skills.length,
+          })
+          const statusLabels = getAgentProfileStatusLabels(agent)
+          const description = getAgentProfileCatalogDescription(
+            agent,
+            "No description provided.",
+          )
 
           return (
             <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
               <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none">
                 <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden shrink-0 bg-muted">
                   {agent.avatarDataUrl
-                    ? <img src={agent.avatarDataUrl} alt={agent.displayName} className="w-full h-full object-cover" />
+                    ? <img src={agent.avatarDataUrl} alt={getAgentProfileDisplayName(agent)} className="w-full h-full object-cover" />
                     : <Facehash name={agent.id} size={40} colors={agentColors(agent.id)} />
                   }
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
                   <CardTitle className="text-sm font-semibold truncate leading-none mt-0.5">
-                    {agent.displayName}
+                    {getAgentProfileDisplayName(agent)}
                   </CardTitle>
                   <CardDescription className="line-clamp-2 mt-1 text-[11px] leading-tight min-h-[1.75rem]">
-                    {agent.description || agent.guidelines?.slice(0, 100) || "No description provided."}
+                    {description}
                   </CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
                 <div className="space-y-1.5 mb-2">
-                  {(agent.isBuiltIn || agent.isDefault || !agent.enabled) && (
+                  {statusLabels.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
-                      {agent.isBuiltIn && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
-                      {agent.isDefault && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
-                      {!agent.enabled && <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
+                      {statusLabels.map((label) => (
+                        <Badge
+                          key={label}
+                          variant={label === "disabled" ? "outline" : "secondary"}
+                          className={`text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium ${label === "disabled" ? "bg-background/50" : ""}`}
+                        >
+                          {formatAgentCatalogStatusLabel(label)}
+                        </Badge>
+                      ))}
                     </div>
                   )}
-                  <p className="text-[11px] leading-tight text-muted-foreground">
-                    {summaryItems.join(" • ")}
-                  </p>
+                  {summaryItems.length > 0 && (
+                    <p className="text-[11px] leading-tight text-muted-foreground">
+                      {summaryItems.join(" • ")}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 pt-2 border-t mt-auto">
                   <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-muted-foreground hover:text-foreground px-0" onClick={() => handleEdit(agent)}>
@@ -1018,6 +1057,12 @@ export function SettingsAgents() {
                       const serverToolList = toolsByServer(name)
                       const isExpanded = expandedServers.has(name)
                       const enabled = isServerEnabled(name)
+                      const runtimeState = getSettingsServerRuntimeState(
+                        info,
+                        enabled,
+                        serverToolList.length,
+                      )
+                      const statusBadge = getSettingsServerBadgeProps(runtimeState)
                       return (
                         <div key={name} className="rounded-md border bg-card">
                           <div className="flex items-center justify-between px-3 py-2">
@@ -1025,10 +1070,12 @@ export function SettingsAgents() {
                               <Switch checked={enabled} onCheckedChange={() => toggleServer(name)} />
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={`font-medium text-sm truncate ${!enabled ? "text-muted-foreground" : ""}`}>{name}</span>
-                                {info?.connected
-                                  ? <Badge variant="secondary" className="text-[10px] px-1.5">connected</Badge>
-                                  : <Badge variant="outline" className="text-[10px] px-1.5">offline</Badge>
-                                }
+                                <Badge
+                                  variant={statusBadge.variant}
+                                  className={`text-[10px] px-1.5 ${statusBadge.className ?? ""}`}
+                                >
+                                  {statusBadge.label}
+                                </Badge>
                               </div>
                             </div>
                             <div className="flex items-center gap-1">

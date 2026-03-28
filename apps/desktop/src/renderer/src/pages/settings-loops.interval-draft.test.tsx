@@ -19,6 +19,11 @@ function createHookRuntime() {
     default: {} as any,
     useState,
     useCallback: (fn: any) => fn,
+    useMemo: (factory: () => unknown) => factory(),
+    useRef: <T,>(initial: T) => ({ current: initial }),
+    useEffect: () => undefined,
+    useLayoutEffect: () => undefined,
+    forwardRef: (render: any) => render,
   }
   reactMock.default = reactMock
 
@@ -68,27 +73,56 @@ function textContent(node: any, results: string[] = []): string {
 }
 
 function findButtonWithText(node: any, label: string) {
-  return findNode(node, (candidate) => candidate.type === "Button" && textContent(candidate.props?.children).includes(label))
+  return findNode(
+    node,
+    (candidate) =>
+      typeof candidate?.props?.onClick === "function" &&
+      textContent(candidate.props?.children).includes(label),
+  )
 }
 
 function findInputById(node: any, id: string) {
-  return findNode(node, (candidate) => candidate.type === "Input" && candidate.props?.id === id)
+  return findNode(
+    node,
+    (candidate) =>
+      candidate?.props?.id === id &&
+      typeof candidate.props?.onChange === "function",
+  )
 }
 
 function findTextareaById(node: any, id: string) {
-  return findNode(node, (candidate) => candidate.type === "Textarea" && candidate.props?.id === id)
+  return findNode(
+    node,
+    (candidate) =>
+      candidate?.props?.id === id &&
+      typeof candidate.props?.onChange === "function",
+  )
 }
 
 async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
 
-  const saveLoop = vi.fn(async () => undefined)
-  const startLoop = vi.fn(async () => undefined)
-  const stopLoop = vi.fn(async () => undefined)
+  const ipcInvoke = vi.fn(async () => undefined)
   const success = vi.fn()
   const error = vi.fn()
   const invalidateQueries = vi.fn()
   const Null = () => null
+
+  vi.stubGlobal("window", {
+    electron: {
+      ipcRenderer: {
+        invoke: ipcInvoke,
+        on: vi.fn(),
+        send: vi.fn(),
+      },
+    },
+  })
+  vi.stubGlobal("document", { activeElement: null })
+  vi.stubGlobal("localStorage", {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  })
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
@@ -106,20 +140,8 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
     CardTitle: (props: any) => ({ type: "CardTitle", props }),
   }))
   vi.doMock("@renderer/components/ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
-  vi.doMock("@renderer/lib/tipc-client", () => ({
-    tipcClient: {
-      getLoops: vi.fn(async () => []),
-      getLoopStatuses: vi.fn(async () => []),
-      saveLoop,
-      startLoop,
-      stopLoop,
-      deleteLoop: vi.fn(async () => undefined),
-      triggerLoop: vi.fn(async () => ({ success: true })),
-      openLoopTaskFile: vi.fn(async () => ({ success: true })),
-    },
-  }))
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? [] : [] }),
+    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loop-summaries" ? [] : [] }),
     useQueryClient: () => ({ invalidateQueries }),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
@@ -127,7 +149,7 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
   vi.doMock("sonner", () => ({ toast: { success, error } }))
 
   const mod = await import("./settings-loops")
-  return { Component: mod.Component, saveLoop, startLoop, success, error }
+  return { Component: mod.Component, ipcInvoke, success, error }
 }
 
 afterEach(() => {
@@ -138,7 +160,7 @@ afterEach(() => {
 describe("desktop repeat-task interval editing", () => {
   it("keeps an empty interval draft local so backspace edits do not snap back to 15", async () => {
     const runtime = createHookRuntime()
-    const { Component, saveLoop } = await loadSettingsLoops(runtime)
+    const { Component, ipcInvoke } = await loadSettingsLoops(runtime)
 
     let tree = runtime.render(Component, {} as any)
     findButtonWithText(tree, "Add Task").props.onClick()
@@ -156,44 +178,52 @@ describe("desktop repeat-task interval editing", () => {
     tree = runtime.render(Component, {} as any)
     intervalInput = findInputById(tree, "interval")
     expect(intervalInput.props.value).toBe("5")
-    expect(saveLoop).not.toHaveBeenCalled()
+    expect(ipcInvoke).not.toHaveBeenCalled()
   })
 
   it("blocks invalid interval saves with a validation error instead of silently coercing them", async () => {
     const runtime = createHookRuntime()
-    const { Component, saveLoop, error } = await loadSettingsLoops(runtime)
+    const { Component, ipcInvoke, error } = await loadSettingsLoops(runtime)
 
     let tree = runtime.render(Component, {} as any)
     findButtonWithText(tree, "Add Task").props.onClick()
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "" } })
 
     tree = runtime.render(Component, {} as any)
     await findButtonWithText(tree, "Save").props.onClick()
 
-    expect(saveLoop).not.toHaveBeenCalled()
+    expect(ipcInvoke).not.toHaveBeenCalled()
     expect(error).toHaveBeenCalledWith("Interval must be a positive whole number of minutes")
   })
 
   it("parses a valid interval draft to a number before saving", async () => {
     const runtime = createHookRuntime()
-    const { Component, saveLoop, startLoop, success } = await loadSettingsLoops(runtime)
+    const { Component, ipcInvoke, success } = await loadSettingsLoops(runtime)
 
     let tree = runtime.render(Component, {} as any)
     findButtonWithText(tree, "Add Task").props.onClick()
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "60" } })
 
     tree = runtime.render(Component, {} as any)
     await findButtonWithText(tree, "Save").props.onClick()
 
-    expect(saveLoop).toHaveBeenCalledWith({
+    expect(ipcInvoke).toHaveBeenNthCalledWith(1, "saveLoop", {
       loop: expect.objectContaining({
         name: "Daily Summary",
         prompt: "Summarize recent activity",
@@ -202,7 +232,9 @@ describe("desktop repeat-task interval editing", () => {
         runOnStartup: false,
       }),
     })
-    expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
+    expect(ipcInvoke).toHaveBeenNthCalledWith(2, "startLoop", {
+      loopId: "daily-summary",
+    })
     expect(success).toHaveBeenCalledWith("Task created")
   })
 })

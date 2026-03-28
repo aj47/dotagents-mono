@@ -2,6 +2,11 @@ import { app } from "electron"
 import path from "path"
 import fs from "fs"
 import {
+  areAllSkillsEnabledForAgentProfile,
+  isSkillEnabledForAgentProfile,
+  toggleSkillForAgentProfile,
+} from "@dotagents/shared"
+import {
   AgentProfile,
   AgentProfileRole,
   AgentProfilesData,
@@ -182,6 +187,66 @@ export function createSessionSnapshotFromProfile(
     agentProperties: profile.properties,
     skillsConfig: profile.skillsConfig,
   }
+}
+
+export function serializeAgentProfileAsLegacyProfile(
+  profile: AgentProfile,
+): Profile {
+  return {
+    id: profile.id,
+    name: profile.displayName,
+    guidelines: profile.guidelines || "",
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+    isDefault: profile.isDefault,
+    mcpServerConfig: toolConfigToMcpServerConfig(profile.toolConfig),
+    modelConfig: profile.modelConfig,
+    skillsConfig: profile.skillsConfig,
+    systemPrompt: profile.systemPrompt,
+  }
+}
+
+export function buildLegacyAgentProfileCreateData(input: {
+  name: string
+  guidelines: string
+  systemPrompt?: string
+  allServerNames: string[]
+  runtimeToolNames: string[]
+}): Omit<AgentProfile, "id" | "createdAt" | "updatedAt"> {
+  return {
+    name: input.name,
+    displayName: input.name,
+    guidelines: input.guidelines,
+    systemPrompt: input.systemPrompt,
+    connection: { type: "internal" },
+    role: "delegation-target",
+    enabled: true,
+    isUserProfile: false,
+    isAgentTarget: true,
+    toolConfig: {
+      disabledServers: input.allServerNames,
+      disabledTools: input.runtimeToolNames,
+      allServersDisabledByDefault: true,
+    },
+  }
+}
+
+export function buildLegacyAgentProfileUpdates(input: {
+  name?: string
+  guidelines?: string
+  systemPrompt?: string
+}): Partial<AgentProfile> {
+  const updates: Partial<AgentProfile> = {}
+  if (Object.prototype.hasOwnProperty.call(input, "name")) {
+    updates.displayName = input.name
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "guidelines")) {
+    updates.guidelines = input.guidelines
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "systemPrompt")) {
+    updates.systemPrompt = input.systemPrompt
+  }
+  return updates
 }
 
 /**
@@ -918,28 +983,10 @@ class AgentProfileService {
     const profile = this.getById(profileId)
     if (!profile) return undefined
 
-    // If profile has no explicit skills config (all enabled by default)
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) {
-      // Transitioning from "all enabled" to opt-in: enable all EXCEPT the toggled skill
-      const allIds = allSkillIds ?? []
-      const newEnabledSkillIds = allIds.filter(id => id !== skillId)
-      return this.updateProfileSkillsConfig(profileId, {
-        enabledSkillIds: newEnabledSkillIds,
-        allSkillsDisabledByDefault: true,
-      })
-    }
-
-    const currentEnabledSkills = profile.skillsConfig.enabledSkillIds ?? []
-    const isCurrentlyEnabled = currentEnabledSkills.includes(skillId)
-
-    const newEnabledSkillIds = isCurrentlyEnabled
-      ? currentEnabledSkills.filter(id => id !== skillId)
-      : [...currentEnabledSkills, skillId]
-
-    return this.updateProfileSkillsConfig(profileId, {
-      enabledSkillIds: newEnabledSkillIds,
-      allSkillsDisabledByDefault: true,
-    })
+    return this.updateProfileSkillsConfig(
+      profileId,
+      toggleSkillForAgentProfile(profile, skillId, allSkillIds ?? []),
+    )
   }
 
   /**
@@ -949,9 +996,7 @@ class AgentProfileService {
   isSkillEnabledForProfile(profileId: string, skillId: string): boolean {
     const profile = this.getById(profileId)
     if (!profile) return false
-    // No skillsConfig = unconfigured = all skills enabled by default
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) return true
-    return (profile.skillsConfig.enabledSkillIds ?? []).includes(skillId)
+    return isSkillEnabledForAgentProfile(profile, skillId)
   }
 
   /**
@@ -960,7 +1005,7 @@ class AgentProfileService {
   hasAllSkillsEnabledByDefault(profileId: string): boolean {
     const profile = this.getById(profileId)
     if (!profile) return false
-    return !profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault
+    return areAllSkillsEnabledForAgentProfile(profile)
   }
 
   /**
@@ -984,12 +1029,15 @@ class AgentProfileService {
     const currentProfile = this.getCurrentProfile()
     if (!currentProfile) return undefined
 
-    // If all skills are enabled by default (no skillsConfig), no need to add explicitly
-    if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) {
+    const skillsConfig = currentProfile.skillsConfig
+    if (
+      areAllSkillsEnabledForAgentProfile(currentProfile) ||
+      !skillsConfig?.allSkillsDisabledByDefault
+    ) {
       return currentProfile
     }
 
-    const currentEnabledSkills = currentProfile.skillsConfig.enabledSkillIds ?? []
+    const currentEnabledSkills = skillsConfig.enabledSkillIds ?? []
     if (currentEnabledSkills.includes(skillId)) return currentProfile
 
     return this.updateProfileSkillsConfig(currentProfile.id, {
@@ -1161,7 +1209,7 @@ class AgentProfileService {
    * Returns only user-profile role profiles shaped like the legacy Profile type.
    */
   getProfilesLegacy(): Profile[] {
-    return this.getUserProfiles().map(p => this.agentProfileToLegacyProfile(p))
+    return this.getUserProfiles().map(serializeAgentProfileAsLegacyProfile)
   }
 
   /**
@@ -1170,7 +1218,7 @@ class AgentProfileService {
   getProfileLegacy(id: string): Profile | undefined {
     const profile = this.getById(id)
     if (!profile) return undefined
-    return this.agentProfileToLegacyProfile(profile)
+    return serializeAgentProfileAsLegacyProfile(profile)
   }
 
   /**
@@ -1179,25 +1227,7 @@ class AgentProfileService {
   getCurrentProfileLegacy(): Profile | undefined {
     const profile = this.getCurrentProfile()
     if (!profile) return undefined
-    return this.agentProfileToLegacyProfile(profile)
-  }
-
-  /**
-   * Convert an AgentProfile to legacy Profile format.
-   */
-  private agentProfileToLegacyProfile(p: AgentProfile): Profile {
-    return {
-      id: p.id,
-      name: p.displayName,
-      guidelines: p.guidelines || "",
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      isDefault: p.isDefault,
-      mcpServerConfig: toolConfigToMcpServerConfig(p.toolConfig),
-      modelConfig: p.modelConfig,
-      skillsConfig: p.skillsConfig,
-      systemPrompt: p.systemPrompt,
-    }
+    return serializeAgentProfileAsLegacyProfile(profile)
   }
 
   /**
@@ -1209,22 +1239,15 @@ class AgentProfileService {
     const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
     const runtimeToolNames = getRuntimeToolNames()
 
-    return this.create({
-      name,
-      displayName: name,
-      guidelines,
-      systemPrompt,
-      connection: { type: "internal" },
-      role: "delegation-target",
-      enabled: true,
-      isUserProfile: false,
-      isAgentTarget: true,
-      toolConfig: {
-        disabledServers: allServerNames,
-          disabledTools: runtimeToolNames,
-        allServersDisabledByDefault: true,
-      },
-    })
+    return this.create(
+      buildLegacyAgentProfileCreateData({
+        name,
+        guidelines,
+        systemPrompt,
+        allServerNames,
+        runtimeToolNames,
+      }),
+    )
   }
 
   /**

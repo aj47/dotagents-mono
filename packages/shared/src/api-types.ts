@@ -132,6 +132,16 @@ export interface Settings {
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
 
+  // Remote Server Configuration
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: 'error' | 'info' | 'debug';
+  remoteServerCorsOrigins?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
+
   // ACP Agents list (read-only, from GET only)
   acpAgents?: Array<{ name: string; displayName: string }>;
 }
@@ -213,6 +223,16 @@ export interface SettingsUpdate {
   // Session History (pinned/archived conversation IDs)
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
+
+  // Remote Server Configuration
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: 'error' | 'info' | 'debug';
+  remoteServerCorsOrigins?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
 
   // Predefined Prompts
   predefinedPrompts?: PredefinedPromptSummary[];

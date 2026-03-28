@@ -4,19 +4,21 @@ import { describe, expect, it } from "vitest"
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 
 describe("tipc selected-agent routing", () => {
-  it("checks the selected or revived profile before falling back to global ACP main-agent config", () => {
-    expect(tipcSource).toContain("resolvePreferredTopLevelAcpAgentSelection({")
-    expect(tipcSource).toContain("sessionProfileId: existingProfileSnapshot?.profileId")
-    expect(tipcSource).toContain('topLevelAcpSelection.source === "main-agent"')
+  it("delegates fresh and resumed prompts to shared launch/run helpers while preserving session history", () => {
+    expect(tipcSource).toContain("async function startDesktopPromptRun(")
+    expect(tipcSource).toContain("async function startDesktopResumeRun(")
+    expect(tipcSource).toContain("return startSharedPromptRun({")
+    expect(tipcSource).toContain("return startSharedResumeRun({")
+    expect(tipcSource).toContain("candidateSessionIds")
   })
 
-  it("captures the selected profile snapshot when starting an ACP-backed top-level session", () => {
-    expect(tipcSource).toContain(
-      "agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)"
-    )
+  it("passes panel focus through the shared runner instead of duplicating ACP selection logic", () => {
+    expect(tipcSource).toContain("async function focusDesktopSession(sessionId: string): Promise<void>")
+    expect(tipcSource).not.toContain("resolvePreferredTopLevelAcpAgentSelection({")
   })
 
-  it("lets ACP transcript persistence own the final assistant write", () => {
+  it("keeps ACP transcript persistence owned by the shared runner", () => {
+    expect(tipcSource).not.toContain("processTranscriptWithACPAgent(")
     expect(tipcSource).not.toContain("if (conversationId && result.response) {")
   })
 })

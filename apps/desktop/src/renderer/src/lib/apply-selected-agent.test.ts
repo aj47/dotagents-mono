@@ -45,6 +45,24 @@ describe("applySelectedAgentToNextSession", () => {
     expect(toastError).not.toHaveBeenCalled()
   })
 
+  it("prefers an explicit default agent over the main-agent fallback", async () => {
+    getAgentProfiles.mockResolvedValue([
+      { id: "agent-1", name: "helper", displayName: "Helper", enabled: true },
+      { id: "agent-2", name: "main-agent", displayName: "Main", enabled: true },
+      { id: "agent-3", name: "planner", displayName: "Planner", enabled: true, isDefault: true },
+    ])
+    setCurrentAgentProfile.mockResolvedValue({ success: true })
+
+    const result = await applySelectedAgentToNextSession({
+      selectedAgentId: null,
+      setSelectedAgentId: vi.fn(),
+    })
+
+    expect(result).toBe(true)
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-3" })
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
   it("clears stale selections and blocks the session start instead of silently switching agents", async () => {
     getAgentProfiles.mockResolvedValue([
       { id: "agent-2", name: "main-agent", displayName: "Main", enabled: true },
