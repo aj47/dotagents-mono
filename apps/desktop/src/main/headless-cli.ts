@@ -45,7 +45,11 @@ import {
   searchManagedKnowledgeNotes,
   updateManagedKnowledgeNote,
 } from "./knowledge-note-management"
-import { skillsService } from "./skills-service"
+import {
+  getManagedCurrentProfileSkills,
+  getManagedSkillsCatalog,
+  toggleManagedSkillForCurrentProfile,
+} from "./profile-skill-management"
 import {
   deleteAllConversationsAndSyncSessionState,
   deleteConversationAndSyncSessionState,
@@ -53,7 +57,6 @@ import {
 } from "./conversation-management"
 import { emergencyStopAll } from "./emergency-stop"
 import {
-  getEnabledSkillIdsForAgentProfile,
   type ConversationSessionState,
   type ConversationSessionStateKey,
   getAgentProfileCatalogDescription,
@@ -61,7 +64,6 @@ import {
   getAgentProfileDisplayName,
   getEnabledAgentProfiles,
   getAgentProfileStatusLabels,
-  isSkillEnabledForAgentProfile,
   orderItemsByPinnedFirst,
   resolveAgentProfileSelection,
   resolveChatModelDisplayInfo,
@@ -76,7 +78,6 @@ import {
 } from "../shared/mcp-server-status"
 import type {
   AgentProfile,
-  AgentSkill,
   AgentProgressUpdate,
   Conversation,
   ConversationHistoryItem,
@@ -796,7 +797,7 @@ function printStatus() {
 
 function printAgents() {
   const agents = getAvailableAgentsForCli()
-  const availableSkillCount = skillsService.getSkills().length
+  const availableSkillCount = getManagedSkillsCatalog().length
   console.log(`\n${colors.bold}Enabled Agents:${colors.reset}`)
   if (agents.length === 0) {
     console.log(`  ${colors.dim}(no enabled agents)${colors.reset}`)
@@ -816,21 +817,8 @@ function printAgents() {
   console.log()
 }
 
-function getSortedSkillsForCli(): AgentSkill[] {
-  return [...skillsService.getSkills()].sort((left, right) =>
-    left.name.localeCompare(right.name),
-  )
-}
-
 function printSkills() {
-  const skills = getSortedSkillsForCli()
-  const currentProfile = agentProfileService.getCurrentProfile()
-  const enabledSkillIdSet = new Set(
-    getEnabledSkillIdsForAgentProfile(
-      currentProfile,
-      skills.map((skill) => skill.id),
-    ),
-  )
+  const { currentProfile, skills } = getManagedCurrentProfileSkills()
 
   console.log(`\n${colors.bold}Skills:${colors.reset}`)
   console.log(
@@ -844,8 +832,7 @@ function printSkills() {
   }
 
   for (const skill of skills) {
-    const enabledForProfile = enabledSkillIdSet.has(skill.id)
-    const stateLabel = enabledForProfile
+    const stateLabel = skill.enabledForProfile
       ? `${colors.green}enabled`
       : `${colors.dim}disabled`
     console.log(
@@ -1426,38 +1413,23 @@ async function handleToggleSkill(selection: string): Promise<void> {
     return
   }
 
-  const currentProfile = agentProfileService.getCurrentProfile()
-  if (!currentProfile) {
-    printColored(
-      colors.yellow,
-      "No current agent profile. Use /agent <id-or-name> before toggling skills.",
-    )
+  const result = toggleManagedSkillForCurrentProfile(skillId)
+  if (!result.success) {
+    if (result.errorCode === "profile_not_found") {
+      printColored(
+        colors.yellow,
+        "No current agent profile. Use /agent <id-or-name> before toggling skills.",
+      )
+      return
+    }
+
+    printColored(colors.red, result.error)
     return
   }
 
-  const skill = skillsService.getSkill(skillId)
-  if (!skill) {
-    printColored(colors.red, `Skill not found: ${skillId}`)
-    return
-  }
-
-  const updatedProfile = agentProfileService.toggleProfileSkill(
-    currentProfile.id,
-    skill.id,
-    getSortedSkillsForCli().map((availableSkill) => availableSkill.id),
-  )
-  if (!updatedProfile) {
-    printColored(colors.red, `Failed to toggle skill: ${skill.id}`)
-    return
-  }
-
-  const enabledForProfile = isSkillEnabledForAgentProfile(
-    updatedProfile,
-    skill.id,
-  )
   printColored(
     colors.green,
-    `${enabledForProfile ? "Enabled" : "Disabled"} skill ${skill.name} (${skill.id}) for ${getAgentProfileDisplayName(updatedProfile)}.`,
+    `${result.enabledForProfile ? "Enabled" : "Disabled"} skill ${result.skill.name} (${result.skill.id}) for ${getAgentProfileDisplayName(result.profile)}.`,
   )
 }
 

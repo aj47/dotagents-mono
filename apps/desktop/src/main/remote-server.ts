@@ -13,8 +13,6 @@ import os from "os"
 import path from "path"
 import {
   formatConversationHistoryMessages,
-  getEnabledSkillIdsForAgentProfile,
-  isSkillEnabledForAgentProfile,
   sanitizeConversationSessionState,
   resolveChatModelSelection,
   resolveChatProviderId,
@@ -59,7 +57,6 @@ import {
   isPushEnabled,
   clearBadgeCount,
 } from "./push-notification-service"
-import { skillsService } from "./skills-service"
 import {
   createManagedKnowledgeNote,
   deleteManagedKnowledgeNote,
@@ -90,6 +87,10 @@ import {
   setManagedMcpServerRuntimeEnabled,
 } from "./mcp-management"
 import { mcpManagementStore } from "./mcp-management-store"
+import {
+  getManagedCurrentProfileSkills,
+  toggleManagedSkillForCurrentProfile,
+} from "./profile-skill-management"
 import { summarizeLoop, summarizeLoops } from "./loop-summaries"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
@@ -2384,24 +2385,19 @@ async function startRemoteServerInternal(
   // GET /v1/skills - List all skills
   fastify.get("/v1/skills", async (_req, reply) => {
     try {
-      const skills = skillsService.getSkills()
-      const currentProfile = agentProfileService.getCurrentProfile()
-      const enabledSkillIds = getEnabledSkillIdsForAgentProfile(
-        currentProfile,
-        skills.map((skill) => skill.id),
-      )
+      const managedSkills = getManagedCurrentProfileSkills()
 
       return reply.send({
-        skills: skills.map((s) => ({
+        skills: managedSkills.skills.map((s) => ({
           id: s.id,
           name: s.name,
           description: s.description,
-          enabledForProfile: enabledSkillIds.includes(s.id),
+          enabledForProfile: s.enabledForProfile,
           source: s.source,
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
         })),
-        currentProfileId: currentProfile?.id,
+        currentProfileId: managedSkills.currentProfile?.id,
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -2417,33 +2413,21 @@ async function startRemoteServerInternal(
   fastify.post("/v1/skills/:id/toggle-profile", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-
-      // Validate the skill exists
-      const skills = skillsService.getSkills()
-      const skillExists = skills.some((s) => s.id === params.id)
-      if (!skillExists) {
-        return reply.code(404).send({ error: "Skill not found" })
+      const result = toggleManagedSkillForCurrentProfile(params.id)
+      if (!result.success) {
+        if (result.errorCode === "skill_not_found") {
+          return reply.code(404).send({ error: result.error })
+        }
+        if (result.errorCode === "profile_not_found") {
+          return reply.code(400).send({ error: result.error })
+        }
+        return reply.code(500).send({ error: result.error })
       }
-
-      const currentProfile = agentProfileService.getCurrentProfile()
-      if (!currentProfile) {
-        return reply.code(400).send({ error: "No current profile set" })
-      }
-
-      const allSkillIds = skills.map((s) => s.id)
-      const updatedProfile = agentProfileService.toggleProfileSkill(
-        currentProfile.id,
-        params.id,
-        allSkillIds,
-      )
-      const isNowEnabled = updatedProfile
-        ? isSkillEnabledForAgentProfile(updatedProfile, params.id)
-        : false
 
       return reply.send({
         success: true,
         skillId: params.id,
-        enabledForProfile: isNowEnabled,
+        enabledForProfile: result.enabledForProfile,
       })
     } catch (error: any) {
       diagnosticsService.logError(

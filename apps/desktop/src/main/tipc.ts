@@ -148,6 +148,7 @@ import {
   searchManagedKnowledgeNotes,
   updateManagedKnowledgeNote,
 } from "./knowledge-note-management"
+import { toggleManagedSkillForProfile } from "./profile-skill-management"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 
@@ -4565,15 +4566,11 @@ export const router = {
   toggleProfileSkill: t.procedure
     .input<{ profileId: string; skillId: string }>()
     .action(async ({ input }) => {
-      // Pass all available skill IDs so the toggle can properly transition
-      // from "all enabled by default" to explicit opt-in mode
-      const { skillsService } = await import("./skills-service")
-      const allSkillIds = skillsService.getSkills().map((s) => s.id)
-      return agentProfileService.toggleProfileSkill(
+      const result = toggleManagedSkillForProfile(
         input.profileId,
         input.skillId,
-        allSkillIds,
       )
+      return result.success ? result.profile : undefined
     }),
 
   isSkillEnabledForProfile: t.procedure

@@ -70,6 +70,10 @@ const knowledgeNoteManagementSource = readFileSync(
   new URL("./knowledge-note-management.ts", import.meta.url),
   "utf8",
 )
+const profileSkillManagementSource = readFileSync(
+  new URL("./profile-skill-management.ts", import.meta.url),
+  "utf8",
+)
 const sharedProvidersSource = readFileSync(
   new URL("../../../../packages/shared/src/providers.ts", import.meta.url),
   "utf8",
@@ -465,10 +469,14 @@ describe("CLI and desktop feature paths", () => {
     expect(agentProfileServiceSource).toContain(
       "isSkillEnabledForAgentProfile(",
     )
+    expect(profileSkillManagementSource).toContain(
+      "getEnabledSkillIdsForAgentProfile(",
+    )
+    expect(profileSkillManagementSource).toContain(
+      "isSkillEnabledForAgentProfile(",
+    )
     expect(headlessCliSource).toContain('case "/skills":')
     expect(headlessCliSource).toContain('case "/skill":')
-    expect(headlessCliSource).toContain("getEnabledSkillIdsForAgentProfile(")
-    expect(headlessCliSource).toContain("isSkillEnabledForAgentProfile(")
     expect(settingsAgentsSource).toContain("toggleSkillForAgentProfile(")
     expect(settingsAgentsSource).toContain("isSkillEnabledForAgentProfile(")
     expect(agentCapabilitiesSidebarSource).toContain(
@@ -477,8 +485,31 @@ describe("CLI and desktop feature paths", () => {
     expect(agentCapabilitiesSidebarSource).toContain(
       "getEnabledSkillIdsForAgentProfile(",
     )
-    expect(remoteServerSource).toContain("getEnabledSkillIdsForAgentProfile(")
-    expect(remoteServerSource).toContain("isSkillEnabledForAgentProfile(")
+  })
+
+  it("shares profile skill management across headless, desktop, and remote surfaces", () => {
+    expect(profileSkillManagementSource).toContain(
+      "export function getManagedSkillsCatalog",
+    )
+    expect(profileSkillManagementSource).toContain(
+      "export function getManagedCurrentProfileSkills",
+    )
+    expect(profileSkillManagementSource).toContain(
+      "export function toggleManagedSkillForCurrentProfile",
+    )
+    expect(profileSkillManagementSource).toContain(
+      "export function toggleManagedSkillForProfile",
+    )
+    expect(headlessCliSource).toContain("getManagedSkillsCatalog(")
+    expect(headlessCliSource).toContain("getManagedCurrentProfileSkills(")
+    expect(headlessCliSource).toContain(
+      "toggleManagedSkillForCurrentProfile(",
+    )
+    expect(remoteServerSource).toContain("getManagedCurrentProfileSkills(")
+    expect(remoteServerSource).toContain(
+      "toggleManagedSkillForCurrentProfile(",
+    )
+    expect(tipcSource).toContain("toggleManagedSkillForProfile(")
   })
 
   it("routes the remote server through the shared launcher and runner", () => {
@@ -892,6 +923,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared agent selector profiles")
     expect(docsSource).toContain("Shared ACP main-agent options")
     expect(docsSource).toContain("Shared profile skill gating")
+    expect(docsSource).toContain("Shared profile skill management")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")

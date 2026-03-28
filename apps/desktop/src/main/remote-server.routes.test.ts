@@ -370,4 +370,23 @@ describe("remote-server route registration", () => {
       'body.archivedSessionIds.every((id: unknown) => typeof id === "string")',
     )
   })
+
+  it("shares current-profile skill routes with the desktop and CLI skill manager", () => {
+    const source = getRemoteServerSource()
+    const skillsSection = getSection(
+      source,
+      "// GET /v1/skills - List all skills",
+      "// Knowledge Notes Management Endpoints (for mobile app)",
+    )
+
+    expect(source).toContain('from "./profile-skill-management"')
+    expect(skillsSection).toContain("getManagedCurrentProfileSkills()")
+    expect(skillsSection).toContain(
+      "toggleManagedSkillForCurrentProfile(params.id)",
+    )
+    expect(skillsSection).not.toContain("skillsService.getSkills()")
+    expect(skillsSection).not.toContain(
+      "agentProfileService.toggleProfileSkill(",
+    )
+  })
 })

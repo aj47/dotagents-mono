@@ -126,6 +126,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `areAllSkillsEnabledForAgentProfile(...)`, `isSkillEnabledForAgentProfile(...)`, `getEnabledSkillIdsForAgentProfile(...)`, and `toggleSkillForAgentProfile(...)`
 - Current callers: `agent-profile-service.ts`; `headless-cli.ts` `/skills` and `/skill`; renderer `settings-agents.tsx`; `agent-capabilities-sidebar.tsx`; and `remote-server.ts` `/v1/skills`
 
+## Shared profile skill management
+
+- Shared skill-management file: `apps/desktop/src/main/profile-skill-management.ts`
+- Shared helpers: `getManagedSkillsCatalog(...)`, `getManagedCurrentProfileSkills(...)`, `toggleManagedSkillForCurrentProfile(...)`, and `toggleManagedSkillForProfile(...)`
+- Current callers: `headless-cli.ts` `/skills` and `/skill`; `tipc.ts` `toggleProfileSkill(...)`; and `remote-server.ts` `/v1/skills` plus `/v1/skills/:id/toggle-profile`
+
 ## Shared agent catalog summaries
 
 - Shared selector file: `packages/shared/src/agent-profiles.ts`
@@ -258,7 +264,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 34. Headless CLI repeat-task controls
     `headless-cli.ts` now routes `/loops`, `/loop-show`, `/loop-new`, `/loop-edit`, `/loop-toggle`, `/loop-run`, and `/loop-delete` through `loop-management.ts`, while `tipc.ts getLoopSummaries(...)` plus save/delete/trigger handlers and `remote-server.ts` repeat-task endpoints reuse the same summary/runtime helpers, so repeat-task selection by ID or name, JSON payload validation, live status rendering, enable/disable persistence, create/update/delete behavior, and manual run behavior stay aligned across terminal, desktop settings, and remote/mobile.
 35. Headless CLI skill toggles
-    `headless-cli.ts` now also exposes `/skills` and `/skill <id>` through the same profile-skill helper path used elsewhere, so terminal skill visibility and per-profile toggles reuse the same “all enabled unless opt-in mode is active” semantics that the desktop agent editor and remote/mobile settings already use.
+    `headless-cli.ts` `/skills` and `/skill <id>`, `remote-server.ts` `/v1/skills` and `/v1/skills/:id/toggle-profile`, and `tipc.ts` `toggleProfileSkill(...)` now route through `profile-skill-management.ts`, so current-profile lookup, skill sorting, missing-skill/profile handling, and per-profile toggle responses stay aligned across terminal, desktop, and remote clients before each surface formats its own output.
 36. Desktop/mobile per-profile skill enablement
     `packages/shared/src/agent-profiles.ts` now also resolves effective enabled skill IDs plus toggle transitions in one place, so `settings-agents.tsx`, `agent-capabilities-sidebar.tsx`, `agent-profile-service.ts`, and `remote-server.ts` `/v1/skills` all agree on which skills are enabled for the current profile and when a profile should collapse back to the default “all skills enabled” state.
 37. Headless CLI MCP server controls
