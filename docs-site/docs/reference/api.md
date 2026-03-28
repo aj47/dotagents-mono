@@ -190,6 +190,22 @@ Toggle an agent profile between enabled and disabled.
 
 Delete an agent profile. Built-in profiles cannot be deleted.
 
+#### `GET /v1/profiles/{id}/export`
+
+Export one agent profile as portable JSON. This route shares the same import/export helper that powers the headless CLI `/agent-export*` commands and desktop profile export flows.
+
+#### `POST /v1/profiles/import`
+
+Import one agent profile from portable JSON. This route shares the same validation path that powers the headless CLI `/agent-import*` commands and desktop profile import flows.
+
+**Request:**
+
+```json
+{
+  "profileJson": "{\n  \"version\": 1,\n  \"name\": \"Ops Agent\",\n  \"guidelines\": \"Keep changes surgical.\"\n}"
+}
+```
+
 ### Repeat Tasks
 
 #### `GET /v1/loops`

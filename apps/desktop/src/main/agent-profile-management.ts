@@ -63,6 +63,12 @@ type ManagedAgentProfileMutationSuccess = {
   profile: AgentProfile
 }
 
+type ManagedAgentProfileExportSuccess = {
+  success: true
+  profile: AgentProfile
+  profileJson: string
+}
+
 type ManagedAgentProfileDeleteSuccess = {
   success: true
   id: string
@@ -71,6 +77,10 @@ type ManagedAgentProfileDeleteSuccess = {
 export type ManagedAgentProfileMutationResult =
   | ManagedAgentProfileFailure
   | ManagedAgentProfileMutationSuccess
+
+export type ManagedAgentProfileExportResult =
+  | ManagedAgentProfileFailure
+  | ManagedAgentProfileExportSuccess
 
 export type ManagedAgentProfileDeleteResult =
   | ManagedAgentProfileFailure
@@ -520,6 +530,15 @@ export function resolveManagedAgentProfileSelection<
   return resolveAgentProfileSelection(profiles, query)
 }
 
+function isManagedAgentProfileValidationError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("json") ||
+    normalized.includes("invalid") ||
+    normalized.includes("missing")
+  )
+}
+
 export function createManagedAgentProfile(
   input: ManagedAgentProfileInput,
 ): ManagedAgentProfileMutationResult {
@@ -874,6 +893,57 @@ export function toggleManagedAgentProfileEnabled(
   return {
     success: true,
     profile: updatedProfile,
+  }
+}
+
+export function exportManagedAgentProfile(
+  profileId: string,
+): ManagedAgentProfileExportResult {
+  const existingProfile = agentProfileService.getById(profileId)
+  if (!existingProfile) {
+    return createManagedAgentProfileFailure(
+      "not_found",
+      `Agent profile not found: ${profileId}`,
+    )
+  }
+
+  try {
+    return {
+      success: true,
+      profile: existingProfile,
+      profileJson: agentProfileService.exportProfile(profileId),
+    }
+  } catch (error) {
+    return createManagedAgentProfileFailure(
+      "persist_failed",
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+export function importManagedAgentProfile(
+  profileJson: string,
+): ManagedAgentProfileMutationResult {
+  if (typeof profileJson !== "string" || profileJson.trim() === "") {
+    return createManagedAgentProfileFailure(
+      "invalid_input",
+      "profileJson is required and must be a non-empty string",
+    )
+  }
+
+  try {
+    return {
+      success: true,
+      profile: agentProfileService.importProfile(profileJson),
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return createManagedAgentProfileFailure(
+      isManagedAgentProfileValidationError(message)
+        ? "invalid_input"
+        : "persist_failed",
+      message,
+    )
   }
 }
 

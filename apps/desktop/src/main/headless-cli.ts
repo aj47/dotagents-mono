@@ -2,6 +2,7 @@
  * Interactive terminal CLI for headless mode.
  * Provides a readline-based REPL for interacting with the agent from SSH.
  */
+import fs from "fs"
 import os from "os"
 import path from "path"
 import readline from "readline"
@@ -38,7 +39,9 @@ import { activateAgentProfile } from "./agent-profile-activation"
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
+  exportManagedAgentProfile,
   getManagedAgentProfiles,
+  importManagedAgentProfile,
   resolveManagedAgentProfileSelection,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
@@ -216,6 +219,10 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/agent-edit <id-or-name> <json>${colors.reset} - Update an agent profile from a JSON payload
   ${colors.cyan}/agent-toggle <id-or-name>${colors.reset} - Enable or disable an agent profile
   ${colors.cyan}/agent-delete <id-or-name>${colors.reset} - Delete an agent profile
+  ${colors.cyan}/agent-export <id-or-name>${colors.reset} - Print an agent profile as export JSON
+  ${colors.cyan}/agent-export-file <id-or-name> <path>${colors.reset} - Write exported agent JSON to a file
+  ${colors.cyan}/agent-import <json>${colors.reset} - Import an agent profile from export JSON
+  ${colors.cyan}/agent-import-file <path>${colors.reset} - Import an agent profile from a JSON file
   ${colors.cyan}/loops${colors.reset}         - List repeat tasks with live status and profile info
   ${colors.cyan}/loop-show <id-or-name>${colors.reset} - Show full repeat-task details
   ${colors.cyan}/loop-new <json>${colors.reset} - Create a repeat task from a JSON payload
@@ -669,6 +676,32 @@ function parseAgentProfileEditCommand(
   return { selection, payload }
 }
 
+function parseAgentProfileFileCommand(
+  input: string,
+  usage: string,
+): { selection: string; filePath: string } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  const selection = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const filePath = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  if (!selection || !filePath) {
+    printColored(colors.yellow, usage)
+    return null
+  }
+
+  return { selection, filePath }
+}
+
 async function resolveKnowledgeNoteSelectionForCli(
   selection: string,
 ): Promise<KnowledgeNote | null> {
@@ -926,7 +959,7 @@ function printAgentProfiles() {
 
   console.log()
   console.log(
-    `${colors.dim}Use /agent-show, /agent-new, /agent-edit, /agent-toggle, or /agent-delete to manage agent profiles.${colors.reset}`,
+    `${colors.dim}Use /agent-show, /agent-new, /agent-edit, /agent-toggle, /agent-delete, /agent-export, /agent-export-file, /agent-import, or /agent-import-file to manage agent profiles.${colors.reset}`,
   )
   console.log()
 }
@@ -1410,6 +1443,115 @@ async function handleDeleteAgentProfile(selection: string): Promise<void> {
     colors.green,
     `Deleted agent profile ${getAgentProfileDisplayName(profile)} (${profile.id}).`,
   )
+}
+
+async function handleExportAgentProfile(selection: string): Promise<void> {
+  const profile = resolveManagedAgentSelectionForCli(selection)
+  if (!profile) {
+    return
+  }
+
+  const result = exportManagedAgentProfile(profile.id)
+  if (!result.success) {
+    printColored(colors.red, result.error)
+    return
+  }
+
+  console.log()
+  console.log(result.profileJson)
+  console.log()
+}
+
+async function handleExportAgentProfileFile(input: string): Promise<void> {
+  const parsedCommand = parseAgentProfileFileCommand(
+    input,
+    "Usage: /agent-export-file <agent-id-or-name> <path>",
+  )
+  if (!parsedCommand) {
+    return
+  }
+
+  const profile = resolveManagedAgentSelectionForCli(parsedCommand.selection)
+  if (!profile) {
+    return
+  }
+
+  const result = exportManagedAgentProfile(profile.id)
+  if (!result.success) {
+    printColored(colors.red, result.error)
+    return
+  }
+
+  const filePath = resolveCliFileSystemPath(parsedCommand.filePath)
+
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true })
+    fs.writeFileSync(filePath, result.profileJson)
+    printColored(
+      colors.green,
+      `Exported agent profile ${getAgentProfileDisplayName(result.profile)} (${result.profile.id}) to ${filePath}.`,
+    )
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
+async function handleImportAgentProfile(input: string): Promise<void> {
+  const profileJson = input.trim()
+  if (!profileJson) {
+    printColored(colors.yellow, "Usage: /agent-import <profile-json>")
+    return
+  }
+
+  const result = importManagedAgentProfile(profileJson)
+  if (!result.success) {
+    printColored(
+      result.errorCode === "invalid_input" ? colors.yellow : colors.red,
+      result.error,
+    )
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Imported agent profile ${getAgentProfileDisplayName(result.profile)} (${result.profile.id}).`,
+  )
+  printAgentProfileDetails(result.profile)
+}
+
+async function handleImportAgentProfileFile(selection: string): Promise<void> {
+  const rawPath = selection.trim()
+  if (!rawPath) {
+    printColored(colors.yellow, "Usage: /agent-import-file <path>")
+    return
+  }
+
+  try {
+    const filePath = resolveCliFileSystemPath(rawPath)
+    const profileJson = fs.readFileSync(filePath, "utf8")
+    const result = importManagedAgentProfile(profileJson)
+    if (!result.success) {
+      printColored(
+        result.errorCode === "invalid_input" ? colors.yellow : colors.red,
+        result.error,
+      )
+      return
+    }
+
+    printColored(
+      colors.green,
+      `Imported agent profile ${getAgentProfileDisplayName(result.profile)} (${result.profile.id}) from ${filePath}.`,
+    )
+    printAgentProfileDetails(result.profile)
+  } catch (error) {
+    printColored(
+      colors.red,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
 }
 
 function printMcpServerDetails(server: ManagedMcpServerDetails): void {
@@ -2456,6 +2598,18 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/agent-delete":
       await handleDeleteAgentProfile(argumentsText)
+      return true
+    case "/agent-export":
+      await handleExportAgentProfile(argumentsText)
+      return true
+    case "/agent-export-file":
+      await handleExportAgentProfileFile(argumentsText)
+      return true
+    case "/agent-import":
+      await handleImportAgentProfile(argumentsText)
+      return true
+    case "/agent-import-file":
+      await handleImportAgentProfileFile(argumentsText)
       return true
     case "/loops":
       printLoops()

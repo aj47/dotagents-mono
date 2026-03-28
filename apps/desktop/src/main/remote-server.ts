@@ -74,8 +74,10 @@ import {
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
+  exportManagedAgentProfile,
   getManagedAgentProfile,
   getManagedAgentProfiles,
+  importManagedAgentProfile,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
@@ -1045,17 +1047,21 @@ async function startRemoteServerInternal(
   fastify.get("/v1/profiles/:id/export", async (req, reply) => {
     try {
       const params = req.params as { id: string }
-      const profileJson = agentProfileService.exportProfile(params.id)
-      return reply.send({ profileJson })
+      const result = exportManagedAgentProfile(params.id)
+      if (!result.success) {
+        return reply
+          .code(result.errorCode === "not_found" ? 404 : 500)
+          .send({ error: result.error })
+      }
+      return reply.send({ profileJson: result.profileJson })
     } catch (error: any) {
       diagnosticsService.logError(
         "remote-server",
         "Failed to export profile",
         error,
       )
-      const isNotFound = error?.message?.includes("not found")
       return reply
-        .code(isNotFound ? 404 : 500)
+        .code(500)
         .send({ error: error?.message || "Failed to export profile" })
     }
   })
@@ -1068,7 +1074,13 @@ async function startRemoteServerInternal(
       if (!profileJson || typeof profileJson !== "string") {
         return reply.code(400).send({ error: "Missing or invalid profileJson" })
       }
-      const profile = agentProfileService.importProfile(profileJson)
+      const result = importManagedAgentProfile(profileJson)
+      if (!result.success) {
+        return reply
+          .code(result.errorCode === "invalid_input" ? 400 : 500)
+          .send({ error: result.error })
+      }
+      const profile = result.profile
       diagnosticsService.logInfo(
         "remote-server",
         `Imported profile: ${profile.displayName}`,
@@ -1087,15 +1099,8 @@ async function startRemoteServerInternal(
         "Failed to import profile",
         error,
       )
-      // Return 400 for JSON/validation errors, 500 for server errors
-      const errorMessage = (error?.message ?? "").toLowerCase()
-      const isValidationError =
-        error instanceof SyntaxError ||
-        errorMessage.includes("json") ||
-        errorMessage.includes("invalid") ||
-        errorMessage.includes("missing")
       return reply
-        .code(isValidationError ? 400 : 500)
+        .code(500)
         .send({ error: error?.message || "Failed to import profile" })
     }
   })

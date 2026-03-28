@@ -4,16 +4,20 @@ import type { AgentProfile } from "@shared/types"
 const {
   createMock,
   deleteMock,
+  exportProfileMock,
   getAllMock,
   getByIdMock,
   getByRoleMock,
+  importProfileMock,
   updateMock,
 } = vi.hoisted(() => ({
   createMock: vi.fn(),
   deleteMock: vi.fn(),
+  exportProfileMock: vi.fn(),
   getAllMock: vi.fn(),
   getByIdMock: vi.fn(),
   getByRoleMock: vi.fn(),
+  importProfileMock: vi.fn(),
   updateMock: vi.fn(),
 }))
 
@@ -21,9 +25,11 @@ vi.mock("./agent-profile-service", () => ({
   agentProfileService: {
     create: createMock,
     delete: deleteMock,
+    exportProfile: exportProfileMock,
     getAll: getAllMock,
     getById: getByIdMock,
     getByRole: getByRoleMock,
+    importProfile: importProfileMock,
     update: updateMock,
   },
 }))
@@ -31,8 +37,10 @@ vi.mock("./agent-profile-service", () => ({
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
+  exportManagedAgentProfile,
   getManagedAgentProfile,
   getManagedAgentProfiles,
+  importManagedAgentProfile,
   resolveManagedAgentProfileSelection,
   toggleManagedAgentProfileEnabled,
   updateManagedAgentProfile,
@@ -58,9 +66,11 @@ describe("agent profile management", () => {
   beforeEach(() => {
     createMock.mockReset()
     deleteMock.mockReset()
+    exportProfileMock.mockReset()
     getAllMock.mockReset()
     getByIdMock.mockReset()
     getByRoleMock.mockReset()
+    importProfileMock.mockReset()
     updateMock.mockReset()
   })
 
@@ -218,6 +228,34 @@ describe("agent profile management", () => {
     expect(deleteMock).toHaveBeenCalledWith("profile-1")
   })
 
+  it("exports and imports agent profiles through the shared helper", () => {
+    const profile = createProfile("ops-agent", {
+      displayName: "Ops Agent",
+    })
+    const importedProfile = createProfile("imported-agent", {
+      displayName: "Imported Agent",
+    })
+
+    getByIdMock.mockReturnValue(profile)
+    exportProfileMock.mockReturnValue('{\n  "name": "Ops Agent"\n}')
+    importProfileMock.mockReturnValue(importedProfile)
+
+    expect(exportManagedAgentProfile("ops-agent")).toEqual({
+      success: true,
+      profile,
+      profileJson: '{\n  "name": "Ops Agent"\n}',
+    })
+    expect(exportProfileMock).toHaveBeenCalledWith("ops-agent")
+
+    expect(importManagedAgentProfile('{"name":"Imported Agent"}')).toEqual({
+      success: true,
+      profile: importedProfile,
+    })
+    expect(importProfileMock).toHaveBeenCalledWith(
+      '{"name":"Imported Agent"}',
+    )
+  })
+
   it("reports invalid inputs, missing profiles, and protected deletes explicitly", () => {
     expect(
       createManagedAgentProfile({
@@ -234,6 +272,24 @@ describe("agent profile management", () => {
       success: false,
       errorCode: "not_found",
       error: "Agent profile not found: missing",
+    })
+
+    expect(importManagedAgentProfile("   ")).toEqual({
+      success: false,
+      errorCode: "invalid_input",
+      error: "profileJson is required and must be a non-empty string",
+    })
+
+    importProfileMock.mockImplementation(() => {
+      throw new Error(
+        "Failed to import profile: Invalid profile data: missing or invalid name",
+      )
+    })
+    expect(importManagedAgentProfile("{}")).toEqual({
+      success: false,
+      errorCode: "invalid_input",
+      error:
+        "Failed to import profile: Invalid profile data: missing or invalid name",
     })
 
     const builtInProfile = createProfile("main-agent", {

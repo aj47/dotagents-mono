@@ -113,8 +113,10 @@ import {
 import {
   createManagedAgentProfile,
   deleteManagedAgentProfile,
+  exportManagedAgentProfile,
   getManagedAgentProfile,
   getManagedAgentProfiles,
+  importManagedAgentProfile,
   updateManagedAgentProfile,
 } from "./agent-profile-management"
 import { acpService, ACPRunRequest } from "./acp-service"
@@ -3483,13 +3485,21 @@ export const router = {
   exportProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.exportProfile(input.id)
+      const result = exportManagedAgentProfile(input.id)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profileJson
     }),
 
   importProfile: t.procedure
     .input<{ profileJson: string }>()
     .action(async ({ input }) => {
-      return agentProfileService.importProfile(input.profileJson)
+      const result = importManagedAgentProfile(input.profileJson)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.profile
     }),
 
   // Save current MCP server state to a profile
@@ -3610,7 +3620,10 @@ export const router = {
   saveProfileFile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
-      const profileJson = agentProfileService.exportProfile(input.id)
+      const exportResult = exportManagedAgentProfile(input.id)
+      if (!exportResult.success) {
+        throw new Error(exportResult.error)
+      }
 
       const result = await dialog.showSaveDialog({
         title: "Export Profile",
@@ -3626,7 +3639,7 @@ export const router = {
       }
 
       try {
-        fs.writeFileSync(result.filePath, profileJson)
+        fs.writeFileSync(result.filePath, exportResult.profileJson)
         return true
       } catch (error) {
         throw new Error(
@@ -3651,7 +3664,11 @@ export const router = {
 
     try {
       const profileJson = fs.readFileSync(result.filePaths[0], "utf8")
-      return agentProfileService.importProfile(profileJson)
+      const importResult = importManagedAgentProfile(profileJson)
+      if (!importResult.success) {
+        throw new Error(importResult.error)
+      }
+      return importResult.profile
     } catch (error) {
       throw new Error(
         `Failed to import profile: ${error instanceof Error ? error.message : String(error)}`,

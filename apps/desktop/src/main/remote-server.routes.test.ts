@@ -332,6 +332,29 @@ describe("remote-server route registration", () => {
     expect(agentProfilesSection).not.toContain("agentProfileService.delete(")
   })
 
+  it("shares profile import/export routes with the desktop and CLI profile manager", () => {
+    const source = getRemoteServerSource()
+    const profileTransferSection = getSection(
+      source,
+      "// GET /v1/profiles/:id/export - Export a profile as JSON",
+      "// GET /v1/mcp/servers - List MCP servers with status",
+    )
+
+    expect(source).toContain('from "./agent-profile-management"')
+    expect(profileTransferSection).toContain(
+      "const result = exportManagedAgentProfile(params.id)",
+    )
+    expect(profileTransferSection).toContain(
+      "const result = importManagedAgentProfile(profileJson)",
+    )
+    expect(profileTransferSection).not.toContain(
+      "agentProfileService.exportProfile(",
+    )
+    expect(profileTransferSection).not.toContain(
+      "agentProfileService.importProfile(",
+    )
+  })
+
   it("does not report repeat task toggles as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
     const toggleLoopSection = getSection(

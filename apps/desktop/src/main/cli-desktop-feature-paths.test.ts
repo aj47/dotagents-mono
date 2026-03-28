@@ -494,6 +494,39 @@ describe("CLI and desktop feature paths", () => {
     expect(remoteServerSource).toContain("deleteManagedAgentProfile(params.id)")
   })
 
+  it("shares agent profile import/export across headless, desktop, and remote surfaces", () => {
+    expect(agentProfileManagementSource).toContain(
+      "export function exportManagedAgentProfile",
+    )
+    expect(agentProfileManagementSource).toContain(
+      "export function importManagedAgentProfile",
+    )
+    expect(headlessCliSource).toContain('case "/agent-export":')
+    expect(headlessCliSource).toContain('case "/agent-export-file":')
+    expect(headlessCliSource).toContain('case "/agent-import":')
+    expect(headlessCliSource).toContain('case "/agent-import-file":')
+    expect(headlessCliSource).toContain("exportManagedAgentProfile(profile.id)")
+    expect(headlessCliSource).toContain("importManagedAgentProfile(profileJson)")
+    expect(tipcSource).toContain(
+      "const result = exportManagedAgentProfile(input.id)",
+    )
+    expect(tipcSource).toContain(
+      "const result = importManagedAgentProfile(input.profileJson)",
+    )
+    expect(tipcSource).toContain(
+      "const exportResult = exportManagedAgentProfile(input.id)",
+    )
+    expect(tipcSource).toContain(
+      "const importResult = importManagedAgentProfile(profileJson)",
+    )
+    expect(remoteServerSource).toContain(
+      "const result = exportManagedAgentProfile(params.id)",
+    )
+    expect(remoteServerSource).toContain(
+      "const result = importManagedAgentProfile(profileJson)",
+    )
+  })
+
   it("shares agent selector profile helpers across CLI, desktop, mobile, and ACP selection surfaces", () => {
     expect(sharedAgentProfilesSource).toContain(
       "export function getAgentProfileDisplayName",
@@ -1220,6 +1253,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Remote conversation history + recovery API")
     expect(docsSource).toContain("Headless CLI agent selection")
     expect(docsSource).toContain("Headless CLI agent profile management")
+    expect(docsSource).toContain("Headless CLI agent profile import/export")
     expect(docsSource).toContain("Headless CLI repeat-task controls")
     expect(docsSource).toContain("Headless CLI knowledge note controls")
     expect(docsSource).toContain("Headless CLI and desktop agent picker")
