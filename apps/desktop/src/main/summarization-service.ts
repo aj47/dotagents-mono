@@ -9,9 +9,9 @@ import { generateText } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
 import { configStore } from "./config"
 import { logLLM, isDebugLLM } from "./debug"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
+import { resolveModelPreset } from "@dotagents/shared"
 import type { LanguageModel } from "ai"
-import type { AgentStepSummary, ModelPreset } from "../shared/types"
+import type { AgentStepSummary } from "../shared/types"
 
 export interface SummarizationInput {
   sessionId: string
@@ -38,27 +38,6 @@ export interface SummarizationInput {
 }
 
 /**
- * Get a preset by ID, merging built-in presets with saved data
- */
-function getPresetById(presetId: string): ModelPreset | undefined {
-  const config = configStore.get()
-  const builtIn = getBuiltInModelPresets()
-  const savedPresets = config.modelPresets || []
-
-  // Merge built-in presets with saved properties
-  const allPresets = builtIn.map(preset => {
-    const saved = savedPresets.find(s => s.id === preset.id)
-    return saved ? { ...preset, ...Object.fromEntries(Object.entries(saved).filter(([_, v]) => v !== undefined)) } : preset
-  })
-
-  // Add custom presets
-  const customPresets = savedPresets.filter(p => !p.isBuiltIn)
-  allPresets.push(...customPresets)
-
-  return allPresets.find(p => p.id === presetId)
-}
-
-/**
  * Get the weak model configuration from settings using presets
  */
 function getWeakModelConfig(): { model: string; apiKey: string; baseUrl: string } | null {
@@ -68,9 +47,10 @@ function getWeakModelConfig(): { model: string; apiKey: string; baseUrl: string 
     return null
   }
 
-  // Get preset ID - fall back to current model preset if not set
-  const presetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const preset = getPresetById(presetId)
+  const preset = resolveModelPreset(
+    config,
+    config.dualModelWeakPresetId || config.currentModelPresetId,
+  )
 
   if (!preset || !preset.apiKey) {
     return null
@@ -247,8 +227,10 @@ function parseSummaryResponse(response: string, input: SummarizationInput): Agen
 export function isSummarizationEnabled(): boolean {
   const config = configStore.get()
   // Check if dual model is enabled and we have a valid weak model preset
-  const presetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const preset = getPresetById(presetId)
+  const preset = resolveModelPreset(
+    config,
+    config.dualModelWeakPresetId || config.currentModelPresetId,
+  )
   return config.dualModelEnabled === true && !!preset && !!preset.apiKey
 }
 

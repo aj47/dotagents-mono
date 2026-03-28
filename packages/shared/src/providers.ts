@@ -17,6 +17,12 @@ export interface ModelPreset {
   summarizationModel?: string
 }
 
+export interface ModelPresetConfigLike {
+  currentModelPresetId?: string
+  modelPresets?: ModelPreset[]
+  openaiApiKey?: string
+}
+
 export const STT_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
   { label: "Groq", value: "groq" },
@@ -35,7 +41,7 @@ export type CHAT_PROVIDER_ID = (typeof CHAT_PROVIDERS)[number]["value"]
 
 export type ChatModelContext = "mcp" | "transcript"
 
-export interface ChatModelConfigLike {
+export interface ChatModelConfigLike extends ModelPresetConfigLike {
   mcpToolsProviderId?: CHAT_PROVIDER_ID
   mcpToolsOpenaiModel?: string
   mcpToolsGroqModel?: string
@@ -44,8 +50,6 @@ export interface ChatModelConfigLike {
   transcriptPostProcessingOpenaiModel?: string
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
-  currentModelPresetId?: string
-  modelPresets?: ModelPreset[]
 }
 
 export const DEFAULT_CHAT_MODELS = {
@@ -458,6 +462,65 @@ export const getBuiltInModelPresets = (): ModelPreset[] => {
   )
 }
 
+function mergeModelPreset(
+  basePreset: ModelPreset,
+  savedOverride?: ModelPreset,
+): ModelPreset {
+  if (!savedOverride) {
+    return basePreset
+  }
+
+  return {
+    ...basePreset,
+    ...Object.fromEntries(
+      Object.entries(savedOverride).filter(([, value]) => value !== undefined),
+    ),
+  }
+}
+
+export function resolveModelPresetId(
+  config: Pick<ModelPresetConfigLike, "currentModelPresetId"> = {},
+): string {
+  return config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
+}
+
+export function resolveModelPresets(
+  config: Pick<ModelPresetConfigLike, "modelPresets" | "openaiApiKey"> = {},
+): ModelPreset[] {
+  const builtInPresets = getBuiltInModelPresets()
+  const savedPresets = config.modelPresets || []
+  const savedPresetsById = new Map(savedPresets.map((preset) => [preset.id, preset]))
+  const builtInIds = new Set(builtInPresets.map((preset) => preset.id))
+
+  const mergedBuiltInPresets = builtInPresets.map((builtInPreset) => {
+    const mergedPreset = mergeModelPreset(
+      builtInPreset,
+      savedPresetsById.get(builtInPreset.id),
+    )
+
+    if (
+      builtInPreset.id === DEFAULT_MODEL_PRESET_ID &&
+      !mergedPreset.apiKey &&
+      config.openaiApiKey
+    ) {
+      return { ...mergedPreset, apiKey: config.openaiApiKey }
+    }
+
+    return mergedPreset
+  })
+
+  const customPresets = savedPresets.filter((preset) => !builtInIds.has(preset.id))
+  return [...mergedBuiltInPresets, ...customPresets]
+}
+
+export function resolveModelPreset(
+  config: ModelPresetConfigLike,
+  presetIdOverride?: string,
+): ModelPreset | undefined {
+  const presetId = presetIdOverride || resolveModelPresetId(config)
+  return resolveModelPresets(config).find((preset) => preset.id === presetId)
+}
+
 /**
  * Get the current preset display name from config.
  * Looks up the preset by ID and returns its name.
@@ -465,10 +528,17 @@ export const getBuiltInModelPresets = (): ModelPreset[] => {
 export const getCurrentPresetName = (
   currentModelPresetId: string | undefined,
   modelPresets: ModelPreset[] | undefined,
+  openaiApiKey?: string,
 ): string => {
-  const presetId = currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const allPresets = [...getBuiltInModelPresets(), ...(modelPresets || [])]
-  return allPresets.find((p) => p.id === presetId)?.name || "OpenAI"
+  return (
+    resolveModelPreset(
+      {
+        currentModelPresetId,
+        modelPresets,
+        openaiApiKey,
+      },
+    )?.name || "OpenAI"
+  )
 }
 
 function getConfiguredChatModel(

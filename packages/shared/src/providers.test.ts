@@ -20,6 +20,9 @@ import {
   getChatProviderDisplayName,
   getCurrentPresetName,
   isTranscriptionOnlyChatModel,
+  resolveModelPreset,
+  resolveModelPresetId,
+  resolveModelPresets,
   resolveChatModelDisplayInfo,
   resolveChatModelSelection,
   resolveChatProviderId,
@@ -223,8 +226,95 @@ describe("getCurrentPresetName", () => {
     )
   })
 
+  it("prefers merged built-in overrides over the built-in fallback name", () => {
+    expect(
+      getCurrentPresetName(DEFAULT_MODEL_PRESET_ID, [
+        {
+          id: DEFAULT_MODEL_PRESET_ID,
+          name: "Work OpenAI",
+          baseUrl: "https://api.openai.com/v1",
+          isBuiltIn: true,
+        },
+      ]),
+    ).toBe("Work OpenAI")
+  })
+
   it('falls back to "OpenAI" for unknown preset ID', () => {
     expect(getCurrentPresetName("nonexistent", [])).toBe("OpenAI")
+  })
+})
+
+describe("model preset resolution", () => {
+  it("defaults the current preset ID to the built-in OpenAI preset", () => {
+    expect(resolveModelPresetId({})).toBe(DEFAULT_MODEL_PRESET_ID)
+  })
+
+  it("merges built-in overrides, injects the legacy OpenAI key, and filters duplicate built-ins", () => {
+    const presets = resolveModelPresets({
+      openaiApiKey: "legacy-openai-key",
+      modelPresets: [
+        {
+          id: DEFAULT_MODEL_PRESET_ID,
+          name: "Work OpenAI",
+          baseUrl: "https://api.openai.com/v1",
+          apiKey: "",
+          isBuiltIn: true,
+        },
+        {
+          id: "builtin-openrouter",
+          name: "Work OpenRouter",
+          baseUrl: "https://openrouter.ai/api/v1",
+          apiKey: "router-key",
+        },
+        {
+          id: "custom-self-hosted",
+          name: "Self Hosted",
+          baseUrl: "https://llm.internal/v1",
+          apiKey: "custom-key",
+        },
+      ],
+    })
+
+    expect(presets.filter((preset) => preset.id === DEFAULT_MODEL_PRESET_ID)).toHaveLength(1)
+    expect(
+      presets.find((preset) => preset.id === DEFAULT_MODEL_PRESET_ID),
+    ).toMatchObject({
+      name: "Work OpenAI",
+      apiKey: "legacy-openai-key",
+    })
+    expect(
+      presets.find((preset) => preset.id === "builtin-openrouter"),
+    ).toMatchObject({
+      name: "Work OpenRouter",
+      apiKey: "router-key",
+    })
+    expect(
+      presets.find((preset) => preset.id === "custom-self-hosted"),
+    ).toMatchObject({
+      name: "Self Hosted",
+      apiKey: "custom-key",
+    })
+  })
+
+  it("resolves a preset by explicit override before falling back to the current preset", () => {
+    const config = {
+      currentModelPresetId: "custom-default",
+      modelPresets: [
+        {
+          id: "custom-default",
+          name: "Default Custom",
+          baseUrl: "https://default.example/v1",
+        },
+        {
+          id: "custom-weak",
+          name: "Weak Custom",
+          baseUrl: "https://weak.example/v1",
+        },
+      ],
+    }
+
+    expect(resolveModelPreset(config)?.name).toBe("Default Custom")
+    expect(resolveModelPreset(config, "custom-weak")?.name).toBe("Weak Custom")
   })
 })
 
@@ -326,6 +416,24 @@ describe("chat model resolution", () => {
       model: "gpt-4.1-mini",
       providerDisplayName: "OpenRouter",
     })
+  })
+
+  it("uses merged built-in preset overrides for OpenAI-compatible MCP labels", () => {
+    expect(
+      getChatProviderDisplayName(
+        {
+          currentModelPresetId: DEFAULT_MODEL_PRESET_ID,
+          modelPresets: [
+            {
+              id: DEFAULT_MODEL_PRESET_ID,
+              name: "Work OpenAI",
+              baseUrl: "https://api.openai.com/v1",
+            },
+          ],
+        },
+        "openai",
+      ),
+    ).toBe("Work OpenAI")
   })
 
   it("uses canonical provider labels for non-OpenAI providers", () => {

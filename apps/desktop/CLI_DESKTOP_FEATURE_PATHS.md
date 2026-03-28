@@ -103,6 +103,12 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Shared helpers: `resolveSttProviderId(...)`, `resolveSttModelSelection(...)`, `resolveTtsProviderId(...)`, and `resolveTtsSelection(...)`
 - Current callers: `tipc.ts` cloud transcription + TTS runtime defaults, `tts-llm-preprocessing.ts` transcript-provider fallback, `remote-server.ts` settings payload defaults, `settings-models.tsx` speech model/voice controls, `settings-providers.tsx` provider badges + local voice panels, `settings-general.tsx` STT language controls, and `onboarding.tsx` provider checks
 
+## Shared OpenAI-compatible preset resolution
+
+- Shared preset file: `packages/shared/src/providers.ts`
+- Shared helpers: `resolveModelPresetId(...)`, `resolveModelPresets(...)`, and `resolveModelPreset(...)`
+- Current callers: `resolveChatModelDisplayInfo(...)` for CLI/progress labels, `remote-server.ts` preset payload + validation, `summarization-service.ts` weak-model preset lookup, `settings-models.tsx` preset selection UI, `model-preset-manager.tsx` preset editor state, and `model-selector.tsx` preset-scoped model fetches
+
 ## Shared runtime shutdown
 
 - Shared shutdown file: `apps/desktop/src/main/app-runtime.ts`
@@ -155,6 +161,8 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
     `tipc.ts`, `tts-llm-preprocessing.ts`, and `remote-server.ts` now all use the same shared speech selectors, so cloud transcription models, TTS model/voice defaults, transcript-provider fallbacks, and `/v1/settings` payload defaults stay aligned across desktop runtime, headless CLI, and remote clients.
 22. CLI/desktop MCP server status surfaces
     `headless-cli.ts` startup/status output, `remote-server.ts` `/v1/mcp/servers`, `settings-agents.tsx`, and `mcp-config-manager.tsx` now classify each MCP server through `resolveMcpServerRuntimeState(...)` and `listMcpServerStatusSummaries(...)`, so config-disabled vs runtime-stopped vs connected/error/disconnected states stay aligned across the terminal, desktop UI, and remote API.
+23. Preset-aware CLI labels + preset surfaces
+    `packages/shared/src/providers.ts` now resolves merged OpenAI-compatible preset IDs and records in one place, so CLI/provider labels, remote `/v1/settings` preset payloads, weak summarization preset lookup, preset editor screens, and preset-scoped model fetches all use the same built-in override, duplicate-filtering, legacy OpenAI-key fallback, and default preset ID rules.
 
 ## Parity rules
 
@@ -181,6 +189,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - Active chat provider/model resolution is decided in one place: `resolveChatModelSelection(...)` and `resolveChatModelDisplayInfo(...)`, so CLI status, desktop progress metadata, renderer model defaults, remote API model payloads, and AI SDK runtime model selection stay aligned.
 - STT provider/model defaults are decided in one place: `resolveSttProviderId(...)` and `resolveSttModelSelection(...)`, so onboarding, desktop speech settings, remote settings payloads, and cloud transcription runtime calls stay aligned.
 - TTS provider/model/voice defaults are decided in one place: `resolveTtsProviderId(...)` and `resolveTtsSelection(...)`, so renderer speech settings, runtime synthesis paths, provider badges, local voice panels, and remote settings payloads stay aligned.
+- OpenAI-compatible preset IDs and merged preset records are decided in one place: `resolveModelPresetId(...)`, `resolveModelPresets(...)`, and `resolveModelPreset(...)`, so CLI labels, preset editors, preset-scoped model fetching, weak summarization preset lookup, and remote settings payloads stay aligned.
 - `--headless` and `--qr` now share the same non-GUI bootstrap, including the forced external remote-server bind on `0.0.0.0`, before diverging into either the terminal REPL or QR pairing flow.
 - Runtime teardown is decided in one place: `shutdownSharedRuntimeServices(...)`, so GUI quit and non-GUI graceful shutdown both stop loops and clean up ACP, MCP, and remote-server state through the same helper.
 
@@ -203,7 +212,7 @@ This file tracks the shared execution paths that keep desktop UI, headless CLI, 
 - `apps/desktop/src/shared/mcp-server-status.test.ts`
   Confirms shared MCP server runtime classification and connected-server counts stay aligned for CLI, desktop UI, and remote API callers.
 - `packages/shared/src/providers.test.ts`
-  Confirms shared chat provider/model resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
+  Confirms shared chat provider/model resolution, merged OpenAI-compatible preset resolution, TTS provider/model/voice defaults, STT-only model sanitization, explicit provider overrides, and OpenAI-compatible provider labels stay aligned for CLI, renderer, and main-process callers.
 - `packages/shared/src/stt-models.test.ts`
   Confirms shared STT provider/model defaults stay aligned for onboarding, renderer settings, remote settings payloads, and main-process transcription callers.
 - `apps/desktop/src/main/ai-sdk-provider.test.ts`

@@ -51,9 +51,9 @@ import {
   SUPERTONIC_TTS_LANGUAGES,
   SUPERTONIC_TTS_VOICES,
   DEFAULT_MODEL_PRESET_ID,
-  getBuiltInModelPresets,
   resolveChatModelSelection,
   resolveChatProviderId,
+  resolveModelPresets,
   resolveSttModelSelection,
   resolveSttProviderId,
   resolveTtsProviderId,
@@ -174,31 +174,7 @@ export function Component() {
   }, [])
 
   const allPresets = useMemo(() => {
-    const builtIn = getBuiltInModelPresets()
-    const custom = configQuery.data?.modelPresets || []
-    const mergedBuiltIn = builtIn.map((preset) => {
-      const saved = custom.find((candidate) => candidate.id === preset.id)
-      if (saved) {
-        const merged = { ...preset, ...saved }
-        if (
-          preset.id === DEFAULT_MODEL_PRESET_ID &&
-          !merged.apiKey &&
-          configQuery.data?.openaiApiKey
-        ) {
-          merged.apiKey = configQuery.data.openaiApiKey
-        }
-        return merged
-      }
-      if (
-        preset.id === DEFAULT_MODEL_PRESET_ID &&
-        configQuery.data?.openaiApiKey
-      ) {
-        return { ...preset, apiKey: configQuery.data.openaiApiKey }
-      }
-      return preset
-    })
-
-    return [...mergedBuiltIn, ...custom.filter((preset) => !preset.isBuiltIn)]
+    return resolveModelPresets(configQuery.data ?? {})
   }, [configQuery.data?.modelPresets, configQuery.data?.openaiApiKey])
 
   const getPresetById = useCallback(

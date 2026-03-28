@@ -21,7 +21,12 @@ import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-clien
 import { ModelPreset, Config } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Key, Globe, Bot, FileText, Settings2 } from "lucide-react"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
+import {
+  getBuiltInModelPresets,
+  DEFAULT_MODEL_PRESET_ID,
+  resolveModelPresetId,
+  resolveModelPresets,
+} from "@dotagents/shared"
 import { PresetModelSelector } from "./preset-model-selector"
 
 export function ModelPresetManager({
@@ -49,35 +54,10 @@ export function ModelPresetManager({
 
   // Combine built-in presets with custom presets from config
   const allPresets = useMemo(() => {
-    const builtIn = getBuiltInModelPresets()
-    const custom = config?.modelPresets || []
-
-    // Merge built-in presets with any saved data (API keys, model preferences, etc.)
-    const mergedBuiltIn = builtIn.map(preset => {
-      const saved = custom.find(c => c.id === preset.id)
-      if (saved) {
-        // Merge all saved properties (apiKey, mcpToolsModel, transcriptProcessingModel, etc.)
-        const merged = { ...preset, ...saved }
-        // For builtin-openai, fallback to legacy openaiApiKey if saved preset has empty apiKey
-        // This handles the case where saveModelWithPreset persisted a preset with apiKey: ''
-        if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && config?.openaiApiKey) {
-          merged.apiKey = config.openaiApiKey
-        }
-        return merged
-      }
-      // For builtin-openai, seed with legacy openaiApiKey if no saved preset exists
-      if (preset.id === DEFAULT_MODEL_PRESET_ID && config?.openaiApiKey) {
-        return { ...preset, apiKey: config.openaiApiKey }
-      }
-      return preset
-    })
-
-    // Add custom (non-built-in) presets
-    const customOnly = custom.filter(c => !c.isBuiltIn)
-    return [...mergedBuiltIn, ...customOnly]
+    return resolveModelPresets(config ?? {})
   }, [config?.modelPresets, config?.openaiApiKey])
 
-  const currentPresetId = config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
+  const currentPresetId = resolveModelPresetId(config ?? {})
   const currentPreset = allPresets.find(p => p.id === currentPresetId)
 
   const saveConfig = useCallback((updates: Partial<Config>) => {

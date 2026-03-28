@@ -14,6 +14,8 @@ import path from "path"
 import {
   resolveChatModelSelection,
   resolveChatProviderId,
+  resolveModelPresetId,
+  resolveModelPresets,
   resolveSttModelSelection,
   resolveSttProviderId,
   resolveTtsProviderId,
@@ -1106,25 +1108,7 @@ async function startRemoteServerInternal(
   fastify.get("/v1/settings", async (_req, reply) => {
     try {
       const cfg = configStore.get()
-      const { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } =
-        await import("@dotagents/shared")
-      const builtInPresets = getBuiltInModelPresets()
-      const savedPresets = cfg.modelPresets || []
-
-      // Merge built-in presets with any saved overrides (e.g., edited baseUrl/name)
-      // and include custom (non-built-in) presets
-      const builtInIds = new Set(builtInPresets.map((p) => p.id))
-      const mergedPresets = builtInPresets.map((builtIn) => {
-        const savedOverride = savedPresets.find((p) => p.id === builtIn.id)
-        if (savedOverride) {
-          // Apply saved overrides to built-in preset
-          return { ...builtIn, ...savedOverride }
-        }
-        return builtIn
-      })
-      // Filter custom presets by excluding any IDs that match built-in presets
-      // This prevents duplicates from older entries where isBuiltIn was unset
-      const customPresets = savedPresets.filter((p) => !builtInIds.has(p.id))
+      const availablePresets = resolveModelPresets(cfg)
       const openaiSttSelection = resolveSttModelSelection(cfg, "openai")
       const groqSttSelection = resolveSttModelSelection(cfg, "groq")
       const openaiTtsSelection = resolveTtsSelection(cfg, "openai")
@@ -1138,9 +1122,8 @@ async function startRemoteServerInternal(
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
         // OpenAI compatible preset settings
-        currentModelPresetId:
-          cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID,
-        availablePresets: [...mergedPresets, ...customPresets].map((p) => ({
+        currentModelPresetId: resolveModelPresetId(cfg),
+        availablePresets: availablePresets.map((p) => ({
           id: p.id,
           name: p.name,
           baseUrl: p.baseUrl,
@@ -1302,14 +1285,9 @@ async function startRemoteServerInternal(
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {
-        const { getBuiltInModelPresets } = await import("@dotagents/shared")
-        const builtInPresets = getBuiltInModelPresets()
-        const savedPresets = cfg.modelPresets || []
-        const builtInIds = new Set(builtInPresets.map((p) => p.id))
-        const allValidIds = new Set([
-          ...builtInIds,
-          ...savedPresets.filter((p) => !builtInIds.has(p.id)).map((p) => p.id),
-        ])
+        const allValidIds = new Set(
+          resolveModelPresets(cfg).map((preset) => preset.id),
+        )
 
         if (allValidIds.has(body.currentModelPresetId)) {
           updates.currentModelPresetId = body.currentModelPresetId

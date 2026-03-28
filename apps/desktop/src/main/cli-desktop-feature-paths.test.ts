@@ -70,6 +70,14 @@ const settingsModelsSource = readFileSync(
   new URL("../renderer/src/pages/settings-models.tsx", import.meta.url),
   "utf8",
 )
+const modelPresetManagerSource = readFileSync(
+  new URL("../renderer/src/components/model-preset-manager.tsx", import.meta.url),
+  "utf8",
+)
+const modelSelectorSource = readFileSync(
+  new URL("../renderer/src/components/model-selector.tsx", import.meta.url),
+  "utf8",
+)
 const settingsProvidersSource = readFileSync(
   new URL("../renderer/src/pages/settings-providers.tsx", import.meta.url),
   "utf8",
@@ -105,6 +113,10 @@ const mcpSamplingSource = readFileSync(
 )
 const ttsLlmPreprocessingSource = readFileSync(
   new URL("./tts-llm-preprocessing.ts", import.meta.url),
+  "utf8",
+)
+const summarizationServiceSource = readFileSync(
+  new URL("./summarization-service.ts", import.meta.url),
   "utf8",
 )
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
@@ -326,6 +338,27 @@ describe("CLI and desktop feature paths", () => {
     expect(mcpConfigManagerSource).toContain("resolveMcpServerRuntimeState(")
   })
 
+  it("shares OpenAI-compatible preset resolution across CLI, runtime, and renderer surfaces", () => {
+    expect(sharedProvidersSource).toContain(
+      "export function resolveModelPresetId",
+    )
+    expect(sharedProvidersSource).toContain(
+      "export function resolveModelPresets",
+    )
+    expect(sharedProvidersSource).toContain(
+      "export function resolveModelPreset",
+    )
+    expect(headlessCliSource).toContain("resolveChatModelDisplayInfo(")
+    expect(llmSource).toContain("resolveChatModelDisplayInfo(")
+    expect(remoteServerSource).toContain("resolveModelPresetId(")
+    expect(remoteServerSource).toContain("resolveModelPresets(")
+    expect(summarizationServiceSource).toContain("resolveModelPreset(")
+    expect(settingsModelsSource).toContain("resolveModelPresets(")
+    expect(modelPresetManagerSource).toContain("resolveModelPresetId(")
+    expect(modelPresetManagerSource).toContain("resolveModelPresets(")
+    expect(modelSelectorSource).toContain("resolveModelPresetId(")
+  })
+
   it("documents every shared feature path explicitly", () => {
     expect(docsSource).toContain("Shared prompt launcher")
     expect(docsSource).toContain("Shared resume runner")
@@ -342,6 +375,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared MCP server status classification")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
+    expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
     expect(docsSource).toContain("Shared runtime shutdown")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
@@ -371,5 +405,6 @@ describe("CLI and desktop feature paths", () => {
       "Runtime speech generation + remote settings payload",
     )
     expect(docsSource).toContain("CLI/desktop MCP server status surfaces")
+    expect(docsSource).toContain("Preset-aware CLI labels + preset surfaces")
   })
 })
