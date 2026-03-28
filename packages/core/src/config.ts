@@ -346,9 +346,7 @@ const getConfig = (): LoadedConfig => {
   // Merge order: defaults ← config.json ← .agents (if present)
   // This ensures existing settings (API keys etc.) from config.json are always preserved,
   // while .agents files can selectively override specific values.
-  const mergedConfig = hasAnyAgentsFiles
-    ? { ...defaultConfig, ...savedConfig, ...mergedAgents }
-    : { ...defaultConfig, ...savedConfig }
+  const mergedConfig = { ...defaultConfig, ...savedConfig, ...(hasAnyAgentsFiles ? mergedAgents : {}) }
 
   const legacyTextInputModeSize = (mergedConfig as Record<string, unknown>).panelTextInputModeSize
   if (!mergedConfig.panelTextInputSize && legacyTextInputModeSize) {
