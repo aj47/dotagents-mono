@@ -9,7 +9,7 @@ import { toolApprovalManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import {
-  prepareConversationForPrompt,
+  preparePromptExecutionContext,
   runTopLevelAgentMode,
 } from "./agent-mode-runner"
 import { emergencyStopAll } from "./emergency-stop"
@@ -203,16 +203,14 @@ async function runAgentCLI(prompt: string): Promise<void> {
     const {
       conversationId,
       previousConversationHistory,
-    } = await prepareConversationForPrompt(prompt, currentConversationId)
+      sessionId,
+    } = await preparePromptExecutionContext({
+      prompt,
+      requestedConversationId: currentConversationId,
+      startSnoozed: true,
+    })
     currentConversationId = conversationId
 
-    const existingSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-    if (existingSessionId) {
-      agentSessionTracker.reviveSession(existingSessionId, true)
-    }
-
-    const sessionId = existingSessionId
-      || agentSessionTracker.startSession(conversationId, prompt, true)
     activeSessionId = sessionId
 
     toolApprovalManager.registerSessionApprovalHandler(

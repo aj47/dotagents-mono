@@ -13,7 +13,7 @@ import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
-import { prepareConversationForPrompt, runTopLevelAgentMode } from "./agent-mode-runner"
+import { preparePromptExecutionContext, runTopLevelAgentMode } from "./agent-mode-runner"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
@@ -542,6 +542,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
 }> {
   const { prompt, conversationId: inputConversationId, onProgress } = options
   const cfg = configStore.get()
+  const startSnoozed = !cfg.remoteServerAutoShowPanel
 
   // Set agent mode state for process management - ensure clean state
   state.isAgentModeActive = true
@@ -551,37 +552,22 @@ async function runAgent(options: RunAgentOptions): Promise<{
   const {
     conversationId,
     previousConversationHistory,
-  } = await prepareConversationForPrompt(prompt, inputConversationId)
+    sessionId,
+    reusedExistingSession,
+  } = await preparePromptExecutionContext({
+    prompt,
+    requestedConversationId: inputConversationId,
+    startSnoozed,
+  })
+  const sessionSummary = reusedExistingSession
+    ? `reused session ${sessionId}`
+    : "started a new session"
   diagnosticsService.logInfo(
     "remote-server",
     previousConversationHistory.length > 0
-      ? `Continuing conversation ${conversationId} with ${previousConversationHistory.length} previous messages`
-      : `Prepared conversation ${conversationId} for a new run`,
+      ? `Prepared conversation ${conversationId} with ${previousConversationHistory.length} previous messages (${sessionSummary})`
+      : `Prepared conversation ${conversationId} for a new run (${sessionSummary})`,
   )
-
-  // Try to find and revive an existing session for this conversation (matching tipc.ts)
-  // Note: We use `conversationId` (which may be newly created) instead of `inputConversationId`
-  // to ensure we find sessions for both existing and newly created conversations.
-  // This fixes a bug where inputConversationId pointed to a non-existent conversation,
-  // causing session lookup to fail and creating duplicate sessions.
-  // Start snoozed unless remoteServerAutoShowPanel is enabled (affects both new and revived sessions)
-  const startSnoozed = !cfg.remoteServerAutoShowPanel
-  let existingSessionId: string | undefined
-  if (conversationId) {
-    const foundSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-    if (foundSessionId) {
-      // Check if session is already active - if so, preserve its current snooze state
-      // This prevents unexpectedly hiding the progress UI for a session the user is watching
-      const existingSession = agentSessionTracker.getSession(foundSessionId)
-      const isAlreadyActive = existingSession && existingSession.status === "active"
-      const snoozeForRevive = isAlreadyActive ? existingSession.isSnoozed ?? false : startSnoozed
-      const revived = agentSessionTracker.reviveSession(foundSessionId, snoozeForRevive)
-      if (revived) {
-        existingSessionId = foundSessionId
-        diagnosticsService.logInfo("remote-server", `Revived existing session ${existingSessionId}`)
-      }
-    }
-  }
 
   const loadFormattedConversationHistory = async () => {
     const latestConversation = await conversationService.loadConversation(conversationId)
@@ -592,7 +578,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
     const agentResult = await runTopLevelAgentMode({
       text: prompt,
       conversationId,
-      existingSessionId,
+      existingSessionId: sessionId,
       previousConversationHistory,
       startSnoozed,
       approvalMode: "dialog",

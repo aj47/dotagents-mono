@@ -31,6 +31,33 @@ export interface PreparedConversationTurn {
   previousConversationHistory: AgentConversationHistoryEntry[]
 }
 
+export interface EnsureAgentSessionForConversationOptions {
+  conversationId: string
+  conversationTitle: string
+  startSnoozed?: boolean
+  profileSnapshot?: SessionProfileSnapshot
+  candidateSessionIds?: readonly string[]
+}
+
+export interface EnsuredAgentSession {
+  sessionId: string
+  reusedExistingSession: boolean
+}
+
+export interface PreparePromptExecutionContextOptions {
+  prompt: string
+  requestedConversationId?: string
+  conversationTitle?: string
+  startSnoozed?: boolean
+  profileSnapshot?: SessionProfileSnapshot
+  candidateSessionIds?: readonly string[]
+}
+
+export interface PreparedPromptExecutionContext extends PreparedConversationTurn {
+  sessionId: string
+  reusedExistingSession: boolean
+}
+
 export interface RunTopLevelAgentModeOptions {
   text: string
   conversationId?: string
@@ -291,6 +318,78 @@ export async function prepareConversationForPrompt(
   return {
     conversationId: newConversation.id,
     previousConversationHistory: [],
+  }
+}
+
+export function ensureAgentSessionForConversation(
+  options: EnsureAgentSessionForConversationOptions,
+): EnsuredAgentSession {
+  const {
+    conversationId,
+    conversationTitle,
+    startSnoozed = true,
+    profileSnapshot,
+    candidateSessionIds = [],
+  } = options
+
+  const existingSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
+  const sessionCandidates = [...candidateSessionIds, existingSessionId].filter(
+    (sessionId, index, list): sessionId is string =>
+      typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
+  )
+
+  for (const sessionId of sessionCandidates) {
+    if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
+      return {
+        sessionId,
+        reusedExistingSession: true,
+      }
+    }
+  }
+
+  return {
+    sessionId: agentSessionTracker.startSession(
+      conversationId,
+      conversationTitle,
+      startSnoozed,
+      profileSnapshot,
+    ),
+    reusedExistingSession: false,
+  }
+}
+
+export async function preparePromptExecutionContext(
+  options: PreparePromptExecutionContextOptions,
+): Promise<PreparedPromptExecutionContext> {
+  const {
+    prompt,
+    requestedConversationId,
+    conversationTitle = prompt,
+    startSnoozed = true,
+    profileSnapshot,
+    candidateSessionIds = [],
+  } = options
+
+  const {
+    conversationId,
+    previousConversationHistory,
+  } = await prepareConversationForPrompt(prompt, requestedConversationId)
+  const {
+    sessionId,
+    reusedExistingSession,
+  } = ensureAgentSessionForConversation({
+    conversationId,
+    conversationTitle,
+    startSnoozed,
+    profileSnapshot,
+    candidateSessionIds,
+  })
+
+  return {
+    conversationId,
+    previousConversationHistory,
+    sessionId,
+    reusedExistingSession,
   }
 }
 

@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   getAllProfiles: vi.fn(),
   createSessionSnapshotFromProfile: vi.fn(),
   startSession: vi.fn(),
+  findSessionByConversationId: vi.fn(),
+  reviveSession: vi.fn(),
   updateSession: vi.fn(),
   completeSession: vi.fn(),
   errorSession: vi.fn(),
@@ -48,6 +50,8 @@ vi.mock("./agent-profile-service", () => ({
 vi.mock("./agent-session-tracker", () => ({
   agentSessionTracker: {
     startSession: mocks.startSession,
+    findSessionByConversationId: mocks.findSessionByConversationId,
+    reviveSession: mocks.reviveSession,
     updateSession: mocks.updateSession,
     completeSession: mocks.completeSession,
     errorSession: mocks.errorSession,
@@ -126,6 +130,8 @@ describe("agent-mode-runner", () => {
     mocks.getAllProfiles.mockReturnValue([])
     mocks.resolvePreferredTopLevelAcpAgentSelection.mockReturnValue(null)
     mocks.startSession.mockReturnValue("session-new")
+    mocks.findSessionByConversationId.mockReturnValue(undefined)
+    mocks.reviveSession.mockReturnValue(false)
     mocks.startSessionRun.mockReturnValue(7)
     mocks.shouldStopSession.mockReturnValue(false)
     mocks.getInitializationStatus.mockReturnValue({
@@ -187,6 +193,78 @@ describe("agent-mode-runner", () => {
           ],
         },
       ],
+    })
+  })
+
+  it("reuses the tracked session when preparing prompt execution context", async () => {
+    mocks.addMessageToConversation.mockResolvedValue({
+      id: "conv-1",
+      messages: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+        {
+          role: "user",
+          content: "Current prompt",
+          timestamp: 20,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+    })
+    mocks.findSessionByConversationId.mockReturnValue("session-existing")
+    mocks.reviveSession.mockReturnValue(true)
+
+    const { preparePromptExecutionContext } = await import("./agent-mode-runner")
+    const result = await preparePromptExecutionContext({
+      prompt: "Current prompt",
+      requestedConversationId: "conv-1",
+      startSnoozed: true,
+    })
+
+    expect(mocks.reviveSession).toHaveBeenCalledWith("session-existing", true)
+    expect(mocks.startSession).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      conversationId: "conv-1",
+      previousConversationHistory: [
+        {
+          role: "assistant",
+          content: "Earlier answer",
+          timestamp: 10,
+          toolCalls: [],
+          toolResults: [],
+        },
+      ],
+      sessionId: "session-existing",
+      reusedExistingSession: true,
+    })
+  })
+
+  it("starts a new session when no tracked session can be reused", async () => {
+    mocks.findSessionByConversationId.mockReturnValue("session-old")
+    mocks.reviveSession.mockReturnValue(false)
+
+    const { ensureAgentSessionForConversation } = await import("./agent-mode-runner")
+    const result = ensureAgentSessionForConversation({
+      conversationId: "conv-new",
+      conversationTitle: "Prompt title",
+      startSnoozed: false,
+    })
+
+    expect(mocks.reviveSession).toHaveBeenCalledWith("session-old", false)
+    expect(mocks.startSession).toHaveBeenCalledWith(
+      "conv-new",
+      "Prompt title",
+      false,
+      undefined,
+    )
+    expect(result).toEqual({
+      sessionId: "session-new",
+      reusedExistingSession: false,
     })
   })
 

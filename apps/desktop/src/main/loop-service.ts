@@ -10,8 +10,8 @@
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
-import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import { ensureAgentSessionForConversation } from "./agent-mode-runner"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
@@ -326,12 +326,12 @@ class LoopService {
 
       const conversation = await conversationService.createConversation(loop.prompt, "user")
       const conversationTitle = `[Repeat] ${loop.name}`
-      const sessionId = agentSessionTracker.startSession(
-        conversation.id,
+      const { sessionId } = ensureAgentSessionForConversation({
+        conversationId: conversation.id,
         conversationTitle,
-        true,
-        profileSnapshot
-      )
+        startSnoozed: true,
+        profileSnapshot,
+      })
 
       logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
 

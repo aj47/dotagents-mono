@@ -78,7 +78,11 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { acpService, ACPRunRequest } from "./acp-service"
-import { loadPreviousConversationHistory, runTopLevelAgentMode } from "./agent-mode-runner"
+import {
+  ensureAgentSessionForConversation,
+  loadPreviousConversationHistory,
+  runTopLevelAgentMode,
+} from "./agent-mode-runner"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
@@ -1450,41 +1454,32 @@ export const router = {
         )
       }
 
-      // Try to find and revive an existing session for this conversation
-      // This handles the case where user continues from history
-      let existingSessionId: string | undefined
-      if (input.conversationId) {
-        const foundSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-        if (foundSessionId) {
-          // Pass fromTile to reviveSession so it stays snoozed when continuing from a tile
-          const revived = agentSessionTracker.reviveSession(foundSessionId, input.fromTile ?? false)
-          if (revived) {
-            existingSessionId = foundSessionId
-            logApp("[createMcpTextInput] Revived existing session", {
-              conversationId: input.conversationId,
-              sessionId: foundSessionId,
-              fromTile: input.fromTile ?? false,
-            })
-          } else {
-            logApp("[createMcpTextInput] Found session but failed to revive", {
-              conversationId: input.conversationId,
-              sessionId: foundSessionId,
-              fromTile: input.fromTile ?? false,
-            })
-          }
-        } else {
-          logApp("[createMcpTextInput] No runtime session found for conversation; starting new session", {
-            conversationId: input.conversationId,
-            fromTile: input.fromTile ?? false,
-          })
-        }
-      }
+      const startSnoozed = input.fromTile ?? false
+      const {
+        sessionId: runtimeSessionId,
+        reusedExistingSession,
+      } = ensureAgentSessionForConversation({
+        conversationId,
+        conversationTitle: input.text,
+        startSnoozed,
+      })
+
+      logApp(
+        reusedExistingSession
+          ? "[createMcpTextInput] Reused runtime session for conversation"
+          : "[createMcpTextInput] Started runtime session for conversation",
+        {
+          conversationId,
+          sessionId: runtimeSessionId,
+          fromTile: startSnoozed,
+        },
+      )
 
       // Fire-and-forget: Start agent processing without blocking
       // This allows multiple sessions to run concurrently
-      // Pass existingSessionId to reuse the session if found
-      // When fromTile=true, start snoozed so the floating panel doesn't appear
-      processWithAgentMode(input.text, conversationId, existingSessionId, input.fromTile ?? false)
+      // The session is prepared up front so typed, headless, and remote prompts
+      // all reuse the same conversation/session bootstrap rules.
+      processWithAgentMode(input.text, conversationId, runtimeSessionId, startSnoozed)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -1666,52 +1661,18 @@ export const router = {
         }
       }
 
-      // If sessionId is provided, try to revive that session.
-      // Otherwise, if conversationId is provided, try to find and revive a session for that conversation.
-      // This handles the case where user continues from history (only conversationId is set).
-      // When fromTile=true, sessions start snoozed so the floating panel doesn't appear.
       const startSnoozed = input.fromTile ?? false
-      let sessionId: string
-      if (input.sessionId) {
-        // Try to revive the existing session by ID
-        // Pass startSnoozed so session stays snoozed when continuing from a tile
-        const revived = agentSessionTracker.reviveSession(input.sessionId, startSnoozed)
-        if (revived) {
-          sessionId = input.sessionId
-          // Update the session title while transcribing
-          agentSessionTracker.updateSession(sessionId, {
-            conversationTitle: "Transcribing...",
-            lastActivity: "Transcribing audio...",
-          })
-        } else {
-          // Session not found, create a new one with profile snapshot
-          sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-        }
-      } else if (input.conversationId) {
-        // No sessionId but have conversationId - try to find existing session for this conversation
-        const existingSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-        if (existingSessionId) {
-          // Pass startSnoozed so session stays snoozed when continuing from a tile
-          const revived = agentSessionTracker.reviveSession(existingSessionId, startSnoozed)
-          if (revived) {
-            sessionId = existingSessionId
-            // Update the session title while transcribing
-            agentSessionTracker.updateSession(sessionId, {
-              conversationTitle: "Transcribing...",
-              lastActivity: "Transcribing audio...",
-            })
-          } else {
-            // Revive failed, create new session with profile snapshot
-            sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-          }
-        } else {
-          // No existing session for this conversation, create new with profile snapshot
-          sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-        }
-      } else {
-        // No sessionId or conversationId provided, create a new session with profile snapshot
-        sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
-      }
+      const { sessionId } = ensureAgentSessionForConversation({
+        conversationId: tempConversationId,
+        conversationTitle: "Transcribing...",
+        startSnoozed,
+        profileSnapshot,
+        candidateSessionIds: input.sessionId ? [input.sessionId] : [],
+      })
+      agentSessionTracker.updateSession(sessionId, {
+        conversationTitle: "Transcribing...",
+        lastActivity: "Transcribing audio...",
+      })
 
       try {
         // Emit initial "initializing" progress update

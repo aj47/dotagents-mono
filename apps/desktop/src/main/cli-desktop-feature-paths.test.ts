@@ -5,20 +5,28 @@ const headlessCliSource = readFileSync(new URL("./headless-cli.ts", import.meta.
 const remoteServerSource = readFileSync(new URL("./remote-server.ts", import.meta.url), "utf8")
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 const loopServiceSource = readFileSync(new URL("./loop-service.ts", import.meta.url), "utf8")
+const agentModeRunnerSource = readFileSync(new URL("./agent-mode-runner.ts", import.meta.url), "utf8")
 const appRuntimeSource = readFileSync(new URL("./app-runtime.ts", import.meta.url), "utf8")
 const headlessRuntimeSource = readFileSync(new URL("./headless-runtime.ts", import.meta.url), "utf8")
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
 const docsSource = readFileSync(new URL("../../CLI_DESKTOP_FEATURE_PATHS.md", import.meta.url), "utf8")
 
 describe("CLI and desktop feature paths", () => {
-  it("routes the headless CLI through the shared conversation prep and runner", () => {
-    expect(headlessCliSource).toContain("prepareConversationForPrompt(prompt, currentConversationId)")
+  it("routes prompt entrypoints through the shared conversation/session bootstrap", () => {
+    expect(agentModeRunnerSource).toContain("export function ensureAgentSessionForConversation")
+    expect(agentModeRunnerSource).toContain("export async function preparePromptExecutionContext")
+    expect(headlessCliSource).toContain("preparePromptExecutionContext({")
+    expect(remoteServerSource).toContain("preparePromptExecutionContext({")
+    expect(tipcSource).toContain("ensureAgentSessionForConversation({")
+    expect(loopServiceSource).toContain("ensureAgentSessionForConversation({")
+  })
+
+  it("routes the headless CLI through the shared bootstrap and runner", () => {
     expect(headlessCliSource).toContain("toolApprovalManager.registerSessionApprovalHandler(")
     expect(headlessCliSource).toContain("runTopLevelAgentMode({")
   })
 
-  it("routes the remote server through the shared conversation prep and runner", () => {
-    expect(remoteServerSource).toContain("prepareConversationForPrompt(prompt, inputConversationId)")
+  it("routes the remote server through the shared bootstrap and runner", () => {
     expect(remoteServerSource).toContain('approvalMode: "dialog"')
     expect(remoteServerSource).toContain("runTopLevelAgentMode({")
   })
@@ -45,6 +53,7 @@ describe("CLI and desktop feature paths", () => {
   })
 
   it("documents every shared feature path explicitly", () => {
+    expect(docsSource).toContain("Shared prompt session bootstrap")
     expect(docsSource).toContain("Desktop text input")
     expect(docsSource).toContain("Desktop voice MCP mode")
     expect(docsSource).toContain("Headless CLI prompt")
