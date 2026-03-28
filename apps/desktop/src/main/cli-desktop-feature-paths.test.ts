@@ -63,7 +63,10 @@ const sharedProvidersSource = readFileSync(
   "utf8",
 )
 const sharedConversationHistorySource = readFileSync(
-  new URL("../../../../packages/shared/src/conversation-history.ts", import.meta.url),
+  new URL(
+    "../../../../packages/shared/src/conversation-history.ts",
+    import.meta.url,
+  ),
   "utf8",
 )
 const sharedSessionSource = readFileSync(
@@ -98,8 +101,18 @@ const settingsModelsSource = readFileSync(
   new URL("../renderer/src/pages/settings-models.tsx", import.meta.url),
   "utf8",
 )
+const settingsGeneralMainAgentOptionsSource = readFileSync(
+  new URL(
+    "../renderer/src/pages/settings-general-main-agent-options.ts",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const modelPresetManagerSource = readFileSync(
-  new URL("../renderer/src/components/model-preset-manager.tsx", import.meta.url),
+  new URL(
+    "../renderer/src/components/model-preset-manager.tsx",
+    import.meta.url,
+  ),
   "utf8",
 )
 const modelSelectorSource = readFileSync(
@@ -275,9 +288,7 @@ describe("CLI and desktop feature paths", () => {
     expect(sidebarSessionsSource).toContain("orderItemsByPinnedFirst(")
     expect(useStoreSyncSource).toContain("sanitizeConversationSessionState(")
     expect(remoteServerSource).toContain("sanitizeConversationSessionState(")
-    expect(mobileSessionsSource).toContain(
-      "sanitizeConversationSessionState(",
-    )
+    expect(mobileSessionsSource).toContain("sanitizeConversationSessionState(")
     expect(mobileSessionsSource).toContain(
       "setConversationSessionStateMembership(",
     )
@@ -296,12 +307,18 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/rename":')
     expect(headlessCliSource).toContain('case "/delete":')
     expect(headlessCliSource).toContain('case "/delete-all":')
-    expect(headlessCliSource).toContain("renameConversationTitleAndSyncSession(")
-    expect(headlessCliSource).toContain("deleteConversationAndSyncSessionState(")
+    expect(headlessCliSource).toContain(
+      "renameConversationTitleAndSyncSession(",
+    )
+    expect(headlessCliSource).toContain(
+      "deleteConversationAndSyncSessionState(",
+    )
     expect(headlessCliSource).toContain(
       "deleteAllConversationsAndSyncSessionState()",
     )
-    expect(tipcSource).toContain("return renameConversationTitleAndSyncSession(")
+    expect(tipcSource).toContain(
+      "return renameConversationTitleAndSyncSession(",
+    )
     expect(tipcSource).toContain(
       "await deleteConversationAndSyncSessionState(input.conversationId)",
     )
@@ -326,7 +343,9 @@ describe("CLI and desktop feature paths", () => {
     expect(headlessCliSource).toContain('case "/agents":')
     expect(headlessCliSource).toContain('case "/agent":')
     expect(headlessCliSource).toContain("activateAgentProfile(selectedAgent)")
-    expect(tipcSource).toContain("const profile = activateAgentProfileById(input.id)")
+    expect(tipcSource).toContain(
+      "const profile = activateAgentProfileById(input.id)",
+    )
     expect(tipcSource).toContain("activateAgentProfile(profile)")
     expect(remoteServerSource).toContain(
       "const profile = activateAgentProfileById(profileId)",
@@ -352,6 +371,9 @@ describe("CLI and desktop feature paths", () => {
     expect(sharedAgentProfilesSource).toContain(
       "export function getAcpCapableAgentProfiles",
     )
+    expect(sharedAgentProfilesSource).toContain(
+      "export function getSelectableMainAcpAgents",
+    )
     expect(headlessCliSource).toContain("resolveAgentProfileSelection(")
     expect(headlessCliSource).toContain("sortAgentProfilesByPriority(")
     expect(headlessCliSource).toContain("getAgentProfileDisplayName(")
@@ -364,11 +386,16 @@ describe("CLI and desktop feature paths", () => {
     expect(mobileAgentSelectorOptionsSource).toContain(
       "getAgentProfileDisplayName(",
     )
-    expect(mobileAgentSelectorOptionsSource).toContain("getAgentProfileSummary(")
-    expect(mobileMainAgentOptionsSource).toContain(
-      "getAcpCapableAgentProfiles(",
+    expect(mobileAgentSelectorOptionsSource).toContain(
+      "getAgentProfileSummary(",
     )
-    expect(mainAgentSelectionSource).toContain("getAcpCapableAgentProfiles(")
+    expect(settingsGeneralMainAgentOptionsSource).toContain(
+      "getSharedSelectableMainAcpAgents(",
+    )
+    expect(mobileMainAgentOptionsSource).toContain(
+      "getSelectableMainAcpAgents(",
+    )
+    expect(mainAgentSelectionSource).toContain("getSelectableMainAcpAgents(")
     expect(mainAgentSelectionSource).toContain("resolveAgentProfileSelection(")
     expect(mainAgentSelectionSource).toContain("isAcpCapableAgentProfile(")
   })
@@ -567,7 +594,9 @@ describe("CLI and desktop feature paths", () => {
     expect(loopSummariesSource).toContain("export function summarizeLoop")
     expect(loopSummariesSource).toContain("export function summarizeLoops")
     expect(tipcSource).toContain("getLoopSummaries: t.procedure.action")
-    expect(tipcSource).toContain("return summarizeLoops(loopService.getLoops(), {")
+    expect(tipcSource).toContain(
+      "return summarizeLoops(loopService.getLoops(), {",
+    )
     expect(remoteServerSource).toContain('from "./loop-summaries"')
     expect(remoteServerSource).toContain("return summarizeLoop(loop, {")
     expect(remoteServerSource).toContain("loops: summarizeLoops(loops, {")
@@ -612,6 +641,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Shared conversation management")
     expect(docsSource).toContain("Shared agent profile activation")
     expect(docsSource).toContain("Shared agent selector profiles")
+    expect(docsSource).toContain("Shared ACP main-agent options")
     expect(docsSource).toContain("Shared chat model selection")
     expect(docsSource).toContain("Shared speech provider defaults")
     expect(docsSource).toContain("Shared OpenAI-compatible preset resolution")
@@ -638,6 +668,7 @@ describe("CLI and desktop feature paths", () => {
     expect(docsSource).toContain("Headless CLI conversation management")
     expect(docsSource).toContain("Headless CLI agent selection")
     expect(docsSource).toContain("Headless CLI and desktop agent picker")
+    expect(docsSource).toContain("Desktop and mobile ACP main-agent pickers")
     expect(docsSource).toContain("Desktop/manual remote server QR print")
     expect(docsSource).toContain("Remote server startup QR auto-print")
     expect(docsSource).toContain("Desktop remote settings pairing preview")
@@ -651,7 +682,9 @@ describe("CLI and desktop feature paths", () => {
     )
     expect(docsSource).toContain("CLI/desktop MCP server status surfaces")
     expect(docsSource).toContain("Preset-aware CLI labels + preset surfaces")
-    expect(docsSource).toContain("Desktop repeat task settings + remote loop API")
+    expect(docsSource).toContain(
+      "Desktop repeat task settings + remote loop API",
+    )
     expect(docsSource).toContain(
       "Desktop progress history + remote API conversation payloads",
     )

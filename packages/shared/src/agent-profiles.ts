@@ -1,8 +1,4 @@
-export type AgentProfileConnectionType =
-  | "internal"
-  | "acp"
-  | "stdio"
-  | "remote"
+export type AgentProfileConnectionType = "internal" | "acp" | "stdio" | "remote"
 
 export interface AgentProfileLike {
   id: string
@@ -16,6 +12,21 @@ export interface AgentProfileLike {
   connection?: {
     type?: AgentProfileConnectionType | null
   } | null
+}
+
+export interface LegacyAcpAgentLike {
+  name: string
+  displayName?: string | null
+  enabled?: boolean
+  connection?: {
+    type?: AgentProfileConnectionType | null
+  } | null
+}
+
+export interface MainAcpAgentOption {
+  id: string
+  name: string
+  displayName: string
 }
 
 export interface ResolvedAgentProfileSelection<TProfile> {
@@ -49,20 +60,24 @@ function compareAgentProfilePriority<TProfile extends AgentProfileLike>(
   priorityProfileId?: string | null,
 ): number {
   const leftPriority =
-    (priorityProfileId && left.id === priorityProfileId ? -4 : 0)
-    + (left.isDefault ? -2 : 0)
-    + (normalizeSelectionQuery(left.name) === "main-agent" ? -1 : 0)
+    (priorityProfileId && left.id === priorityProfileId ? -4 : 0) +
+    (left.isDefault ? -2 : 0) +
+    (normalizeSelectionQuery(left.name) === "main-agent" ? -1 : 0)
   const rightPriority =
-    (priorityProfileId && right.id === priorityProfileId ? -4 : 0)
-    + (right.isDefault ? -2 : 0)
-    + (normalizeSelectionQuery(right.name) === "main-agent" ? -1 : 0)
+    (priorityProfileId && right.id === priorityProfileId ? -4 : 0) +
+    (right.isDefault ? -2 : 0) +
+    (normalizeSelectionQuery(right.name) === "main-agent" ? -1 : 0)
 
   if (leftPriority !== rightPriority) {
     return leftPriority - rightPriority
   }
 
-  const leftLabel = normalizeSelectionQuery(getAgentProfileDisplayName(left) || left.id)
-  const rightLabel = normalizeSelectionQuery(getAgentProfileDisplayName(right) || right.id)
+  const leftLabel = normalizeSelectionQuery(
+    getAgentProfileDisplayName(left) || left.id,
+  )
+  const rightLabel = normalizeSelectionQuery(
+    getAgentProfileDisplayName(right) || right.id,
+  )
   return leftLabel.localeCompare(rightLabel)
 }
 
@@ -123,11 +138,13 @@ export function getDefaultAgentProfile<TProfile extends AgentProfileLike>(
 ): TProfile | undefined {
   const enabledProfiles = getEnabledAgentProfiles(profiles)
 
-  return enabledProfiles.find((profile) => profile.isDefault)
-    ?? enabledProfiles.find(
+  return (
+    enabledProfiles.find((profile) => profile.isDefault) ??
+    enabledProfiles.find(
       (profile) => normalizeSelectionQuery(profile.name) === "main-agent",
-    )
-    ?? enabledProfiles[0]
+    ) ??
+    enabledProfiles[0]
+  )
 }
 
 export function resolveAgentProfileSelection<TProfile extends AgentProfileLike>(
@@ -178,4 +195,52 @@ export function getAcpCapableAgentProfiles<TProfile extends AgentProfileLike>(
   profiles: readonly TProfile[],
 ): TProfile[] {
   return profiles.filter((profile) => isAcpCapableAgentProfile(profile))
+}
+
+export function getSelectableMainAcpAgents<
+  TProfile extends AgentProfileLike,
+  TLegacyAgent extends LegacyAcpAgentLike,
+>(
+  profileAgents: readonly TProfile[],
+  legacyAgents: readonly TLegacyAgent[] = [],
+): MainAcpAgentOption[] {
+  const options: MainAcpAgentOption[] = []
+  const seen = new Set<string>()
+
+  const addOption = (
+    id: string | null | undefined,
+    name: string | null | undefined,
+    displayName: string | null | undefined,
+  ) => {
+    const normalizedName = normalizeAgentProfileText(name)
+    if (!normalizedName) {
+      return
+    }
+
+    const dedupeKey = normalizeSelectionQuery(normalizedName)
+    if (seen.has(dedupeKey)) {
+      return
+    }
+    seen.add(dedupeKey)
+
+    options.push({
+      id: normalizeAgentProfileText(id) || normalizedName,
+      name: normalizedName,
+      displayName: normalizeAgentProfileText(displayName) || normalizedName,
+    })
+  }
+
+  for (const profile of getAcpCapableAgentProfiles(profileAgents)) {
+    addOption(profile.id, profile.name, getAgentProfileDisplayName(profile))
+  }
+
+  for (const agent of legacyAgents) {
+    if (agent.enabled === false || agent.connection?.type !== "stdio") {
+      continue
+    }
+
+    addOption(agent.name, agent.name, agent.displayName)
+  }
+
+  return options
 }

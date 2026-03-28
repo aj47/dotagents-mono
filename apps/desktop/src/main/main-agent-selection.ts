@@ -1,6 +1,6 @@
 import {
-  getAcpCapableAgentProfiles,
   isAcpCapableAgentProfile,
+  getSelectableMainAcpAgents,
   resolveAgentProfileSelection,
 } from "@dotagents/shared"
 import type { ACPAgentConfig, AgentProfile } from "../shared/types"
@@ -10,56 +10,41 @@ export type MainAcpAgentSelection =
   | { error: string }
 
 export type PreferredTopLevelAcpAgentSelection =
-  | { resolvedName: string; source: "profile" | "main-agent"; repairedName?: string }
+  | {
+      resolvedName: string
+      source: "profile" | "main-agent"
+      repairedName?: string
+    }
   | { error: string }
 
 interface MainAcpAgentCandidate {
   id: string
   name: string
   displayName?: string
-  enabled?: boolean
 }
 
 export function resolveMainAcpAgentSelection(
   configuredName: string,
   profileAgents: AgentProfile[] = [],
-  legacyAgents: ACPAgentConfig[] = []
+  legacyAgents: ACPAgentConfig[] = [],
 ): MainAcpAgentSelection {
   const normalizedMainAgentName = configuredName.trim().toLowerCase()
   const hasConfiguredName = normalizedMainAgentName.length > 0
 
-  const spawnableProfileCandidates = getAcpCapableAgentProfiles(profileAgents)
+  const selectionCandidates: MainAcpAgentCandidate[] =
+    getSelectableMainAcpAgents(profileAgents, legacyAgents)
 
-  const fallbackLegacyAgents = legacyAgents.filter((agent) =>
-    agent.enabled !== false && agent.connection.type === "stdio"
-  )
-
-  const selectionCandidates: MainAcpAgentCandidate[] = [
-    ...spawnableProfileCandidates.map((profile) => ({
-      id: profile.id || profile.name,
-      name: profile.name,
-      displayName: profile.displayName,
-      enabled: profile.enabled,
-    })),
-    ...fallbackLegacyAgents.map((agent) => ({
-      id: agent.name,
-      name: agent.name,
-      displayName: agent.displayName,
-      enabled: agent.enabled,
-    })),
-  ]
-
-  const {
-    ambiguousProfiles: ambiguousCandidates,
-    selectedProfile,
-  } = resolveAgentProfileSelection(selectionCandidates, configuredName)
+  const { ambiguousProfiles: ambiguousCandidates, selectedProfile } =
+    resolveAgentProfileSelection(selectionCandidates, configuredName)
 
   if (selectedProfile) {
     return { resolvedName: selectedProfile.name }
   }
 
   if (ambiguousCandidates?.length) {
-    const ambiguousNames = [...new Set(ambiguousCandidates.map((agent) => agent.name))]
+    const ambiguousNames = [
+      ...new Set(ambiguousCandidates.map((agent) => agent.name)),
+    ]
     return {
       error: `ACP main agent "${configuredName}" matches multiple enabled ACP/stdio agents: ${ambiguousNames.join(", ")}. Configure mainAgentName to a more specific agent ID, name, or display name.`,
     }
@@ -82,13 +67,14 @@ export function resolveMainAcpAgentSelection(
 
   const availableNames = fallbackExternalAgents.map((profile) => profile.name)
   return {
-    error: availableNames.length > 0
-      ? hasConfiguredName
-        ? `ACP main agent "${configuredName}" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
-        : `ACP main agent is not configured. Configure mainAgentName to one of: ${availableNames.join(", ")}`
-      : hasConfiguredName
-        ? `ACP main agent "${configuredName}" is not available and no enabled ACP/stdio agents were found.`
-        : "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
+    error:
+      availableNames.length > 0
+        ? hasConfiguredName
+          ? `ACP main agent "${configuredName}" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
+          : `ACP main agent is not configured. Configure mainAgentName to one of: ${availableNames.join(", ")}`
+        : hasConfiguredName
+          ? `ACP main agent "${configuredName}" is not available and no enabled ACP/stdio agents were found.`
+          : "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
   }
 }
 
@@ -112,10 +98,7 @@ export function resolvePreferredTopLevelAcpAgentSelection({
     : undefined
   const selectedProfile = sessionProfile ?? currentProfile
 
-  if (
-    selectedProfile
-    && isAcpCapableAgentProfile(selectedProfile)
-  ) {
+  if (selectedProfile && isAcpCapableAgentProfile(selectedProfile)) {
     return {
       resolvedName: selectedProfile.name,
       source: "profile",
@@ -130,7 +113,11 @@ export function resolvePreferredTopLevelAcpAgentSelection({
     return null
   }
 
-  const selection = resolveMainAcpAgentSelection(mainAgentName ?? "", profileAgents, legacyAgents)
+  const selection = resolveMainAcpAgentSelection(
+    mainAgentName ?? "",
+    profileAgents,
+    legacyAgents,
+  )
   if ("error" in selection) {
     return selection
   }
