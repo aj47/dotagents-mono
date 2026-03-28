@@ -6,12 +6,14 @@ vi.mock("./agent-profile-service", () => ({
 }))
 
 import {
+  createManagedLoop,
   deleteManagedLoop,
   getManagedLoopSummaries,
   resolveManagedLoopSelection,
   saveManagedLoop,
   toggleManagedLoopEnabled,
   triggerManagedLoop,
+  updateManagedLoop,
   type LoopRuntimeStore,
 } from "./loop-management"
 import type { LoopConfig } from "../shared/types"
@@ -36,7 +38,8 @@ function createLoopStore(
   const storeLoops = loops
   const statuses = options.statuses ?? []
 
-  const getLoop = (loopId: string) => storeLoops.find((loop) => loop.id === loopId)
+  const getLoop = (loopId: string) =>
+    storeLoops.find((loop) => loop.id === loopId)
   const getLoopStatus = (loopId: string) =>
     statuses.find((status) => status.id === loopId)
 
@@ -50,7 +53,9 @@ function createLoopStore(
         return false
       }
 
-      const existingIndex = storeLoops.findIndex((existing) => existing.id === loop.id)
+      const existingIndex = storeLoops.findIndex(
+        (existing) => existing.id === loop.id,
+      )
       if (existingIndex >= 0) {
         storeLoops[existingIndex] = loop
       } else {
@@ -248,5 +253,93 @@ describe("loop management", () => {
         enabled: true,
       },
     })
+  })
+
+  it("creates repeat tasks through one shared validation and save path", () => {
+    const loopStore = createLoopStore([])
+
+    const result = createManagedLoop(loopStore, {
+      id: "loop-1",
+      name: "Inbox sweep",
+      prompt: "Check inbox",
+      intervalMinutes: 15,
+      enabled: true,
+      maxIterations: 4,
+      runOnStartup: true,
+    })
+
+    expect(result).toMatchObject({
+      success: true,
+      loop: {
+        id: "loop-1",
+        name: "Inbox sweep",
+        prompt: "Check inbox",
+        intervalMinutes: 15,
+        enabled: true,
+        maxIterations: 4,
+        runOnStartup: true,
+      },
+      summary: {
+        id: "loop-1",
+        maxIterations: 4,
+        runOnStartup: true,
+      },
+    })
+    expect(loopStore.startLoop).toHaveBeenCalledWith("loop-1")
+  })
+
+  it("updates repeat tasks through one shared validation path", () => {
+    const loopStore = createLoopStore([
+      {
+        id: "loop-1",
+        name: "Inbox sweep",
+        prompt: "Check inbox",
+        intervalMinutes: 15,
+        enabled: true,
+        maxIterations: 4,
+      },
+    ])
+
+    const result = updateManagedLoop(loopStore, "loop-1", {
+      intervalMinutes: 30,
+      maxIterations: null,
+      runOnStartup: true,
+    })
+
+    expect(result).toMatchObject({
+      success: true,
+      loop: {
+        id: "loop-1",
+        intervalMinutes: 30,
+        maxIterations: undefined,
+        runOnStartup: true,
+      },
+      summary: {
+        id: "loop-1",
+        intervalMinutes: 30,
+        maxIterations: undefined,
+        runOnStartup: true,
+      },
+    })
+    expect(loopStore.stopLoop).toHaveBeenCalledWith("loop-1")
+    expect(loopStore.startLoop).toHaveBeenCalledWith("loop-1")
+  })
+
+  it("surfaces invalid repeat task payloads without saving", () => {
+    const loopStore = createLoopStore([])
+
+    expect(
+      createManagedLoop(loopStore, {
+        name: "Inbox sweep",
+        prompt: "Check inbox",
+        intervalMinutes: 0,
+      }),
+    ).toEqual({
+      success: false,
+      error: "invalid_input",
+      errorMessage:
+        "intervalMinutes must be a finite integer >= 1 when provided",
+    })
+    expect(loopStore.saveLoop).not.toHaveBeenCalled()
   })
 })

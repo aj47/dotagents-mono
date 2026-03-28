@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest"
 
 const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 
-function getSection(source: string, startMarker: string, endMarker: string): string {
+function getSection(
+  source: string,
+  startMarker: string,
+  endMarker: string,
+): string {
   const startIndex = source.indexOf(startMarker)
   const endIndex = source.indexOf(endMarker)
 
@@ -15,9 +19,16 @@ function getSection(source: string, startMarker: string, endMarker: string): str
 
 describe("tipc saveLoop", () => {
   it("propagates loop persistence failures instead of hardcoding success", () => {
-    const saveLoopSection = getSection(tipcSource, "saveLoop: t.procedure", "deleteLoop: t.procedure")
+    const saveLoopSection = getSection(
+      tipcSource,
+      "saveLoop: t.procedure",
+      "deleteLoop: t.procedure",
+    )
 
-    expect(saveLoopSection).toContain("return { success: loopService.saveLoop(input.loop) }")
+    expect(saveLoopSection).toContain(
+      "const result = saveManagedLoop(loopService, input.loop)",
+    )
+    expect(saveLoopSection).toContain("return { success: result.success }")
     expect(saveLoopSection).not.toContain("return { success: true }")
   })
 })

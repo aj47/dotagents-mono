@@ -76,12 +76,14 @@ import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService } from "./agent-profile-service"
 import { activateAgentProfileById } from "./agent-profile-activation"
 import {
+  createManagedLoop,
   deleteManagedLoop,
   getManagedLoopSummaries,
   getManagedLoopSummary,
   saveManagedLoop,
   toggleManagedLoopEnabled,
   triggerManagedLoop,
+  updateManagedLoop,
 } from "./loop-management"
 import {
   getManagedMcpServerSummaries,
@@ -3166,6 +3168,25 @@ async function startRemoteServerInternal(
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        maxIterations?: unknown
+        runOnStartup?: unknown
+      }
+
+      const loopService = await loadLoopService()
+      if (loopService) {
+        const result = createManagedLoop(loopService, body)
+        if (!result.success) {
+          const statusCode = result.error === "invalid_input" ? 400 : 500
+          return reply
+            .code(statusCode)
+            .send({
+              error: result.errorMessage || "Failed to persist repeat task",
+            })
+        }
+
+        return reply.send({
+          loop: result.summary ?? (await formatLoopResponse(result.loop!)),
+        })
       }
 
       const name = typeof body.name === "string" ? body.name.trim() : ""
@@ -3176,68 +3197,34 @@ async function startRemoteServerInternal(
         })
       }
 
-      if (
-        body.intervalMinutes !== undefined &&
-        (typeof body.intervalMinutes !== "number" ||
-          !Number.isFinite(body.intervalMinutes) ||
-          !Number.isInteger(body.intervalMinutes) ||
-          body.intervalMinutes < 1)
-      ) {
-        return reply.code(400).send({
-          error: "intervalMinutes must be a finite integer >= 1 when provided",
-        })
-      }
-      const intervalMinutes =
-        typeof body.intervalMinutes === "number" ? body.intervalMinutes : 60
-      if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
-        return reply
-          .code(400)
-          .send({ error: "enabled must be a boolean when provided" })
-      }
-      if (
-        body.profileId !== undefined &&
-        body.profileId !== null &&
-        typeof body.profileId !== "string"
-      ) {
-        return reply
-          .code(400)
-          .send({ error: "profileId must be a string when provided" })
-      }
-      const profileId =
-        typeof body.profileId === "string" ? body.profileId.trim() : undefined
-      const enabled = typeof body.enabled === "boolean" ? body.enabled : true
-
-      const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-
-      const newLoop = {
-        id,
-        name,
-        prompt,
-        intervalMinutes,
-        enabled,
-        profileId: profileId || undefined,
-      }
-
-      const loopService = await loadLoopService()
-      if (loopService) {
-        const result = saveManagedLoop(loopService, newLoop)
-        if (!result.success) {
-          return reply
-            .code(500)
-            .send({ error: "Failed to persist repeat task" })
-        }
-
-        return reply.send({
-          loop: result.summary ?? (await formatLoopResponse(newLoop)),
-        })
-      }
-
       const cfg = configStore.get()
-      const loops = [...(cfg.loops || []), newLoop]
+      const loops = [
+        ...(cfg.loops || []),
+        {
+          id: `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+          name,
+          prompt,
+          intervalMinutes:
+            typeof body.intervalMinutes === "number"
+              ? body.intervalMinutes
+              : 60,
+          enabled: typeof body.enabled === "boolean" ? body.enabled : true,
+          profileId:
+            typeof body.profileId === "string"
+              ? body.profileId.trim() || undefined
+              : undefined,
+          maxIterations:
+            typeof body.maxIterations === "number"
+              ? body.maxIterations
+              : undefined,
+          runOnStartup:
+            typeof body.runOnStartup === "boolean" ? body.runOnStartup : false,
+        },
+      ]
       configStore.save({ ...cfg, loops })
 
       return reply.send({
-        loop: await formatLoopResponse(newLoop),
+        loop: await formatLoopResponse(loops[loops.length - 1]),
       })
     } catch (error: any) {
       diagnosticsService.logError(
@@ -3261,6 +3248,8 @@ async function startRemoteServerInternal(
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        maxIterations?: unknown
+        runOnStartup?: unknown
       }
 
       const loopService = await loadLoopService()
@@ -3282,84 +3271,51 @@ async function startRemoteServerInternal(
         return reply.code(404).send({ error: "Repeat task not found" })
       }
 
-      if (
-        body.name !== undefined &&
-        (typeof body.name !== "string" || body.name.trim() === "")
-      ) {
-        return reply
-          .code(400)
-          .send({ error: "name must be a non-empty string when provided" })
-      }
-      if (
-        body.prompt !== undefined &&
-        (typeof body.prompt !== "string" || body.prompt.trim() === "")
-      ) {
-        return reply
-          .code(400)
-          .send({ error: "prompt must be a non-empty string when provided" })
-      }
-      if (
-        body.intervalMinutes !== undefined &&
-        (typeof body.intervalMinutes !== "number" ||
-          !Number.isFinite(body.intervalMinutes) ||
-          !Number.isInteger(body.intervalMinutes) ||
-          body.intervalMinutes < 1)
-      ) {
-        return reply.code(400).send({
-          error: "intervalMinutes must be a finite integer >= 1 when provided",
-        })
-      }
-      if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
-        return reply
-          .code(400)
-          .send({ error: "enabled must be a boolean when provided" })
-      }
-      if (
-        body.profileId !== undefined &&
-        body.profileId !== null &&
-        typeof body.profileId !== "string"
-      ) {
-        return reply
-          .code(400)
-          .send({ error: "profileId must be a string when provided" })
-      }
-
-      const name = typeof body.name === "string" ? body.name.trim() : undefined
-      const prompt =
-        typeof body.prompt === "string" ? body.prompt.trim() : undefined
-      const intervalMinutes =
-        typeof body.intervalMinutes === "number"
-          ? body.intervalMinutes
-          : undefined
-      const enabled =
-        typeof body.enabled === "boolean" ? body.enabled : undefined
-      const profileId =
-        typeof body.profileId === "string" ? body.profileId.trim() : undefined
-      const updated = {
-        ...existing,
-        ...(name !== undefined && { name }),
-        ...(prompt !== undefined && { prompt }),
-        ...(intervalMinutes !== undefined && { intervalMinutes }),
-        ...(enabled !== undefined && { enabled }),
-        ...(body.profileId !== undefined && {
-          profileId: profileId || undefined,
-        }),
-      }
-
       if (loopService) {
-        const result = saveManagedLoop(loopService, updated, {
-          restartIfEnabled: true,
-        })
+        const result = updateManagedLoop(loopService, params.id, body)
         if (!result.success) {
+          const statusCode =
+            result.error === "invalid_input"
+              ? 400
+              : result.error === "not_found"
+                ? 404
+                : 500
           return reply
-            .code(500)
-            .send({ error: "Failed to persist repeat task" })
+            .code(statusCode)
+            .send({
+              error: result.errorMessage || "Failed to persist repeat task",
+            })
         }
 
         return reply.send({
           success: true,
-          loop: result.summary ?? (await formatLoopResponse(updated)),
+          loop: result.summary ?? (await formatLoopResponse(result.loop!)),
         })
+      }
+
+      const updated = {
+        ...existing,
+        ...(typeof body.name === "string" && { name: body.name.trim() }),
+        ...(typeof body.prompt === "string" && { prompt: body.prompt.trim() }),
+        ...(typeof body.intervalMinutes === "number" && {
+          intervalMinutes: body.intervalMinutes,
+        }),
+        ...(typeof body.enabled === "boolean" && { enabled: body.enabled }),
+        ...(body.profileId !== undefined && {
+          profileId:
+            typeof body.profileId === "string"
+              ? body.profileId.trim() || undefined
+              : undefined,
+        }),
+        ...(body.maxIterations !== undefined && {
+          maxIterations:
+            typeof body.maxIterations === "number"
+              ? body.maxIterations
+              : undefined,
+        }),
+        ...(typeof body.runOnStartup === "boolean" && {
+          runOnStartup: body.runOnStartup,
+        }),
       }
 
       if (cfg && loopIndex >= 0) {

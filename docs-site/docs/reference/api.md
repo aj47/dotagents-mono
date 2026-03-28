@@ -28,6 +28,7 @@ The remote server starts automatically with the desktop app and exposes an HTTP 
 Send a message to the agent and get a response.
 
 **Request:**
+
 ```json
 {
   "message": "Search for recent AI news",
@@ -45,6 +46,7 @@ Send a message to the agent and get a response.
 Continue an existing conversation.
 
 **Request:**
+
 ```json
 {
   "message": "Tell me more about the first result"
@@ -58,6 +60,7 @@ Continue an existing conversation.
 List all conversations.
 
 **Response:**
+
 ```json
 [
   {
@@ -84,6 +87,7 @@ Transcribe audio using the configured STT provider.
 **Request:** Multipart form data with audio file.
 
 **Response:**
+
 ```json
 {
   "text": "Search for the latest AI news",
@@ -99,6 +103,7 @@ Transcribe audio using the configured STT provider.
 List all configured MCP servers and their status.
 
 **Response:**
+
 ```json
 [
   {
@@ -114,6 +119,7 @@ List all configured MCP servers and their status.
 Execute an MCP tool directly.
 
 **Request:**
+
 ```json
 {
   "server": "github",
@@ -136,6 +142,46 @@ Emergency stop a specific agent session.
 
 Get current application settings (excluding sensitive data like API keys).
 
+### Repeat Tasks
+
+#### `GET /v1/loops`
+
+List repeat tasks with their merged runtime state.
+
+#### `POST /v1/loops`
+
+Create a repeat task.
+
+**Request:**
+
+```json
+{
+  "name": "Inbox sweep",
+  "prompt": "Check inbox for urgent mail",
+  "intervalMinutes": 15,
+  "enabled": true,
+  "runOnStartup": true,
+  "maxIterations": 4,
+  "profileId": "ops-agent"
+}
+```
+
+#### `PATCH /v1/loops/{id}`
+
+Update a repeat task. Set `"profileId": null` to clear the assigned agent and `"maxIterations": null` to clear the override.
+
+#### `POST /v1/loops/{id}/toggle`
+
+Toggle a repeat task between enabled and disabled.
+
+#### `POST /v1/loops/{id}/run`
+
+Trigger a repeat task immediately.
+
+#### `DELETE /v1/loops/{id}`
+
+Delete a repeat task.
+
 ### Health
 
 #### `GET /health`
@@ -143,6 +189,7 @@ Get current application settings (excluding sensitive data like API keys).
 Health check endpoint.
 
 **Response:**
+
 ```json
 {
   "status": "ok",

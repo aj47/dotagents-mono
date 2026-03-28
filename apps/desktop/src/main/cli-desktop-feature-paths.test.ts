@@ -684,6 +684,8 @@ describe("CLI and desktop feature paths", () => {
       "export function resolveManagedLoopSelection",
     )
     expect(loopManagementSource).toContain("export function saveManagedLoop")
+    expect(loopManagementSource).toContain("export function createManagedLoop")
+    expect(loopManagementSource).toContain("export function updateManagedLoop")
     expect(loopManagementSource).toContain(
       "export function toggleManagedLoopEnabled",
     )
@@ -693,6 +695,15 @@ describe("CLI and desktop feature paths", () => {
     expect(loopManagementSource).toContain("export function deleteManagedLoop")
     expect(headlessCliSource).toContain("getManagedLoopSummaries(loopService)")
     expect(headlessCliSource).toContain("resolveManagedLoopSelection(")
+    expect(headlessCliSource).toContain(
+      "createManagedLoop(loopService, payload)",
+    )
+    expect(headlessCliSource).toContain(
+      "updateManagedLoop(loopService, selectedLoop.id, parsed.payload)",
+    )
+    expect(headlessCliSource).toContain(
+      "deleteManagedLoop(loopService, selectedLoop.id)",
+    )
     expect(headlessCliSource).toContain("toggleManagedLoopEnabled(loopService,")
     expect(headlessCliSource).toContain("triggerManagedLoop(loopService,")
     expect(tipcSource).toContain("getLoopSummaries: t.procedure.action")
@@ -712,10 +723,10 @@ describe("CLI and desktop feature paths", () => {
       "const result = await triggerManagedLoop(loopService, params.id)",
     )
     expect(remoteServerSource).toContain(
-      "const result = saveManagedLoop(loopService, newLoop)",
+      "const result = createManagedLoop(loopService, body)",
     )
     expect(remoteServerSource).toContain(
-      "const result = saveManagedLoop(loopService, updated, {",
+      "const result = updateManagedLoop(loopService, params.id, body)",
     )
     expect(remoteServerSource).toContain(
       "const result = deleteManagedLoop(loopService, params.id)",

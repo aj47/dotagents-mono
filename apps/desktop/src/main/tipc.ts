@@ -123,7 +123,12 @@ import {
 } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
-import { getManagedLoopSummaries } from "./loop-management"
+import {
+  deleteManagedLoop,
+  getManagedLoopSummaries,
+  saveManagedLoop,
+  triggerManagedLoop,
+} from "./loop-management"
 import {
   getManagedMcpServerLogs,
   restartManagedMcpServer,
@@ -5162,13 +5167,15 @@ export const router = {
   saveLoop: t.procedure
     .input<{ loop: LoopConfig }>()
     .action(async ({ input }) => {
-      return { success: loopService.saveLoop(input.loop) }
+      const result = saveManagedLoop(loopService, input.loop)
+      return { success: result.success }
     }),
 
   deleteLoop: t.procedure
     .input<{ loopId: string }>()
     .action(async ({ input }) => {
-      return { success: loopService.deleteLoop(input.loopId) }
+      const result = deleteManagedLoop(loopService, input.loopId)
+      return { success: result.success }
     }),
 
   startLoop: t.procedure
@@ -5186,7 +5193,8 @@ export const router = {
   triggerLoop: t.procedure
     .input<{ loopId: string }>()
     .action(async ({ input }) => {
-      return { success: await loopService.triggerLoop(input.loopId) }
+      const result = await triggerManagedLoop(loopService, input.loopId)
+      return { success: result.success }
     }),
 
   startAllLoops: t.procedure.action(async () => {

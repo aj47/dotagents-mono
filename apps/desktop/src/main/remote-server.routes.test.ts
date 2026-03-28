@@ -258,19 +258,23 @@ describe("remote-server route registration", () => {
     )
 
     expect(createLoopSection).toContain(
-      "const result = saveManagedLoop(loopService, newLoop)",
+      "const result = createManagedLoop(loopService, body)",
     )
     expect(createLoopSection).toContain("if (!result.success) {")
-    expect(createLoopSection).toContain(".code(500)")
     expect(createLoopSection).toContain(
-      '.send({ error: "Failed to persist repeat task" })',
+      'result.error === "invalid_input" ? 400 : 500',
+    )
+    expect(createLoopSection).toContain("runOnStartup?: unknown")
+    expect(createLoopSection).toContain("maxIterations?: unknown")
+    expect(createLoopSection).toContain(
+      'result.errorMessage || "Failed to persist repeat task"',
     )
 
     const saveIndex = createLoopSection.indexOf(
-      "const result = saveManagedLoop(loopService, newLoop)",
+      "const result = createManagedLoop(loopService, body)",
     )
     const failureIndex = createLoopSection.indexOf(
-      '.send({ error: "Failed to persist repeat task" })',
+      'result.errorMessage || "Failed to persist repeat task"',
     )
     const successIndex = createLoopSection.indexOf("return reply.send({")
 
@@ -288,19 +292,22 @@ describe("remote-server route registration", () => {
     )
 
     expect(updateLoopSection).toContain(
-      "const result = saveManagedLoop(loopService, updated, {",
+      "const result = updateManagedLoop(loopService, params.id, body)",
     )
     expect(updateLoopSection).toContain("if (!result.success) {")
-    expect(updateLoopSection).toContain(".code(500)")
+    expect(updateLoopSection).toContain('result.error === "invalid_input"')
+    expect(updateLoopSection).toContain('result.error === "not_found"')
+    expect(updateLoopSection).toContain("runOnStartup?: unknown")
+    expect(updateLoopSection).toContain("maxIterations?: unknown")
     expect(updateLoopSection).toContain(
-      '.send({ error: "Failed to persist repeat task" })',
+      'result.errorMessage || "Failed to persist repeat task"',
     )
 
     const saveIndex = updateLoopSection.indexOf(
-      "const result = saveManagedLoop(loopService, updated, {",
+      "const result = updateManagedLoop(loopService, params.id, body)",
     )
     const failureIndex = updateLoopSection.indexOf(
-      '.send({ error: "Failed to persist repeat task" })',
+      'result.errorMessage || "Failed to persist repeat task"',
     )
     const successIndex = updateLoopSection.indexOf("return reply.send({")
 

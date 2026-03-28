@@ -11,10 +11,14 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { startSharedPromptRun } from "./agent-mode-runner"
 import { resolveConversationHistorySelection } from "./conversation-history-selection"
 import {
+  createManagedLoop,
+  deleteManagedLoop,
   getManagedLoopSummaries,
+  updateManagedLoop,
   resolveManagedLoopSelection,
   toggleManagedLoopEnabled,
   triggerManagedLoop,
+  type ManagedLoopResult,
 } from "./loop-management"
 import {
   getManagedMcpServerLogs,
@@ -180,8 +184,11 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/agent <id-or-name>${colors.reset} - Switch the active agent for future prompts
   ${colors.cyan}/loops${colors.reset}         - List repeat tasks with live status and profile info
   ${colors.cyan}/loop-show <id-or-name>${colors.reset} - Show full repeat-task details
+  ${colors.cyan}/loop-new <json>${colors.reset} - Create a repeat task from a JSON payload
+  ${colors.cyan}/loop-edit <id> <json>${colors.reset} - Update a repeat task from a JSON payload
   ${colors.cyan}/loop-toggle <id-or-name>${colors.reset} - Enable or disable a repeat task
   ${colors.cyan}/loop-run <id-or-name>${colors.reset} - Run a repeat task immediately
+  ${colors.cyan}/loop-delete <id-or-name>${colors.reset} - Delete a repeat task
   ${colors.cyan}/notes${colors.reset}         - List knowledge notes with context and tags
   ${colors.cyan}/note-show <id>${colors.reset} - Show a knowledge note by ID or unique prefix
   ${colors.cyan}/note-search <query>${colors.reset} - Search knowledge notes by content or metadata
@@ -531,6 +538,41 @@ function parseKnowledgeNoteEditCommand(
   const payload = parseCliJsonObject(
     payloadText,
     "Usage: /note-edit <note-id-or-prefix> <json-payload>",
+  )
+
+  if (!payload) {
+    return null
+  }
+
+  return { selection, payload }
+}
+
+function parseLoopEditCommand(
+  input: string,
+): { selection: string; payload: Record<string, unknown> } | null {
+  const trimmed = input.trim()
+  if (!trimmed) {
+    printColored(
+      colors.yellow,
+      "Usage: /loop-edit <loop-id-or-name> <json-payload>",
+    )
+    return null
+  }
+
+  const firstWhitespaceIndex = trimmed.search(/\s/)
+  if (firstWhitespaceIndex < 0) {
+    printColored(
+      colors.yellow,
+      "Usage: /loop-edit <loop-id-or-name> <json-payload>",
+    )
+    return null
+  }
+
+  const selection = trimmed.slice(0, firstWhitespaceIndex).trim()
+  const payloadText = trimmed.slice(firstWhitespaceIndex + 1).trim()
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /loop-edit <loop-id-or-name> <json-payload>",
   )
 
   if (!payload) {
@@ -1191,7 +1233,7 @@ async function resolveLoopSelectionForCli(
   if (!query) {
     printColored(
       colors.yellow,
-      "Usage: /loop-show|/loop-toggle|/loop-run <loop-id-or-name>",
+      "Usage: /loop-show|/loop-edit|/loop-toggle|/loop-run|/loop-delete <loop-id-or-name>",
     )
     return null
   }
@@ -1221,6 +1263,30 @@ async function resolveLoopSelectionForCli(
   return null
 }
 
+function printManagedLoopFailure(
+  result: ManagedLoopResult,
+  fallbackMessage: string,
+): void {
+  if (result.error === "invalid_input" && result.errorMessage) {
+    printColored(colors.red, result.errorMessage)
+    return
+  }
+  if (result.error === "already_running") {
+    printColored(colors.yellow, "Repeat task is already running.")
+    return
+  }
+  if (result.error === "not_found") {
+    printColored(colors.red, "Repeat task not found.")
+    return
+  }
+  if (result.error === "delete_failed") {
+    printColored(colors.red, "Failed to delete repeat task.")
+    return
+  }
+
+  printColored(colors.red, fallbackMessage)
+}
+
 async function handleShowLoop(selection: string): Promise<void> {
   const selectedLoop = await resolveLoopSelectionForCli(selection)
   if (!selectedLoop) {
@@ -1228,6 +1294,56 @@ async function handleShowLoop(selection: string): Promise<void> {
   }
 
   printLoopDetails(selectedLoop)
+}
+
+async function handleCreateLoop(payloadText: string): Promise<void> {
+  const payload = parseCliJsonObject(
+    payloadText,
+    "Usage: /loop-new <json-payload>",
+  )
+  if (!payload) {
+    return
+  }
+
+  const result = createManagedLoop(loopService, payload)
+  if (!result.success) {
+    printManagedLoopFailure(result, "Failed to create repeat task.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Created repeat task ${result.loop?.id}: ${result.loop?.name}`,
+  )
+  if (result.summary) {
+    printLoopDetails(result.summary)
+  }
+}
+
+async function handleEditLoop(input: string): Promise<void> {
+  const parsed = parseLoopEditCommand(input)
+  if (!parsed) {
+    return
+  }
+
+  const selectedLoop = await resolveLoopSelectionForCli(parsed.selection)
+  if (!selectedLoop) {
+    return
+  }
+
+  const result = updateManagedLoop(loopService, selectedLoop.id, parsed.payload)
+  if (!result.success) {
+    printManagedLoopFailure(result, "Failed to update repeat task.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Updated repeat task ${selectedLoop.id}: ${selectedLoop.name}`,
+  )
+  if (result.summary) {
+    printLoopDetails(result.summary)
+  }
 }
 
 async function handleToggleLoop(selection: string): Promise<void> {
@@ -1274,6 +1390,32 @@ async function handleRunLoop(selection: string): Promise<void> {
   printColored(
     colors.green,
     `Triggered repeat task ${selectedLoop.id}: ${selectedLoop.name}`,
+  )
+}
+
+async function handleDeleteLoop(selection: string): Promise<void> {
+  const selectedLoop = await resolveLoopSelectionForCli(selection)
+  if (!selectedLoop) {
+    return
+  }
+
+  const confirmed = await promptForConfirmation(
+    `Delete repeat task ${selectedLoop.id} (${selectedLoop.name})?`,
+  )
+  if (!confirmed) {
+    printColored(colors.dim, "Repeat-task delete cancelled.")
+    return
+  }
+
+  const result = deleteManagedLoop(loopService, selectedLoop.id)
+  if (!result.success) {
+    printManagedLoopFailure(result, "Failed to delete repeat task.")
+    return
+  }
+
+  printColored(
+    colors.green,
+    `Deleted repeat task ${selectedLoop.id}: ${selectedLoop.name}`,
   )
 }
 
@@ -1595,11 +1737,20 @@ async function handleSlashCommand(input: string): Promise<boolean> {
     case "/loop-show":
       await handleShowLoop(argumentsText)
       return true
+    case "/loop-new":
+      await handleCreateLoop(argumentsText)
+      return true
+    case "/loop-edit":
+      await handleEditLoop(argumentsText)
+      return true
     case "/loop-toggle":
       await handleToggleLoop(argumentsText)
       return true
     case "/loop-run":
       await handleRunLoop(argumentsText)
+      return true
+    case "/loop-delete":
+      await handleDeleteLoop(argumentsText)
       return true
     case "/notes":
       await handleShowKnowledgeNotes()
