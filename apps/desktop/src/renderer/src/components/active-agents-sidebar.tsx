@@ -440,13 +440,57 @@ export function ActiveAgentsSidebar({
     }
   }, [isExpanded])
 
-  const handleSessionClick = (sessionId: string) => {
+  const handleSessionClick = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Session clicked:", sessionId)
     // Navigate to sessions page and focus this session
     navigate("/", { state: { clearPendingConversation: true } })
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
-  }
+  }, [navigate, setFocusedSessionId, setExpandedSessionId])
+
+  // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey
+      if (!isMod) return
+
+      const digit = parseInt(e.key, 10)
+      if (isNaN(digit) || digit < 1 || digit > 9) return
+
+      const index = digit - 1
+      const target = sidebarSessions[index]
+      if (!target) return
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      const { session, isPast } = target
+      if (isPast) {
+        if (session.conversationId) {
+          logUI("[ActiveAgentsSidebar] Hotkey jump to past session:", session.conversationId)
+          navigate(`/${session.conversationId}`)
+        }
+      } else {
+        logUI("[ActiveAgentsSidebar] Hotkey jump to active session:", session.id)
+        handleSessionClick(session.id)
+      }
+
+      // Focus the composer input after React re-renders
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const input =
+            document.querySelector<HTMLInputElement>('[aria-label="Send follow-up message"]') ??
+            document.querySelector<HTMLInputElement>('[aria-label="Queue message"]') ??
+            document.querySelector<HTMLInputElement>('input[placeholder*="follow-up"]') ??
+            document.querySelector<HTMLInputElement>('input[placeholder*="message"]')
+          input?.focus()
+        }, 100)
+      })
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [sidebarSessions, navigate, handleSessionClick])
 
   const handleStopSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent session focus when clicking stop
