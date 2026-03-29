@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   extractRespondToUserContentFromArgs,
+  getOrderedRespondToUserContentsFromToolCalls,
   getLatestRespondToUserContentFromConversationHistory,
+  getUnmaterializedUserResponseEvents,
   resolveLatestUserFacingResponse,
 } from "./respond-to-user-utils"
 
@@ -55,6 +57,43 @@ describe("respond-to-user-utils", () => {
     ]
 
     expect(resolveLatestUserFacingResponse({ responseEvents })).toBe("Final")
+  })
+
+  it("ignores blank latest response events and preserves the latest visible answer", () => {
+    const responseEvents = [
+      { id: "evt-1", sessionId: "session-1", runId: 2, ordinal: 1, text: "Visible answer", timestamp: 1 },
+      { id: "evt-2", sessionId: "session-1", runId: 2, ordinal: 2, text: "   ", timestamp: 2 },
+    ]
+
+    expect(resolveLatestUserFacingResponse({ responseEvents })).toBe("Visible answer")
+  })
+
+  it("falls back to stored content when response events are blank", () => {
+    expect(resolveLatestUserFacingResponse({
+      storedResponse: "Stored answer",
+      responseEvents: [{ id: "evt-1", sessionId: "session-1", runId: 2, ordinal: 1, text: "", timestamp: 1 }],
+    })).toBe("Stored answer")
+  })
+
+  it("keeps all explicit respond_to_user messages in order for later turn context", () => {
+    expect(getOrderedRespondToUserContentsFromToolCalls([
+      { name: "respond_to_user", arguments: { text: "1. First option\n2. Second option" } },
+      { name: "web_search", arguments: { query: "ignored" } },
+      { name: "respond_to_user", arguments: { text: "Please reply with the numbers you want." } },
+    ])).toEqual([
+      "1. First option\n2. Second option",
+      "Please reply with the numbers you want.",
+    ])
+  })
+
+  it("returns every unmaterialized response event instead of only the latest one", () => {
+    const responseEvents = [
+      { id: "evt-1", sessionId: "session-1", runId: 5, ordinal: 1, text: "1. First option", timestamp: 10 },
+      { id: "evt-2", sessionId: "session-1", runId: 5, ordinal: 2, text: "Please reply with the numbers you want.", timestamp: 11 },
+    ]
+
+    expect(getUnmaterializedUserResponseEvents(responseEvents, [])).toEqual(responseEvents)
+    expect(getUnmaterializedUserResponseEvents(responseEvents, ["evt-1"])).toEqual([responseEvents[1]])
   })
 
   it("prefers the current iteration's planned respond_to_user over a stale stored response", () => {

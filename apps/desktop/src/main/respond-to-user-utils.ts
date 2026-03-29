@@ -13,6 +13,12 @@ type ConversationHistoryLike = Array<{
   toolCalls?: ToolCallLike[]
 }>
 
+export function normalizeUserFacingResponseContent(content: string | null | undefined): string | undefined {
+  return typeof content === "string" && content.trim().length > 0
+    ? content
+    : undefined
+}
+
 export function extractRespondToUserContentFromArgs(args: unknown): string | undefined {
   if (!args || typeof args !== "object") return undefined
 
@@ -41,19 +47,32 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | und
   return combined.length > 0 ? combined : undefined
 }
 
-function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallLike[]): string | undefined {
-  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return undefined
+export function getOrderedRespondToUserContentsFromToolCalls(toolCalls?: ToolCallLike[]): string[] {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return []
 
-  let latestResponse: string | undefined
+  const orderedResponses: string[] = []
   for (const toolCall of toolCalls) {
     if (toolCall?.name !== RESPOND_TO_USER_TOOL) continue
     const content = extractRespondToUserContentFromArgs(toolCall.arguments)
     if (content) {
-      latestResponse = content
+      orderedResponses.push(content)
     }
   }
 
-  return latestResponse
+  return orderedResponses
+}
+
+export function getUnmaterializedUserResponseEvents<T extends { id: string }>(
+  responseEvents: T[],
+  materializedEventIds: Iterable<string>,
+): T[] {
+  const materializedIds = new Set(materializedEventIds)
+  return responseEvents.filter((responseEvent) => !materializedIds.has(responseEvent.id))
+}
+
+function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallLike[]): string | undefined {
+  const orderedResponses = getOrderedRespondToUserContentsFromToolCalls(toolCalls)
+  return orderedResponses[orderedResponses.length - 1]
 }
 
 export function getLatestRespondToUserContentFromConversationHistory(
@@ -74,11 +93,19 @@ export function getLatestRespondToUserContentFromConversationHistory(
   return latestResponse
 }
 
-function getLatestRespondToUserEventFromResponseEvents(
+function getLatestRespondToUserEventTextFromResponseEvents(
   responseEvents?: AgentUserResponseEvent[],
-): AgentUserResponseEvent | undefined {
+) : string | undefined {
   if (!Array.isArray(responseEvents) || responseEvents.length === 0) return undefined
-  return [...responseEvents].sort((a, b) => a.ordinal - b.ordinal)[responseEvents.length - 1]
+
+  for (const responseEvent of [...responseEvents].sort((a, b) => b.ordinal - a.ordinal)) {
+    const normalizedText = normalizeUserFacingResponseContent(responseEvent.text)
+    if (normalizedText) {
+      return normalizedText
+    }
+  }
+
+  return undefined
 }
 
 export function resolveLatestUserFacingResponse({
@@ -94,13 +121,10 @@ export function resolveLatestUserFacingResponse({
   sinceIndex?: number
   responseEvents?: AgentUserResponseEvent[]
 }): string | undefined {
-  const normalizedStoredResponse =
-    typeof storedResponse === "string" && storedResponse.trim().length > 0
-      ? storedResponse
-      : undefined
+  const normalizedStoredResponse = normalizeUserFacingResponseContent(storedResponse)
 
   return getLatestRespondToUserContentFromToolCalls(plannedToolCalls)
-    ?? getLatestRespondToUserEventFromResponseEvents(responseEvents)?.text
+    ?? getLatestRespondToUserEventTextFromResponseEvents(responseEvents)
     ?? normalizedStoredResponse
     ?? getLatestRespondToUserContentFromConversationHistory(conversationHistory ?? [], sinceIndex)
 }

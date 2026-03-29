@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
 import {
   filterEphemeralMessages,
   isInternalNudgeContent,
@@ -45,6 +46,10 @@ describe("conversation-history-utils", () => {
           "Reason: Completion criteria not met.\nMissing items:\n- add the next checklist item\nContinue and finish remaining work."
         )
       ).toBe(true)
+    })
+
+    it("detects the canonical completion nudge by exact match", () => {
+      expect(isInternalNudgeContent(INTERNAL_COMPLETION_NUDGE_TEXT)).toBe(true)
     })
 
     it("does not classify normal user messages as internal nudges", () => {

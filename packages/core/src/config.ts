@@ -292,6 +292,9 @@ const getConfig = (): LoadedConfig => {
     mcpVerifyContextMaxItems: 10,
     mcpVerifyRetryCount: 1,
 
+    // Final summary defaults - off unless explicitly enabled
+    mcpFinalSummaryEnabled: false,
+
     // Parallel tool execution - when enabled, multiple tool calls from a single LLM response are executed concurrently
     mcpParallelToolExecution: true,
 

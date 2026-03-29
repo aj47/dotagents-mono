@@ -174,7 +174,7 @@ describe("acp-main-agent", () => {
     const promptContext = mockSendPrompt.mock.calls[0]?.[3]
     expect(promptContext).toContain("If injected DotAgents runtime tools are available")
     expect(promptContext).toContain('call "respond_to_user" first with the final user-facing answer')
-    expect(promptContext).toContain('then call "mark_work_complete" with a concise completion summary')
+    expect(promptContext).toContain('then call "mark_work_complete" with a concise internal completion summary')
     expect(promptContext).toContain("System Prompt: Be helpful")
     expect(promptContext).toContain("Guidelines: Stay concise")
   })

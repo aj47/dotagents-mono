@@ -32,6 +32,7 @@ describe("llm-verification-replay", () => {
     expect(messages[1]?.content).toContain("Original request:")
     expect(messages.map((message) => message.content).join("\n")).toContain("Latest explicit user-facing response from the agent")
     expect(messages.map((message) => message.content).join("\n")).toContain("verification attempt #2")
+    expect(messages.map((message) => message.content).join("\n")).not.toContain("[Calling tools: respond_to_user]")
   })
 
   it("adds retry notes to the final verifier request only after a failed attempt", () => {

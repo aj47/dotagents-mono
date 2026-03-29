@@ -185,11 +185,9 @@ export function buildVerificationMessagesFromAgentState(
       continue
     }
 
-    let content = sanitizeMessageContentForDisplay(rawContent)
+    const content = sanitizeMessageContentForDisplay(rawContent)
     if (!content.trim()) {
-      content = entry.toolCalls?.length
-        ? `[Calling tools: ${entry.toolCalls.map((toolCall) => toolCall.name).join(", ")}]`
-        : "[Processing...]"
+      continue
     }
     messages.push({ role: "assistant", content })
     lastAddedAssistantContent = content

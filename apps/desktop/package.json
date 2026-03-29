@@ -15,6 +15,7 @@
     "pretest": "pnpm -w run build:shared",
     "test": "vitest",
     "test:run": "pnpm run pretest && vitest run",
+    "test:respond-to-user-regressions": "pnpm run pretest && vitest run src/main/llm.respond-to-user-history.test.ts src/renderer/src/components/agent-progress.response-history.test.ts",
     "test:continue-replay": "vitest run src/main/llm.continue-replay.live.test.ts",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",

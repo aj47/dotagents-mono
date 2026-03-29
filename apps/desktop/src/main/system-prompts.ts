@@ -48,32 +48,93 @@ function getEffectiveSystemPrompt(customSystemPrompt?: string): string {
   return DEFAULT_SYSTEM_PROMPT
 }
 
-const AGENT_MODE_ADDITIONS = `
+type PromptTool = {
+  name: string
+  description?: string
+  inputSchema?: any
+}
 
-AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.
+function hasPromptTool(tools: PromptTool[], toolName: string): boolean {
+  return tools.some((tool) => tool.name === toolName)
+}
 
-RESPONDING TO USER:
+function getToolDiscoveryPromptAddition(availableTools: PromptTool[]): string {
+  const hasListServerTools = hasPromptTool(availableTools, 'list_server_tools')
+  const hasGetToolSchema = hasPromptTool(availableTools, 'get_tool_schema')
+
+  if (hasListServerTools && hasGetToolSchema) {
+    return 'To discover tools: use list_server_tools(serverName) to inspect MCP tools from a real server, or get_tool_schema(toolName) for full parameter details on any available tool.'
+  }
+
+  if (hasListServerTools) {
+    return 'To discover MCP tools from a real server, use list_server_tools(serverName).'
+  }
+
+  if (hasGetToolSchema) {
+    return 'To inspect exact parameters for an available tool, use get_tool_schema(toolName).'
+  }
+
+  return ''
+}
+
+function getAgentModeAdditions(availableTools: PromptTool[]): string {
+  const hasRespondToUser = hasPromptTool(availableTools, 'respond_to_user')
+  const hasMarkWorkComplete = hasPromptTool(availableTools, 'mark_work_complete')
+  const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command')
+  const hasLoadSkillInstructions = hasPromptTool(availableTools, 'load_skill_instructions')
+  const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context')
+
+  const sections = [
+    'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
+  ]
+
+  if (hasRespondToUser) {
+    sections.push(`RESPONDING TO USER:
 - Use respond_to_user whenever you want to communicate directly with the user
 - On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
 - Write respond_to_user content naturally and conversationally
 - Markdown is allowed when useful (for example links or image captions)
-- To send images, use respond_to_user.images with either URL/data URL entries or local file paths
-- If respond_to_user is unavailable, provide your final user-facing answer in normal assistant text
+- To send images, use respond_to_user.images with either URL/data URL entries or local file paths`)
+  } else {
+    sections.push(`RESPONDING TO USER:
+- No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`)
+  }
 
-SKILLS:
+  if (hasLoadSkillInstructions) {
+    sections.push(`SKILLS:
 - Skills are optional instruction modules listed below.
-- Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
+- Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.`)
+  }
 
-COMPLETION SIGNAL:
+  if (hasRespondToUser && hasMarkWorkComplete) {
+    sections.push(`COMPLETION SIGNAL:
 - When all requested work is fully complete:
   1. ALWAYS call respond_to_user with the final user-facing response FIRST
-  2. Then call mark_work_complete with a concise completion summary
+  2. Then call mark_work_complete with a concise internal completion summary
 - IMPORTANT: Never put the final user-facing answer in plain assistant text — always use respond_to_user
-- If mark_work_complete is not available, provide a complete final user-facing answer directly
-- Do not call mark_work_complete while work is still in progress or partially done
+- Do not send a second recap or post-completion summary unless the user explicitly asked for one
+- Do not call mark_work_complete while work is still in progress or partially done`)
+  } else if (hasRespondToUser) {
+    sections.push(`COMPLETION SIGNAL:
+- When all requested work is fully complete, call respond_to_user with the final user-facing response.
+- There is no separate completion tool in this run, so do not continue looping after that final response.`)
+  } else if (hasMarkWorkComplete) {
+    sections.push(`COMPLETION SIGNAL:
+ - When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text, then call mark_work_complete with a concise internal completion summary.
+ - Do not send a second recap or post-completion summary unless the user explicitly asked for one.
+- Do not call mark_work_complete while work is still in progress or partially done.`)
+  } else {
+    sections.push(`COMPLETION SIGNAL:
+- When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text and stop.`)
+  }
 
-AGENT FILE & COMMAND EXECUTION:
+  if (hasExecuteCommand) {
+    sections.push(`AGENT FILE & COMMAND EXECUTION:
 - Use execute_command as your primary tool for shell commands, file I/O, and automation
+- For JS/TS repos, infer the package manager from lockfiles before running commands: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun
+- Do not default to npm when a repo lockfile indicates pnpm, yarn, or bun
+- For planning/context-gathering or “what's next” requests, prefer read-only inspection commands like git status, ls, find, rg, sed, head, tail, and cat
+- Do not run package-manager install/test/build/lint/typecheck commands unless the user explicitly asked for verification/package work or you need targeted validation after making code changes
 - Read files: check size first with "wc -l file", then read in chunks with "sed -n '1,100p' file" or "head -n 100 file"
 - For small files (<200 lines): "cat path/to/file" is fine
 - For large files: read specific ranges with "sed -n 'START,ENDp' file" — never cat the whole thing
@@ -81,14 +142,17 @@ AGENT FILE & COMMAND EXECUTION:
 - List directories: execute_command with "ls -la path/"
 - Create directories: execute_command with "mkdir -p path/to/dir"
 - Run scripts: execute_command with "./script.sh" or "python script.py" etc.
-- Output over 10K chars is automatically truncated (first 5K + last 5K preserved)
+- Output over 10K chars is automatically truncated (first 5K + last 5K preserved)`)
+  }
 
-COMPACTED CONTEXT:
+  if (hasReadMoreContext) {
+    sections.push(`COMPACTED CONTEXT:
 - If a prior message says it was truncated or summarized and shows a "Context ref: ctx_...", use read_more_context to inspect the original source
 - Prefer read_more_context(mode: "overview") first, then search/window reads for the exact detail you need
-- Avoid pulling large heads/tails unless a narrower search or window is insufficient
+- Avoid pulling large heads/tails unless a narrower search or window is insufficient`)
+  }
 
-KNOWLEDGE NOTES (durable context):
+  sections.push(`KNOWLEDGE NOTES (durable context):
 - Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/
 - Prefer direct file editing there over special-purpose note tools
 - Store notes at .agents/knowledge/<slug>/<slug>.md with human-readable slugs
@@ -105,8 +169,14 @@ PAST CONVERSATIONS:
 DOTAGENTS CONFIG:
 - Treat ~/.agents/ and ./.agents/ as the canonical editable DotAgents configuration surface
 - Workspace ./.agents/ overrides global ~/.agents/ on conflicts
-- Prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes instead of narrow app-specific config tools
-- For exact file locations, merge rules, and safe edit recipes, call load_skill_instructions with skillId: "dotagents-config-admin" before changing unfamiliar DotAgents config.`
+- Prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes instead of narrow app-specific config tools`)
+
+  if (hasLoadSkillInstructions) {
+    sections.push('For exact file locations, merge rules, and safe edit recipes, call load_skill_instructions with skillId: "dotagents-config-admin" before changing unfamiliar DotAgents config.')
+  }
+
+  return `\n\n${sections.join('\n\n')}`
+}
 
 /**
  * Split tools into external MCP tools and DotAgents runtime tools.
@@ -286,23 +356,27 @@ export function constructSystemPrompt(
   prompt += `\n\nCurrent local time: ${now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: tz })} (${tz})`
 
   if (isAgentMode) {
-    prompt += AGENT_MODE_ADDITIONS
+    prompt += getAgentModeAdditions(availableTools)
 
-    // Add ACP agent delegation information if agents are available
-    const acpPromptAddition = getACPRoutingPromptAddition()
-    if (acpPromptAddition) {
-      prompt += '\n\n' + acpPromptAddition
+    const hasDelegationTool = hasPromptTool(availableTools, 'delegate_to_agent') || hasPromptTool(availableTools, 'send_to_agent')
+
+    if (hasDelegationTool) {
+      // Add ACP agent delegation information if agents are available
+      const acpPromptAddition = getACPRoutingPromptAddition()
+      if (acpPromptAddition) {
+        prompt += '\n\n' + acpPromptAddition
+      }
+
+      // Add agents (delegation-targets) in a discoverable format
+      // Pass excludeAgentId so sub-sessions don't list themselves as delegation targets
+      const agentsAddition = getAgentsPromptAddition(excludeAgentId)
+      if (agentsAddition) {
+        prompt += '\n\n' + agentsAddition
+      }
+
+      // Add internal sub-session instructions when delegation is available
+      prompt += '\n\n' + getSubSessionPromptAddition()
     }
-
-    // Add agents (delegation-targets) in a discoverable format
-    // Pass excludeAgentId so sub-sessions don't list themselves as delegation targets
-    const agentsAddition = getAgentsPromptAddition(excludeAgentId)
-    if (agentsAddition) {
-      prompt += '\n\n' + agentsAddition
-    }
-
-    // Add internal sub-session instructions (always available in agent mode)
-    prompt += '\n\n' + getSubSessionPromptAddition()
   }
 
   // Add agent skills instructions if provided
@@ -355,7 +429,10 @@ export function constructSystemPrompt(
       prompt += `\n\nAVAILABLE DOTAGENTS RUNTIME TOOLS (${runtimeTools.length}):\n${formatRuntimeToolInfo(runtimeTools)}`
     }
 
-    prompt += `\n\nTo discover tools: use list_server_tools(serverName) to inspect MCP tools from a real server, or get_tool_schema(toolName) for full parameter details on any tool.`
+    const toolDiscoveryPromptAddition = getToolDiscoveryPromptAddition(availableTools)
+    if (toolDiscoveryPromptAddition) {
+      prompt += `\n\n${toolDiscoveryPromptAddition}`
+    }
 
     // If relevant tools are identified, show them with full details
     if (

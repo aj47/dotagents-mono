@@ -3847,11 +3847,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
     for (const event of effectiveResponseEvents) {
       const trimmedEventText = event.text.trim()
-      const assistantMatch = assistantMessages.find(({ message, index }) =>
-        !matchedAssistantMessageIndexes.has(index) &&
-        message.content.trim() === trimmedEventText &&
-        message.timestamp >= event.timestamp,
-      )
+      const exactContentMatches = assistantMessages.filter(({ message, index }) => (
+        !matchedAssistantMessageIndexes.has(index)
+        && message.content.trim() === trimmedEventText
+      ))
+      const assistantMatch = exactContentMatches.find(({ message }) => message.timestamp >= event.timestamp)
+        ?? (progress.isComplete ? exactContentMatches[exactContentMatches.length - 1] : undefined)
 
       if (!assistantMatch) {
         displayEvents.push(event)
@@ -3863,7 +3864,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
 
     return { displayResponseEvents: displayEvents, responseEventByMessageIndex: representedEvents }
-  }, [effectiveResponseEvents, messages])
+  }, [effectiveResponseEvents, messages, progress.isComplete])
   const currentResponseEvent = useMemo(
     () => displayResponseEvents[displayResponseEvents.length - 1],
     [displayResponseEvents],

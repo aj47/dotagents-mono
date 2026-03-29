@@ -3,6 +3,8 @@
  * Dependency-light module for handling ephemeral messages.
  */
 
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
+
 /**
  * Message type with optional ephemeral flag for internal nudges.
  * Ephemeral messages are included in LLM context but excluded from:
@@ -20,6 +22,10 @@ export interface ConversationMessage {
 }
 
 type WithEphemeralFlag = { ephemeral?: boolean }
+
+const INTERNAL_NUDGE_EXACT_MATCHES = [
+  INTERNAL_COMPLETION_NUDGE_TEXT,
+] as const
 
 const INTERNAL_NUDGE_PATTERNS = [
   "Please either take action using available tools",
@@ -40,6 +46,10 @@ const INTERNAL_NUDGE_PATTERNS = [
 export function isInternalNudgeContent(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
+
+  if (INTERNAL_NUDGE_EXACT_MATCHES.includes(trimmed as (typeof INTERNAL_NUDGE_EXACT_MATCHES)[number])) {
+    return true
+  }
 
   return INTERNAL_NUDGE_PATTERNS.some((pattern) => trimmed.includes(pattern))
 }

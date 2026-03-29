@@ -437,7 +437,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Final Summary" tooltip="When enabled, the agent will generate a concise final summary after completing a task. Disable for faster responses without the summary step." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpFinalSummaryEnabled ?? true}
+              checked={configQuery.data?.mcpFinalSummaryEnabled ?? false}
               onCheckedChange={(value) => saveConfig({ mcpFinalSummaryEnabled: value })}
             />
           </Control>

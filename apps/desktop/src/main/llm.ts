@@ -36,7 +36,12 @@ import {
   getSessionRunUserResponseEvents,
   getSessionUserResponseHistory,
 } from "./session-user-response-store"
-import { resolveLatestUserFacingResponse, getLatestRespondToUserContentFromConversationHistory } from "./respond-to-user-utils"
+import {
+  getLatestRespondToUserContentFromConversationHistory,
+  getUnmaterializedUserResponseEvents,
+  normalizeUserFacingResponseContent,
+  resolveLatestUserFacingResponse,
+} from "./respond-to-user-utils"
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
@@ -205,6 +210,18 @@ function analyzeToolErrors(toolResults: MCPToolResult[]): {
   return { errorTypes }
 }
 
+function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
+  if (toolName !== "execute_command" || !result.isError) return false
+
+  const errorText = result.content
+    .map((content) => content.text)
+    .join(" ")
+    .toLowerCase()
+
+  return errorText.includes("invalid execute_command.skillid")
+    || (errorText.includes("skill not found") && errorText.includes("omit skillid"))
+}
+
 export async function postProcessTranscript(transcript: string) {
   const config = configStore.get()
 
@@ -341,6 +358,7 @@ export interface AgentModeResponse {
   conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
+    timestamp?: number
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
   }>
@@ -502,6 +520,7 @@ export async function processTranscriptWithAgentMode(
   runId?: number,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
+  const forceFinalSummary = config.mcpFinalSummaryEnabled === true
   const { loopMaxIterations, guardrailBudget } = resolveAgentIterationLimits(maxIterations)
   maxIterations = loopMaxIterations
 
@@ -589,6 +608,7 @@ export async function processTranscriptWithAgentMode(
     getLatestRespondToUserContentFromConversationHistory(
       (previousConversationHistory as any) ?? []
     )
+  const materializedUserResponseEventIds = new Set<string>()
 
   // Create bound emitter that always includes sessionId, conversationId, snooze state, sessionStartIndex, conversationTitle, and contextInfo
   const emit = (
@@ -850,7 +870,8 @@ export async function processTranscriptWithAgentMode(
     content: string,
     toolCalls?: MCPToolCall[],
     toolResults?: MCPToolResult[],
-    timestamp?: number
+    timestamp?: number,
+    options?: { skipModelReplay?: boolean },
   ) => {
     // Add to in-memory history
     const message: typeof conversationHistory[0] = {
@@ -858,7 +879,8 @@ export async function processTranscriptWithAgentMode(
       content,
       toolCalls,
       toolResults,
-      timestamp: timestamp || Date.now()
+      timestamp: timestamp || Date.now(),
+      ...(options?.skipModelReplay ? { skipModelReplay: true } : {}),
     }
     conversationHistory.push(message)
 
@@ -886,6 +908,55 @@ export async function processTranscriptWithAgentMode(
       ephemeral: true,
     }
     conversationHistory.push(message)
+  }
+
+  const hasAssistantMessageInCurrentTurn = (content: string): boolean => {
+    if (!content.trim()) return false
+    return conversationHistory
+      .slice(currentPromptIndex + 1)
+      .some((message) => message.role === "assistant" && message.content === content)
+  }
+
+  const getNextMaterializedUserResponseTimestamp = (eventTimestamp?: number): number => {
+    const baseTimestamp =
+      typeof eventTimestamp === "number" && Number.isFinite(eventTimestamp)
+        ? Math.trunc(eventTimestamp)
+        : Date.now()
+
+    for (let index = conversationHistory.length - 1; index >= 0; index -= 1) {
+      const existingTimestamp = conversationHistory[index]?.timestamp
+      if (typeof existingTimestamp === "number" && Number.isFinite(existingTimestamp)) {
+        return Math.max(baseTimestamp, Math.trunc(existingTimestamp) + 1)
+      }
+    }
+
+    return baseTimestamp
+  }
+
+  const materializePendingUserResponses = (): string | undefined => {
+    const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
+
+    for (const responseEvent of getUnmaterializedUserResponseEvents(
+      responseEvents,
+      materializedUserResponseEventIds,
+    )) {
+      const responseText = normalizeUserFacingResponseContent(responseEvent.text)
+
+      if (responseText && !hasAssistantMessageInCurrentTurn(responseText)) {
+        addMessage(
+          "assistant",
+          responseText,
+          undefined,
+          undefined,
+          getNextMaterializedUserResponseTimestamp(responseEvent.timestamp),
+          { skipModelReplay: true },
+        )
+      }
+
+      materializedUserResponseEventIds.add(responseEvent.id)
+    }
+
+    return resolveLatestUserFacingResponse({ responseEvents })
   }
 
   // Track current iteration for retry progress callback
@@ -1012,6 +1083,8 @@ export async function processTranscriptWithAgentMode(
     )
   }
 
+  const isInternalResumeTranscript = transcript === INTERNAL_COMPLETION_NUDGE_TEXT
+
   const conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -1019,9 +1092,15 @@ export async function processTranscriptWithAgentMode(
     toolResults?: MCPToolResult[]
     timestamp?: number
     ephemeral?: boolean
+    skipModelReplay?: boolean
   }> = [
     ...sanitizedPreviousConversationHistory,
-    { role: "user", content: transcript, timestamp: Date.now() },
+    {
+      role: "user",
+      content: transcript,
+      timestamp: Date.now(),
+      ...(isInternalResumeTranscript ? { ephemeral: true } : {}),
+    },
   ]
 
   // Track the index where the current user prompt was added
@@ -1034,6 +1113,14 @@ export async function processTranscriptWithAgentMode(
     return selectorRef
       ? `${baseMessage} You already identified ${selectorRef}; use it in the tool call if it is the correct selector.`
       : baseMessage
+  }
+
+  const buildToolOnlyFinalAnswerNudge = () => {
+    return "You already have multiple rounds of recent tool output for this request. Unless one specific missing fact is still required, stop calling more inspection tools and provide one concise final answer now. If the work is already complete, call mark_work_complete after the user-facing answer."
+  }
+
+  const buildMissingFinalAnswerAfterCompletionNudge = () => {
+    return `You called ${MARK_WORK_COMPLETE_TOOL} without first providing the final user-facing answer. Provide that answer now. If ${RESPOND_TO_USER_TOOL} is available, use it for the final user-facing answer and then call ${MARK_WORK_COMPLETE_TOOL} again only if needed. Do not add a second recap or summary unless the user explicitly asked for one.`
   }
 
   const extractLatestSelectorRefFromHistory = () => {
@@ -1065,7 +1152,7 @@ export async function processTranscriptWithAgentMode(
   const userMessageAlreadyExists = sanitizedPreviousConversationHistory.some(
     msg => msg.role === "user" && msg.content === transcript
   )
-  const shouldPersistInitialUserMessage = transcript !== INTERNAL_COMPLETION_NUDGE_TEXT
+  const shouldPersistInitialUserMessage = !isInternalResumeTranscript
   if (!userMessageAlreadyExists && shouldPersistInitialUserMessage) {
     saveMessageIncremental("user", transcript).catch(err => {
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
@@ -1470,7 +1557,10 @@ export async function processTranscriptWithAgentMode(
   let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
   let garbledToolCallCount = 0 // Track consecutive garbled tool-call-as-text responses
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
+  let successfulToolOnlyIterationsWithoutResponse = 0 // Track repeated inspect-only tool loops that never converge to a final answer
+  let awaitingToolOnlyFinalAnswerResponse = false // Track when we've explicitly asked the model to stop inspecting and give the final answer
   const MAX_COMPLETION_SIGNAL_HINTS = 2
+  const MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE = 2
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
   const toolFailureCount = new Map<string, number>() // Track failures per tool name
   const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
@@ -1571,20 +1661,19 @@ export async function processTranscriptWithAgentMode(
               content: text,
             }
           }
-          // For assistant messages, ensure non-empty content
-          // Anthropic API requires all messages to have non-empty content
-          // except for the optional final assistant message
-          let content = sanitizedContent
-          if (entry.role === "assistant" && !content?.trim()) {
-            // If assistant message has tool calls but no content, describe the tool calls
-            if (entry.toolCalls && entry.toolCalls.length > 0) {
-              const toolNames = entry.toolCalls.map(tc => tc.name).join(", ")
-              content = `[Calling tools: ${toolNames}]`
-            } else {
-              // Fallback for empty assistant messages without tool calls
-              content = "[Processing...]"
-            }
+          // Skip empty assistant tool-call placeholders entirely when replaying history.
+          // Re-injecting synthetic text like "[Calling tools: ...]" into the prompt can
+          // cause the model to parrot that placeholder back as garbled tool-call text and
+          // answer our internal recovery nudges instead of the user's actual request.
+          if (entry.role === "assistant" && !sanitizedContent.trim()) {
+            return null
           }
+
+          if (entry.role === "assistant" && entry.skipModelReplay) {
+            return null
+          }
+
+          const content = sanitizedContent
           return {
             role: entry.role as "user" | "assistant",
             content,
@@ -1873,6 +1962,7 @@ export async function processTranscriptWithAgentMode(
     // Don't treat mark_work_complete as confirmed completion yet.
     // We defer completion until after tool execution confirms the whole batch succeeded.
     const hasToolCalls = toolCallsArray.length > 0
+    let onlyCommunicationTools = false
 
     // Handle no-op iterations (no tool calls).
     if (!hasToolCalls) {
@@ -1982,7 +2072,7 @@ export async function processTranscriptWithAgentMode(
         finalContent = contentText
         const noToolsCalledYet = !conversationHistory.some((e) => e.role === "tool")
         let skipPostVerifySummary =
-          (config.mcpFinalSummaryEnabled === false) ||
+          !forceFinalSummary ||
           (noToolsCalledYet && finalContent.trim().length > 0)
         let completionForcedByVerificationLimit = false
         let completionForcedIncompleteDetails: IncompleteTaskDetails | undefined
@@ -2029,6 +2119,7 @@ export async function processTranscriptWithAgentMode(
             totalNudgeCount = 0
             garbledToolCallCount = 0
             completionSignalHintCount = 0
+            successfulToolOnlyIterationsWithoutResponse = 0
             continue
           }
         }
@@ -2042,9 +2133,6 @@ export async function processTranscriptWithAgentMode(
         })
         if (existingUserResponse1?.trim().length) {
           finalContent = existingUserResponse1
-          if (finalContent.trim().length > 0) {
-            addMessage("assistant", finalContent)
-          }
         } else if (!skipPostVerifySummary && !completionForcedByVerificationLimit) {
           try {
             const result = await generatePostVerifySummary(finalContent, false, activeTools)
@@ -2208,41 +2296,13 @@ export async function processTranscriptWithAgentMode(
       // counters; otherwise the agent can loop indefinitely: text → nudge → respond_to_user
       // (resets counters) → text → nudge → respond_to_user → … (#respond-to-user-spam)
       const COMMUNICATION_ONLY_TOOLS = new Set([RESPOND_TO_USER_TOOL])
-      const onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
+      onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
 
       if (onlyCommunicationTools) {
-        // Communication-only batch: increment noOpCount (no real progress) and preserve
-        // nudge/hint counters so the safety valves fire if the agent keeps looping.
-        // This ensures repeated respond_to_user calls trigger the nudge path.
+        // Communication-only batches are explicit user-facing updates, not proof of
+        // task completion. Keep the no-op counters moving so the runtime can nudge
+        // the model to either continue working or explicitly mark the task complete.
         noOpCount++
-
-        // Guard: if respond_to_user has been called repeatedly without real work,
-        // force completion using the stored response instead of letting the loop
-        // spin until maxIterations. The noOpCount threshold (2) matches the one
-        // used in the !hasToolCalls path so both branches converge consistently.
-        if (noOpCount >= 2) {
-          const storedResponse = resolveLatestUserFacingResponse({
-            storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
-            plannedToolCalls: toolCallsArray,
-            responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
-            conversationHistory: conversationHistory as any,
-            sinceIndex: currentPromptIndex,
-          })
-          if (storedResponse?.trim().length) {
-            // Already have a user-facing response — skip tool execution and break
-            finalContent = storedResponse
-            addMessage("assistant", finalContent)
-            emit({
-              currentIteration: iteration,
-              maxIterations,
-              steps: progressSteps.slice(-3),
-              isComplete: true,
-              finalContent,
-              conversationHistory: formatConversationForProgress(conversationHistory),
-            })
-            break
-          }
-        }
       } else {
         // Real work tools: full counter reset
         noOpCount = 0
@@ -2530,6 +2590,7 @@ export async function processTranscriptWithAgentMode(
     // Keep tool results intact for full visibility in UI
     // The UI will handle display and truncation as needed
     const processedToolResults = toolResults
+    let latestMaterializedUserResponse: string | undefined
 
     // Always add a tool message if any tools were executed, even if results are empty
     // This ensures the verifier sees tool execution evidence in conversationHistory
@@ -2558,8 +2619,13 @@ export async function processTranscriptWithAgentMode(
         .join("\n\n")
 
       addMessage("tool", toolResultsText, undefined, resultsWithPlaceholders)
+    }
 
-      // Emit progress update immediately after adding tool results so UI shows them
+    latestMaterializedUserResponse = materializePendingUserResponses()
+
+    if (processedToolResults.length > 0 || latestMaterializedUserResponse) {
+      // Emit progress update after tool evidence and any materialized respond_to_user
+      // content have both been appended, preserving sequential transcript order.
       emit({
         currentIteration: iteration,
         maxIterations,
@@ -2590,10 +2656,33 @@ export async function processTranscriptWithAgentMode(
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
+    const hasExplicitUserFacingResponse = !!latestMaterializedUserResponse?.trim().length
+
+    if (hasErrors || onlyCommunicationTools || hasExplicitUserFacingResponse || completionSignalConfirmed) {
+      successfulToolOnlyIterationsWithoutResponse = 0
+    } else if (allToolsSuccessful) {
+      successfulToolOnlyIterationsWithoutResponse += 1
+      if (successfulToolOnlyIterationsWithoutResponse >= MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE) {
+        awaitingToolOnlyFinalAnswerResponse = true
+        addEphemeralMessage("user", buildToolOnlyFinalAnswerNudge())
+      }
+    } else {
+      successfulToolOnlyIterationsWithoutResponse = 0
+    }
 
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions
       const errorAnalysis = analyzeToolErrors(toolResults)
+
+      const hasInvalidExecuteCommandSkillIdError = toolResults.some((result, index) =>
+        isInvalidExecuteCommandSkillIdFailure(toolCallsArray[index]?.name, result)
+      )
+      if (hasInvalidExecuteCommandSkillIdError) {
+        addEphemeralMessage(
+          "user",
+          "For execute_command, omit skillId unless you are using an exact skill id from Available Skills. Do not use repo names, file paths, URLs, or GitHub slugs as skillId. Retry the same command without skillId unless you explicitly need a skill directory."
+        )
+      }
 
       // Track per-tool failures
       for (let i = 0; i < toolResults.length; i++) {
@@ -2661,35 +2750,179 @@ export async function processTranscriptWithAgentMode(
       })
     }
 
+    if (onlyCommunicationTools && !completionSignalConfirmed) {
+      const latestCommunicationOnlyResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
+        storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+        responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
+        conversationHistory: conversationHistory as any,
+        sinceIndex: currentPromptIndex,
+      })
+
+      const shouldFinalizeRequestedToolOnlyAnswer =
+        awaitingToolOnlyFinalAnswerResponse
+        && !!latestCommunicationOnlyResponse?.trim().length
+
+      if (shouldFinalizeRequestedToolOnlyAnswer) {
+        finalContent = latestCommunicationOnlyResponse
+        let finalConversationState: AgentConversationState = "complete"
+
+        if (config.mcpVerifyCompletionEnabled) {
+          const verifyStep = createProgressStep(
+            "thinking",
+            "Verifying completion",
+            "Checking whether the requested final answer is ready to present",
+            "in_progress",
+          )
+          progressSteps.push(verifyStep)
+          emit({
+            currentIteration: iteration,
+            maxIterations,
+            steps: progressSteps.slice(-3),
+            isComplete: false,
+            conversationHistory: formatConversationForProgress(conversationHistory),
+          })
+
+          const result = await runVerificationAndHandleResult(
+            finalContent,
+            verifyStep,
+            verificationFailCount,
+            {
+              nudgeForToolUsage: true,
+              currentPromptIndex,
+            },
+          )
+          verificationFailCount = result.newFailCount
+          if (!result.shouldContinue) {
+            finalConversationState = result.conversationState
+          }
+        }
+
+        awaitingToolOnlyFinalAnswerResponse = false
+
+        const completionStep = createProgressStep(
+          "completion",
+          "Task completed",
+          "Accepted the requested final answer after repeated inspection-only iterations",
+          "completed",
+        )
+        progressSteps.push(completionStep)
+
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          conversationState: finalConversationState,
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
+      }
+
+      const shouldVerifyCommunicationOnlyResponse =
+        noOpCount >= 2
+        && config.mcpVerifyCompletionEnabled
+        && !!latestCommunicationOnlyResponse?.trim().length
+
+      if (shouldVerifyCommunicationOnlyResponse) {
+        finalContent = latestCommunicationOnlyResponse
+        let completionForcedByVerificationLimit = false
+        let finalConversationState: AgentConversationState = "complete"
+
+        const verifyStep = createProgressStep(
+          "thinking",
+          "Verifying completion",
+          "Checking whether the latest user-facing response legitimately completes the request",
+          "in_progress",
+        )
+        progressSteps.push(verifyStep)
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: false,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+
+        const result = await runVerificationAndHandleResult(
+          finalContent,
+          verifyStep,
+          verificationFailCount,
+          {
+            nudgeForToolUsage: true,
+            currentPromptIndex,
+          },
+        )
+        verificationFailCount = result.newFailCount
+        completionForcedByVerificationLimit = result.forcedByLimit
+        finalConversationState = result.conversationState
+
+        if (result.shouldContinue) {
+          noOpCount = 0
+          totalNudgeCount = 0
+          garbledToolCallCount = 0
+          completionSignalHintCount = 0
+          successfulToolOnlyIterationsWithoutResponse = 0
+          continue
+        }
+
+        const completionStep = createProgressStep(
+          "completion",
+          completionForcedByVerificationLimit ? "Task incomplete" : "Task completed",
+          completionForcedByVerificationLimit
+            ? "Verification did not confirm completion before retry limit"
+            : "Successfully completed the requested task",
+          completionForcedByVerificationLimit ? "error" : "completed",
+        )
+        progressSteps.push(completionStep)
+
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
+      }
+
+      if (noOpCount >= 2) {
+        addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
+      }
+      continue
+    }
+
     // Check if agent indicated completion after executing tools.
     if (completionSignalConfirmed) {
-      // Agent indicated completion, but we need to ensure we have a proper summary
-      // If the last assistant content was just tool calls, prompt for a summary
+      // Agent indicated completion. Prefer the explicit user-facing answer or the
+      // existing assistant text. Only generate a separate summary when explicitly enabled.
       const lastAssistantContent = llmResponse.content || ""
 
       // Check if the last assistant message was primarily tool calls without much explanation
       const hasToolCalls = llmResponse.toolCalls && llmResponse.toolCalls.length > 0
       const hasMinimalContent = lastAssistantContent.trim().length < 50
 
-      // Skip summary generation if respond_to_user already provided a response (#1084)
-      const existingUserResponse = resolveLatestUserFacingResponse({
+      // Prefer the existing explicit user-facing response when present (#1084)
+      const existingUserResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
         storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
         responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
         conversationHistory: conversationHistory as any,
         sinceIndex: currentPromptIndex,
       })
+      let generatedForcedCompletionSummary = false
       let respondToUserAlreadyInHistory = false
       if (existingUserResponse?.trim().length) {
         finalContent = existingUserResponse
-        conversationHistory.push({
-          role: "assistant",
-          content: finalContent,
-          timestamp: Date.now(),
-        })
-        respondToUserAlreadyInHistory = true
-      } else if (hasToolCalls && (hasMinimalContent || !lastAssistantContent.trim())) {
-        // The agent just made tool calls without providing a summary
-        // Prompt the agent to provide a concise summary of what was accomplished
+        respondToUserAlreadyInHistory = hasAssistantMessageInCurrentTurn(finalContent)
+        if (!respondToUserAlreadyInHistory) {
+          addMessage("assistant", finalContent)
+          respondToUserAlreadyInHistory = true
+        }
+      } else if (forceFinalSummary && hasToolCalls && (hasMinimalContent || !lastAssistantContent.trim())) {
+        // The agent completed work without a user-facing answer. Only ask for a separate
+        // completion recap when final-summary mode is explicitly enabled.
         const summaryPrompt = "Please provide a concise summary of what you just accomplished with the tool calls. Focus on the key results and outcomes for the user."
 
         conversationHistory.push({
@@ -2776,6 +3009,7 @@ export async function processTranscriptWithAgentMode(
 
           // Use the summary as final content
           finalContent = summaryResponse.content || lastAssistantContent
+          generatedForcedCompletionSummary = true
 
           // Add the summary to conversation history
           conversationHistory.push({
@@ -2787,6 +3021,7 @@ export async function processTranscriptWithAgentMode(
           // If summary generation fails, fall back to the original content
           logLLM("Failed to generate summary:", error)
           finalContent = lastAssistantContent || "Task completed successfully."
+          generatedForcedCompletionSummary = true
           summaryStep.status = "error"
           summaryStep.description = "Failed to generate summary, using fallback"
 
@@ -2797,14 +3032,24 @@ export async function processTranscriptWithAgentMode(
           })
         }
       } else {
-        // Agent provided sufficient content, use it as final content
+        // Agent provided sufficient content, use it as the final content directly.
         finalContent = lastAssistantContent
+      }
+
+      if (!existingUserResponse?.trim().length && !forceFinalSummary && !finalContent.trim().length) {
+        addEphemeralMessage("user", buildMissingFinalAnswerAfterCompletionNudge())
+        noOpCount = 0
+        totalNudgeCount = 0
+        garbledToolCallCount = 0
+        completionSignalHintCount = 0
+        successfulToolOnlyIterationsWithoutResponse = 0
+        continue
       }
 
 
 	      // Optional verification before completing after tools
 	      // Track if we should skip post-verify summary (when agent is repeating itself or disabled)
-	      let skipPostVerifySummary2 = config.mcpFinalSummaryEnabled === false
+		      let skipPostVerifySummary2 = !forceFinalSummary || generatedForcedCompletionSummary
 	      let completionForcedByVerificationLimit2 = false
 	      let completionForcedIncompleteDetails2: IncompleteTaskDetails | undefined
 		      let finalConversationState2: AgentConversationState = "complete"
@@ -2850,24 +3095,27 @@ export async function processTranscriptWithAgentMode(
 		          totalNudgeCount = 0
 		          garbledToolCallCount = 0
 		          completionSignalHintCount = 0
+		          successfulToolOnlyIterationsWithoutResponse = 0
 	          continue
 	        }
 	      }
 
-        // Post-verify: produce a concise final summary for the user
+	        // Post-verify: only produce an extra final summary when explicitly enabled
         // Skip when forced incomplete - the fallback message below will be the only assistant message
         // Skip summary generation if respond_to_user already provided a response (#1084)
         // Also skip if respond_to_user response was already added to history above
-        const existingUserResponse2 = resolveLatestUserFacingResponse({
+        const existingUserResponse2 = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
           storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
           responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
           conversationHistory: conversationHistory as any,
           sinceIndex: currentPromptIndex,
         })
-        if (existingUserResponse2?.trim().length && !respondToUserAlreadyInHistory) {
+        if (existingUserResponse2?.trim().length) {
           finalContent = existingUserResponse2
-          if (finalContent.trim().length > 0) {
-            conversationHistory.push({ role: "assistant", content: finalContent, timestamp: Date.now() })
+          respondToUserAlreadyInHistory = respondToUserAlreadyInHistory || hasAssistantMessageInCurrentTurn(finalContent)
+          if (!respondToUserAlreadyInHistory && finalContent.trim().length > 0) {
+            addMessage("assistant", finalContent)
+            respondToUserAlreadyInHistory = true
           }
         } else if (respondToUserAlreadyInHistory) {
           // Already handled above — skip post-verify summary entirely
@@ -2909,7 +3157,7 @@ export async function processTranscriptWithAgentMode(
 	        completionForcedByVerificationLimit2 ? "Task incomplete" : "Task completed",
 	        completionForcedByVerificationLimit2
 	          ? "Verification did not confirm completion before retry limit"
-	          : "Successfully completed the requested task with summary",
+		          : "Successfully completed the requested task",
 	        completionForcedByVerificationLimit2 ? "error" : "completed",
 	      )
       progressSteps.push(completionStep)
@@ -3006,24 +3254,18 @@ export async function processTranscriptWithAgentMode(
 
       if (explicitUserResponse?.trim().length) {
         finalContent = explicitUserResponse
-        const lastMessage = conversationHistory[conversationHistory.length - 1]
-        if (
-          !lastMessage ||
-          lastMessage.role !== "assistant" ||
-          lastMessage.content !== finalContent
-        ) {
-          conversationHistory.push({
-            role: "assistant",
-            content: finalContent,
-            timestamp: Date.now(),
-          })
+        if (!hasAssistantMessageInCurrentTurn(finalContent)) {
+          addMessage("assistant", finalContent)
         }
       }
     }
 
     return {
       content: finalContent,
-      conversationHistory: filterEphemeralMessages(conversationHistory),
+      conversationHistory: filterEphemeralMessages(conversationHistory).map((entry) => {
+        const { skipModelReplay: _skipModelReplay, ...rest } = entry
+        return rest
+      }),
       totalIterations: iteration,
     }
   } finally {

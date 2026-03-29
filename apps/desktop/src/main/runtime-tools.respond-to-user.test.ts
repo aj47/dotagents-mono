@@ -76,4 +76,25 @@ describe("runtime-tools respond_to_user", () => {
       isError: false,
     })
   })
+
+  it("does not instruct the model to send another final response after mark_work_complete", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("mark_work_complete", { summary: "Done", confidence: 0.8 }, "app-session-1")
+
+    expect(result).toEqual({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            success: true,
+            markedComplete: true,
+            summary: "Done",
+            confidence: 0.8,
+            message: "Completion signal recorded. The runtime will verify completion and finalize the turn without requiring another user-facing response.",
+          }, null, 2),
+        },
+      ],
+      isError: false,
+    })
+  })
 })
