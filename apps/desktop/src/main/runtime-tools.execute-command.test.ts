@@ -1,5 +1,7 @@
+import os from "node:os"
 import path from "node:path"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockGetSkill = vi.fn()
 const mockGetSkills = vi.fn()
@@ -47,7 +49,24 @@ function buildTypoWorkspacePath(targetPath: string): string | null {
   return `${homePrefix.slice(0, -username.length)}${typoUsername}${targetPath.slice(homePrefix.length)}`
 }
 
-const pathNormalizationTest = process.platform === "win32" ? it.skip : it
+const canRunPathNormalizationTest = process.platform !== "win32"
+  && Boolean(getHomePrefix(process.cwd()) || getHomePrefix(os.homedir()))
+
+const pathNormalizationTest = canRunPathNormalizationTest ? it : it.skip
+
+let temporaryWorkspacePath: string | null = null
+
+async function getPathNormalizationWorkspacePath(): Promise<string> {
+  const currentWorkspacePath = process.cwd()
+  if (getHomePrefix(currentWorkspacePath)) {
+    return currentWorkspacePath
+  }
+
+  const homeDirectory = os.homedir()
+  temporaryWorkspacePath = await mkdtemp(path.join(homeDirectory, "dotagents-runtime-tools-"))
+  await writeFile(path.join(temporaryWorkspacePath, "SKILL.md"), "")
+  return temporaryWorkspacePath
+}
 
 describe("runtime-tools execute_command", () => {
   beforeEach(() => {
@@ -57,6 +76,13 @@ describe("runtime-tools execute_command", () => {
     mockGetSkills.mockReturnValue([{ id: "agent-skill-creation" }, { id: "frontend-design" }])
     mockGetSession.mockReturnValue(undefined)
     mockLoadConversation.mockResolvedValue(null)
+  })
+
+  afterEach(async () => {
+    if (temporaryWorkspacePath) {
+      await rm(temporaryWorkspacePath, { recursive: true, force: true })
+      temporaryWorkspacePath = null
+    }
   })
 
   it("falls back to the default workspace when skillId is not an exact loaded skill id", async () => {
@@ -74,21 +100,30 @@ describe("runtime-tools execute_command", () => {
       retrySuggestion: expect.stringContaining("without skillId"),
       availableSkillIds: ["agent-skill-creation", "frontend-design"],
     }))
-    expect(String(payload.cwd)).toContain("dotagents-mono")
+    expect(payload.cwd).toBe(process.cwd())
     expect(String(payload.stdout)).toContain("apps")
     expect(payload.guidance).toContain("Never use repo names")
   })
 
   pathNormalizationTest("normalizes obvious workspace path typos inside commands", async () => {
-    const actualWorkspacePath = process.cwd()
+    const actualWorkspacePath = await getPathNormalizationWorkspacePath()
     const typoWorkspacePath = buildTypoWorkspacePath(actualWorkspacePath)
 
     expect(typoWorkspacePath).toBeTruthy()
+
+    if (actualWorkspacePath !== process.cwd()) {
+      mockGetSkill.mockReturnValue({
+        id: "path-normalization-test-skill",
+        name: "path-normalization-test-skill",
+        filePath: path.join(actualWorkspacePath, "SKILL.md"),
+      })
+    }
 
     const { executeRuntimeTool } = await import("./runtime-tools")
     const command = `cd \"${typoWorkspacePath}\" && pwd`
     const result = await executeRuntimeTool("execute_command", {
       command,
+      ...(actualWorkspacePath !== process.cwd() ? { skillId: "path-normalization-test-skill" } : {}),
     })
 
     expect(result?.isError).toBe(false)
@@ -148,3 +183,4 @@ describe("runtime-tools execute_command", () => {
     expect(payload.error).toContain("planning/context question")
   })
 })
+
