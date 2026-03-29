@@ -130,7 +130,20 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       message.role === "assistant"
       && (message.content.includes("1. Alpha") || message.content === "Reply with the numbers you want.")
     )
+    const toolMessageIndex = firstRun.conversationHistory.findIndex((message) =>
+      message.role === "tool"
+      && message.content.includes("[respond_to_user]")
+    )
+    const firstMaterializedIndex = firstRun.conversationHistory.findIndex((message) =>
+      message.role === "assistant" && message.content.includes("1. Alpha")
+    )
+    const secondMaterializedIndex = firstRun.conversationHistory.findIndex((message) =>
+      message.role === "assistant" && message.content === "Reply with the numbers you want."
+    )
     expect(materializedResponses).toHaveLength(2)
+    expect(toolMessageIndex).toBeGreaterThan(-1)
+    expect(toolMessageIndex).toBeLessThan(firstMaterializedIndex)
+    expect(toolMessageIndex).toBeLessThan(secondMaterializedIndex)
     expect(materializedResponses.every((message) => Number.isInteger(message.timestamp))).toBe(true)
     expect((materializedResponses[1]?.timestamp ?? 0)).toBeGreaterThan(materializedResponses[0]?.timestamp ?? 0)
 

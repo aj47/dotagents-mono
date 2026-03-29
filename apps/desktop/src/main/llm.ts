@@ -2568,8 +2568,7 @@ export async function processTranscriptWithAgentMode(
     // Keep tool results intact for full visibility in UI
     // The UI will handle display and truncation as needed
     const processedToolResults = toolResults
-
-    const latestMaterializedUserResponse = materializePendingUserResponses()
+    let latestMaterializedUserResponse: string | undefined
 
     // Always add a tool message if any tools were executed, even if results are empty
     // This ensures the verifier sees tool execution evidence in conversationHistory
@@ -2598,8 +2597,13 @@ export async function processTranscriptWithAgentMode(
         .join("\n\n")
 
       addMessage("tool", toolResultsText, undefined, resultsWithPlaceholders)
+    }
 
-      // Emit progress update immediately after adding tool results so UI shows them
+    latestMaterializedUserResponse = materializePendingUserResponses()
+
+    if (processedToolResults.length > 0 || latestMaterializedUserResponse) {
+      // Emit progress update after tool evidence and any materialized respond_to_user
+      // content have both been appended, preserving sequential transcript order.
       emit({
         currentIteration: iteration,
         maxIterations,
