@@ -39,6 +39,7 @@ import {
 import {
   getLatestRespondToUserContentFromConversationHistory,
   getUnmaterializedUserResponseEvents,
+  normalizeUserFacingResponseContent,
   resolveLatestUserFacingResponse,
 } from "./respond-to-user-utils"
 import {
@@ -912,6 +913,22 @@ export async function processTranscriptWithAgentMode(
       .some((message) => message.role === "assistant" && message.content === content)
   }
 
+  const getNextMaterializedUserResponseTimestamp = (eventTimestamp?: number): number => {
+    const baseTimestamp =
+      typeof eventTimestamp === "number" && Number.isFinite(eventTimestamp)
+        ? Math.trunc(eventTimestamp)
+        : Date.now()
+
+    for (let index = conversationHistory.length - 1; index >= 0; index -= 1) {
+      const existingTimestamp = conversationHistory[index]?.timestamp
+      if (typeof existingTimestamp === "number" && Number.isFinite(existingTimestamp)) {
+        return Math.max(baseTimestamp, Math.trunc(existingTimestamp) + 1)
+      }
+    }
+
+    return baseTimestamp
+  }
+
   const materializePendingUserResponses = (): string | undefined => {
     const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
 
@@ -919,21 +936,22 @@ export async function processTranscriptWithAgentMode(
       responseEvents,
       materializedUserResponseEventIds,
     )) {
+      const responseText = normalizeUserFacingResponseContent(responseEvent.text)
 
-      if (!hasAssistantMessageInCurrentTurn(responseEvent.text)) {
+      if (responseText && !hasAssistantMessageInCurrentTurn(responseText)) {
         addMessage(
           "assistant",
-          responseEvent.text,
+          responseText,
           undefined,
           undefined,
-          responseEvent.timestamp + responseEvent.ordinal / 1000,
+          getNextMaterializedUserResponseTimestamp(responseEvent.timestamp),
         )
       }
 
       materializedUserResponseEventIds.add(responseEvent.id)
     }
 
-    return responseEvents[responseEvents.length - 1]?.text
+    return resolveLatestUserFacingResponse({ responseEvents })
   }
 
   // Track current iteration for retry progress callback
@@ -2613,13 +2631,6 @@ export async function processTranscriptWithAgentMode(
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
 
-    if (onlyCommunicationTools && !completionSignalConfirmed) {
-      if (noOpCount >= 2) {
-        addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
-      }
-      continue
-    }
-
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions
       const errorAnalysis = analyzeToolErrors(toolResults)
@@ -2698,6 +2709,13 @@ export async function processTranscriptWithAgentMode(
         content: errorSummary,
         timestamp: Date.now(),
       })
+    }
+
+    if (onlyCommunicationTools && !completionSignalConfirmed) {
+      if (noOpCount >= 2) {
+        addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
+      }
+      continue
     }
 
     // Check if agent indicated completion after executing tools.

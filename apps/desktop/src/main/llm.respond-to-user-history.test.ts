@@ -63,15 +63,22 @@ const availableTools = [
 
 function makeExecuteToolCall(sessionId: string, runId: number, overrides: Record<string, any> = {}) {
   return async (toolCall: any) => {
-    if (toolCall.name === "respond_to_user") {
+    const result = toolCall.name in overrides
+      ? await (typeof overrides[toolCall.name] === "function"
+        ? overrides[toolCall.name](toolCall)
+        : overrides[toolCall.name])
+      : { content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }], isError: false }
+
+    if (toolCall.name === "respond_to_user" && !result?.isError) {
       const { appendSessionUserResponse } = await import("./session-user-response-store")
-      appendSessionUserResponse({ sessionId, runId, text: String(toolCall.arguments?.text ?? "") })
+      const { extractRespondToUserContentFromArgs } = await import("./respond-to-user-utils")
+      const responseContent = extractRespondToUserContentFromArgs(toolCall.arguments)
+      if (responseContent) {
+        appendSessionUserResponse({ sessionId, runId, text: responseContent })
+      }
     }
-    if (toolCall.name in overrides) {
-      const override = overrides[toolCall.name]
-      return typeof override === "function" ? await override(toolCall) : override
-    }
-    return { content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }], isError: false }
+
+    return result
   }
 }
 
@@ -95,7 +102,16 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
   })
 
   afterEach(async () => {
-    await clearResponses("session-list", "session-followup", "session-verify")
+    await clearResponses(
+      "session-list",
+      "session-followup",
+      "session-verify",
+      "session-resume",
+      "session-resume-followup",
+      "session-command",
+      "session-tool-error",
+      "session-blank-response",
+    )
   })
 
   it("preserves earlier numbered respond_to_user content in the next turn prompt", async () => {
@@ -110,6 +126,13 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     const firstRun = await processTranscriptWithAgentMode("Give me options", availableTools as any, makeExecuteToolCall("session-list", 1), 4, [], "conv-list", "session-list", undefined, undefined, 1)
     expect(firstRun.content).toBe("Reply with the numbers you want.")
     expect(firstRun.conversationHistory.filter((m) => m.role === "assistant" && m.content.includes("1. Alpha"))).toHaveLength(1)
+    const materializedResponses = firstRun.conversationHistory.filter((message) =>
+      message.role === "assistant"
+      && (message.content.includes("1. Alpha") || message.content === "Reply with the numbers you want.")
+    )
+    expect(materializedResponses).toHaveLength(2)
+    expect(materializedResponses.every((message) => Number.isInteger(message.timestamp))).toBe(true)
+    expect((materializedResponses[1]?.timestamp ?? 0)).toBeGreaterThan(materializedResponses[0]?.timestamp ?? 0)
 
     mocks.makeLLMCallWithStreamingAndTools.mockClear()
     mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
@@ -243,5 +266,75 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
     expect(secondPrompt).toContain("Retry the same command without skillId")
     expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
+  })
+
+  it("routes failed communication-only tool batches through error recovery before retrying", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Interim answer" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Recovered final answer" } },
+        { name: "mark_work_complete", arguments: { summary: "Recovered from tool failure" } },
+      ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Answer the user",
+      availableTools as any,
+      makeExecuteToolCall("session-tool-error", 1, {
+        respond_to_user: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({ success: false, error: "respond_to_user failed to deliver" }, null, 2),
+          }],
+          isError: true,
+        },
+      }),
+      4,
+      [],
+      "conv-tool-error",
+      "session-tool-error",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Recovered final answer")
+    const retryPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(retryPrompt).toContain("TOOL FAILED: respond_to_user")
+  })
+
+  it("ignores blank response events when resolving the final visible answer", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const { appendSessionUserResponse } = await import("./session-user-response-store")
+
+    appendSessionUserResponse({ sessionId: "session-blank-response", runId: 9, text: "Visible answer", timestamp: 1000 })
+    appendSessionUserResponse({ sessionId: "session-blank-response", runId: 9, text: "   ", timestamp: 1000 })
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({
+      content: "",
+      toolCalls: [{ name: "mark_work_complete", arguments: { summary: "Used stored answer" } }],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-blank-response", 9),
+      3,
+      [],
+      "conv-blank-response",
+      "session-blank-response",
+      undefined,
+      undefined,
+      9,
+    )
+
+    expect(result.content).toBe("Visible answer")
+    expect(result.conversationHistory.filter((message) => message.role === "assistant" && message.content === "Visible answer")).toHaveLength(1)
+    expect(result.conversationHistory.filter((message) => message.role === "assistant" && message.content === "   ")).toHaveLength(0)
   })
 })
