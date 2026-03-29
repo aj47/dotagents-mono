@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
@@ -24,6 +24,8 @@ interface TileFollowUpInputProps {
   /** Agent/profile name to display as indicator */
   agentName?: string
   conversationTitle?: string
+  /** Maximum height for the textarea in pixels (e.g. 50% of tile height) */
+  maxInputHeight?: number
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
@@ -50,6 +52,7 @@ export function TileFollowUpInput({
   className,
   agentName,
   conversationTitle,
+  maxInputHeight,
   onMessageSent,
   onStopSession,
   onVoiceContinue,
@@ -58,10 +61,27 @@ export function TileFollowUpInput({
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+
+  // Auto-resize textarea to fit content, up to maxInputHeight
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    // Reset height so scrollHeight reflects actual content height
+    textarea.style.height = "auto"
+    const maxH = maxInputHeight ?? 140 // default max ~140px if no prop
+    const newHeight = Math.min(textarea.scrollHeight, maxH)
+    textarea.style.height = `${newHeight}px`
+    // Enable scrolling only when content exceeds max
+    textarea.style.overflowY = textarea.scrollHeight > maxH ? "auto" : "hidden"
+  }, [maxInputHeight])
+
+  useEffect(() => {
+    adjustTextareaHeight()
+  }, [text, adjustTextareaHeight])
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
@@ -312,16 +332,16 @@ export function TileFollowUpInput({
         </div>
       )}
 
-      <div className="flex w-full items-center gap-2">
-        <input
-          ref={inputRef}
-          type="text"
+      <div className="flex w-full items-end gap-2">
+        <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholder()}
+          rows={1}
           className={cn(
-            "flex-1 text-sm bg-transparent border-0 outline-none",
+            "flex-1 text-sm bg-transparent border-0 outline-none resize-none",
             "placeholder:text-muted-foreground/60",
             "focus:ring-0"
           )}
