@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   filterPastSessionsAgainstActiveSessions,
+  isSidebarSessionCurrentlyViewed,
   orderActiveSessionsByPinnedFirst,
 } from "./sidebar-sessions"
 
@@ -52,5 +53,51 @@ describe("filterPastSessionsAgainstActiveSessions", () => {
     )
 
     expect(filtered).toEqual([pastSession("session-2")])
+  })
+})
+
+describe("isSidebarSessionCurrentlyViewed", () => {
+  it("marks a past session as viewed when its conversation is open", () => {
+    expect(
+      isSidebarSessionCurrentlyViewed(activeSession("history-1", "conversation-1"), {
+        isPast: true,
+        viewedConversationId: "conversation-1",
+      }),
+    ).toBe(true)
+  })
+
+  it("marks an active session as viewed when it is focused or expanded", () => {
+    expect(
+      isSidebarSessionCurrentlyViewed(activeSession("session-2", "conversation-2"), {
+        isPast: false,
+        focusedSessionId: "session-2",
+      }),
+    ).toBe(true)
+
+    expect(
+      isSidebarSessionCurrentlyViewed(activeSession("session-3", "conversation-3"), {
+        isPast: false,
+        expandedSessionId: "session-3",
+      }),
+    ).toBe(true)
+  })
+
+  it("does not mark unrelated past sessions as viewed", () => {
+    expect(
+      isSidebarSessionCurrentlyViewed(activeSession("history-4", "conversation-4"), {
+        isPast: true,
+        viewedConversationId: "conversation-1",
+      }),
+    ).toBe(false)
+  })
+
+  it("prefers the explicitly viewed conversation over stale focused active rows", () => {
+    expect(
+      isSidebarSessionCurrentlyViewed(activeSession("session-5", "conversation-5"), {
+        isPast: false,
+        focusedSessionId: "session-5",
+        viewedConversationId: "conversation-1",
+      }),
+    ).toBe(false)
   })
 })

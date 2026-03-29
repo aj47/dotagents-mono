@@ -292,6 +292,7 @@ export function Component() {
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
+  const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
   // Get config for shortcut displays
   const configQuery = useConfigQuery()
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
@@ -717,6 +718,27 @@ export function Component() {
       setExpandedSessionId(visibleSessionId)
     }
   }, [hasPendingTile, visibleSessionId, expandedSessionId, setExpandedSessionId])
+
+  useEffect(() => {
+    if (pendingConversationId) {
+      setViewedConversationId(pendingConversationId)
+      return
+    }
+
+    if (visibleSessionId) {
+      setViewedConversationId(
+        agentProgressById.get(visibleSessionId)?.conversationId ?? null,
+      )
+      return
+    }
+
+    setViewedConversationId(null)
+  }, [
+    pendingConversationId,
+    visibleSessionId,
+    agentProgressById,
+    setViewedConversationId,
+  ])
 
   return (
     <div className="group/tile flex h-full flex-col">

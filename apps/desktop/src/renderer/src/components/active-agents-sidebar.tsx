@@ -24,9 +24,10 @@ import {
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import {
   filterPastSessionsAgainstActiveSessions,
+  isSidebarSessionCurrentlyViewed,
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
@@ -199,6 +200,8 @@ export function ActiveAgentsSidebar({
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
   const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
+  const viewedConversationId = useAgentStore((s) => s.viewedConversationId)
+  const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const togglePinSession = useAgentStore((s) => s.togglePinSession)
@@ -211,6 +214,7 @@ export function ActiveAgentsSidebar({
   const [editingTitle, setEditingTitle] = useState("")
   const skipTitleSaveOnBlurRef = useRef(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
 
   const { data, refetch } = useQuery<AgentSessionsResponse>({
@@ -448,6 +452,23 @@ export function ActiveAgentsSidebar({
     setExpandedSessionId(sessionId)
   }, [navigate, setFocusedSessionId, setExpandedSessionId])
 
+  const handlePastSessionOpen = useCallback((conversationId: string) => {
+    logUI(
+      "[ActiveAgentsSidebar] Navigating to sessions view for completed session:",
+      conversationId,
+    )
+    setViewedConversationId(conversationId)
+    navigate(`/${conversationId}`)
+  }, [navigate, setViewedConversationId])
+
+  const isSessionsRoute =
+    location.pathname === "/" ||
+    (!location.pathname.startsWith("/settings") &&
+      !location.pathname.startsWith("/onboarding") &&
+      !location.pathname.startsWith("/setup") &&
+      !location.pathname.startsWith("/panel") &&
+      !location.pathname.startsWith("/knowledge"))
+
   // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -468,7 +489,7 @@ export function ActiveAgentsSidebar({
       if (isPast) {
         if (session.conversationId) {
           logUI("[ActiveAgentsSidebar] Hotkey jump to past session:", session.conversationId)
-          navigate(`/${session.conversationId}`)
+          handlePastSessionOpen(session.conversationId)
         }
       } else {
         logUI("[ActiveAgentsSidebar] Hotkey jump to active session:", session.id)
@@ -489,7 +510,7 @@ export function ActiveAgentsSidebar({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [sidebarSessions, navigate, handleSessionClick])
+  }, [sidebarSessions, handlePastSessionOpen, handleSessionClick])
 
   const handleStopSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent session focus when clicking stop
@@ -781,6 +802,12 @@ export function ActiveAgentsSidebar({
           {sidebarSessions.map(({ session, isPast, key }) => {
             const isFocused = focusedSessionId === session.id
             const isSessionExpanded = expandedSessionId === session.id
+            const isCurrentView = isSidebarSessionCurrentlyViewed(session, {
+              isPast,
+              focusedSessionId,
+              expandedSessionId,
+              viewedConversationId: isSessionsRoute ? viewedConversationId : null,
+            })
             const sessionProgress = agentProgressById.get(session.id)
             const conversationTimestamp =
               sessionProgress?.conversationHistory &&
@@ -819,21 +846,24 @@ export function ActiveAgentsSidebar({
                 ? pinnedSessionIds.has(session.conversationId)
                 : false
               const pastStatusRailColor =
-                session.status === "error" ? "bg-red-500" : "bg-muted-foreground/60"
+                session.status === "error"
+                  ? "bg-red-500"
+                  : isCurrentView
+                    ? "bg-blue-500"
+                    : "bg-muted-foreground/60"
               return (
                 <div
                   key={key}
                   onClick={() => {
                     if (session.conversationId) {
-                      logUI(
-                        "[ActiveAgentsSidebar] Navigating to sessions view for completed session:",
-                        session.conversationId,
-                      )
-                      navigate(`/${session.conversationId}`)
+                      handlePastSessionOpen(session.conversationId)
                     }
                   }}
                   className={cn(
-                    "text-muted-foreground group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
+                    "group relative flex items-center gap-1.5 rounded px-1.5 py-1 pr-2 text-xs transition-all",
+                    isCurrentView
+                      ? "bg-blue-500/10 text-foreground ring-1 ring-inset ring-blue-500/20"
+                      : "text-muted-foreground",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
@@ -845,10 +875,16 @@ export function ActiveAgentsSidebar({
                     )}
                   />
                   <div className="min-w-0 flex-1 transition-[padding-right] duration-200 group-hover:pr-20">
-                    {renderEditableTitle(session, "flex-1")}
+                    {renderEditableTitle(
+                      session,
+                      cn("flex-1", isCurrentView && "text-foreground"),
+                    )}
                   </div>
                   {lastMessageMinutesAgo && (
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground group-hover:opacity-0 transition-opacity">
+                    <span className={cn(
+                      "shrink-0 text-[10px] tabular-nums group-hover:opacity-0 transition-opacity",
+                      isCurrentView ? "text-foreground/70" : "text-muted-foreground",
+                    )}>
                       {lastMessageMinutesAgo}
                     </span>
                   )}
@@ -909,11 +945,13 @@ export function ActiveAgentsSidebar({
                   "group relative flex cursor-pointer items-start rounded py-1.5 pl-2 pr-2 text-xs transition-all",
                   hasPendingApproval
                     ? "bg-amber-500/10"
-                    : isSessionExpanded
-                      ? "bg-blue-500/15"
-                      : isFocused
-                        ? "bg-blue-500/10"
-                        : "hover:bg-accent/50",
+                    : isCurrentView
+                      ? "bg-blue-500/15 ring-1 ring-inset ring-blue-500/20"
+                      : isSessionExpanded
+                        ? "bg-blue-500/15"
+                        : isFocused
+                          ? "bg-blue-500/10"
+                          : "hover:bg-accent/50",
                 )}
               >
                 <span

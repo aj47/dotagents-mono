@@ -3,6 +3,13 @@ type SessionLike = {
   conversationId?: string
 }
 
+interface SidebarSessionViewState {
+  isPast: boolean
+  focusedSessionId?: string | null
+  expandedSessionId?: string | null
+  viewedConversationId?: string | null
+}
+
 export function orderActiveSessionsByPinnedFirst<T extends SessionLike>(
   sessions: T[],
   pinnedSessionIds: ReadonlySet<string>,
@@ -50,4 +57,30 @@ export function filterPastSessionsAgainstActiveSessions<
     const conversationId = item.session.conversationId
     return !conversationId || !activeConversationIds.has(conversationId)
   })
+}
+
+export function isSidebarSessionCurrentlyViewed(
+  session: SessionLike,
+  {
+    isPast,
+    focusedSessionId = null,
+    expandedSessionId = null,
+    viewedConversationId = null,
+  }: SidebarSessionViewState,
+): boolean {
+  if (viewedConversationId) {
+    if (session.conversationId) {
+      return session.conversationId === viewedConversationId
+    }
+
+    return !isPast && (
+      session.id === focusedSessionId || session.id === expandedSessionId
+    )
+  }
+
+  if (isPast) {
+    return false
+  }
+
+  return session.id === focusedSessionId || session.id === expandedSessionId
 }
