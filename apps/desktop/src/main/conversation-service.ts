@@ -5,6 +5,7 @@ import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
   Conversation,
+  ConversationBranchSource,
   ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
@@ -891,6 +892,60 @@ export class ConversationService {
       await this.saveConversationUnlocked(conversation)
       return conversation
     })
+  }
+
+  /**
+   * Branch a conversation from a specific message index.
+   * Creates a new conversation containing messages up to (and including) the given index.
+   * Stores branch provenance metadata on the new conversation.
+   */
+  async branchConversation(
+    sourceConversationId: string,
+    messageIndex: number,
+  ): Promise<Conversation | null> {
+    const sourceConversation = await this.loadConversation(sourceConversationId)
+    if (!sourceConversation) {
+      logApp(`[ConversationService] branchConversation: source conversation ${sourceConversationId} not found`)
+      return null
+    }
+
+    const sourceMessages = this.getStoredRawMessages(sourceConversation)
+    if (messageIndex < 0 || messageIndex >= sourceMessages.length) {
+      logApp(`[ConversationService] branchConversation: invalid messageIndex ${messageIndex} (${sourceMessages.length} messages)`)
+      return null
+    }
+
+    const branchedMessages = sourceMessages.slice(0, messageIndex + 1)
+    const newConversationId = this.generateConversationId()
+    const now = Date.now()
+
+    // Re-generate message IDs for the cloned messages to avoid collisions
+    const clonedMessages: ConversationMessage[] = branchedMessages.map((msg) => ({
+      ...msg,
+      id: this.generateMessageId(),
+    }))
+
+    const branchSource: ConversationBranchSource = {
+      sourceConversationId,
+      sourceMessageIndex: messageIndex,
+      branchedAt: now,
+    }
+
+    const branchedConversation: Conversation = {
+      id: newConversationId,
+      title: `Branch: ${sourceConversation.title}`,
+      createdAt: now,
+      updatedAt: now,
+      messages: clonedMessages,
+      branchSource,
+    }
+
+    await this.enqueueConversationMutation(newConversationId, async () => {
+      await this.saveConversationUnlocked(branchedConversation)
+    })
+
+    logApp(`[ConversationService] Branched conversation ${sourceConversationId} at message ${messageIndex} -> ${newConversationId}`)
+    return branchedConversation
   }
 
   async maybeAutoGenerateConversationTitle(conversationId: string, sessionId?: string): Promise<Conversation | null> {

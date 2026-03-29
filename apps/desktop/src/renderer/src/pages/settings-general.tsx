@@ -1,4 +1,4 @@
-import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
+import { Control, ControlGroup, ControlLabel, SettingsSearchContext } from "@renderer/components/ui/control"
 import {
   Select,
   SelectContent,
@@ -18,7 +18,7 @@ import {
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { ExternalLink, FolderOpen, FolderUp, FileText } from "lucide-react"
+import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -70,9 +70,13 @@ export function Component() {
   )
   const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Settings search
+  const [searchQuery, setSearchQuery] = useState("")
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   // Defer audio device enumeration until the user expands the Audio Devices section
   const [audioSectionOpen, setAudioSectionOpen] = useState(false)
-  const { inputDevices: audioInputDevices, outputDevices: audioOutputDevices } = useAudioDevices(audioSectionOpen)
+  const { inputDevices: audioInputDevices, outputDevices: audioOutputDevices } = useAudioDevices(audioSectionOpen || searchQuery.length > 0)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -345,14 +349,42 @@ export function Component() {
       : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."
 
 
+  const isSearching = searchQuery.length > 0
+
   if (!configQuery.data) return null
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
 
+      {/* Search input */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          ref={searchInputRef}
+          type="text"
+          placeholder="Search settings..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 pr-8"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("")
+              searchInputRef.current?.focus()
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      <SettingsSearchContext.Provider value={searchQuery}>
       <div className="grid gap-4">
         {/* Agent Settings */}
-        <ControlGroup collapsible defaultCollapsed title="Agent Settings">
+        <ControlGroup collapsible defaultCollapsed title="Agent Settings" forceOpen={isSearching}>
           {/* Main Agent Mode Selection */}
           <Control label={<ControlLabel label="Main Agent Mode" tooltip="Choose how the main agent processes your requests. API mode uses external LLM APIs (OpenAI, Groq, Gemini). ACP mode routes prompts to a configured ACP agent like Claude Code." />} className="px-3">
             <Select
@@ -507,7 +539,7 @@ export function Component() {
           </Control>
         </ControlGroup>
 
-        <ControlGroup collapsible defaultCollapsed title="General">
+        <ControlGroup collapsible defaultCollapsed title="General" forceOpen={isSearching}>
           {process.env.IS_MAC && (
             <Control label="Hide Dock Icon" className="px-3">
               <Switch
@@ -576,12 +608,13 @@ export function Component() {
           </Control>
         </ControlGroup>
 
-        <RemoteServerSettingsGroups collapsible defaultCollapsed />
+        <RemoteServerSettingsGroups collapsible defaultCollapsed forceOpen={isSearching} />
 
         <ControlGroup
           collapsible
           defaultCollapsed
           title="Modular config (.agents)"
+          forceOpen={isSearching}
         >
           <div className="px-3 py-2 text-sm leading-5 text-muted-foreground">
             Advanced configuration can live in <span className="font-mono">.agents</span>. Workspace{" "}
@@ -646,6 +679,7 @@ export function Component() {
           collapsible
           defaultCollapsed
           title="Shortcuts"
+          forceOpen={isSearching}
           endDescription={
             <div className="leading-relaxed">
               {recordingShortcutHelperText}
@@ -898,7 +932,7 @@ export function Component() {
           </Control>
         </ControlGroup>
 
-        <ControlGroup collapsible defaultCollapsed title="Audio Devices" onOpenChange={setAudioSectionOpen}>
+        <ControlGroup collapsible defaultCollapsed title="Audio Devices" forceOpen={isSearching} onOpenChange={setAudioSectionOpen}>
           <Control label={<ControlLabel label="Microphone" tooltip="Select which microphone to use for speech recognition. 'System Default' uses your OS default input device." />} className="px-3">
             <Select
               value={configQuery.data.audioInputDeviceId || "default"}
@@ -950,7 +984,7 @@ export function Component() {
           </Control>
         </ControlGroup>
 
-        <ControlGroup collapsible defaultCollapsed title="Speech-to-Text">
+        <ControlGroup collapsible defaultCollapsed title="Speech-to-Text" forceOpen={isSearching}>
           <Control label={<ControlLabel label="Model Selection" tooltip="Manage STT models from the Models page so speech-to-text choices stay with the rest of your provider model settings." />} className="px-3">
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => navigate("/settings/models")}>
@@ -1063,7 +1097,7 @@ export function Component() {
 
         </ControlGroup>
 
-        <ControlGroup collapsible defaultCollapsed title="Text to Speech">
+        <ControlGroup collapsible defaultCollapsed title="Text to Speech" forceOpen={isSearching}>
           <Control label="Enabled" className="px-3">
             <Switch
               defaultChecked={configQuery.data.ttsEnabled ?? false}
@@ -1174,7 +1208,7 @@ export function Component() {
         </ControlGroup>
 
         {/* Panel Position Settings */}
-        <ControlGroup collapsible defaultCollapsed title="Panel Position">
+        <ControlGroup collapsible defaultCollapsed title="Panel Position" forceOpen={isSearching}>
           <Control label={<ControlLabel label="Default Position" tooltip="Choose where the floating panel appears on your screen. Custom position: Panel can be dragged to any location and will remember its position." />} className="px-3">
             <Select
               value={configQuery.data?.panelPosition || "top-right"}
@@ -1270,6 +1304,7 @@ export function Component() {
           collapsible
           defaultCollapsed
           title="WhatsApp Integration"
+          forceOpen={isSearching}
           endDescription={(
             <div className="break-words whitespace-normal">
               Enable WhatsApp messaging through DotAgents.{" "}
@@ -1290,6 +1325,7 @@ export function Component() {
           collapsible
           defaultCollapsed
           title="Langfuse Observability"
+          forceOpen={isSearching}
           endDescription={(
             <div className="break-words whitespace-normal">
               Optional tracing for LLM calls, agent sessions, and tools.{" "}
@@ -1402,6 +1438,7 @@ export function Component() {
           </Control>
         </ControlGroup>
       </div>
+      </SettingsSearchContext.Provider>
     </div>
   )
 }

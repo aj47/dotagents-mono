@@ -61,11 +61,13 @@ function formatHostForHttpUrl(host: string): string {
 interface RemoteServerSettingsGroupsProps {
   collapsible?: boolean
   defaultCollapsed?: boolean
+  forceOpen?: boolean
 }
 
 export function RemoteServerSettingsGroups({
   collapsible = false,
   defaultCollapsed = false,
+  forceOpen,
 }: RemoteServerSettingsGroupsProps = {}) {
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
@@ -183,6 +185,7 @@ export function RemoteServerSettingsGroups({
         <ControlGroup
           collapsible={collapsible}
           defaultCollapsed={defaultCollapsed}
+          forceOpen={forceOpen}
           title="Remote Server"
           endDescription={(
             <div className="break-words whitespace-normal">
@@ -437,6 +440,7 @@ export function RemoteServerSettingsGroups({
           <ControlGroup
             collapsible={collapsible}
             defaultCollapsed={defaultCollapsed}
+            forceOpen={forceOpen}
             title="Cloudflare Tunnel"
             endDescription={(
               <div className="break-words whitespace-normal">

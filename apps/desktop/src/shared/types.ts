@@ -187,6 +187,18 @@ export interface ConversationCompactionMetadata {
   partialReason?: "legacy_summary_without_raw_messages"
 }
 
+/**
+ * Provenance metadata for conversations created via "Branch from here".
+ */
+export interface ConversationBranchSource {
+  /** The conversation ID that this conversation was branched from */
+  sourceConversationId: string
+  /** The index of the message (in the source conversation) that the branch was created from */
+  sourceMessageIndex: number
+  /** Timestamp of when the branch was created */
+  branchedAt: number
+}
+
 export interface Conversation {
   id: string
   title: string
@@ -201,6 +213,8 @@ export interface Conversation {
     provider?: string
     agentMode?: boolean
   }
+  /** Branch provenance: set when this conversation was created by branching from another */
+  branchSource?: ConversationBranchSource
 }
 
 export interface ConversationHistoryItem {

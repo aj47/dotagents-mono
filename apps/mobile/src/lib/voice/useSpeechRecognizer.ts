@@ -32,6 +32,11 @@ type UseSpeechRecognizerOptions = {
   onRecognizerError?: (message: string) => void;
   onPermissionDenied?: () => void;
   log?: VoiceDebugLog;
+  /** Preferred microphone device ID (web only). When set, getUserMedia is called
+   *  with this deviceId before starting the Web Speech API recognizer so the
+   *  browser routes audio from the selected input device. On native platforms
+   *  this value is ignored — device selection is managed by the OS. */
+  audioInputDeviceId?: string;
 };
 
 const MIN_HOLD_MS = 200;
@@ -47,6 +52,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     onRecognizerError,
     onPermissionDenied,
     log,
+    audioInputDeviceId,
   } = options;
   const [listening, setListening] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
@@ -588,6 +594,25 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
 
       if (ensureWebRecognizer()) {
         try {
+          // When a specific microphone is selected, acquire a getUserMedia stream
+          // with that deviceId first. This primes the browser's audio subsystem so
+          // the Web Speech API recognizer uses the chosen input device.
+          if (audioInputDeviceId && navigator.mediaDevices?.getUserMedia) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({
+                audio: { deviceId: { exact: audioInputDeviceId } },
+              });
+              // Stop the tracks immediately — we only needed to prime the device.
+              stream.getTracks().forEach((t) => t.stop());
+            } catch (deviceErr) {
+              // If the selected device is unavailable, fall back to system default.
+              log?.('mic-device-fallback', `Selected mic device unavailable, falling back to default.`, {
+                deviceId: audioInputDeviceId,
+                error: (deviceErr as any)?.message,
+              });
+            }
+          }
+
           webFinalRef.current = '';
           pendingHandsFreeFinalRef.current = '';
           if (webRecognitionRef.current) {
@@ -605,6 +630,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       startingRef.current = false;
     }
   }, [
+    audioInputDeviceId,
     cleanupNativeSubs,
     clearHandsFreeDebounce,
     deferPushToTalkFinalization,

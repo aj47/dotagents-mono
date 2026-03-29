@@ -18,6 +18,12 @@ export type AppConfig = {
   ttsVoiceId?: string; // Voice identifier (e.g., "Google US English" or native voice URI)
   ttsRate?: number; // Speech rate (0.1 to 10, default 1.0)
   ttsPitch?: number; // Voice pitch (0 to 2, default 1.0)
+  // Audio input device settings
+  // On web (Expo Web), this deviceId is passed to getUserMedia before starting the
+  // Web Speech API recognizer so the browser routes audio from the selected mic.
+  // On native (iOS/Android), expo-speech-recognition does not expose a device-selection
+  // API — the OS manages input device routing. This value is ignored on native.
+  audioInputDeviceId?: string;
 };
 
 export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey dot agents';
@@ -48,6 +54,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   ttsVoiceId: undefined, // Use system default
   ttsRate: 1.0,
   ttsPitch: 1.0,
+  audioInputDeviceId: undefined, // Use system default microphone
 };
 
 const STORAGE_KEY = 'app_config_v1';

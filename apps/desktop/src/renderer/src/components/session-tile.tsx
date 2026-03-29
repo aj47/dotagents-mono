@@ -21,6 +21,7 @@ import {
   Activity,
   Moon,
   CheckCircle2,
+  GitBranch,
 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
@@ -29,7 +30,7 @@ import { useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { AudioPlayer } from "@renderer/components/audio-player"
-import { useConfigQuery } from "@renderer/lib/queries"
+import { useConfigQuery, queryClient } from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { removeTTSKey } from "@renderer/lib/tts-tracking"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
@@ -168,6 +169,28 @@ export function SessionTile({
       console.error("Failed to copy message:", err)
     }
   }
+
+  // Branch conversation from a specific message
+  const handleBranchFromMessage = useCallback(async (e: React.MouseEvent, messageIndex: number) => {
+    e.stopPropagation()
+    if (!session.conversationId) return
+    try {
+      const branched = await tipcClient.branchConversation({
+        conversationId: session.conversationId,
+        messageIndex,
+      })
+      if (branched) {
+        // Invalidate conversation history so the branched conversation appears in the sidebar
+        queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+        toast.success("Conversation branched — find it in Past Sessions")
+      } else {
+        toast.error("Failed to branch conversation")
+      }
+    } catch (err) {
+      console.error("Failed to branch conversation:", err)
+      toast.error("Failed to branch conversation")
+    }
+  }, [session.conversationId])
 
   // TTS audio generation
   const lastAssistantContent = React.useMemo(() => {
@@ -621,20 +644,32 @@ export function SessionTile({
                     >
                       <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                         <span className="capitalize">{message.role}</span>
-                        {message.role === "user" && typeof message.content === "string" && (
-                          <button
-                            onClick={(e) => handleCopyMessage(e, message.content as string, messageId)}
-                            className="p-1 rounded hover:bg-muted/30 transition-colors"
-                            title={isCopied ? "Copied!" : "Copy prompt"}
-                            aria-label={isCopied ? "Copied!" : "Copy prompt"}
-                          >
-                            {isCopied ? (
-                              <CheckCheck className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
-                            )}
-                          </button>
-                        )}
+                        <div className="flex items-center gap-0.5">
+                          {session.conversationId && (message.role === "user" || message.role === "assistant") && (
+                            <button
+                              onClick={(e) => handleBranchFromMessage(e, index)}
+                              className="p-1 rounded hover:bg-muted/30 transition-colors"
+                              title="Branch from here"
+                              aria-label="Branch conversation from this message"
+                            >
+                              <GitBranch className="h-3 w-3 opacity-60 hover:opacity-100" />
+                            </button>
+                          )}
+                          {message.role === "user" && typeof message.content === "string" && (
+                            <button
+                              onClick={(e) => handleCopyMessage(e, message.content as string, messageId)}
+                              className="p-1 rounded hover:bg-muted/30 transition-colors"
+                              title={isCopied ? "Copied!" : "Copy prompt"}
+                              aria-label={isCopied ? "Copied!" : "Copy prompt"}
+                            >
+                              {isCopied ? (
+                                <CheckCheck className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       {typeof message.content === "string" ? (
