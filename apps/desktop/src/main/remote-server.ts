@@ -18,13 +18,24 @@ import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
-import { AgentProgressUpdate, Conversation, ConversationMessage, LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import {
+  AgentProgressUpdate,
+  AgentProfile,
+  Conversation,
+  ConversationMessage,
+  LoopConfig,
+  SessionProfileSnapshot,
+} from "../shared/types"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
 import { skillsService } from "./skills-service"
 import { knowledgeNotesService } from "./knowledge-notes-service"
-import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
+import {
+  sanitizeAgentProfileConnection,
+  type AgentProfileConnectionTypeValue,
+  VALID_AGENT_PROFILE_CONNECTION_TYPES,
+} from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
@@ -1825,6 +1836,48 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     ...(conversation.metadata !== undefined ? { metadata: conversation.metadata } : {}),
   })
 
+  const serializeAgentProfile = (profile: AgentProfile) => ({
+    profile: {
+      id: profile.id,
+      name: profile.name,
+      displayName: profile.displayName,
+      description: profile.description,
+      avatarDataUrl: profile.avatarDataUrl,
+      systemPrompt: profile.systemPrompt,
+      guidelines: profile.guidelines,
+      properties: profile.properties,
+      modelConfig: profile.modelConfig,
+      toolConfig: profile.toolConfig,
+      skillsConfig: profile.skillsConfig,
+      connection: profile.connection,
+      isStateful: profile.isStateful,
+      conversationId: profile.conversationId,
+      role: profile.role,
+      enabled: profile.enabled,
+      isBuiltIn: profile.isBuiltIn,
+      isUserProfile: profile.isUserProfile,
+      isAgentTarget: profile.isAgentTarget,
+      isDefault: profile.isDefault,
+      autoSpawn: profile.autoSpawn,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    },
+  })
+
+  const buildProfileConnectionTypeError = () =>
+    `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`
+
+  const parseProfileConnectionType = (
+    connectionType: string | undefined,
+    fallbackType: AgentProfile["connection"]["type"],
+  ): AgentProfileConnectionTypeValue | null => {
+    const resolvedConnectionType = connectionType ?? fallbackType
+    if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(resolvedConnectionType)) {
+      return null
+    }
+    return resolvedConnectionType as AgentProfileConnectionTypeValue
+  }
+
   // GET /v1/conversations - List all conversations
   fastify.get("/v1/conversations", async (_req, reply) => {
     try {
@@ -2421,33 +2474,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(404).send({ error: "Agent profile not found" })
       }
 
-      return reply.send({
-        profile: {
-          id: profile.id,
-          name: profile.name,
-          displayName: profile.displayName,
-          description: profile.description,
-          avatarDataUrl: profile.avatarDataUrl,
-          systemPrompt: profile.systemPrompt,
-          guidelines: profile.guidelines,
-          properties: profile.properties,
-          modelConfig: profile.modelConfig,
-          toolConfig: profile.toolConfig,
-          skillsConfig: profile.skillsConfig,
-          connection: profile.connection,
-          isStateful: profile.isStateful,
-          conversationId: profile.conversationId,
-          role: profile.role,
-          enabled: profile.enabled,
-          isBuiltIn: profile.isBuiltIn,
-          isUserProfile: profile.isUserProfile,
-          isAgentTarget: profile.isAgentTarget,
-          isDefault: profile.isDefault,
-          autoSpawn: profile.autoSpawn,
-          createdAt: profile.createdAt,
-          updatedAt: profile.updatedAt,
-        },
-      })
+      return reply.send(serializeAgentProfile(profile))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to get agent profile" })
@@ -2480,14 +2507,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "displayName is required and must be a non-empty string" })
       }
 
-      // Validate connectionType
-      const connectionType = body.connectionType ?? "internal"
-      if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
-        return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
+      const connectionType = parseProfileConnectionType(body.connectionType, "internal")
+      if (!connectionType) {
+        return reply.code(400).send({ error: buildProfileConnectionTypeError() })
       }
 
-      const connection: import("@shared/types").AgentProfileConnection = sanitizeAgentProfileConnection({
-        connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
+      const connection = sanitizeAgentProfileConnection({
+        connectionType,
         connectionCommand: body.connectionCommand,
         connectionArgs: body.connectionArgs,
         connectionBaseUrl: body.connectionBaseUrl,
@@ -2513,32 +2539,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         isAgentTarget: true,
       })
 
-      return reply.code(201).send({
-        profile: {
-          id: newProfile.id,
-          name: newProfile.name,
-          displayName: newProfile.displayName,
-          description: newProfile.description,
-          avatarDataUrl: newProfile.avatarDataUrl,
-          systemPrompt: newProfile.systemPrompt,
-          guidelines: newProfile.guidelines,
-          properties: newProfile.properties,
-          modelConfig: newProfile.modelConfig,
-          toolConfig: newProfile.toolConfig,
-          skillsConfig: newProfile.skillsConfig,
-          connection: newProfile.connection,
-          isStateful: newProfile.isStateful,
-          role: newProfile.role,
-          enabled: newProfile.enabled,
-          isBuiltIn: newProfile.isBuiltIn,
-          isUserProfile: newProfile.isUserProfile,
-          isAgentTarget: newProfile.isAgentTarget,
-          isDefault: newProfile.isDefault,
-          autoSpawn: newProfile.autoSpawn,
-          createdAt: newProfile.createdAt,
-          updatedAt: newProfile.updatedAt,
-        },
-      })
+      return reply.code(201).send(serializeAgentProfile(newProfile))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to create agent profile" })
@@ -2604,14 +2605,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         if (body.connectionType !== undefined || body.connectionCommand !== undefined ||
             body.connectionArgs !== undefined || body.connectionBaseUrl !== undefined ||
             body.connectionCwd !== undefined) {
-          const connectionType = body.connectionType ?? profile.connection.type
-          if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
-            return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
+          const connectionType = parseProfileConnectionType(body.connectionType, profile.connection.type)
+          if (!connectionType) {
+            return reply.code(400).send({ error: buildProfileConnectionTypeError() })
           }
 
           updates.connection = sanitizeAgentProfileConnection(
             {
-              connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
+              connectionType,
               connectionCommand: body.connectionCommand,
               connectionArgs: body.connectionArgs,
               connectionBaseUrl: body.connectionBaseUrl,
@@ -2627,34 +2628,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(500).send({ error: "Failed to update agent profile" })
       }
 
-      return reply.send({
-        success: true,
-        profile: {
-          id: updatedProfile.id,
-          name: updatedProfile.name,
-          displayName: updatedProfile.displayName,
-          description: updatedProfile.description,
-          avatarDataUrl: updatedProfile.avatarDataUrl,
-          systemPrompt: updatedProfile.systemPrompt,
-          guidelines: updatedProfile.guidelines,
-          properties: updatedProfile.properties,
-          modelConfig: updatedProfile.modelConfig,
-          toolConfig: updatedProfile.toolConfig,
-          skillsConfig: updatedProfile.skillsConfig,
-          connection: updatedProfile.connection,
-          isStateful: updatedProfile.isStateful,
-          conversationId: updatedProfile.conversationId,
-          role: updatedProfile.role,
-          enabled: updatedProfile.enabled,
-          isBuiltIn: updatedProfile.isBuiltIn,
-          isUserProfile: updatedProfile.isUserProfile,
-          isAgentTarget: updatedProfile.isAgentTarget,
-          isDefault: updatedProfile.isDefault,
-          autoSpawn: updatedProfile.autoSpawn,
-          createdAt: updatedProfile.createdAt,
-          updatedAt: updatedProfile.updatedAt,
-        },
-      })
+      return reply.send(serializeAgentProfile(updatedProfile))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to update agent profile" })
