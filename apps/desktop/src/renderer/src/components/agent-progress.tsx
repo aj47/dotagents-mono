@@ -4787,15 +4787,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     >
       {/* Unified Header */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 backdrop-blur-sm overflow-hidden">
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           {wasStopped && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
+            <Badge variant="destructive" className="text-xs px-1.5 py-0.5 shrink-0">
               Terminated
             </Badge>
           )}
+          {/* Session title — prominent */}
+          <span className="text-xs font-medium text-foreground truncate min-w-0">
+            {getTitle()}
+          </span>
         </div>
-        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          {/* Profile/agent name */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Profile/agent name — secondary */}
           {profileName && (
             <span className="text-[10px] text-primary/70 truncate max-w-[80px]">
               {profileName}
