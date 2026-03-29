@@ -2,18 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockGetSkill = vi.fn()
 const mockGetSkills = vi.fn()
+const mockGetSession = vi.fn()
+const mockLoadConversation = vi.fn()
 
 vi.mock("./mcp-service", () => ({
   mcpService: { getAvailableTools: vi.fn(() => []) },
 }))
 
-vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: { getActiveSessions: vi.fn(() => []) } }))
+vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: { getActiveSessions: vi.fn(() => []), getSession: mockGetSession } }))
 vi.mock("./state", () => ({ agentSessionStateManager: { getSessionRunId: vi.fn(() => 1) }, toolApprovalManager: {} }))
 vi.mock("./emergency-stop", () => ({ emergencyStopAll: vi.fn() }))
 vi.mock("./acp/acp-router-tools", () => ({ executeACPRouterTool: vi.fn(), isACPRouterTool: vi.fn(() => false) }))
 vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))
 vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.fn() }))
-vi.mock("./conversation-service", () => ({ conversationService: {} }))
+vi.mock("./conversation-service", () => ({ conversationService: { loadConversation: mockLoadConversation } }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./acp-session-state", () => ({ getAppSessionForAcpSession: vi.fn(() => undefined) }))
 vi.mock("./skills-service", () => ({
@@ -30,23 +32,90 @@ describe("runtime-tools execute_command", () => {
     vi.clearAllMocks()
     mockGetSkill.mockReturnValue(undefined)
     mockGetSkills.mockReturnValue([{ id: "agent-skill-creation" }, { id: "frontend-design" }])
+    mockGetSession.mockReturnValue(undefined)
+    mockLoadConversation.mockResolvedValue(null)
   })
 
-  it("returns corrective guidance when skillId is not an exact loaded skill id", async () => {
+  it("falls back to the default workspace when skillId is not an exact loaded skill id", async () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("execute_command", {
       command: "pwd && ls -la",
       skillId: "aj47/dotagents-mono",
     })
 
+    expect(result?.isError).toBe(false)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({
+      success: true,
+      ignoredInvalidSkillId: "aj47/dotagents-mono",
+      retrySuggestion: expect.stringContaining("without skillId"),
+      availableSkillIds: ["agent-skill-creation", "frontend-design"],
+    }))
+    expect(String(payload.cwd)).toContain("dotagents-mono")
+    expect(String(payload.stdout)).toContain("apps")
+    expect(payload.guidance).toContain("Never use repo names")
+  })
+
+  it("normalizes obvious workspace path typos inside commands", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("execute_command", {
+      command: "cd /Users/ajobandi/Development/dotagents-mono && pwd",
+    })
+
+    expect(result?.isError).toBe(false)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload.normalizedPaths).toEqual([
+      {
+        from: "/Users/ajobandi/Development/dotagents-mono",
+        to: expect.stringMatching(/\/Users\/[^/]+\/Development\/dotagents-mono$/),
+      },
+    ])
+    expect(payload.originalCommand).toBe("cd /Users/ajobandi/Development/dotagents-mono && pwd")
+    expect(String(payload.stdout)).toContain("dotagents-mono")
+  })
+
+  it("rejects npm commands when the workspace lockfile indicates pnpm", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("execute_command", {
+      command: "cd apps/desktop && npm test -- --runInBand src/main/system-prompts.test.ts",
+    })
+
     expect(result?.isError).toBe(true)
     const payload = JSON.parse(String(result?.content[0]?.text))
     expect(payload).toEqual(expect.objectContaining({
       success: false,
-      error: "Invalid execute_command.skillId: aj47/dotagents-mono",
-      retrySuggestion: expect.stringContaining("without skillId"),
-      availableSkillIds: ["agent-skill-creation", "frontend-design"],
+      detectedPackageManager: "pnpm",
+      offendingToken: "npm",
+      retrySuggestion: expect.stringContaining("pnpm"),
     }))
-    expect(payload.guidance).toContain("Never use repo names")
+    expect(String(payload.packageManagerLockfile)).toContain("pnpm-lock.yaml")
+  })
+
+  it("blocks package-manager validation commands for context-gathering prompts", async () => {
+    mockGetSession.mockReturnValue({ id: "session-1", conversationId: "conv-1" })
+    mockLoadConversation.mockResolvedValue({
+      id: "conv-1",
+      title: "Context question",
+      createdAt: 0,
+      updatedAt: 0,
+      messages: [{ id: "msg-1", role: "user", content: "Gather as much context as possible to give a good answer to the question 'what's next'", timestamp: 0 }],
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool(
+      "execute_command",
+      { command: "pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts" },
+      "session-1",
+    )
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({
+      success: false,
+      blockedCommandCategory: "package-manager-validation",
+      latestUserRequestExcerpt: expect.stringContaining("Gather as much context"),
+      retrySuggestion: expect.stringContaining("read-only inspection commands"),
+    }))
+    expect(payload.error).toContain("planning/context question")
   })
 })

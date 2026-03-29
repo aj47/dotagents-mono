@@ -82,7 +82,8 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("PAST CONVERSATIONS")
     expect(prompt).toContain("If AJ says \"pick up where we left off\"")
     expect(prompt).toContain("search the conversation store with python3 or shell tools")
-    expect(prompt).toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
+    expect(prompt).toContain("load the dotagents-config-admin skill before changing unfamiliar DotAgents config")
+    expect(prompt).not.toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
     expect(prompt).not.toContain("Use save_memory")
   })
 
@@ -121,6 +122,67 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("- load_skill_instructions — Load a skill")
     expect(prompt).not.toContain("AVAILABLE MCP SERVERS")
     expect(prompt).not.toContain("unknown")
+  })
+
+  it("only advertises discovery helpers that are actually available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const withoutHelpers = constructSystemPrompt([
+      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(withoutHelpers).not.toContain("list_server_tools(serverName)")
+    expect(withoutHelpers).not.toContain("get_tool_schema(toolName)")
+
+    const withHelpers = constructSystemPrompt([
+      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
+      { name: "list_server_tools", description: "List tools for a server", inputSchema: { type: "object", properties: {} } },
+      { name: "get_tool_schema", description: "Inspect a tool schema", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(withHelpers).toContain("list_server_tools(serverName)")
+    expect(withHelpers).toContain("get_tool_schema(toolName)")
+  })
+
+  it("only advertises execute_command guidance when execute_command is available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const withoutExecute = constructSystemPrompt([
+      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(withoutExecute).not.toContain("Use execute_command as your primary tool")
+
+    const withExecute = constructSystemPrompt([
+      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
+      { name: "execute_command", description: "Execute any shell command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(withExecute).toContain("Use execute_command as your primary tool")
+    expect(withExecute).toContain("pnpm-lock.yaml => pnpm")
+    expect(withExecute).toContain("Do not default to npm")
+    expect(withExecute).toContain("Do not run package-manager install/test/build/lint/typecheck commands")
+  })
+
+  it("does not advertise delegation tools when delegation is unavailable", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([
+      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(prompt).not.toContain("INTERNAL AGENT: Use `delegate_to_agent`")
+    expect(prompt).not.toContain("To delegate: `delegate_to_agent")
+  })
+
+  it("advertises load_skill_instructions only when that tool is available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([
+      { name: "load_skill_instructions", description: "Load a skill", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(prompt).toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
   })
 
   it("separates MCP tools from DotAgents runtime tools in the minimal prompt", async () => {

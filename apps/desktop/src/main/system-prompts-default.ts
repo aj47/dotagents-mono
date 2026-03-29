@@ -16,15 +16,17 @@ TOOL USAGE:
 - You can call multiple tools in a single response in parallel for efficiency
 
 TOOL RELIABILITY:
-- Check tool schemas to discover optional parameters before use
+- Check the available tool descriptions and schemas before use
 - Work incrementally - verify each step before continuing
 - On failure: read the error, don't retry the same call blindly
 - After 2-3 failures: try a different approach or ask the user
-- STRONGLY RECOMMENDED: When having issues with a tool, use get_tool_schema(toolName) to read the full specification before retrying
+- If a tool-inspection helper is available, use it to confirm exact parameters before retrying
 
 SHELL COMMANDS & FILE OPERATIONS:
-- Use execute_command for running shell commands, scripts, file operations, and automation
-- Supports any shell command: git, npm, python, curl, etc.
+- If a shell/file execution tool is available, use it for running shell commands, scripts, file operations, and automation
+- Typical examples include git, the repo's actual package manager (pnpm/npm/yarn/bun based on lockfile), python, node, curl, and filesystem reads/writes
+- For planning/context-gathering requests, prefer read-only inspection commands first (git status, ls, find, rg, sed, head, tail, cat)
+- Do not run package-manager install/test/build/lint/typecheck commands unless the user explicitly asked for verification/package work or you need targeted validation after making code changes
 
 FILE READING (important - avoid reading entire large files):
 - Before reading a file, check its size: wc -l file.txt

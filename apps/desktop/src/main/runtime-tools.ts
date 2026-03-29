@@ -41,20 +41,224 @@ interface BuiltinToolContext {
   sessionId?: string
 }
 
-function buildInvalidExecuteCommandSkillIdResult(skillId: string, availableSkillIds: string[]): MCPToolResult {
+function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkillIds: string[]) {
   return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        success: false,
-        error: `Invalid execute_command.skillId: ${skillId}`,
-        guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
-        retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
-        availableSkillIds,
-      }, null, 2),
-    }],
-    isError: true,
+    ignoredInvalidSkillId: skillId,
+    warning: `Ignored invalid execute_command.skillId: ${skillId}. Ran the command in the default workspace instead.`,
+    guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
+    retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
+    availableSkillIds,
   }
+}
+
+type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
+
+interface PreferredPackageManager {
+  name: PackageManagerName
+  lockfile: string
+  directory: string
+}
+
+const PACKAGE_MANAGER_LOCKFILES: Array<{ name: PackageManagerName; lockfiles: string[] }> = [
+  { name: "pnpm", lockfiles: ["pnpm-lock.yaml"] },
+  { name: "npm", lockfiles: ["package-lock.json"] },
+  { name: "yarn", lockfiles: ["yarn.lock"] },
+  { name: "bun", lockfiles: ["bun.lock", "bun.lockb"] },
+]
+
+const PACKAGE_MANAGER_TOKEN_FAMILY: Record<string, PackageManagerName> = {
+  npm: "npm",
+  npx: "npm",
+  pnpm: "pnpm",
+  pnpx: "pnpm",
+  yarn: "yarn",
+  bun: "bun",
+  bunx: "bun",
+}
+
+const PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm|pnpx|yarn|bun|bunx)(?=\s|$)/g
+const CONTEXT_GATHERING_REQUEST_REGEX = /\b(gather (?:as much )?context|what(?:'s| is) next|next steps?|what should (?:the )?user work on next|immediate next steps?)\b/i
+const USER_REQUEST_ALLOWS_VALIDATION_REGEX = /\b(test|tests|testing|verify|verification|validate|validation|build|compile|lint|typecheck|smoke test|run the app|run the tests|fix|change|edit|implement|update|refactor|install|dependency|dependencies)\b/i
+const HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm|pnpx|yarn|bun|bunx)\b/i
+const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwright(?:\s+test)?|cypress|lint|eslint|typecheck|tsc\b|build|compile|install|add|remove|uninstall|update|upgrade)\b/i
+
+async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
+  let currentDir = path.resolve(startDir)
+
+  while (true) {
+    for (const candidate of PACKAGE_MANAGER_LOCKFILES) {
+      for (const lockfile of candidate.lockfiles) {
+        const lockfilePath = path.join(currentDir, lockfile)
+        if (await pathExists(lockfilePath)) {
+          return {
+            name: candidate.name,
+            lockfile,
+            directory: currentDir,
+          }
+        }
+      }
+    }
+
+    const parentDir = path.dirname(currentDir)
+    if (parentDir === currentDir) {
+      return null
+    }
+    currentDir = parentDir
+  }
+}
+
+function getPackageManagerRetrySuggestion(packageManager: PackageManagerName): string {
+  switch (packageManager) {
+    case "pnpm":
+      return "Retry with pnpm for installs/scripts and pnpm exec for one-off CLIs. Do not use npm or npx in this workspace."
+    case "npm":
+      return "Retry with npm for installs/scripts and npx for one-off CLIs in this workspace."
+    case "yarn":
+      return "Retry with yarn for installs/scripts and yarn dlx for one-off CLIs in this workspace."
+    case "bun":
+      return "Retry with bun for installs/scripts and bunx for one-off CLIs in this workspace."
+  }
+}
+
+function detectPackageManagerMismatch(command: string, preferredPackageManager: PreferredPackageManager | null) {
+  if (!preferredPackageManager) {
+    return null
+  }
+
+  for (const match of command.matchAll(PACKAGE_MANAGER_COMMAND_REGEX)) {
+    const token = match[2]
+    const family = PACKAGE_MANAGER_TOKEN_FAMILY[token]
+    if (family && family !== preferredPackageManager.name) {
+      return {
+        detectedPackageManager: preferredPackageManager.name,
+        packageManagerLockfile: path.join(preferredPackageManager.directory, preferredPackageManager.lockfile),
+        offendingToken: token,
+        error: `This workspace uses ${preferredPackageManager.name} (detected via ${preferredPackageManager.lockfile}), so '${token}' is the wrong package manager here.`,
+        retrySuggestion: getPackageManagerRetrySuggestion(preferredPackageManager.name),
+      }
+    }
+  }
+
+  return null
+}
+
+async function getLatestUserMessageForSession(sessionId?: string): Promise<string | null> {
+  if (!sessionId) {
+    return null
+  }
+
+  const trackedSessionId = getAppSessionForAcpSession(sessionId) ?? sessionId
+  const session = agentSessionTracker.getSession(trackedSessionId)
+  if (!session?.conversationId) {
+    return null
+  }
+
+  const conversation = await conversationService.loadConversation(session.conversationId)
+  if (!conversation) {
+    return null
+  }
+
+  const storedMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    ? conversation.rawMessages
+    : conversation.messages
+
+  const latestUserMessage = [...storedMessages]
+    .reverse()
+    .find((message) => message.role === "user" && typeof message.content === "string" && message.content.trim().length > 0)
+
+  return latestUserMessage?.content?.trim() ?? null
+}
+
+function detectContextGatheringCommandBlock(command: string, latestUserMessage: string | null) {
+  if (!latestUserMessage) {
+    return null
+  }
+
+  if (!CONTEXT_GATHERING_REQUEST_REGEX.test(latestUserMessage)) {
+    return null
+  }
+
+  if (USER_REQUEST_ALLOWS_VALIDATION_REGEX.test(latestUserMessage)) {
+    return null
+  }
+
+  if (!HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX.test(command) || !VALIDATION_OR_DEPENDENCY_COMMAND_REGEX.test(command)) {
+    return null
+  }
+
+  const blockedCommandCategory = /\b(install|add|remove|uninstall|update|upgrade)\b/i.test(command)
+    ? "dependency-mutation"
+    : "package-manager-validation"
+
+  return {
+    blockedCommandCategory,
+    latestUserRequestExcerpt: latestUserMessage.slice(0, 240),
+    error: "The latest user request is a planning/context question, so package-manager test/build/install commands are blocked for this turn.",
+    guidance: "For context-gathering or 'what's next' requests, prefer read-only inspection commands such as git status, ls, find, rg, sed, head, tail, or cat.",
+    retrySuggestion: "Retry with read-only inspection commands. Only run package-manager test/build/install/lint/typecheck commands when the user explicitly asks for verification or after you have made code changes that need targeted validation.",
+  }
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await fs.access(targetPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function getUserHomePrefix(targetPath: string): string | null {
+  const match = targetPath.match(/^\/Users\/[^/]+/)
+  return match ? match[0] : null
+}
+
+async function normalizeExecuteCommandWorkspacePaths(
+  rawCommand: string,
+  workingDirectory: string,
+): Promise<{ command: string; normalizedPaths?: Array<{ from: string; to: string }> }> {
+  const currentHomePrefix = getUserHomePrefix(workingDirectory)
+  if (!currentHomePrefix) {
+    return { command: rawCommand }
+  }
+
+  const candidatePaths = Array.from(new Set(
+    rawCommand.match(/\/Users\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g) ?? [],
+  ))
+
+  if (candidatePaths.length === 0) {
+    return { command: rawCommand }
+  }
+
+  let normalizedCommand = rawCommand
+  const normalizedPaths: Array<{ from: string; to: string }> = []
+
+  for (const candidatePath of candidatePaths) {
+    if (!candidatePath.includes('/dotagents-mono')) {
+      continue
+    }
+
+    if (await pathExists(candidatePath)) {
+      continue
+    }
+
+    const candidateHomePrefix = getUserHomePrefix(candidatePath)
+    if (!candidateHomePrefix || candidateHomePrefix === currentHomePrefix) {
+      continue
+    }
+
+    const rewrittenPath = currentHomePrefix + candidatePath.slice(candidateHomePrefix.length)
+    if (!(await pathExists(rewrittenPath))) {
+      continue
+    }
+
+    normalizedCommand = normalizedCommand.split(candidatePath).join(rewrittenPath)
+    normalizedPaths.push({ from: candidatePath, to: rewrittenPath })
+  }
+
+  return normalizedPaths.length > 0
+    ? { command: normalizedCommand, normalizedPaths }
+    : { command: rawCommand }
 }
 
 const MAX_RESPOND_TO_USER_IMAGES = 4
@@ -602,7 +806,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  execute_command: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     const { skillsService } = await import("./skills-service")
 
     // Validate required command parameter
@@ -614,7 +818,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const command = args.command as string
-    const skillId = args.skillId as string | undefined
+    const skillId = typeof args.skillId === "string" ? args.skillId.trim() : undefined
     // Validate timeout: must be a finite non-negative number, otherwise use default
     // This prevents NaN or negative values from disabling the timeout entirely
     const rawTimeout = args.timeout
@@ -625,6 +829,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     // Determine the working directory
     let cwd: string | undefined
     let skillName: string | undefined
+    let ignoredInvalidSkillIdWarning: ReturnType<typeof buildIgnoredExecuteCommandSkillIdWarning> | undefined
 
     if (skillId) {
       // Find the skill and get its directory
@@ -634,33 +839,85 @@ const toolHandlers: Record<string, ToolHandler> = {
           .getSkills()
           .map((skill) => skill.id)
           .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
-        return buildInvalidExecuteCommandSkillIdResult(skillId, availableSkillIds)
-      }
+        ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
+      } else {
 
-      if (!skill.filePath) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill has no file path (not imported from disk): ${skill.name}` }) }],
-          isError: true,
-        }
-      }
-
-      // For local files, use the directory containing SKILL.md
-      // For GitHub skills, automatically upgrade to local clone
-      if (skill.filePath.startsWith("github:")) {
-        try {
-          // Dynamically import skills-service to avoid circular dependency
-          const { skillsService: skillsSvc } = await import("./skills-service")
-          skill = await skillsSvc.upgradeGitHubSkillToLocal(skillId)
-        } catch (upgradeError) {
+        if (!skill.filePath) {
           return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Failed to upgrade GitHub skill to local: ${upgradeError instanceof Error ? upgradeError.message : String(upgradeError)}` }) }],
+            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill has no file path (not imported from disk): ${skill.name}` }) }],
             isError: true,
           }
         }
-      }
 
-      cwd = path.dirname(skill.filePath!)
-      skillName = skill.name
+        // For local files, use the directory containing SKILL.md
+        // For GitHub skills, automatically upgrade to local clone
+        if (skill.filePath.startsWith("github:")) {
+          try {
+            // Dynamically import skills-service to avoid circular dependency
+            const { skillsService: skillsSvc } = await import("./skills-service")
+            skill = await skillsSvc.upgradeGitHubSkillToLocal(skillId)
+          } catch (upgradeError) {
+            return {
+              content: [{ type: "text", text: JSON.stringify({ success: false, error: `Failed to upgrade GitHub skill to local: ${upgradeError instanceof Error ? upgradeError.message : String(upgradeError)}` }) }],
+              isError: true,
+            }
+          }
+        }
+
+        cwd = path.dirname(skill.filePath!)
+        skillName = skill.name
+      }
+    }
+
+    const effectiveCwd = cwd || process.cwd()
+    const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd)
+    const effectiveCommand = normalizedCommandResult.command
+    const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd)
+    const packageManagerMismatch = detectPackageManagerMismatch(effectiveCommand, preferredPackageManager)
+
+    if (packageManagerMismatch) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: false,
+              command: effectiveCommand,
+              originalCommand: effectiveCommand === command ? undefined : command,
+              cwd: effectiveCwd,
+              skillName,
+              ...(ignoredInvalidSkillIdWarning ?? {}),
+              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
+              ...packageManagerMismatch,
+            }, null, 2),
+          },
+        ],
+        isError: true,
+      }
+    }
+
+    const latestUserMessage = await getLatestUserMessageForSession(context.sessionId)
+    const contextGatheringCommandBlock = detectContextGatheringCommandBlock(effectiveCommand, latestUserMessage)
+
+    if (contextGatheringCommandBlock) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: false,
+              command: effectiveCommand,
+              originalCommand: effectiveCommand === command ? undefined : command,
+              cwd: effectiveCwd,
+              skillName,
+              ...(ignoredInvalidSkillIdWarning ?? {}),
+              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
+              ...contextGatheringCommandBlock,
+            }, null, 2),
+          },
+        ],
+        isError: true,
+      }
     }
 
     try {
@@ -677,7 +934,7 @@ const toolHandlers: Record<string, ToolHandler> = {
         execOptions.timeout = timeout
       }
 
-      const { stdout, stderr } = await execAsync(command, execOptions)
+      const { stdout, stderr } = await execAsync(effectiveCommand, execOptions)
 
       // Truncate large outputs to prevent context bloat
       // Keep first 5K + last 5K chars so agent sees both beginning and end
@@ -704,9 +961,12 @@ const toolHandlers: Record<string, ToolHandler> = {
             type: "text",
             text: JSON.stringify({
               success: true,
-              command,
-              cwd: cwd || process.cwd(),
+              command: effectiveCommand,
+              originalCommand: effectiveCommand === command ? undefined : command,
+              cwd: effectiveCwd,
               skillName,
+              ...(ignoredInvalidSkillIdWarning ?? {}),
+              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               stdout: truncatedStdout,
               stderr: stderr || "",
               ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
@@ -746,9 +1006,12 @@ const toolHandlers: Record<string, ToolHandler> = {
             type: "text",
             text: JSON.stringify({
               success: false,
-              command,
-              cwd: cwd || process.cwd(),
+              command: effectiveCommand,
+              originalCommand: effectiveCommand === command ? undefined : command,
+              cwd: effectiveCwd,
               skillName,
+              ...(ignoredInvalidSkillIdWarning ?? {}),
+              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               error: errorMessage + hint,
               exitCode,
               stdout,
