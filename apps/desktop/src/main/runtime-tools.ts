@@ -578,7 +578,7 @@ const toolHandlers: Record<string, ToolHandler> = {
             markedComplete: true,
             summary,
             confidence,
-            message: "Completion signal recorded. Provide the final user-facing response next.",
+            message: "Completion signal recorded. The runtime will verify completion and finalize the turn without requiring another user-facing response.",
           }, null, 2),
         },
       ],

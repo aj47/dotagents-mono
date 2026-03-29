@@ -41,19 +41,32 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | und
   return combined.length > 0 ? combined : undefined
 }
 
-function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallLike[]): string | undefined {
-  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return undefined
+export function getOrderedRespondToUserContentsFromToolCalls(toolCalls?: ToolCallLike[]): string[] {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return []
 
-  let latestResponse: string | undefined
+  const orderedResponses: string[] = []
   for (const toolCall of toolCalls) {
     if (toolCall?.name !== RESPOND_TO_USER_TOOL) continue
     const content = extractRespondToUserContentFromArgs(toolCall.arguments)
     if (content) {
-      latestResponse = content
+      orderedResponses.push(content)
     }
   }
 
-  return latestResponse
+  return orderedResponses
+}
+
+export function getUnmaterializedUserResponseEvents<T extends { id: string }>(
+  responseEvents: T[],
+  materializedEventIds: Iterable<string>,
+): T[] {
+  const materializedIds = new Set(materializedEventIds)
+  return responseEvents.filter((responseEvent) => !materializedIds.has(responseEvent.id))
+}
+
+function getLatestRespondToUserContentFromToolCalls(toolCalls?: ToolCallLike[]): string | undefined {
+  const orderedResponses = getOrderedRespondToUserContentsFromToolCalls(toolCalls)
+  return orderedResponses[orderedResponses.length - 1]
 }
 
 export function getLatestRespondToUserContentFromConversationHistory(

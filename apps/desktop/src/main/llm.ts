@@ -36,7 +36,11 @@ import {
   getSessionRunUserResponseEvents,
   getSessionUserResponseHistory,
 } from "./session-user-response-store"
-import { resolveLatestUserFacingResponse, getLatestRespondToUserContentFromConversationHistory } from "./respond-to-user-utils"
+import {
+  getLatestRespondToUserContentFromConversationHistory,
+  getUnmaterializedUserResponseEvents,
+  resolveLatestUserFacingResponse,
+} from "./respond-to-user-utils"
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
@@ -589,6 +593,7 @@ export async function processTranscriptWithAgentMode(
     getLatestRespondToUserContentFromConversationHistory(
       (previousConversationHistory as any) ?? []
     )
+  const materializedUserResponseEventIds = new Set<string>()
 
   // Create bound emitter that always includes sessionId, conversationId, snooze state, sessionStartIndex, conversationTitle, and contextInfo
   const emit = (
@@ -886,6 +891,37 @@ export async function processTranscriptWithAgentMode(
       ephemeral: true,
     }
     conversationHistory.push(message)
+  }
+
+  const hasAssistantMessageInCurrentTurn = (content: string): boolean => {
+    if (!content.trim()) return false
+    return conversationHistory
+      .slice(currentPromptIndex + 1)
+      .some((message) => message.role === "assistant" && message.content === content)
+  }
+
+  const materializePendingUserResponses = (): string | undefined => {
+    const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
+
+    for (const responseEvent of getUnmaterializedUserResponseEvents(
+      responseEvents,
+      materializedUserResponseEventIds,
+    )) {
+
+      if (!hasAssistantMessageInCurrentTurn(responseEvent.text)) {
+        addMessage(
+          "assistant",
+          responseEvent.text,
+          undefined,
+          undefined,
+          responseEvent.timestamp + responseEvent.ordinal / 1000,
+        )
+      }
+
+      materializedUserResponseEventIds.add(responseEvent.id)
+    }
+
+    return responseEvents[responseEvents.length - 1]?.text
   }
 
   // Track current iteration for retry progress callback
@@ -1873,6 +1909,7 @@ export async function processTranscriptWithAgentMode(
     // Don't treat mark_work_complete as confirmed completion yet.
     // We defer completion until after tool execution confirms the whole batch succeeded.
     const hasToolCalls = toolCallsArray.length > 0
+    let onlyCommunicationTools = false
 
     // Handle no-op iterations (no tool calls).
     if (!hasToolCalls) {
@@ -2042,9 +2079,6 @@ export async function processTranscriptWithAgentMode(
         })
         if (existingUserResponse1?.trim().length) {
           finalContent = existingUserResponse1
-          if (finalContent.trim().length > 0) {
-            addMessage("assistant", finalContent)
-          }
         } else if (!skipPostVerifySummary && !completionForcedByVerificationLimit) {
           try {
             const result = await generatePostVerifySummary(finalContent, false, activeTools)
@@ -2208,41 +2242,13 @@ export async function processTranscriptWithAgentMode(
       // counters; otherwise the agent can loop indefinitely: text → nudge → respond_to_user
       // (resets counters) → text → nudge → respond_to_user → … (#respond-to-user-spam)
       const COMMUNICATION_ONLY_TOOLS = new Set([RESPOND_TO_USER_TOOL])
-      const onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
+      onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
 
       if (onlyCommunicationTools) {
-        // Communication-only batch: increment noOpCount (no real progress) and preserve
-        // nudge/hint counters so the safety valves fire if the agent keeps looping.
-        // This ensures repeated respond_to_user calls trigger the nudge path.
+        // Communication-only batches are explicit user-facing updates, not proof of
+        // task completion. Keep the no-op counters moving so the runtime can nudge
+        // the model to either continue working or explicitly mark the task complete.
         noOpCount++
-
-        // Guard: if respond_to_user has been called repeatedly without real work,
-        // force completion using the stored response instead of letting the loop
-        // spin until maxIterations. The noOpCount threshold (2) matches the one
-        // used in the !hasToolCalls path so both branches converge consistently.
-        if (noOpCount >= 2) {
-          const storedResponse = resolveLatestUserFacingResponse({
-            storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
-            plannedToolCalls: toolCallsArray,
-            responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
-            conversationHistory: conversationHistory as any,
-            sinceIndex: currentPromptIndex,
-          })
-          if (storedResponse?.trim().length) {
-            // Already have a user-facing response — skip tool execution and break
-            finalContent = storedResponse
-            addMessage("assistant", finalContent)
-            emit({
-              currentIteration: iteration,
-              maxIterations,
-              steps: progressSteps.slice(-3),
-              isComplete: true,
-              finalContent,
-              conversationHistory: formatConversationForProgress(conversationHistory),
-            })
-            break
-          }
-        }
       } else {
         // Real work tools: full counter reset
         noOpCount = 0
@@ -2531,6 +2537,8 @@ export async function processTranscriptWithAgentMode(
     // The UI will handle display and truncation as needed
     const processedToolResults = toolResults
 
+    const latestMaterializedUserResponse = materializePendingUserResponses()
+
     // Always add a tool message if any tools were executed, even if results are empty
     // This ensures the verifier sees tool execution evidence in conversationHistory
     if (processedToolResults.length > 0) {
@@ -2590,6 +2598,13 @@ export async function processTranscriptWithAgentMode(
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
+
+    if (onlyCommunicationTools && !completionSignalConfirmed) {
+      if (noOpCount >= 2) {
+        addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
+      }
+      continue
+    }
 
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions
@@ -2672,7 +2687,7 @@ export async function processTranscriptWithAgentMode(
       const hasMinimalContent = lastAssistantContent.trim().length < 50
 
       // Skip summary generation if respond_to_user already provided a response (#1084)
-      const existingUserResponse = resolveLatestUserFacingResponse({
+      const existingUserResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
         storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
         responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
         conversationHistory: conversationHistory as any,
@@ -2681,12 +2696,11 @@ export async function processTranscriptWithAgentMode(
       let respondToUserAlreadyInHistory = false
       if (existingUserResponse?.trim().length) {
         finalContent = existingUserResponse
-        conversationHistory.push({
-          role: "assistant",
-          content: finalContent,
-          timestamp: Date.now(),
-        })
-        respondToUserAlreadyInHistory = true
+        respondToUserAlreadyInHistory = hasAssistantMessageInCurrentTurn(finalContent)
+        if (!respondToUserAlreadyInHistory) {
+          addMessage("assistant", finalContent)
+          respondToUserAlreadyInHistory = true
+        }
       } else if (hasToolCalls && (hasMinimalContent || !lastAssistantContent.trim())) {
         // The agent just made tool calls without providing a summary
         // Prompt the agent to provide a concise summary of what was accomplished
@@ -2858,16 +2872,18 @@ export async function processTranscriptWithAgentMode(
         // Skip when forced incomplete - the fallback message below will be the only assistant message
         // Skip summary generation if respond_to_user already provided a response (#1084)
         // Also skip if respond_to_user response was already added to history above
-        const existingUserResponse2 = resolveLatestUserFacingResponse({
+        const existingUserResponse2 = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
           storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
           responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
           conversationHistory: conversationHistory as any,
           sinceIndex: currentPromptIndex,
         })
-        if (existingUserResponse2?.trim().length && !respondToUserAlreadyInHistory) {
+        if (existingUserResponse2?.trim().length) {
           finalContent = existingUserResponse2
-          if (finalContent.trim().length > 0) {
-            conversationHistory.push({ role: "assistant", content: finalContent, timestamp: Date.now() })
+          respondToUserAlreadyInHistory = respondToUserAlreadyInHistory || hasAssistantMessageInCurrentTurn(finalContent)
+          if (!respondToUserAlreadyInHistory && finalContent.trim().length > 0) {
+            addMessage("assistant", finalContent)
+            respondToUserAlreadyInHistory = true
           }
         } else if (respondToUserAlreadyInHistory) {
           // Already handled above — skip post-verify summary entirely
@@ -3006,17 +3022,8 @@ export async function processTranscriptWithAgentMode(
 
       if (explicitUserResponse?.trim().length) {
         finalContent = explicitUserResponse
-        const lastMessage = conversationHistory[conversationHistory.length - 1]
-        if (
-          !lastMessage ||
-          lastMessage.role !== "assistant" ||
-          lastMessage.content !== finalContent
-        ) {
-          conversationHistory.push({
-            role: "assistant",
-            content: finalContent,
-            timestamp: Date.now(),
-          })
+        if (!hasAssistantMessageInCurrentTurn(finalContent)) {
+          addMessage("assistant", finalContent)
         }
       }
     }
