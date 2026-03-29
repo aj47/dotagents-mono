@@ -81,6 +81,8 @@ const CONTEXT_GATHERING_REQUEST_REGEX = /\b(gather (?:as much )?context|what(?:'
 const USER_REQUEST_ALLOWS_VALIDATION_REGEX = /\b(test|tests|testing|verify|verification|validate|validation|build|compile|lint|typecheck|smoke test|run the app|run the tests|fix|change|edit|implement|update|refactor|install|dependency|dependencies)\b/i
 const HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm|pnpx|yarn|bun|bunx)\b/i
 const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwright(?:\s+test)?|cypress|lint|eslint|typecheck|tsc\b|build|compile|install|add|remove|uninstall|update|upgrade)\b/i
+const POSIX_WORKSPACE_PATH_REGEX = /(?:\/Users|\/home)\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g
+const POSIX_HOME_PREFIX_REGEX = /^(\/Users\/[^/]+|\/home\/[^/]+)/
 
 async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
   let currentDir = path.resolve(startDir)
@@ -209,8 +211,26 @@ async function pathExists(targetPath: string): Promise<boolean> {
 }
 
 function getUserHomePrefix(targetPath: string): string | null {
-  const match = targetPath.match(/^\/Users\/[^/]+/)
+  const match = targetPath.match(POSIX_HOME_PREFIX_REGEX)
   return match ? match[0] : null
+}
+
+function getWorkspaceRelativePath(targetPath: string): string | null {
+  const homePrefix = getUserHomePrefix(targetPath)
+  return homePrefix ? targetPath.slice(homePrefix.length) : null
+}
+
+function sharesWorkspaceRelativePath(candidatePath: string, workingDirectory: string): boolean {
+  const candidateRelativePath = getWorkspaceRelativePath(candidatePath)
+  const workingDirectoryRelativePath = getWorkspaceRelativePath(workingDirectory)
+
+  if (!candidateRelativePath || !workingDirectoryRelativePath) {
+    return false
+  }
+
+  return candidateRelativePath === workingDirectoryRelativePath
+    || candidateRelativePath.startsWith(`${workingDirectoryRelativePath}/`)
+    || workingDirectoryRelativePath.startsWith(`${candidateRelativePath}/`)
 }
 
 async function normalizeExecuteCommandWorkspacePaths(
@@ -223,7 +243,7 @@ async function normalizeExecuteCommandWorkspacePaths(
   }
 
   const candidatePaths = Array.from(new Set(
-    rawCommand.match(/\/Users\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g) ?? [],
+    rawCommand.match(POSIX_WORKSPACE_PATH_REGEX) ?? [],
   ))
 
   if (candidatePaths.length === 0) {
@@ -234,7 +254,7 @@ async function normalizeExecuteCommandWorkspacePaths(
   const normalizedPaths: Array<{ from: string; to: string }> = []
 
   for (const candidatePath of candidatePaths) {
-    if (!candidatePath.includes('/dotagents-mono')) {
+    if (!sharesWorkspaceRelativePath(candidatePath, workingDirectory)) {
       continue
     }
 

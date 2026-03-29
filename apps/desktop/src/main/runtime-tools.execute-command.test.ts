@@ -1,3 +1,4 @@
+import path from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockGetSkill = vi.fn()
@@ -25,6 +26,28 @@ vi.mock("./skills-service", () => ({
     upgradeGitHubSkillToLocal: vi.fn(),
   },
 }))
+
+function getHomePrefix(targetPath: string): string | null {
+  const match = targetPath.match(/^(\/Users\/[^/]+|\/home\/[^/]+)/)
+  return match ? match[0] : null
+}
+
+function buildTypoWorkspacePath(targetPath: string): string | null {
+  const homePrefix = getHomePrefix(targetPath)
+  if (!homePrefix) {
+    return null
+  }
+
+  const username = homePrefix.split("/").pop()
+  if (!username) {
+    return null
+  }
+
+  const typoUsername = username.endsWith("x") ? `${username}z` : `${username}x`
+  return `${homePrefix.slice(0, -username.length)}${typoUsername}${targetPath.slice(homePrefix.length)}`
+}
+
+const pathNormalizationTest = process.platform === "win32" ? it.skip : it
 
 describe("runtime-tools execute_command", () => {
   beforeEach(() => {
@@ -56,22 +79,28 @@ describe("runtime-tools execute_command", () => {
     expect(payload.guidance).toContain("Never use repo names")
   })
 
-  it("normalizes obvious workspace path typos inside commands", async () => {
+  pathNormalizationTest("normalizes obvious workspace path typos inside commands", async () => {
+    const actualWorkspacePath = process.cwd()
+    const typoWorkspacePath = buildTypoWorkspacePath(actualWorkspacePath)
+
+    expect(typoWorkspacePath).toBeTruthy()
+
     const { executeRuntimeTool } = await import("./runtime-tools")
+    const command = `cd \"${typoWorkspacePath}\" && pwd`
     const result = await executeRuntimeTool("execute_command", {
-      command: "cd /Users/ajobandi/Development/dotagents-mono && pwd",
+      command,
     })
 
     expect(result?.isError).toBe(false)
     const payload = JSON.parse(String(result?.content[0]?.text))
     expect(payload.normalizedPaths).toEqual([
       {
-        from: "/Users/ajobandi/Development/dotagents-mono",
-        to: expect.stringMatching(/\/Users\/[^/]+\/Development\/dotagents-mono$/),
+        from: typoWorkspacePath,
+        to: actualWorkspacePath,
       },
     ])
-    expect(payload.originalCommand).toBe("cd /Users/ajobandi/Development/dotagents-mono && pwd")
-    expect(String(payload.stdout)).toContain("dotagents-mono")
+    expect(payload.originalCommand).toBe(command)
+    expect(String(payload.stdout)).toContain(path.basename(actualWorkspacePath))
   })
 
   it("rejects npm commands when the workspace lockfile indicates pnpm", async () => {
