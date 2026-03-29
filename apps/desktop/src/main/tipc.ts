@@ -3341,6 +3341,12 @@ export const router = {
       await conversationService.deleteConversation(input.conversationId)
     }),
 
+  branchConversation: t.procedure
+    .input<{ conversationId: string; messageIndex: number }>()
+    .action(async ({ input }) => {
+      return conversationService.branchConversation(input.conversationId, input.messageIndex)
+    }),
+
   deleteAllConversations: t.procedure.action(async () => {
     await conversationService.deleteAllConversations()
   }),
