@@ -1114,6 +1114,10 @@ export async function processTranscriptWithAgentMode(
       : baseMessage
   }
 
+  const buildToolOnlyFinalAnswerNudge = () => {
+    return "You already have multiple rounds of recent tool output for this request. Unless one specific missing fact is still required, stop calling more inspection tools and provide one concise final answer now. If the work is already complete, call mark_work_complete after the user-facing answer."
+  }
+
   const extractLatestSelectorRefFromHistory = () => {
     for (let i = conversationHistory.length - 1; i >= currentPromptIndex; i--) {
       const content = typeof conversationHistory[i]?.content === "string"
@@ -1548,7 +1552,10 @@ export async function processTranscriptWithAgentMode(
   let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
   let garbledToolCallCount = 0 // Track consecutive garbled tool-call-as-text responses
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
+  let successfulToolOnlyIterationsWithoutResponse = 0 // Track repeated inspect-only tool loops that never converge to a final answer
+  let awaitingToolOnlyFinalAnswerResponse = false // Track when we've explicitly asked the model to stop inspecting and give the final answer
   const MAX_COMPLETION_SIGNAL_HINTS = 2
+  const MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE = 2
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
   const toolFailureCount = new Map<string, number>() // Track failures per tool name
   const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
@@ -2107,6 +2114,7 @@ export async function processTranscriptWithAgentMode(
             totalNudgeCount = 0
             garbledToolCallCount = 0
             completionSignalHintCount = 0
+            successfulToolOnlyIterationsWithoutResponse = 0
             continue
           }
         }
@@ -2643,6 +2651,19 @@ export async function processTranscriptWithAgentMode(
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
+    const hasExplicitUserFacingResponse = !!latestMaterializedUserResponse?.trim().length
+
+    if (hasErrors || onlyCommunicationTools || hasExplicitUserFacingResponse || completionSignalConfirmed) {
+      successfulToolOnlyIterationsWithoutResponse = 0
+    } else if (allToolsSuccessful) {
+      successfulToolOnlyIterationsWithoutResponse += 1
+      if (successfulToolOnlyIterationsWithoutResponse >= MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE) {
+        awaitingToolOnlyFinalAnswerResponse = true
+        addEphemeralMessage("user", buildToolOnlyFinalAnswerNudge())
+      }
+    } else {
+      successfulToolOnlyIterationsWithoutResponse = 0
+    }
 
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions
@@ -2732,6 +2753,67 @@ export async function processTranscriptWithAgentMode(
         sinceIndex: currentPromptIndex,
       })
 
+      const shouldFinalizeRequestedToolOnlyAnswer =
+        awaitingToolOnlyFinalAnswerResponse
+        && !!latestCommunicationOnlyResponse?.trim().length
+
+      if (shouldFinalizeRequestedToolOnlyAnswer) {
+        finalContent = latestCommunicationOnlyResponse
+        let finalConversationState: AgentConversationState = "complete"
+
+        if (config.mcpVerifyCompletionEnabled) {
+          const verifyStep = createProgressStep(
+            "thinking",
+            "Verifying completion",
+            "Checking whether the requested final answer is ready to present",
+            "in_progress",
+          )
+          progressSteps.push(verifyStep)
+          emit({
+            currentIteration: iteration,
+            maxIterations,
+            steps: progressSteps.slice(-3),
+            isComplete: false,
+            conversationHistory: formatConversationForProgress(conversationHistory),
+          })
+
+          const result = await runVerificationAndHandleResult(
+            finalContent,
+            verifyStep,
+            verificationFailCount,
+            {
+              nudgeForToolUsage: true,
+              currentPromptIndex,
+            },
+          )
+          verificationFailCount = result.newFailCount
+          if (!result.shouldContinue) {
+            finalConversationState = result.conversationState
+          }
+        }
+
+        awaitingToolOnlyFinalAnswerResponse = false
+
+        const completionStep = createProgressStep(
+          "completion",
+          "Task completed",
+          "Accepted the requested final answer after repeated inspection-only iterations",
+          "completed",
+        )
+        progressSteps.push(completionStep)
+
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          conversationState: finalConversationState,
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
+      }
+
       const shouldVerifyCommunicationOnlyResponse =
         noOpCount >= 2
         && config.mcpVerifyCompletionEnabled
@@ -2775,6 +2857,7 @@ export async function processTranscriptWithAgentMode(
           totalNudgeCount = 0
           garbledToolCallCount = 0
           completionSignalHintCount = 0
+          successfulToolOnlyIterationsWithoutResponse = 0
           continue
         }
 
@@ -2994,6 +3077,7 @@ export async function processTranscriptWithAgentMode(
 		          totalNudgeCount = 0
 		          garbledToolCallCount = 0
 		          completionSignalHintCount = 0
+		          successfulToolOnlyIterationsWithoutResponse = 0
 	          continue
 	        }
 	      }

@@ -113,6 +113,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-command",
       "session-tool-error",
       "session-blank-response",
+      "session-review-loop",
+      "session-review-loop-final-answer",
+      "session-clean-final",
     )
   })
 
@@ -395,6 +398,138 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).toBe("Second next-steps answer")
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("nudges repeated inspection-only review prompts toward a final answer", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "sed -n '1,160p' src/main/respond-to-user-utils.ts" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "sed -n '1,220p' src/main/llm.ts" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "The respond_to_user changes look complete overall; the main remaining risk was repeated inspection loops, which now need a convergence guard." } },
+        { name: "mark_work_complete", arguments: { summary: "Reviewed respond_to_user changes" } },
+      ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this: inspect the current respond_to_user changes and tell me whether anything still looks incomplete.",
+      availableTools as any,
+      makeExecuteToolCall("session-review-loop", 1),
+      5,
+      [],
+      "conv-review-loop",
+      "session-review-loop",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("main remaining risk was repeated inspection loops")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+
+    const thirdPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(thirdPrompt).toContain("stop calling more inspection tools")
+    expect(thirdPrompt).toContain("provide one concise final answer now")
+  })
+
+  it("accepts the first respond_to_user answer after the inspection-only final-answer nudge", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "sed -n '1,200p' src/main/respond-to-user-utils.ts" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "sed -n '1,260p' src/main/llm.ts" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "The replay fix prevents duplicate final answers by keeping respond_to_user as a one-time side effect during the original run." } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValueOnce({
+      isComplete: false,
+      conversationState: "running",
+      confidence: 0.51,
+      missingItems: ["The answer was already delivered to the user."],
+      reason: "The user-facing answer is already present; do not continue looping.",
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Give me one clean final answer about the respond_to_user replay fix.",
+      availableTools as any,
+      makeExecuteToolCall("session-review-loop-final-answer", 1),
+      5,
+      [],
+      "conv-review-loop-final-answer",
+      "session-review-loop-final-answer",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("one-time side effect")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes((currentConfig.mcpVerifyRetryCount ?? 1) + 1)
+
+    const thirdPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(thirdPrompt).toContain("stop calling more inspection tools")
+    expect(thirdPrompt).toContain("provide one concise final answer now")
+  })
+
+  it("nudges repeated inspection-only explanation prompts toward one clean final answer", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "sed -n '1,220p' src/main/agent-run-utils.ts" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "sed -n '1,220p' src/main/respond-to-user-utils.ts" } },
+      ] })
+      .mockResolvedValueOnce({
+        content: "The replay fix keeps materialized respond_to_user messages in history for the UI while excluding them from later model prompts, which prevents duplicate final answers.",
+        toolCalls: [],
+      })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValueOnce({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.97,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Give me one clean final answer about the respond_to_user replay fix.",
+      availableTools as any,
+      makeExecuteToolCall("session-clean-final", 1),
+      5,
+      [],
+      "conv-clean-final",
+      "session-clean-final",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("prevents duplicate final answers")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const thirdPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(thirdPrompt).toContain("stop calling more inspection tools")
+    expect(thirdPrompt).toContain("provide one concise final answer now")
   })
 
   it("ignores blank response events when resolving the final visible answer", async () => {
