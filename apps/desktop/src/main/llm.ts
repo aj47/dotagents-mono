@@ -1607,20 +1607,15 @@ export async function processTranscriptWithAgentMode(
               content: text,
             }
           }
-          // For assistant messages, ensure non-empty content
-          // Anthropic API requires all messages to have non-empty content
-          // except for the optional final assistant message
-          let content = sanitizedContent
-          if (entry.role === "assistant" && !content?.trim()) {
-            // If assistant message has tool calls but no content, describe the tool calls
-            if (entry.toolCalls && entry.toolCalls.length > 0) {
-              const toolNames = entry.toolCalls.map(tc => tc.name).join(", ")
-              content = `[Calling tools: ${toolNames}]`
-            } else {
-              // Fallback for empty assistant messages without tool calls
-              content = "[Processing...]"
-            }
+          // Skip empty assistant tool-call placeholders entirely when replaying history.
+          // Re-injecting synthetic text like "[Calling tools: ...]" into the prompt can
+          // cause the model to parrot that placeholder back as garbled tool-call text and
+          // answer our internal recovery nudges instead of the user's actual request.
+          if (entry.role === "assistant" && !sanitizedContent.trim()) {
+            return null
           }
+
+          const content = sanitizedContent
           return {
             role: entry.role as "user" | "assistant",
             content,

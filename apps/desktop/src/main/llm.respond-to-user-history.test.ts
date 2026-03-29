@@ -116,6 +116,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? []).map((message: any) => message.content).join("\n")
     expect(secondPrompt).toContain("1. Alpha")
     expect(secondPrompt).toContain("Reply with the numbers you want.")
+    expect(secondPrompt).not.toContain("[Calling tools: respond_to_user]")
   })
 
   it("keeps a verified explicit final response to one assistant message", async () => {
