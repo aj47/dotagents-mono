@@ -209,6 +209,18 @@ function analyzeToolErrors(toolResults: MCPToolResult[]): {
   return { errorTypes }
 }
 
+function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
+  if (toolName !== "execute_command" || !result.isError) return false
+
+  const errorText = result.content
+    .map((content) => content.text)
+    .join(" ")
+    .toLowerCase()
+
+  return errorText.includes("invalid execute_command.skillid")
+    || (errorText.includes("skill not found") && errorText.includes("omit skillid"))
+}
+
 export async function postProcessTranscript(transcript: string) {
   const config = configStore.get()
 
@@ -2611,6 +2623,16 @@ export async function processTranscriptWithAgentMode(
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions
       const errorAnalysis = analyzeToolErrors(toolResults)
+
+      const hasInvalidExecuteCommandSkillIdError = toolResults.some((result, index) =>
+        isInvalidExecuteCommandSkillIdFailure(toolCallsArray[index]?.name, result)
+      )
+      if (hasInvalidExecuteCommandSkillIdError) {
+        addEphemeralMessage(
+          "user",
+          "For execute_command, omit skillId unless you are using an exact skill id from Available Skills. Do not use repo names, file paths, URLs, or GitHub slugs as skillId. Retry the same command without skillId unless you explicitly need a skill directory."
+        )
+      }
 
       // Track per-tool failures
       for (let i = 0; i < toolResults.length; i++) {

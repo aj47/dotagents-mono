@@ -56,15 +56,20 @@ vi.mock("./skills-service", () => ({ skillsService: { getSkills: mocks.getSkills
 vi.mock("./working-notes-runtime", () => ({ loadWorkingKnowledgeNotesForPrompt: vi.fn(() => []) }))
 
 const availableTools = [
+  { name: "execute_command", description: "Execute a shell command", inputSchema: { type: "object", properties: {} } },
   { name: "respond_to_user", description: "Respond to the user", inputSchema: { type: "object", properties: {} } },
   { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object", properties: {} } },
 ]
 
-function makeExecuteToolCall(sessionId: string, runId: number) {
+function makeExecuteToolCall(sessionId: string, runId: number, overrides: Record<string, any> = {}) {
   return async (toolCall: any) => {
     if (toolCall.name === "respond_to_user") {
       const { appendSessionUserResponse } = await import("./session-user-response-store")
       appendSessionUserResponse({ sessionId, runId, text: String(toolCall.arguments?.text ?? "") })
+    }
+    if (toolCall.name in overrides) {
+      const override = overrides[toolCall.name]
+      return typeof override === "function" ? await override(toolCall) : override
     }
     return { content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }], isError: false }
   }
@@ -192,5 +197,51 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(followupPrompt).toContain("Please finish the parent task.")
     expect(followupPrompt).toContain("Delegated work is finished.")
     expect(followupPrompt).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
+  })
+
+  it("nudges the model to omit invalid execute_command skillId values after a tool failure", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "pwd && ls -la", skillId: "aj47/dotagents-mono" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "I reran the command in the workspace root." } },
+        { name: "mark_work_complete", arguments: { summary: "Checked workspace root" } },
+      ] })
+
+    await processTranscriptWithAgentMode(
+      "Show me the workspace root",
+      availableTools as any,
+      makeExecuteToolCall("session-command", 1, {
+        execute_command: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: false,
+              error: "Invalid execute_command.skillId: aj47/dotagents-mono",
+              guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
+              retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
+            }, null, 2),
+          }],
+          isError: true,
+        },
+      }),
+      4,
+      [],
+      "conv-command",
+      "session-command",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
+    expect(secondPrompt).toContain("Retry the same command without skillId")
+    expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
   })
 })

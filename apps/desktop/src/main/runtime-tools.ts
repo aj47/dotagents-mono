@@ -41,6 +41,22 @@ interface BuiltinToolContext {
   sessionId?: string
 }
 
+function buildInvalidExecuteCommandSkillIdResult(skillId: string, availableSkillIds: string[]): MCPToolResult {
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        success: false,
+        error: `Invalid execute_command.skillId: ${skillId}`,
+        guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
+        retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
+        availableSkillIds,
+      }, null, 2),
+    }],
+    isError: true,
+  }
+}
+
 const MAX_RESPOND_TO_USER_IMAGES = 4
 const MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES = 8 * 1024 * 1024
 const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024
@@ -614,10 +630,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       // Find the skill and get its directory
       let skill = skillsService.getSkill(skillId)
       if (!skill) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill not found: ${skillId}` }) }],
-          isError: true,
-        }
+        const availableSkillIds = skillsService
+          .getSkills()
+          .map((skill) => skill.id)
+          .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+        return buildInvalidExecuteCommandSkillIdResult(skillId, availableSkillIds)
       }
 
       if (!skill.filePath) {

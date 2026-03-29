@@ -147,7 +147,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   },
   {
     name: "execute_command",
-    description: "Execute any shell command. This is the primary tool for file operations, running scripts, and automation. Use for: reading files (cat), writing files (cat/echo with redirection), listing directories (ls), creating directories (mkdir -p), git operations, npm/python/node commands, and any shell command. If skillId is provided, the command runs in that skill's directory.",
+    description: "Execute any shell command. This is the primary tool for file operations, running scripts, and automation. Use for: reading files (cat), writing files (cat/echo with redirection), listing directories (ls), creating directories (mkdir -p), git operations, npm/python/node commands, and any shell command. Omit skillId for normal workspace or repository commands. Only provide skillId when you need to run inside an exact loaded skill ID from Available Skills.",
     inputSchema: {
       type: "object",
       properties: {
@@ -157,7 +157,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
         },
         skillId: {
           type: "string",
-          description: "Optional skill ID to run the command in that skill's directory. Get skill IDs from the enabled skills in the system prompt.",
+          description: "Optional exact loaded skill ID to run the command in that skill's directory. Use only IDs from Available Skills. Never use repository names, paths, URLs, or GitHub slugs here; omit skillId for normal workspace commands.",
         },
         timeout: {
           type: "number",
