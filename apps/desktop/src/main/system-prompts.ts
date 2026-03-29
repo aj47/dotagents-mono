@@ -110,8 +110,9 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
     sections.push(`COMPLETION SIGNAL:
 - When all requested work is fully complete:
   1. ALWAYS call respond_to_user with the final user-facing response FIRST
-  2. Then call mark_work_complete with a concise completion summary
+  2. Then call mark_work_complete with a concise internal completion summary
 - IMPORTANT: Never put the final user-facing answer in plain assistant text — always use respond_to_user
+- Do not send a second recap or post-completion summary unless the user explicitly asked for one
 - Do not call mark_work_complete while work is still in progress or partially done`)
   } else if (hasRespondToUser) {
     sections.push(`COMPLETION SIGNAL:
@@ -119,7 +120,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - There is no separate completion tool in this run, so do not continue looping after that final response.`)
   } else if (hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text, then call mark_work_complete with a concise completion summary.
+ - When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text, then call mark_work_complete with a concise internal completion summary.
+ - Do not send a second recap or post-completion summary unless the user explicitly asked for one.
 - Do not call mark_work_complete while work is still in progress or partially done.`)
   } else {
     sections.push(`COMPLETION SIGNAL:

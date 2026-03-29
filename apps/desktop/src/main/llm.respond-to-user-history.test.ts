@@ -106,6 +106,8 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-list",
       "session-followup",
       "session-verify",
+      "session-completion-missing-answer",
+      "session-forced-final-summary",
       "session-same-run-replay",
       "session-comm-only-verify",
       "session-resume",
@@ -182,6 +184,72 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.conversationHistory.filter((m) => m.role === "assistant" && m.content === "Clean final answer")).toHaveLength(1)
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
+  })
+
+  it("asks for the missing final answer instead of auto-generating a summary after bare mark_work_complete", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpFinalSummaryEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "mark_work_complete", arguments: { summary: "Internal completion metadata" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Here is the actual final answer." } },
+        { name: "mark_work_complete", arguments: { summary: "Delivered final answer" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({ isComplete: true, conversationState: "complete", confidence: 0.97, missingItems: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-completion-missing-answer", 1),
+      4,
+      [],
+      "conv-completion-missing-answer",
+      "session-completion-missing-answer",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Here is the actual final answer.")
+    expect(mocks.makeLLMCallWithFetch).not.toHaveBeenCalled()
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain("without first providing the final user-facing answer")
+    expect(secondPrompt).toContain("Do not add a second recap or summary")
+  })
+
+  it("only generates a separate final summary when final-summary mode is enabled", async () => {
+    currentConfig.mcpFinalSummaryEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({
+      content: "",
+      toolCalls: [{ name: "mark_work_complete", arguments: { summary: "Internal completion metadata" } }],
+    })
+    mocks.makeLLMCallWithFetch.mockResolvedValueOnce({ content: "Forced summary answer", toolCalls: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-forced-final-summary", 1),
+      3,
+      [],
+      "conv-forced-final-summary",
+      "session-forced-final-summary",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Forced summary answer")
+    expect(mocks.makeLLMCallWithFetch).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the internal completion nudge ephemeral across resumed runs", async () => {

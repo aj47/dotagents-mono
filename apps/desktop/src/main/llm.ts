@@ -520,6 +520,7 @@ export async function processTranscriptWithAgentMode(
   runId?: number,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
+  const forceFinalSummary = config.mcpFinalSummaryEnabled === true
   const { loopMaxIterations, guardrailBudget } = resolveAgentIterationLimits(maxIterations)
   maxIterations = loopMaxIterations
 
@@ -1116,6 +1117,10 @@ export async function processTranscriptWithAgentMode(
 
   const buildToolOnlyFinalAnswerNudge = () => {
     return "You already have multiple rounds of recent tool output for this request. Unless one specific missing fact is still required, stop calling more inspection tools and provide one concise final answer now. If the work is already complete, call mark_work_complete after the user-facing answer."
+  }
+
+  const buildMissingFinalAnswerAfterCompletionNudge = () => {
+    return `You called ${MARK_WORK_COMPLETE_TOOL} without first providing the final user-facing answer. Provide that answer now. If ${RESPOND_TO_USER_TOOL} is available, use it for the final user-facing answer and then call ${MARK_WORK_COMPLETE_TOOL} again only if needed. Do not add a second recap or summary unless the user explicitly asked for one.`
   }
 
   const extractLatestSelectorRefFromHistory = () => {
@@ -2067,7 +2072,7 @@ export async function processTranscriptWithAgentMode(
         finalContent = contentText
         const noToolsCalledYet = !conversationHistory.some((e) => e.role === "tool")
         let skipPostVerifySummary =
-          (config.mcpFinalSummaryEnabled === false) ||
+          !forceFinalSummary ||
           (noToolsCalledYet && finalContent.trim().length > 0)
         let completionForcedByVerificationLimit = false
         let completionForcedIncompleteDetails: IncompleteTaskDetails | undefined
@@ -2891,21 +2896,22 @@ export async function processTranscriptWithAgentMode(
 
     // Check if agent indicated completion after executing tools.
     if (completionSignalConfirmed) {
-      // Agent indicated completion, but we need to ensure we have a proper summary
-      // If the last assistant content was just tool calls, prompt for a summary
+      // Agent indicated completion. Prefer the explicit user-facing answer or the
+      // existing assistant text. Only generate a separate summary when explicitly enabled.
       const lastAssistantContent = llmResponse.content || ""
 
       // Check if the last assistant message was primarily tool calls without much explanation
       const hasToolCalls = llmResponse.toolCalls && llmResponse.toolCalls.length > 0
       const hasMinimalContent = lastAssistantContent.trim().length < 50
 
-      // Skip summary generation if respond_to_user already provided a response (#1084)
+      // Prefer the existing explicit user-facing response when present (#1084)
       const existingUserResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
         storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
         responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
         conversationHistory: conversationHistory as any,
         sinceIndex: currentPromptIndex,
       })
+      let generatedForcedCompletionSummary = false
       let respondToUserAlreadyInHistory = false
       if (existingUserResponse?.trim().length) {
         finalContent = existingUserResponse
@@ -2914,9 +2920,9 @@ export async function processTranscriptWithAgentMode(
           addMessage("assistant", finalContent)
           respondToUserAlreadyInHistory = true
         }
-      } else if (hasToolCalls && (hasMinimalContent || !lastAssistantContent.trim())) {
-        // The agent just made tool calls without providing a summary
-        // Prompt the agent to provide a concise summary of what was accomplished
+      } else if (forceFinalSummary && hasToolCalls && (hasMinimalContent || !lastAssistantContent.trim())) {
+        // The agent completed work without a user-facing answer. Only ask for a separate
+        // completion recap when final-summary mode is explicitly enabled.
         const summaryPrompt = "Please provide a concise summary of what you just accomplished with the tool calls. Focus on the key results and outcomes for the user."
 
         conversationHistory.push({
@@ -3003,6 +3009,7 @@ export async function processTranscriptWithAgentMode(
 
           // Use the summary as final content
           finalContent = summaryResponse.content || lastAssistantContent
+          generatedForcedCompletionSummary = true
 
           // Add the summary to conversation history
           conversationHistory.push({
@@ -3014,6 +3021,7 @@ export async function processTranscriptWithAgentMode(
           // If summary generation fails, fall back to the original content
           logLLM("Failed to generate summary:", error)
           finalContent = lastAssistantContent || "Task completed successfully."
+          generatedForcedCompletionSummary = true
           summaryStep.status = "error"
           summaryStep.description = "Failed to generate summary, using fallback"
 
@@ -3024,14 +3032,24 @@ export async function processTranscriptWithAgentMode(
           })
         }
       } else {
-        // Agent provided sufficient content, use it as final content
+        // Agent provided sufficient content, use it as the final content directly.
         finalContent = lastAssistantContent
+      }
+
+      if (!existingUserResponse?.trim().length && !forceFinalSummary && !finalContent.trim().length) {
+        addEphemeralMessage("user", buildMissingFinalAnswerAfterCompletionNudge())
+        noOpCount = 0
+        totalNudgeCount = 0
+        garbledToolCallCount = 0
+        completionSignalHintCount = 0
+        successfulToolOnlyIterationsWithoutResponse = 0
+        continue
       }
 
 
 	      // Optional verification before completing after tools
 	      // Track if we should skip post-verify summary (when agent is repeating itself or disabled)
-	      let skipPostVerifySummary2 = config.mcpFinalSummaryEnabled === false
+		      let skipPostVerifySummary2 = !forceFinalSummary || generatedForcedCompletionSummary
 	      let completionForcedByVerificationLimit2 = false
 	      let completionForcedIncompleteDetails2: IncompleteTaskDetails | undefined
 		      let finalConversationState2: AgentConversationState = "complete"
@@ -3082,7 +3100,7 @@ export async function processTranscriptWithAgentMode(
 	        }
 	      }
 
-        // Post-verify: produce a concise final summary for the user
+	        // Post-verify: only produce an extra final summary when explicitly enabled
         // Skip when forced incomplete - the fallback message below will be the only assistant message
         // Skip summary generation if respond_to_user already provided a response (#1084)
         // Also skip if respond_to_user response was already added to history above
@@ -3139,7 +3157,7 @@ export async function processTranscriptWithAgentMode(
 	        completionForcedByVerificationLimit2 ? "Task incomplete" : "Task completed",
 	        completionForcedByVerificationLimit2
 	          ? "Verification did not confirm completion before retry limit"
-	          : "Successfully completed the requested task with summary",
+		          : "Successfully completed the requested task",
 	        completionForcedByVerificationLimit2 ? "error" : "completed",
 	      )
       progressSteps.push(completionStep)
