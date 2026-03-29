@@ -22,6 +22,7 @@ import {
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
+import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 import Slider from '@react-native-community/slider';
 
 // STT Provider Options
@@ -1384,6 +1385,13 @@ export default function SettingsScreen({ navigation }: any) {
             thumbColor={draft.handsFreeForegroundOnly !== false ? theme.colors.primaryForeground : theme.colors.background}
           />
         </View>
+
+        {/* Microphone Device Selection */}
+        <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Audio Input</Text>
+        <MicrophoneSelector
+          selectedDeviceId={draft.audioInputDeviceId}
+          onDeviceChange={(deviceId) => updateLocalConfig({ audioInputDeviceId: deviceId })}
+        />
 
         <View style={styles.row}>
           <Text style={styles.label}>Text-to-Speech</Text>
