@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
 
 let currentConfig: any
 
@@ -7,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   makeLLMCallWithStreamingAndTools: vi.fn(),
   verifyCompletionWithFetch: vi.fn(),
   emitAgentProgress: vi.fn(() => Promise.resolve()),
-  addMessageToConversation: vi.fn(async (id: string) => ({ id })),
+  addMessageToConversation: vi.fn(async (...args: any[]) => ({ id: args[0] })),
   maybeAutoGenerateConversationTitle: vi.fn(async () => undefined),
   createSession: vi.fn(),
   startSessionRun: vi.fn(() => 1),
@@ -135,5 +136,61 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.conversationHistory.filter((m) => m.role === "assistant" && m.content === "Clean final answer")).toHaveLength(1)
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the internal completion nudge ephemeral across resumed runs", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
+      { name: "respond_to_user", arguments: { text: "Delegated work is finished." } },
+      { name: "mark_work_complete", arguments: { summary: "Resumed parent session" } },
+    ] })
+
+    const resumedRun = await processTranscriptWithAgentMode(
+      INTERNAL_COMPLETION_NUDGE_TEXT,
+      availableTools as any,
+      makeExecuteToolCall("session-resume", 1),
+      3,
+      [
+        { role: "user", content: "Please finish the parent task." },
+        { role: "assistant", content: "Delegating the final step now." },
+      ] as any,
+      "conv-resume",
+      "session-resume",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(resumedRun.conversationHistory.map((message) => message.content)).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
+    expect(
+      mocks.addMessageToConversation.mock.calls.some(([, content, role]) => role === "user" && content === INTERNAL_COMPLETION_NUDGE_TEXT)
+    ).toBe(false)
+
+    mocks.makeLLMCallWithStreamingAndTools.mockClear()
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
+      { name: "respond_to_user", arguments: { text: "Follow-up stayed clean." } },
+      { name: "mark_work_complete", arguments: { summary: "Handled follow-up" } },
+    ] })
+
+    await processTranscriptWithAgentMode(
+      "continue",
+      availableTools as any,
+      makeExecuteToolCall("session-resume-followup", 1),
+      3,
+      resumedRun.conversationHistory as any,
+      "conv-resume",
+      "session-resume-followup",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const followupPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(followupPrompt).toContain("Please finish the parent task.")
+    expect(followupPrompt).toContain("Delegated work is finished.")
+    expect(followupPrompt).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
   })
 })

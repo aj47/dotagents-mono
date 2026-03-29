@@ -1048,6 +1048,8 @@ export async function processTranscriptWithAgentMode(
     )
   }
 
+  const isInternalResumeTranscript = transcript === INTERNAL_COMPLETION_NUDGE_TEXT
+
   const conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -1057,7 +1059,12 @@ export async function processTranscriptWithAgentMode(
     ephemeral?: boolean
   }> = [
     ...sanitizedPreviousConversationHistory,
-    { role: "user", content: transcript, timestamp: Date.now() },
+    {
+      role: "user",
+      content: transcript,
+      timestamp: Date.now(),
+      ...(isInternalResumeTranscript ? { ephemeral: true } : {}),
+    },
   ]
 
   // Track the index where the current user prompt was added
@@ -1101,7 +1108,7 @@ export async function processTranscriptWithAgentMode(
   const userMessageAlreadyExists = sanitizedPreviousConversationHistory.some(
     msg => msg.role === "user" && msg.content === transcript
   )
-  const shouldPersistInitialUserMessage = transcript !== INTERNAL_COMPLETION_NUDGE_TEXT
+  const shouldPersistInitialUserMessage = !isInternalResumeTranscript
   if (!userMessageAlreadyExists && shouldPersistInitialUserMessage) {
     saveMessageIncremental("user", transcript).catch(err => {
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
