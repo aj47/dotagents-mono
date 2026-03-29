@@ -358,6 +358,7 @@ export interface AgentModeResponse {
   conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
+    timestamp?: number
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
   }>
@@ -868,7 +869,8 @@ export async function processTranscriptWithAgentMode(
     content: string,
     toolCalls?: MCPToolCall[],
     toolResults?: MCPToolResult[],
-    timestamp?: number
+    timestamp?: number,
+    options?: { skipModelReplay?: boolean },
   ) => {
     // Add to in-memory history
     const message: typeof conversationHistory[0] = {
@@ -876,7 +878,8 @@ export async function processTranscriptWithAgentMode(
       content,
       toolCalls,
       toolResults,
-      timestamp: timestamp || Date.now()
+      timestamp: timestamp || Date.now(),
+      ...(options?.skipModelReplay ? { skipModelReplay: true } : {}),
     }
     conversationHistory.push(message)
 
@@ -945,6 +948,7 @@ export async function processTranscriptWithAgentMode(
           undefined,
           undefined,
           getNextMaterializedUserResponseTimestamp(responseEvent.timestamp),
+          { skipModelReplay: true },
         )
       }
 
@@ -1087,6 +1091,7 @@ export async function processTranscriptWithAgentMode(
     toolResults?: MCPToolResult[]
     timestamp?: number
     ephemeral?: boolean
+    skipModelReplay?: boolean
   }> = [
     ...sanitizedPreviousConversationHistory,
     {
@@ -1649,6 +1654,10 @@ export async function processTranscriptWithAgentMode(
           // cause the model to parrot that placeholder back as garbled tool-call text and
           // answer our internal recovery nudges instead of the user's actual request.
           if (entry.role === "assistant" && !sanitizedContent.trim()) {
+            return null
+          }
+
+          if (entry.role === "assistant" && entry.skipModelReplay) {
             return null
           }
 
@@ -2716,6 +2725,81 @@ export async function processTranscriptWithAgentMode(
     }
 
     if (onlyCommunicationTools && !completionSignalConfirmed) {
+      const latestCommunicationOnlyResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
+        storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
+        responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
+        conversationHistory: conversationHistory as any,
+        sinceIndex: currentPromptIndex,
+      })
+
+      const shouldVerifyCommunicationOnlyResponse =
+        noOpCount >= 2
+        && config.mcpVerifyCompletionEnabled
+        && !!latestCommunicationOnlyResponse?.trim().length
+
+      if (shouldVerifyCommunicationOnlyResponse) {
+        finalContent = latestCommunicationOnlyResponse
+        let completionForcedByVerificationLimit = false
+        let finalConversationState: AgentConversationState = "complete"
+
+        const verifyStep = createProgressStep(
+          "thinking",
+          "Verifying completion",
+          "Checking whether the latest user-facing response legitimately completes the request",
+          "in_progress",
+        )
+        progressSteps.push(verifyStep)
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: false,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+
+        const result = await runVerificationAndHandleResult(
+          finalContent,
+          verifyStep,
+          verificationFailCount,
+          {
+            nudgeForToolUsage: true,
+            currentPromptIndex,
+          },
+        )
+        verificationFailCount = result.newFailCount
+        completionForcedByVerificationLimit = result.forcedByLimit
+        finalConversationState = result.conversationState
+
+        if (result.shouldContinue) {
+          noOpCount = 0
+          totalNudgeCount = 0
+          garbledToolCallCount = 0
+          completionSignalHintCount = 0
+          continue
+        }
+
+        const completionStep = createProgressStep(
+          "completion",
+          completionForcedByVerificationLimit ? "Task incomplete" : "Task completed",
+          completionForcedByVerificationLimit
+            ? "Verification did not confirm completion before retry limit"
+            : "Successfully completed the requested task",
+          completionForcedByVerificationLimit ? "error" : "completed",
+        )
+        progressSteps.push(completionStep)
+
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
+      }
+
       if (noOpCount >= 2) {
         addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
       }
@@ -3076,7 +3160,10 @@ export async function processTranscriptWithAgentMode(
 
     return {
       content: finalContent,
-      conversationHistory: filterEphemeralMessages(conversationHistory),
+      conversationHistory: filterEphemeralMessages(conversationHistory).map((entry) => {
+        const { skipModelReplay: _skipModelReplay, ...rest } = entry
+        return rest
+      }),
       totalIterations: iteration,
     }
   } finally {

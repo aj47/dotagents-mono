@@ -106,6 +106,8 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-list",
       "session-followup",
       "session-verify",
+      "session-same-run-replay",
+      "session-comm-only-verify",
       "session-resume",
       "session-resume-followup",
       "session-command",
@@ -319,6 +321,80 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .map((message: any) => message.content)
       .join("\n")
     expect(retryPrompt).toContain("TOOL FAILED: respond_to_user")
+  })
+
+  it("does not replay same-run materialized respond_to_user text into the next iteration prompt", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "First interim answer" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Final answer" } },
+        { name: "mark_work_complete", arguments: { summary: "Done" } },
+      ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Answer the user",
+      availableTools as any,
+      makeExecuteToolCall("session-same-run-replay", 1),
+      4,
+      [],
+      "conv-same-run-replay",
+      "session-same-run-replay",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Final answer")
+    expect(result.conversationHistory.some((message) =>
+      message.role === "assistant" && message.content === "First interim answer"
+    )).toBe(true)
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain("[respond_to_user]")
+    expect(secondPrompt.split("First interim answer").length - 1).toBe(0)
+  })
+
+  it("verifies repeated communication-only respond_to_user turns instead of looping forever", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "First next-steps answer" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Second next-steps answer" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.94,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "what's next on desktop",
+      availableTools as any,
+      makeExecuteToolCall("session-comm-only-verify", 1),
+      4,
+      [],
+      "conv-comm-only-verify",
+      "session-comm-only-verify",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Second next-steps answer")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
   })
 
   it("ignores blank response events when resolving the final visible answer", async () => {

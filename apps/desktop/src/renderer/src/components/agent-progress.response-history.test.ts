@@ -538,6 +538,37 @@ describe("agent progress response history", () => {
     expect(countTextOccurrences(text, "Final answer")).toBe(1)
   })
 
+  it("does not double-render the final response when completion timestamps arrive out of order", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-final-dedupe-out-of-order",
+      conversationId: "conversation-final-dedupe-out-of-order",
+      currentIteration: 2,
+      maxIterations: 2,
+      steps: [],
+      isComplete: true,
+      finalContent: "Final answer",
+      responseEvents: [
+        {
+          id: "resp-final-out-of-order",
+          sessionId: "session-final-dedupe-out-of-order",
+          ordinal: 1,
+          text: "Final answer",
+          timestamp: 300,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Final answer", timestamp: 200 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(countTextOccurrences(text, "Final answer")).toBe(1)
+  })
+
   it("shows completion-tool responses as plain text without respond_to_user or mark_work_complete rows", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
