@@ -68,18 +68,22 @@ export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 
   });
 }
 
+function generateSessionResourceId(prefix: 'session' | 'msg'): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+}
+
 /**
  * Generate a unique session ID
  */
 export function generateSessionId(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateSessionResourceId('session')
 }
 
 /**
  * Generate a unique message ID
  */
 export function generateMessageId(): string {
-  return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateSessionResourceId('msg')
 }
 
 /**
@@ -136,5 +140,5 @@ export function sessionToListItem(session: Session): SessionListItem {
  * Check if a session is a lazy stub (has serverConversationId but no messages loaded)
  */
 export function isStubSession(session: Session): boolean {
-  return session.messages.length === 0 && !!session.serverConversationId && !!session.serverMetadata;
+  return !session.messages.length && !!session.serverConversationId && !!session.serverMetadata;
 }

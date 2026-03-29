@@ -18,6 +18,20 @@ export interface AgentProfileConnectionInput {
   connectionCwd?: string;
 }
 
+function isLocalConnectionType(connectionType: AgentProfileConnectionTypeValue | undefined): connectionType is 'acp' | 'stdio' {
+  return connectionType === 'acp' || connectionType === 'stdio'
+}
+
+function resolveInputOrExisting<T>(inputValue: T | undefined, existingValue: T | undefined, normalize: (value: T) => T | undefined): T | undefined {
+  if (inputValue !== undefined) {
+    return normalize(inputValue)
+  }
+  if (existingValue === undefined) {
+    return undefined
+  }
+  return normalize(existingValue)
+}
+
 function normalizeText(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
@@ -38,16 +52,16 @@ export function sanitizeAgentProfileConnection(
   existingConnection?: AgentProfileConnectionDraft,
 ): AgentProfileConnectionDraft {
   const connectionType = input.connectionType ?? existingConnection?.type ?? 'internal';
-  const existingLocalConnection = existingConnection && (existingConnection.type === 'acp' || existingConnection.type === 'stdio')
+  const existingLocalConnection = existingConnection && isLocalConnectionType(existingConnection.type)
     ? existingConnection
     : undefined;
 
   if (connectionType === 'remote') {
-    const baseUrl = input.connectionBaseUrl !== undefined
-      ? normalizeText(input.connectionBaseUrl)
-      : existingConnection?.type === 'remote'
-        ? normalizeText(existingConnection.baseUrl)
-        : undefined;
+    const baseUrl = resolveInputOrExisting(
+      input.connectionBaseUrl,
+      existingConnection?.type === 'remote' ? existingConnection.baseUrl : undefined,
+      normalizeText
+    );
 
     return {
       type: 'remote',
@@ -56,15 +70,21 @@ export function sanitizeAgentProfileConnection(
   }
 
   if (connectionType === 'acp' || connectionType === 'stdio') {
-    const command = input.connectionCommand !== undefined
-      ? normalizeText(input.connectionCommand)
-      : normalizeText(existingLocalConnection?.command);
-    const args = input.connectionArgs !== undefined
-      ? normalizeArgs(input.connectionArgs)
-      : normalizeArgs(existingLocalConnection?.args);
-    const cwd = input.connectionCwd !== undefined
-      ? normalizeText(input.connectionCwd)
-      : normalizeText(existingLocalConnection?.cwd);
+    const command = resolveInputOrExisting(
+      input.connectionCommand,
+      existingLocalConnection?.command,
+      normalizeText
+    )
+    const args = resolveInputOrExisting(
+      input.connectionArgs,
+      existingLocalConnection?.args,
+      normalizeArgs
+    )
+    const cwd = resolveInputOrExisting(
+      input.connectionCwd,
+      existingLocalConnection?.cwd,
+      normalizeText
+    )
 
     return {
       type: connectionType,

@@ -1,5 +1,5 @@
 function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string | undefined {
-  if (error === null || error === undefined) {
+  if (error == null) {
     return undefined
   }
 
@@ -11,11 +11,11 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
     seen.add(error)
   }
 
-  if (error instanceof Error) {
-    if (error.message) {
-      return error.message
-    }
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
 
+  if (error instanceof Error) {
     const nestedFromCause = findNestedErrorMessage((error as Error & { cause?: unknown }).cause, seen)
     if (nestedFromCause) {
       return nestedFromCause
@@ -80,11 +80,11 @@ export function getErrorMessage(error: unknown, fallback = "Unknown error"): str
 export function normalizeError(error: unknown, fallback = "Unknown error"): Error {
   const message = getErrorMessage(error, fallback)
 
-  if (error instanceof Error) {
-    if (error.message === message) {
-      return error
-    }
+  if (error instanceof Error && error.message === message) {
+    return error
+  }
 
+  if (error instanceof Error) {
     const normalized = new Error(message, { cause: error })
     normalized.name = error.name || normalized.name
     return normalized

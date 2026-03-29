@@ -32,50 +32,44 @@ export function initDebugFlags(argv: string[] = process.argv): DebugFlags {
 
   const envDebug = (process.env.DEBUG || "").toLowerCase()
   const envParts = envDebug.split(/[,:\s]+/).filter(Boolean)
+  const allEnvEnabled = envDebug === "*" || envDebug.includes("all")
 
   const envLLM =
     strToBool(process.env.DEBUG_LLM) ||
     envParts.includes("llm") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
   const envTools =
     strToBool(process.env.DEBUG_TOOLS) ||
     envParts.includes("tools") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
   const envKeybinds =
     strToBool(process.env.DEBUG_KEYBINDS) ||
     envParts.includes("keybinds") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
 
   const envApp =
     strToBool(process.env.DEBUG_APP) ||
     envParts.includes("app") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
 
   const envUI =
     strToBool(process.env.DEBUG_UI) ||
     envParts.includes("ui") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
 
   const envMCP =
     strToBool(process.env.DEBUG_MCP) ||
     envParts.includes("mcp") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
 
   const envACP =
     strToBool(process.env.DEBUG_ACP) ||
     envParts.includes("acp") ||
-    envDebug === "*" ||
-    envDebug.includes("all")
+    allEnvEnabled
 
   const all =
     hasAny("--debug", "--debug-all", "-d", "-da", "debug", "debug-all", "d", "da") ||
-    envDebug === "*" ||
+    allEnvEnabled ||
     envParts.includes("all")
 
   flags.llm = all || hasAny("--debug-llm", "-dl", "debug-llm", "dl") || envLLM
@@ -89,7 +83,7 @@ export function initDebugFlags(argv: string[] = process.argv): DebugFlags {
 
 
 
-  if (flags.llm || flags.tools || flags.keybinds || flags.app || flags.ui || flags.mcp || flags.acp) {
+  if (Object.values(flags).some(Boolean)) {
     // Small banner so users can see debugs are enabled
     const enabled: string[] = []
     if (flags.llm) enabled.push("LLM")

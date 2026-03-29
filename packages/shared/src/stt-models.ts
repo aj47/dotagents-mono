@@ -10,21 +10,17 @@ export const KNOWN_STT_MODEL_IDS = {
 
 type CloudSttProviderId = keyof typeof DEFAULT_STT_MODELS
 
-function isCloudSttProvider(providerId?: string): providerId is CloudSttProviderId {
-  return providerId === "openai" || providerId === "groq"
-}
-
 export function isKnownSttModel(providerId: CloudSttProviderId, modelId: string): boolean {
   const normalizedModelId = modelId.trim().toLowerCase()
   return KNOWN_STT_MODEL_IDS[providerId].some(candidate => normalizedModelId.includes(candidate))
 }
 
 export function getDefaultSttModel(providerId?: string): string | undefined {
-  if (!isCloudSttProvider(providerId)) {
-    return undefined
+  if (providerId === "openai" || providerId === "groq") {
+    return DEFAULT_STT_MODELS[providerId]
   }
 
-  return DEFAULT_STT_MODELS[providerId]
+  return undefined
 }
 
 /** Minimal config shape needed for STT model resolution */
@@ -37,13 +33,13 @@ interface SttModelConfig {
 export function getConfiguredSttModel(
   config: SttModelConfig,
 ): string | undefined {
-  if (config.sttProviderId === "openai") {
-    return config.openaiSttModel?.trim() || DEFAULT_STT_MODELS.openai
+  const defaultModel = getDefaultSttModel(config.sttProviderId)
+  if (!defaultModel) {
+    return undefined
   }
 
-  if (config.sttProviderId === "groq") {
-    return config.groqSttModel?.trim() || DEFAULT_STT_MODELS.groq
-  }
+  const configuredModel =
+    config.sttProviderId === "openai" ? config.openaiSttModel : config.groqSttModel
 
-  return undefined
+  return configuredModel?.trim() || defaultModel
 }

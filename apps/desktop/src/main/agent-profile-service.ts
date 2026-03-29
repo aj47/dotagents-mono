@@ -66,6 +66,22 @@ const VALID_PROVIDER_IDS = ["openai", "groq", "gemini"]
 const VALID_STT_PROVIDER_IDS = ["openai", "groq", "parakeet"]
 const VALID_TTS_PROVIDER_IDS = ["openai", "groq", "gemini", "kitten", "supertonic"]
 
+function readJsonFileSync<T>(filePath: string, onError?: (error: unknown) => void): T | undefined {
+  try {
+    if (!fs.existsSync(filePath)) return undefined
+    const content = fs.readFileSync(filePath, "utf8")
+    return JSON.parse(content) as T
+  } catch (error) {
+    if (onError) onError(error)
+    return undefined
+  }
+}
+
+function mergeById<T extends { id: string }>(primary: T[], fallback: T[]): T[] {
+  const primaryIds = new Set(primary.map((item) => item.id))
+  return [...primary, ...fallback.filter((item) => !primaryIds.has(item.id))]
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string")
 }
@@ -264,6 +280,43 @@ class AgentProfileService {
     )
   }
 
+  private createInternalDelegationProfileInput(
+    name: string,
+    displayName: string,
+    guidelines: string,
+    systemPrompt?: string,
+  ): Omit<AgentProfile, "id" | "createdAt" | "updatedAt"> {
+    const config = configStore.get()
+    const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
+    const runtimeToolNames = getRuntimeToolNames()
+
+    return {
+      name,
+      displayName,
+      guidelines,
+      systemPrompt,
+      connection: { type: "internal" },
+      role: "delegation-target",
+      enabled: true,
+      isUserProfile: false,
+      isAgentTarget: true,
+      toolConfig: {
+        disabledServers: allServerNames,
+        disabledTools: runtimeToolNames,
+        allServersDisabledByDefault: true,
+      },
+    }
+  }
+
+  private getProfilesByRoleWithLegacyFallback(
+    role: AgentProfileRole,
+    legacyMatcher: (profile: AgentProfile) => boolean,
+  ): AgentProfile[] {
+    const byRole = this.getByRole(role)
+    const byLegacy = this.getAll().filter((p) => !p.role && legacyMatcher(p))
+    return mergeById(byRole, byLegacy)
+  }
+
   /**
    * Load profiles from storage, migrating from legacy formats if needed.
    *
@@ -275,6 +328,11 @@ class AgentProfileService {
    */
   private loadProfiles(): AgentProfilesData {
     // 1. Try loading from modular .agents/agents/ directory
+    let legacyProfileDataError: unknown
+    const legacyProfileData = readJsonFileSync<AgentProfilesData>(agentProfilesPath, (error) => {
+      legacyProfileDataError = error
+    })
+
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
     const globalResult = loadAgentProfilesLayer(globalLayer)
 
@@ -293,13 +351,7 @@ class AgentProfileService {
       for (const p of workspaceProfiles) mergedById.set(p.id, p) // workspace wins
 
       // Also load currentProfileId from legacy JSON if available
-      let currentProfileId: string | undefined
-      try {
-        if (fs.existsSync(agentProfilesPath)) {
-          const legacyData = JSON.parse(fs.readFileSync(agentProfilesPath, "utf8")) as AgentProfilesData
-          currentProfileId = legacyData.currentProfileId
-        }
-      } catch { /* best-effort */ }
+      const currentProfileId = legacyProfileData?.currentProfileId
 
       this.profilesData = {
         profiles: Array.from(mergedById.values()),
@@ -311,17 +363,15 @@ class AgentProfileService {
     }
 
     // 2. Try loading from legacy agent-profiles.json and migrate to modular
-    try {
-      if (fs.existsSync(agentProfilesPath)) {
-        const data = JSON.parse(fs.readFileSync(agentProfilesPath, "utf8")) as AgentProfilesData
-        this.profilesData = data
-        this.syncPromptsFromLayer(this.profilesData)
-        // Migrate: write each profile as modular files
-        this.migrateToModularFiles(data.profiles)
-        return data
-      }
-    } catch (error) {
-      logApp("Error loading agent profiles:", error)
+    if (legacyProfileData) {
+      this.profilesData = legacyProfileData
+      this.syncPromptsFromLayer(this.profilesData)
+      // Migrate: write each profile as modular files
+      this.migrateToModularFiles(legacyProfileData.profiles)
+      return legacyProfileData
+    }
+    if (legacyProfileDataError) {
+      logApp("Error loading agent profiles:", legacyProfileDataError)
     }
 
     // 3. Try to migrate from very old legacy formats
@@ -367,42 +417,38 @@ class AgentProfileService {
   private migrateFromLegacy(): AgentProfile[] {
     const migrated: AgentProfile[] = []
     const seenIds = new Set<string>()
+    const legacyProfiles = readJsonFileSync<ProfilesData>(legacyProfilesPath, (error) =>
+      logApp("Error migrating legacy profiles:", error)
+    )
+    const legacyPersonas = readJsonFileSync<PersonasData>(legacyPersonasPath, (error) =>
+      logApp("Error migrating legacy agents:", error)
+    )
 
     // Migrate legacy profiles (user profiles)
-    try {
-      if (fs.existsSync(legacyProfilesPath)) {
-        const data = JSON.parse(fs.readFileSync(legacyProfilesPath, "utf8")) as ProfilesData
-        for (const profile of data.profiles) {
-          if (!seenIds.has(profile.id)) {
-            const agentProfile = profileToAgentProfile(profile)
-            // Preserve currentProfileId as isDefault
-            if (data.currentProfileId === profile.id) {
-              agentProfile.isDefault = true
-            }
-            migrated.push(agentProfile)
-            seenIds.add(profile.id)
+    if (legacyProfiles) {
+      for (const profile of legacyProfiles.profiles) {
+        if (!seenIds.has(profile.id)) {
+          const agentProfile = profileToAgentProfile(profile)
+          // Preserve currentProfileId as isDefault
+          if (legacyProfiles.currentProfileId === profile.id) {
+            agentProfile.isDefault = true
           }
+          migrated.push(agentProfile)
+          seenIds.add(profile.id)
         }
-        logApp(`Migrated ${data.profiles.length} legacy profiles`)
       }
-    } catch (error) {
-      logApp("Error migrating legacy profiles:", error)
+      logApp(`Migrated ${legacyProfiles.profiles.length} legacy profiles`)
     }
 
     // Migrate legacy personas/agents (agent targets)
-    try {
-      if (fs.existsSync(legacyPersonasPath)) {
-        const data = JSON.parse(fs.readFileSync(legacyPersonasPath, "utf8")) as PersonasData
-        for (const persona of data.personas) {
-          if (!seenIds.has(persona.id)) {
-            migrated.push(personaToAgentProfile(persona))
-            seenIds.add(persona.id)
-          }
+    if (legacyPersonas) {
+      for (const persona of legacyPersonas.personas) {
+        if (!seenIds.has(persona.id)) {
+          migrated.push(personaToAgentProfile(persona))
+          seenIds.add(persona.id)
         }
-        logApp(`Migrated ${data.personas.length} legacy agents (from personas.json)`)
       }
-    } catch (error) {
-      logApp("Error migrating legacy agents:", error)
+      logApp(`Migrated ${legacyPersonas.personas.length} legacy agents (from personas.json)`)
     }
 
     // Migrate ACP agents from config
@@ -459,14 +505,12 @@ class AgentProfileService {
    * Load conversations from storage.
    */
   private loadConversations(): void {
-    try {
-      if (fs.existsSync(agentProfileConversationsPath)) {
-        this.conversationsData = JSON.parse(
-          fs.readFileSync(agentProfileConversationsPath, "utf8")
-        )
-      }
-    } catch (error) {
-      logApp("Error loading agent profile conversations:", error)
+    const cachedConversations = readJsonFileSync<AgentProfileConversationsData>(
+      agentProfileConversationsPath,
+      (error) => logApp("Error loading agent profile conversations:", error),
+    )
+    if (cachedConversations) {
+      this.conversationsData = cachedConversations
     }
   }
 
@@ -622,11 +666,7 @@ class AgentProfileService {
    */
   getUserProfiles(): AgentProfile[] {
     // Use getByRole, but also include legacy isUserProfile for backward compatibility
-    const byRole = this.getByRole("user-profile")
-    const byLegacy = this.getAll().filter((p) => p.isUserProfile && !p.role)
-    // Combine and deduplicate by id
-    const ids = new Set(byRole.map(p => p.id))
-    return [...byRole, ...byLegacy.filter(p => !ids.has(p.id))]
+    return this.getProfilesByRoleWithLegacyFallback("user-profile", (p) => p.isUserProfile)
   }
 
   /**
@@ -635,11 +675,10 @@ class AgentProfileService {
    */
   getAgentTargets(): AgentProfile[] {
     // Use getByRole, but also include legacy isAgentTarget for backward compatibility
-    const byRole = this.getByRole("delegation-target")
-    const byLegacy = this.getAll().filter((p) => p.isAgentTarget && !p.role)
-    // Combine and deduplicate by id
-    const ids = new Set(byRole.map(p => p.id))
-    return [...byRole, ...byLegacy.filter(p => !ids.has(p.id))]
+    return this.getProfilesByRoleWithLegacyFallback(
+      "delegation-target",
+      (p) => p.isAgentTarget,
+    )
   }
 
   /**
@@ -1071,32 +1110,21 @@ class AgentProfileService {
         throw new Error("Invalid profile data: systemPrompt must be a string")
       }
 
-      // Create default tool config with all servers disabled
       const appConfig = configStore.get()
-      const allServerNames = Object.keys(appConfig.mcpConfig?.mcpServers || {})
-      const runtimeToolNames = getRuntimeToolNames()
+      const existingMcpServers = appConfig.mcpConfig?.mcpServers || {}
 
-      const newProfile = this.create({
-        name: importData.name,
-        displayName: importData.name,
-        guidelines: importData.guidelines || "",
-        systemPrompt: importData.systemPrompt,
-        connection: { type: "internal" },
-        role: "delegation-target",
-        enabled: true,
-        isUserProfile: false,
-        isAgentTarget: true,
-        toolConfig: {
-          disabledServers: allServerNames,
-            disabledTools: runtimeToolNames,
-          allServersDisabledByDefault: true,
-        },
-      })
+      const defaultProfileInput = this.createInternalDelegationProfileInput(
+        importData.name,
+        importData.name,
+        importData.guidelines || "",
+        importData.systemPrompt,
+      )
+      const newProfile = this.create(defaultProfileInput)
 
       // Import MCP server definitions if present
       const importedServerNames: string[] = []
       if (importData.mcpServers && typeof importData.mcpServers === "object" && !Array.isArray(importData.mcpServers)) {
-        const currentMcpServers = appConfig.mcpConfig?.mcpServers || {}
+        const currentMcpServers = existingMcpServers
         const mergedServers = { ...currentMcpServers }
         let newServersAdded = 0
 
@@ -1205,26 +1233,14 @@ class AgentProfileService {
    * Used by backward-compatible IPC handlers and runtime tools.
    */
   createUserProfile(name: string, guidelines: string, systemPrompt?: string): AgentProfile {
-    const config = configStore.get()
-    const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
-    const runtimeToolNames = getRuntimeToolNames()
-
-    return this.create({
-      name,
-      displayName: name,
-      guidelines,
-      systemPrompt,
-      connection: { type: "internal" },
-      role: "delegation-target",
-      enabled: true,
-      isUserProfile: false,
-      isAgentTarget: true,
-      toolConfig: {
-        disabledServers: allServerNames,
-          disabledTools: runtimeToolNames,
-        allServersDisabledByDefault: true,
-      },
-    })
+    return this.create(
+      this.createInternalDelegationProfileInput(
+        name,
+        name,
+        guidelines,
+        systemPrompt,
+      ),
+    )
   }
 
   /**

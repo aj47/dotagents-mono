@@ -346,9 +346,7 @@ const getConfig = (): LoadedConfig => {
   // Merge order: defaults ← config.json ← .agents (if present)
   // This ensures existing settings (API keys etc.) from config.json are always preserved,
   // while .agents files can selectively override specific values.
-  const mergedConfig = hasAnyAgentsFiles
-    ? { ...defaultConfig, ...savedConfig, ...mergedAgents }
-    : { ...defaultConfig, ...savedConfig }
+  const mergedConfig = { ...defaultConfig, ...savedConfig, ...(hasAnyAgentsFiles ? mergedAgents : {}) }
 
   const legacyTextInputModeSize = (mergedConfig as Record<string, unknown>).panelTextInputModeSize
   if (!mergedConfig.panelTextInputSize && legacyTextInputModeSize) {
@@ -360,13 +358,12 @@ const getConfig = (): LoadedConfig => {
   delete (mergedConfig as Record<string, unknown>).panelAgentModeSize
   delete (mergedConfig as Record<string, unknown>).panelTextInputModeSize
 
-  const legacyExists = (() => {
-    try {
-      return fs.existsSync(configFilePath)
-    } catch {
-      return false
-    }
-  })()
+  let legacyExists = false
+  try {
+    legacyExists = fs.existsSync(configFilePath)
+  } catch {
+    legacyExists = false
+  }
 
   return {
     config: migrateGroqTtsConfig(mergedConfig),
@@ -447,13 +444,16 @@ export class ConfigStore {
         defaultValue: {},
       })
       let mcpDirty = false
-      if (mcpJson.mcpVerifyCompletionEnabled === false) {
-        mcpJson.mcpVerifyCompletionEnabled = true
-        mcpDirty = true
-      }
-      if (mcpJson.mcpUnlimitedIterations === false) {
-        mcpJson.mcpUnlimitedIterations = true
-        mcpDirty = true
+      const defaultedBooleanKeys = [
+        "mcpVerifyCompletionEnabled",
+        "mcpUnlimitedIterations",
+      ] as const
+
+      for (const key of defaultedBooleanKeys) {
+        if (mcpJson[key] === false) {
+          mcpJson[key] = true
+          mcpDirty = true
+        }
       }
       if (mcpDirty) {
         safeWriteJsonFileSync(globalLayer.mcpJsonPath, mcpJson, {

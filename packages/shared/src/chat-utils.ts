@@ -33,7 +33,7 @@ export function shouldCollapseMessage(
  * @returns A formatted string showing tool names
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
-  if (!toolCalls || toolCalls.length === 0) return '';
+  if (!toolCalls?.length) return '';
   return `🔧 ${toolCalls.map(tc => tc.name).join(', ')}`;
 }
 
@@ -43,7 +43,7 @@ export function getToolCallsSummary(toolCalls: ToolCall[]): string {
  * @returns A formatted string showing result status and key information
  */
 export function getToolResultsSummary(toolResults: ToolResult[]): string {
-  if (!toolResults || toolResults.length === 0) return '';
+  if (!toolResults?.length) return '';
   const allSuccess = toolResults.every(r => r.success);
   const icon = allSuccess ? '✅' : '⚠️';
   const count = toolResults.length;
@@ -270,13 +270,6 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const parsedArgs = args as Record<string, unknown>;
   const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
-  const sanitizeImageAltText = (alt: string) => alt.replace(/[\[\]\(\)`\\]/g, '').trim();
-
-  const formatLocalImagePlaceholder = (alt: string, imagePath: string) => {
-    const safeAlt = alt.trim() || 'Image';
-    const escapedPath = imagePath.replace(/`/g, '\\`');
-    return `Local image (${safeAlt}): \`${escapedPath}\``;
-  };
 
   const imagesMd = images
     .map((img, index) => {
@@ -288,7 +281,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
         : typeof image.altText === 'string' && image.altText.trim().length > 0
           ? image.altText.trim()
           : `Image ${index + 1}`;
-      const safeAlt = sanitizeImageAltText(alt) || `Image ${index + 1}`;
+      const safeAlt = alt.replace(/[\[\]\(\)`\\]/g, '').trim() || `Image ${index + 1}`;
 
       const url = typeof image.url === 'string' ? image.url.trim() : '';
       const dataUrl = typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
@@ -299,7 +292,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
       const uri = url || dataUrl || legacyDataUrl;
 
       if (uri) return `![${safeAlt}](${uri})`;
-      if (path) return formatLocalImagePlaceholder(safeAlt, path);
+      if (path) return `Local image (${safeAlt}): \`${path.replace(/`/g, '\\`')}\``;
       return '';
     })
     .filter(Boolean)
@@ -400,16 +393,14 @@ export function isToolOnlyMessage(message: {
   toolCalls?: Array<{ name: string }>;
   toolResults?: Array<unknown>;
 }): boolean {
-  const hasToolCalls = (message.toolCalls?.length ?? 0) > 0;
-  const hasToolResults = (message.toolResults?.length ?? 0) > 0;
-  const hasContent = !!(message.content && message.content.trim().length > 0);
+  const hasToolActivity = (message.toolCalls?.length ?? 0) > 0 || (message.toolResults?.length ?? 0) > 0;
+  const trimmedContent = message.content?.trim().toLowerCase() || "";
 
   // A message is "tool-only" if it has tool calls but no meaningful content
   // or only placeholder content like "Executing tools..."
-  if (!hasToolCalls && !hasToolResults) return false;
-  if (!hasContent) return true;
+  if (!hasToolActivity) return false;
+  if (!trimmedContent) return true;
 
-  const trimmedContent = message.content?.trim().toLowerCase() || '';
   const placeholderPhrases = [
     'executing tools...',
     'executing tools',

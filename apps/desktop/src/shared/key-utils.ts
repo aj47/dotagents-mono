@@ -186,6 +186,22 @@ export function getEffectiveShortcut(
   return shortcutType
 }
 
+function getShortcutDisplayWithCustom<T extends string>(
+  shortcut: T | undefined,
+  customShortcut: string | undefined,
+  fallback: string,
+  defaults: Record<Exclude<T, "custom">, string>,
+): string {
+  if (shortcut === "custom") {
+    if (customShortcut) {
+      return formatKeyComboForDisplay(customShortcut)
+    }
+    return fallback
+  }
+
+  return shortcut && shortcut in defaults ? defaults[shortcut as Exclude<T, "custom">] : fallback
+}
+
 /**
  * Get the display string for the agent mode (MCP tools) shortcut.
  * This provides a centralized mapping to ensure consistency across UI components
@@ -196,21 +212,16 @@ export function getMcpToolsShortcutDisplay(
   shortcut: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom" | undefined,
   customShortcut?: string,
 ): string {
-  switch (shortcut) {
-    case "hold-ctrl-alt":
-      return "Hold Ctrl+Alt"
-    case "toggle-ctrl-alt":
-      return "Press Ctrl+Alt"
-    case "ctrl-alt-slash":
-      return "Ctrl+Alt+/"
-    case "custom":
-      if (customShortcut) {
-        return formatKeyComboForDisplay(customShortcut)
-      }
-      return "Hold Ctrl+Alt"
-    default:
-      return "Hold Ctrl+Alt"
-  }
+  return getShortcutDisplayWithCustom(
+    shortcut,
+    customShortcut,
+    "Hold Ctrl+Alt",
+    {
+      "hold-ctrl-alt": "Hold Ctrl+Alt",
+      "toggle-ctrl-alt": "Press Ctrl+Alt",
+      "ctrl-alt-slash": "Ctrl+Alt+/",
+    },
+  )
 }
 
 /**
@@ -221,21 +232,16 @@ export function getTextInputShortcutDisplay(
   shortcut: "ctrl-t" | "ctrl-shift-t" | "alt-t" | "custom" | undefined,
   customShortcut?: string,
 ): string {
-  switch (shortcut) {
-    case "ctrl-t":
-      return "Ctrl+T"
-    case "ctrl-shift-t":
-      return "Ctrl+Shift+T"
-    case "alt-t":
-      return "Alt+T"
-    case "custom":
-      if (customShortcut) {
-        return formatKeyComboForDisplay(customShortcut)
-      }
-      return "Ctrl+T"
-    default:
-      return "Ctrl+T"
-  }
+  return getShortcutDisplayWithCustom(
+    shortcut,
+    customShortcut,
+    "Ctrl+T",
+    {
+      "ctrl-t": "Ctrl+T",
+      "ctrl-shift-t": "Ctrl+Shift+T",
+      "alt-t": "Alt+T",
+    },
+  )
 }
 
 /**
@@ -246,17 +252,13 @@ export function getDictationShortcutDisplay(
   shortcut: "hold-ctrl" | "ctrl-slash" | "custom" | undefined,
   customShortcut?: string,
 ): string {
-  switch (shortcut) {
-    case "hold-ctrl":
-      return "Hold Ctrl"
-    case "ctrl-slash":
-      return "Ctrl+/"
-    case "custom":
-      if (customShortcut) {
-        return formatKeyComboForDisplay(customShortcut)
-      }
-      return "Hold Ctrl"
-    default:
-      return "Hold Ctrl"
-  }
+  return getShortcutDisplayWithCustom(
+    shortcut,
+    customShortcut,
+    "Hold Ctrl",
+    {
+      "hold-ctrl": "Hold Ctrl",
+      "ctrl-slash": "Ctrl+/",
+    },
+  )
 }

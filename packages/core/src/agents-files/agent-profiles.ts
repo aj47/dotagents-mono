@@ -265,14 +265,14 @@ function assembleAgentProfile(
 // ============================================================================
 
 export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProfilesLayer {
-  const profiles: AgentProfile[] = []
+  const profilesById = new Map<string, AgentProfile>()
   const originById = new Map<string, AgentProfileOrigin>()
 
   const profilesDir = getAgentProfilesDir(layer)
 
   try {
     if (!fs.existsSync(profilesDir) || !fs.statSync(profilesDir).isDirectory()) {
-      return { profiles, originById }
+      return { profiles: Array.from(profilesById.values()), originById }
     }
 
     const entries = fs.readdirSync(profilesDir, { withFileTypes: true })
@@ -284,6 +284,7 @@ export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProf
       const agentDir = path.join(profilesDir, entry.name)
       const agentMdPath = path.join(agentDir, AGENTS_PROFILE_CANONICAL_FILENAME)
       const configJsonPath = path.join(agentDir, AGENTS_PROFILE_CONFIG_FILENAME)
+      const hasConfigJson = fs.existsSync(configJsonPath)
 
       const raw = readTextFileIfExistsSync(agentMdPath, "utf8")
       if (raw === null) continue
@@ -294,7 +295,7 @@ export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProf
       })
       if (!mdPartial) continue
 
-      const configJson = fs.existsSync(configJsonPath)
+      const configJson = hasConfigJson
         ? readConfigJson(configJsonPath, getAgentProfilesBackupDir(layer))
         : {}
 
@@ -302,26 +303,22 @@ export function loadAgentProfilesLayer(layer: AgentsLayerPaths): LoadedAgentProf
       if (!profile) continue
 
       // Deduplicate: keep newest updatedAt
-      const existingOrigin = originById.get(profile.id)
-      if (existingOrigin) {
-        const existingProfile = profiles.find((p) => p.id === profile.id)
-        if (existingProfile && existingProfile.updatedAt > profile.updatedAt) continue
-        const idx = profiles.findIndex((p) => p.id === profile.id)
-        if (idx >= 0) profiles[idx] = profile
-      } else {
-        profiles.push(profile)
+      const existingProfile = profilesById.get(profile.id)
+      if (existingProfile && existingProfile.updatedAt > profile.updatedAt) {
+        continue
       }
+      profilesById.set(profile.id, profile)
 
       originById.set(profile.id, {
         filePath: agentMdPath,
-        configJsonPath: fs.existsSync(configJsonPath) ? configJsonPath : undefined,
+        configJsonPath: hasConfigJson ? configJsonPath : undefined,
       })
     }
   } catch {
     // best-effort
   }
 
-  return { profiles, originById }
+  return { profiles: Array.from(profilesById.values()), originById }
 }
 
 // ============================================================================

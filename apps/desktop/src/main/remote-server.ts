@@ -18,13 +18,24 @@ import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
+import {
+  AgentProgressUpdate,
+  AgentProfile,
+  Conversation,
+  ConversationMessage,
+  LoopConfig,
+  SessionProfileSnapshot,
+} from "../shared/types"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
 import { skillsService } from "./skills-service"
 import { knowledgeNotesService } from "./knowledge-notes-service"
-import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
+import {
+  sanitizeAgentProfileConnection,
+  type AgentProfileConnectionTypeValue,
+  VALID_AGENT_PROFILE_CONNECTION_TYPES,
+} from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
@@ -1620,21 +1631,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       diagnosticsService.logInfo("remote-server", `Fetched conversation ${conversationId} for recovery`)
 
-      return reply.send({
-        id: conversation.id,
-        title: conversation.title,
-        createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
-        messages: conversation.messages.map(msg => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          toolCalls: msg.toolCalls,
-          toolResults: msg.toolResults,
-        })),
-        metadata: conversation.metadata,
-      })
+      return reply.send(serializeConversation(conversation))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to fetch conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to fetch conversation" })
@@ -1780,6 +1777,107 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return null
   }
 
+  type RemoteConversationMessageInput = {
+    role: "user" | "assistant" | "tool"
+    content: string
+    timestamp?: number
+    toolCalls?: Array<{ name: string; arguments: any }>
+    toolResults?: Array<{ success: boolean; content: string; error?: string }>
+  }
+
+  const createConversationMessageId = (seed: number, index: number): string => {
+    return `msg_${seed}_${index}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  const buildConversationMessages = (
+    now: number,
+    messages: RemoteConversationMessageInput[],
+  ): ConversationMessage[] => (
+    messages.map((msg, index) => ({
+      id: createConversationMessageId(now, index),
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp ?? now,
+      toolCalls: msg.toolCalls,
+      toolResults: msg.toolResults,
+    }))
+  )
+
+  const buildConversationTitleFromMessages = (
+    messages: RemoteConversationMessageInput[],
+    explicitTitle?: string,
+  ): string => {
+    const firstMessageContent = messages[0]?.content || ""
+    const generatedTitle = firstMessageContent.length > 50
+      ? `${firstMessageContent.slice(0, 50)}...`
+      : firstMessageContent || "New Conversation"
+    return explicitTitle || generatedTitle
+  }
+
+  const serializeConversationMessage = (message: ConversationMessage) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    timestamp: message.timestamp,
+    toolCalls: message.toolCalls,
+    toolResults: message.toolResults,
+  })
+
+  const serializeConversation = (
+    conversation: Pick<Conversation, "id" | "title" | "createdAt" | "updatedAt" | "messages"> & {
+      metadata?: Conversation["metadata"]
+    },
+  ) => ({
+    id: conversation.id,
+    title: conversation.title,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    messages: conversation.messages.map(serializeConversationMessage),
+    ...(conversation.metadata !== undefined ? { metadata: conversation.metadata } : {}),
+  })
+
+  const serializeAgentProfile = (profile: AgentProfile) => ({
+    profile: {
+      id: profile.id,
+      name: profile.name,
+      displayName: profile.displayName,
+      description: profile.description,
+      avatarDataUrl: profile.avatarDataUrl,
+      systemPrompt: profile.systemPrompt,
+      guidelines: profile.guidelines,
+      properties: profile.properties,
+      modelConfig: profile.modelConfig,
+      toolConfig: profile.toolConfig,
+      skillsConfig: profile.skillsConfig,
+      connection: profile.connection,
+      isStateful: profile.isStateful,
+      conversationId: profile.conversationId,
+      role: profile.role,
+      enabled: profile.enabled,
+      isBuiltIn: profile.isBuiltIn,
+      isUserProfile: profile.isUserProfile,
+      isAgentTarget: profile.isAgentTarget,
+      isDefault: profile.isDefault,
+      autoSpawn: profile.autoSpawn,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    },
+  })
+
+  const buildProfileConnectionTypeError = () =>
+    `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`
+
+  const parseProfileConnectionType = (
+    connectionType: string | undefined,
+    fallbackType: AgentProfile["connection"]["type"],
+  ): AgentProfileConnectionTypeValue | null => {
+    const resolvedConnectionType = connectionType ?? fallbackType
+    if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(resolvedConnectionType)) {
+      return null
+    }
+    return resolvedConnectionType as AgentProfileConnectionTypeValue
+  }
+
   // GET /v1/conversations - List all conversations
   fastify.get("/v1/conversations", async (_req, reply) => {
     try {
@@ -1802,13 +1900,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const body = req.body as {
         title?: string
-        messages: Array<{
-          role: "user" | "assistant" | "tool"
-          content: string
-          timestamp?: number
-          toolCalls?: Array<{ name: string; arguments: any }>
-          toolResults?: Array<{ success: boolean; content: string; error?: string }>
-        }>
+        messages: RemoteConversationMessageInput[]
         createdAt?: number
         updatedAt?: number
       }
@@ -1826,21 +1918,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const conversationId = conversationService.generateConversationIdPublic()
       const now = Date.now()
 
-      // Generate title from first message if not provided
-      const firstMessageContent = body.messages[0]?.content || ""
-      const title = body.title || (firstMessageContent.length > 50
-        ? `${firstMessageContent.slice(0, 50)}...`
-        : firstMessageContent || "New Conversation")
-
-      // Convert input messages to ConversationMessage format with IDs
-      const messages = body.messages.map((msg, index) => ({
-        id: `msg_${now}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp ?? now,
-        toolCalls: msg.toolCalls,
-        toolResults: msg.toolResults,
-      }))
+      const title = buildConversationTitleFromMessages(body.messages, body.title)
+      const messages = buildConversationMessages(now, body.messages)
 
       const conversation = {
         id: conversationId,
@@ -1856,20 +1935,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Notify renderer that conversation history has changed (for sidebar refresh)
       notifyConversationHistoryChanged()
 
-      return reply.code(201).send({
-        id: conversation.id,
-        title: conversation.title,
-        createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
-        messages: conversation.messages.map(msg => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          toolCalls: msg.toolCalls,
-          toolResults: msg.toolResults,
-        })),
-      })
+      return reply.code(201).send(serializeConversation(conversation))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to create conversation" })
@@ -1899,13 +1965,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const body = req.body as {
         title?: string
-        messages?: Array<{
-          role: "user" | "assistant" | "tool"
-          content: string
-          timestamp?: number
-          toolCalls?: Array<{ name: string; arguments: any }>
-          toolResults?: Array<{ success: boolean; content: string; error?: string }>
-        }>
+        messages?: RemoteConversationMessageInput[]
         updatedAt?: number
       }
 
@@ -1924,19 +1984,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           return reply.code(400).send({ error: validationError })
         }
 
-        const firstMessageContent = body.messages[0]?.content || ""
-        const title = body.title || (firstMessageContent.length > 50
-          ? `${firstMessageContent.slice(0, 50)}...`
-          : firstMessageContent || "New Conversation")
-
-        const messages = body.messages.map((msg, index) => ({
-          id: `msg_${now}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp ?? now,
-          toolCalls: msg.toolCalls,
-          toolResults: msg.toolResults,
-        }))
+        const title = buildConversationTitleFromMessages(body.messages, body.title)
+        const messages = buildConversationMessages(now, body.messages)
 
         conversation = {
           id: conversationId,
@@ -1965,14 +2014,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             return reply.code(400).send({ error: validationError })
           }
 
-          conversation.messages = body.messages.map((msg, index) => ({
-            id: `msg_${now}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.timestamp ?? now,
-            toolCalls: msg.toolCalls,
-            toolResults: msg.toolResults,
-          }))
+          conversation.messages = buildConversationMessages(now, body.messages)
         }
 
         conversation.updatedAt = body.updatedAt ?? now
@@ -1984,20 +2026,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Notify renderer that conversation history has changed (for sidebar refresh)
       notifyConversationHistoryChanged()
 
-      return reply.send({
-        id: conversation.id,
-        title: conversation.title,
-        createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
-        messages: conversation.messages.map(msg => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          toolCalls: msg.toolCalls,
-          toolResults: msg.toolResults,
-        })),
-      })
+      return reply.send(serializeConversation(conversation))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to update conversation" })
@@ -2445,33 +2474,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(404).send({ error: "Agent profile not found" })
       }
 
-      return reply.send({
-        profile: {
-          id: profile.id,
-          name: profile.name,
-          displayName: profile.displayName,
-          description: profile.description,
-          avatarDataUrl: profile.avatarDataUrl,
-          systemPrompt: profile.systemPrompt,
-          guidelines: profile.guidelines,
-          properties: profile.properties,
-          modelConfig: profile.modelConfig,
-          toolConfig: profile.toolConfig,
-          skillsConfig: profile.skillsConfig,
-          connection: profile.connection,
-          isStateful: profile.isStateful,
-          conversationId: profile.conversationId,
-          role: profile.role,
-          enabled: profile.enabled,
-          isBuiltIn: profile.isBuiltIn,
-          isUserProfile: profile.isUserProfile,
-          isAgentTarget: profile.isAgentTarget,
-          isDefault: profile.isDefault,
-          autoSpawn: profile.autoSpawn,
-          createdAt: profile.createdAt,
-          updatedAt: profile.updatedAt,
-        },
-      })
+      return reply.send(serializeAgentProfile(profile))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to get agent profile" })
@@ -2504,14 +2507,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "displayName is required and must be a non-empty string" })
       }
 
-      // Validate connectionType
-      const connectionType = body.connectionType ?? "internal"
-      if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
-        return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
+      const connectionType = parseProfileConnectionType(body.connectionType, "internal")
+      if (!connectionType) {
+        return reply.code(400).send({ error: buildProfileConnectionTypeError() })
       }
 
-      const connection: import("@shared/types").AgentProfileConnection = sanitizeAgentProfileConnection({
-        connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
+      const connection = sanitizeAgentProfileConnection({
+        connectionType,
         connectionCommand: body.connectionCommand,
         connectionArgs: body.connectionArgs,
         connectionBaseUrl: body.connectionBaseUrl,
@@ -2537,32 +2539,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         isAgentTarget: true,
       })
 
-      return reply.code(201).send({
-        profile: {
-          id: newProfile.id,
-          name: newProfile.name,
-          displayName: newProfile.displayName,
-          description: newProfile.description,
-          avatarDataUrl: newProfile.avatarDataUrl,
-          systemPrompt: newProfile.systemPrompt,
-          guidelines: newProfile.guidelines,
-          properties: newProfile.properties,
-          modelConfig: newProfile.modelConfig,
-          toolConfig: newProfile.toolConfig,
-          skillsConfig: newProfile.skillsConfig,
-          connection: newProfile.connection,
-          isStateful: newProfile.isStateful,
-          role: newProfile.role,
-          enabled: newProfile.enabled,
-          isBuiltIn: newProfile.isBuiltIn,
-          isUserProfile: newProfile.isUserProfile,
-          isAgentTarget: newProfile.isAgentTarget,
-          isDefault: newProfile.isDefault,
-          autoSpawn: newProfile.autoSpawn,
-          createdAt: newProfile.createdAt,
-          updatedAt: newProfile.updatedAt,
-        },
-      })
+      return reply.code(201).send(serializeAgentProfile(newProfile))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to create agent profile" })
@@ -2628,14 +2605,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         if (body.connectionType !== undefined || body.connectionCommand !== undefined ||
             body.connectionArgs !== undefined || body.connectionBaseUrl !== undefined ||
             body.connectionCwd !== undefined) {
-          const connectionType = body.connectionType ?? profile.connection.type
-          if (!VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(connectionType as any)) {
-            return reply.code(400).send({ error: `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}` })
+          const connectionType = parseProfileConnectionType(body.connectionType, profile.connection.type)
+          if (!connectionType) {
+            return reply.code(400).send({ error: buildProfileConnectionTypeError() })
           }
 
           updates.connection = sanitizeAgentProfileConnection(
             {
-              connectionType: connectionType as import("./agent-profile-connection-sanitize").AgentProfileConnectionTypeValue,
+              connectionType,
               connectionCommand: body.connectionCommand,
               connectionArgs: body.connectionArgs,
               connectionBaseUrl: body.connectionBaseUrl,
@@ -2651,34 +2628,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(500).send({ error: "Failed to update agent profile" })
       }
 
-      return reply.send({
-        success: true,
-        profile: {
-          id: updatedProfile.id,
-          name: updatedProfile.name,
-          displayName: updatedProfile.displayName,
-          description: updatedProfile.description,
-          avatarDataUrl: updatedProfile.avatarDataUrl,
-          systemPrompt: updatedProfile.systemPrompt,
-          guidelines: updatedProfile.guidelines,
-          properties: updatedProfile.properties,
-          modelConfig: updatedProfile.modelConfig,
-          toolConfig: updatedProfile.toolConfig,
-          skillsConfig: updatedProfile.skillsConfig,
-          connection: updatedProfile.connection,
-          isStateful: updatedProfile.isStateful,
-          conversationId: updatedProfile.conversationId,
-          role: updatedProfile.role,
-          enabled: updatedProfile.enabled,
-          isBuiltIn: updatedProfile.isBuiltIn,
-          isUserProfile: updatedProfile.isUserProfile,
-          isAgentTarget: updatedProfile.isAgentTarget,
-          isDefault: updatedProfile.isDefault,
-          autoSpawn: updatedProfile.autoSpawn,
-          createdAt: updatedProfile.createdAt,
-          updatedAt: updatedProfile.updatedAt,
-        },
-      })
+      return reply.send(serializeAgentProfile(updatedProfile))
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to update agent profile" })
