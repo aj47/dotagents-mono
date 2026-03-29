@@ -804,6 +804,11 @@ export function ActiveAgentsSidebar({
                   <div className="min-w-0 flex-1 transition-[padding-right] duration-200 group-hover:pr-20">
                     {renderEditableTitle(session, "flex-1")}
                   </div>
+                  {lastMessageMinutesAgo && (
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground group-hover:opacity-0 transition-opacity">
+                      {lastMessageMinutesAgo}
+                    </span>
+                  )}
                   {session.conversationId && (
                     <div
                       className={cn(
@@ -811,11 +816,6 @@ export function ActiveAgentsSidebar({
                         "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
                       )}
                     >
-                      {lastMessageMinutesAgo && (
-                        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                          {lastMessageMinutesAgo}
-                        </span>
-                      )}
                       <SessionOverflowMenu
                         sessionTitle={
                           session.conversationTitle || "Untitled session"
