@@ -335,6 +335,7 @@ export function TileFollowUpInput({
       <div className="flex w-full items-end gap-2">
         <textarea
           ref={textareaRef}
+          data-composer="true"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}

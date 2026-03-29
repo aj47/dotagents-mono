@@ -475,15 +475,14 @@ export function ActiveAgentsSidebar({
         handleSessionClick(session.id)
       }
 
-      // Focus the composer input after React re-renders
+      // Focus the composer textarea after React re-renders
       requestAnimationFrame(() => {
         setTimeout(() => {
-          const input =
-            document.querySelector<HTMLInputElement>('[aria-label="Send follow-up message"]') ??
-            document.querySelector<HTMLInputElement>('[aria-label="Queue message"]') ??
-            document.querySelector<HTMLInputElement>('input[placeholder*="follow-up"]') ??
-            document.querySelector<HTMLInputElement>('input[placeholder*="message"]')
-          input?.focus()
+          const composer =
+            document.querySelector<HTMLTextAreaElement>('textarea[data-composer="true"]') ??
+            document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="follow-up"]') ??
+            document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="message"]')
+          composer?.focus()
         }, 100)
       })
     }
