@@ -55,12 +55,14 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
         ],
         isComplete: true,
         finalContent: "(Agent mode was stopped by emergency kill switch)",
-        conversationHistory: [],
         pendingToolApproval: undefined,
       })
 
-      // Mark the session as stopped in the tracker
-      agentSessionTracker.stopSession(session.id)
+      // We do NOT call agentSessionTracker.stopSession(session.id) here anymore.
+      // Doing so bypasses the normal completion flow and can cause the UI to
+      // abruptly hide the session from the sidebar before tipc.ts handles the error.
+      // The session will be naturally stopped or completed by the tipc.ts caller
+      // after the abort signals propagate.
     }
   } catch {
     // ignore

@@ -81,11 +81,20 @@ import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpS
 import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { acpService, ACPRunRequest } from "./acp-service"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
+import { getAppSessionForAcpSession } from "./acp-session-state"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+
+function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
+  if (!sessionId) return "missing"
+  if (sessionId.startsWith("pending-")) return "pending"
+  if (sessionId.startsWith("subsession_")) return "subsession"
+  if (sessionId.startsWith("session_")) return "session"
+  return "unknown"
+}
 
 /**
  * Convert Float32Array audio samples to WAV format buffer
@@ -1137,6 +1146,25 @@ export const router = {
   stopAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
+      const requestedSessionId = input.sessionId
+      const requestedSessionKind = describeAgentSessionId(requestedSessionId)
+      const mappedAppSessionId = getAppSessionForAcpSession(requestedSessionId)
+      const trackedSession = agentSessionTracker.getSession(requestedSessionId)
+      const mappedTrackedSession = mappedAppSessionId
+        ? agentSessionTracker.getSession(mappedAppSessionId)
+        : undefined
+
+      logApp("[stopAgentSession] Stop requested", {
+        requestedSessionId,
+        requestedSessionKind,
+        mappedAppSessionId: mappedAppSessionId ?? null,
+        trackerSessionFound: Boolean(trackedSession),
+        trackerSessionStatus: trackedSession?.status ?? null,
+        trackerConversationId: trackedSession?.conversationId ?? null,
+        mappedTrackerSessionFound: Boolean(mappedTrackedSession),
+        mappedTrackerSessionStatus: mappedTrackedSession?.status ?? null,
+        mappedTrackerConversationId: mappedTrackedSession?.conversationId ?? null,
+      })
 
       // Stop the session in the state manager (aborts LLM requests, kills processes)
       agentSessionStateManager.stopSession(input.sessionId)
@@ -1161,12 +1189,20 @@ export const router = {
       try {
         const { getChildSubSessions, cancelSubSession } = await import("./acp/internal-agent")
         const childSessions = getChildSubSessions(input.sessionId)
+        const runningChildSessionIds = childSessions
+          .filter((child) => child.status === "running")
+          .map((child) => child.id)
         for (const child of childSessions) {
           if (child.status === "running") {
             cancelSubSession(child.id)
             logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
           }
         }
+        logApp("[stopAgentSession] Internal sub-session scan complete", {
+          requestedSessionId,
+          childSessionCount: childSessions.length,
+          runningChildSessionIds,
+        })
       } catch (error) {
         logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
       }
@@ -1177,6 +1213,19 @@ export const router = {
       if (session?.conversationId) {
         messageQueueService.pauseQueue(session.conversationId)
         logLLM(`[stopAgentSession] Paused queue for conversation ${session.conversationId}`)
+        logApp("[stopAgentSession] Queue paused", {
+          requestedSessionId,
+          pausedConversationId: session.conversationId,
+          pausedByTrackedSessionId: session.id,
+          queueLength: messageQueueService.getQueue(session.conversationId).length,
+        })
+      } else {
+        logApp("[stopAgentSession] Queue pause skipped because requested session is not tracked", {
+          requestedSessionId,
+          requestedSessionKind,
+          mappedAppSessionId: mappedAppSessionId ?? null,
+          mappedConversationId: mappedTrackedSession?.conversationId ?? null,
+        })
       }
 
       const runId = agentSessionStateManager.getSessionRunId(input.sessionId)
@@ -1201,7 +1250,6 @@ export const router = {
         ],
         isComplete: true,
         finalContent: "(Agent mode was stopped by emergency kill switch)",
-        conversationHistory: [],
       })
 
       // Mark the session as stopped in the tracker (removes from active sessions UI)
@@ -1773,6 +1821,14 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
+      const queueEnabled = config.mcpMessageQueueEnabled !== false
+
+      logApp("[createMcpTextInput] Request received", {
+        conversationId: input.conversationId ?? null,
+        fromTile: input.fromTile ?? false,
+        messageLength: input.text.length,
+        queueEnabled,
+      })
         
       // Create or get conversation ID
       let conversationId = input.conversationId
@@ -1784,16 +1840,34 @@ export const router = {
         conversationId = conversation.id
       } else {
         // Check if message queuing is enabled and there's an active session
-        if (config.mcpMessageQueueEnabled !== false) {
+        if (queueEnabled) {
           const activeSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
           if (activeSessionId) {
             const session = agentSessionTracker.getSession(activeSessionId)
             if (session && session.status === "active") {
               // Queue the message instead of starting a new session
               const queuedMessage = messageQueueService.enqueue(conversationId, input.text, activeSessionId)
-              logApp(`[createMcpTextInput] Queued message ${queuedMessage.id} for active session ${activeSessionId}`)
+              logApp("[createMcpTextInput] Queued message for active session", {
+                conversationId,
+                queuedMessageId: queuedMessage.id,
+                activeSessionId,
+                activeSessionKind: describeAgentSessionId(activeSessionId),
+                activeSessionStatus: session.status,
+                fromTile: input.fromTile ?? false,
+                messageLength: input.text.length,
+                queueLength: messageQueueService.getQueue(conversationId).length,
+              })
               return { conversationId, queued: true, queuedMessageId: queuedMessage.id }
             }
+
+            logApp("[createMcpTextInput] Active session lookup did not queue message", {
+              conversationId,
+              activeSessionId,
+              activeSessionKind: describeAgentSessionId(activeSessionId),
+              trackerSessionFound: Boolean(session),
+              activeSessionStatus: session?.status ?? null,
+              fromTile: input.fromTile ?? false,
+            })
           }
         }
 
@@ -1831,6 +1905,8 @@ export const router = {
           logApp("[createMcpTextInput] No runtime session found for conversation; starting new session", {
             conversationId: input.conversationId,
             fromTile: input.fromTile ?? false,
+              messageLength: input.text.length,
+              queueEnabled,
           })
         }
       }
@@ -2086,7 +2162,6 @@ export const router = {
           isComplete: false,
           isSnoozed: startSnoozed,
           conversationTitle: "Transcribing...",
-          conversationHistory: [],
         })
 
         // First, transcribe the audio using the same logic as regular recording
@@ -2254,7 +2329,6 @@ export const router = {
           isComplete: true,
           isSnoozed: startSnoozed,
           conversationTitle: "Transcription Error",
-          conversationHistory: [],
           finalContent: `Transcription failed: ${getErrorMessage(error)}`,
         })
 
