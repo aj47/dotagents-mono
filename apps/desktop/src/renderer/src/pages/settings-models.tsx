@@ -178,6 +178,46 @@ export function Component() {
           </p>
         </div>
 
+        <ControlGroup title="Agent Models">
+          <div className="mx-3 my-2 rounded-md border border-muted bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Choose which model powers the main agent. OpenAI-compatible presets can carry both an agent model and a transcript processing model.
+          </div>
+
+          {usesOpenAiCompatiblePreset && (
+            <div className="px-3 py-2 border-b">
+              <div className="pb-3">
+                <span className="text-sm font-medium">OpenAI-Compatible Preset</span>
+                <p className="text-xs text-muted-foreground">
+                  Use this when Agent/MCP Tools or Transcript Processing is set to OpenAI-compatible.
+                </p>
+              </div>
+              <ModelPresetManager
+                showAgentModel={agentProviderId === "openai"}
+                showTranscriptCleanupModel={transcriptProcessingEnabled && transcriptProcessingProviderId === "openai"}
+              />
+            </div>
+          )}
+
+          {(agentProviderId === "groq" || agentProviderId === "gemini") && (
+            <div className="px-3 py-2">
+              <ProviderModelSelector
+                providerId={agentProviderId}
+                mcpModel={agentProviderId === "groq" ? config.mcpToolsGroqModel : config.mcpToolsGeminiModel}
+                onMcpModelChange={(value) => saveConfig(agentProviderId === "groq" ? { mcpToolsGroqModel: value } : { mcpToolsGeminiModel: value })}
+                showMcpModel={true}
+                showTranscriptModel={false}
+              />
+            </div>
+          )}
+
+          {!usesOpenAiCompatiblePreset && agentProviderId === "openai" && (
+            <p className="px-3 py-2 text-sm text-muted-foreground">
+              OpenAI-compatible preset controls appear here when Agent/MCP Tools or Transcript Processing uses that provider.
+            </p>
+          )}
+        </ControlGroup>
+
+
         <ControlGroup title="Choose a Provider for Each Job" collapsible>
           <RoleProviderSelector
             label="Speech-to-Text"
@@ -473,45 +513,6 @@ export function Component() {
               </>
             )}
           </div>
-        </ControlGroup>
-
-        <ControlGroup title="Agent Models" collapsible>
-          <div className="mx-3 my-2 rounded-md border border-muted bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            Keep agent model choices here. OpenAI-compatible presets can carry both an agent model and a transcript processing model.
-          </div>
-
-          {usesOpenAiCompatiblePreset && (
-            <div className="px-3 py-2 border-b">
-              <div className="pb-3">
-                <span className="text-sm font-medium">OpenAI-Compatible Preset</span>
-                <p className="text-xs text-muted-foreground">
-                  Use this when Agent/MCP Tools or Transcript Processing is set to OpenAI-compatible.
-                </p>
-              </div>
-              <ModelPresetManager
-                showAgentModel={agentProviderId === "openai"}
-                showTranscriptCleanupModel={transcriptProcessingEnabled && transcriptProcessingProviderId === "openai"}
-              />
-            </div>
-          )}
-
-          {(agentProviderId === "groq" || agentProviderId === "gemini") && (
-            <div className="px-3 py-2">
-              <ProviderModelSelector
-                providerId={agentProviderId}
-                mcpModel={agentProviderId === "groq" ? config.mcpToolsGroqModel : config.mcpToolsGeminiModel}
-                onMcpModelChange={(value) => saveConfig(agentProviderId === "groq" ? { mcpToolsGroqModel: value } : { mcpToolsGeminiModel: value })}
-                showMcpModel={true}
-                showTranscriptModel={false}
-              />
-            </div>
-          )}
-
-          {!usesOpenAiCompatiblePreset && agentProviderId === "openai" && (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
-              OpenAI-compatible preset controls appear here when Agent/MCP Tools or Transcript Processing uses that provider.
-            </p>
-          )}
         </ControlGroup>
 
         <ControlGroup title="Advanced Agent Models" collapsible>
