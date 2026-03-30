@@ -874,10 +874,10 @@ export function ActiveAgentsSidebar({
                       pastStatusRailColor,
                     )}
                   />
-                  <div className="min-w-0 flex-1 transition-[padding-right] duration-200 group-hover:pr-20">
+                  <div className="min-w-0 flex-1 overflow-hidden transition-[padding-right] duration-200 group-hover:pr-20">
                     {renderEditableTitle(
                       session,
-                      cn("flex-1", isCurrentView && "text-foreground"),
+                      cn("block flex-1", isCurrentView && "text-foreground"),
                     )}
                   </div>
                   {lastMessageMinutesAgo && (
