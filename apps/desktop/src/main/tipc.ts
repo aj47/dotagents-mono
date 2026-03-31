@@ -1411,6 +1411,17 @@ export const router = {
       await showPanelWindowAndStartMcpRecording(input.conversationId, input.sessionId, input.fromTile, true)
     }),
 
+  // Broadcast theme change to all windows (cross-window sync)
+  broadcastThemeChange: t.procedure
+    .input<{ themeMode: string }>()
+    .action(async ({ input }) => {
+      for (const [, win] of WINDOWS) {
+        try {
+          getRendererHandlers<RendererHandlers>(win.webContents)?.themeChanged.send(input.themeMode)
+        } catch {}
+      }
+    }),
+
   showMainWindow: t.procedure
     .input<{ url?: string }>()
     .action(async ({ input }) => {

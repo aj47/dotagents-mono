@@ -52,4 +52,7 @@ export type RendererHandlers = {
 
   // Skills folder change notification
   skillsFolderChanged: () => void
+
+  // Theme sync across windows
+  themeChanged: (themeMode: string) => void
 }

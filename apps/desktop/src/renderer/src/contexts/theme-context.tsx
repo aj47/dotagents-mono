@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react"
+import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 
 export type ThemeMode = "light" | "dark" | "system"
 
@@ -61,6 +62,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         detail: themeMode,
       })
     )
+
+    // Broadcast to all windows via IPC so the panel window stays in sync
+    tipcClient.broadcastThemeChange?.({ themeMode }).catch(() => {})
   }, [themeMode])
 
   // Listen for system theme changes when in system mode
@@ -96,6 +100,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     window.addEventListener("theme-preference-changed", handleThemeChange as EventListener)
     return () => window.removeEventListener("theme-preference-changed", handleThemeChange as EventListener)
   }, [])
+
+  // Listen for theme changes broadcast from other windows via IPC
+  useEffect(() => {
+    const unlisten = rendererHandlers.themeChanged.listen((newMode: string) => {
+      if (["light", "dark", "system"].includes(newMode) && newMode !== themeMode) {
+        setThemeModeState(newMode as ThemeMode)
+      }
+    })
+    return unlisten
+  }, [themeMode])
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
