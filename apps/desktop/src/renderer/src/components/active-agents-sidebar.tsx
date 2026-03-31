@@ -327,7 +327,7 @@ export function ActiveAgentsSidebar({
       })
     }
 
-    // Recent runtime sessions first so just-finished agents stay near the top.
+    // Collect recent runtime sessions.
     for (const session of recentSessions) {
       addPastSession(session, "recent")
     }
@@ -344,6 +344,14 @@ export function ActiveAgentsSidebar({
       }
       addPastSession(mappedSession, "history")
     }
+
+    // Sort all past sessions by most recent first so newly updated
+    // conversations always appear at the top regardless of source.
+    items.sort((a, b) => {
+      const aTime = Math.max(a.session.endTime ?? 0, a.session.startTime ?? 0)
+      const bTime = Math.max(b.session.endTime ?? 0, b.session.startTime ?? 0)
+      return bTime - aTime
+    })
 
     return items
   }, [activeSessions, conversationHistory, recentSessions])
@@ -447,20 +455,25 @@ export function ActiveAgentsSidebar({
 
   const handleSessionClick = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Session clicked:", sessionId)
+    // Clear past-session view so no stale row stays highlighted
+    setViewedConversationId(null)
     // Navigate to sessions page and focus this session
     navigate("/", { state: { clearPendingConversation: true } })
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
-  }, [navigate, setFocusedSessionId, setExpandedSessionId])
+  }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
   const handlePastSessionOpen = useCallback((conversationId: string) => {
     logUI(
       "[ActiveAgentsSidebar] Navigating to sessions view for completed session:",
       conversationId,
     )
+    // Clear active-session focus so no stale row stays highlighted
+    setFocusedSessionId(null)
+    setExpandedSessionId(null)
     setViewedConversationId(conversationId)
     navigate(`/${conversationId}`)
-  }, [navigate, setViewedConversationId])
+  }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
   const isSessionsRoute =
     location.pathname === "/" ||
