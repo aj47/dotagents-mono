@@ -142,8 +142,7 @@ module.exports = {
         to: "bundled-skills",
         filter: ["**/*"]
       },
-      // sherpa-onnx native libraries for local TTS/STT
-      ..._sherpaResources.winX64,
+      // sherpa-onnx native libraries are downloaded on demand at runtime
     ]
   },
   nsis: {
@@ -170,9 +169,7 @@ module.exports = {
         to: "bundled-skills",
         filter: ["**/*"]
       },
-      // sherpa-onnx native libraries for local TTS/STT
-      ..._sherpaResources.macArm64,
-      ..._sherpaResources.macX64,
+      // sherpa-onnx native libraries are downloaded on demand at runtime
     ],
     artifactName: "${productName}-${version}-${arch}.${ext}",
     entitlementsInherit: "build/entitlements.mac.plist",
@@ -339,9 +336,7 @@ module.exports = {
         to: "bundled-skills",
         filter: ["**/*"]
       },
-      // sherpa-onnx native libraries for local TTS/STT
-      ..._sherpaResources.linuxX64,
-      ..._sherpaResources.linuxArm64,
+      // sherpa-onnx native libraries are downloaded on demand at runtime
     ]
   },
   deb: {

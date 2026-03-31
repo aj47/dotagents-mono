@@ -48,26 +48,21 @@ export class OAuthStorage {
   }
 
   private encryptData(data: string): string {
-    if (safeStorage.isEncryptionAvailable()) {
-      const encrypted = safeStorage.encryptString(data)
-      return JSON.stringify({
-        method: 'safeStorage',
-        data: encrypted.toString('base64'),
-      })
-    } else {
-      const iv = crypto.randomBytes(16)
-      const cipher = crypto.createCipher('aes-256-gcm', this.encryptionKey!)
-      let encrypted = cipher.update(data, 'utf8', 'hex')
-      encrypted += cipher.final('hex')
-      const authTag = cipher.getAuthTag()
+    // Always use AES encryption to avoid triggering macOS Keychain prompts.
+    // safeStorage.encryptString() uses the system Keychain which shows a scary
+    // permission dialog on first launch — bad UX for users who never use OAuth.
+    const iv = crypto.randomBytes(16)
+    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey!, iv)
+    let encrypted = cipher.update(data, 'utf8', 'hex')
+    encrypted += cipher.final('hex')
+    const authTag = cipher.getAuthTag()
 
-      return JSON.stringify({
-        method: 'aes',
-        data: encrypted,
-        iv: iv.toString('hex'),
-        authTag: authTag.toString('hex'),
-      })
-    }
+    return JSON.stringify({
+      method: 'aes',
+      data: encrypted,
+      iv: iv.toString('hex'),
+      authTag: authTag.toString('hex'),
+    })
   }
 
   private decryptData(encryptedData: string): string {
@@ -75,10 +70,17 @@ export class OAuthStorage {
       const parsed = JSON.parse(encryptedData)
 
       if (parsed.method === 'safeStorage') {
+        // Legacy: data was encrypted with Electron safeStorage (Keychain-backed).
+        // This will trigger a Keychain prompt on macOS — only happens for users
+        // who previously stored OAuth data with the old encryption method.
         const buffer = Buffer.from(parsed.data, 'base64')
         return safeStorage.decryptString(buffer)
       } else if (parsed.method === 'aes') {
-        const decipher = crypto.createDecipher('aes-256-gcm', this.encryptionKey!)
+        const iv = parsed.iv ? Buffer.from(parsed.iv, 'hex') : undefined
+        // Support both legacy createDecipher and modern createDecipheriv
+        const decipher = iv
+          ? crypto.createDecipheriv('aes-256-gcm', this.encryptionKey!, iv)
+          : crypto.createDecipher('aes-256-gcm', this.encryptionKey!)
         decipher.setAuthTag(Buffer.from(parsed.authTag, 'hex'))
         let decrypted = decipher.update(parsed.data, 'hex', 'utf8')
         decrypted += decipher.final('utf8')
@@ -418,8 +420,11 @@ export class OAuthStorage {
 // Singleton instance
 export const oauthStorage = new OAuthStorage()
 
-// Initialize cleanup on app ready
+// Initialize cleanup on app ready — but only if OAuth storage exists.
+// Avoids triggering Keychain prompts on macOS for users who never use OAuth.
 app.whenReady().then(() => {
+  if (!fs.existsSync(OAUTH_STORAGE_FILE)) return
+
   // Clean up expired tokens every hour
   setInterval(() => {
     oauthStorage.cleanup().catch(() => {})

@@ -742,7 +742,7 @@ class ACPService extends EventEmitter {
         autoSpawn: profile.autoSpawn,
         isInternal: profile.isBuiltIn,
         connection: {
-          type: profile.connection.type,
+          type: profile.connection.type === "acp" ? "stdio" : profile.connection.type as ACPAgentConfig["connection"]["type"],
           command: profile.connection.command,
           args: profile.connection.args,
           env: profile.connection.env,
@@ -802,7 +802,7 @@ class ACPService extends EventEmitter {
       }
     }
 
-    if (agentConfig.connection.type !== "stdio" && agentConfig.connection.type !== "acp") {
+    if (agentConfig.connection.type !== "stdio") {
       throw new Error(`Connection type ${agentConfig.connection.type} not yet supported`)
     }
 
@@ -899,7 +899,7 @@ class ACPService extends EventEmitter {
 
       // ACP agents like auggie may exit immediately unless initialize is sent promptly.
       // Perform the handshake during startup before reporting the agent as ready.
-      if (agentConfig.connection.type === "acp") {
+      if (profile && profile.connection.type === "acp") {
         await this.initializeAgent(agentName)
       } else {
         await new Promise(resolve => setTimeout(resolve, 500))
