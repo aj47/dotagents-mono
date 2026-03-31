@@ -183,11 +183,7 @@ async function fetchOpenAIModels(
 
   if (isOpenRouter) {
     filteredModels = data.data.filter(
-      (model) =>
-        !model.id.includes(":ft-") &&
-        !model.id.includes("instruct-beta") &&
-        !model.id.includes("preview") &&
-        model.id.length > 0,
+      (model) => model.id && model.id.length > 0,
     )
   } else if (isCerebras) {
     filteredModels = data.data.filter(
