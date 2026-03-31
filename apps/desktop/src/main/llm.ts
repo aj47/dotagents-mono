@@ -1564,6 +1564,8 @@ export async function processTranscriptWithAgentMode(
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
   const toolFailureCount = new Map<string, number>() // Track failures per tool name
   const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
+  let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
+  let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
 
   while (iteration < maxIterations) {
     iteration++
@@ -1583,22 +1585,28 @@ export async function processTranscriptWithAgentMode(
       logLLM(`ℹ️ ${excludedToolCount} tool(s) excluded due to repeated failures`)
     }
 
-    // Rebuild system prompt if tools were excluded to keep LLM's view of tools in sync
-    // This ensures the system prompt lists only the tools that are actually available
+    // Rebuild system prompt only when the excluded tool count actually changes.
+    // This keeps the system prompt stable across iterations for better prefix caching
+    // (OpenAI, Anthropic, and Gemini all cache based on prefix matching).
     let currentSystemPrompt = systemPrompt
     if (excludedToolCount > 0) {
-      currentSystemPrompt = constructSystemPrompt(
-        activeTools,
-        agentModeGuidelines,
-        true,
-        undefined, // relevantTools removed - let LLM decide tool relevance
-        customSystemPrompt, // custom base system prompt from profile snapshot or global config
-        skillsInstructions, // agent skills instructions
-        agentProperties, // dynamic agent properties
-        workingNotes, // injected working notes
-        excludeAgentId, // exclude this agent from delegation targets
-      )
-      logLLM(`[processTranscriptWithAgentMode] Rebuilt system prompt with ${activeTools.length} active tools (excluded ${excludedToolCount})`)
+      if (excludedToolCount !== lastExcludedToolCount) {
+        // Tool list changed — rebuild and cache the prompt
+        cachedSystemPrompt = constructSystemPrompt(
+          activeTools,
+          agentModeGuidelines,
+          true,
+          undefined, // relevantTools removed - let LLM decide tool relevance
+          customSystemPrompt, // custom base system prompt from profile snapshot or global config
+          skillsInstructions, // agent skills instructions
+          agentProperties, // dynamic agent properties
+          workingNotes, // injected working notes
+          excludeAgentId, // exclude this agent from delegation targets
+        )
+        lastExcludedToolCount = excludedToolCount
+        logLLM(`[processTranscriptWithAgentMode] Rebuilt system prompt with ${activeTools.length} active tools (excluded ${excludedToolCount})`)
+      }
+      currentSystemPrompt = cachedSystemPrompt!
     }
 
     // Check for stop signal (session-specific or global)

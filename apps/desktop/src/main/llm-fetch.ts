@@ -37,10 +37,26 @@ import {
 import { recordActualTokenUsage } from "./context-budget"
 
 /**
+ * Extended usage type that includes cache token details from AI SDK providers.
+ * OpenAI, Anthropic, and Gemini all populate these fields when prompt caching is active.
+ */
+interface ExtendedUsage {
+  inputTokens?: number
+  outputTokens?: number
+  inputTokenDetails?: {
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
+    noCacheTokens?: number
+  }
+  totalTokens?: number
+}
+
+/**
  * Build token usage object for Langfuse, only including it when at least one token field is present.
  * This avoids reporting 0 tokens when the provider doesn't return usage data.
+ * Also extracts prompt caching metrics (cache read/write tokens) when available.
  */
-function buildTokenUsage(usage?: { inputTokens?: number; outputTokens?: number }): {
+function buildTokenUsage(usage?: ExtendedUsage): {
   promptTokens?: number
   completionTokens?: number
   totalTokens?: number
@@ -57,6 +73,48 @@ function buildTokenUsage(usage?: { inputTokens?: number; outputTokens?: number }
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0),
+  }
+}
+
+/**
+ * Log prompt cache hit/miss metrics from AI SDK usage data.
+ * OpenAI, Anthropic, and Gemini populate inputTokenDetails when caching is active.
+ * This helps monitor whether prompt caching is actually saving costs.
+ */
+function logCacheMetrics(
+  usage: ExtendedUsage | undefined,
+  strategy: string | undefined,
+  providerId: string,
+): void {
+  if (!usage?.inputTokenDetails) return
+
+  const { cacheReadTokens, cacheWriteTokens } = usage.inputTokenDetails
+  // Only log when we have actual cache data
+  if (cacheReadTokens === undefined && cacheWriteTokens === undefined) return
+
+  const inputTokens = usage.inputTokens ?? 0
+  const cacheRead = cacheReadTokens ?? 0
+  const cacheWrite = cacheWriteTokens ?? 0
+  const cacheHitRate = inputTokens > 0 ? Math.round((cacheRead / inputTokens) * 100) : 0
+
+  diagnosticsService.logInfo("prompt-cache", `Cache metrics: ${cacheHitRate}% hit rate`, {
+    provider: providerId,
+    strategy,
+    inputTokens,
+    cacheReadTokens: cacheRead,
+    cacheWriteTokens: cacheWrite,
+    cacheHitRate,
+  })
+
+  if (isDebugLLM()) {
+    logLLM("📦 Prompt cache metrics", {
+      provider: providerId,
+      strategy,
+      inputTokens,
+      cacheReadTokens: cacheRead,
+      cacheWriteTokens: cacheWrite,
+      cacheHitRate: `${cacheHitRate}%`,
+    })
   }
 }
 
@@ -752,6 +810,9 @@ export async function makeLLMCallWithFetch(
           throw error
         }
 
+        // Log prompt cache metrics from usage data
+        logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
+
         const text = result.text?.trim() || ""
 
         // Check for native AI SDK tool calls first
@@ -991,6 +1052,9 @@ export async function makeLLMCallWithStreamingAndTools(
           }
         }
 
+        // Log prompt cache metrics from streaming usage data
+        logCacheMetrics(finishUsage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
+
         if (generationId) {
           endLLMGeneration(generationId, {
             output: collectedToolCalls.length > 0
@@ -1087,6 +1151,9 @@ export async function makeTextCompletionWithFetch(
           abortSignal: abortController.signal,
           providerOptions: promptCaching?.providerOptions as any,
         })
+
+        // Log prompt cache metrics
+        logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
 
         const text = result.text?.trim() || ""
 
@@ -1189,6 +1256,9 @@ export async function verifyCompletionWithFetch(
           }
           throw error
         }
+
+        // Log prompt cache metrics
+        logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
 
         const text = result.text?.trim() || ""
         const jsonObject = extractJsonObject(text)
