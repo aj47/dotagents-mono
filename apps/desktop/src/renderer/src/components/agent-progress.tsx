@@ -3345,6 +3345,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const lastDisplayItemsCountRef = useRef(0)
   const lastSessionIdRef = useRef<string | undefined>(undefined)
   const pendingInitialScrollTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  // Track programmatic scrolls so handleScroll doesn't falsely detect user interaction
+  const isProgrammaticScrollRef = useRef(false)
   const lastDerivedUserResponseLogKeyRef = useRef<string | null>(null)
   const [showKillConfirmation, setShowKillConfirmation] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
@@ -3359,12 +3361,22 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const scrollContainer = scrollContainerRef.current
     if (!scrollContainer) return
 
+    // Mark as programmatic so handleScroll won't treat this as user interaction
+    isProgrammaticScrollRef.current = true
+
     if (behavior === "auto" || typeof scrollContainer.scrollTo !== "function") {
       scrollContainer.scrollTop = scrollContainer.scrollHeight
+      // For instant scrolls, clear the flag after a microtask so the
+      // synchronous scroll event (fired in the same frame) is still guarded.
+      requestAnimationFrame(() => { isProgrammaticScrollRef.current = false })
       return
     }
 
     scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior })
+    // For smooth scrolls, clear after the animation settles
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { isProgrammaticScrollRef.current = false })
+    })
   }, [])
 
   useEffect(() => {
@@ -4304,13 +4316,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       setIsUserScrolling(false)
     }
     // If user scrolled up from bottom, stop auto-scroll
-    else if (!isAtBottom && shouldAutoScroll) {
+    // Only when it's a genuine user scroll, not a programmatic one (e.g. from scrollToBottom)
+    else if (!isAtBottom && shouldAutoScroll && !isProgrammaticScrollRef.current) {
       clearPendingInitialScrollAttempts()
       setShouldAutoScroll(false)
       setIsUserScrolling(true)
     }
-
-
   }
 
   // Check for errors
