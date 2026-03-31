@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   MoreHorizontal,
+  Pin,
   X,
   Clock,
   Mic,
@@ -868,13 +869,26 @@ export function ActiveAgentsSidebar({
                       "hover:bg-accent/50 cursor-pointer",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
-                      pastStatusRailColor,
-                    )}
-                  />
-                  <div className="min-w-0 flex-1 overflow-hidden transition-[padding-right] duration-200 group-hover:pr-20">
+                  {isPinned ? (
+                    <Pin
+                      className={cn(
+                        "absolute left-0.5 top-1/2 -translate-y-1/2 h-3 w-3 -rotate-45",
+                        session.status === "error"
+                          ? "text-red-500"
+                          : isCurrentView
+                            ? "text-blue-500"
+                            : "text-muted-foreground/60",
+                      )}
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
+                        pastStatusRailColor,
+                      )}
+                    />
+                  )}
+                  <div className={cn("min-w-0 flex-1 overflow-hidden transition-[padding-right] duration-200 group-hover:pr-20", isPinned && "pl-3")}>
                     {renderEditableTitle(
                       session,
                       cn("block flex-1", isCurrentView && "text-foreground"),
@@ -954,14 +968,30 @@ export function ActiveAgentsSidebar({
                           : "hover:bg-accent/50",
                 )}
               >
-                <span
-                  className={cn(
-                    "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
-                    statusRailColor,
-                    isVisiblyActive && !hasPendingApproval && "animate-pulse",
-                  )}
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-14">
+                {isActivePinned ? (
+                  <Pin
+                    className={cn(
+                      "absolute left-0.5 top-2 h-3 w-3 -rotate-45",
+                      hasPendingApproval
+                        ? "text-amber-500"
+                        : conversationState === "blocked"
+                          ? "text-red-500"
+                          : isVisiblyActive
+                            ? "text-green-500"
+                            : "text-muted-foreground",
+                      isVisiblyActive && !hasPendingApproval && "animate-pulse",
+                    )}
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
+                      statusRailColor,
+                      isVisiblyActive && !hasPendingApproval && "animate-pulse",
+                    )}
+                  />
+                )}
+                <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-14", isActivePinned && "pl-2.5")}>
                   <div
                     className="relative z-10 flex min-w-0 items-start"
                     onClick={(event) => {

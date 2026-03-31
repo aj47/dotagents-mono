@@ -367,6 +367,10 @@ export const Component = () => {
         title={isCollapsed ? link.text : undefined}
         aria-label={isCollapsed ? link.text : undefined}
         aria-current={isActive ? "page" : undefined}
+        onClick={(e) => {
+          e.preventDefault()
+          navigate(link.href)
+        }}
         className={() => {
           return cn(
             "flex h-7 items-center rounded-md px-2 font-medium transition-all duration-200",
@@ -692,6 +696,10 @@ export const Component = () => {
                     <NavLink
                       key={link.text}
                       to={link.href}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        navigate(link.href)
+                      }}
                       className={cn(
                         "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                         isActive
