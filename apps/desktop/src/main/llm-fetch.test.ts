@@ -112,6 +112,70 @@ describe('LLM Fetch with AI SDK', () => {
     }))
   })
 
+  it('logs cache metrics when usage includes inputTokenDetails with cache data', async () => {
+    getPromptCachingConfigMock.mockReturnValue({
+      strategy: 'openai-implicit-prefix',
+    })
+
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    const { diagnosticsService } = await import('./diagnostics')
+    const logInfoMock = vi.mocked(diagnosticsService.logInfo)
+
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"cached response"}',
+      finishReason: 'stop',
+      usage: {
+        promptTokens: 1000,
+        completionTokens: 50,
+        inputTokens: 1000,
+        outputTokens: 50,
+        inputTokenDetails: {
+          cacheReadTokens: 800,
+          cacheWriteTokens: 200,
+          noCacheTokens: 0,
+        },
+      },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(logInfoMock).toHaveBeenCalledWith(
+      'prompt-cache',
+      expect.stringContaining('80% hit rate'),
+      expect.objectContaining({
+        provider: 'openai',
+        cacheReadTokens: 800,
+        cacheWriteTokens: 200,
+        cacheHitRate: 80,
+      })
+    )
+  })
+
+  it('passes anthropic cache control provider options through to generateText', async () => {
+    getPromptCachingConfigMock.mockReturnValue({
+      strategy: 'anthropic-cache-control',
+      providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+    })
+
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"anthropic cached"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+    }))
+  })
+
   it('should return parsed JSON content from LLM response', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)

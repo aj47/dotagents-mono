@@ -105,4 +105,59 @@ describe("ai-sdk-provider chat model sanitization", () => {
       strategy: "gemini-stable-prefix",
     })
   })
+
+  it("enables anthropic cache control when model name contains 'claude'", async () => {
+    const { mod } = await loadModule({
+      mcpToolsOpenaiModel: "claude-sonnet-4-5",
+    })
+
+    expect(mod.getPromptCachingConfig("openai")).toEqual({
+      strategy: "anthropic-cache-control",
+      providerOptions: {
+        anthropic: {
+          cacheControl: { type: "ephemeral" },
+        },
+      },
+    })
+  })
+
+  it("enables anthropic cache control when base URL contains 'openrouter'", async () => {
+    const { mod } = await loadModule({
+      openaiBaseUrl: "https://openrouter.ai/api/v1",
+      mcpToolsOpenaiModel: "some-model",
+    })
+
+    expect(mod.getPromptCachingConfig("openai")).toEqual({
+      strategy: "anthropic-cache-control",
+      providerOptions: {
+        anthropic: {
+          cacheControl: { type: "ephemeral" },
+        },
+      },
+    })
+  })
+
+  it("enables anthropic cache control when model name contains 'anthropic'", async () => {
+    const { mod } = await loadModule({
+      mcpToolsOpenaiModel: "anthropic/claude-3.5-sonnet",
+    })
+
+    expect(mod.getPromptCachingConfig("openai")).toEqual({
+      strategy: "anthropic-cache-control",
+      providerOptions: {
+        anthropic: {
+          cacheControl: { type: "ephemeral" },
+        },
+      },
+    })
+  })
+
+  it("returns undefined for unknown proxy without anthropic model", async () => {
+    const { mod } = await loadModule({
+      openaiBaseUrl: "https://my-custom-proxy.example.com/v1",
+      mcpToolsOpenaiModel: "gpt-4.1-mini",
+    })
+
+    expect(mod.getPromptCachingConfig("openai")).toBeUndefined()
+  })
 })
