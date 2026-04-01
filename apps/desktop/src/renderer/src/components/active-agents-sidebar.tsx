@@ -531,14 +531,21 @@ export function ActiveAgentsSidebar({
   const handleStopSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent session focus when clicking stop
     logUI("[ActiveAgentsSidebar] Stopping session:", sessionId)
-    try {
-      await tipcClient.stopAgentSession({ sessionId })
-      // If we just stopped the focused session, just unfocus; do not clear all progress
-      if (focusedSessionId === sessionId) {
-        setFocusedSessionId(null)
+    const sessionProgress = agentProgressById.get(sessionId)
+    if (!sessionProgress?.isComplete) {
+      try {
+        await tipcClient.stopAgentSession({ sessionId })
+      } catch (error) {
+        console.error("Failed to stop session:", error)
       }
+    }
+    if (focusedSessionId === sessionId) {
+      setFocusedSessionId(null)
+    }
+    try {
+      await tipcClient.clearAgentSessionProgress({ sessionId })
     } catch (error) {
-      console.error("Failed to stop session:", error)
+      console.error("Failed to dismiss session:", error)
     }
   }
 
