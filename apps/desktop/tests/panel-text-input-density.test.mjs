@@ -16,7 +16,7 @@ test('desktop panel text input avoids redundant agent-label chrome and keeps the
   )
   assert.match(
     textInputPanelSource,
-    /<div className="flex min-w-0 max-w-full flex-wrap items-center gap-1\.5">\s*<AgentSelector/,
+    /<div className="flex min-w-0 max-w-full flex-wrap items-center gap-1\.5">\s*\{showAgentSelector && \(\s*<AgentSelector/,
     'expected the agent selector row to stay wrap-safe on narrow panel widths',
   )
 })
@@ -36,5 +36,10 @@ test('desktop panel text input keeps helper/actions compact and attachment previ
     textInputPanelSource,
     /className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border"/,
     'expected attachment previews to stay compact inside the floating panel composer',
+  )
+  assert.match(
+    textInputPanelSource,
+    /className="top-full left-0 mt-1"/,
+    'expected the slash-command dropdown to open below the textarea inside the text-input modal',
   )
 })

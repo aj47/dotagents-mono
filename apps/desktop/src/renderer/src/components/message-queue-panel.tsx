@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause } from "lucide-react"
+import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
@@ -71,11 +71,6 @@ function QueuedMessageItem({
     },
   })
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
-
   const handleSaveEdit = () => {
     const trimmed = editText.trim()
     if (trimmed && trimmed !== message.text) {
@@ -110,7 +105,7 @@ function QueuedMessageItem({
   return (
     <div
       className={cn(
-        "px-3 py-2",
+        "px-2.5 py-1.5",
         isFailed ? "bg-destructive/10 hover:bg-destructive/15" :
         isProcessing ? "bg-amber-100/50 dark:bg-amber-900/20" : "hover:bg-amber-100/30 dark:hover:bg-amber-900/10",
         "transition-colors"
@@ -162,35 +157,28 @@ function QueuedMessageItem({
           {isProcessing && (
             <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
           )}
-          <div className="flex min-w-0 flex-1 flex-col">
-            <p
-              className={cn(
-                "text-sm",
-                isFailed && "text-destructive",
-                isProcessing && "text-primary",
-                !isExpanded && isLongMessage && "line-clamp-2"
-              )}
-            >
-              {message.text}
-            </p>
-            {isFailed && message.errorMessage && (
-              <p className="text-xs text-destructive/80 mt-1">
-                Error: {message.errorMessage}
+          <div className="flex min-w-0 flex-1 items-start gap-1.5">
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "text-xs leading-snug",
+                  isFailed && "text-destructive",
+                  isProcessing && "text-primary",
+                  !isExpanded && isLongMessage && "line-clamp-2"
+                )}
+              >
+                {message.text}
               </p>
-            )}
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className={cn(
-                "text-xs",
-                isFailed ? "text-destructive/70" :
-                isProcessing ? "text-amber-600 dark:text-amber-400" : "text-amber-600/70 dark:text-amber-400/70"
-              )}>
-                {formatTime(message.createdAt)} • {isFailed ? "Failed - blocking queue" : isProcessing ? "Processing..." : "Queued"}
-              </span>
+              {isFailed && message.errorMessage && (
+                <p className="text-[10px] text-destructive/80 mt-0.5">
+                  Error: {message.errorMessage}
+                </p>
+              )}
               {isLongMessage && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-4 px-1 text-xs text-muted-foreground hover:text-foreground"
+                  className="mt-0.5 h-4 px-1 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setIsExpanded(!isExpanded)}
                 >
                   {isExpanded ? (
@@ -207,41 +195,43 @@ function QueuedMessageItem({
                 </Button>
               )}
             </div>
-            {/* Hide action buttons when processing */}
             {!isProcessing && (
-              <div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
+              <div className="ml-auto flex shrink-0 items-center gap-0.5 self-start">
                 {isFailed && (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+                    size="icon"
+                    className="h-6 w-6 text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={() => retryMutation.mutate()}
                     disabled={retryMutation.isPending}
                     title="Retry message"
+                    aria-label={retryMutation.isPending ? "Retrying message" : "Retry message"}
                   >
-                    {retryMutation.isPending ? "Retrying…" : "Retry"}
+                    <RotateCcw className={cn("h-3.5 w-3.5", retryMutation.isPending && "animate-spin")} />
                   </Button>
                 )}
                 {!isAddedToHistory && (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
+                    size="icon"
+                    className="h-6 w-6"
                     onClick={() => setIsEditing(true)}
                     title="Edit message"
+                    aria-label="Edit message"
                   >
-                    Edit
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => removeMutation.mutate()}
                   disabled={removeMutation.isPending}
                   title="Remove from queue"
+                  aria-label="Remove from queue"
                 >
-                  Remove
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
@@ -375,23 +365,23 @@ export function MessageQueuePanel({
     >
       {/* Header */}
       <div className={cn(
-        "flex flex-wrap items-start justify-between gap-2 px-3 py-2",
+        "flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5",
         !isListCollapsed && "border-b",
         isPaused
           ? "border-orange-200 dark:border-orange-800 bg-orange-100/50 dark:bg-orange-900/30"
           : "border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/30"
       )}>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {isPaused ? (
-            <Pause className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+            <Pause className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
           ) : (
-            <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           )}
           <span className={cn(
-            "min-w-0 text-sm font-medium",
+            "min-w-0 text-xs font-medium",
             isPaused ? "text-orange-800 dark:text-orange-200" : "text-amber-800 dark:text-amber-200"
           )}>
-            {isPaused ? "Queue Paused" : "Queued Messages"} ({messages.length})
+            {isPaused ? "Paused" : "Queued"} ({messages.length})
           </span>
         </div>
         <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
@@ -463,8 +453,8 @@ export function MessageQueuePanel({
 
       {/* Paused notice */}
       {isPaused && !isListCollapsed && (
-        <div className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-          Queue was stopped. Click Resume to continue processing queued messages.
+        <div className="border-b border-orange-200 bg-orange-100/30 px-2.5 py-1 text-[10px] text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
+          Paused. Click Resume to continue.
         </div>
       )}
 

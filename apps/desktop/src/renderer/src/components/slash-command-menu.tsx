@@ -1,0 +1,279 @@
+import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
+import { cn } from "@renderer/lib/utils"
+import { BookMarked, Clock3, Sparkles } from "lucide-react"
+import { queryClient, useConfigQuery } from "@renderer/lib/queries"
+import { useQuery } from "@tanstack/react-query"
+import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+import { LoopConfig } from "@shared/types"
+
+export interface SlashCommandItem {
+  id: string
+  name: string
+  description: string
+  content?: string
+  type: "prompt" | "skill" | "loop"
+}
+
+export interface SlashCommandMenuHandle {
+  moveSelection: (delta: number) => void
+  getSelectedItem: () => SlashCommandItem | undefined
+  hasItems: () => boolean
+}
+
+interface SlashCommandMenuProps {
+  query: string
+  isOpen: boolean
+  onSelect: (item: SlashCommandItem) => void | Promise<void>
+  onClose: () => void
+  /** Anchor position relative to the input */
+  className?: string
+}
+
+function formatLoopInterval(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  if (minutes < 1440) {
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+    if (remainingMinutes === 0) return `${hours}h`
+    return `${hours}h ${remainingMinutes}m`
+  }
+  const days = Math.floor(minutes / 1440)
+  const remainingMinutes = minutes % 1440
+  if (remainingMinutes === 0) return `${days}d`
+  const hours = Math.floor(remainingMinutes / 60)
+  const minutesPart = remainingMinutes % 60
+  if (hours === 0) return `${days}d ${minutesPart}m`
+  if (minutesPart === 0) return `${days}d ${hours}h`
+  return `${days}d ${hours}h ${minutesPart}m`
+}
+
+export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProps>(({
+  query,
+  isOpen,
+  onSelect,
+  onClose,
+  className,
+}, ref) => {
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const configQuery = useConfigQuery()
+  const skillsQuery = useQuery({
+    queryKey: ["skills"],
+    queryFn: () => tipcClient.getSkills(),
+    enabled: isOpen,
+  })
+  const loopsQuery = useQuery({
+    queryKey: ["loops"],
+    queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>,
+    enabled: isOpen,
+  })
+
+  const items = useMemo<SlashCommandItem[]>(() => {
+    const prompts = (configQuery.data?.predefinedPrompts || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.content.slice(0, 80),
+      content: p.content,
+      type: "prompt" as const,
+    }))
+    const skills = (skillsQuery.data ?? []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: s.description || "Use this skill as a reusable prompt.",
+      content: s.instructions,
+      type: "skill" as const,
+    }))
+    const loops = (loopsQuery.data ?? []).map((loop) => ({
+      id: loop.id,
+      name: loop.name,
+      description: `Run repeat task now • Every ${formatLoopInterval(loop.intervalMinutes)}${loop.enabled ? "" : " • Disabled"}`,
+      type: "loop" as const,
+    }))
+    return [...prompts, ...skills, ...loops]
+  }, [configQuery.data, skillsQuery.data, loopsQuery.data])
+
+  const filtered = useMemo(() => {
+    if (!query) return items
+    const q = query.toLowerCase()
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q),
+    )
+  }, [items, query])
+
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [query])
+
+  useEffect(() => {
+    const el = listRef.current?.children[selectedIndex] as HTMLElement | undefined
+    el?.scrollIntoView({ block: "nearest" })
+  }, [selectedIndex])
+
+  useImperativeHandle(ref, () => ({
+    moveSelection(delta: number) {
+      if (filtered.length === 0) return
+      setSelectedIndex((prev) => {
+        const next = prev + delta
+        if (next < 0) return filtered.length - 1
+        if (next >= filtered.length) return 0
+        return next
+      })
+    },
+    getSelectedItem() {
+      return filtered.length > 0 ? filtered[selectedIndex] : undefined
+    },
+    hasItems() {
+      return filtered.length > 0
+    },
+  }), [filtered, selectedIndex])
+
+  if (!isOpen || filtered.length === 0) return null
+
+  return (
+    <div
+      ref={listRef}
+      className={cn(
+        "bg-popover text-popover-foreground absolute z-50 max-h-48 w-64 overflow-y-auto rounded-md border shadow-md",
+        className,
+      )}
+      role="listbox"
+    >
+      {filtered.map((item, idx) => (
+        <button
+          key={item.id}
+          role="option"
+          aria-selected={idx === selectedIndex}
+          className={cn(
+            "flex w-full items-start gap-2 px-2.5 py-1.5 text-left text-xs transition-colors",
+            idx === selectedIndex
+              ? "bg-accent text-accent-foreground"
+              : "hover:bg-accent/50",
+          )}
+          onMouseEnter={() => setSelectedIndex(idx)}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            void onSelect(item)
+          }}
+        >
+          {item.type === "prompt" ? (
+            <BookMarked className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : item.type === "loop" ? (
+            <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-medium">{item.name}</div>
+            <div className="truncate text-[10px] text-muted-foreground">
+              {item.description}
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+})
+
+SlashCommandMenu.displayName = "SlashCommandMenu"
+
+/**
+ * Hook that manages slash command state for a text input.
+ * Returns handlers and state to wire into a textarea.
+ */
+export function useSlashCommands(
+  text: string,
+  setText: (text: string) => void,
+) {
+  const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
+  const [slashQuery, setSlashQuery] = useState("")
+  const menuRef = useRef<SlashCommandMenuHandle>(null)
+
+  useEffect(() => {
+    // Detect /command at start of input
+    if (text.startsWith("/")) {
+      const query = text.slice(1)
+      // Close menu if there's a space (user finished typing the command portion)
+      if (query.includes(" ") || query.includes("\n")) {
+        setIsSlashMenuOpen(false)
+      } else {
+        setIsSlashMenuOpen(true)
+        setSlashQuery(query)
+      }
+    } else {
+      setIsSlashMenuOpen(false)
+      setSlashQuery("")
+    }
+  }, [text])
+
+  const handleSlashSelect = async (item: SlashCommandItem) => {
+    if (item.type === "loop") {
+      setText("")
+      setSlashQuery("")
+      setIsSlashMenuOpen(false)
+      try {
+        const result = await tipcClient.triggerLoop?.({ loopId: item.id })
+        if (result && !result.success) {
+          toast.error(`Could not trigger "${item.name}" right now`)
+          return
+        }
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.success(`Running "${item.name}"...`)
+      } catch {
+        toast.error("Failed to trigger task")
+      }
+      return
+    }
+
+    setText(item.content ?? "")
+    setIsSlashMenuOpen(false)
+  }
+
+  const closeSlashMenu = () => {
+    setIsSlashMenuOpen(false)
+  }
+
+  /** Call from the textarea's onKeyDown. Returns true if the event was handled. */
+  const handleKeyDown = (e: React.KeyboardEvent): boolean => {
+    if (!isSlashMenuOpen) return false
+
+    if (e.key === "ArrowDown") {
+      if (!menuRef.current?.hasItems()) return false
+      e.preventDefault()
+      menuRef.current?.moveSelection(1)
+      return true
+    }
+    if (e.key === "ArrowUp") {
+      if (!menuRef.current?.hasItems()) return false
+      e.preventDefault()
+      menuRef.current?.moveSelection(-1)
+      return true
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      const selected = menuRef.current?.getSelectedItem()
+      if (selected) {
+        e.preventDefault()
+        void handleSlashSelect(selected)
+        return true
+      }
+    }
+    if (e.key === "Escape") {
+      e.preventDefault()
+      closeSlashMenu()
+      return true
+    }
+    return false
+  }
+
+  return {
+    isSlashMenuOpen,
+    slashQuery,
+    handleSlashSelect,
+    closeSlashMenu,
+    handleSlashKeyDown: handleKeyDown,
+    menuRef,
+  }
+}

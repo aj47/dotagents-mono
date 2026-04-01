@@ -32,7 +32,7 @@ test("sidebar keeps session renaming behind an explicit overflow action and pers
     "apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx",
   )
 
-  assert.match(source, /aria-label="Rename session title"/)
+  assert.match(source, /aria-label="Rename conversation title"/)
   assert.match(source, /tipcClient\.renameConversationTitle\(/)
   assert.match(source, /event\.key === "Enter"/)
   assert.match(source, /event\.key === "Escape"/)
@@ -41,13 +41,15 @@ test("sidebar keeps session renaming behind an explicit overflow action and pers
   assert.match(source, /<DropdownMenuItem onSelect=\{\(\) => onRename\(\)\}>/)
   assert.match(source, /onMouseDown=\{\(event\) => event\.stopPropagation\(\)\}/)
   assert.match(source, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/)
-  assert.match(source, /transition-\[padding-right\] duration-200 group-hover:pr-20/)
+  assert.match(source, /transition-\[padding-right\] duration-200 group-hover:pr-7/)
   assert.match(source, /absolute right-1 top-1\/2 z-20 flex -translate-y-1\/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity/)
   assert.match(source, /text-\[12px\] font-medium leading-4/)
   assert.match(source, /flex min-w-0 items-center gap-1\.5/
   )
+  assert.match(source, /group-hover:opacity-0/)
   assert.doesNotMatch(source, /pr-11/)
   assert.doesNotMatch(source, /group-focus-within:pointer-events-auto/)
+  assert.doesNotMatch(source, /lastMessageMinutesAgo && !session\.conversationId/)
   assert.doesNotMatch(
     source,
     /title=\{conversationId \? "Rename session title" : title\}/,
@@ -61,7 +63,7 @@ test("active session rows prioritize the title with a left-edge status rail", ()
   )
 
   assert.match(source, /absolute bottom-1 left-0 top-1 w-0\.5 rounded-full/)
-  assert.match(source, /transition-\[padding-right\] duration-200 group-hover:pr-14/)
+  assert.match(source, /transition-\[padding-right\] duration-200 group-hover:pr-7/)
   assert.match(source, /absolute right-1\.5 top-1\/2 z-20 flex -translate-y-1\/2 items-center gap-1 rounded-sm pl-1 opacity-0 transition-opacity/)
   assert.match(source, /absolute right-1 top-1\/2 z-20 flex -translate-y-1\/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity/)
   assert.match(source, /min-w-0 flex-1 truncate text-\[11px\] leading-4 text-muted-foreground/)
