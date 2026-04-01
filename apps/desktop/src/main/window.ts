@@ -871,6 +871,14 @@ export function hideFloatingPanelWindow() {
   state.isTextInputActive = false
   hidePanelTextInputInRenderer()
 
+  // Persist the auto-show preference so the panel stays hidden across sessions
+  // and is not re-shown by agent progress updates (#281)
+  const config = configStore.get()
+  if (config.floatingPanelAutoShow !== false) {
+    configStore.save({ ...config, floatingPanelAutoShow: false })
+    logApp("[hideFloatingPanelWindow] Persisted floatingPanelAutoShow=false")
+  }
+
   if (panel.isVisible()) {
     logApp("[hideFloatingPanelWindow] Hiding visible panel window", {
       panelMode: getCurrentPanelMode(),
@@ -1060,6 +1068,13 @@ export function showPanelWindow(options: { markOpenedWithMain?: boolean } = {}) 
       // This prevents the panel from being hidden when main window regains focus during interactions.
       // Auto-show paths should opt out so the panel stays out of the way while the user works in the main app.
       setPanelOpenedWithMain()
+    }
+
+    // Re-enable auto-show when user explicitly shows the panel (#281)
+    const config = configStore.get()
+    if (config.floatingPanelAutoShow === false) {
+      configStore.save({ ...config, floatingPanelAutoShow: true })
+      logApp("[showPanelWindow] Re-enabled floatingPanelAutoShow=true")
     }
 
     // Apply mode sizing/positioning just before showing

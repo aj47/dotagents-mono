@@ -7,6 +7,7 @@ import { AgentProcessingView } from "./agent-processing-view"
 import { AgentProgressUpdate } from "../../../shared/types"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
 import { logUI } from "@renderer/lib/debug"
@@ -53,6 +54,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   const submitInFlightRef = useRef(false)
   const { isDark } = useTheme()
   const isBusy = isProcessing || isSubmitting
+  const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setText)
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -149,6 +151,9 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Let slash command menu handle navigation keys first
+    if (handleSlashKeyDown(e)) return
+
     const isModifierPressed = e.metaKey || e.ctrlKey;
 
     if (isModifierPressed && (e.key === '=' || e.key === 'Equal' || e.key === '+')) {
@@ -276,21 +281,31 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               ))}
             </div>
           )}
-          <Textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message here..."
-            autoFocus
-            className={cn(
-              "modern-input modern-text-strong min-h-0 flex-1 resize-none border-0",
-              "bg-transparent focus:border-ring focus:ring-1 focus:ring-ring",
-              "placeholder:modern-text-muted",
-            )}
-            disabled={isBusy}
-            aria-label="Message input"
-          />
+          <div className="relative flex-1">
+            <Textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type / for commands, or your message..."
+              autoFocus
+              className={cn(
+                "modern-input modern-text-strong min-h-0 h-full resize-none border-0",
+                "bg-transparent focus:border-ring focus:ring-1 focus:ring-ring",
+                "placeholder:modern-text-muted",
+              )}
+              disabled={isBusy}
+              aria-label="Message input"
+            />
+            <SlashCommandMenu
+              ref={menuRef}
+              query={slashQuery}
+              isOpen={isSlashMenuOpen}
+              onSelect={handleSlashSelect}
+              onClose={closeSlashMenu}
+              className="bottom-full left-0 mb-1"
+            />
+          </div>
           <input
             ref={fileInputRef}
             type="file"

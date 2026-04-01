@@ -110,7 +110,7 @@ function QueuedMessageItem({
   return (
     <div
       className={cn(
-        "px-3 py-2",
+        "px-2.5 py-1.5",
         isFailed ? "bg-destructive/10 hover:bg-destructive/15" :
         isProcessing ? "bg-amber-100/50 dark:bg-amber-900/20" : "hover:bg-amber-100/30 dark:hover:bg-amber-900/10",
         "transition-colors"
@@ -165,7 +165,7 @@ function QueuedMessageItem({
           <div className="flex min-w-0 flex-1 flex-col">
             <p
               className={cn(
-                "text-sm",
+                "text-xs leading-snug",
                 isFailed && "text-destructive",
                 isProcessing && "text-primary",
                 !isExpanded && isLongMessage && "line-clamp-2"
@@ -174,17 +174,17 @@ function QueuedMessageItem({
               {message.text}
             </p>
             {isFailed && message.errorMessage && (
-              <p className="text-xs text-destructive/80 mt-1">
+              <p className="text-[10px] text-destructive/80 mt-0.5">
                 Error: {message.errorMessage}
               </p>
             )}
-            <div className="mt-1 flex flex-wrap items-center gap-2">
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <span className={cn(
-                "text-xs",
+                "text-[10px]",
                 isFailed ? "text-destructive/70" :
                 isProcessing ? "text-amber-600 dark:text-amber-400" : "text-amber-600/70 dark:text-amber-400/70"
               )}>
-                {formatTime(message.createdAt)} • {isFailed ? "Failed - blocking queue" : isProcessing ? "Processing..." : "Queued"}
+                {formatTime(message.createdAt)} • {isFailed ? "Failed" : isProcessing ? "Processing..." : "Queued"}
               </span>
               {isLongMessage && (
                 <Button
@@ -209,7 +209,7 @@ function QueuedMessageItem({
             </div>
             {/* Hide action buttons when processing */}
             {!isProcessing && (
-              <div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
+              <div className="mt-1 flex w-full flex-wrap items-center gap-1">
                 {isFailed && (
                   <Button
                     variant="ghost"
@@ -375,23 +375,23 @@ export function MessageQueuePanel({
     >
       {/* Header */}
       <div className={cn(
-        "flex flex-wrap items-start justify-between gap-2 px-3 py-2",
+        "flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5",
         !isListCollapsed && "border-b",
         isPaused
           ? "border-orange-200 dark:border-orange-800 bg-orange-100/50 dark:bg-orange-900/30"
           : "border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/30"
       )}>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {isPaused ? (
-            <Pause className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+            <Pause className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
           ) : (
-            <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           )}
           <span className={cn(
-            "min-w-0 text-sm font-medium",
+            "min-w-0 text-xs font-medium",
             isPaused ? "text-orange-800 dark:text-orange-200" : "text-amber-800 dark:text-amber-200"
           )}>
-            {isPaused ? "Queue Paused" : "Queued Messages"} ({messages.length})
+            {isPaused ? "Paused" : "Queued"} ({messages.length})
           </span>
         </div>
         <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
@@ -463,8 +463,8 @@ export function MessageQueuePanel({
 
       {/* Paused notice */}
       {isPaused && !isListCollapsed && (
-        <div className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-          Queue was stopped. Click Resume to continue processing queued messages.
+        <div className="border-b border-orange-200 bg-orange-100/30 px-2.5 py-1 text-[10px] text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
+          Paused. Click Resume to continue.
         </div>
       )}
 

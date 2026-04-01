@@ -903,15 +903,15 @@ export function ActiveAgentsSidebar({
                       )}
                     />
                   )}
-                  <div className={cn("min-w-0 flex-1 overflow-hidden transition-[padding-right] duration-200 group-hover:pr-20", isPinned && "pl-3")}>
+                  <div className={cn("min-w-0 flex-1 overflow-hidden transition-[padding-right] duration-200 group-hover:pr-7", isPinned && "pl-3")}>
                     {renderEditableTitle(
                       session,
                       cn("block flex-1", isCurrentView && "text-foreground"),
                     )}
                   </div>
-                  {lastMessageMinutesAgo && (
+                  {lastMessageMinutesAgo && !session.conversationId && (
                     <span className={cn(
-                      "shrink-0 text-[10px] tabular-nums group-hover:opacity-0 transition-opacity",
+                      "shrink-0 text-[10px] tabular-nums transition-opacity",
                       isCurrentView ? "text-foreground/70" : "text-muted-foreground",
                     )}>
                       {lastMessageMinutesAgo}
@@ -1006,7 +1006,7 @@ export function ActiveAgentsSidebar({
                     )}
                   />
                 )}
-                <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-14", isActivePinned && "pl-2.5")}>
+                <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-7", isActivePinned && "pl-2.5")}>
                   <div
                     className="relative z-10 flex min-w-0 items-start"
                     onClick={(event) => {

@@ -8,6 +8,7 @@ import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
@@ -65,6 +66,7 @@ export function TileFollowUpInput({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+  const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setText)
 
   // Auto-resize textarea to fit content, up to maxInputHeight
   const adjustTextareaHeight = useCallback(() => {
@@ -198,6 +200,7 @@ export function TileFollowUpInput({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (handleSlashKeyDown(e)) return
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -333,21 +336,31 @@ export function TileFollowUpInput({
       )}
 
       <div className="flex w-full items-end gap-2">
-        <textarea
-          ref={textareaRef}
-          data-composer="true"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={getPlaceholder()}
-          rows={1}
-          className={cn(
-            "flex-1 text-sm bg-transparent border-0 outline-none resize-none",
-            "placeholder:text-muted-foreground/60",
-            "focus:ring-0"
-          )}
-          disabled={isDisabled}
-        />
+        <div className="relative flex-1">
+          <textarea
+            ref={textareaRef}
+            data-composer="true"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={getPlaceholder()}
+            rows={1}
+            className={cn(
+              "w-full text-sm bg-transparent border-0 outline-none resize-none",
+              "placeholder:text-muted-foreground/60",
+              "focus:ring-0"
+            )}
+            disabled={isDisabled}
+          />
+          <SlashCommandMenu
+            ref={menuRef}
+            query={slashQuery}
+            isOpen={isSlashMenuOpen}
+            onSelect={handleSlashSelect}
+            onClose={closeSlashMenu}
+            className="bottom-full left-0 mb-1"
+          />
+        </div>
         <input
           ref={fileInputRef}
           type="file"

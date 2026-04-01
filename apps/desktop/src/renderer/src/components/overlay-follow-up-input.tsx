@@ -8,6 +8,7 @@ import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
@@ -49,6 +50,7 @@ export function OverlayFollowUpInput({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+  const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setText)
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
@@ -181,6 +183,7 @@ export function OverlayFollowUpInput({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (handleSlashKeyDown(e)) return
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -306,22 +309,32 @@ export function OverlayFollowUpInput({
       )}
 
       <div className="flex w-full flex-wrap items-center gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onClick={handleInputInteraction}
-          onFocus={handleInputInteraction}
-          placeholder={getPlaceholder()}
-          className={cn(
-            "min-w-0 flex-[1_1_10rem] text-sm bg-transparent border-0 outline-none",
-            "placeholder:text-muted-foreground/60",
-            "focus:ring-0"
-          )}
-          disabled={isDisabled}
-        />
+        <div className="relative min-w-0 flex-[1_1_10rem]">
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onClick={handleInputInteraction}
+            onFocus={handleInputInteraction}
+            placeholder={getPlaceholder()}
+            className={cn(
+              "w-full text-sm bg-transparent border-0 outline-none",
+              "placeholder:text-muted-foreground/60",
+              "focus:ring-0"
+            )}
+            disabled={isDisabled}
+          />
+          <SlashCommandMenu
+            ref={menuRef}
+            query={slashQuery}
+            isOpen={isSlashMenuOpen}
+            onSelect={handleSlashSelect}
+            onClose={closeSlashMenu}
+            className="bottom-full left-0 mb-1"
+          />
+        </div>
         <input
           ref={fileInputRef}
           type="file"
