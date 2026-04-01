@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause } from "lucide-react"
+import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
@@ -70,11 +70,6 @@ function QueuedMessageItem({
       setEditText(message.text)
     },
   })
-
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
 
   const handleSaveEdit = () => {
     const trimmed = editText.trim()
@@ -162,35 +157,28 @@ function QueuedMessageItem({
           {isProcessing && (
             <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
           )}
-          <div className="flex min-w-0 flex-1 flex-col">
-            <p
-              className={cn(
-                "text-xs leading-snug",
-                isFailed && "text-destructive",
-                isProcessing && "text-primary",
-                !isExpanded && isLongMessage && "line-clamp-2"
-              )}
-            >
-              {message.text}
-            </p>
-            {isFailed && message.errorMessage && (
-              <p className="text-[10px] text-destructive/80 mt-0.5">
-                Error: {message.errorMessage}
+          <div className="flex min-w-0 flex-1 items-start gap-1.5">
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "text-xs leading-snug",
+                  isFailed && "text-destructive",
+                  isProcessing && "text-primary",
+                  !isExpanded && isLongMessage && "line-clamp-2"
+                )}
+              >
+                {message.text}
               </p>
-            )}
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-              <span className={cn(
-                "text-[10px]",
-                isFailed ? "text-destructive/70" :
-                isProcessing ? "text-amber-600 dark:text-amber-400" : "text-amber-600/70 dark:text-amber-400/70"
-              )}>
-                {formatTime(message.createdAt)} • {isFailed ? "Failed" : isProcessing ? "Processing..." : "Queued"}
-              </span>
+              {isFailed && message.errorMessage && (
+                <p className="text-[10px] text-destructive/80 mt-0.5">
+                  Error: {message.errorMessage}
+                </p>
+              )}
               {isLongMessage && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-4 px-1 text-xs text-muted-foreground hover:text-foreground"
+                  className="mt-0.5 h-4 px-1 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setIsExpanded(!isExpanded)}
                 >
                   {isExpanded ? (
@@ -207,41 +195,43 @@ function QueuedMessageItem({
                 </Button>
               )}
             </div>
-            {/* Hide action buttons when processing */}
             {!isProcessing && (
-              <div className="mt-1 flex w-full flex-wrap items-center gap-1">
+              <div className="ml-auto flex shrink-0 items-center gap-0.5 self-start">
                 {isFailed && (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+                    size="icon"
+                    className="h-6 w-6 text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={() => retryMutation.mutate()}
                     disabled={retryMutation.isPending}
                     title="Retry message"
+                    aria-label={retryMutation.isPending ? "Retrying message" : "Retry message"}
                   >
-                    {retryMutation.isPending ? "Retrying…" : "Retry"}
+                    <RotateCcw className={cn("h-3.5 w-3.5", retryMutation.isPending && "animate-spin")} />
                   </Button>
                 )}
                 {!isAddedToHistory && (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
+                    size="icon"
+                    className="h-6 w-6"
                     onClick={() => setIsEditing(true)}
                     title="Edit message"
+                    aria-label="Edit message"
                   >
-                    Edit
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => removeMutation.mutate()}
                   disabled={removeMutation.isPending}
                   title="Remove from queue"
+                  aria-label="Remove from queue"
                 >
-                  Remove
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}

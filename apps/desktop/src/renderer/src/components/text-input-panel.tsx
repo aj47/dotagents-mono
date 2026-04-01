@@ -303,7 +303,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               isOpen={isSlashMenuOpen}
               onSelect={handleSlashSelect}
               onClose={closeSlashMenu}
-              className="bottom-full left-0 mb-1"
+              className="top-full left-0 mt-1"
             />
           </div>
           <input

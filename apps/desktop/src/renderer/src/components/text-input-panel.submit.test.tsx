@@ -121,6 +121,17 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
   vi.doMock("@renderer/contexts/theme-context", () => themeContextMock)
   vi.doMock("../contexts/theme-context", () => themeContextMock)
   vi.doMock("./predefined-prompts-menu", () => ({ PredefinedPromptsMenu: Null }))
+  vi.doMock("./slash-command-menu", () => ({
+    SlashCommandMenu: Null,
+    useSlashCommands: () => ({
+      isSlashMenuOpen: false,
+      slashQuery: "",
+      handleSlashSelect: vi.fn(),
+      closeSlashMenu: vi.fn(),
+      handleSlashKeyDown: vi.fn(() => false),
+      menuRef: { current: null },
+    }),
+  }))
   vi.doMock("./agent-selector", () => ({ AgentSelector: Null }))
   vi.doMock("lucide-react", () => {
     const Icon = () => null

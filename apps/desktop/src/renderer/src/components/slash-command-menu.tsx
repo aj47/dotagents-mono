@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
 import { cn } from "@renderer/lib/utils"
-import { BookMarked, Sparkles } from "lucide-react"
-import { useConfigQuery } from "@renderer/lib/queries"
+import { BookMarked, Clock3, Sparkles } from "lucide-react"
+import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+import { LoopConfig } from "@shared/types"
 
 export interface SlashCommandItem {
   id: string
   name: string
   description: string
-  content: string
-  type: "prompt" | "skill"
+  content?: string
+  type: "prompt" | "skill" | "loop"
 }
 
 export interface SlashCommandMenuHandle {
@@ -22,10 +24,28 @@ export interface SlashCommandMenuHandle {
 interface SlashCommandMenuProps {
   query: string
   isOpen: boolean
-  onSelect: (item: SlashCommandItem) => void
+  onSelect: (item: SlashCommandItem) => void | Promise<void>
   onClose: () => void
   /** Anchor position relative to the input */
   className?: string
+}
+
+function formatLoopInterval(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  if (minutes < 1440) {
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+    if (remainingMinutes === 0) return `${hours}h`
+    return `${hours}h ${remainingMinutes}m`
+  }
+  const days = Math.floor(minutes / 1440)
+  const remainingMinutes = minutes % 1440
+  if (remainingMinutes === 0) return `${days}d`
+  const hours = Math.floor(remainingMinutes / 60)
+  const minutesPart = remainingMinutes % 60
+  if (hours === 0) return `${days}d ${minutesPart}m`
+  if (minutesPart === 0) return `${days}d ${hours}h`
+  return `${days}d ${hours}h ${minutesPart}m`
 }
 
 export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProps>(({
@@ -44,6 +64,11 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
     queryFn: () => tipcClient.getSkills(),
     enabled: isOpen,
   })
+  const loopsQuery = useQuery({
+    queryKey: ["loops"],
+    queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>,
+    enabled: isOpen,
+  })
 
   const items = useMemo<SlashCommandItem[]>(() => {
     const prompts = (configQuery.data?.predefinedPrompts || []).map((p) => ({
@@ -60,8 +85,14 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       content: s.instructions,
       type: "skill" as const,
     }))
-    return [...prompts, ...skills]
-  }, [configQuery.data, skillsQuery.data])
+    const loops = (loopsQuery.data ?? []).map((loop) => ({
+      id: loop.id,
+      name: loop.name,
+      description: `Run repeat task now • Every ${formatLoopInterval(loop.intervalMinutes)}${loop.enabled ? "" : " • Disabled"}`,
+      type: "loop" as const,
+    }))
+    return [...prompts, ...skills, ...loops]
+  }, [configQuery.data, skillsQuery.data, loopsQuery.data])
 
   const filtered = useMemo(() => {
     if (!query) return items
@@ -125,11 +156,13 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
           onMouseEnter={() => setSelectedIndex(idx)}
           onMouseDown={(e) => {
             e.preventDefault()
-            onSelect(item)
+            void onSelect(item)
           }}
         >
           {item.type === "prompt" ? (
             <BookMarked className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : item.type === "loop" ? (
+            <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ) : (
             <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
@@ -176,8 +209,26 @@ export function useSlashCommands(
     }
   }, [text])
 
-  const handleSlashSelect = (item: SlashCommandItem) => {
-    setText(item.content)
+  const handleSlashSelect = async (item: SlashCommandItem) => {
+    if (item.type === "loop") {
+      setText("")
+      setSlashQuery("")
+      setIsSlashMenuOpen(false)
+      try {
+        const result = await tipcClient.triggerLoop?.({ loopId: item.id })
+        if (result && !result.success) {
+          toast.error(`Could not trigger "${item.name}" right now`)
+          return
+        }
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.success(`Running "${item.name}"...`)
+      } catch {
+        toast.error("Failed to trigger task")
+      }
+      return
+    }
+
+    setText(item.content ?? "")
     setIsSlashMenuOpen(false)
   }
 
@@ -205,7 +256,7 @@ export function useSlashCommands(
       const selected = menuRef.current?.getSelectedItem()
       if (selected) {
         e.preventDefault()
-        handleSlashSelect(selected)
+        void handleSlashSelect(selected)
         return true
       }
     }

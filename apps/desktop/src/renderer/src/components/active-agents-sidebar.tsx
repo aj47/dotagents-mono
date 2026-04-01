@@ -909,9 +909,9 @@ export function ActiveAgentsSidebar({
                       cn("block flex-1", isCurrentView && "text-foreground"),
                     )}
                   </div>
-                  {lastMessageMinutesAgo && !session.conversationId && (
+                  {lastMessageMinutesAgo && (
                     <span className={cn(
-                      "shrink-0 text-[10px] tabular-nums transition-opacity",
+                      "shrink-0 text-[10px] tabular-nums transition-opacity group-hover:opacity-0",
                       isCurrentView ? "text-foreground/70" : "text-muted-foreground",
                     )}>
                       {lastMessageMinutesAgo}
