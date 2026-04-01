@@ -13,6 +13,7 @@ import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-p
 import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "./error-utils"
 import { SessionProfileSnapshot, AgentProgressUpdate } from "@shared/types"
+import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 
 // ANSI color codes (no external deps)
 const colors = {
@@ -186,6 +187,8 @@ async function runAgentCLI(prompt: string): Promise<void> {
     content: string
     toolCalls?: any[]
     toolResults?: any[]
+    timestamp?: number
+    branchMessageIndex?: number
   }> | undefined
 
   let conversationId = currentConversationId
@@ -198,7 +201,8 @@ async function runAgentCLI(prompt: string): Promise<void> {
     )
     if (updatedConversation) {
       const messagesToConvert = updatedConversation.messages.slice(0, -1)
-      previousConversationHistory = messagesToConvert.map((msg) => ({
+      const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
+      previousConversationHistory = messagesToConvert.map((msg, index) => ({
         role: msg.role,
         content: msg.content,
         toolCalls: msg.toolCalls,
@@ -207,6 +211,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
           content: [{ type: "text" as const, text: tr.success ? tr.content : (tr.error || tr.content) }],
           isError: !tr.success,
         })),
+        branchMessageIndex: branchMessageIndexMap[index],
       }))
     } else {
       const newConversation = await conversationService.createConversationWithId(conversationId, prompt, "user")

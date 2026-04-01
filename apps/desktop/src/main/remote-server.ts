@@ -19,6 +19,7 @@ import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
+import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
@@ -556,6 +557,8 @@ async function runAgent(options: RunAgentOptions): Promise<{
     content: string
     toolCalls?: any[]
     toolResults?: any[]
+    timestamp?: number
+    branchMessageIndex?: number
   }> | undefined
   let conversationId = inputConversationId
 
@@ -572,12 +575,13 @@ async function runAgent(options: RunAgentOptions): Promise<{
       // Load conversation history excluding the message we just added (the current user input)
       // This matches tipc.ts processWithAgentMode behavior
       const messagesToConvert = updatedConversation.messages.slice(0, -1)
+      const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
 
 
 
       diagnosticsService.logInfo("remote-server", `Continuing conversation ${conversationId} with ${messagesToConvert.length} previous messages`)
 
-      previousConversationHistory = messagesToConvert.map((msg) => ({
+      previousConversationHistory = messagesToConvert.map((msg, index) => ({
         role: msg.role,
         content: msg.content,
         toolCalls: msg.toolCalls,
@@ -593,6 +597,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
           ],
           isError: !tr.success,
         })),
+        branchMessageIndex: branchMessageIndexMap[index],
       }))
     } else {
       // Conversation not found - create it with the provided ID to maintain session continuity

@@ -7,6 +7,7 @@ import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
+import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { toast } from "sonner"
 
 import { logUI } from "@renderer/lib/debug"
@@ -616,6 +617,7 @@ export function Component() {
     const conv = pendingResumeConversationQuery.data
     const isInitializing = pendingContinuationStartedAt !== null
 
+    const branchMessageIndexMap = getBranchMessageIndexMap(conv.messages)
     return {
       sessionId: `pending-${pendingResumeConversationId}`,
       conversationId: pendingResumeConversationId,
@@ -633,12 +635,13 @@ export function Component() {
           }]
         : [],
       isComplete: !isInitializing,
-      conversationHistory: conv.messages.map(m => ({
+      conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,
         content: m.content,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,
+        branchMessageIndex: branchMessageIndexMap[index],
       })),
     }
   }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])

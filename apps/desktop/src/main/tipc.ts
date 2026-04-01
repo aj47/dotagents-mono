@@ -55,6 +55,7 @@ import {
   LoopConfig,
 } from "../shared/types"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
+import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
 import { conversationService } from "./conversation-service"
 import { RendererHandlers } from "./renderer-handlers"
@@ -446,6 +447,7 @@ async function processWithAgentMode(
           toolCalls?: any[]
           toolResults?: any[]
           timestamp?: number
+          branchMessageIndex?: number
         }>
       | undefined
 
@@ -459,8 +461,9 @@ async function processWithAgentMode(
         // Convert conversation messages to the format expected by agent mode
         // Exclude the last message since it's the current user input that will be added
         const messagesToConvert = conversation.messages.slice(0, -1)
+        const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
         logLLM(`[tipc.ts processWithAgentMode] Converting ${messagesToConvert.length} messages (excluding last message)`)
-        previousConversationHistory = messagesToConvert.map((msg) => ({
+        previousConversationHistory = messagesToConvert.map((msg, index) => ({
           role: msg.role,
           content: msg.content,
           toolCalls: msg.toolCalls,
@@ -476,6 +479,7 @@ async function processWithAgentMode(
             ],
             isError: !tr.success,
           })),
+          branchMessageIndex: branchMessageIndexMap[index],
         }))
 
         logLLM(`[tipc.ts processWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)

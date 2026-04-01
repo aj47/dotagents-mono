@@ -361,6 +361,7 @@ export interface AgentModeResponse {
     timestamp?: number
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
+    branchMessageIndex?: number
   }>
   totalIterations: number
 }
@@ -512,6 +513,8 @@ export async function processTranscriptWithAgentMode(
     content: string
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
+    timestamp?: number
+    branchMessageIndex?: number
   }>,
   conversationId?: string, // Conversation ID for linking to conversation history
   sessionId?: string, // Session ID for progress routing and isolation
@@ -880,6 +883,7 @@ export async function processTranscriptWithAgentMode(
       toolCalls,
       toolResults,
       timestamp: timestamp || Date.now(),
+      branchMessageIndex: nextBranchMessageIndex++,
       ...(options?.skipModelReplay ? { skipModelReplay: true } : {}),
     }
     conversationHistory.push(message)
@@ -1084,6 +1088,11 @@ export async function processTranscriptWithAgentMode(
   }
 
   const isInternalResumeTranscript = transcript === INTERNAL_COMPLETION_NUDGE_TEXT
+  const previousBranchMessageIndex =
+    sanitizedPreviousConversationHistory[sanitizedPreviousConversationHistory.length - 1]?.branchMessageIndex ?? -1
+  const currentTurnUserBranchMessageIndex = isInternalResumeTranscript
+    ? undefined
+    : previousBranchMessageIndex + 1
 
   const conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
@@ -1091,6 +1100,7 @@ export async function processTranscriptWithAgentMode(
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
     timestamp?: number
+    branchMessageIndex?: number
     ephemeral?: boolean
     skipModelReplay?: boolean
   }> = [
@@ -1099,9 +1109,13 @@ export async function processTranscriptWithAgentMode(
       role: "user",
       content: transcript,
       timestamp: Date.now(),
+      branchMessageIndex: currentTurnUserBranchMessageIndex,
       ...(isInternalResumeTranscript ? { ephemeral: true } : {}),
     },
   ]
+
+  let nextBranchMessageIndex =
+    (currentTurnUserBranchMessageIndex ?? previousBranchMessageIndex) + 1
 
   // Track the index where the current user prompt was added
   // This is used to scope tool result checks to only the current turn
@@ -1192,6 +1206,7 @@ export async function processTranscriptWithAgentMode(
         }),
         // Preserve original timestamp if available, otherwise use current time
         timestamp: entry.timestamp || Date.now(),
+        branchMessageIndex: entry.branchMessageIndex,
       }))
   }
 

@@ -83,8 +83,8 @@ type DisplayItem =
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       responseEvent?: AgentUserResponseEvent
-      /** Original index in the full conversation history (for branching) */
-      conversationMessageIndex?: number
+      /** Absolute raw-history index to use when branching from this message */
+      branchMessageIndex?: number
     } }
   | { kind: "tool_execution"; id: string; data: {
       timestamp: number
@@ -228,12 +228,12 @@ type CompactMessageProps = {
   isSnoozed?: boolean
   /** Conversation ID for branching */
   conversationId?: string
-  /** Original index in the conversation history (for branching) */
-  conversationMessageIndex?: number
+  /** Absolute raw-history index to use when branching from this message */
+  branchMessageIndex?: number
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId, isSnoozed = false, conversationId, conversationMessageIndex }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId, isSnoozed = false, conversationId, branchMessageIndex }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -281,11 +281,11 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   // Branch conversation from this message
   const handleBranchFromMessage = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!conversationId || conversationMessageIndex == null) return
+    if (!conversationId || branchMessageIndex == null) return
     try {
       const branched = await tipcClient.branchConversation({
         conversationId,
-        messageIndex: conversationMessageIndex,
+        messageIndex: branchMessageIndex,
       })
       if (branched) {
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
@@ -297,7 +297,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       console.error("Failed to branch conversation:", err)
       toast.error("Failed to branch conversation")
     }
-  }, [conversationId, conversationMessageIndex])
+  }, [branchMessageIndex, conversationId])
 
   const displayResults = (message.toolResults || []).filter(
     (r) =>
@@ -684,7 +684,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             </button>
           )}
           {/* Branch button for user/assistant messages with a valid conversation */}
-          {conversationId && conversationMessageIndex != null && (message.role === "user" || message.role === "assistant") && (
+          {conversationId && branchMessageIndex != null && (message.role === "user" || message.role === "assistant") && (
             <button
               onClick={handleBranchFromMessage}
               className="p-1 rounded hover:bg-muted/30 transition-colors"
@@ -740,7 +740,7 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.isSnoozed === next.isSnoozed &&
   prev.message.responseEvent?.id === next.message.responseEvent?.id &&
   prev.conversationId === next.conversationId &&
-  prev.conversationMessageIndex === next.conversationMessageIndex
+  prev.branchMessageIndex === next.branchMessageIndex
 ))
 
 // Helper to extract execute_command display info
@@ -3696,8 +3696,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isThinking: boolean
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
-    /** Original index in the full conversation history (for branching) */
-    conversationMessageIndex?: number
+    /** Absolute raw-history index to use when branching from this message */
+    branchMessageIndex?: number
   }>>(() => {
     const nextMessages: Array<{
       role: "user" | "assistant" | "tool"
@@ -3707,7 +3707,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       isThinking: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
-      conversationMessageIndex?: number
+      branchMessageIndex?: number
     }> = []
     const fallbackBaseTimestamp =
       conversationHistory?.[conversationHistory.length - 1]?.timestamp ??
@@ -3735,7 +3735,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             isThinking: false,
             toolCalls: entry.toolCalls,
             toolResults: entry.toolResults,
-            conversationMessageIndex: startIndex + localIndex,
+            branchMessageIndex: entry.branchMessageIndex,
           })
         })
 
@@ -4585,7 +4585,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             sessionId={progress.sessionId}
                             isSnoozed={progress.isSnoozed}
                             conversationId={progress.conversationId}
-                            conversationMessageIndex={item.data.conversationMessageIndex}
+                            branchMessageIndex={item.data.branchMessageIndex}
                           />
                         )
                       } else if (item.kind === "assistant_with_tools") {
@@ -5002,7 +5002,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       sessionId={progress.sessionId}
                       isSnoozed={progress.isSnoozed}
                       conversationId={progress.conversationId}
-                      conversationMessageIndex={item.data.conversationMessageIndex}
+                      branchMessageIndex={item.data.branchMessageIndex}
                     />
                   )
                 } else if (item.kind === "assistant_with_tools") {

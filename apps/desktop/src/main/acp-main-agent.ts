@@ -19,6 +19,7 @@ import {
 } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { AgentProgressUpdate, AgentProgressStep, SessionProfileSnapshot, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
+import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } from "../shared/runtime-tool-names"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
@@ -358,17 +359,22 @@ export async function processTranscriptWithACPAgent(
   try {
     const conversation = await conversationService.loadConversation(conversationId)
     if (conversation) {
-      conversationHistory = conversation.messages.map(m => ({
+      const branchMessageIndexMap = getBranchMessageIndexMap(conversation.messages)
+      conversationHistory = conversation.messages.map((m, index) => ({
         role: m.role,
         content: m.content,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,
+        branchMessageIndex: branchMessageIndexMap[index],
       }))
     }
   } catch (err) {
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)
   }
+
+  let nextBranchMessageIndex =
+    (conversationHistory[conversationHistory.length - 1]?.branchMessageIndex ?? -1) + 1
 
   const currentTurnStartIndex = conversationHistory.length
 
@@ -382,6 +388,15 @@ export async function processTranscriptWithACPAgent(
       finalAssistantResponse,
       "assistant",
     )
+
+    for (let index = conversationHistory.length - 1; index >= 0; index -= 1) {
+      const entry = conversationHistory[index]
+      if (entry.role !== "assistant" || entry.content !== finalAssistantResponse) continue
+      if (typeof entry.branchMessageIndex !== "number") {
+        entry.branchMessageIndex = nextBranchMessageIndex++
+      }
+      break
+    }
   }
 
   const deriveFinalAssistantResponse = (fallbackResponse?: string) => {
@@ -425,6 +440,9 @@ export async function processTranscriptWithACPAgent(
 
   const appendConversationEntry = (entry: ConversationHistoryMessage) => {
     conversationHistory.push(entry)
+    if (typeof entry.branchMessageIndex === "number") {
+      nextBranchMessageIndex = entry.branchMessageIndex + 1
+    }
     lastAssistantTextMessageIndex = undefined
   }
 
