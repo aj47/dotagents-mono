@@ -1,0 +1,39 @@
+name: Desktop E2E Tests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.12.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build Core and Shared
+        run: |
+          pnpm --filter @dotagents/shared build
+          pnpm --filter @dotagents/core build
+        
+      - name: Run E2E Tests
+        # xvfb is required to run Electron headless on Linux
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" pnpm --filter @dotagents/desktop run test:e2e
+        
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/desktop/playwright-report/
+          retention-days: 7
