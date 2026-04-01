@@ -86,4 +86,10 @@ describe("sessions in-app actions", () => {
       "await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })"
     )
   })
+
+  it("navigates to a newly branched conversation so it becomes the focused session", () => {
+    expect(agentProgressSource).toContain('const navigate = useNavigate()')
+    expect(agentProgressSource).toContain('navigate(`/${branched.id}`)')
+    expect(agentProgressSource).not.toContain('Conversation branched — find it in Saved Conversations')
+  })
 })

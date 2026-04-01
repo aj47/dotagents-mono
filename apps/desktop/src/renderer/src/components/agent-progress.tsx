@@ -14,6 +14,7 @@ import { AudioPlayer } from "@renderer/components/audio-player"
 import { useConfigQuery, queryClient } from "@renderer/lib/queries"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { logUI, logExpand } from "@renderer/lib/debug"
+import { useNavigate } from "react-router-dom"
 import { TileFollowUpInput } from "./tile-follow-up-input"
 import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
@@ -241,6 +242,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const [isCopied, setIsCopied] = useState(false)
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const navigate = useNavigate()
   // Track the TTS keys currently being generated, so we can clean them up on unmount.
   const inFlightTtsKeysRef = useRef<string[]>([])
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
@@ -289,7 +291,8 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       })
       if (branched) {
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
-        toast.success("Conversation branched — find it in Saved Conversations")
+        navigate(`/${branched.id}`)
+        toast.success("Conversation branched")
       } else {
         toast.error("Failed to branch conversation")
       }
@@ -297,7 +300,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       console.error("Failed to branch conversation:", err)
       toast.error("Failed to branch conversation")
     }
-  }, [branchMessageIndex, conversationId])
+  }, [branchMessageIndex, conversationId, navigate])
 
   const displayResults = (message.toolResults || []).filter(
     (r) =>
