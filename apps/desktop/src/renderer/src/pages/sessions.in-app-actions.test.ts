@@ -73,6 +73,12 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).not.toContain("pinnedSessionIds.has(convId)")
   })
 
+  it("keeps errored resumed sessions visible and focused so their error state is shown", () => {
+    expect(sessionsSource).toContain('if (recentStatus === "stopped") {')
+    expect(sessionsSource).not.toContain('recentStatus === "stopped" || recentStatus === "error"')
+    expect(sessionsSource).toContain("setExpandedSessionId(realEntry.sessionId)")
+  })
+
   it("keeps pinned tiles at the top of the active sessions grid and exposes a tile pin control", () => {
     expect(sessionsSource).toContain("orderActiveSessionsByPinnedFirst(")
     expect(agentProgressSource).toContain('title={isPinned ? "Unpin session" : "Pin session"}')

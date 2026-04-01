@@ -423,7 +423,10 @@ export function Component() {
       }
 
       const recentStatus = recentStatusById.get(sessionId)
-      if (recentStatus === "stopped" || recentStatus === "error") {
+      // Keep errored sessions visible so the user can see the emitted failure
+      // details after a resumed conversation fails. Only stopped sessions
+      // should disappear automatically.
+      if (recentStatus === "stopped") {
         continue
       }
 
@@ -682,7 +685,7 @@ export function Component() {
   useEffect(() => {
     if (!pendingResumeConversationId) return
 
-    const hasRealSession = activeSessionEntries.some(
+    const realEntry = activeSessionEntries.find(
       ({ sessionId, conversationId, progress, sortTimestamp }) =>
         sessionId !== pendingResumeSessionId &&
         conversationId === pendingResumeConversationId &&
@@ -695,22 +698,24 @@ export function Component() {
         )
     )
 
-    if (hasRealSession) {
+    if (realEntry) {
       // A real session has started for this conversation, dismiss the pending tile
-      // Transfer focus to the real session so auto-scroll continues working
-      const realEntry = activeSessionEntries.find(
-        ({ sessionId, conversationId, progress }) =>
-          sessionId !== pendingResumeSessionId &&
-          conversationId === pendingResumeConversationId &&
-          !progress.isComplete
-      )
-      if (realEntry) {
-        setFocusedSessionId(realEntry.sessionId)
-      }
+      // Transfer focus even for completed/error sessions so the user sees the
+      // resulting success or failure instead of dropping back to the empty state
+      // or another previously focused session.
+      setFocusedSessionId(realEntry.sessionId)
+      setExpandedSessionId(realEntry.sessionId)
       setPendingContinuationStartedAt(null)
       setPendingResumeConversationId(null)
     }
-  }, [activeSessionEntries, pendingResumeConversationId, pendingContinuationStartedAt, pendingResumeSessionId, setFocusedSessionId])
+  }, [
+    activeSessionEntries,
+    pendingResumeConversationId,
+    pendingContinuationStartedAt,
+    pendingResumeSessionId,
+    setExpandedSessionId,
+    setFocusedSessionId,
+  ])
 
   // Safety fallback: if initialization does not produce a real session in time,
   // dismiss the pending tile instead of leaving it stuck indefinitely.
