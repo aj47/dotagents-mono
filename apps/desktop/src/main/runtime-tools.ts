@@ -774,7 +774,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     if (!updatedConversation) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Failed to update session title" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Failed to update conversation title" }) }],
         isError: true,
       }
     }

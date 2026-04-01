@@ -1128,9 +1128,12 @@ export const router = {
   }),
 
   getAgentSessions: t.procedure.action(async () => {
+      const recentCompletedSessions = agentSessionTracker.getRecentSessions(4)
       return {
       activeSessions: agentSessionTracker.getActiveSessions(),
-      recentSessions: agentSessionTracker.getRecentSessions(4),
+      recentCompletedSessions,
+      // Backward-compatible alias while renderer code migrates.
+      recentSessions: recentCompletedSessions,
     }
   }),
 

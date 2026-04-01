@@ -18,7 +18,8 @@ export const STORAGE_KEY_PREFIX = "dotagents-resizable-"
 /**
  * Clears persisted sizes from localStorage for a specific storage key.
  * @param storageKey - The specific storage key to clear (without the prefix).
- *                     For example, "session-tile" clears "dotagents-resizable-session-tile".
+ *                     For example, "agent-progress-tile" clears
+ *                     "dotagents-resizable-agent-progress-tile".
  * Returns true if the entry was cleared, false otherwise.
  */
 export function clearPersistedSize(storageKey: string): boolean {

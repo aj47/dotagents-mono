@@ -23,6 +23,8 @@ export const queryClient = new QueryClient({
   },
 })
 
+export const SAVED_CONVERSATIONS_QUERY_KEY = ["conversation-history"] as const
+
 // ============================================================================
 // Query Hooks
 // ============================================================================
@@ -45,7 +47,7 @@ export const useConfigQuery = () =>
 
 export const useConversationHistoryQuery = (enabled: boolean = true) =>
   useQuery({
-    queryKey: ["conversation-history"],
+    queryKey: SAVED_CONVERSATIONS_QUERY_KEY,
     queryFn: async () => {
       const result = await tipcClient.getConversationHistory()
       return result
@@ -104,7 +106,7 @@ export const useSaveConversationMutation = () =>
       await tipcClient.saveConversation({ conversation })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+      queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
     },
   })
 
@@ -121,7 +123,7 @@ export const useCreateConversationMutation = () =>
       return result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+      queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
     },
   })
 
@@ -152,7 +154,7 @@ export const useAddMessageToConversationMutation = () =>
       queryClient.invalidateQueries({
         queryKey: ["conversation", variables.conversationId],
       })
-      queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+      queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
     },
   })
 
@@ -162,7 +164,7 @@ export const useDeleteConversationMutation = () =>
       return tipcClient.deleteConversation({ conversationId })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+      queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
     },
   })
 
@@ -172,7 +174,7 @@ export const useDeleteAllConversationsMutation = () =>
       return tipcClient.deleteAllConversations()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+      queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
       queryClient.invalidateQueries({ queryKey: ["conversation"] })
     },
   })
@@ -221,3 +223,8 @@ export const useHistoryQuery = useConversationHistoryQuery
 export const useHistoryItemQuery = useConversationQuery
 export const useDeleteHistoryItemMutation = useDeleteConversationMutation
 export const useDeleteAllHistoryMutation = useDeleteAllConversationsMutation
+
+export const useSavedConversationsQuery = useConversationHistoryQuery
+export const useSavedConversationQuery = useConversationQuery
+export const useDeleteSavedConversationMutation = useDeleteConversationMutation
+export const useDeleteAllSavedConversationsMutation = useDeleteAllConversationsMutation

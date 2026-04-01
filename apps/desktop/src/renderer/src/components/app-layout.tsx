@@ -11,7 +11,7 @@ import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher
 import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
 
-import { PastSessionsDialog } from "@renderer/components/past-sessions-dialog"
+import { SavedConversationsDialog } from "@renderer/components/past-sessions-dialog"
 import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
 import {
   useConfigQuery,
@@ -49,9 +49,10 @@ interface AgentSession {
   isSnoozed?: boolean
 }
 
-interface AgentSessionsResponse {
+interface SessionListResponse {
   activeSessions: AgentSession[]
-  recentSessions: AgentSession[]
+  recentCompletedSessions?: AgentSession[]
+  recentSessions?: AgentSession[]
 }
 
 type SessionActionDialogState = {
@@ -69,7 +70,7 @@ export const Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
-  const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
+  const [savedConversationsDialogOpen, setSavedConversationsDialogOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const [sessionActionDialog, setSessionActionDialog] = useState<SessionActionDialogState | null>(null)
   const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
@@ -83,7 +84,7 @@ export const Component = () => {
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
 
   const { data: sessionData, refetch: refetchSessionData } =
-    useQuery<AgentSessionsResponse>({
+    useQuery<SessionListResponse>({
       queryKey: ["agentSessions"],
       queryFn: async () => {
         return await tipcClient.getAgentSessions()
@@ -104,10 +105,11 @@ export const Component = () => {
   const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
   const trackedActiveSessions = sessionData?.activeSessions ?? []
-  const recentSessions = sessionData?.recentSessions ?? []
+  const recentCompletedSessions =
+    sessionData?.recentCompletedSessions ?? sessionData?.recentSessions ?? []
   const collapsedActiveSessions = useMemo(() => {
     const recentStatusById = new Map(
-      recentSessions.map((session) => [session.id, session.status] as const),
+      recentCompletedSessions.map((session) => [session.id, session.status] as const),
     )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
@@ -158,7 +160,7 @@ export const Component = () => {
         0
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, recentSessions, agentProgressById])
+  }, [trackedActiveSessions, recentCompletedSessions, agentProgressById])
   const collapsedPreviewSessions = useMemo(
     () => collapsedActiveSessions.slice(0, 3),
     [collapsedActiveSessions],
@@ -401,9 +403,9 @@ export const Component = () => {
 
   return (
     <>
-      <PastSessionsDialog
-        open={pastSessionsDialogOpen}
-        onOpenChange={setPastSessionsDialogOpen}
+      <SavedConversationsDialog
+        open={savedConversationsDialogOpen}
+        onOpenChange={setSavedConversationsDialogOpen}
       />
 
       <div className="flex h-dvh">
@@ -542,16 +544,16 @@ export const Component = () => {
 
                 <button
                   type="button"
-                  onClick={() => setPastSessionsDialogOpen(true)}
+                  onClick={() => setSavedConversationsDialogOpen(true)}
                   className={cn(
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
-                    pastSessionsDialogOpen
+                    savedConversationsDialogOpen
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
-                  title="Past Sessions"
-                  aria-label="Past Sessions"
-                  aria-pressed={pastSessionsDialogOpen || undefined}
+                  title="Saved conversations"
+                  aria-label="Saved conversations"
+                  aria-pressed={savedConversationsDialogOpen || undefined}
                 >
                   <Clock className="h-4 w-4" />
                 </button>
@@ -636,7 +638,7 @@ export const Component = () => {
                       ? "bg-muted-foreground"
                       : "bg-blue-500"
                   const title =
-                    session.conversationTitle?.trim() || "Untitled session"
+                    session.conversationTitle?.trim() || "Untitled conversation"
                   const initial = title.charAt(0).toUpperCase()
 
                   return (
@@ -726,7 +728,7 @@ export const Component = () => {
 
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
-                onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)}
+                onOpenSavedConversationsDialog={() => setSavedConversationsDialogOpen(true)}
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={setSelectedAgentId}
                 onStartTextSession={handleStartTextSession}
@@ -811,7 +813,7 @@ export const Component = () => {
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             <Outlet
               context={{
-                onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+                onOpenSavedConversationsDialog: () => setSavedConversationsDialogOpen(true),
                 sidebarWidth,
                 selectedAgentId,
                 setSelectedAgentId,
