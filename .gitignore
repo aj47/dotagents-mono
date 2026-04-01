@@ -68,6 +68,8 @@ release/
 trace-session*.json
 apps/desktop/tmp/
 
+playwright-report/
+test-results/
 # Node compile cache
 node-compile-cache/
 tmp/
