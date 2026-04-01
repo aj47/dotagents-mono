@@ -10,8 +10,8 @@ test.describe('Desktop App E2E', () => {
     // Launch Electron with remote debugging using the dev wrapper
     appProcess = spawn('pnpm', ['--filter', '@dotagents/desktop', 'dev:no-sherpa', '--', '-d'], {
       env: { ...process.env, REMOTE_DEBUGGING_PORT: '9333' },
-      shell: true,
-      stdio: 'pipe'
+      shell: process.platform === 'win32',
+      stdio: 'inherit'
     });
 
     // Wait for CDP to be available
@@ -26,7 +26,11 @@ test.describe('Desktop App E2E', () => {
     if (browser) await browser.close();
     if (appProcess && appProcess.pid) {
       // Ensure all child processes (Vite, Electron, etc.) are killed
-      kill(appProcess.pid);
+      await new Promise<void>((resolve) => {
+        kill(appProcess.pid, 'SIGKILL', () => {
+          resolve();
+        });
+      });
     }
   });
 
