@@ -5,13 +5,13 @@ const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.
 const acpSessionBadgeSource = readFileSync(new URL("./acp-session-badge.tsx", import.meta.url), "utf8")
 const messageQueuePanelSource = readFileSync(new URL("./message-queue-panel.tsx", import.meta.url), "utf8")
 const audioPlayerSource = readFileSync(new URL("./audio-player.tsx", import.meta.url), "utf8")
-const sessionTileSource = readFileSync(new URL("./session-tile.tsx", import.meta.url), "utf8")
 
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
     expect(agentProgressSource).toContain(
-      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 cursor-pointer"'
+      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0"'
     )
+    expect(agentProgressSource).toContain('canCollapseTile && "cursor-pointer"')
     expect(agentProgressSource).toContain('isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-1.5"')
     expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
@@ -236,10 +236,6 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain(
       'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
     )
-    expect(sessionTileSource).toContain('className="mt-2 min-w-0 space-y-1"')
-    expect(sessionTileSource).toContain(
-      'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
-    )
   })
 
   it("does not auto-play TTS for tile expansion/collapse interactions", () => {
@@ -256,9 +252,5 @@ describe("agent progress tile layout", () => {
       'Badge variant="outline" className={cn("h-5 rounded-full px-1.5 text-[10px] font-medium", statusBadgeClass)}'
     )
     expect(agentProgressSource).toContain('const conversationStateBadgeClass = conversationState === "complete"')
-    expect(sessionTileSource).toContain('normalizeAgentConversationState(progress.conversationState, progress.isComplete ? "complete" : "running")')
-    expect(sessionTileSource).toContain('const conversationState = progress?.conversationState')
-    expect(sessionTileSource).toContain('conversationState === "needs_input"')
-    expect(sessionTileSource).toContain('conversationState === "blocked"')
   })
 })

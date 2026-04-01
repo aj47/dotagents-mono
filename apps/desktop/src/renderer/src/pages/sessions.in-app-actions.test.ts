@@ -19,7 +19,7 @@ describe("sessions in-app actions", () => {
   })
 
   it("renders a single full-height session view instead of the old card grid", () => {
-    expect(sessionsSource).toContain("const visibleSessionId = useMemo(() => {")
+    expect(sessionsSource).toContain("const selectedSessionId = useMemo(() => {")
     expect(sessionsSource).toContain('className="flex h-full min-h-0 flex-col p-3"')
     expect(sessionsSource).not.toContain("SessionCompactCard")
     expect(sessionsSource).not.toContain("calculateAdaptiveColumns")
@@ -27,18 +27,18 @@ describe("sessions in-app actions", () => {
 
   it("prefers focused sessions over stale expanded selection and refreshes clear-inactive handlers", () => {
     expect(
-      sessionsSource.indexOf("if (focusedSessionId && agentProgressById.has(focusedSessionId)) return focusedSessionId")
+      sessionsSource.indexOf("if (focusedSessionId && displayedSessionIds.has(focusedSessionId)) return focusedSessionId")
     ).toBeLessThan(
-      sessionsSource.indexOf("if (expandedSessionId && agentProgressById.has(expandedSessionId)) return expandedSessionId")
+      sessionsSource.indexOf("if (expandedSessionId && displayedSessionIds.has(expandedSessionId)) return expandedSessionId")
     )
     expect(sessionsSource).toContain("const handleClearInactiveSessions = useCallback(async () => {")
     expect(sessionsSource).toContain("}, [inactiveSessionCount, handleClearInactiveSessions])")
   })
 
-  it("keeps sidebar session clicks always selecting the expanded session", () => {
+  it("keeps sidebar active-session clicks selecting the session while past-session opens clear active focus", () => {
     expect(sidebarSource).toContain("setExpandedSessionId(sessionId)")
     expect(sidebarSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
-    expect(sidebarSource).not.toContain("setExpandedSessionId(null)")
+    expect(sidebarSource).toContain("setExpandedSessionId(null)")
   })
 
   it("clears stale pending past-session state when returning to an active session", () => {
@@ -85,5 +85,11 @@ describe("sessions in-app actions", () => {
     expect(tileFollowUpSource).toContain(
       "await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })"
     )
+  })
+
+  it("navigates to a newly branched conversation so it becomes the focused session", () => {
+    expect(agentProgressSource).toContain('const navigate = useNavigate()')
+    expect(agentProgressSource).toContain('navigate(`/${branched.id}`)')
+    expect(agentProgressSource).not.toContain('Conversation branched — find it in Saved Conversations')
   })
 })

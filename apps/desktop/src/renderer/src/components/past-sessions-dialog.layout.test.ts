@@ -6,7 +6,7 @@ const pastSessionsDialogSource = readFileSync(
   "utf8",
 )
 
-describe("past sessions dialog layout", () => {
+describe("saved conversations dialog layout", () => {
   it("keeps the toolbar and session rows usable under narrow widths", () => {
     expect(pastSessionsDialogSource).toContain(
       'className="flex shrink-0 flex-wrap items-center gap-2"',
@@ -50,10 +50,10 @@ describe("past sessions dialog layout", () => {
     expect(pastSessionsDialogSource).toContain('aria-label={`Delete ${session.title}`}')
   })
 
-  it("includes a keyboard-accessible pin action and pinned-first sort for past sessions", () => {
+  it("includes a keyboard-accessible pin action and pinned-first sort for saved conversations", () => {
     expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst")
-    expect(pastSessionsDialogSource).toContain("return orderConversationHistoryByPinnedFirst(filteredSessions, pinnedSessionIds)")
+    expect(pastSessionsDialogSource).toContain("return orderConversationHistoryByPinnedFirst(filteredConversations, pinnedSessionIds)")
     expect(pastSessionsDialogSource).toContain('aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}')
-    expect(pastSessionsDialogSource).toContain('onKeyDown={stopSessionRowKeyPropagation}')
+    expect(pastSessionsDialogSource).toContain('onKeyDown={stopConversationRowKeyPropagation}')
   })
 })

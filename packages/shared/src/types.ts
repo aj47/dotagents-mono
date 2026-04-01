@@ -38,6 +38,11 @@ export interface BaseChatMessage {
  */
 export interface ConversationHistoryMessage extends BaseChatMessage {
   timestamp?: number;
+  /**
+   * Absolute index into the persisted raw conversation history to use when a UI
+   * action (like branching) needs to target this displayed message.
+   */
+  branchMessageIndex?: number;
 }
 
 /**

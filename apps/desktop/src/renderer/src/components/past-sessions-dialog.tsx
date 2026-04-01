@@ -5,7 +5,11 @@ import { AlertTriangle, Archive, CheckCircle2, Clock, Loader2, Pin, Search, Tras
 
 import { cn } from "@renderer/lib/utils"
 import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
-import { useConversationHistoryQuery, useDeleteConversationMutation, useDeleteAllConversationsMutation } from "@renderer/lib/queries"
+import {
+  useSavedConversationsQuery,
+  useDeleteSavedConversationMutation,
+  useDeleteAllSavedConversationsMutation,
+} from "@renderer/lib/queries"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
 import {
@@ -18,7 +22,7 @@ import {
 import { toast } from "sonner"
 import { useAgentStore } from "@renderer/stores"
 
-const INITIAL_PAST_SESSIONS = 20
+const INITIAL_SAVED_CONVERSATIONS = 20
 
 function formatTimestamp(timestamp: number): string {
   const now = dayjs()
@@ -38,7 +42,7 @@ function formatTimestamp(timestamp: number): string {
   return date.format("MMM D")
 }
 
-export function PastSessionsDialog({
+export function SavedConversationsDialog({
   open,
   onOpenChange,
 }: {
@@ -46,84 +50,84 @@ export function PastSessionsDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const navigate = useNavigate()
-  const conversationHistoryQuery = useConversationHistoryQuery(open)
-  const deleteConversationMutation = useDeleteConversationMutation()
-  const deleteAllConversationsMutation = useDeleteAllConversationsMutation()
+  const savedConversationsQuery = useSavedConversationsQuery(open)
+  const deleteSavedConversationMutation = useDeleteSavedConversationMutation()
+  const deleteAllSavedConversationsMutation = useDeleteAllSavedConversationsMutation()
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
   const togglePinSession = useAgentStore((state) => state.togglePinSession)
   const archivedSessionIds = useAgentStore((state) => state.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((state) => state.toggleArchiveSession)
 
   const [searchQuery, setSearchQuery] = useState("")
-  const [pastSessionsCount, setPastSessionsCount] = useState(
-    INITIAL_PAST_SESSIONS,
+  const [savedConversationCount, setSavedConversationCount] = useState(
+    INITIAL_SAVED_CONVERSATIONS,
   )
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
 
   useEffect(() => {
     if (!open) {
       setSearchQuery("")
-      setPastSessionsCount(INITIAL_PAST_SESSIONS)
+      setSavedConversationCount(INITIAL_SAVED_CONVERSATIONS)
       setShowDeleteAllConfirm(false)
       return
     }
 
     // When searching, reset the lazy-load count so results feel predictable.
-    setPastSessionsCount(INITIAL_PAST_SESSIONS)
+    setSavedConversationCount(INITIAL_SAVED_CONVERSATIONS)
   }, [open, searchQuery])
 
-  const filteredPastSessions = useMemo(() => {
-    const all = conversationHistoryQuery.data ?? []
+  const filteredSavedConversations = useMemo(() => {
+    const all = savedConversationsQuery.data ?? []
     const q = searchQuery.trim().toLowerCase()
-    const filteredSessions = !q
+    const filteredConversations = !q
       ? all
       : all.filter(
-        (session) =>
-          session.title.toLowerCase().includes(q) ||
-          session.preview.toLowerCase().includes(q),
+        (conversation) =>
+          conversation.title.toLowerCase().includes(q) ||
+          conversation.preview.toLowerCase().includes(q),
       )
 
-    return orderConversationHistoryByPinnedFirst(filteredSessions, pinnedSessionIds)
-  }, [conversationHistoryQuery.data, searchQuery, pinnedSessionIds])
+    return orderConversationHistoryByPinnedFirst(filteredConversations, pinnedSessionIds)
+  }, [savedConversationsQuery.data, searchQuery, pinnedSessionIds])
 
-  const visiblePastSessions = useMemo(
-    () => filteredPastSessions.slice(0, pastSessionsCount),
-    [filteredPastSessions, pastSessionsCount],
+  const visibleSavedConversations = useMemo(
+    () => filteredSavedConversations.slice(0, savedConversationCount),
+    [filteredSavedConversations, savedConversationCount],
   )
 
-  const hasMorePastSessions = filteredPastSessions.length > pastSessionsCount
+  const hasMoreSavedConversations = filteredSavedConversations.length > savedConversationCount
 
-  const handleOpenPastSession = (conversationId: string) => {
+  const handleOpenSavedConversation = (conversationId: string) => {
     navigate(`/${conversationId}`)
     onOpenChange(false)
   }
 
-  const handleDeleteSession = async (conversationId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      await deleteConversationMutation.mutateAsync(conversationId)
+      await deleteSavedConversationMutation.mutateAsync(conversationId)
     } catch (error) {
-      console.error("Failed to delete session:", error)
-      toast.error("Failed to delete session")
+      console.error("Failed to delete conversation:", error)
+      toast.error("Failed to delete conversation")
     }
   }
 
-  const handleTogglePinnedSession = (conversationId: string, e: React.MouseEvent) => {
+  const handleTogglePinnedConversation = (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     togglePinSession(conversationId)
   }
 
-  const stopSessionRowKeyPropagation = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+  const stopConversationRowKeyPropagation = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     e.stopPropagation()
   }
 
   const handleDeleteAll = async () => {
     try {
-      await deleteAllConversationsMutation.mutateAsync()
-      toast.success("All history deleted")
+      await deleteAllSavedConversationsMutation.mutateAsync()
+      toast.success("All saved conversations deleted")
       setShowDeleteAllConfirm(false)
     } catch (error) {
-      toast.error("Failed to delete history")
+      toast.error("Failed to delete saved conversations")
     }
   }
 
@@ -133,10 +137,10 @@ export function PastSessionsDialog({
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            Past Sessions
+            Saved Conversations
           </DialogTitle>
           <DialogDescription className="line-clamp-2">
-            Open or manage previous sessions.
+            Open or manage saved conversations.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,7 +151,7 @@ export function PastSessionsDialog({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search past sessions..."
+                placeholder="Search saved conversations..."
                 className="pl-7 text-xs w-full"
               />
             </div>
@@ -155,9 +159,9 @@ export function PastSessionsDialog({
               variant="outline"
               size="sm"
               onClick={() => setShowDeleteAllConfirm(true)}
-              disabled={!conversationHistoryQuery.data?.length}
+              disabled={!savedConversationsQuery.data?.length}
               className="h-8 shrink-0 text-xs text-muted-foreground hover:border-destructive/50 hover:text-destructive"
-              title="Delete all history"
+              title="Delete all saved conversations"
             >
               <Trash2 className="h-3 w-3 mr-1" />
               Delete All
@@ -168,7 +172,7 @@ export function PastSessionsDialog({
             <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
-                Delete all history?
+                Delete all saved conversations?
               </div>
               <p className="text-xs text-muted-foreground">
                 This action cannot be undone.
@@ -187,31 +191,31 @@ export function PastSessionsDialog({
                   size="sm"
                   className="h-7 text-xs"
                   onClick={handleDeleteAll}
-                  disabled={deleteAllConversationsMutation.isPending}
+                  disabled={deleteAllSavedConversationsMutation.isPending}
                 >
-                  {deleteAllConversationsMutation.isPending ? "Deleting..." : "Delete All"}
+                  {deleteAllSavedConversationsMutation.isPending ? "Deleting..." : "Delete All"}
                 </Button>
               </div>
             </div>
           )}
 
           <div className="max-h-[50vh] sm:max-h-[60vh] space-y-1 overflow-y-auto pr-1">
-            {conversationHistoryQuery.isLoading ? (
+            {savedConversationsQuery.isLoading ? (
               <div className="text-muted-foreground flex items-center gap-2 px-2 py-2 text-xs">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Loading sessions...</span>
+                <span>Loading saved conversations...</span>
               </div>
-            ) : conversationHistoryQuery.isError ? (
+            ) : savedConversationsQuery.isError ? (
               <p className="text-destructive px-2 py-2 text-xs">
-                Failed to load sessions
+                Failed to load saved conversations
               </p>
-            ) : visiblePastSessions.length === 0 ? (
+            ) : visibleSavedConversations.length === 0 ? (
               <p className="text-muted-foreground px-2 py-2 text-xs">
-                No past sessions
+                No saved conversations
               </p>
             ) : (
               <>
-                {visiblePastSessions.map((session) => {
+                {visibleSavedConversations.map((session) => {
                   const isPinned = pinnedSessionIds.has(session.id)
                   const isSessionArchived = archivedSessionIds.has(session.id)
 
@@ -220,11 +224,11 @@ export function PastSessionsDialog({
                       key={session.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => handleOpenPastSession(session.id)}
+                      onClick={() => handleOpenSavedConversation(session.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault()
-                          handleOpenPastSession(session.id)
+                          handleOpenSavedConversation(session.id)
                         }
                       }}
                       className={cn(
@@ -247,10 +251,10 @@ export function PastSessionsDialog({
                             <div className="col-start-1 row-start-1 flex items-center gap-0.5 opacity-0 pointer-events-none transition-all group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
                               <button
                                 type="button"
-                                onClick={(e) => handleTogglePinnedSession(session.id, e)}
-                                onKeyDown={stopSessionRowKeyPropagation}
+                                onClick={(e) => handleTogglePinnedConversation(session.id, e)}
+                                onKeyDown={stopConversationRowKeyPropagation}
                                 className="rounded p-0.5 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                                title={isPinned ? "Unpin session" : "Pin session"}
+                                title={isPinned ? "Unpin conversation" : "Pin conversation"}
                                 aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}
                                 aria-pressed={isPinned}
                               >
@@ -262,9 +266,9 @@ export function PastSessionsDialog({
                                   e.stopPropagation()
                                   toggleArchiveSession(session.id)
                                 }}
-                                onKeyDown={stopSessionRowKeyPropagation}
+                                onKeyDown={stopConversationRowKeyPropagation}
                                 className="rounded p-0.5 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                                title={isSessionArchived ? "Unarchive session" : "Archive session"}
+                                title={isSessionArchived ? "Unarchive conversation" : "Archive conversation"}
                                 aria-label={`${isSessionArchived ? "Unarchive" : "Archive"} ${session.title}`}
                                 aria-pressed={isSessionArchived}
                               >
@@ -272,11 +276,11 @@ export function PastSessionsDialog({
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => handleDeleteSession(session.id, e)}
-                                onKeyDown={stopSessionRowKeyPropagation}
-                                disabled={deleteConversationMutation.isPending}
+                                onClick={(e) => handleDeleteConversation(session.id, e)}
+                                onKeyDown={stopConversationRowKeyPropagation}
+                                disabled={deleteSavedConversationMutation.isPending}
                                 className="rounded p-0.5 hover:bg-destructive/20 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                                title="Delete session"
+                                title="Delete conversation"
                                 aria-label={`Delete ${session.title}`}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -294,17 +298,17 @@ export function PastSessionsDialog({
                   )
                 })}
 
-                {hasMorePastSessions && (
+                {hasMoreSavedConversations && (
                   <button
                     type="button"
                     onClick={() =>
-                      setPastSessionsCount(
-                        (prev) => prev + INITIAL_PAST_SESSIONS,
+                      setSavedConversationCount(
+                        (prev) => prev + INITIAL_SAVED_CONVERSATIONS,
                       )
                     }
                     className="text-muted-foreground hover:bg-accent/50 hover:text-foreground w-full rounded-md px-3 py-2 text-xs transition-colors"
                   >
-                    Load more ({filteredPastSessions.length - pastSessionsCount}{" "}
+                    Load more ({filteredSavedConversations.length - savedConversationCount}{" "}
                     remaining)
                   </button>
                 )}
@@ -316,3 +320,5 @@ export function PastSessionsDialog({
     </Dialog>
   )
 }
+
+export const PastSessionsDialog = SavedConversationsDialog

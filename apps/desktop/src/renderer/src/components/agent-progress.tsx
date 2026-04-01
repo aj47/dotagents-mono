@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -11,9 +11,10 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
-import { useConfigQuery } from "@renderer/lib/queries"
+import { useConfigQuery, queryClient } from "@renderer/lib/queries"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { logUI, logExpand } from "@renderer/lib/debug"
+import { useNavigate } from "react-router-dom"
 import { TileFollowUpInput } from "./tile-follow-up-input"
 import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
@@ -83,6 +84,8 @@ type DisplayItem =
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       responseEvent?: AgentUserResponseEvent
+      /** Absolute raw-history index to use when branching from this message */
+      branchMessageIndex?: number
     } }
   | { kind: "tool_execution"; id: string; data: {
       timestamp: number
@@ -224,10 +227,14 @@ type CompactMessageProps = {
   sessionId?: string
   /** Snoozed/background sessions must never auto-play overlay TTS */
   isSnoozed?: boolean
+  /** Conversation ID for branching */
+  conversationId?: string
+  /** Absolute raw-history index to use when branching from this message */
+  branchMessageIndex?: number
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId, isSnoozed = false }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId, isSnoozed = false, conversationId, branchMessageIndex }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -235,6 +242,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const [isCopied, setIsCopied] = useState(false)
   const [isTTSPlaying, setIsTTSPlaying] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const navigate = useNavigate()
   // Track the TTS keys currently being generated, so we can clean them up on unmount.
   const inFlightTtsKeysRef = useRef<string[]>([])
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
@@ -271,6 +279,28 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       console.error("Failed to copy response:", err)
     }
   }
+
+  // Branch conversation from this message
+  const handleBranchFromMessage = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!conversationId || branchMessageIndex == null) return
+    try {
+      const branched = await tipcClient.branchConversation({
+        conversationId,
+        messageIndex: branchMessageIndex,
+      })
+      if (branched) {
+        queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+        navigate(`/${branched.id}`)
+        toast.success("Conversation branched")
+      } else {
+        toast.error("Failed to branch conversation")
+      }
+    } catch (err) {
+      console.error("Failed to branch conversation:", err)
+      toast.error("Failed to branch conversation")
+    }
+  }, [branchMessageIndex, conversationId, navigate])
 
   const displayResults = (message.toolResults || []).filter(
     (r) =>
@@ -656,6 +686,17 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
               )}
             </button>
           )}
+          {/* Branch button for user/assistant messages with a valid conversation */}
+          {conversationId && branchMessageIndex != null && (message.role === "user" || message.role === "assistant") && (
+            <button
+              onClick={handleBranchFromMessage}
+              className="p-1 rounded hover:bg-muted/30 transition-colors"
+              title="Branch from here"
+              aria-label="Branch conversation from this message"
+            >
+              <GitBranch className="h-3 w-3 opacity-60 hover:opacity-100" />
+            </button>
+          )}
           {/* Copy button for user prompts and all completed assistant responses */}
           {(message.role === "user" || (message.role === "assistant" && isComplete)) && (
             <button
@@ -700,7 +741,9 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.variant === next.variant &&
   prev.sessionId === next.sessionId &&
   prev.isSnoozed === next.isSnoozed &&
-  prev.message.responseEvent?.id === next.message.responseEvent?.id
+  prev.message.responseEvent?.id === next.message.responseEvent?.id &&
+  prev.conversationId === next.conversationId &&
+  prev.branchMessageIndex === next.branchMessageIndex
 ))
 
 // Helper to extract execute_command display info
@@ -3656,6 +3699,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isThinking: boolean
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
+    /** Absolute raw-history index to use when branching from this message */
+    branchMessageIndex?: number
   }>>(() => {
     const nextMessages: Array<{
       role: "user" | "assistant" | "tool"
@@ -3665,6 +3710,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       isThinking: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
+      branchMessageIndex?: number
     }> = []
     const fallbackBaseTimestamp =
       conversationHistory?.[conversationHistory.length - 1]?.timestamp ??
@@ -3682,16 +3728,17 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       const isCompletionNudge = (content: string) => content.trim() === INTERNAL_COMPLETION_NUDGE_TEXT
 
       historyForSession
-        .filter((entry) => !(entry.role === "user" && isCompletionNudge(entry.content)))
-        .forEach((entry, index) => {
+        .forEach((entry, localIndex) => {
+          if (entry.role === "user" && isCompletionNudge(entry.content)) return
           nextMessages.push({
             role: entry.role,
             content: entry.content,
             isComplete: true,
-            timestamp: entry.timestamp ?? fallbackBaseTimestamp + index,
+            timestamp: entry.timestamp ?? fallbackBaseTimestamp + localIndex,
             isThinking: false,
             toolCalls: entry.toolCalls,
             toolResults: entry.toolResults,
+            branchMessageIndex: entry.branchMessageIndex,
           })
         })
 
@@ -4540,6 +4587,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             variant="tile"
                             sessionId={progress.sessionId}
                             isSnoozed={progress.isSnoozed}
+                            conversationId={progress.conversationId}
+                            branchMessageIndex={item.data.branchMessageIndex}
                           />
                         )
                       } else if (item.kind === "assistant_with_tools") {
@@ -4955,6 +5004,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       variant={variant}
                       sessionId={progress.sessionId}
                       isSnoozed={progress.isSnoozed}
+                      conversationId={progress.conversationId}
+                      branchMessageIndex={item.data.branchMessageIndex}
                     />
                   )
                 } else if (item.kind === "assistant_with_tools") {

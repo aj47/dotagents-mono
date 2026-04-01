@@ -7,6 +7,7 @@ import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
+import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { toast } from "sonner"
 
 import { logUI } from "@renderer/lib/debug"
@@ -14,7 +15,7 @@ import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-sess
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
-import { useConversationHistoryQuery } from "@renderer/lib/queries"
+import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
@@ -23,7 +24,7 @@ import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions
 const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
 
 interface LayoutContext {
-  onOpenPastSessionsDialog: () => void
+  onOpenSavedConversationsDialog: () => void
   sidebarWidth: number
   selectedAgentId: string | null
   setSelectedAgentId: (id: string | null) => void
@@ -60,9 +61,10 @@ interface AgentSession {
   isSnoozed?: boolean
 }
 
-interface AgentSessionsResponse {
+interface SessionListResponse {
   activeSessions: AgentSession[]
-  recentSessions: AgentSession[]
+  recentCompletedSessions?: AgentSession[]
+  recentSessions?: AgentSession[]
 }
 
 type VisibleSessionEntry = {
@@ -104,7 +106,7 @@ function formatTimestamp(timestamp: number): string {
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
-type SessionAgentTileProps = {
+type ActiveSessionTileProps = {
   sessionId: string
   fallbackProgress?: AgentProgressUpdate | null
   onVoiceContinue: (options: {
@@ -117,11 +119,11 @@ type SessionAgentTileProps = {
   }) => void
 }
 
-const SessionAgentTile = React.memo(function SessionAgentTile({
+const ActiveSessionTile = React.memo(function ActiveSessionTile({
   sessionId,
   fallbackProgress = null,
   onVoiceContinue,
-}: SessionAgentTileProps) {
+}: ActiveSessionTileProps) {
   const storeProgress = useAgentSessionProgress(sessionId)
   const progress = storeProgress ?? fallbackProgress
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
@@ -169,30 +171,30 @@ const SessionAgentTile = React.memo(function SessionAgentTile({
   )
 })
 
-function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionClick, onOpenPastSessionsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
+function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversationClick, onOpenSavedConversationsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
   onTextClick: () => void
   onVoiceClick: () => void
   onSelectPrompt: (content: string) => void
-  onPastSessionClick: (conversationId: string) => void
-  onOpenPastSessionsDialog: () => void
+  onSavedConversationClick: (conversationId: string) => void
+  onOpenSavedConversationsDialog: () => void
   textInputShortcut: string
   voiceInputShortcut: string
   dictationShortcut: string
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
 }) {
-  const conversationHistoryQuery = useConversationHistoryQuery()
+  const savedConversationsQuery = useSavedConversationsQuery()
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
   const togglePinSession = useAgentStore((state) => state.togglePinSession)
-  const sortedRecentSessions = useMemo(
-    () => orderConversationHistoryByPinnedFirst(conversationHistoryQuery.data ?? [], pinnedSessionIds),
-    [conversationHistoryQuery.data, pinnedSessionIds],
+  const sortedSavedConversations = useMemo(
+    () => orderConversationHistoryByPinnedFirst(savedConversationsQuery.data ?? [], pinnedSessionIds),
+    [savedConversationsQuery.data, pinnedSessionIds],
   )
-  const recentSessions = useMemo(
-    () => sortedRecentSessions.slice(0, RECENT_SESSIONS_LIMIT),
-    [sortedRecentSessions],
+  const recentSavedConversations = useMemo(
+    () => sortedSavedConversations.slice(0, RECENT_SESSIONS_LIMIT),
+    [sortedSavedConversations],
   )
-  const totalCount = conversationHistoryQuery.data?.length ?? 0
+  const totalCount = savedConversationsQuery.data?.length ?? 0
 
   const handleTogglePinnedSession = useCallback((conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -253,17 +255,17 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
         </div>
       </div>
 
-      {/* Recent past sessions */}
-      {recentSessions.length > 0 && (
+      {/* Recent saved conversations */}
+      {recentSavedConversations.length > 0 && (
         <div className="mt-6 w-full max-w-md text-left">
           <div className="flex items-center justify-between mb-2 px-1">
             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
-              Recent Sessions
+              Recent Conversations
             </h4>
             {totalCount > RECENT_SESSIONS_LIMIT && (
               <button
-                onClick={onOpenPastSessionsDialog}
+                onClick={onOpenSavedConversationsDialog}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 View all ({totalCount})
@@ -271,7 +273,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
             )}
           </div>
           <div className="space-y-0.5">
-            {recentSessions.map((session) => {
+            {recentSavedConversations.map((session) => {
               const isPinned = pinnedSessionIds.has(session.id)
 
               return (
@@ -279,11 +281,11 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
                   key={session.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => onPastSessionClick(session.id)}
+                  onClick={() => onSavedConversationClick(session.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault()
-                      onPastSessionClick(session.id)
+                      onSavedConversationClick(session.id)
                     }
                   }}
                   className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -322,7 +324,7 @@ export function Component() {
   const navigate = useNavigate()
   const layoutContext = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const {
-    onOpenPastSessionsDialog,
+    onOpenSavedConversationsDialog,
     selectedAgentId = null,
     setSelectedAgentId = () => {},
     onStartTextSession = async () => {},
@@ -341,7 +343,7 @@ export function Component() {
   const voiceInputShortcut = getMcpToolsShortcutDisplay(configQuery.data?.mcpToolsShortcut, configQuery.data?.customMcpToolsShortcut)
   const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
 
-  const { data: sessionData, refetch: refetchSessionData } = useQuery<AgentSessionsResponse>({
+  const { data: sessionData, refetch: refetchSessionData } = useQuery<SessionListResponse>({
     queryKey: ["agentSessions"],
     queryFn: async () => {
       return await tipcClient.getAgentSessions()
@@ -357,7 +359,8 @@ export function Component() {
   }, [refetchSessionData])
 
   const trackedActiveSessions = sessionData?.activeSessions || []
-  const recentSessions = sessionData?.recentSessions || []
+  const recentCompletedSessions =
+    sessionData?.recentCompletedSessions || sessionData?.recentSessions || []
 
   const [sessionOrder, setSessionOrder] = useState<string[]>([])
   const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
@@ -379,16 +382,16 @@ export function Component() {
     return Math.max(lastStepTimestamp, lastHistoryTimestamp)
   }, [])
 
-  // State for pending conversation continuation (user selected a conversation to continue)
-  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null)
+  // State for resuming a saved conversation before a live session exists.
+  const [pendingResumeConversationId, setPendingResumeConversationId] = useState<string | null>(null)
   const [pendingContinuationStartedAt, setPendingContinuationStartedAt] = useState<number | null>(null)
-  const pendingConversationIdRef = useRef<string | null>(pendingConversationId)
+  const pendingResumeConversationIdRef = useRef<string | null>(pendingResumeConversationId)
   const pendingContinuationStartedAtRef = useRef<number | null>(pendingContinuationStartedAt)
   const navigationState = location.state as SessionsNavigationState | null
 
   useEffect(() => {
-    pendingConversationIdRef.current = pendingConversationId
-  }, [pendingConversationId])
+    pendingResumeConversationIdRef.current = pendingResumeConversationId
+  }, [pendingResumeConversationId])
 
   useEffect(() => {
     pendingContinuationStartedAtRef.current = pendingContinuationStartedAt
@@ -396,11 +399,11 @@ export function Component() {
 
   useEffect(() => {
     setPendingContinuationStartedAt(null)
-  }, [pendingConversationId])
+  }, [pendingResumeConversationId])
 
-  const allSessionEntries = React.useMemo<VisibleSessionEntry[]>(() => {
+  const activeSessionEntries = React.useMemo<VisibleSessionEntry[]>(() => {
     const recentStatusById = new Map(
-      recentSessions.map((session) => [session.id, session.status] as const),
+      recentCompletedSessions.map((session) => [session.id, session.status] as const),
     )
     const mergedEntries = new Map<string, VisibleSessionEntry>()
 
@@ -415,7 +418,7 @@ export function Component() {
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
       if (!progress) continue
-      if (pendingConversationId && progress.conversationId === pendingConversationId) {
+      if (pendingResumeConversationId && progress.conversationId === pendingResumeConversationId) {
         continue
       }
 
@@ -482,35 +485,35 @@ export function Component() {
   }, [
     agentProgressById,
     getLastActivityTimestamp,
-    pendingConversationId,
+    pendingResumeConversationId,
     pinnedSessionIds,
-    recentSessions,
+    recentCompletedSessions,
     sessionOrder,
     trackedActiveSessions,
   ])
 
-  const pendingSessionId = pendingConversationId ? `pending-${pendingConversationId}` : null
-  const hasRealActiveSessionForPending = pendingConversationId
-    ? allSessionEntries.some(
+  const pendingResumeSessionId = pendingResumeConversationId ? `pending-${pendingResumeConversationId}` : null
+  const hasLiveSessionForPendingResume = pendingResumeConversationId
+    ? activeSessionEntries.some(
         ({ sessionId, conversationId, progress }) =>
-          sessionId !== pendingSessionId &&
-          conversationId === pendingConversationId &&
+          sessionId !== pendingResumeSessionId &&
+          conversationId === pendingResumeConversationId &&
           !progress.isComplete,
       )
     : false
 
   useEffect(() => {
-    if (hasRealActiveSessionForPending) {
-      setPendingConversationId(null)
+    if (hasLiveSessionForPendingResume) {
+      setPendingResumeConversationId(null)
     }
-  }, [hasRealActiveSessionForPending])
+  }, [hasLiveSessionForPendingResume])
 
   // Sync session order when new sessions appear
   useEffect(() => {
-    const currentIds = allSessionEntries.map(({ sessionId }) => sessionId)
+    const currentIds = activeSessionEntries.map(({ sessionId }) => sessionId)
     const newIds = currentIds.filter(id => !sessionOrder.includes(id))
     const sortTimestampBySessionId = new Map<string, number>(
-      allSessionEntries.map(({ sessionId, sortTimestamp }) => [sessionId, sortTimestamp] as const),
+      activeSessionEntries.map(({ sessionId, sortTimestamp }) => [sessionId, sortTimestamp] as const),
     )
 
     if (newIds.length > 0) {
@@ -535,10 +538,10 @@ export function Component() {
         setSessionOrder(validOrder)
       }
     }
-  }, [allSessionEntries, sessionOrder])
+  }, [activeSessionEntries, sessionOrder])
 
   // Handle route parameter for deep-linking to specific session
-  // When navigating to /:id, focus the active session tile or create a new tile for past sessions
+  // When navigating to /:id, focus the active session tile or create a new tile for a saved conversation.
   // Track the last handled route ID to avoid re-processing on agentProgressById changes.
   // window.history.replaceState clears the browser URL but does NOT update React Router's
   // useParams(), so without this guard the effect would re-fire on every progress update.
@@ -550,7 +553,7 @@ export function Component() {
       // Completed sessions should reload from disk to ensure fresh data,
       // especially for sessions created remotely (e.g. from mobile) where
       // in-memory progress data may be stale or incomplete.
-      const activeSession = allSessionEntries.find(
+      const activeSession = activeSessionEntries.find(
         ({ conversationId, progress }) =>
           conversationId === routeHistoryItemId && !progress.isComplete,
       )
@@ -558,70 +561,72 @@ export function Component() {
         setFocusedSessionId(activeSession.sessionId)
         setExpandedSessionId(activeSession.sessionId)
       } else {
-        // It's a past session or completed session - load fresh data from disk
-        setPendingConversationId(routeHistoryItemId)
+        // It's a saved conversation or completed session - load fresh data from disk.
+        setPendingResumeConversationId(routeHistoryItemId)
       }
       // Clear the route param from URL without causing a remount
       // Using window.history.replaceState instead of navigate() to avoid clearing local state
       window.history.replaceState(null, "", "/")
     }
-  }, [allSessionEntries, routeHistoryItemId, setExpandedSessionId, setFocusedSessionId])
+  }, [activeSessionEntries, routeHistoryItemId, setExpandedSessionId, setFocusedSessionId])
 
   useEffect(() => {
     if (!navigationState?.clearPendingConversation) return
 
     setPendingContinuationStartedAt(null)
-    setPendingConversationId(null)
+    setPendingResumeConversationId(null)
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
   }, [location.pathname, location.search, navigationState, navigate])
 
-  // Load the pending conversation data when one is selected
-  const pendingConversationQuery = useQuery({
-    queryKey: ["conversation", pendingConversationId],
+  // Load the saved conversation that is about to be resumed.
+  const pendingResumeConversationQuery = useQuery({
+    queryKey: ["conversation", pendingResumeConversationId],
     queryFn: async () => {
-      if (!pendingConversationId) return null
-      return tipcClient.loadConversation({ conversationId: pendingConversationId })
+      if (!pendingResumeConversationId) return null
+      return tipcClient.loadConversation({ conversationId: pendingResumeConversationId })
     },
-    enabled: !!pendingConversationId,
+    enabled: !!pendingResumeConversationId,
   })
 
-  const isPendingConversationMissing =
-    !!pendingConversationId &&
-    pendingConversationQuery.isSuccess &&
-    pendingConversationQuery.data === null
+  const isPendingResumeConversationMissing =
+    !!pendingResumeConversationId &&
+    pendingResumeConversationQuery.isSuccess &&
+    pendingResumeConversationQuery.data === null
 
   // If loading a pending conversation fails (deleted/missing), clear the pending
   // state so we do not keep showing a stuck loading tile.
   useEffect(() => {
-    if (!pendingConversationId) return
-    if (!pendingConversationQuery.isError && !isPendingConversationMissing) return
+    if (!pendingResumeConversationId) return
+    if (!pendingResumeConversationQuery.isError && !isPendingResumeConversationMissing) return
 
-    if (pendingConversationQuery.isError) {
-      console.error("Failed to load pending conversation:", pendingConversationQuery.error)
+    if (pendingResumeConversationQuery.isError) {
+      console.error("Failed to load conversation pending resume:", pendingResumeConversationQuery.error)
     } else {
-      console.error("Pending conversation not found:", pendingConversationId)
+      console.error("Conversation pending resume not found:", pendingResumeConversationId)
     }
-    toast.error("Unable to load that past session")
+    toast.error("Unable to load that saved conversation")
     setPendingContinuationStartedAt(null)
-    setPendingConversationId(null)
-  }, [pendingConversationId, pendingConversationQuery.isError, pendingConversationQuery.error, isPendingConversationMissing])
+    setPendingResumeConversationId(null)
+  }, [pendingResumeConversationId, pendingResumeConversationQuery.isError, pendingResumeConversationQuery.error, isPendingResumeConversationMissing])
 
-  // Create a synthetic AgentProgressUpdate for the pending conversation
-  // This allows us to reuse the AgentProgress component with the same UI
-  const pendingProgress: AgentProgressUpdate | null = useMemo(() => {
-    if (!pendingConversationId || !pendingConversationQuery.data) return null
-    const conv = pendingConversationQuery.data
+  // Create a synthetic AgentProgressUpdate for a saved conversation that the
+  // user is about to continue. This keeps saved conversation history distinct
+  // from a real active agent session while reusing the same presentation.
+  const pendingResumeProgress: AgentProgressUpdate | null = useMemo(() => {
+    if (!pendingResumeConversationId || !pendingResumeConversationQuery.data) return null
+    const conv = pendingResumeConversationQuery.data
     const isInitializing = pendingContinuationStartedAt !== null
 
+    const branchMessageIndexMap = getBranchMessageIndexMap(conv.messages)
     return {
-      sessionId: `pending-${pendingConversationId}`,
-      conversationId: pendingConversationId,
+      sessionId: `pending-${pendingResumeConversationId}`,
+      conversationId: pendingResumeConversationId,
       conversationTitle: conv.title || "Continue Conversation",
       currentIteration: isInitializing ? 1 : 0,
       maxIterations: isInitializing ? Infinity : 10,
       steps: isInitializing
         ? [{
-            id: `pending-start-${pendingConversationId}`,
+            id: `pending-start-${pendingResumeConversationId}`,
             type: "thinking",
             title: "Starting follow-up",
             description: "Waiting for session updates...",
@@ -630,22 +635,23 @@ export function Component() {
           }]
         : [],
       isComplete: !isInitializing,
-      conversationHistory: conv.messages.map(m => ({
+      conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,
         content: m.content,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,
+        branchMessageIndex: branchMessageIndexMap[index],
       })),
     }
-  }, [pendingConversationId, pendingConversationQuery.data, pendingContinuationStartedAt])
+  }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])
 
-  // Handle continuing a conversation - check for existing active session first
-  // If found, focus it; otherwise create a pending tile
+  // Resume a saved conversation by focusing an existing live session when
+  // possible, or by showing a temporary resume tile until a live session starts.
   // LLM inference will only happen when user sends an actual message
-  const handleContinueConversation = (conversationId: string) => {
+  const handleResumeSavedConversation = (conversationId: string) => {
     // Check if there's already an active session for this conversationId
-    const existingSession = allSessionEntries.find(
+    const existingSession = activeSessionEntries.find(
       ({ conversationId: existingConversationId, progress }) =>
         existingConversationId === conversationId && !progress.isComplete,
     )
@@ -654,33 +660,32 @@ export function Component() {
       setFocusedSessionId(existingSession.sessionId)
       setExpandedSessionId(existingSession.sessionId)
     } else {
-      // No active session exists, create a pending tile
+      // No active session exists yet, create a temporary resume tile.
       setPendingContinuationStartedAt(null)
-      setPendingConversationId(conversationId)
+      setPendingResumeConversationId(conversationId)
     }
   }
 
-  // Handle dismissing the pending continuation
-  const handleDismissPendingContinuation = () => {
-    logUI('[Sessions] Dismissing pending continuation:', { pendingConversationId })
+  const handleDismissPendingResume = () => {
+    logUI('[Sessions] Dismissing pending resume tile:', { pendingResumeConversationId })
     setPendingContinuationStartedAt(null)
-    setPendingConversationId(null)
+    setPendingResumeConversationId(null)
   }
 
   const handlePendingContinuationStarted = useCallback(() => {
     setPendingContinuationStartedAt((existing) => existing ?? Date.now())
   }, [])
 
-  // Auto-dismiss pending tile when a real session starts for the same conversationId.
+  // Auto-dismiss the temporary resume tile when a real session starts for the same conversationId.
   // During initialization, also dismiss when a completed session appears with
   // activity at/after the follow-up start timestamp.
   useEffect(() => {
-    if (!pendingConversationId) return
+    if (!pendingResumeConversationId) return
 
-    const hasRealSession = allSessionEntries.some(
+    const hasRealSession = activeSessionEntries.some(
       ({ sessionId, conversationId, progress, sortTimestamp }) =>
-        sessionId !== pendingSessionId &&
-        conversationId === pendingConversationId &&
+        sessionId !== pendingResumeSessionId &&
+        conversationId === pendingResumeConversationId &&
         (
           !progress.isComplete ||
           (
@@ -693,48 +698,48 @@ export function Component() {
     if (hasRealSession) {
       // A real session has started for this conversation, dismiss the pending tile
       // Transfer focus to the real session so auto-scroll continues working
-      const realEntry = allSessionEntries.find(
+      const realEntry = activeSessionEntries.find(
         ({ sessionId, conversationId, progress }) =>
-          sessionId !== pendingSessionId &&
-          conversationId === pendingConversationId &&
+          sessionId !== pendingResumeSessionId &&
+          conversationId === pendingResumeConversationId &&
           !progress.isComplete
       )
       if (realEntry) {
         setFocusedSessionId(realEntry.sessionId)
       }
       setPendingContinuationStartedAt(null)
-      setPendingConversationId(null)
+      setPendingResumeConversationId(null)
     }
-  }, [allSessionEntries, pendingConversationId, pendingContinuationStartedAt, pendingSessionId, setFocusedSessionId])
+  }, [activeSessionEntries, pendingResumeConversationId, pendingContinuationStartedAt, pendingResumeSessionId, setFocusedSessionId])
 
   // Safety fallback: if initialization does not produce a real session in time,
   // dismiss the pending tile instead of leaving it stuck indefinitely.
   useEffect(() => {
-    if (!pendingConversationId || pendingContinuationStartedAt === null) return undefined
+    if (!pendingResumeConversationId || pendingContinuationStartedAt === null) return undefined
 
-    const timeoutConversationId = pendingConversationId
+    const timeoutConversationId = pendingResumeConversationId
     const timeoutStartedAt = pendingContinuationStartedAt
     const timeoutId = window.setTimeout(() => {
       if (
-        pendingConversationIdRef.current !== timeoutConversationId ||
+        pendingResumeConversationIdRef.current !== timeoutConversationId ||
         pendingContinuationStartedAtRef.current !== timeoutStartedAt
       ) {
         return
       }
 
       logUI("[Sessions] Pending continuation timed out waiting for real session", {
-        pendingConversationId: timeoutConversationId,
+        pendingResumeConversationId: timeoutConversationId,
         pendingContinuationStartedAt: timeoutStartedAt,
       })
       toast.error("Session startup timed out. Please try again.")
       setPendingContinuationStartedAt(null)
-      setPendingConversationId(null)
+      setPendingResumeConversationId(null)
     }, PENDING_CONTINUATION_TIMEOUT_MS)
 
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [pendingConversationId, pendingContinuationStartedAt])
+  }, [pendingResumeConversationId, pendingContinuationStartedAt])
 
   // Handle text click - open panel with text input
   const handleTextClick = async () => {
@@ -771,7 +776,7 @@ export function Component() {
   }, [openSessionActionDialog])
 
   const handleClearInactiveSessions = useCallback(async () => {
-    const inactiveSessions = allSessionEntries
+    const inactiveSessions = activeSessionEntries
       .filter(({ progress }) => progress.isComplete)
       .map(({ sessionId }) => sessionId)
     logUI('[Sessions] Clear all inactive sessions clicked:', {
@@ -784,7 +789,7 @@ export function Component() {
     } catch (error) {
       toast.error("Failed to clear inactive sessions")
     }
-  }, [allSessionEntries])
+  }, [activeSessionEntries])
 
   // Count inactive (completed) sessions - for clear inactive button
   const inactiveSessionCount = useMemo(() => {
@@ -793,28 +798,28 @@ export function Component() {
   }, [agentProgressById])
 
   const showPendingLoadingTile =
-    !!pendingConversationId &&
-    !pendingProgress &&
-    !pendingConversationQuery.isError &&
-    !isPendingConversationMissing
-  const hasPendingTile = !!pendingProgress || showPendingLoadingTile
-  const visibleSessionIds = useMemo(
-    () => new Set(allSessionEntries.map(({ sessionId }) => sessionId)),
-    [allSessionEntries],
+    !!pendingResumeConversationId &&
+    !pendingResumeProgress &&
+    !pendingResumeConversationQuery.isError &&
+    !isPendingResumeConversationMissing
+  const hasPendingTile = !!pendingResumeProgress || showPendingLoadingTile
+  const displayedSessionIds = useMemo(
+    () => new Set(activeSessionEntries.map(({ sessionId }) => sessionId)),
+    [activeSessionEntries],
   )
 
-  const hasSessions = allSessionEntries.length > 0 || hasPendingTile
+  const hasSessions = activeSessionEntries.length > 0 || hasPendingTile
 
-  const visibleSessionId = useMemo(() => {
-    if (hasPendingTile && pendingSessionId) return pendingSessionId
-    if (focusedSessionId && visibleSessionIds.has(focusedSessionId)) return focusedSessionId
-    if (expandedSessionId && visibleSessionIds.has(expandedSessionId)) return expandedSessionId
-    return allSessionEntries[0]?.sessionId ?? null
-  }, [allSessionEntries, expandedSessionId, focusedSessionId, hasPendingTile, pendingSessionId, visibleSessionIds])
+  const selectedSessionId = useMemo(() => {
+    if (hasPendingTile && pendingResumeSessionId) return pendingResumeSessionId
+    if (focusedSessionId && displayedSessionIds.has(focusedSessionId)) return focusedSessionId
+    if (expandedSessionId && displayedSessionIds.has(expandedSessionId)) return expandedSessionId
+    return activeSessionEntries[0]?.sessionId ?? null
+  }, [activeSessionEntries, displayedSessionIds, expandedSessionId, focusedSessionId, hasPendingTile, pendingResumeSessionId])
 
-  const visibleSessionEntry = useMemo(
-    () => allSessionEntries.find(({ sessionId }) => sessionId === visibleSessionId) ?? null,
-    [allSessionEntries, visibleSessionId],
+  const selectedSessionEntry = useMemo(
+    () => activeSessionEntries.find(({ sessionId }) => sessionId === selectedSessionId) ?? null,
+    [activeSessionEntries, selectedSessionId],
   )
 
   useEffect(() => {
@@ -831,35 +836,35 @@ export function Component() {
 
   // Safety guard: if the expanded session is no longer in the progress map, clear it.
   useEffect(() => {
-    if (expandedSessionId && !visibleSessionIds.has(expandedSessionId)) {
+    if (expandedSessionId && !displayedSessionIds.has(expandedSessionId)) {
       setExpandedSessionId(null)
     }
-  }, [expandedSessionId, setExpandedSessionId, visibleSessionIds])
+  }, [displayedSessionIds, expandedSessionId, setExpandedSessionId])
 
   useEffect(() => {
     if (hasPendingTile) return
-    if (visibleSessionId && visibleSessionId !== expandedSessionId) {
-      setExpandedSessionId(visibleSessionId)
+    if (selectedSessionId && selectedSessionId !== expandedSessionId) {
+      setExpandedSessionId(selectedSessionId)
     }
-  }, [hasPendingTile, visibleSessionId, expandedSessionId, setExpandedSessionId])
+  }, [expandedSessionId, hasPendingTile, selectedSessionId, setExpandedSessionId])
 
   useEffect(() => {
-    if (pendingConversationId) {
-      setViewedConversationId(pendingConversationId)
+    if (pendingResumeConversationId) {
+      setViewedConversationId(pendingResumeConversationId)
       return
     }
 
-    if (visibleSessionId) {
-      setViewedConversationId(visibleSessionEntry?.conversationId ?? null)
+    if (selectedSessionId) {
+      setViewedConversationId(selectedSessionEntry?.conversationId ?? null)
       return
     }
 
     setViewedConversationId(null)
   }, [
-    pendingConversationId,
+    pendingResumeConversationId,
     setViewedConversationId,
-    visibleSessionEntry,
-    visibleSessionId,
+    selectedSessionEntry,
+    selectedSessionId,
   ])
 
   return (
@@ -872,8 +877,8 @@ export function Component() {
             onTextClick={handleTextClick}
             onVoiceClick={handleVoiceStart}
             onSelectPrompt={handleSelectPrompt}
-            onPastSessionClick={handleContinueConversation}
-            onOpenPastSessionsDialog={onOpenPastSessionsDialog ?? (() => {})}
+            onSavedConversationClick={handleResumeSavedConversation}
+            onOpenSavedConversationsDialog={onOpenSavedConversationsDialog ?? (() => {})}
             textInputShortcut={textInputShortcut}
             voiceInputShortcut={voiceInputShortcut}
             dictationShortcut={dictationShortcut}
@@ -882,14 +887,14 @@ export function Component() {
           />
         ) : (
           <div className="flex h-full min-h-0 flex-col p-3">
-            {pendingProgress && pendingSessionId ? (
+            {pendingResumeProgress && pendingResumeSessionId ? (
               <AgentProgress
-                progress={pendingProgress}
+                progress={pendingResumeProgress}
                 variant="tile"
                 className="h-full"
                 isFocused={true}
                 onFocus={() => {}}
-                onDismiss={handleDismissPendingContinuation}
+                onDismiss={handleDismissPendingResume}
                 onFollowUpSent={handlePendingContinuationStarted}
                 isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
                 onVoiceContinue={handleOpenVoiceContinuation}
@@ -905,11 +910,11 @@ export function Component() {
                   <div className="h-3 w-5/6 animate-pulse rounded bg-muted/70" />
                 </div>
               </div>
-            ) : visibleSessionId ? (
-              <SessionAgentTile
-                key={visibleSessionId}
-                sessionId={visibleSessionId}
-                fallbackProgress={visibleSessionEntry?.progress}
+            ) : selectedSessionId ? (
+              <ActiveSessionTile
+                key={selectedSessionId}
+                sessionId={selectedSessionId}
+                fallbackProgress={selectedSessionEntry?.progress}
                 onVoiceContinue={handleOpenVoiceContinuation}
               />
             ) : null}
