@@ -873,10 +873,14 @@ export function hideFloatingPanelWindow() {
 
   // Persist the auto-show preference so the panel stays hidden across sessions
   // and is not re-shown by agent progress updates (#281)
-  const config = configStore.get()
-  if (config.floatingPanelAutoShow !== false) {
-    configStore.save({ ...config, floatingPanelAutoShow: false })
-    logApp("[hideFloatingPanelWindow] Persisted floatingPanelAutoShow=false")
+  try {
+    const config = configStore.get()
+    if (config.floatingPanelAutoShow !== false) {
+      configStore.save({ ...config, floatingPanelAutoShow: false })
+      logApp("[hideFloatingPanelWindow] Persisted floatingPanelAutoShow=false")
+    }
+  } catch (err) {
+    logApp("[hideFloatingPanelWindow] Failed to persist config", { err })
   }
 
   if (panel.isVisible()) {
@@ -1071,10 +1075,14 @@ export function showPanelWindow(options: { markOpenedWithMain?: boolean } = {}) 
     }
 
     // Re-enable auto-show when user explicitly shows the panel (#281)
-    const config = configStore.get()
-    if (config.floatingPanelAutoShow === false) {
-      configStore.save({ ...config, floatingPanelAutoShow: true })
-      logApp("[showPanelWindow] Re-enabled floatingPanelAutoShow=true")
+    try {
+      const config = configStore.get()
+      if (config.floatingPanelAutoShow === false) {
+        configStore.save({ ...config, floatingPanelAutoShow: true })
+        logApp("[showPanelWindow] Re-enabled floatingPanelAutoShow=true")
+      }
+    } catch (err) {
+      logApp("[showPanelWindow] Failed to persist config", { err })
     }
 
     // Apply mode sizing/positioning just before showing

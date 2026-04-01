@@ -16,6 +16,7 @@ export interface SlashCommandItem {
 export interface SlashCommandMenuHandle {
   moveSelection: (delta: number) => void
   getSelectedItem: () => SlashCommandItem | undefined
+  hasItems: () => boolean
 }
 
 interface SlashCommandMenuProps {
@@ -41,6 +42,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
   const skillsQuery = useQuery({
     queryKey: ["skills"],
     queryFn: () => tipcClient.getSkills(),
+    enabled: isOpen,
   })
 
   const items = useMemo<SlashCommandItem[]>(() => {
@@ -82,6 +84,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
 
   useImperativeHandle(ref, () => ({
     moveSelection(delta: number) {
+      if (filtered.length === 0) return
       setSelectedIndex((prev) => {
         const next = prev + delta
         if (next < 0) return filtered.length - 1
@@ -90,7 +93,10 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       })
     },
     getSelectedItem() {
-      return filtered[selectedIndex]
+      return filtered.length > 0 ? filtered[selectedIndex] : undefined
+    },
+    hasItems() {
+      return filtered.length > 0
     },
   }), [filtered, selectedIndex])
 
@@ -184,11 +190,13 @@ export function useSlashCommands(
     if (!isSlashMenuOpen) return false
 
     if (e.key === "ArrowDown") {
+      if (!menuRef.current?.hasItems()) return false
       e.preventDefault()
       menuRef.current?.moveSelection(1)
       return true
     }
     if (e.key === "ArrowUp") {
+      if (!menuRef.current?.hasItems()) return false
       e.preventDefault()
       menuRef.current?.moveSelection(-1)
       return true

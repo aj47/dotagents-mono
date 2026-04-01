@@ -50,7 +50,10 @@ export function OverlayFollowUpInput({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
-  const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setText)
+  // Overlay uses <input type="text"> which can't represent newlines.
+  // Flatten newlines to spaces when slash commands insert multi-line content.
+  const setTextFlattened = React.useCallback((val: string) => setText(val.replace(/\n/g, " ")), [])
+  const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setTextFlattened)
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
