@@ -7,7 +7,6 @@ import { container, ServiceTokens } from "./service-container"
 import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
 
 import {
-  findAgentsDirUpward,
   getAgentsLayerPaths,
   loadMergedAgentsConfig,
   writeAgentsLayerFromConfig,
@@ -94,25 +93,18 @@ function migrateGroqTtsConfig(config: Partial<Config>): Partial<Config> {
 }
 
 export function resolveWorkspaceAgentsFolder(): string | null {
+  const envWorkspaceRoot = process.env.DOTAGENTS_WORKSPACE_DIR?.trim()
+  if (!envWorkspaceRoot) return null
+
   const globalResolved = path.resolve(globalAgentsFolder)
+  const resolvedRoot = path.isAbsolute(envWorkspaceRoot)
+    ? envWorkspaceRoot
+    : path.resolve(process.cwd(), envWorkspaceRoot)
+  const candidate = path.join(resolvedRoot, ".agents")
 
-  const envWorkspaceRoot = process.env.DOTAGENTS_WORKSPACE_DIR
-  if (envWorkspaceRoot && envWorkspaceRoot.trim()) {
-    const resolvedRoot = path.isAbsolute(envWorkspaceRoot)
-      ? envWorkspaceRoot
-      : path.resolve(process.cwd(), envWorkspaceRoot)
-    const candidate = path.join(resolvedRoot, ".agents")
-    // Don't return the same directory as the global layer
-    if (path.resolve(candidate) === globalResolved) return null
-    return candidate
-  }
-
-  // Safe-by-default: only treat a directory as a workspace if a `.agents` folder already exists.
-  const found = findAgentsDirUpward(process.cwd())
-  if (!found) return null
-  // Don't return the same directory as the global layer
-  if (path.resolve(found) === globalResolved) return null
-  return found
+  // Don't return the same directory as the global layer.
+  if (path.resolve(candidate) === globalResolved) return null
+  return candidate
 }
 
 /**

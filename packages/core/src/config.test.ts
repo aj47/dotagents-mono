@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import fs from "fs"
+import os from "os"
+import path from "path"
 import { ServiceContainer, ServiceTokens } from "./service-container"
 import { MockPathResolver } from "./testing/mock-path-resolver"
 import { container } from "./service-container"
@@ -54,8 +57,56 @@ describe("config", () => {
   })
 
   it("globalAgentsFolder points to ~/.agents", () => {
-    const home = require("os").homedir()
-    expect(configModule.globalAgentsFolder).toBe(require("path").join(home, ".agents"))
+    const home = os.homedir()
+    expect(configModule.globalAgentsFolder).toBe(path.join(home, ".agents"))
+  })
+
+  describe("resolveWorkspaceAgentsFolder", () => {
+    const originalWorkspaceDir = process.env.DOTAGENTS_WORKSPACE_DIR
+    let cwdSpy: ReturnType<typeof vi.spyOn> | undefined
+
+    afterEach(() => {
+      cwdSpy?.mockRestore()
+      cwdSpy = undefined
+      if (originalWorkspaceDir === undefined) {
+        delete process.env.DOTAGENTS_WORKSPACE_DIR
+      } else {
+        process.env.DOTAGENTS_WORKSPACE_DIR = originalWorkspaceDir
+      }
+    })
+
+    it("returns null when DOTAGENTS_WORKSPACE_DIR is unset even if a .agents folder exists upward", () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-config-"))
+
+      try {
+        const workspaceRoot = path.join(tempDir, "workspace")
+        const nestedCwd = path.join(workspaceRoot, "apps", "desktop")
+        fs.mkdirSync(path.join(workspaceRoot, ".agents"), { recursive: true })
+        fs.mkdirSync(nestedCwd, { recursive: true })
+
+        delete process.env.DOTAGENTS_WORKSPACE_DIR
+        cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(nestedCwd)
+
+        expect(configModule.resolveWorkspaceAgentsFolder()).toBeNull()
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true })
+      }
+    })
+
+    it("returns the configured workspace .agents folder when DOTAGENTS_WORKSPACE_DIR is set", () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-config-"))
+
+      try {
+        const workspaceRoot = path.join(tempDir, "workspace")
+        fs.mkdirSync(workspaceRoot, { recursive: true })
+
+        process.env.DOTAGENTS_WORKSPACE_DIR = workspaceRoot
+
+        expect(configModule.resolveWorkspaceAgentsFolder()).toBe(path.join(workspaceRoot, ".agents"))
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true })
+      }
+    })
   })
 
   describe("ConfigStore", () => {
