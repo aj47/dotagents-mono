@@ -595,8 +595,8 @@ Write your skill instructions here.
           <div className="px-4 pb-4 space-y-3">
             <p className="text-sm text-muted-foreground">
               You can hand-author skills in <span className="font-mono">.agents/skills/&lt;id&gt;/skill.md</span>. Frontmatter
-              uses simple <span className="font-mono">key: value</span> lines (not YAML). If a workspace <span className="font-mono">.agents</span>
-              folder exists, it can override the global layer by skill <span className="font-mono">id</span>.
+              uses simple <span className="font-mono">key: value</span> lines (not YAML). If <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span>
+              points at a workspace, its <span className="font-mono">.agents</span> folder can override the global layer by skill <span className="font-mono">id</span>.
             </p>
             <div className="space-y-1">
               <div className="text-xs text-muted-foreground">
@@ -605,7 +605,7 @@ Write your skill instructions here.
               <div className="text-xs text-muted-foreground">
                 Workspace:{" "}
                 <span className="font-mono break-all">
-                  {agentsFoldersQuery.data?.workspace?.skillsDir ?? "Not detected"}
+                  {agentsFoldersQuery.data?.workspace?.skillsDir ?? "Not configured"}
                   {agentsFoldersQuery.data?.workspace?.skillsDir && agentsFoldersQuery.data?.workspaceSource
                     ? ` (${agentsFoldersQuery.data.workspaceSource})`
                     : ""}

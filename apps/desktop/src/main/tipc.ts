@@ -2392,9 +2392,7 @@ export const router = {
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
     const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
 
-    const workspaceSource = workspaceLayer
-      ? (process.env.DOTAGENTS_WORKSPACE_DIR && process.env.DOTAGENTS_WORKSPACE_DIR.trim() ? "env" : "upward")
-      : null
+    const workspaceSource = workspaceLayer ? "env" : null
 
     return {
       global: {
@@ -2425,7 +2423,7 @@ export const router = {
   openWorkspaceAgentsFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder detected" }
+    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder configured" }
 
     fs.mkdirSync(workspaceAgentsFolder, { recursive: true })
     const error = await shell.openPath(workspaceAgentsFolder)
@@ -2491,7 +2489,7 @@ export const router = {
   openWorkspaceKnowledgeFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder detected" }
+    if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder configured" }
 
     const knowledgeDir = path.join(workspaceAgentsFolder, "knowledge")
     fs.mkdirSync(knowledgeDir, { recursive: true })

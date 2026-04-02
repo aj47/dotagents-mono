@@ -617,9 +617,10 @@ export function Component() {
           forceOpen={isSearching}
         >
           <div className="px-3 py-2 text-sm leading-5 text-muted-foreground">
-            Advanced configuration can live in <span className="font-mono">.agents</span>. Workspace{" "}
-            <span className="font-mono">.agents</span> overrides the global layer when present (or when{" "}
-            <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set). Skills live in{" "}
+            Advanced configuration can live in <span className="font-mono">.agents</span>. Global{" "}
+            <span className="font-mono">~/.agents</span> is the default layer. Workspace{" "}
+            <span className="font-mono">.agents</span> is only used when{" "}
+            <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set, and then it overrides the global layer. Skills live in{" "}
             <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and knowledge notes in{" "}
             <span className="font-mono">knowledge/&lt;slug&gt;/&lt;slug&gt;.md</span>. Frontmatter uses simple{" "}
             <span className="font-mono">key: value</span> lines (not YAML).
@@ -633,7 +634,7 @@ export function Component() {
             label={
               <ControlLabel
                 label="Workspace folder"
-                tooltip="Optional overlay layer. When present, it overrides the global .agents layer."
+                tooltip="Optional overlay layer enabled by DOTAGENTS_WORKSPACE_DIR. When configured, it overrides the global .agents layer."
               />
             }
             className="px-3"
@@ -641,7 +642,7 @@ export function Component() {
             <div className="text-right font-mono text-xs text-muted-foreground break-all">
               {agentsFoldersQuery.isLoading
                 ? "Loading..."
-                : agentsFoldersQuery.data?.workspace?.agentsDir ?? "Not detected"}
+                : agentsFoldersQuery.data?.workspace?.agentsDir ?? "Not configured"}
               {agentsFoldersQuery.data?.workspace?.agentsDir && agentsFoldersQuery.data?.workspaceSource
                 ? ` (${agentsFoldersQuery.data.workspaceSource})`
                 : ""}

@@ -9,20 +9,22 @@ description: "Use this skill when you need to inspect, change, or create DotAgen
 
 Treat the layered `.agents` filesystem as the canonical editable DotAgents configuration surface.
 
-- Global layer: `~/.agents/`
-- Workspace layer: `./.agents/`
-- Workspace wins on conflicts
+- Global layer: `~/.agents/` (default)
+- Workspace layer: `${DOTAGENTS_WORKSPACE_DIR}/.agents/` when `DOTAGENTS_WORKSPACE_DIR` is explicitly set
+- Workspace wins on conflicts when present
 - Prefer direct file editing over narrow app-specific config tools
 
 When changing unfamiliar DotAgents config, inspect the relevant files first, then make the smallest safe edit.
 
 ## Canonical file map
 
-- `~/.agents/dotagents-settings.json` or `./.agents/dotagents-settings.json` — general app settings
-- `~/.agents/mcp.json` or `./.agents/mcp.json` — MCP-related config
-- `~/.agents/models.json` or `./.agents/models.json` — model/provider config
-- `~/.agents/system-prompt.md` or `./.agents/system-prompt.md` — system prompt override
-- `~/.agents/agents.md` or `./.agents/agents.md` — agent-wide guidelines
+Use `~/.agents/` by default. When `DOTAGENTS_WORKSPACE_DIR` is explicitly set, the workspace layer uses the same relative paths under `${DOTAGENTS_WORKSPACE_DIR}/.agents/`.
+
+- `~/.agents/dotagents-settings.json` — general app settings
+- `~/.agents/mcp.json` — MCP-related config
+- `~/.agents/models.json` — model/provider config
+- `~/.agents/system-prompt.md` — system prompt override
+- `~/.agents/agents.md` — agent-wide guidelines
 - `~/.agents/agents/<id>/agent.md` — agent identity/frontmatter
 - `~/.agents/agents/<id>/config.json` — nested per-agent config
 - `~/.agents/skills/<id>/skill.md` — skill definition and instructions
@@ -31,8 +33,8 @@ When changing unfamiliar DotAgents config, inspect the relevant files first, the
 
 ## Layering rules
 
-- Prefer `./.agents/` for workspace-specific behavior
-- Prefer `~/.agents/` for user-wide defaults
+- `~/.agents/` is the default layer for user-wide defaults
+- Use `${DOTAGENTS_WORKSPACE_DIR}/.agents/` for workspace-specific behavior only when `DOTAGENTS_WORKSPACE_DIR` is explicitly set
 - Config merge is shallow by key
 - Agents, skills, tasks, and knowledge notes merge by ID
 - When a workspace file intentionally overrides a global file, edit the workspace copy

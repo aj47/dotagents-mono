@@ -168,7 +168,8 @@ PAST CONVERSATIONS:
 
 DOTAGENTS CONFIG:
 - Treat ~/.agents/ and ./.agents/ as the canonical editable DotAgents configuration surface
-- Workspace ./.agents/ overrides global ~/.agents/ on conflicts
+- Global ~/.agents/ is the default editable layer
+- Workspace ./.agents/ only overrides global ~/.agents/ when DOTAGENTS_WORKSPACE_DIR is explicitly set
 - Prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes instead of narrow app-specific config tools`)
 
   if (hasLoadSkillInstructions) {
