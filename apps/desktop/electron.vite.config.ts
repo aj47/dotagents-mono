@@ -59,8 +59,30 @@ export default defineConfig({
       preserveSymlinks: true,
     },
     optimizeDeps: {
-      include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
-      exclude: ["@dotagents/shared"],
+      include: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+        "remark-gfm",
+        "rehype-highlight",
+        // `react-markdown` can be served from source in desktop dev, but some of its
+        // transitive dependencies are CJS-only and still need Vite interop.
+        "style-to-js",
+        "style-to-object",
+        "debug",
+        "extend",
+        "escape-string-regexp",
+        "highlight.js",
+      ],
+      exclude: [
+        "@dotagents/shared",
+        // Keep the markdown pipeline out of Vite's optimized dep cache in desktop dev.
+        // We saw renderer lazy routes get stuck on a poisoned immutable
+        // `react-markdown.js?v=...` URL after a failed prebundle/cached module load.
+        // Serving react-markdown directly avoids that stale optimized-dep path.
+        "react-markdown",
+      ],
       esbuildOptions: {
         preserveSymlinks: true,
       },
