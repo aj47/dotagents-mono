@@ -107,7 +107,7 @@ Check:
 
 | Variable | Description |
 |----------|-------------|
-| `SPEAKMCP_WORKSPACE_DIR` | Set workspace `.agents/` directory |
+| `DOTAGENTS_WORKSPACE_DIR` | Explicitly set the workspace `.agents/` directory |
 | `DEBUG` | Node.js debug flag |
 
 ## Langfuse (Production Debugging)

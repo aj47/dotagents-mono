@@ -59,7 +59,7 @@ The `.agents` protocol uses a **two-layer** configuration system:
 - Optional overlay that lives in your project directory
 - Overrides global settings for project-specific configuration
 - Version-controllable with git
-- Set via `SPEAKMCP_WORKSPACE_DIR` env var or auto-discovered
+- Set via explicit workspace configuration using the `DOTAGENTS_WORKSPACE_DIR` env var
 
 ### Merge Semantics
 

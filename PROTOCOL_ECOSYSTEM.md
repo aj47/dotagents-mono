@@ -328,8 +328,7 @@ A **file-based, modular configuration system** that stores agent-related setting
 
 **Workspace Layer** (`<workspace>/.agents/`):
 - Optional overlay on top of global
-- Set via `SPEAKMCP_WORKSPACE_DIR` environment variable
-- Or auto-discovered if `.agents` folder exists in current directory
+- Set via explicit workspace configuration using the `DOTAGENTS_WORKSPACE_DIR` environment variable
 - Workspace settings override global settings
 
 ### Merge Semantics
@@ -465,7 +464,7 @@ Note-local assets such as images or PDFs may live anywhere inside the same note 
 1. **App Startup**:
    - Load `config.json` (global settings)
    - Load `.agents/` layer (global)
-   - Load workspace `.agents/` layer (if exists)
+   - Load workspace `.agents/` layer (if explicitly configured via `DOTAGENTS_WORKSPACE_DIR`)
    - Merge: `config = defaults + config.json + .agents/global + .agents/workspace`
 
 2. **Agent Initialization**:
