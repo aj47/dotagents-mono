@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockConfig, makeTextCompletionWithFetchMock } = vi.hoisted(() => ({
+const {
+  mockConfig,
+  makeTextCompletionWithFetchMock,
+  fetchModelsDevDataMock,
+  getModelFromModelsDevByProviderIdMock,
+} = vi.hoisted(() => ({
   mockConfig: {
     mcpContextReductionEnabled: true,
     mcpContextTargetRatio: 0.5,
@@ -11,6 +16,8 @@ const { mockConfig, makeTextCompletionWithFetchMock } = vi.hoisted(() => ({
     mcpToolsOpenaiModel: 'gpt-4.1-mini',
   },
   makeTextCompletionWithFetchMock: vi.fn(),
+  fetchModelsDevDataMock: vi.fn(),
+  getModelFromModelsDevByProviderIdMock: vi.fn(),
 }))
 
 vi.mock('./config', () => ({
@@ -24,6 +31,11 @@ vi.mock('./debug', () => ({
 
 vi.mock('./llm-fetch', () => ({
   makeTextCompletionWithFetch: makeTextCompletionWithFetchMock,
+}))
+
+vi.mock('./models-dev-service', () => ({
+  fetchModelsDevData: fetchModelsDevDataMock,
+  getModelFromModelsDevByProviderId: getModelFromModelsDevByProviderIdMock,
 }))
 
 vi.mock('./system-prompts', () => ({
@@ -59,6 +71,10 @@ import {
 describe('shrinkMessagesForLLM replacement policy', () => {
   beforeEach(() => {
     makeTextCompletionWithFetchMock.mockReset()
+    fetchModelsDevDataMock.mockReset()
+    fetchModelsDevDataMock.mockResolvedValue({})
+    getModelFromModelsDevByProviderIdMock.mockReset()
+    getModelFromModelsDevByProviderIdMock.mockReturnValue(undefined)
     clearArchiveFrontier('session-truncate')
     clearArchiveFrontier('session-batch')
     clearArchiveFrontier('session-archive')
@@ -89,6 +105,77 @@ describe('shrinkMessagesForLLM replacement policy', () => {
       mcpToolsProviderId: 'openai',
       mcpToolsOpenaiModel: 'gpt-4.1-mini',
     })
+  })
+
+  it('prefers models.dev context limits before registry fallback', async () => {
+    Object.assign(mockConfig, {
+      mcpContextReductionEnabled: false,
+      mcpMaxContextTokensOverride: undefined,
+      mcpToolsProviderId: 'openai',
+      mcpToolsOpenaiModel: 'gpt-5.4',
+    })
+    getModelFromModelsDevByProviderIdMock.mockReturnValue({
+      id: 'gpt-5.4',
+      name: 'GPT-5.4',
+      limit: { context: 1_050_000, output: 32_000 },
+    })
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-models-dev-limit',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'hello' },
+      ],
+    })
+
+    expect(fetchModelsDevDataMock).toHaveBeenCalledTimes(1)
+    expect(getModelFromModelsDevByProviderIdMock).toHaveBeenCalledWith('gpt-5.4', 'openai')
+    expect(result.maxTokens).toBe(1_050_000)
+  })
+
+  it('falls back to the registry when models.dev has no context limit', async () => {
+    Object.assign(mockConfig, {
+      mcpContextReductionEnabled: false,
+      mcpMaxContextTokensOverride: undefined,
+      mcpToolsProviderId: 'openai',
+      mcpToolsOpenaiModel: 'gpt-4.1-mini',
+    })
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-registry-fallback',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'hello' },
+      ],
+    })
+
+    expect(fetchModelsDevDataMock).toHaveBeenCalledTimes(1)
+    expect(result.maxTokens).toBe(128_000)
+  })
+
+  it('keeps explicit context overrides ahead of models.dev lookups', async () => {
+    Object.assign(mockConfig, {
+      mcpContextReductionEnabled: false,
+      mcpMaxContextTokensOverride: 4321,
+      mcpToolsProviderId: 'openai',
+      mcpToolsOpenaiModel: 'gpt-5.4-override-check',
+    })
+    getModelFromModelsDevByProviderIdMock.mockReturnValue({
+      id: 'gpt-5.4-override-check',
+      name: 'GPT-5.4 override check',
+      limit: { context: 1_050_000, output: 32_000 },
+    })
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-context-override',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'hello' },
+      ],
+    })
+
+    expect(fetchModelsDevDataMock).not.toHaveBeenCalled()
+    expect(result.maxTokens).toBe(4321)
   })
 
   it('truncates oversized tool results before tier-1 summarization', async () => {

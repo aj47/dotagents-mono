@@ -1,6 +1,7 @@
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
+import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-dev-service"
 import { constructMinimalSystemPrompt } from "./system-prompts"
 import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
@@ -38,6 +39,17 @@ const archiveHistoryRefBySession = new Map<string, string>()
 
 function key(providerId: string, model: string) {
   return `${providerId}|${model}`
+}
+
+function mapToModelsDevProviderId(providerId: string): string {
+  if (providerId === "openai") {
+    const baseUrl = configStore.get().openaiBaseUrl
+    if (baseUrl?.includes("openrouter.ai")) return "openrouter"
+  }
+
+  if (providerId === "gemini") return "google"
+
+  return providerId
 }
 
 // ============================================================================
@@ -396,6 +408,21 @@ async function fetchGroqContextWindow(model: string): Promise<number | undefined
   return undefined
 }
 
+async function fetchModelsDevContextWindow(providerId: string, model: string): Promise<number | undefined> {
+  try {
+    await fetchModelsDevData()
+    const modelsDevProviderId = mapToModelsDevProviderId(providerId)
+    const modelsDevModel = getModelFromModelsDevByProviderId(model, modelsDevProviderId)
+    const contextWindow = modelsDevModel?.limit?.context
+
+    if (typeof contextWindow === "number" && contextWindow > 0) {
+      return contextWindow
+    }
+  } catch {}
+
+  return undefined
+}
+
 async function getMaxContextTokens(providerId: string, model: string): Promise<number> {
   const cfg = configStore.get()
   const override = cfg.mcpMaxContextTokensOverride
@@ -407,6 +434,9 @@ async function getMaxContextTokens(providerId: string, model: string): Promise<n
   let result: number | undefined
   if (providerId === "groq") {
     result = await fetchGroqContextWindow(model)
+  }
+  if (!result) {
+    result = await fetchModelsDevContextWindow(providerId, model)
   }
   // Use model registry with fuzzy matching for context window lookup
   if (!result) result = getModelContextWindow(providerId, model)
@@ -1291,12 +1321,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const { providerId, model } = getProviderAndModel()
   if (!enabled) {
     const est = estimateTokensFromMessages(opts.messages)
-    // Check for user override first (no network call), else use static default
-    const cfg = configStore.get()
-    const override = cfg.mcpMaxContextTokensOverride
-    const maxTokens = (override && typeof override === "number" && override > 0)
-      ? override
-      : getModelContextWindow(providerId, model)
+    const maxTokens = await getMaxContextTokens(providerId, model)
     return { messages: opts.messages, appliedStrategies: [], estTokensBefore: est, estTokensAfter: est, maxTokens }
   }
   const maxTokens = await getMaxContextTokens(providerId, model)
