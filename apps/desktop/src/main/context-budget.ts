@@ -619,7 +619,9 @@ export function readMoreContext(
   }
 
   const mode = options.mode ?? "overview"
-  const maxChars = Math.max(100, Math.min(options.maxChars ?? 1200, 4000))
+  const defaultMaxChars = 1500
+  const modeMaxChars = mode === "search" ? 4000 : 12000
+  const maxChars = Math.max(100, Math.min(options.maxChars ?? defaultMaxChars, modeMaxChars))
   const totalChars = entry.totalChars
 
   if (mode === "overview") {
@@ -867,10 +869,12 @@ interface SummaryBatch {
 
 const TOOL_TRUNCATE_MARKER = "[Large tool result truncated for context management. If more detail is needed, re-run the tool with narrower input or inspect the source directly.]"
 const PAYLOAD_TRUNCATE_MARKER = "[Large payload truncated for context management. Keep only the most relevant leading content here and fetch narrower details if needed.]"
+const EXTERNAL_TOOL_TRUNCATE_MARKERS = ["[OUTPUT TRUNCATED:", "[truncated]"]
 const AGGRESSIVE_TRUNCATE_THRESHOLD = 5000
 const AGGRESSIVE_TRUNCATE_KEEP_CHARS = 4000
-const TOOL_RESULT_TRUNCATE_THRESHOLD = 3000
-const TOOL_RESULT_KEEP_CHARS = 1800
+const TOOL_RESULT_TRUNCATE_THRESHOLD = 4000
+const TOOL_RESULT_KEEP_CHARS = 2400
+const TOOL_RESULT_TRUNCATE_TRIGGER_TOKEN_RATIO = 0.8
 const BATCH_SUMMARY_MAX_INPUT_CHARS = 12000
 const BATCH_SUMMARY_MAX_MESSAGES = 8
 const ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES = 20
@@ -909,16 +913,33 @@ function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
     || startsWithJsonLikeArray(content)
 }
 
-function truncateWithMarker(content: string, keepChars: number, marker: string): string {
+function truncateWithMarker(
+  content: string,
+  keepChars: number,
+  marker: string,
+  options?: { preserveTail?: boolean },
+): string {
   if (content.length <= keepChars) return content
-  const head = content.slice(0, keepChars).trimEnd()
+  const preserveTail = options?.preserveTail === true && keepChars >= 200
   const removedChars = content.length - keepChars
+
+  if (preserveTail) {
+    const headChars = Math.ceil(keepChars / 2)
+    const tailChars = Math.floor(keepChars / 2)
+    const head = content.slice(0, headChars).trimEnd()
+    const tail = content.slice(content.length - tailChars).trimStart()
+    return `${head}\n\n${marker} (${removedChars} chars omitted)\n\n${tail}`
+  }
+
+  const head = content.slice(0, keepChars).trimEnd()
   return `${head}\n\n${marker} (${removedChars} chars omitted)`
 }
 
 function isTruncationProtectedMessage(message: LLMMessage): boolean {
   const content = message.content || ""
-  return content.includes(TOOL_TRUNCATE_MARKER) || content.includes(PAYLOAD_TRUNCATE_MARKER)
+  return content.includes(TOOL_TRUNCATE_MARKER)
+    || content.includes(PAYLOAD_TRUNCATE_MARKER)
+    || EXTERNAL_TOOL_TRUNCATE_MARKERS.some((marker) => content.includes(marker))
 }
 
 function collectTruncationProtectedIndices(messages: LLMMessage[]): Set<number> {
@@ -1105,7 +1126,7 @@ function shouldApplyArchiveFrontier(
   targetTokens: number,
 ): boolean {
   if (!state) return false
-  return state.hasArchiveState || shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
+  return shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
 }
 
 async function updateIterativeSummaryForDroppedMessages(
@@ -1355,13 +1376,14 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   }
 
   // ========================================================================
-  // Tier 0a: MICROCOMPACTION (always-on, no LLM needed)
+  // Tier 0a: MICROCOMPACTION (budget-aware, no LLM needed)
   // Like Claude Code: replace old tool results with a brief marker.
   // Keep only the last MICROCOMPACT_KEEP_RECENT tool/assistant messages intact.
-  // This runs ALWAYS, regardless of budget, to prevent context bloat.
+  // This runs only when context is already under meaningful budget pressure.
   // ========================================================================
   const MICROCOMPACT_KEEP_RECENT = 5 // keep last 5 tool results verbatim
   const MICROCOMPACT_MIN_CHARS = 500 // only compact messages longer than this
+  const MICROCOMPACT_TRIGGER_TOKEN_RATIO = 0.8
   const MICROCOMPACT_CLEARED_MARKER = "[Tool result cleared for context management]"
 
   // Find all tool-role messages and large assistant messages with tool-like content
@@ -1375,7 +1397,10 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   }
 
   // Clear old tool results, keeping only the most recent ones
-  if (toolMessageIndices.length > MICROCOMPACT_KEEP_RECENT) {
+  const shouldRunMicrocompact = toolMessageIndices.length > MICROCOMPACT_KEEP_RECENT
+    && tokens > Math.floor(targetTokens * MICROCOMPACT_TRIGGER_TOKEN_RATIO)
+
+  if (shouldRunMicrocompact) {
     const toClear = toolMessageIndices.slice(0, toolMessageIndices.length - MICROCOMPACT_KEEP_RECENT)
     for (const idx of toClear) {
       const original = messages[idx]
@@ -1397,13 +1422,16 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
     if (msg.role === "system" || !msg.content) continue
+    if (isTruncationProtectedMessage(msg)) continue
 
     const isPayloadLike = isLikelyPayloadLikeMessage(msg)
 
     // NOTE: tool messages are mapped to 'user' role by llm.ts with a '[toolName] ' prefix.
     const isToolResultLike = msg.role === "tool" || (msg.role === "user" && hasMappedToolResultPrefix(msg.content))
 
-    const shouldTruncateToolResult = isToolResultLike && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
+    const shouldTruncateToolResult = isToolResultLike
+      && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
+      && tokens > Math.floor(targetTokens * TOOL_RESULT_TRUNCATE_TRIGGER_TOKEN_RATIO)
     const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
 
     if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload) continue
@@ -1418,7 +1446,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       toolName: toolName !== "unknown" ? toolName : undefined,
     })
     const truncatedContent = addContextRefNote(
-      truncateWithMarker(msg.content, keepChars, marker),
+      truncateWithMarker(msg.content, keepChars, marker, { preserveTail: isToolResultLike }),
       contextRef,
     )
 

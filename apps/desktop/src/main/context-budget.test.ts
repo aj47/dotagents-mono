@@ -63,6 +63,7 @@ import {
   clearActualTokenUsage,
   clearArchiveFrontier,
   clearContextRefs,
+  clearIterativeSummary,
   readMoreContext,
   recordActualTokenUsage,
   shrinkMessagesForLLM,
@@ -82,6 +83,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-protected-tail')
     clearArchiveFrontier('session-actual-scale')
     clearArchiveFrontier('session-bracket-log')
+    clearArchiveFrontier('session-no-microcompact')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
@@ -89,6 +91,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearContextRefs('session-protected-tail')
     clearContextRefs('session-actual-scale')
     clearContextRefs('session-bracket-log')
+    clearContextRefs('session-no-microcompact')
     clearActualTokenUsage('session-truncate')
     clearActualTokenUsage('session-batch')
     clearActualTokenUsage('session-archive')
@@ -96,6 +99,11 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearActualTokenUsage('session-protected-tail')
     clearActualTokenUsage('session-actual-scale')
     clearActualTokenUsage('session-bracket-log')
+    clearActualTokenUsage('session-no-microcompact')
+    clearIterativeSummary('session-archive')
+    clearIterativeSummary('session-live-tail')
+    clearIterativeSummary('session-protected-tail')
+    clearIterativeSummary('session-no-microcompact')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -179,7 +187,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
   })
 
   it('truncates oversized tool results before tier-1 summarization', async () => {
-    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+    const toolPayload = `[server:search] ${'x'.repeat(4500)}`
 
     const result = await shrinkMessagesForLLM({
       sessionId: 'session-truncate',
@@ -202,8 +210,50 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(String(readResult.excerpt)).toContain('x'.repeat(50))
   })
 
+  it('preserves both head and tail when truncating mapped tool results', async () => {
+    const toolPayload = `[server:search] HEAD-${'a'.repeat(2200)}-MIDDLE-${'b'.repeat(2200)}-TAIL`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    const truncatedMessage = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    expect(truncatedMessage?.content).toContain('HEAD-')
+    expect(truncatedMessage?.content).toContain('-TAIL')
+  })
+
+  it('does not re-truncate already truncated runtime tool output', async () => {
+    const runtimeTruncated = [
+      '[server:shell] {',
+      '  "stdout": "HEAD-123',
+      '... [OUTPUT TRUNCATED: 25000 bytes, ~500 lines total. Showing first 5000 + last 5000 chars.] ...',
+      '456-TAIL",',
+      '  "outputTruncated": true',
+      '}',
+    ].join('\n')
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: runtimeTruncated },
+      ],
+    })
+
+    expect(result.appliedStrategies).not.toContain('aggressive_truncate')
+    expect(result.messages.find((msg) => msg.content.includes('[OUTPUT TRUNCATED:'))?.content).toContain('456-TAIL')
+    expect(makeTextCompletionWithFetchMock).not.toHaveBeenCalled()
+  })
+
   it('keeps actual-token scaling after aggressive truncation and preserves the original budget baseline', async () => {
-    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+    const toolPayload = `[server:search] ${'x'.repeat(4500)}`
 
     const result = await shrinkMessagesForLLM({
       sessionId: 'session-truncate',
@@ -222,7 +272,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
   })
 
   it('preserves the initial token baseline when actual usage comes from session state', async () => {
-    const toolPayload = `[server:search] ${'x'.repeat(3500)}`
+    const toolPayload = `[server:search] ${'x'.repeat(4500)}`
     recordActualTokenUsage('session-actual-scale', 2100, 120)
 
     const result = await shrinkMessagesForLLM({
@@ -358,7 +408,82 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(firstMatch.excerpt).toContain(longQuery)
   })
 
-  it('does not keep updating archived session summary when there is no new overflow', async () => {
+  it('skips tool-result truncation when comfortably under budget', async () => {
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 10000,
+    })
+
+    const toolPayload = `[server:search] ${'u'.repeat(4500)}`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'tool', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).not.toContain('aggressive_truncate')
+    expect(result.messages.some((msg) => msg.content.includes('Large tool result truncated for context management'))).toBe(false)
+    expect(result.messages.find((msg) => msg.role === 'tool')?.content).toContain('u'.repeat(200))
+  })
+
+  it('allows larger read_more_context excerpts for direct recovery modes', async () => {
+    const toolPayload = `[server:search] START-${'x'.repeat(14000)}-END`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      actualInputTokens: 5000,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'tool', content: toolPayload },
+      ],
+    })
+
+    const truncatedMessage = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    const contextRef = truncatedMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+
+    const defaultRead = readMoreContext('session-truncate', contextRef!, { mode: 'head' })
+    expect(defaultRead).toEqual(expect.objectContaining({ success: true, contextRef, returnedChars: 1500 }))
+
+    const expandedRead = readMoreContext('session-truncate', contextRef!, { mode: 'tail', maxChars: 9000 })
+    expect(expandedRead).toEqual(expect.objectContaining({ success: true, contextRef, returnedChars: 9000 }))
+    expect(String(expandedRead.excerpt)).toContain('-END')
+  })
+
+  it('keeps search-mode read_more_context capped even when larger maxChars is requested', async () => {
+    const toolPayload = `[server:search] prefix ${'abc'.repeat(3000)} suffix`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-truncate',
+      actualInputTokens: 5000,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'tool', content: toolPayload },
+      ],
+    })
+
+    const truncatedMessage = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    const contextRef = truncatedMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+
+    const searchRead = readMoreContext('session-truncate', contextRef!, {
+      mode: 'search',
+      query: 'abcabcabcabc',
+      maxChars: 12000,
+    })
+
+    expect(searchRead).toEqual(expect.objectContaining({ success: true, contextRef }))
+    const firstMatch = (searchRead.matches as Array<{ excerpt: string }>)[0]
+    expect(firstMatch.excerpt.length).toBeLessThanOrEqual(4000)
+  })
+
+  it('does not reapply archive frontier when there is no new overflow', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
     Object.assign(mockConfig, {
       mcpContextSummarizeCharThreshold: 10000,
@@ -387,10 +512,36 @@ describe('shrinkMessagesForLLM replacement policy', () => {
       lastNMessages: 3,
     })
 
-    expect(secondPass.appliedStrategies).toContain('archive_frontier')
+    expect(secondPass.appliedStrategies).not.toContain('archive_frontier')
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
     expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-43'))).toBe(true)
-    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
+    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(false)
+  })
+
+  it('skips microcompact when context is comfortably under budget', async () => {
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 10000,
+    })
+
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'task request' },
+      ...Array.from({ length: 10 }, (_, index) => ({
+        role: 'tool',
+        content: `[tool-${index}] result-${index} ${'d'.repeat(600)}`,
+      })),
+      { role: 'user', content: 'continue' },
+    ]
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-no-microcompact',
+      messages,
+    })
+
+    expect(result.appliedStrategies).not.toContain('microcompact')
+    expect(result.messages.filter((msg) => msg.role === 'tool')).toHaveLength(10)
+    expect(result.messages.some((msg) => msg.content.includes('[Tool result cleared for context management]'))).toBe(false)
   })
 
   it('keeps truncated payload messages protected after archive frontier reorders messages', async () => {
