@@ -2,49 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark mode syntax highlighting override */
-@media (prefers-color-scheme: dark) {
-  .hljs {
-    background: rgba(0, 0, 0, 0.3) !important;
-    color: #e6edf3 !important;
-  }
+/* Light mode syntax highlighting – slightly warmer to avoid stark white feel */
+.hljs {
+  background: transparent !important;
+  color: #24292f !important;
+}
 
-  .hljs-keyword,
-  .hljs-selector-tag,
-  .hljs-literal,
-  .hljs-section,
-  .hljs-link {
-    color: #ff7b72 !important;
-  }
+/* Dark mode syntax highlighting override (class-based to match Tailwind dark mode) */
+.dark .hljs {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #e6edf3 !important;
+}
 
-  .hljs-string {
-    color: #a5d6ff !important;
-  }
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-literal,
+.dark .hljs-section,
+.dark .hljs-link {
+  color: #ff7b72 !important;
+}
 
-  .hljs-title,
-  .hljs-name,
-  .hljs-type,
-  .hljs-attribute,
-  .hljs-symbol,
-  .hljs-bullet,
-  .hljs-built_in,
-  .hljs-addition,
-  .hljs-variable,
-  .hljs-template-tag,
-  .hljs-template-variable {
-    color: #79c0ff !important;
-  }
+.dark .hljs-string {
+  color: #a5d6ff !important;
+}
 
-  .hljs-comment,
-  .hljs-quote,
-  .hljs-deletion,
-  .hljs-meta {
-    color: #8b949e !important;
-  }
+.dark .hljs-title,
+.dark .hljs-name,
+.dark .hljs-type,
+.dark .hljs-attribute,
+.dark .hljs-symbol,
+.dark .hljs-bullet,
+.dark .hljs-built_in,
+.dark .hljs-addition,
+.dark .hljs-variable,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable {
+  color: #79c0ff !important;
+}
 
-  .hljs-number {
-    color: #79c0ff !important;
-  }
+.dark .hljs-comment,
+.dark .hljs-quote,
+.dark .hljs-deletion,
+.dark .hljs-meta {
+  color: #8b949e !important;
+}
+
+.dark .hljs-number {
+  color: #79c0ff !important;
 }
 
 /* Custom scrollbar styles for agent progress */

@@ -2036,7 +2036,7 @@ const DelegationBubble: React.FC<{
       {/* Header - clickable to collapse/expand entire bubble */}
       <div
         className={cn(
-          "px-3 py-2.5 cursor-pointer hover:opacity-90 transition-opacity",
+          "px-2.5 py-1.5 cursor-pointer hover:opacity-90 transition-opacity",
           isExpanded && "border-b",
           headerColor
         )}
@@ -2050,7 +2050,7 @@ const DelegationBubble: React.FC<{
                 <div className={cn("text-xs font-medium truncate", textColor)}>
                   {delegation.agentName}
                 </div>
-                <div className="mt-0.5 text-[11px] leading-4 text-gray-600 dark:text-gray-400 line-clamp-2">
+                <div className={cn("mt-0.5 text-[11px] leading-4 text-gray-600 dark:text-gray-400", isExpanded ? "line-clamp-2" : "line-clamp-1")}>
                   {subtitle}
                 </div>
               </div>
@@ -2065,7 +2065,8 @@ const DelegationBubble: React.FC<{
                 )}
               </div>
             </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+            {/* Compact metadata row – shown inline when collapsed, full when expanded */}
+            <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-gray-400", isExpanded ? "mt-1.5" : "mt-0.5")}>
               <span className="inline-flex items-center gap-1">
                 {isRunning ? (
                   <Loader2 className={cn("h-3 w-3 animate-spin", iconColor)} />
@@ -2078,10 +2079,10 @@ const DelegationBubble: React.FC<{
                 )}
                 <span>{durationLabel}</span>
               </span>
-              <span>{sourceLabel}</span>
-              {trackingLabel && <span>{trackingLabel}</span>}
+              {isExpanded && <span>{sourceLabel}</span>}
+              {isExpanded && trackingLabel && <span>{trackingLabel}</span>}
               {hasConversation && (
-                <span>{delegation.conversation!.length} messages</span>
+                <span>{delegation.conversation!.length} msgs</span>
               )}
             </div>
           </div>
@@ -2123,15 +2124,33 @@ const DelegationBubble: React.FC<{
             </div>
           )}
 
-          {/* Result summary */}
+          {/* Result summary – detect JSON payloads and render formatted */}
           {delegation.resultSummary && (
             <div className="space-y-1 rounded-md border border-white/60 bg-white/50 p-2 dark:border-white/10 dark:bg-black/20">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Result
               </div>
-              <p className="text-[12px] leading-4 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                {delegation.resultSummary}
-              </p>
+              {(() => {
+                // Try to detect and pretty-print JSON payloads
+                const trimmed = delegation.resultSummary!.trim()
+                if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+                  try {
+                    const parsed = JSON.parse(trimmed)
+                    return (
+                      <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-[11px] text-foreground/90 scrollbar-thin">
+                        {JSON.stringify(parsed, null, 2)}
+                      </pre>
+                    )
+                  } catch {
+                    /* not valid JSON, fall through to plain text */
+                  }
+                }
+                return (
+                  <p className="text-[12px] leading-4 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+                    {delegation.resultSummary}
+                  </p>
+                )
+              })()}
             </div>
           )}
 

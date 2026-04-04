@@ -72,6 +72,13 @@ export const WHATSAPP_DEFAULT_ENABLED_TOOLS = [
 const RUNTIME_BUILTIN_TOOL_SOURCE_NAME = "dotagents-runtime-tools"
 const RUNTIME_BUILTIN_TOOL_SOURCE_LABEL = "DotAgents Runtime Tools"
 
+/**
+ * Default user agent string for browser/agent sessions.
+ * Exposed via the DOTAGENTS_USER_AGENT environment variable to MCP servers
+ * (e.g., Playwright, Puppeteer) so browser sessions use a consistent, stable UA.
+ */
+const DOTAGENTS_USER_AGENT = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 DotAgents/${app.getVersion()}`
+
 const ESSENTIAL_RUNTIME_TOOL_NAMES = new Set<string>(["mark_work_complete"])
 
 function isEssentialRuntimeTool(toolName: string): boolean {
@@ -2201,8 +2208,11 @@ export class MCPService {
       throw new Error("URL is required for streamableHttp transport")
     }
 
-    // Prepare custom headers from configuration
-    const customHeaders = serverConfig.headers || {}
+    // Prepare custom headers from configuration, including a consistent User-Agent
+    const customHeaders: Record<string, string> = {
+      'User-Agent': DOTAGENTS_USER_AGENT,
+      ...serverConfig.headers,
+    }
 
     // First, check if we have valid OAuth tokens
     const hasValidTokens = await oauthStorage.hasValidTokens(serverConfig.url)
@@ -2226,17 +2236,13 @@ export class MCPService {
       }
     }
 
-    // Create transport without authentication
+    // Create transport without authentication but with User-Agent header
     // If server requires OAuth, it will return 401 and we'll handle it in the connection logic
-    if (Object.keys(customHeaders).length > 0) {
-      return new StreamableHTTPClientTransport(new URL(serverConfig.url), {
-        requestInit: {
-          headers: customHeaders,
-        },
-      })
-    }
-
-    return new StreamableHTTPClientTransport(new URL(serverConfig.url))
+    return new StreamableHTTPClientTransport(new URL(serverConfig.url), {
+      requestInit: {
+        headers: customHeaders,
+      },
+    })
   }
 
   /**
@@ -2927,7 +2933,14 @@ export class MCPService {
       }
     }
 
-    // Add server-specific environment variables
+    // Inject a consistent user agent so browser MCP servers
+    // (Playwright, Puppeteer, etc.) use a stable UA string.
+    // Servers can override this via their own env config if needed.
+    if (!environment.DOTAGENTS_USER_AGENT) {
+      environment.DOTAGENTS_USER_AGENT = DOTAGENTS_USER_AGENT
+    }
+
+    // Add server-specific environment variables (applied last so they can override defaults)
     if (serverEnv) {
       Object.assign(environment, serverEnv)
     }

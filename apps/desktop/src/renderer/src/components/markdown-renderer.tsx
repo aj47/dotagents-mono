@@ -1,9 +1,10 @@
-import React, { useState, useId } from "react"
+import React, { useState, useId, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
-import { ChevronDown, ChevronRight, Brain } from "lucide-react"
+import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import "highlight.js/styles/github.css"
 
 import { logExpand, logUI } from "@renderer/lib/debug"
@@ -120,6 +121,56 @@ const markdownImageComponent = ({
   )
 }
 
+/** Extract the text content from a React element tree (for copy-to-clipboard). */
+function extractTextContent(node: React.ReactNode): string {
+  if (typeof node === "string") return node
+  if (typeof node === "number") return String(node)
+  if (!node) return ""
+  if (Array.isArray(node)) return node.map(extractTextContent).join("")
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode }
+    return extractTextContent(props.children)
+  }
+  return ""
+}
+
+/** Wrapper that adds a copy button to fenced code blocks. */
+const CodeBlockWithCopy: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleCopy = useCallback(async () => {
+    const text = extractTextContent(children).replace(/\n$/, "")
+    try {
+      await copyTextToClipboard(text)
+      setCopied(true)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard write failed – swallow */
+    }
+  }, [children])
+
+  return (
+    <pre className="group/codeblock relative mb-3 max-w-full overflow-x-auto rounded-lg border border-border/60 bg-muted/50 p-3 dark:border-white/10 dark:bg-white/5">
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="absolute right-2 top-2 rounded-md border border-border/50 bg-background/80 p-1 opacity-0 transition-opacity hover:bg-muted group-hover/codeblock:opacity-100 focus:opacity-100"
+        title={copied ? "Copied!" : "Copy code"}
+        aria-label={copied ? "Copied!" : "Copy code"}
+      >
+        {copied ? (
+          <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+      </button>
+      {children}
+    </pre>
+  )
+}
+
 const sharedMarkdownComponents = {
   a: markdownLinkComponent,
   img: markdownImageComponent,
@@ -128,7 +179,7 @@ const sharedMarkdownComponents = {
     if (inline) {
       return (
         <code
-          className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[0.8125rem] text-current dark:bg-white/10 [overflow-wrap:anywhere]"
+          className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[0.8125rem] text-current dark:bg-white/10 [overflow-wrap:anywhere]"
           {...props}
         >
           {children}
@@ -144,10 +195,8 @@ const sharedMarkdownComponents = {
       </code>
     )
   },
-  pre: ({ children }) => (
-    <pre className="mb-3 max-w-full overflow-x-auto rounded-lg border border-black/10 bg-black/5 p-3 dark:border-white/10 dark:bg-white/5">
-      {children}
-    </pre>
+  pre: ({ children }: { children?: React.ReactNode }) => (
+    <CodeBlockWithCopy>{children}</CodeBlockWithCopy>
   ),
   table: ({ children }) => (
     <div className="mb-3 max-w-full overflow-x-auto rounded-lg border border-border/80">
