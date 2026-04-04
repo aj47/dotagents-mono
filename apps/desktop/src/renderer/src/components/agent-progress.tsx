@@ -33,6 +33,7 @@ import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
+import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
@@ -778,96 +779,118 @@ function getExecuteCommandDisplay(call: { name: string; arguments: any }, result
   return { displayCommand, outputPreview }
 }
 
-// Unified Tool Execution bubble combining call + response
-const ToolExecutionBubble: React.FC<{
-  execution: {
-    timestamp: number
-    calls: Array<{ name: string; arguments: any }>
-    results: Array<{ success: boolean; content: string; error?: string }>
+type CompactToolExecutionCall = { name: string; arguments: any }
+type CompactToolExecutionResult = { success: boolean; content: string; error?: string } | undefined
+
+const CompactToolExecutionList: React.FC<{
+  calls: CompactToolExecutionCall[]
+  results: CompactToolExecutionResult[]
+  detailsExpanded: boolean
+  onToggleDetails: () => void
+  rowClassName?: string
+  detailsClassName?: string
+  executionStats?: {
+    durationMs?: number
+    totalTokens?: number
+    model?: string
+    toolUseCount?: number
+    inputTokens?: number
+    outputTokens?: number
   }
-  isExpanded: boolean
-  onToggleExpand: () => void
-}> = ({ execution, isExpanded, onToggleExpand }) => {
+}> = ({
+  calls,
+  results,
+  detailsExpanded,
+  onToggleDetails,
+  rowClassName = "px-1.5 py-0.5",
+  detailsClassName = "mt-1 ml-3 space-y-1 border-l border-border/50 pl-2",
+  executionStats,
+}) => {
   const copy = async (text: string) => {
     try {
       await copyTextToClipboard(text)
     } catch {}
   }
 
-  const handleToggleExpand = () => onToggleExpand()
-
   const handleCopy = (e: React.MouseEvent, text: string) => {
     e.stopPropagation()
-    copy(text)
+    void copy(text)
   }
 
-  // Compact single-line per tool display
+  const toolCallEntries = calls.map((call, idx) => ({ call, result: results[idx] }))
+
   return (
-    <div className="space-y-0.5 text-xs">
-      {execution.calls.map((call, idx) => {
-        const result = execution.results[idx]
-        const callIsPending = !result
-        const callSuccess = result?.success
-        const callResultSummary = result ? getToolResultsSummary([result]) : null
-        const isToolExpanded = isExpanded
-        const execCmdDisplay = getExecuteCommandDisplay(call, result)
+    <>
+      <div className="space-y-0.5 text-xs">
+        {toolCallEntries.map(({ call, result }, idx) => {
+          const callIsPending = !result
+          const callSuccess = result?.success
+          const callResultSummary = result ? getToolResultsSummary([result]) : null
+          const execCmdDisplay = getExecuteCommandDisplay(call, result)
 
-        return (
-          <div key={idx}>
-            {/* Single line tool header */}
-            <div
-              className={cn(
-                "flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30",
-                callIsPending
-                  ? "text-blue-600 dark:text-blue-400"
-                  : callSuccess
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-red-600 dark:text-red-400",
-              )}
-              onClick={handleToggleExpand}
-            >
-              {execCmdDisplay ? (
-                <>
-                  <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
-                  <span className="shrink-0 text-[10px] opacity-60">
-                    {callIsPending ? (
-                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    ) : callSuccess ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <XCircle className="h-2.5 w-2.5" />
+          return (
+            <div key={idx}>
+              <div
+                className={cn(
+                  "flex min-w-0 items-center gap-1.5 rounded text-[11px] cursor-pointer hover:bg-muted/30",
+                  rowClassName,
+                  callIsPending
+                    ? "text-blue-600 dark:text-blue-400"
+                    : callSuccess
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400",
+                )}
+                onClick={onToggleDetails}
+              >
+                {execCmdDisplay ? (
+                  <>
+                    <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
+                    <span className="shrink-0 text-[10px] opacity-60">
+                      {callIsPending ? (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      ) : callSuccess ? (
+                        <Check className="h-2.5 w-2.5" />
+                      ) : (
+                        <XCircle className="h-2.5 w-2.5" />
+                      )}
+                    </span>
+                    {!detailsExpanded && execCmdDisplay.outputPreview && (
+                      <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
                     )}
-                  </span>
-                  {!isToolExpanded && execCmdDisplay.outputPreview && (
-                    <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
-                  <span className="shrink-0 text-[10px] opacity-60">
-                    {callIsPending ? (
-                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    ) : callSuccess ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <XCircle className="h-2.5 w-2.5" />
+                  </>
+                ) : (
+                  <>
+                    <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
+                    <span className="shrink-0 text-[10px] opacity-60">
+                      {callIsPending ? (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      ) : callSuccess ? (
+                        <Check className="h-2.5 w-2.5" />
+                      ) : (
+                        <XCircle className="h-2.5 w-2.5" />
+                      )}
+                    </span>
+                    {!detailsExpanded && callResultSummary && (
+                      <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
                     )}
-                  </span>
-                  {!isToolExpanded && callResultSummary && (
-                    <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
-                  )}
-                </>
-              )}
-              <ChevronRight className={cn(
-                "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
-                isToolExpanded && "rotate-90"
-              )} />
+                  </>
+                )}
+                <ChevronRight className={cn(
+                  "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
+                  detailsExpanded && "rotate-90"
+                )} />
+              </div>
             </div>
+          )
+        })}
+      </div>
 
-            {/* Expanded details for this tool */}
-            {isToolExpanded && (
-              <div className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]">
+      {detailsExpanded && (
+        <div className={detailsClassName}>
+          {toolCallEntries.map(({ call, result }, idx) => {
+            const callIsPending = !result
+            return (
+              <div key={idx} className="text-[10px] space-y-1">
                 {call.arguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -919,11 +942,36 @@ const ToolExecutionBubble: React.FC<{
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+            )
+          })}
+          {executionStats && (
+            <ToolExecutionStats stats={executionStats} compact />
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+// Unified Tool Execution bubble combining call + response
+const ToolExecutionBubble: React.FC<{
+  execution: {
+    timestamp: number
+    calls: Array<{ name: string; arguments: any }>
+    results: CompactToolExecutionResult[]
+  }
+  isExpanded: boolean
+  onToggleExpand: () => void
+}> = ({ execution, isExpanded, onToggleExpand }) => {
+  return (
+    <CompactToolExecutionList
+      calls={execution.calls}
+      results={execution.results}
+      detailsExpanded={isExpanded}
+      onToggleDetails={onToggleExpand}
+      rowClassName="px-1.5 py-0.5"
+      detailsClassName="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]"
+    />
   )
 }
 
@@ -1009,123 +1057,17 @@ const AssistantWithToolsBubble: React.FC<{
             </div>
           )}
 
-          {/* Tool execution section - compact single line per tool */}
-          <div className={cn(
-            hasThought ? "mt-1" : "",
-            "space-y-0.5"
-          )}>
-            {toolCallEntries.map(({ call, result }, idx) => {
-              const callIsPending = !result
-              const callSuccess = result?.success
-              const callResultSummary = result ? getToolResultsSummary([result]) : null
-              const execCmdDisplay = getExecuteCommandDisplay(call, result)
-
-              return (
-                <div
-                  key={idx}
-                  className={cn(
-                    "flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30",
-                    callIsPending
-                      ? "text-blue-600 dark:text-blue-400"
-                      : callSuccess
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400",
-                  )}
-                  onClick={handleToggleToolDetails}
-                >
-                  {execCmdDisplay ? (
-                    <>
-                      <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
-                      <span className="shrink-0 text-[10px] opacity-60">
-                        {callIsPending ? (
-                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                        ) : callSuccess ? (
-                          <Check className="h-2.5 w-2.5" />
-                        ) : (
-                          <XCircle className="h-2.5 w-2.5" />
-                        )}
-                      </span>
-                      {!showToolDetails && execCmdDisplay.outputPreview && (
-                        <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
-                      <span className="shrink-0 text-[10px] opacity-60">
-                        {callIsPending ? (
-                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                        ) : callSuccess ? (
-                          <Check className="h-2.5 w-2.5" />
-                        ) : (
-                          <XCircle className="h-2.5 w-2.5" />
-                        )}
-                      </span>
-                      {!showToolDetails && callResultSummary && (
-                        <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
-                      )}
-                    </>
-                  )}
-                  <ChevronRight className={cn(
-                    "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
-                    showToolDetails && "rotate-90"
-                  )} />
-                </div>
-              )
-            })}
+          <div className={hasThought ? "mt-1" : ""}>
+            <CompactToolExecutionList
+              calls={data.calls}
+              results={data.results}
+              detailsExpanded={showToolDetails}
+              onToggleDetails={handleToggleToolDetails}
+              rowClassName="px-1 py-0.5"
+              detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
+              executionStats={data.executionStats}
+            />
           </div>
-
-          {/* Expanded tool details */}
-          {showToolDetails && (
-            <div className="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2">
-              {toolCallEntries.map(({ call, result }, idx) => {
-                return (
-                  <div key={idx} className="text-[10px] space-y-1">
-                    <div className="font-medium opacity-70 break-words">Parameters:</div>
-                    {call.arguments && (
-                      <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
-                        {JSON.stringify(call.arguments, null, 2)}
-                      </pre>
-                    )}
-                    {result && (
-                      <>
-                        <div className="flex flex-wrap items-center gap-1.5 font-medium opacity-70">
-                          Result:
-                          <span className={cn(
-                            "shrink-0 text-[10px] font-semibold",
-                            result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                          )}>
-                            {result.success ? "OK" : "ERR"}
-                          </span>
-                        </div>
-                        {result.error && (
-                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
-                            {result.error}
-                          </pre>
-                        )}
-                        {result.content && (
-                          <pre className={cn(
-                            "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
-                            result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
-                          )}>
-                            {result.content}
-                          </pre>
-                        )}
-                        {!result.error && !result.content && (
-                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
-                            No content
-                          </pre>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-              {data.executionStats && (
-                <ToolExecutionStats stats={data.executionStats} compact />
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -1615,13 +1557,8 @@ const SubAgentConversationMessage: React.FC<{
   const toolContent = useMemo(() => {
     if (message.role !== "tool") return null
 
-    const raw = (message.content ?? "").trim()
-    const normalized = raw.replace(/^tool result:\s*/i, "").trim()
-    return {
-      summary: normalized || raw || "Tool activity",
-      rawContent: raw,
-    }
-  }, [message.content, message.role, message.toolInput])
+    return extractSubAgentToolDisplayContent(message.content ?? "")
+  }, [message.content, message.role])
   const roleMeta = (() => {
     switch (message.role) {
       case "user":
@@ -1642,7 +1579,7 @@ const SubAgentConversationMessage: React.FC<{
         }
       case "tool":
         return {
-          label: message.toolName || "Tool",
+          label: message.toolName || toolContent?.toolName || "Tool",
           containerClass: "border-amber-200/80 bg-amber-50/70 dark:border-amber-800/60 dark:bg-amber-950/30",
           badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200",
           iconClass: "text-amber-600 dark:text-amber-300",
@@ -1664,48 +1601,48 @@ const SubAgentConversationMessage: React.FC<{
     : null
 
   return (
-    <div className={cn("rounded-lg border text-xs transition-all", roleMeta.containerClass)}>
-      <div className="flex items-start gap-2.5 px-3 py-2.5">
-        <div className={cn("mt-0.5 rounded-full p-1.5 bg-white/70 dark:bg-black/20", roleMeta.iconClass)}>
-          <RoleIcon className="h-3.5 w-3.5" />
+    <div className={cn("rounded-md border text-xs transition-all", roleMeta.containerClass)}>
+      <div className="flex items-start gap-1.5 px-2 py-1.5">
+        <div className={cn("mt-0.5 rounded-full p-1 bg-white/70 dark:bg-black/20", roleMeta.iconClass)}>
+          <RoleIcon className="h-3 w-3" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className={cn("mb-1 flex gap-2", isCompact ? "flex-col items-start" : "flex-wrap items-center")}>
-            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", roleMeta.badgeClass)}>
+          <div className={cn("mb-0.5 flex gap-1.5", isCompact ? "flex-col items-start" : "flex-wrap items-center")}>
+            <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium", roleMeta.badgeClass)}>
               {roleMeta.label}
             </span>
             {timestampLabel && (
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">
                 {timestampLabel}
               </span>
             )}
           </div>
           {message.role === "tool" ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div
                 className={cn(
-                  "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                  "whitespace-pre-wrap break-words text-[11px] leading-[1.2rem] text-gray-700 dark:text-gray-200",
                   !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
                 )}
               >
                 {toolContent?.summary}
               </div>
               {message.toolInput && (
-                <div className="space-y-1.5 rounded-md border border-amber-200/70 bg-white/60 p-2 dark:border-amber-800/60 dark:bg-black/20">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">
+                <div className="space-y-1 rounded-md border border-amber-200/70 bg-white/60 p-1.5 dark:border-amber-800/60 dark:bg-black/20">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">
                     Tool Input
                   </div>
-                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-50/80 p-2 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-amber-50/80 p-1.5 text-[10px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                     {JSON.stringify(message.toolInput, null, 2)}
                   </pre>
                 </div>
               )}
               {isExpanded && toolContent?.rawContent && toolContent.rawContent !== toolContent.summary && (
-                <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 p-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="space-y-1 rounded-md border border-border/60 bg-muted/30 p-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Raw Payload
                   </div>
-                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-[11px] text-foreground/90">
+                  <pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-1.5 text-[10px] text-foreground/90">
                     {toolContent.rawContent}
                   </pre>
                 </div>
@@ -1714,7 +1651,7 @@ const SubAgentConversationMessage: React.FC<{
           ) : (
             <div
               className={cn(
-                "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+                "whitespace-pre-wrap break-words text-[11px] leading-[1.2rem] text-gray-700 dark:text-gray-200",
                 !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
               )}
             >
@@ -1753,29 +1690,160 @@ const SubAgentConversationMessage: React.FC<{
   )
 }
 
+type SubAgentToolExecutionData = {
+  timestamp: number
+  calls: CompactToolExecutionCall[]
+  results: CompactToolExecutionResult[]
+}
+
+function isDelegationActiveStatus(status: ACPDelegationProgress["status"]): boolean {
+  return status === "pending" || status === "spawning" || status === "running"
+}
+
+type SubAgentConversationRenderItem =
+  | { kind: "message"; key: string; message: ACPSubAgentMessage }
+  | {
+      kind: "tool_execution"
+      key: string
+      execution: SubAgentToolExecutionData
+    }
+
+function normalizeSubAgentToolArguments(toolInput: unknown): Record<string, unknown> {
+  if (toolInput && typeof toolInput === "object" && !Array.isArray(toolInput)) {
+    return toolInput as Record<string, unknown>
+  }
+  if (toolInput === undefined) return {}
+  return { input: toolInput }
+}
+
+function isDelegatedToolUseMessage(message: ACPSubAgentMessage): boolean {
+  return message.role === "tool" && !!message.toolName && /^using tool:/i.test((message.content ?? "").trim())
+}
+
+function isDelegatedToolResultMessage(message: ACPSubAgentMessage): boolean {
+  return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())
+}
+
+function buildDelegatedToolExecution(
+  message: ACPSubAgentMessage,
+  delegationStatus: ACPDelegationProgress["status"],
+  resultMessage?: ACPSubAgentMessage,
+): SubAgentToolExecutionData {
+  const parsedMessage = extractSubAgentToolDisplayContent(message.content ?? "")
+  const parsedResult = resultMessage ? extractSubAgentToolDisplayContent(resultMessage.content ?? "") : null
+  const toolName = message.toolName || parsedMessage.toolName || parsedResult?.toolName || "Tool"
+  const isToolUseMessage = isDelegatedToolUseMessage(message)
+  const isDelegationActive = isDelegationActiveStatus(delegationStatus)
+  const isPending = isToolUseMessage && !resultMessage && isDelegationActive
+
+  let result: CompactToolExecutionResult
+  if (resultMessage) {
+    result = { success: true, content: parsedResult?.summary || "Tool completed" }
+  } else if (!isToolUseMessage) {
+    result = { success: true, content: parsedMessage.summary || "Tool completed" }
+  } else if (!isDelegationActive) {
+    if (delegationStatus === "failed") {
+      result = {
+        success: false,
+        content: "",
+        error: "Delegation failed before a tool result was captured.",
+      }
+    } else if (delegationStatus === "cancelled") {
+      result = {
+        success: false,
+        content: "",
+        error: "Delegation was cancelled before a tool result was captured.",
+      }
+    } else {
+      result = { success: true, content: "Tool completed" }
+    }
+  } else {
+    result = undefined
+  }
+
+  return {
+    timestamp: resultMessage?.timestamp ?? message.timestamp,
+    calls: [{ name: toolName, arguments: normalizeSubAgentToolArguments(message.toolInput) }],
+    results: [isPending ? undefined : result],
+  }
+}
+
+function buildSubAgentConversationItems(
+  conversation: ACPSubAgentMessage[],
+  delegationStatus: ACPDelegationProgress["status"],
+): SubAgentConversationRenderItem[] {
+  const items: SubAgentConversationRenderItem[] = []
+
+  for (let index = 0; index < conversation.length; index += 1) {
+    const message = conversation[index]
+    if (message.role !== "tool") {
+      items.push({ kind: "message", key: `msg-${index}`, message })
+      continue
+    }
+
+    if (isDelegatedToolUseMessage(message)) {
+      const nextMessage = conversation[index + 1]
+      if (nextMessage && isDelegatedToolResultMessage(nextMessage)) {
+        items.push({
+          kind: "tool_execution",
+          key: `tool-${index}-${index + 1}`,
+          execution: buildDelegatedToolExecution(message, delegationStatus, nextMessage),
+        })
+        index += 1
+        continue
+      }
+
+      items.push({
+        kind: "tool_execution",
+        key: `tool-${index}`,
+        execution: buildDelegatedToolExecution(message, delegationStatus),
+      })
+      continue
+    }
+
+    if (message.toolName || isDelegatedToolResultMessage(message)) {
+      items.push({
+        kind: "tool_execution",
+        key: `tool-${index}`,
+        execution: buildDelegatedToolExecution(message, delegationStatus),
+      })
+      continue
+    }
+
+    items.push({ kind: "message", key: `msg-${index}`, message })
+  }
+
+  return items
+}
+
 // Collapsible Subagent Conversation Panel
 const RECENT_MESSAGES_LIMIT = 3
 
 const SubAgentConversationPanel: React.FC<{
   conversation: ACPSubAgentMessage[]
+  delegationStatus: ACPDelegationProgress["status"]
   agentName: string
   isOpen: boolean
   onToggle: () => void
   isCompact?: boolean
   alwaysOpen?: boolean
   defaultShowAll?: boolean
-}> = ({ conversation, agentName, isOpen, onToggle, isCompact = false, alwaysOpen = false, defaultShowAll = false }) => {
-  const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({})
+}> = ({ conversation, delegationStatus, agentName, isOpen, onToggle, isCompact = false, alwaysOpen = false, defaultShowAll = false }) => {
+  const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({})
   const [showAll, setShowAll] = useState(defaultShowAll)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
   const previousConversationLengthRef = useRef(conversation.length)
   const panelOpen = alwaysOpen || isOpen
+  const renderItems = useMemo(
+    () => buildSubAgentConversationItems(conversation, delegationStatus),
+    [conversation, delegationStatus],
+  )
 
-  const toggleMessage = (index: number) => {
+  const toggleMessage = (key: string) => {
     setExpandedMessages(prev => ({
       ...prev,
-      [index]: !prev[index]
+      [key]: !prev[key]
     }))
   }
 
@@ -1838,42 +1906,42 @@ const SubAgentConversationPanel: React.FC<{
     scrollToBottom("auto")
   }, [conversation.length, panelOpen, isPinnedToBottom])
 
-  const visibleMessages = showAll
-    ? conversation
-    : conversation.slice(-RECENT_MESSAGES_LIMIT)
-  const hiddenCount = conversation.length - visibleMessages.length
+  const visibleItems = showAll
+    ? renderItems
+    : renderItems.slice(-RECENT_MESSAGES_LIMIT)
+  const hiddenCount = renderItems.length - visibleItems.length
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
       {/* Collapsible Header */}
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/50 transition-colors",
+          "flex flex-wrap items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800/50 transition-colors",
           alwaysOpen ? "cursor-default" : "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
         )}
         onClick={alwaysOpen ? undefined : onToggle}
       >
-        <div className="min-w-0 flex flex-1 items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-gray-600 dark:text-gray-400">
-            {panelOpen ? "Recent activity" : conversationPreview}
+        <div className="min-w-0 flex flex-1 items-center gap-1.5">
+          <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-gray-600 dark:text-gray-400">
+            {panelOpen ? "Activity" : conversationPreview}
           </span>
-          <Badge variant="outline" className="h-4 shrink-0 px-1 py-0 text-[10px]">
-            {conversation.length}
+          <Badge variant="outline" className="h-4 shrink-0 px-1 py-0 text-[9px]">
+            {renderItems.length}
           </Badge>
         </div>
-        <div className="ml-auto flex flex-shrink-0 items-center gap-1">
+        <div className="ml-auto flex flex-shrink-0 items-center gap-0.5">
           <button
             onClick={(e) => { e.stopPropagation(); void handleCopyAll() }}
-            className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Copy conversation"
             aria-label="Copy conversation"
           >
-            <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
+            <Copy className="h-2.5 w-2.5 opacity-60 hover:opacity-100" />
           </button>
           {!alwaysOpen && (panelOpen ? (
-            <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+            <ChevronUp className="h-3 w-3 text-gray-400" />
           ) : (
-            <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+            <ChevronDown className="h-3 w-3 text-gray-400" />
           ))}
         </div>
       </div>
@@ -1884,7 +1952,7 @@ const SubAgentConversationPanel: React.FC<{
           {hiddenCount > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowAll(true) }}
-              className="w-full px-2.5 py-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-center border-b border-gray-100 dark:border-gray-800"
+              className="w-full px-2 py-0.5 text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-center border-b border-gray-100 dark:border-gray-800"
             >
               Show {hiddenCount} earlier message{hiddenCount > 1 ? "s" : ""}
             </button>
@@ -1892,18 +1960,28 @@ const SubAgentConversationPanel: React.FC<{
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="overflow-y-auto p-1.5 space-y-1.5"
-            style={{ maxHeight: isCompact ? "min(35vh, 240px)" : "min(40vh, 300px)" }}
+            className="overflow-y-auto p-1 space-y-1"
+            style={{ maxHeight: isCompact ? "min(32vh, 220px)" : "min(36vh, 280px)" }}
           >
-            {visibleMessages.map((msg, idx) => {
-              const originalIdx = showAll ? idx : conversation.length - RECENT_MESSAGES_LIMIT + idx
+            {visibleItems.map((item) => {
+              if (item.kind === "tool_execution") {
+                return (
+                  <ToolExecutionBubble
+                    key={item.key}
+                    execution={item.execution}
+                    isExpanded={expandedMessages[item.key] ?? false}
+                    onToggleExpand={() => toggleMessage(item.key)}
+                  />
+                )
+              }
+
               return (
                 <SubAgentConversationMessage
-                  key={originalIdx}
-                  message={msg}
+                  key={item.key}
+                  message={item.message}
                   agentName={agentName}
-                  isExpanded={expandedMessages[originalIdx] ?? false}
-                  onToggleExpand={() => toggleMessage(originalIdx)}
+                  isExpanded={expandedMessages[item.key] ?? false}
+                  onToggleExpand={() => toggleMessage(item.key)}
                   isCompact={isCompact}
                 />
               )
@@ -1916,14 +1994,84 @@ const SubAgentConversationPanel: React.FC<{
                 setIsPinnedToBottom(true)
                 scrollToBottom("smooth")
               }}
-              className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
+              className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
             >
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-2.5 w-2.5" />
               Latest
             </button>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+type DelegationInfoTone = "default" | "muted" | "success" | "error"
+
+function isJsonLikeContent(value: string): boolean {
+  const trimmed = value.trim()
+  return (
+    (trimmed.startsWith("{") && trimmed.endsWith("}"))
+    || (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  )
+}
+
+const DelegationInfoRow: React.FC<{
+  label: string
+  content: string
+  tone?: DelegationInfoTone
+  italic?: boolean
+  formatJson?: boolean
+}> = ({ label, content, tone = "default", italic = false, formatJson = false }) => {
+  const containerClassName = cn(
+    "flex items-start gap-2 rounded-md border px-2 py-1.5",
+    tone === "default" && "border-border/60 bg-background/70",
+    tone === "muted" && "border-border/50 bg-muted/20",
+    tone === "success" && "border-green-200/80 bg-green-50/60 dark:border-green-900 dark:bg-green-950/20",
+    tone === "error" && "border-red-200/80 bg-red-50/70 dark:border-red-900 dark:bg-red-950/20",
+  )
+
+  const labelClassName = cn(
+    "w-12 shrink-0 pt-0.5 text-[9px] font-semibold uppercase tracking-wide",
+    tone === "default" && "text-muted-foreground",
+    tone === "muted" && "text-muted-foreground",
+    tone === "success" && "text-green-700 dark:text-green-300",
+    tone === "error" && "text-red-700 dark:text-red-300",
+  )
+
+  const textClassName = cn(
+    "whitespace-pre-wrap break-words text-[11px] leading-[1.2rem]",
+    tone === "default" && "text-foreground",
+    tone === "muted" && "text-foreground/80",
+    tone === "success" && "text-green-900 dark:text-green-100",
+    tone === "error" && "text-red-900 dark:text-red-100",
+    italic && "italic",
+  )
+
+  const codeClassName = cn(
+    "max-h-36 overflow-auto whitespace-pre-wrap break-words rounded bg-black/5 p-1.5 text-[10px] leading-4 scrollbar-thin dark:bg-white/5",
+    tone === "success" && "text-green-900 dark:text-green-100",
+    tone === "error" && "text-red-900 dark:text-red-100",
+    (tone === "default" || tone === "muted") && "text-foreground/90",
+  )
+
+  const renderContent = () => {
+    if (formatJson && isJsonLikeContent(content)) {
+      try {
+        const parsed = JSON.parse(content)
+        return <pre className={codeClassName}>{JSON.stringify(parsed, null, 2)}</pre>
+      } catch {
+        // fall through to plain text rendering
+      }
+    }
+
+    return <p className={textClassName}>{content}</p>
+  }
+
+  return (
+    <div className={containerClassName}>
+      <div className={labelClassName}>{label}</div>
+      <div className="min-w-0 flex-1">{renderContent()}</div>
     </div>
   )
 }
@@ -1938,7 +2086,7 @@ const DelegationBubble: React.FC<{
 }> = ({ delegation, isExpanded = false, onToggleExpand, onOpenDetails }) => {
   const { ref: containerRef, isCompact } = useCompactWidth<HTMLDivElement>()
   const [isConversationOpen, setIsConversationOpen] = useState(false)
-  const isRunning = delegation.status === 'running' || delegation.status === 'pending' || delegation.status === 'spawning'
+  const isRunning = isDelegationActiveStatus(delegation.status)
   const isCompleted = delegation.status === 'completed'
   const isFailed = delegation.status === 'failed'
   const isCancelled = delegation.status === 'cancelled'
@@ -2011,7 +2159,6 @@ const DelegationBubble: React.FC<{
   }
 
   const mutedTextColor = textColor.replace('800', '600').replace('200', '400')
-  const bodyTextColor = textColor.replace('800', '700').replace('200', '300')
   const statusLabel = formatDelegationStatus(delegation.status)
   const subtitle = getDelegationSubtitle(delegation, isCompact ? 72 : 120)
   const sourceLabel = getDelegationSourceLabel(delegation)
@@ -2036,46 +2183,46 @@ const DelegationBubble: React.FC<{
       {/* Header - clickable to collapse/expand entire bubble */}
       <div
         className={cn(
-          "px-2.5 py-1.5 cursor-pointer hover:opacity-90 transition-opacity",
+          "px-2 py-1.5 cursor-pointer hover:opacity-90 transition-opacity",
           isExpanded && "border-b",
           headerColor
         )}
         onClick={handleHeaderClick}
       >
-        <div className="flex items-start gap-2">
-          <Bot className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", iconColor)} />
+        <div className="flex items-start gap-1.5">
+          <Bot className={cn("mt-0.5 h-3 w-3 flex-shrink-0", iconColor)} />
           <div className="min-w-0 flex-1">
-            <div className={cn("flex gap-2", isCompact ? "flex-col items-start" : "items-start justify-between")}>
+            <div className={cn("flex gap-1.5", isCompact ? "flex-col items-start" : "items-start justify-between")}>
               <div className="min-w-0 flex-1">
-                <div className={cn("text-xs font-medium truncate", textColor)}>
+                <div className={cn("text-[11px] font-medium truncate leading-4", textColor)}>
                   {delegation.agentName}
                 </div>
-                <div className={cn("mt-0.5 text-[11px] leading-4 text-gray-600 dark:text-gray-400", isExpanded ? "line-clamp-2" : "line-clamp-1")}>
+                <div className={cn("mt-0.5 text-[10px] leading-4 text-gray-600 dark:text-gray-400", isExpanded ? "line-clamp-2" : "line-clamp-1")}>
                   {subtitle}
                 </div>
               </div>
-              <div className={cn("flex items-center gap-1.5", isCompact ? "w-full justify-between" : "pl-2 flex-shrink-0")}>
-                <Badge variant="outline" className={cn("h-5 rounded-full px-1.5 text-[10px] font-medium", statusBadgeClass)}>
+              <div className={cn("flex items-center gap-1", isCompact ? "w-full justify-between" : "pl-1.5 flex-shrink-0")}>
+                <Badge variant="outline" className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}>
                   {statusLabel}
                 </Badge>
                 {isExpanded ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+                  <ChevronUp className="h-3 w-3 text-gray-400" />
                 ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                  <ChevronDown className="h-3 w-3 text-gray-400" />
                 )}
               </div>
             </div>
             {/* Compact metadata row – shown inline when collapsed, full when expanded */}
-            <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-gray-500 dark:text-gray-400", isExpanded ? "mt-1.5" : "mt-0.5")}>
+            <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] text-gray-500 dark:text-gray-400", isExpanded ? "mt-1" : "mt-0.5")}>
               <span className="inline-flex items-center gap-1">
                 {isRunning ? (
-                  <Loader2 className={cn("h-3 w-3 animate-spin", iconColor)} />
+                  <Loader2 className={cn("h-2.5 w-2.5 animate-spin", iconColor)} />
                 ) : isCompleted ? (
-                  <Check className={cn("h-3 w-3", iconColor)} />
+                  <Check className={cn("h-2.5 w-2.5", iconColor)} />
                 ) : isFailed ? (
-                  <XCircle className={cn("h-3 w-3", iconColor)} />
+                  <XCircle className={cn("h-2.5 w-2.5", iconColor)} />
                 ) : (
-                  <OctagonX className={cn("h-3 w-3", iconColor)} />
+                  <OctagonX className={cn("h-2.5 w-2.5", iconColor)} />
                 )}
                 <span>{durationLabel}</span>
               </span>
@@ -2091,11 +2238,27 @@ const DelegationBubble: React.FC<{
 
       {/* Content - only shown when expanded */}
       {isExpanded && (
-        <div className="px-3 py-3 space-y-3">
+        <div className="px-2 py-2 space-y-2">
+          <DelegationInfoRow
+            label="Task"
+            content={delegation.task}
+            tone="muted"
+          />
+
+          {delegation.progressMessage && (
+            <DelegationInfoRow
+              label="Update"
+              content={delegation.progressMessage}
+              tone="default"
+              italic
+            />
+          )}
+
           {/* Collapsible conversation panel - persists after completion */}
           {hasConversation && (
             <SubAgentConversationPanel
               conversation={delegation.conversation!}
+              delegationStatus={delegation.status}
               agentName={delegation.agentName}
               isOpen={isConversationOpen}
               onToggle={() => setIsConversationOpen(!isConversationOpen)}
@@ -2103,84 +2266,40 @@ const DelegationBubble: React.FC<{
             />
           )}
 
-          <div className="space-y-1">
-            <div className={cn("text-[11px] font-semibold uppercase tracking-wide", mutedTextColor)}>
-              Task
-            </div>
-            <p className={cn("text-[12px] leading-4 whitespace-pre-wrap break-words", bodyTextColor)}>
-              {delegation.task}
-            </p>
-          </div>
-
-          {/* Progress message */}
-          {delegation.progressMessage && (
-            <div className="space-y-1">
-              <div className={cn("text-[11px] font-semibold uppercase tracking-wide", mutedTextColor)}>
-                Latest update
-              </div>
-              <p className={cn("text-[12px] leading-4 italic whitespace-pre-wrap break-words", mutedTextColor)}>
-                {delegation.progressMessage}
-              </p>
-            </div>
-          )}
-
           {/* Result summary – detect JSON payloads and render formatted */}
           {delegation.resultSummary && (
-            <div className="space-y-1 rounded-md border border-white/60 bg-white/50 p-2 dark:border-white/10 dark:bg-black/20">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Result
-              </div>
-              {(() => {
-                // Try to detect and pretty-print JSON payloads
-                const trimmed = delegation.resultSummary!.trim()
-                if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-                  try {
-                    const parsed = JSON.parse(trimmed)
-                    return (
-                      <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-[11px] text-foreground/90 scrollbar-thin">
-                        {JSON.stringify(parsed, null, 2)}
-                      </pre>
-                    )
-                  } catch {
-                    /* not valid JSON, fall through to plain text */
-                  }
-                }
-                return (
-                  <p className="text-[12px] leading-4 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                    {delegation.resultSummary}
-                  </p>
-                )
-              })()}
-            </div>
+            <DelegationInfoRow
+              label="Result"
+              content={delegation.resultSummary}
+              tone="success"
+              formatJson
+            />
           )}
 
           {/* Error message */}
           {delegation.error && (
-            <div className="space-y-1 rounded-md border border-red-200/80 bg-red-100/50 p-2 dark:border-red-800/70 dark:bg-red-900/30">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
-                Error
-              </div>
-              <p className="text-[12px] leading-4 text-red-700 dark:text-red-300 whitespace-pre-wrap break-words">
-                {delegation.error}
-              </p>
-            </div>
+            <DelegationInfoRow
+              label="Error"
+              content={delegation.error}
+              tone="error"
+            />
           )}
 
           {/* Status footer */}
-          <div className={cn("flex items-center justify-between gap-2 border-t border-black/5 pt-2 dark:border-white/10", isCompact && "flex-col items-stretch")}>
-            <span className={cn("text-[11px]", mutedTextColor)}>
+          <div className={cn("flex items-center justify-between gap-1.5 border-t border-black/5 pt-1.5 dark:border-white/10", isCompact && "flex-col items-stretch")}>
+            <span className={cn("text-[10px]", mutedTextColor)}>
               {statusLabel} · {durationLabel}
             </span>
-            <div className={cn("flex items-center gap-2", isCompact && "w-full flex-col items-stretch")}>
+            <div className={cn("flex items-center gap-1.5", isCompact && "w-full flex-col items-stretch")}>
               {hasConversation && !isConversationOpen && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     setIsConversationOpen(true)
                   }}
-                  className="inline-flex h-8 items-center justify-center rounded-md border border-purple-200/80 px-3 text-[11px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
+                  className="inline-flex h-7 items-center justify-center rounded-md border border-purple-200/80 px-2 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
                 >
-                  Open transcript
+                  Transcript
                 </button>
               )}
               {onOpenDetails && (
@@ -2189,9 +2308,9 @@ const DelegationBubble: React.FC<{
                     e.stopPropagation()
                     onOpenDetails(delegation.runId)
                   }}
-                  className="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+                  className="inline-flex h-7 items-center justify-center rounded-md border border-border px-2 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  Open details
+                  Details
                 </button>
               )}
             </div>
@@ -2215,23 +2334,23 @@ const DelegationSummaryStrip: React.FC<{
   const activeCount = entries.filter((entry) => entry.isActive).length
 
   return (
-    <div className="border-b border-border/30 bg-muted/5 px-2.5 py-2">
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+    <div className="border-b border-border/30 bg-muted/5 px-1.5 py-1">
+      <div className="mb-1 flex flex-wrap items-center gap-1 text-[9px] text-muted-foreground">
         <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
-          <Bot className="h-3.5 w-3.5" />
-          Latest delegated activity
+          <Bot className="h-2.5 w-2.5" />
+          Delegations
         </span>
-        <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+        <Badge variant="secondary" className="h-4 px-1 text-[9px]">
           {entries.length}
         </Badge>
         {activeCount > 0 && (
-          <Badge variant="outline" className="h-5 border-blue-200 px-1.5 text-[10px] text-blue-700 dark:border-blue-800 dark:text-blue-300">
+          <Badge variant="outline" className="h-4 border-blue-200 px-1 text-[9px] text-blue-700 dark:border-blue-800 dark:text-blue-300">
             {activeCount} live
           </Badge>
         )}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-0.5">
         {visibleEntries.map((entry) => (
           <button
             key={entry.delegation.runId}
@@ -2240,37 +2359,36 @@ const DelegationSummaryStrip: React.FC<{
               e.stopPropagation()
               onOpenDetails(entry.delegation.runId)
             }}
-            className="flex w-full items-start gap-2 rounded-md border border-border/60 bg-background/80 px-2.5 py-2 text-left transition-colors hover:bg-muted/40"
+            className="flex w-full items-start gap-1 rounded-md border border-border/60 bg-background/80 px-1.5 py-1 text-left transition-colors hover:bg-muted/40"
           >
             <div className="mt-0.5">
               {entry.isActive ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-500" />
               ) : entry.delegation.status === "completed" ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
+                <Check className="h-2.5 w-2.5 text-green-500" />
               ) : entry.delegation.status === "failed" ? (
-                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                <XCircle className="h-2.5 w-2.5 text-red-500" />
               ) : (
-                <OctagonX className="h-3.5 w-3.5 text-amber-500" />
+                <OctagonX className="h-2.5 w-2.5 text-amber-500" />
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate text-xs font-medium text-foreground">{entry.delegation.agentName}</span>
-                <Badge variant="outline" className="h-4 px-1 text-[10px]">
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="truncate text-[10px] font-medium leading-4 text-foreground">{entry.delegation.agentName}</span>
+                <Badge variant="outline" className="h-4 px-1 text-[9px]">
                   {entry.statusLabel}
                 </Badge>
               </div>
-              <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+              <p className="mt-0.5 line-clamp-2 text-[9px] leading-3.5 text-muted-foreground">
                 {entry.subtitle}
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground/90">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px] text-muted-foreground/90">
                 <span>{entry.sourceLabel}</span>
                 {entry.trackingLabel && <span>{entry.trackingLabel}</span>}
                 {entry.messageCount > 0 && <span>{entry.messageCount} messages</span>}
                 {entry.isActive && <span className="text-blue-600 dark:text-blue-400">Live updates</span>}
               </div>
             </div>
-            <span className="pt-0.5 text-[10px] font-medium text-primary">Open</span>
           </button>
         ))}
       </div>
@@ -2295,18 +2413,18 @@ const DelegationDetailsDialog: React.FC<{
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
-            <Bot className="h-4 w-4" />
+      <DialogContent className="max-h-[76vh] overflow-hidden p-3 sm:max-w-xl">
+        <DialogHeader className="space-y-0.5">
+          <DialogTitle className="flex flex-wrap items-center gap-1 text-[13px]">
+            <Bot className="h-3 w-3" />
             <span>{delegation.agentName}</span>
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+            <Badge variant="outline" className="h-4 px-1 text-[9px]">
               {statusLabel}
             </Badge>
           </DialogTitle>
-          <DialogDescription className="space-y-1 text-xs">
+          <DialogDescription className="space-y-0.5 text-[10px]">
             <span className="block">{subtitle}</span>
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px]">
               <span>{sourceLabel}</span>
               {trackingLabel && <span>{trackingLabel}</span>}
               {hasConversation && <span>{delegation.conversation!.length} messages</span>}
@@ -2314,55 +2432,47 @@ const DelegationDetailsDialog: React.FC<{
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 overflow-y-auto pr-1">
-          <div className="rounded-md border border-border/60 bg-muted/20 p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Delegated task
-            </div>
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground">
-              {delegation.task}
-            </p>
-          </div>
+        <div className="space-y-1.5 overflow-y-auto pr-0.5">
+          <DelegationInfoRow
+            label="Task"
+            content={delegation.task}
+            tone="muted"
+          />
 
           {delegation.progressMessage && (
-            <div className="rounded-md border border-border/60 bg-background p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Latest update
-              </div>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground/85">
-                {delegation.progressMessage}
-              </p>
-            </div>
+            <DelegationInfoRow
+              label="Update"
+              content={delegation.progressMessage}
+              tone="default"
+              italic
+            />
           )}
 
           {delegation.resultSummary && (
-            <div className="rounded-md border border-green-200/80 bg-green-50/60 p-3 dark:border-green-900 dark:bg-green-950/20">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
-                Result
-              </div>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-green-900 dark:text-green-100">
-                {delegation.resultSummary}
-              </p>
-            </div>
+            <DelegationInfoRow
+              label="Result"
+              content={delegation.resultSummary}
+              tone="success"
+              formatJson
+            />
           )}
 
           {delegation.error && (
-            <div className="rounded-md border border-red-200/80 bg-red-50/70 p-3 dark:border-red-900 dark:bg-red-950/20">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
-                Error
-              </div>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-red-900 dark:text-red-100">
-                {delegation.error}
-              </p>
-            </div>
+            <DelegationInfoRow
+              label="Error"
+              content={delegation.error}
+              tone="error"
+            />
           )}
 
           {hasConversation && (
             <SubAgentConversationPanel
               conversation={delegation.conversation!}
+              delegationStatus={delegation.status}
               agentName={delegation.agentName}
               isOpen
               onToggle={() => undefined}
+              isCompact
               alwaysOpen
               defaultShowAll
             />
@@ -4246,7 +4356,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         sourceLabel: getDelegationSourceLabel(delegation),
         trackingLabel: getDelegationTrackingLabel(delegation),
         messageCount: delegation.conversation?.length ?? 0,
-        isActive: delegation.status === "pending" || delegation.status === "spawning" || delegation.status === "running",
+        isActive: isDelegationActiveStatus(delegation.status),
         activityTimestamp: timestamp,
       }))
       .sort((a, b) => b.activityTimestamp - a.activityTimestamp)

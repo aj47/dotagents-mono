@@ -24,6 +24,7 @@ import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-
 import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
+import { stringifySubAgentToolResultContent } from '@shared/delegation-tool-display'
 import type { AgentProgressUpdate, SessionProfileSnapshot, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage, AgentProfile } from '../../shared/types';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';
 
@@ -74,11 +75,7 @@ export interface InternalSubSession {
   /** DotAgents conversation ID used for stateful agent context */
   conversationId?: string;
   /** Conversation history for this sub-session */
-  conversationHistory: Array<{
-    role: 'user' | 'assistant' | 'tool';
-    content: string;
-    timestamp: number;
-  }>;
+  conversationHistory: ACPSubAgentMessage[];
 }
 
 /** Active sub-sessions indexed by their ID */
@@ -177,11 +174,7 @@ function emitSubSessionDelegationProgress(
   lastEmitTime.set(subSession.id, now);
 
   // Convert internal conversation history to ACPSubAgentMessage format
-  const conversation: ACPSubAgentMessage[] = subSession.conversationHistory.map(msg => ({
-    role: msg.role,
-    content: msg.content,
-    timestamp: msg.timestamp,
-  }));
+  const conversation: ACPSubAgentMessage[] = subSession.conversationHistory.map(msg => ({ ...msg }));
 
   // Build delegation progress
   // Use the agent display name stored in the sub-session, falling back to 'Internal'
@@ -526,7 +519,9 @@ export async function runInternalSubSession(
       // Add tool result to conversation history for UI display
       subSession.conversationHistory.push({
         role: 'tool',
-        content: `Tool: ${toolCall.name}\nResult: ${JSON.stringify(result.content).substring(0, 500)}`,
+        toolName: toolCall.name,
+        toolInput: toolCall.arguments,
+        content: stringifySubAgentToolResultContent(result.content),
         timestamp: Date.now(),
       });
 
