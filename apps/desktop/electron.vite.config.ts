@@ -54,9 +54,10 @@ export default defineConfig({
         // package under node_modules after shared constants/helpers change.
         { find: /^@dotagents\/shared$/, replacement: resolve(sharedSrcRoot, "index.ts") },
         { find: /^@dotagents\/shared\/(.+)$/, replacement: `${sharedSrcRoot}/$1.ts` },
+        // Resolve is-plain-obj through pnpm .pnpm store to avoid symlink/junction issues on Windows
+        { find: "is-plain-obj", replacement: resolve(__dirname, "../../node_modules/.pnpm/is-plain-obj@2.1.0/node_modules/is-plain-obj/index.js") },
       ],
       dedupe: ["react", "react-dom"],
-      preserveSymlinks: true,
     },
     optimizeDeps: {
       include: [
@@ -83,9 +84,6 @@ export default defineConfig({
         // Serving react-markdown directly avoids that stale optimized-dep path.
         "react-markdown",
       ],
-      esbuildOptions: {
-        preserveSymlinks: true,
-      },
     },
   },
 })
