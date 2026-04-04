@@ -33,22 +33,50 @@ describe("agent progress tile layout", () => {
     )
     expect(agentProgressSource).toContain('<span className="truncate">Summary</span>')
     expect(agentProgressSource).toContain(
-      '"flex flex-wrap items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/50 transition-colors"'
+      '"flex flex-wrap items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800/50 transition-colors"'
     )
     expect(agentProgressSource).toContain('alwaysOpen ? "cursor-default" : "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"')
-    expect(agentProgressSource).toContain('className="min-w-0 flex flex-1 items-center gap-2"')
+    expect(agentProgressSource).toContain('className="min-w-0 flex flex-1 items-center gap-1.5"')
     expect(agentProgressSource).toContain(
-      'className="min-w-0 flex-1 truncate text-[11px] font-medium text-gray-600 dark:text-gray-400"'
+      'className="min-w-0 flex-1 truncate text-[10px] font-medium text-gray-600 dark:text-gray-400"'
     )
   })
 
   it("surfaces latest delegated activity and a richer live details dialog from the tile chat area", () => {
-    expect(agentProgressSource).toContain('Latest delegated activity')
-    expect(agentProgressSource).toContain('Open details')
+    expect(agentProgressSource).toContain('Delegations')
+    expect(agentProgressSource).toContain('Details')
     expect(agentProgressSource).toContain('<DelegationSummaryStrip')
     expect(agentProgressSource).toContain('<DelegationDetailsDialog')
     expect(agentProgressSource).toContain('alwaysOpen')
     expect(agentProgressSource).toContain('defaultShowAll')
+  })
+
+  it("reuses compact delegated info rows for task/update/result sections", () => {
+    expect(agentProgressSource).toContain('const DelegationInfoRow: React.FC<{')
+    expect(agentProgressSource).toContain('"flex items-start gap-2 rounded-md border px-2 py-1.5"')
+    expect(agentProgressSource).toContain('"w-12 shrink-0 pt-0.5 text-[9px] font-semibold uppercase tracking-wide"')
+    expect(agentProgressSource).toContain('<DelegationInfoRow')
+    expect(agentProgressSource).toContain('label="Task"')
+    expect(agentProgressSource).toContain('label="Update"')
+    expect(agentProgressSource).toContain('label="Result"')
+  })
+
+  it("tightens delegated headers, action buttons, and details dialog spacing", () => {
+    expect(agentProgressSource).toContain('"px-2 py-1.5 cursor-pointer hover:opacity-90 transition-opacity"')
+    expect(agentProgressSource).toContain('className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}')
+    expect(agentProgressSource).toContain('className="inline-flex h-7 items-center justify-center rounded-md border border-purple-200/80 px-2 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"')
+    expect(agentProgressSource).toContain('className="inline-flex h-7 items-center justify-center rounded-md border border-border px-2 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"')
+    expect(agentProgressSource).toContain('className="max-h-[76vh] overflow-hidden p-3 sm:max-w-xl"')
+    expect(agentProgressSource).toContain('className="flex flex-wrap items-center gap-1 text-[13px]"')
+  })
+
+  it("compresses sub-agent conversation cards and activity panel padding", () => {
+    expect(agentProgressSource).toContain('className={cn("rounded-md border text-xs transition-all", roleMeta.containerClass)}')
+    expect(agentProgressSource).toContain('className="flex items-start gap-1.5 px-2 py-1.5"')
+    expect(agentProgressSource).toContain('className={cn("mt-0.5 rounded-full p-1 bg-white/70 dark:bg-black/20", roleMeta.iconClass)}')
+    expect(agentProgressSource).toContain('className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium", roleMeta.badgeClass)}')
+    expect(agentProgressSource).toContain('className="overflow-y-auto p-1 space-y-1"')
+    expect(agentProgressSource).toContain('style={{ maxHeight: isCompact ? "min(32vh, 220px)" : "min(36vh, 280px)" }}')
   })
 
   it("caps ACP session badges to the available tile width and truncates long labels", () => {
@@ -68,21 +96,32 @@ describe("agent progress tile layout", () => {
 
   it("keeps tile message-stream tool execution rows readable at narrow widths and zoom", () => {
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30"'
+      '"flex min-w-0 items-center gap-1.5 rounded text-[11px] cursor-pointer hover:bg-muted/30"'
     )
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30"'
+      'rowClassName = "px-1.5 py-0.5"'
     )
+    expect(agentProgressSource).toContain('rowClassName="px-1 py-0.5"')
     expect(agentProgressSource).toContain('className="min-w-0 shrink truncate font-mono font-medium"')
     expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50"')
     expect(agentProgressSource).toContain('className="mb-1 flex flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="ml-auto flex shrink-0 flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
+    expect(agentProgressSource).toContain('() => buildSubAgentConversationItems(conversation, delegationStatus)')
+    expect(agentProgressSource).toContain('<ToolExecutionBubble')
   })
 
   it("only shows collapsed tool previews for the latest pending tool run", () => {
     expect(agentProgressSource).toContain('const shouldShowPreviewLines = runEnd === sortedItems.length - 1')
     expect(agentProgressSource).toContain('!isExpanded && group.previewLines.length > 0')
+  })
+
+  it("stops delegated tool rows from showing a loading spinner after terminal completion", () => {
+    expect(agentProgressSource).toContain('function isDelegationActiveStatus(status: ACPDelegationProgress["status"]): boolean {')
+    expect(agentProgressSource).toContain('const isPending = isToolUseMessage && !resultMessage && isDelegationActive')
+    expect(agentProgressSource).toContain('error: "Delegation failed before a tool result was captured."')
+    expect(agentProgressSource).toContain('error: "Delegation was cancelled before a tool result was captured."')
+    expect(agentProgressSource).toContain('() => buildSubAgentConversationItems(conversation, delegationStatus)')
   })
 
   it("keeps respond_to_user assistant tool calls outside collapsed tool activity groups", () => {
@@ -92,13 +131,13 @@ describe("agent progress tile layout", () => {
 
   it("wraps expanded tool detail chrome and caps tool output blocks inside narrow tiles", () => {
     expect(agentProgressSource).toContain(
-      'className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]"'
+      'detailsClassName="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]"'
     )
     expect(agentProgressSource).toContain(
       'className="flex flex-wrap items-center justify-between gap-1.5"'
     )
     expect(agentProgressSource).toContain(
-      'className="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"'
+      'detailsClassName = "mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"'
     )
     expect(agentProgressSource).toContain(
       'overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]'
@@ -193,25 +232,25 @@ describe("agent progress tile layout", () => {
       'className="ml-auto flex shrink-0 items-center gap-1"'
     )
     expect(messageQueuePanelSource).toContain(
-      '"flex flex-wrap items-start justify-between gap-2 px-3 py-2"'
+      '"flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5"'
     )
     expect(messageQueuePanelSource).toContain(
-      'className="flex min-w-0 flex-1 items-center gap-2"'
+      'className="flex min-w-0 flex-1 items-center gap-1.5"'
     )
     expect(messageQueuePanelSource).toContain(
       'className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"'
     )
     expect(messageQueuePanelSource).toContain(
-      'className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"'
+      'className="border-b border-orange-200 bg-orange-100/30 px-2.5 py-1 text-[10px] text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"'
     )
     expect(messageQueuePanelSource).toContain(
       'className="flex min-w-0 items-start gap-2"'
     )
     expect(messageQueuePanelSource).toContain(
-      'className="flex min-w-0 flex-1 flex-col"'
+      'className="flex min-w-0 flex-1 items-start gap-1.5"'
     )
     expect(messageQueuePanelSource).toContain(
-      'className="mt-2 flex w-full flex-wrap items-center gap-1.5"'
+      'className="ml-auto flex shrink-0 items-center gap-0.5 self-start"'
     )
     expect(messageQueuePanelSource).not.toContain(
       '"ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity"'
@@ -249,7 +288,7 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('conversationState === "needs_input"')
     expect(agentProgressSource).toContain('conversationState === "blocked"')
     expect(agentProgressSource).toContain(
-      'Badge variant="outline" className={cn("h-5 rounded-full px-1.5 text-[10px] font-medium", statusBadgeClass)}'
+      'Badge variant="outline" className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}'
     )
     expect(agentProgressSource).toContain('const conversationStateBadgeClass = conversationState === "complete"')
   })
