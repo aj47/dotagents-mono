@@ -756,11 +756,11 @@ export default function SessionListScreen({ navigation }: Props) {
 
   // Create a settings client for syncing pin/archive state to server
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (isConnected && config.baseUrl && config.apiKey) {
       return new SettingsApiClient(config.baseUrl, config.apiKey);
     }
     return undefined;
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, isConnected]);
 
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
     await sessionStore.toggleSessionPinned(sessionId, settingsClient);
@@ -822,10 +822,10 @@ export default function SessionListScreen({ navigation }: Props) {
   const disconnectedSubtitle = connectionInfo.state === 'connecting' || connectionInfo.state === 'reconnecting'
     ? 'We are pairing with your desktop. Your conversation history will appear here as soon as the connection is ready.'
     : connectionInfo.state === 'failed'
-      ? 'Open connection settings or scan a fresh QR code to restore syncing and get back into your conversations.'
+      ? `Open connection settings or scan a fresh QR code to restore syncing and get back into your conversations.${connectionInfo.errorMessage ? ` ${connectionInfo.errorMessage}` : ''}`
       : hasConfiguredConnection
         ? 'Your mobile app is set up, but it is not currently connected. Reconnect to load your recent conversations.'
-        : 'Scan the QR code from the desktop app to pair this device and bring your conversations into mobile.';
+        : 'Scan the QR code from the desktop app to pair this device, or open connection settings to enter a DotAgents server URL and API key.';
 
   // Build a set of stub session IDs for display purposes
   const stubSessionIds = useMemo(() => {

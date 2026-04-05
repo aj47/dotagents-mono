@@ -15,6 +15,7 @@ import {
   ConnectionStatus,
   RecoveryState,
   StreamingCheckpoint,
+  checkDotAgentsServerConnection,
   isRetryableError,
   delay,
   DEFAULT_RECOVERY_CONFIG,
@@ -22,7 +23,7 @@ import {
 } from './connectionRecovery';
 
 export type OpenAIConfig = {
-  baseUrl: string;    // OpenAI-compatible API base URL e.g., https://api.openai.com/v1
+  baseUrl: string;    // DotAgents API base URL e.g., https://example.com/v1
   apiKey: string;
   model?: string;
   recoveryConfig?: Partial<ConnectionRecoveryConfig>;
@@ -132,14 +133,12 @@ export class OpenAIClient {
   }
 
   async health(): Promise<boolean> {
-    const url = this.getUrl('/models');
-    try {
-      const res = await fetch(url, { headers: this.authHeaders() });
-      return res.ok;
-    } catch (error) {
-      console.error('[OpenAIClient] Health check error:', error);
+    const result = await checkDotAgentsServerConnection(this.baseUrl, this.cfg.apiKey);
+    if (!result.success) {
+      console.error('[OpenAIClient] Health check error:', result.error);
       return false;
     }
+    return true;
   }
 
   async chat(

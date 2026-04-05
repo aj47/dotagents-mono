@@ -103,6 +103,7 @@ export type HandsFreeDebugEventType =
   | 'permission-denied'
   | 'recognizer-start'
   | 'recognizer-stop'
+  | 'mic-device-fallback'
   | 'wake-phrase-matched'
   | 'sleep-phrase-matched'
   | 'auto-send'
@@ -114,4 +115,3 @@ export type HandsFreeDebugEventType =
   | 'state-transition'
   | 'session-timeout'
   | 'no-speech-timeout';
-

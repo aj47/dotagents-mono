@@ -38,14 +38,13 @@ function parseDeepLink(url: string | null) {
   if (!url) return null;
   try {
     const parsed = Linking.parse(url);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
+    // Handle dotagents://config?baseUrl=...&apiKey=...
     if (parsed.path === 'config' || parsed.hostname === 'config') {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
+      const { baseUrl, apiKey } = parsed.queryParams || {};
+      if (baseUrl || apiKey) {
         return {
           baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
           apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
         };
       }
     }
@@ -65,6 +64,7 @@ function Navigation() {
 
   // Initialize tunnel connection manager for persistence and auto-reconnection
   const tunnelConnection = useTunnelConnectionProvider();
+  const isDotAgentsConnected = tunnelConnection.connectionInfo.state === 'connected';
 
   // Initialize push notifications
   const pushNotifications = usePushNotifications();
@@ -86,7 +86,10 @@ function Navigation() {
   const connectionManager = useConnectionManagerProvider(clientConfig);
 
   // Initialize profile provider to track current profile from server
-  const profileProvider = useProfileProvider(cfg.config.baseUrl, cfg.config.apiKey);
+  const profileProvider = useProfileProvider(
+    isDotAgentsConnected ? cfg.config.baseUrl : '',
+    isDotAgentsConnected ? cfg.config.apiKey : ''
+  );
 
   // Create navigation theme that matches our theme
   const navTheme = {
@@ -112,10 +115,14 @@ function Navigation() {
           ...cfg.config,
           ...(params.baseUrl && { baseUrl: params.baseUrl }),
           ...(params.apiKey && { apiKey: params.apiKey }),
-          ...(params.model && { model: params.model }),
         };
         cfg.setConfig(newConfig);
         await saveConfig(newConfig);
+        if (newConfig.baseUrl && newConfig.apiKey) {
+          void tunnelConnection.connect(newConfig.baseUrl, newConfig.apiKey);
+        } else {
+          void tunnelConnection.disconnect();
+        }
       }
     };
 
@@ -128,7 +135,7 @@ function Navigation() {
     });
 
     return () => subscription.remove();
-  }, [cfg.ready]);
+  }, [cfg.ready, cfg.config, cfg.setConfig, tunnelConnection]);
 
   // On Expo web in Chrome, default to the built-in free Google voice when available.
   useEffect(() => {
@@ -237,7 +244,7 @@ function Navigation() {
         // Clear badge when user opens the app or brings it to foreground
         clearNotifications();
         // Also clear badge count on server if connected
-        if (cfg.config.baseUrl && cfg.config.apiKey) {
+        if (isDotAgentsConnected) {
           clearServerBadge(cfg.config.baseUrl, cfg.config.apiKey).catch((err) => {
             console.warn('[App] Failed to clear server badge count:', err);
           });
@@ -248,7 +255,7 @@ function Navigation() {
     // Also clear immediately if app is already active and config is ready
     if (cfg.ready) {
       clearNotifications();
-      if (cfg.config.baseUrl && cfg.config.apiKey) {
+      if (isDotAgentsConnected) {
         clearServerBadge(cfg.config.baseUrl, cfg.config.apiKey).catch((err) => {
           console.warn('[App] Failed to clear server badge count:', err);
         });
@@ -257,12 +264,12 @@ function Navigation() {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [cfg.ready, cfg.config.baseUrl, cfg.config.apiKey]);
+  }, [cfg.ready, cfg.config.baseUrl, cfg.config.apiKey, isDotAgentsConnected]);
 
   // Auto-sync sessions with desktop server
   useEffect(() => {
     if (!cfg.ready || !sessionStore.ready) return;
-    if (!cfg.config.baseUrl || !cfg.config.apiKey) return;
+    if (!isDotAgentsConnected) return;
 
     const client = new SettingsApiClient(cfg.config.baseUrl, cfg.config.apiKey);
     let appState: AppStateStatus = AppState.currentState;
@@ -327,7 +334,7 @@ function Navigation() {
       stopPolling();
       subscription.remove();
     };
-  }, [cfg.ready, cfg.config.baseUrl, cfg.config.apiKey, sessionStore.ready, sessionStore.syncWithServer]);
+  }, [cfg.ready, cfg.config.baseUrl, cfg.config.apiKey, isDotAgentsConnected, sessionStore.ready, sessionStore.syncWithServer]);
 
   if (!cfg.ready || !sessionStore.ready) {
     return (

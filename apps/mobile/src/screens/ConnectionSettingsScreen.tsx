@@ -6,7 +6,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Linking from 'expo-linking';
-import { checkServerConnection } from '../lib/connectionRecovery';
+import { checkDotAgentsServerConnection } from '../lib/connectionRecovery';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import {
   createButtonAccessibilityLabel,
@@ -15,19 +15,16 @@ import {
 } from '../lib/accessibility';
 import { resolveQrScannerActivation } from './connection-settings-qr';
 
-const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-
-function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
+function parseQRCode(data: string): { baseUrl?: string; apiKey?: string } | null {
   try {
     const parsed = Linking.parse(data);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
+    // Handle dotagents://config?baseUrl=...&apiKey=...
     if (parsed.scheme === 'dotagents' && (parsed.path === 'config' || parsed.hostname === 'config')) {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
+      const { baseUrl, apiKey } = parsed.queryParams || {};
+      if (baseUrl || apiKey) {
         return {
           baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
           apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
         };
       }
     }
@@ -48,7 +45,7 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
-  const { connect: tunnelConnect, disconnect: tunnelDisconnect } = useTunnelConnection();
+  const { connect: tunnelConnect, disconnect: tunnelDisconnect, connectionInfo } = useTunnelConnection();
   const autoOpenScannerHandledRef = useRef(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -74,66 +71,42 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
     // Clear any previous error
     setConnectionError(null);
 
-    // Default to OpenAI URL if baseUrl is empty
-    if (!normalizedDraft.baseUrl) {
-      normalizedDraft.baseUrl = DEFAULT_OPENAI_BASE_URL;
-    }
-
-    const hasCustomUrl = normalizedDraft.baseUrl && normalizedDraft.baseUrl.replace(/\/+$/, '') !== DEFAULT_OPENAI_BASE_URL;
-    const hasApiKey = normalizedDraft.apiKey && normalizedDraft.apiKey.length > 0;
-
-    // On first-time setup, do not silently save a disconnected default config.
-    if (!isConnected && !hasApiKey) {
-      setConnectionError('Enter an API key or scan a DotAgents QR code before saving');
+    if (!normalizedDraft.baseUrl || !normalizedDraft.apiKey) {
+      setConnectionError('Scan a DotAgents QR code or enter both a DotAgents server URL and API key before saving.');
       return;
     }
 
-    // Require API key when using a custom server URL
-    if (hasCustomUrl && !hasApiKey) {
-      setConnectionError('API Key is required when using a custom server URL');
-      return;
-    }
+    setIsCheckingConnection(true);
 
-    // Validate: if API key is set, base URL must also be set
-    if (hasApiKey && !normalizedDraft.baseUrl) {
-      setConnectionError('Base URL is required when an API key is provided');
-      return;
-    }
+    try {
+      const result = await checkDotAgentsServerConnection(
+        normalizedDraft.baseUrl,
+        normalizedDraft.apiKey,
+        10000
+      );
 
-    // Only check connection if we have both a custom URL and API key
-    if (hasApiKey && normalizedDraft.baseUrl) {
-      setIsCheckingConnection(true);
-
-      try {
-        const result = await checkServerConnection(
-          normalizedDraft.baseUrl,
-          normalizedDraft.apiKey,
-          10000
-        );
-
-        if (!result.success) {
-          setConnectionError(result.error || 'Connection failed');
-          setIsCheckingConnection(false);
-          return;
-        }
-
-        if (result.normalizedUrl) {
-          normalizedDraft = {
-            ...normalizedDraft,
-            baseUrl: result.normalizedUrl,
-          };
-        }
-
-        console.log('[ConnectionSettings] Connection check successful:', result);
-      } catch (error: any) {
-        console.error('[ConnectionSettings] Connection check error:', error);
-        setConnectionError(error.message || 'Connection check failed');
+      if (!result.success) {
+        setConnectionError(result.error || 'Connection failed');
         setIsCheckingConnection(false);
         return;
       }
 
+      if (result.normalizedUrl) {
+        normalizedDraft = {
+          ...normalizedDraft,
+          baseUrl: result.normalizedUrl,
+        };
+      }
+
+      console.log('[ConnectionSettings] Connection check successful:', result);
+    } catch (error: any) {
+      console.error('[ConnectionSettings] Connection check error:', error);
+      setConnectionError(error.message || 'Connection check failed');
       setIsCheckingConnection(false);
+      return;
     }
+
+    setIsCheckingConnection(false);
 
     // Connection successful, proceed
     setConfig(normalizedDraft);
@@ -196,7 +169,6 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
         ...prev,
         ...(params.baseUrl && { baseUrl: params.baseUrl }),
         ...(params.apiKey && { apiKey: params.apiKey }),
-        ...(params.model && { model: params.model }),
       }));
       setShowScanner(false);
     } else {
@@ -205,12 +177,15 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
     }
   };
 
-  const resetBaseUrl = () => {
-    setDraft(prev => ({ ...prev, baseUrl: DEFAULT_OPENAI_BASE_URL }));
-  };
-
-  // Connection status indicator
-  const isConnected = Boolean(config.baseUrl && config.apiKey);
+  const isConnected = connectionInfo.state === 'connected';
+  const statusTitle = connectionInfo.state === 'connecting' || connectionInfo.state === 'reconnecting'
+    ? 'Connecting to DotAgents'
+    : connectionInfo.state === 'failed'
+      ? 'Connection failed'
+      : isConnected
+        ? 'Connected to DotAgents'
+        : 'Not connected';
+  const statusUrl = connectionInfo.baseUrl || config.baseUrl;
 
   if (!ready) return null;
 
@@ -231,12 +206,12 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, isConnected ? styles.statusConnected : styles.statusDisconnected]} />
             <Text style={styles.statusText}>
-              {isConnected ? 'Connected' : 'Not connected'}
+              {statusTitle}
             </Text>
           </View>
-          {isConnected && (
+          {!!statusUrl && (
             <Text style={styles.statusUrl} numberOfLines={1}>
-              {config.baseUrl}
+              {statusUrl}
             </Text>
           )}
         </View>
@@ -251,7 +226,7 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
           <Text style={styles.scanButtonText}>Scan QR Code</Text>
         </TouchableOpacity>
         <Text style={styles.helperText}>
-          Scan the QR code from your DotAgents desktop app to connect
+          Scan the QR code from your DotAgents desktop app to pair this device.
         </Text>
 
         <View style={styles.labelRow}>
@@ -273,45 +248,37 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
           placeholder="sk-..."
           placeholderTextColor={theme.colors.mutedForeground}
           accessibilityLabel={createTextInputAccessibilityLabel('API key')}
-          accessibilityHint="Enter your API key used to connect to your model provider"
+          accessibilityHint="Enter the API key for your DotAgents server"
           autoCapitalize='none'
           secureTextEntry={!showApiKey}
         />
 
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>Base URL</Text>
-          <TouchableOpacity
-            onPress={resetBaseUrl}
-            style={styles.inlineActionButton}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Reset base URL to default')}
-            accessibilityHint="Restores the default OpenAI-compatible base URL"
-          >
-            <Text style={styles.resetText}>Reset to default</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.label}>DotAgents Server URL</Text>
         <TextInput
           style={styles.input}
           value={draft.baseUrl}
           onChangeText={(t) => setDraft({ ...draft, baseUrl: t })}
-          placeholder='https://api.openai.com/v1'
+          placeholder='https://your-server.example.com/v1'
           placeholderTextColor={theme.colors.mutedForeground}
-          accessibilityLabel={createTextInputAccessibilityLabel('Base URL')}
-          accessibilityHint="Enter the base URL for your OpenAI-compatible server"
+          accessibilityLabel={createTextInputAccessibilityLabel('DotAgents server URL')}
+          accessibilityHint="Enter the base URL for your DotAgents server"
           autoCapitalize='none'
         />
+        <Text style={styles.helperText}>
+          Use this if you are connecting to a DotAgents server directly instead of scanning a QR code.
+        </Text>
 
         <TouchableOpacity
           style={[styles.primaryButton, isCheckingConnection && styles.primaryButtonDisabled]}
           onPress={onSave}
           disabled={isCheckingConnection}
           accessibilityRole="button"
-          accessibilityLabel={isCheckingConnection ? 'Testing connection' : 'Test & Save'}
+          accessibilityLabel={isCheckingConnection ? 'Testing DotAgents connection' : 'Test and save DotAgents connection'}
         >
           {isCheckingConnection ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
-              <Text style={styles.primaryButtonText}>  Testing connection...</Text>
+              <Text style={styles.primaryButtonText}>  Testing DotAgents connection...</Text>
             </View>
           ) : (
             <Text style={styles.primaryButtonText}>Test & Save</Text>
@@ -510,4 +477,3 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
   });
 }
-
