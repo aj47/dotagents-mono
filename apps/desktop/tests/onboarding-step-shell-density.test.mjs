@@ -8,6 +8,11 @@ const onboardingSource = fs.readFileSync(
   'utf8',
 )
 
+const onboardingHelperSource = fs.readFileSync(
+  path.join(process.cwd(), 'apps/desktop/src/renderer/src/lib/onboarding-main-agent.ts'),
+  'utf8',
+)
+
 test('desktop onboarding keeps only the welcome hero vertically centered', () => {
   assert.match(
     onboardingSource,
@@ -19,4 +24,10 @@ test('desktop onboarding keeps only the welcome hero vertically centered', () =>
 test('desktop onboarding setup steps use a tighter shared step-indicator gap', () => {
   assert.match(onboardingSource, /<div className="mb-6 flex justify-center gap-2">/)
   assert.doesNotMatch(onboardingSource, /<div className="flex justify-center gap-2 mb-8">/)
+})
+
+test('desktop onboarding source includes the requested main-agent choices', () => {
+  assert.match(onboardingHelperSource, /Bring Your Own Key \(BYOK\)/)
+  assert.match(onboardingHelperSource, /id: "opencode"/)
+  assert.match(onboardingSource, /Connect your provider/)
 })

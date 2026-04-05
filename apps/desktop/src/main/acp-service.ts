@@ -22,6 +22,7 @@ import { agentProfileService } from "./agent-profile-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { logACP, logApp } from "./debug"
 import { RUNTIME_TOOLS_SERVER_NAME } from "../shared/runtime-tool-names"
+import { mcpService } from "./mcp-service"
 import {
   clearAcpClientSessionTokenMapping,
   getAppRunIdForAcpSession,
@@ -829,9 +830,10 @@ class ACPService extends EventEmitter {
       // Merge environment variables
       const processEnv = { ...process.env, ...env }
       const agentCwd = targetWorkingDirectory
+      const resolvedCommand = await mcpService.resolveCommandPath(command)
 
       // Spawn the process with optional working directory
-      const proc = spawn(command, args, {
+      const proc = spawn(resolvedCommand, args, {
         env: processEnv,
         stdio: ["pipe", "pipe", "pipe"],
         shell: process.platform === "win32",

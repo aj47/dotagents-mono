@@ -8,6 +8,7 @@ export interface ExternalAgentCommandVerificationInput {
   command: string
   args?: string[]
   cwd?: string
+  env?: Record<string, string>
   probeArgs?: string[]
 }
 
@@ -53,13 +54,14 @@ async function runProbe(
   resolvedCommand: string,
   probeArgs: string[],
   cwd?: string,
+  env?: Record<string, string>,
 ): Promise<ExternalAgentCommandVerificationResult> {
   const probePreview = buildCommandPreview(resolvedCommand, probeArgs)
 
   return await new Promise((resolve) => {
     const child = spawn(resolvedCommand, probeArgs, {
       cwd: cwd || process.cwd(),
-      env: process.env,
+      env: { ...process.env, ...(env || {}) },
       stdio: ["ignore", "pipe", "pipe"],
       shell: process.platform === "win32",
     })
@@ -144,7 +146,7 @@ export async function verifyExternalAgentCommand(
       }
     }
 
-    return await runProbe(resolvedCommand, [...args, ...probeArgs], cwd)
+    return await runProbe(resolvedCommand, [...args, ...probeArgs], cwd, input.env)
   } catch (error) {
     return {
       ok: false,

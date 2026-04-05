@@ -8,7 +8,7 @@ const onboardingSource = fs.readFileSync(
   'utf8',
 )
 
-const welcomeStepMatch = onboardingSource.match(/function WelcomeStep[\s\S]*?\/\/ API Key Step/)
+const welcomeStepMatch = onboardingSource.match(/function WelcomeStep[\s\S]*?function MainAgentChoiceStep/)
 
 assert.ok(welcomeStepMatch, 'expected to find WelcomeStep in onboarding.tsx')
 

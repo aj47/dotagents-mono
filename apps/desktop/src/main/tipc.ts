@@ -4155,11 +4155,21 @@ export const router = {
   }),
 
   verifyExternalAgentCommand: t.procedure
-    .input<{ command: string; args?: string[]; cwd?: string; probeArgs?: string[] }>()
+    .input<{ command: string; args?: string[]; cwd?: string; env?: Record<string, string>; probeArgs?: string[] }>()
     .action(async ({ input }) => {
       const { verifyExternalAgentCommand } = await import("./command-verification-service")
       return verifyExternalAgentCommand(input)
     }),
+
+  getOpencodeInstallStatus: t.procedure.action(async () => {
+    const { getOpencodeInstallStatus } = await import("./opencode-installer")
+    return getOpencodeInstallStatus()
+  }),
+
+  installManagedOpencode: t.procedure.action(async () => {
+    const { installManagedOpencode } = await import("./opencode-installer")
+    return installManagedOpencode()
+  }),
 
   spawnAcpAgent: t.procedure
     .input<{ agentName: string; workingDirectory?: string }>()
