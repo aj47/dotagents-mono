@@ -45,7 +45,7 @@ export const ONBOARDING_MAIN_AGENT_OPTIONS: OnboardingMainAgentOption[] = [
     id: "opencode",
     displayName: EXTERNAL_AGENT_PRESETS.opencode.displayName,
     description: EXTERNAL_AGENT_PRESETS.opencode.description,
-    setupSummary: "Provision an ACP profile now, then verify or finish external auth as needed.",
+    setupSummary: "FREE — No API key needed. Uses its own provider config or your existing auth.",
     mode: "acp",
     isRecommended: true,
   },
@@ -136,6 +136,7 @@ export function buildExternalAgentProfileInput(
   options?: {
     cwd?: string
     env?: Record<string, string>
+    autoSpawn?: boolean
   },
 ): CreateAgentProfileInput {
   const preset = EXTERNAL_AGENT_PRESETS[presetKey]
@@ -152,7 +153,7 @@ export function buildExternalAgentProfileInput(
     enabled: true,
     isUserProfile: false,
     isAgentTarget: true,
-    autoSpawn: false,
+    autoSpawn: options?.autoSpawn ?? false,
   }
 }
 

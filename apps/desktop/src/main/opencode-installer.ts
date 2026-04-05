@@ -33,6 +33,33 @@ export function getManagedOpencodeBinaryPath(): string {
   return path.join(getManagedInstallRoot(), "current", getBinaryName())
 }
 
+function addToSystemPath(directory: string): void {
+  if (process.platform !== "win32") return
+
+  try {
+    const { execSync } = require("child_process")
+    
+    // Get current PATH using powershell -Command
+    const currentPath = execSync(
+      `powershell -Command "[System.Environment]::GetEnvironmentVariable('PATH', 'User')"`,
+      { encoding: "utf8", windowsHide: true },
+    ).trim()
+
+    if (!currentPath.includes(directory)) {
+      const newPath = currentPath ? `${currentPath};${directory}` : directory
+      // Escape single quotes in the path for PowerShell
+      const escapedPath = newPath.replace(/'/g, "''")
+      execSync(
+        `powershell -Command "[System.Environment]::SetEnvironmentVariable('PATH', '${escapedPath}', 'User')"`,
+        { windowsHide: true },
+      )
+      console.log(`[OpenCode Installer] Added ${directory} to user PATH`)
+    }
+  } catch (error) {
+    console.error(`[OpenCode Installer] Failed to add to PATH:`, error)
+  }
+}
+
 function getArchiveExtension(): ".zip" | ".tar.gz" {
   if (process.platform === "linux") return ".tar.gz"
   return ".zip"
@@ -238,6 +265,9 @@ export async function installManagedOpencode(): Promise<OpenCodeInstallStatus> {
     if (process.platform !== "win32") {
       fs.chmodSync(installedBinaryPath, 0o755)
     }
+
+    // Add to system PATH so user can run "opencode" from terminal
+    addToSystemPath(currentDir)
 
     const version = await readInstalledVersion(installedBinaryPath)
     return updateInstallState({ installing: false, error: undefined, version })

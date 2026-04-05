@@ -13,6 +13,7 @@ import { spawn, ChildProcess } from "child_process"
 import { EventEmitter } from "events"
 import { existsSync, statSync } from "fs"
 import { readFile, writeFile, mkdir, realpath } from "fs/promises"
+import path from "path"
 import { homedir } from "os"
 import { dirname, isAbsolute, join, resolve } from "path"
 import { configStore } from "./config"
@@ -829,6 +830,21 @@ class ACPService extends EventEmitter {
     try {
       // Merge environment variables
       const processEnv = { ...process.env, ...env }
+      
+      // Ensure HOME is set for OpenCode to find its auth file on Windows
+      if (!processEnv.HOME && processEnv.USERPROFILE) {
+        processEnv.HOME = processEnv.USERPROFILE
+      }
+      
+      // Set XDG locations for OpenCode
+      processEnv.XDG_DATA_HOME = processEnv.XDG_DATA_HOME || path.join(processEnv.USERPROFILE || "", ".local", "share")
+      processEnv.XDG_CONFIG_HOME = processEnv.XDG_CONFIG_HOME || path.join(processEnv.USERPROFILE || "", ".config")
+      
+      console.log(`[ACP Service] Spawning agent ${agentName}: HOME=${processEnv.HOME}, USERPROFILE=${processEnv.USERPROFILE}, XDG_DATA_HOME=${processEnv.XDG_DATA_HOME}, XDG_CONFIG_HOME=${processEnv.XDG_CONFIG_HOME}`)
+      
+      // Also log what the app's HOME is
+      console.log(`[ACP Service] App process.env.HOME=${process.env.HOME}, USERPROFILE=${process.env.USERPROFILE}`)
+
       const agentCwd = targetWorkingDirectory
       const resolvedCommand = await mcpService.resolveCommandPath(command)
 
@@ -844,17 +860,25 @@ class ACPService extends EventEmitter {
 
       // Handle stdout (JSON-RPC responses)
       proc.stdout?.on("data", (data: Buffer) => {
+        const str = data.toString()
+        // Log all stdout for debugging
+        if (str.trim()) {
+          console.log(`[ACP Service] Agent ${agentName} stdout:`, str.slice(0, 1000))
+        }
         this.handleStdoutData(agentName, data)
       })
 
       // Handle stderr (logs)
       proc.stderr?.on("data", (data: Buffer) => {
-        // stderr is captured but not logged to reduce noise
-        void data
+        const str = data.toString()
+        if (str.trim()) {
+          console.log(`[ACP Service] Agent ${agentName} stderr:`, str.slice(0, 500))
+        }
       })
 
       // Handle process exit
       proc.on("exit", (code, signal) => {
+        console.log(`[ACP Service] Agent ${agentName} process exited with code=${code}, signal=${signal}`)
         const previousSessionId = instance.sessionId
         if (previousSessionId) {
           this.clearSessionOutput(previousSessionId)
@@ -1688,6 +1712,7 @@ class ACPService extends EventEmitter {
     }
 
     try {
+      console.log(`[ACP Service] Initializing agent ${agentName}...`)
       const result = await this.sendRequest(agentName, "initialize", {
         protocolVersion: 1,
         clientCapabilities: {
@@ -1725,7 +1750,10 @@ class ACPService extends EventEmitter {
           version: result.agentInfo.version || "",
         }
       }
-    } catch {
+
+      console.log(`[ACP Service] Agent ${agentName} initialized successfully`)
+    } catch (err) {
+      console.log(`[ACP Service] Agent ${agentName} initialization failed:`, err instanceof Error ? err.message : err)
       // Don't throw - some agents might not require initialization
     }
   }
@@ -1890,9 +1918,11 @@ class ACPService extends EventEmitter {
       }
 
       // Use session/new per ACP spec (not session/create)
+      console.log(`[ACP Service] Calling session/new for ${agentName} with cwd=${sessionCwd}, model=opencode/gpt-5-nano`)
       const result = await this.sendRequest(agentName, "session/new", {
         cwd: sessionCwd,
         mcpServers,
+        model: "opencode/gpt-5-nano",
       }) as {
         sessionId?: string
         models?: {
@@ -1906,9 +1936,11 @@ class ACPService extends EventEmitter {
         configOptions?: ACPConfigOption[]
         config_options?: ACPConfigOption[]
       }
+      console.log(`[ACP Service] session/new result for ${agentName}:`, result)
 
       return storeSessionMetadata(result)
-    } catch {
+    } catch (err) {
+      console.log(`[ACP Service] session/new failed for ${agentName}:`, err instanceof Error ? err.message : err)
       if (instance.clientSessionToken) {
         clearAcpClientSessionTokenMapping(instance.clientSessionToken)
         instance.clientSessionToken = undefined

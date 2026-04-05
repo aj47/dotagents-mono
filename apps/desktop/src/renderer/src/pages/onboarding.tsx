@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@renderer/components/ui/button"
 import { Input } from "@renderer/components/ui/input"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -99,7 +100,7 @@ export function Component() {
   const [isVerifyingCommand, setIsVerifyingCommand] = useState(false)
   const [setupError, setSetupError] = useState<string | null>(null)
   const [provisionedAgentName, setProvisionedAgentName] = useState<string | null>(null)
-  const [openCodeSetupMode, setOpenCodeSetupMode] = useState<"existing-auth" | "managed-api-key">("managed-api-key")
+  const [openCodeSetupMode, setOpenCodeSetupMode] = useState<"existing-auth" | "managed-api-key">("existing-auth")
   const [openCodeProviderId, setOpenCodeProviderId] = useState<ByokProviderId>("groq")
   const [openCodeApiKey, setOpenCodeApiKey] = useState("")
   const [openCodeInstallStatus, setOpenCodeInstallStatus] = useState<OpenCodeInstallStatus | null>(null)
@@ -109,16 +110,21 @@ export function Component() {
   const [dictationResult, setDictationResult] = useState<string | null>(null)
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
   const [micError, setMicError] = useState<string | null>(null)
+  const [isParakeetDownloading, setIsParakeetDownloading] = useState(false)
   const navigate = useNavigate()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
+  const queryClient = useQueryClient()
   const recorderRef = useRef<Recorder | null>(null)
 
-  const selectedOption =
-    ONBOARDING_MAIN_AGENT_OPTIONS.find((option) => option.id === selectedChoiceId)
-    || ONBOARDING_MAIN_AGENT_OPTIONS[0]
-  const selectedExternalPreset =
-    selectedChoiceId === "byok" ? undefined : EXTERNAL_AGENT_PRESETS[selectedChoiceId]
+  const parakeetStatusQuery = useQuery({
+    queryKey: ["parakeetModelStatus"],
+    queryFn: () => tipcClient.getParakeetModelStatus(),
+    refetchInterval: (query) => {
+      const status = query.state.data as { downloading?: boolean } | undefined
+      return (isParakeetDownloading || status?.downloading) ? 500 : false
+    },
+  })
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
@@ -132,6 +138,32 @@ export function Component() {
     },
     [saveConfigMutation, configQuery.data]
   )
+
+  const handleDownloadParakeet = useCallback(async () => {
+    setIsParakeetDownloading(true)
+    try {
+      await tipcClient.downloadParakeetModel()
+      queryClient.invalidateQueries({ queryKey: ["parakeetModelStatus"] })
+      const currentConfig = configQuery.data || (await tipcClient.getConfig())
+      await saveConfigMutation.mutateAsync({
+        config: {
+          ...currentConfig,
+          sttProviderId: "parakeet" as const,
+        },
+      })
+      await configQuery.refetch()
+    } catch (error) {
+      console.error("Failed to download Parakeet model:", error)
+    } finally {
+      setIsParakeetDownloading(false)
+    }
+  }, [queryClient, saveConfigMutation, configQuery])
+
+  const selectedOption =
+    ONBOARDING_MAIN_AGENT_OPTIONS.find((option) => option.id === selectedChoiceId)
+    || ONBOARDING_MAIN_AGENT_OPTIONS[0]
+  const selectedExternalPreset =
+    selectedChoiceId === "byok" ? undefined : EXTERNAL_AGENT_PRESETS[selectedChoiceId]
 
   const saveConfigAsync = useCallback(
     async (config: Partial<Config>) => {
@@ -176,10 +208,32 @@ export function Component() {
     })
   }, [selectedChoiceId])
 
+  useEffect(() => {
+    if (selectedChoiceId !== "opencode") return
+    if (!openCodeInstallStatus?.installed) return
+    if (commandVerification?.ok) return
+    void handleVerifyExternalAgent()
+  }, [selectedChoiceId, openCodeInstallStatus])
+
+  useEffect(() => {
+    if (!parakeetStatusQuery.data?.downloaded) return
+    if (!configQuery.data) return
+    if (configQuery.data.sttProviderId === "parakeet") return
+    const currentConfig = configQuery.data
+    saveConfigMutation.mutate({
+      config: {
+        ...currentConfig,
+        sttProviderId: "parakeet" as const,
+      },
+    })
+  }, [parakeetStatusQuery.data?.downloaded, configQuery.data, saveConfigMutation])
+
   const transcribeMutation = useMutation({
     mutationFn: async ({ blob, duration }: { blob: Blob; duration: number }) => {
       setIsTranscribing(true)
-      const config = await tipcClient.getConfig()
+      setDictationResult(null)
+      setTranscriptionError(null)
+      const config = configQuery.data || (await tipcClient.getConfig())
       const isParakeet = config?.sttProviderId === "parakeet"
       const pcmRecording = isParakeet ? await decodeBlobToPcm(blob) : undefined
       return tipcClient.createRecording({
@@ -273,11 +327,11 @@ export function Component() {
 
   const ensureExternalAgentProfile = useCallback(async (
     presetKey: ExternalAgentPresetKey,
-    options?: { env?: Record<string, string> },
+    options?: { env?: Record<string, string>; autoSpawn?: boolean },
   ) => {
     const profiles = ((await tipcClient.getAgentProfiles()) || []) as AgentProfile[]
     const existing = findExistingExternalAgentProfile(profiles, presetKey)
-    const profileDraft = buildExternalAgentProfileInput(presetKey, { env: options?.env })
+    const profileDraft = buildExternalAgentProfileInput(presetKey, { env: options?.env, autoSpawn: options?.autoSpawn })
     if (existing) {
       const nextEnv = options?.env ? { ...(existing.connection.env || {}), ...options.env } : existing.connection.env
       const shouldUpdateEnv = Boolean(options?.env)
@@ -388,7 +442,7 @@ export function Component() {
             })()
           : undefined
 
-      const agentName = await ensureExternalAgentProfile(selectedChoiceId, { env: openCodeManagedEnv })
+      const agentName = await ensureExternalAgentProfile(selectedChoiceId, { env: openCodeManagedEnv, autoSpawn: true })
       setProvisionedAgentName(agentName)
       await saveConfigAsync(buildAcpOnboardingConfigUpdate(agentName, currentConfig))
       await configQuery.refetch()
@@ -494,6 +548,9 @@ export function Component() {
             onSaveConfig={saveConfig}
             transcriptionError={transcriptionError}
             micError={micError}
+            parakeetStatus={parakeetStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined}
+            onDownloadParakeet={handleDownloadParakeet}
+            isParakeetDownloading={isParakeetDownloading}
           />
         )}
         {step === "finish" && (
@@ -778,30 +835,6 @@ function ExternalAgentSetupStep({
 
         {isOpenCode && (
           <div className="space-y-3 rounded-md border bg-background/80 px-3 py-3">
-            <div>
-              <p className="text-sm font-medium">OpenCode setup</p>
-              <p className="text-xs text-muted-foreground">
-                Choose whether to use your existing OpenCode auth or let DotAgents inject a provider key directly.
-              </p>
-            </div>
-
-            <div className="rounded-md border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
-              {openCodeInstallStatus?.installed ? (
-                <>
-                  <p className="font-medium text-foreground">Managed OpenCode runtime ready</p>
-                  <p>{openCodeInstallStatus.version || openCodeInstallStatus.binaryPath}</p>
-                </>
-              ) : (
-                <>
-                  <p className="font-medium text-foreground">Need OpenCode installed?</p>
-                  <p>Download it into DotAgents on request. This avoids requiring the user to preinstall OpenCode globally.</p>
-                </>
-              )}
-              {openCodeInstallStatus?.error && (
-                <p className="mt-1 text-red-600 dark:text-red-400">Last install error: {openCodeInstallStatus.error}</p>
-              )}
-            </div>
-
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -812,88 +845,20 @@ function ExternalAgentSetupStep({
                 onClick={onInstallOpenCode}
               >
                 <span className={`i-mingcute-download-2-line ${isInstallingOpenCode ? "animate-pulse" : ""}`}></span>
-                {openCodeInstallStatus?.installed ? "Reinstall OpenCode" : "Install OpenCode"}
+                {openCodeInstallStatus?.installed ? "Reinstall" : "Install"}
               </Button>
-              <span className="text-[11px] text-muted-foreground">Downloads the official OpenCode release into an app-managed folder.</span>
+              {openCodeInstallStatus?.installed && (
+                <span className="text-xs text-muted-foreground">v{openCodeInstallStatus.version}</span>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Setup mode
-              </label>
-              <Select value={openCodeSetupMode} onValueChange={(value) => onOpenCodeSetupModeChange(value as "existing-auth" | "managed-api-key")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="managed-api-key">Configure OpenCode now with an API key</SelectItem>
-                  <SelectItem value="existing-auth">Use my existing OpenCode auth</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+              {openCodeSetupMode === "managed-api-key" 
+                ? "Using API key from DotAgents config."
+                : "After installing, run in terminal: opencode auth login (requires free API key from opencode.ai)"}
             </div>
-
-            {openCodeSetupMode === "managed-api-key" && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Provider
-                  </label>
-                  <Select value={openCodeProviderId} onValueChange={(value) => onOpenCodeProviderChange(value as ByokProviderId)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="groq">Groq</SelectItem>
-                      <SelectItem value="gemini">Gemini</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {openCodeProvider.label} API key
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder={openCodeProvider.placeholder}
-                    value={openCodeApiKey}
-                    onChange={(event) => onOpenCodeApiKeyChange(event.target.value)}
-                  />
-                </div>
-              </div>
-            )}
           </div>
         )}
-
-        <div className="rounded-md border bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-          Verification runs <span className="font-mono text-foreground">{commandPreview}</span>
-          {preset.verifyArgs?.length ? ` ${preset.verifyArgs.join(" ")}` : ""} to confirm the command is runnable.
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 px-2.5 text-xs"
-            disabled={isVerifyingCommand}
-            onClick={onVerify}
-          >
-            <span className={`i-mingcute-refresh-3-line ${isVerifyingCommand ? "animate-spin" : ""}`}></span>
-            Verify Setup
-          </Button>
-          {preset.docsUrl && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2.5 text-xs"
-              onClick={() => window.open(preset.docsUrl, "_blank")}
-            >
-              Open docs
-            </Button>
-          )}
-        </div>
 
         {commandVerification && (
           <div
@@ -904,14 +869,14 @@ function ExternalAgentSetupStep({
             }`}
           >
             <p className="font-medium">
-              {commandVerification.ok ? "Verification passed" : "Verification needs attention"}
+              {commandVerification.ok ? "Verified" : "Verification needs attention"}
             </p>
             <p className="text-muted-foreground">
               {commandVerification.details || commandVerification.error}
             </p>
-            {commandVerification.resolvedCommand && (
-              <p className="font-mono text-[10px] text-muted-foreground">
-                Resolved command: {commandVerification.resolvedCommand}
+            {!commandVerification.ok && isOpenCode && openCodeSetupMode === "existing-auth" && (
+              <p className="mt-1 font-medium text-amber-600">
+                To authenticate: 1) Restart terminal 2) Run: opencode auth login 3) Get free key from opencode.ai
               </p>
             )}
           </div>
@@ -950,6 +915,9 @@ function VoiceStep({
   onSaveConfig,
   transcriptionError,
   micError,
+  parakeetStatus,
+  onDownloadParakeet,
+  isParakeetDownloading,
 }: {
   isRecording: boolean
   isTranscribing: boolean
@@ -963,8 +931,18 @@ function VoiceStep({
   onSaveConfig: (config: Partial<Config>) => void
   transcriptionError: string | null
   micError: string | null
+  parakeetStatus?: { downloaded: boolean; downloading: boolean; progress: number; error?: string }
+  onDownloadParakeet?: () => void
+  isParakeetDownloading?: boolean
 }) {
   const shortcut = config?.shortcut || "hold-ctrl"
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (dictationResult && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [dictationResult])
 
   const getShortcutDisplay = () => {
     if (shortcut === "hold-ctrl") return "Hold Ctrl"
@@ -984,6 +962,8 @@ function VoiceStep({
 
   const buttonContent = getButtonContent()
 
+  const isSttReady = parakeetStatus?.downloaded || Boolean(config?.groqApiKey || config?.openaiApiKey || config?.geminiApiKey)
+
   return (
     <div>
       <StepIndicator current={3} total={4} />
@@ -993,10 +973,41 @@ function VoiceStep({
       </p>
 
       <div className="mb-4 rounded-lg border bg-primary/5 p-3 text-sm text-muted-foreground">
-        Current voice stack: STT <strong className="text-foreground">{getProviderLabel(config?.sttProviderId)}</strong>
+        Current voice stack: STT <strong className="text-foreground">{parakeetStatus?.downloaded ? "Parakeet" : getProviderLabel(config?.sttProviderId)}</strong>
         {" · "}
         TTS <strong className="text-foreground">{getProviderLabel(config?.ttsProviderId)}</strong>
       </div>
+
+      {parakeetStatus && !parakeetStatus.downloaded && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <div className="text-sm">
+            <p className="font-medium">Install local STT (Parakeet)</p>
+            <p className="text-xs text-muted-foreground">Works offline, no API key needed</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDownloadParakeet}
+            disabled={isParakeetDownloading || parakeetStatus.downloading}
+          >
+            {parakeetStatus.downloading ? (
+              <>Downloading {Math.round(parakeetStatus.progress * 100)}%</>
+            ) : (
+              "Install"
+            )}
+          </Button>
+        </div>
+      )}
+
+      {parakeetStatus?.downloaded && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+          <div className="text-sm">
+            <p className="font-medium text-green-600 dark:text-green-400">Parakeet STT ready</p>
+            <p className="text-xs text-muted-foreground">Local model installed, works offline</p>
+          </div>
+          <span className="i-mingcute-check-circle-fill text-green-600 dark:text-green-400"></span>
+        </div>
+      )}
 
       <div className="mb-6 rounded-lg border bg-muted/30 p-4">
         <div className="mb-3 flex items-center gap-2">
@@ -1048,44 +1059,53 @@ function VoiceStep({
       </div>
 
       <div className="mb-6 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Button
-              size="lg"
-              variant={isRecording ? "destructive" : "default"}
-              onClick={isRecording ? onStopRecording : onStartRecording}
-              disabled={isTranscribing}
-              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full"
-            >
-              <span className={`text-2xl ${buttonContent.icon}`}></span>
-              <span className="text-xs">{buttonContent.text}</span>
-            </Button>
-            {isRecording && (
-              <div className="pointer-events-none absolute inset-0 animate-ping rounded-full border-4 border-red-500"></div>
-            )}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <p className="font-medium">Or use your hotkey:</p>
-            <p className="font-semibold text-primary">{getShortcutDisplay()}</p>
-          </div>
-        </div>
+        {isSttReady ? (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Button
+                  size="lg"
+                  variant={isRecording ? "destructive" : "default"}
+                  onClick={isRecording ? onStopRecording : onStartRecording}
+                  disabled={isTranscribing}
+                  className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full"
+                >
+                  <span className={`text-2xl ${buttonContent.icon}`}></span>
+                  <span className="text-xs">{buttonContent.text}</span>
+                </Button>
+                {isRecording && (
+                  <div className="pointer-events-none absolute inset-0 animate-ping rounded-full border-4 border-red-500"></div>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium">Or use your hotkey:</p>
+                <p className="font-semibold text-primary">{getShortcutDisplay()}</p>
+              </div>
+            </div>
 
-        <div className="w-full">
-          <label className="mb-2 block text-sm font-medium">Transcription result</label>
-          <Textarea
-            value={dictationResult || ""}
-            onChange={(event) => onDictationResultChange(event.target.value || null)}
-            placeholder={
-              isRecording
-                ? "Listening..."
-                : isTranscribing
-                  ? "Transcribing..."
-                  : "Your transcribed text will appear here..."
-            }
-            className="min-h-[100px] resize-none"
-            readOnly={isRecording || isTranscribing}
-          />
-        </div>
+            <div className="w-full">
+              <label className="mb-2 block text-sm font-medium">Transcription result</label>
+              <Textarea
+                ref={textareaRef}
+                value={dictationResult || ""}
+                onChange={(event) => onDictationResultChange(event.target.value || null)}
+                placeholder={
+                  isRecording
+                    ? "Listening..."
+                    : isTranscribing
+                      ? "Transcribing..."
+                      : "Your transcribed text will appear here..."
+                }
+                className="min-h-[100px] resize-none"
+                readOnly={isRecording || isTranscribing}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="text-center text-sm text-muted-foreground">
+            <p>Install the Parakeet model above or add an API key in Settings to use voice dictation.</p>
+          </div>
+        )}
 
         {micError && (
           <div className="w-full rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">

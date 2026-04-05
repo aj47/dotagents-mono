@@ -1430,7 +1430,7 @@ export function Component() {
               variant="outline"
               size="sm"
               onClick={() => {
-                saveConfig({ onboardingCompleted: false })
+                saveConfig({ onboardingCompleted: false, mainAgentMode: "api", mainAgentName: "" })
                 navigate("/onboarding")
               }}
             >

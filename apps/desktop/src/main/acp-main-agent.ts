@@ -340,7 +340,7 @@ export async function processTranscriptWithACPAgent(
 ): Promise<ACPMainAgentResult> {
   const { agentName, conversationId, forceNewSession, sessionId, runId, onProgress, profileSnapshot } = options
 
-  logApp(`[ACP Main] Processing transcript with agent ${agentName} for conversation ${conversationId}`)
+  console.log(`[ACP Main] Processing transcript with agent ${agentName} for conversation ${conversationId}`)
 
   // Track accumulated text across all session updates for streaming display
   let accumulatedText = ""

@@ -1700,6 +1700,8 @@ export const router = {
           }
         }, pasteDelay)
       }
+
+      return { transcript }
     }),
 
   transcribeChunk: t.procedure

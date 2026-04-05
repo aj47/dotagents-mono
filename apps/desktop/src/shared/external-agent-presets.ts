@@ -62,7 +62,7 @@ export const EXTERNAL_AGENT_PRESETS: Record<ExternalAgentPresetKey, ExternalAgen
   },
   opencode: {
     displayName: "OpenCode",
-    description: "OpenCode's native ACP server for terminal-first agent workflows",
+    description: "OpenCode's native ACP server for terminal-first agent workflows — FREE, no API key needed",
     connectionType: "acp",
     connectionCommand: "opencode",
     connectionArgs: "acp",
@@ -72,7 +72,7 @@ export const EXTERNAL_AGENT_PRESETS: Record<ExternalAgentPresetKey, ExternalAgen
     cwdHint: "Use your workspace root so opencode acp can load the right project and config.",
     verifyArgs: ["--help"],
     setupMode: "managed",
-    onboardingNote: "Recommended ACP option for terminal-first workflows and external tool ownership.",
+    onboardingNote: "Recommended — FREE and works without an API key. Terminal-first workflows and external tool ownership.",
   },
 }
 

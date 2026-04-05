@@ -4496,6 +4496,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const hasErrors = steps.some(
     (step) => step.status === "error" || step.toolResult?.error,
   )
+  // Check for authentication errors
+  const authErrorStep = steps.find(
+    (step) => step.status === "error" && (
+      step.description?.toLowerCase().includes("authentication") ||
+      step.description?.toLowerCase().includes("auth") ||
+      step.description?.toLowerCase().includes("login") ||
+      step.title?.toLowerCase().includes("authentication") ||
+      step.title?.toLowerCase().includes("auth") ||
+      step.title?.toLowerCase().includes("login")
+    )
+  )
+  const authErrorMessage = authErrorStep?.description 
+    ? authErrorStep.description.replace(/^Authentication required: /, "").replace(/\. Please run.*$/, "")
+    : "run authentication command"
   const conversationState = progress.conversationState
     ? normalizeAgentConversationState(progress.conversationState, isComplete ? "complete" : "running")
     : progress.pendingToolApproval
@@ -4601,6 +4615,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
               {getTitle()}
             </span>
+            {authErrorStep && (
+              <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400 shrink-0">
+                (auth required: {authErrorMessage})
+              </span>
+            )}
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
             {canCollapseTile && (

@@ -1,5 +1,7 @@
 import type { ACPAgentConfig, AgentProfile } from "../shared/types"
 
+const logSelection = (...args: unknown[]) => console.log(`[MainAgentSelection]`, ...args)
+
 export type MainAcpAgentSelection =
   | { resolvedName: string; repairedName?: string }
   | { error: string }
@@ -16,19 +18,27 @@ export function resolveMainAcpAgentSelection(
   const normalizedMainAgentName = configuredName.trim().toLowerCase()
   const hasConfiguredName = normalizedMainAgentName.length > 0
 
+  logSelection(`[MainAgentSelection] Looking for main agent: "${configuredName}", profileAgents count: ${profileAgents.length}, legacyAgents count: ${legacyAgents.length}`)
+
   const spawnableProfileCandidates = profileAgents.filter((profile) =>
     profile.enabled !== false
     && (profile.connection.type === "acp" || profile.connection.type === "stdio")
   )
 
+  logSelection(`[MainAgentSelection] Spawnable profile candidates: ${spawnableProfileCandidates.map(p => p.name).join(", ")}`)
+
   const fallbackLegacyAgents = legacyAgents.filter((agent) =>
     agent.enabled !== false && agent.connection.type === "stdio"
   )
 
-  const configuredProfile = spawnableProfileCandidates.find((profile) =>
-    profile.name.trim().toLowerCase() === normalizedMainAgentName
-    || profile.displayName.trim().toLowerCase() === normalizedMainAgentName
-  )
+  const configuredProfile = spawnableProfileCandidates.find((profile) => {
+    const match = profile.name.trim().toLowerCase() === normalizedMainAgentName
+      || profile.displayName.trim().toLowerCase() === normalizedMainAgentName
+    if (match) {
+      logSelection(`[MainAgentSelection] MATCHED profile: name="${profile.name}", displayName="${profile.displayName}"`)
+    }
+    return match
+  })
 
   const legacyAgentMatch = fallbackLegacyAgents.find((agent) =>
     agent.name.trim().toLowerCase() === normalizedMainAgentName
@@ -36,13 +46,16 @@ export function resolveMainAcpAgentSelection(
   )
 
   if (configuredProfile) {
+    logSelection(`[MainAgentSelection] Found configured profile: ${configuredProfile.name}`)
     return { resolvedName: configuredProfile.name }
   }
 
   if (legacyAgentMatch) {
+    logSelection(`[MainAgentSelection] Found legacy agent match: ${legacyAgentMatch.name}`)
     return { resolvedName: legacyAgentMatch.name }
   }
 
+  logSelection(`[MainAgentSelection] No exact match found. Checking fallback (single available agent)...`)
   const fallbackNames = new Set<string>()
   const fallbackExternalAgents = [
     ...spawnableProfileCandidates.map((profile) => ({ name: profile.name })),
@@ -54,7 +67,10 @@ export function resolveMainAcpAgentSelection(
     return true
   })
 
+  logSelection(`[MainAgentSelection] Fallback candidates: ${fallbackExternalAgents.map(a => a.name).join(", ")}`)
+
   if (fallbackExternalAgents.length === 1) {
+    logSelection(`[MainAgentSelection] Using single fallback agent: ${fallbackExternalAgents[0].name}`)
     return {
       resolvedName: fallbackExternalAgents[0].name,
       repairedName: fallbackExternalAgents[0].name,
@@ -62,6 +78,7 @@ export function resolveMainAcpAgentSelection(
   }
 
   const availableNames = fallbackExternalAgents.map((profile) => profile.name)
+  logSelection(`[MainAgentSelection] ERROR - no match: ${availableNames.length > 0 ? availableNames.join(", ") : "no agents"}`)
   return {
     error: availableNames.length > 0
       ? hasConfiguredName
