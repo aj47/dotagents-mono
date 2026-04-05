@@ -35,7 +35,7 @@ import {
   isLangfuseEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
-import { isChatGptWebProvider, makeChatGptWebCompletion } from "./chatgpt-web-provider"
+import { isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -768,12 +768,13 @@ export async function makeLLMCallWithFetch(
             })
           }
 
-          let text: string
+          let result
           try {
-            text = (await makeChatGptWebCompletion(messages, {
+            result = await makeChatGptWebResponse(messages, {
               modelContext: "mcp",
               signal: abortController.signal,
-            })).trim()
+              tools,
+            })
           } catch (error) {
             if (generationId) {
               endLLMGeneration(generationId, {
@@ -784,7 +785,9 @@ export async function makeLLMCallWithFetch(
             throw error
           }
 
-          if (!text) {
+          const text = result.text.trim()
+
+          if (!text && !result.toolCalls?.length) {
             if (generationId) {
               endLLMGeneration(generationId, {
                 level: "ERROR",
@@ -794,18 +797,16 @@ export async function makeLLMCallWithFetch(
             throw new Error("LLM returned empty response")
           }
 
-          const jsonObject = extractJsonObject(text)
-          if (jsonObject && ("toolCalls" in jsonObject || "content" in jsonObject)) {
+          if (result.toolCalls?.length) {
             const response = {
-              content: typeof jsonObject.content === "string" ? jsonObject.content : undefined,
-              toolCalls: Array.isArray(jsonObject.toolCalls)
-                ? jsonObject.toolCalls.filter(tc => tc && typeof tc.name === "string" && tc.name.length > 0)
-                : undefined,
-            } as LLMToolCallResponse
+              content: text || undefined,
+              toolCalls: result.toolCalls,
+            } satisfies LLMToolCallResponse
 
             if (generationId) {
               endLLMGeneration(generationId, {
                 output: JSON.stringify(response),
+                usage: buildTokenUsage(result.usage),
               })
             }
             return response
@@ -818,6 +819,7 @@ export async function makeLLMCallWithFetch(
           if (generationId) {
             endLLMGeneration(generationId, {
               output: hasToolMarkers ? text : (cleaned || text),
+              usage: buildTokenUsage(result.usage),
             })
           }
 
@@ -1065,33 +1067,31 @@ export async function makeLLMCallWithStreamingAndTools(
             abortController.abort()
           }
 
-          const text = await makeChatGptWebCompletion(messages, {
+          const result = await makeChatGptWebResponse(messages, {
             modelContext: "mcp",
             signal: abortController.signal,
             onTextChunk: onChunk,
+            tools,
           })
+          const text = result.text
 
           if (generationId) {
-            endLLMGeneration(generationId, { output: text })
+            endLLMGeneration(generationId, {
+              output: result.toolCalls?.length
+                ? JSON.stringify({ content: text, toolCalls: result.toolCalls })
+                : text,
+              usage: buildTokenUsage(result.usage),
+            })
           }
 
-          if (!text.trim()) {
+          if (!text.trim() && !result.toolCalls?.length) {
             throw new Error("LLM returned empty response")
           }
 
-          const jsonObject = extractJsonObject(text)
-          if (jsonObject && ("toolCalls" in jsonObject || "content" in jsonObject)) {
-            const toolCalls = Array.isArray(jsonObject.toolCalls)
-              ? jsonObject.toolCalls
-                  .filter(tc => tc && typeof tc.name === "string" && tc.name.length > 0)
-                  .map(tc => ({
-                    ...tc,
-                    name: restoreToolName(tc.name, convertedTools?.nameMap),
-                  }))
-              : undefined
+          if (result.toolCalls?.length) {
             return {
-              content: typeof jsonObject.content === "string" ? jsonObject.content : undefined,
-              toolCalls,
+              content: text || undefined,
+              toolCalls: result.toolCalls,
             }
           }
 

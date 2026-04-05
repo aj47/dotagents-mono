@@ -26,8 +26,8 @@ const DEFAULT_CHAT_MODELS = {
     transcript: "gemini-2.5-flash",
   },
   "chatgpt-web": {
-    mcp: "gpt-4o",
-    transcript: "gpt-4o",
+    mcp: "gpt-5.4-mini",
+    transcript: "gpt-5.4-mini",
   },
 } as const
 

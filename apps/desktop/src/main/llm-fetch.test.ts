@@ -8,6 +8,10 @@ const { makeChatGptWebCompletionMock } = vi.hoisted(() => ({
   makeChatGptWebCompletionMock: vi.fn<any, any>(),
 }))
 
+const { makeChatGptWebResponseMock } = vi.hoisted(() => ({
+  makeChatGptWebResponseMock: vi.fn<any, any>(),
+}))
+
 // Mock dependencies
 vi.mock('./config', () => ({
   configStore: {
@@ -83,6 +87,7 @@ vi.mock('./langfuse-service', () => ({
 vi.mock('./chatgpt-web-provider', () => ({
   isChatGptWebProvider: vi.fn((providerId: string) => providerId === 'chatgpt-web'),
   makeChatGptWebCompletion: makeChatGptWebCompletionMock,
+  makeChatGptWebResponse: makeChatGptWebResponseMock,
 }))
 
 // Mock the context-budget module (imported for recordActualTokenUsage)
@@ -97,6 +102,7 @@ describe('LLM Fetch with AI SDK', () => {
     getPromptCachingConfigMock.mockReset()
     getPromptCachingConfigMock.mockReturnValue(undefined)
     makeChatGptWebCompletionMock.mockReset()
+    makeChatGptWebResponseMock.mockReset()
   })
 
   it('passes prompt-caching provider options through to generateText when available', async () => {
@@ -1015,15 +1021,15 @@ describe('LLM Fetch with AI SDK', () => {
   })
 
   it('routes chatgpt-web llm calls through the custom conversation client', async () => {
-    makeChatGptWebCompletionMock.mockResolvedValue('chatgpt answer')
+    makeChatGptWebResponseMock.mockResolvedValue({ text: 'chatgpt answer' })
 
     const { makeLLMCallWithFetch } = await import('./llm-fetch')
     const result = await makeLLMCallWithFetch([{ role: 'user', content: 'hello' }], 'chatgpt-web')
 
     expect(result).toEqual({ content: 'chatgpt answer' })
-    expect(makeChatGptWebCompletionMock).toHaveBeenCalledWith(
+    expect(makeChatGptWebResponseMock).toHaveBeenCalledWith(
       [{ role: 'user', content: 'hello' }],
-      expect.objectContaining({ modelContext: 'mcp' }),
+      expect.objectContaining({ modelContext: 'mcp', tools: undefined }),
     )
   })
 })

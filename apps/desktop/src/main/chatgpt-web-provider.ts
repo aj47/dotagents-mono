@@ -2,9 +2,9 @@ import { randomUUID } from "crypto"
 import { configStore } from "./config"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
-const DEFAULT_CHATGPT_WEB_MODEL = "gpt-4o"
+const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
+const DEFAULT_CHATGPT_WEB_INSTRUCTIONS = "You are a helpful assistant."
 const AUTH_JWT_CLAIM_PATH = "https://api.openai.com/auth"
-const SESSION_AUTH_CACHE_TTL_MS = 5 * 60 * 1000
 
 type ChatGptWebModelContext = "mcp" | "transcript"
 
@@ -13,10 +13,37 @@ export interface ChatGptWebMessage {
   content: string
 }
 
+export interface ChatGptWebTool {
+  name: string
+  description?: string
+  inputSchema?: unknown
+}
+
 export interface ChatGptWebCompletionOptions {
   modelContext?: ChatGptWebModelContext
   signal?: AbortSignal
   onTextChunk?: (chunk: string, accumulated: string) => void
+  tools?: ChatGptWebTool[]
+}
+
+export interface ChatGptWebToolCall {
+  name: string
+  arguments: Record<string, unknown>
+}
+
+export interface ChatGptWebUsage {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+  inputTokenDetails?: {
+    cacheReadTokens?: number
+  }
+}
+
+export interface ChatGptWebResponse {
+  text: string
+  toolCalls?: ChatGptWebToolCall[]
+  usage?: ChatGptWebUsage
 }
 
 interface ResolvedChatGptWebAuth {
@@ -25,15 +52,23 @@ interface ResolvedChatGptWebAuth {
   baseUrl: string
 }
 
-let cachedSessionAuth:
-  | {
-      sessionToken: string
-      baseUrl: string
-      accessToken: string
-      accountId?: string
-      cachedAt: number
+interface ChatGptWebCompletedEventResponse {
+  output?: Array<{
+    type?: string
+    name?: string
+    arguments?: string
+    call_id?: string
+    content?: Array<{ type?: string; text?: string; refusal?: string }>
+  }>
+  usage?: {
+    input_tokens?: number
+    output_tokens?: number
+    total_tokens?: number
+    input_tokens_details?: {
+      cached_tokens?: number
     }
-  | undefined
+  }
+}
 
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
   const raw = (baseUrl || DEFAULT_CHATGPT_WEB_BASE_URL).trim()
@@ -75,6 +110,24 @@ function extractChatGptAccountId(accessToken: string): string | undefined {
     : undefined
 }
 
+async function resolveChatGptWebAuth(signal?: AbortSignal): Promise<ResolvedChatGptWebAuth> {
+  const { configStore } = await import("./config")
+  const config = configStore.get()
+  const baseUrl = normalizeChatGptWebBaseUrl(config.chatgptWebBaseUrl)
+  const accessToken = config.chatgptWebAccessToken?.trim()
+  const configuredAccountId = config.chatgptWebAccountId?.trim()
+
+  if (!accessToken) {
+    throw new Error("ChatGPT Codex provider requires an access token")
+  }
+
+  return {
+    accessToken,
+    accountId: configuredAccountId || extractChatGptAccountId(accessToken),
+    baseUrl,
+  }
+}
+
 function getConfiguredChatGptWebModel(modelContext: ChatGptWebModelContext): string {
   const config = configStore.get()
   if (modelContext === "mcp") {
@@ -83,159 +136,68 @@ function getConfiguredChatGptWebModel(modelContext: ChatGptWebModelContext): str
   return config.transcriptPostProcessingChatgptWebModel || DEFAULT_CHATGPT_WEB_MODEL
 }
 
-async function resolveAccessTokenFromSessionToken(
-  sessionToken: string,
-  baseUrl: string,
-  signal?: AbortSignal,
-): Promise<{ accessToken: string; accountId?: string }> {
-  if (
-    cachedSessionAuth &&
-    cachedSessionAuth.sessionToken === sessionToken &&
-    cachedSessionAuth.baseUrl === baseUrl &&
-    Date.now() - cachedSessionAuth.cachedAt < SESSION_AUTH_CACHE_TTL_MS
-  ) {
-    return {
-      accessToken: cachedSessionAuth.accessToken,
-      accountId: cachedSessionAuth.accountId,
-    }
+function normalizeToolInputSchema(inputSchema: unknown): Record<string, unknown> {
+  const fallback: Record<string, unknown> = { type: "object", properties: {}, required: [] }
+
+  if (!inputSchema || typeof inputSchema !== "object" || Array.isArray(inputSchema)) {
+    return fallback
   }
 
-  const sessionUrl = `${baseUrl}/api/auth/session`
-  const response = await fetch(sessionUrl, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Cookie: `__Secure-next-auth.session-token=${sessionToken}; next-auth.session-token=${sessionToken}`,
-    },
-    signal,
-  })
+  const schema = { ...(inputSchema as Record<string, unknown>) }
+  const schemaType = schema.type
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "")
-    throw new Error(`ChatGPT auth session failed (${response.status}): ${errorText || response.statusText}`)
+  if (schemaType !== undefined && schemaType !== "object") {
+    return fallback
+  }
+  schema.type = "object"
+
+  if (!schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) {
+    schema.properties = {}
   }
 
-  const data = (await response.json()) as { accessToken?: string }
-  const accessToken = data.accessToken?.trim()
-  if (!accessToken) {
-    throw new Error("ChatGPT auth session did not return an access token")
+  if (!Array.isArray(schema.required)) {
+    schema.required = []
   }
 
-  const accountId = extractChatGptAccountId(accessToken)
-  cachedSessionAuth = {
-    sessionToken,
-    baseUrl,
-    accessToken,
-    accountId,
-    cachedAt: Date.now(),
-  }
+  delete schema.anyOf
+  delete schema.oneOf
+  delete schema.allOf
+  delete schema.not
+  delete schema.enum
 
-  return { accessToken, accountId }
+  return schema
 }
 
-async function resolveChatGptWebAuth(signal?: AbortSignal): Promise<ResolvedChatGptWebAuth> {
-  const config = configStore.get()
-  const baseUrl = normalizeChatGptWebBaseUrl(config.chatgptWebBaseUrl)
-  const directAccessToken = config.chatgptWebAccessToken?.trim()
-  const configuredAccountId = config.chatgptWebAccountId?.trim()
+function buildCodexInstructions(messages: ChatGptWebMessage[]): string {
+  const instructions = messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content.trim())
+    .filter(Boolean)
+    .join("\n\n")
 
-  if (directAccessToken) {
-    return {
-      accessToken: directAccessToken,
-      accountId: configuredAccountId || extractChatGptAccountId(directAccessToken),
-      baseUrl,
-    }
-  }
-
-  const sessionToken = config.chatgptWebSessionToken?.trim()
-  if (!sessionToken) {
-    throw new Error("ChatGPT Web provider requires either an access token or a session token")
-  }
-
-  const sessionAuth = await resolveAccessTokenFromSessionToken(sessionToken, baseUrl, signal)
-  return {
-    accessToken: sessionAuth.accessToken,
-    accountId: configuredAccountId || sessionAuth.accountId,
-    baseUrl,
-  }
+  return instructions || DEFAULT_CHATGPT_WEB_INSTRUCTIONS
 }
 
-function mapChatGptWebMessages(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
-  return messages.map((message) => {
-    const originalRole = message.role === "assistant" ? "assistant" : message.role === "user" ? "user" : "user"
-    const content = message.role === "system"
-      ? `[SYSTEM]\n${message.content}`
-      : message.content
-
-    return {
-      id: randomUUID(),
-      author: { role: originalRole },
-      content: {
-        content_type: "text",
-        parts: [content],
-      },
-      metadata: {},
-    }
-  })
+function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
+  return messages
+    .filter((message) => message.role !== "system")
+    .map((message) => ({
+      type: "message",
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: message.content,
+    }))
 }
 
-function buildConversationPayload(messages: ChatGptWebMessage[], model: string): Record<string, unknown> {
-  return {
-    action: "next",
-    messages: mapChatGptWebMessages(messages),
-    parent_message_id: randomUUID(),
-    model,
-    conversation_mode: { kind: "primary_assistant" },
-    history_and_training_disabled: false,
-    timezone_offset_min: new Date().getTimezoneOffset(),
-    websocket_request_id: randomUUID(),
-  }
-}
+function buildCodexTools(tools: ChatGptWebTool[] | undefined): Array<Record<string, unknown>> | undefined {
+  if (!tools?.length) return undefined
 
-function extractAssistantTextFromEvent(event: unknown): string | undefined {
-  if (!event || typeof event !== "object") return undefined
-
-  const message = (event as Record<string, unknown>).message
-  if (!message || typeof message !== "object") return undefined
-
-  const author = (message as Record<string, unknown>).author
-  const authorRole = author && typeof author === "object"
-    ? (author as Record<string, unknown>).role
-    : undefined
-  if (authorRole !== "assistant") return undefined
-
-  const content = (message as Record<string, unknown>).content
-  if (!content || typeof content !== "object") return undefined
-
-  const parts = (content as Record<string, unknown>).parts
-  if (!Array.isArray(parts)) return undefined
-
-  const joined = parts
-    .filter((part) => typeof part === "string")
-    .join("\n")
-    .trim()
-
-  return joined || undefined
-}
-
-function extractEventError(event: unknown): string | undefined {
-  if (!event || typeof event !== "object") return undefined
-
-  const record = event as Record<string, unknown>
-  const error = record.error
-
-  if (typeof error === "string" && error.trim().length > 0) {
-    return error.trim()
-  }
-
-  if (error && typeof error === "object") {
-    const message = (error as Record<string, unknown>).message
-    if (typeof message === "string" && message.trim().length > 0) {
-      return message.trim()
-    }
-  }
-
-  return undefined
+  return tools.map((tool) => ({
+    type: "function",
+    name: tool.name,
+    description: tool.description || `Tool: ${tool.name}`,
+    parameters: normalizeToolInputSchema(tool.inputSchema),
+    strict: true,
+  }))
 }
 
 function findSseBoundary(buffer: string): { index: number; length: number } | null {
@@ -250,18 +212,109 @@ function findSseBoundary(buffer: string): { index: number; length: number } | nu
     : { index: lfIndex, length: 2 }
 }
 
-async function readConversationSse(
-  response: Response,
-  onTextChunk?: (chunk: string, accumulated: string) => void,
-): Promise<string> {
+function parseJsonObject(input: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(input)
+    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {}
+  } catch {
+    return {}
+  }
+}
+
+function extractCompletedMessageText(response: ChatGptWebCompletedEventResponse | undefined): string {
+  if (!response?.output?.length) return ""
+
+  return response.output
+    .filter((item) => item.type === "message")
+    .flatMap((item) => item.content || [])
+    .map((content) => content.text || content.refusal || "")
+    .join("")
+    .trim()
+}
+
+function mapUsage(response: ChatGptWebCompletedEventResponse | undefined): ChatGptWebUsage | undefined {
+  const usage = response?.usage
+  if (!usage) return undefined
+
+  return {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    totalTokens: usage.total_tokens,
+    inputTokenDetails: {
+      cacheReadTokens: usage.input_tokens_details?.cached_tokens,
+    },
+  }
+}
+
+export function isChatGptWebProvider(providerId?: string): providerId is "chatgpt-web" {
+  return providerId === "chatgpt-web"
+}
+
+export function getCurrentChatGptWebModelName(modelContext: ChatGptWebModelContext = "mcp"): string {
+  return getConfiguredChatGptWebModel(modelContext)
+}
+
+export async function makeChatGptWebResponse(
+  messages: ChatGptWebMessage[],
+  options: ChatGptWebCompletionOptions = {},
+): Promise<ChatGptWebResponse> {
+  const modelContext = options.modelContext || "mcp"
+  const model = getConfiguredChatGptWebModel(modelContext)
+  const auth = await resolveChatGptWebAuth(options.signal)
+  const url = `${auth.baseUrl}/backend-api/codex/responses`
+
+  const payload: Record<string, unknown> = {
+    model,
+    instructions: buildCodexInstructions(messages),
+    store: false,
+    stream: true,
+    input: buildCodexInput(messages),
+    text: { verbosity: "medium" },
+    include: ["reasoning.encrypted_content"],
+    parallel_tool_calls: true,
+  }
+
+  const codexTools = buildCodexTools(options.tools)
+  if (codexTools?.length) {
+    payload.tools = codexTools
+    payload.tool_choice = "auto"
+  }
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${auth.accessToken}`,
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+    "OpenAI-Beta": "responses=experimental",
+    originator: "dotagents",
+  }
+
+  if (auth.accountId) {
+    headers["chatgpt-account-id"] = auth.accountId
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+    signal: options.signal,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    throw new Error(`ChatGPT Codex response failed (${response.status}): ${errorText || response.statusText}`)
+  }
+
   if (!response.body) {
-    throw new Error("ChatGPT conversation response did not include a body")
+    throw new Error("ChatGPT Codex response did not include a body")
   }
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ""
-  let accumulated = ""
+  let accumulatedText = ""
+  let completedResponse: ChatGptWebCompletedEventResponse | undefined
+  const pendingToolArguments = new Map<string, string>()
+  const completedToolCalls = new Map<string, ChatGptWebToolCall>()
 
   while (true) {
     const { value, done } = await reader.read()
@@ -286,79 +339,82 @@ async function readConversationSse(
         continue
       }
 
-      try {
-        const parsed = JSON.parse(data)
-        const eventError = extractEventError(parsed)
-        if (eventError) {
-          throw new Error(eventError)
-        }
+      const event = parseJsonObject(data)
+      const eventType = typeof event.type === "string" ? event.type : ""
 
-        const nextAssistantText = extractAssistantTextFromEvent(parsed)
-        if (nextAssistantText !== undefined) {
-          const chunk = nextAssistantText.startsWith(accumulated)
-            ? nextAssistantText.slice(accumulated.length)
-            : nextAssistantText
-          accumulated = nextAssistantText
-          if (chunk && onTextChunk) {
-            onTextChunk(chunk, accumulated)
+      if (eventType === "response.output_text.delta") {
+        const delta = typeof event.delta === "string" ? event.delta : ""
+        if (delta) {
+          accumulatedText += delta
+          options.onTextChunk?.(delta, accumulatedText)
+        }
+      } else if (eventType === "response.function_call_arguments.delta") {
+        const itemId = typeof event.item_id === "string" ? event.item_id : ""
+        const delta = typeof event.delta === "string" ? event.delta : ""
+        if (itemId && delta) {
+          pendingToolArguments.set(itemId, (pendingToolArguments.get(itemId) || "") + delta)
+        }
+      } else if (eventType === "response.function_call_arguments.done") {
+        const itemId = typeof event.item_id === "string" ? event.item_id : ""
+        const argumentsText = typeof event.arguments === "string" ? event.arguments : ""
+        if (itemId && argumentsText) {
+          pendingToolArguments.set(itemId, argumentsText)
+        }
+      } else if (eventType === "response.output_item.done") {
+        const item = event.item
+        const toolItem =
+          item && typeof item === "object"
+            ? item as { type?: unknown; id?: unknown; name?: unknown; arguments?: unknown }
+            : undefined
+        if (toolItem?.type === "function_call") {
+          const itemId = typeof toolItem.id === "string" ? toolItem.id : ""
+          const name = typeof toolItem.name === "string" ? toolItem.name : ""
+          const argumentsText =
+            (itemId && pendingToolArguments.get(itemId)) ||
+            (typeof toolItem.arguments === "string" ? toolItem.arguments : "{}")
+
+          if (name) {
+            completedToolCalls.set(itemId || `${name}-${completedToolCalls.size}`, {
+              name,
+              arguments: parseJsonObject(argumentsText),
+            })
           }
         }
-      } catch (error) {
-        if (error instanceof SyntaxError) {
-          boundary = findSseBoundary(buffer)
-          continue
-        }
-        if (error instanceof Error) {
-          throw error
-        }
+      } else if (eventType === "response.completed") {
+        completedResponse = (event.response && typeof event.response === "object")
+          ? event.response as ChatGptWebCompletedEventResponse
+          : undefined
+      } else if (eventType === "response.failed") {
+        const err = event.response && typeof event.response === "object"
+          ? (event.response as Record<string, unknown>).error
+          : undefined
+        const message = err && typeof err === "object" && typeof (err as Record<string, unknown>).message === "string"
+          ? (err as Record<string, unknown>).message as string
+          : "ChatGPT Codex response failed"
+        throw new Error(message)
+      } else if (eventType === "error") {
+        const message = typeof event.message === "string" ? event.message : "ChatGPT Codex stream error"
+        throw new Error(message)
       }
 
       boundary = findSseBoundary(buffer)
     }
   }
 
-  return accumulated.trim()
-}
+  const finalText = accumulatedText.trim() || extractCompletedMessageText(completedResponse)
+  const toolCalls = Array.from(completedToolCalls.values())
 
-export function isChatGptWebProvider(providerId?: string): providerId is "chatgpt-web" {
-  return providerId === "chatgpt-web"
-}
-
-export function getCurrentChatGptWebModelName(modelContext: ChatGptWebModelContext = "mcp"): string {
-  return getConfiguredChatGptWebModel(modelContext)
+  return {
+    text: finalText,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    usage: mapUsage(completedResponse),
+  }
 }
 
 export async function makeChatGptWebCompletion(
   messages: ChatGptWebMessage[],
   options: ChatGptWebCompletionOptions = {},
 ): Promise<string> {
-  const modelContext = options.modelContext || "mcp"
-  const model = getConfiguredChatGptWebModel(modelContext)
-  const auth = await resolveChatGptWebAuth(options.signal)
-  const url = `${auth.baseUrl}/backend-api/conversation`
-
-  const payload = buildConversationPayload(messages, model)
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${auth.accessToken}`,
-    "Content-Type": "application/json",
-    Accept: "text/event-stream",
-  }
-
-  if (auth.accountId) {
-    headers["chatgpt-account-id"] = auth.accountId
-  }
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal: options.signal,
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "")
-    throw new Error(`ChatGPT conversation failed (${response.status}): ${errorText || response.statusText}`)
-  }
-
-  return await readConversationSse(response, options.onTextChunk)
+  const result = await makeChatGptWebResponse(messages, options)
+  return result.text
 }

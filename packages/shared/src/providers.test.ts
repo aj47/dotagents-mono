@@ -39,7 +39,7 @@ describe('STT_PROVIDERS', () => {
 })
 
 describe('CHAT_PROVIDERS', () => {
-  it('includes openai, groq, gemini, and chatgpt-web', () => {
+  it('includes openai, groq, gemini, and the OpenAI Codex provider id', () => {
     const values = CHAT_PROVIDERS.map(p => p.value)
     expect(values).toContain('openai')
     expect(values).toContain('groq')

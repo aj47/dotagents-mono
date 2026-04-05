@@ -994,7 +994,7 @@ export function Component() {
                 ) : (
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
-                ChatGPT Web
+                OpenAI Codex
                 <CheckCircle2 className="h-4 w-4 text-primary" />
               </span>
               <div className="flex gap-1.5 flex-wrap justify-end">
@@ -1006,7 +1006,7 @@ export function Component() {
             {!configQuery.data.providerSectionCollapsedChatgptWeb && (
               <div id="chatgpt-web-provider-content" className="divide-y border-t">
                 {renderProviderDraftInput("chatgptWebAccessToken", {
-                  label: "Access Token",
+                  label: "Codex Access Token",
                   type: "password",
                 })}
 
@@ -1016,18 +1016,18 @@ export function Component() {
                 })}
 
                 {renderProviderDraftInput("chatgptWebAccountId", {
-                  label: "Account ID",
+                  label: "ChatGPT Account ID",
                   type: "text",
                 })}
 
                 {renderProviderDraftInput("chatgptWebBaseUrl", {
-                  label: "Base URL",
+                  label: "Codex Base URL",
                   type: "url",
                   placeholder: "https://chatgpt.com",
                 })}
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Use an access token directly, or a session token so DotAgents can resolve the access token from ChatGPT web auth.
+                  Uses the Codex responses endpoint on `chatgpt.com/backend-api/codex/responses`. Access token + account ID are required.
                 </p>
               </div>
             )}
@@ -1175,7 +1175,7 @@ export function Component() {
                 ) : (
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
-                ChatGPT Web
+                OpenAI Codex
               </span>
             </button>
             {!configQuery.data.providerSectionCollapsedChatgptWeb && (
@@ -1185,7 +1185,7 @@ export function Component() {
                 </p>
 
                 {renderProviderDraftInput("chatgptWebAccessToken", {
-                  label: "Access Token",
+                  label: "Codex Access Token",
                   type: "password",
                 })}
 
@@ -1195,18 +1195,18 @@ export function Component() {
                 })}
 
                 {renderProviderDraftInput("chatgptWebAccountId", {
-                  label: "Account ID",
+                  label: "ChatGPT Account ID",
                   type: "text",
                 })}
 
                 {renderProviderDraftInput("chatgptWebBaseUrl", {
-                  label: "Base URL",
+                  label: "Codex Base URL",
                   type: "url",
                   placeholder: "https://chatgpt.com",
                 })}
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Provide a session token to resolve ChatGPT web access automatically, or paste an access token and account ID directly.
+                  Provide a Codex-capable ChatGPT access token and account ID. This provider now talks to the Codex responses transport, not the legacy conversation endpoint.
                 </p>
               </div>
             )}

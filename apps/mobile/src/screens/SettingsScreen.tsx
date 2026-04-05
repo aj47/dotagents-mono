@@ -1018,7 +1018,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (provider === 'openai') return 'gpt-4.1-mini';
     if (provider === 'groq') return 'openai/gpt-oss-120b';
     if (provider === 'gemini') return 'gemini-2.5-flash';
-    return 'gpt-4o';
+    return 'gpt-5.4-mini';
   };
 
   // Get display name for current model
@@ -1639,7 +1639,7 @@ export default function SettingsScreen({ navigation }: any) {
                         styles.providerOptionText,
                         remoteSettings.mcpToolsProviderId === provider && styles.providerOptionTextActive,
                       ]}>
-                        {provider === 'chatgpt-web' ? 'ChatGPT Web' : provider.charAt(0).toUpperCase() + provider.slice(1)}
+                        {provider === 'chatgpt-web' ? 'OpenAI Codex' : provider.charAt(0).toUpperCase() + provider.slice(1)}
                       </Text>
                     </Pressable>
                   ))}

@@ -771,7 +771,7 @@ function getProviderAndModel(): { providerId: string; model: string } {
   } else if (providerId === "gemini") {
     model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
   } else if (providerId === "chatgpt-web") {
-    model = config.mcpToolsChatgptWebModel || "gpt-4o"
+    model = config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
   }
   return { providerId, model }
 }

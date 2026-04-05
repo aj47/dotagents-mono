@@ -421,7 +421,7 @@ function resolveActiveModelId(cfg: any): string {
   if (provider === "openai") return cfg.mcpToolsOpenaiModel || "openai"
   if (provider === "groq") return cfg.mcpToolsGroqModel || "groq"
   if (provider === "gemini") return cfg.mcpToolsGeminiModel || "gemini"
-  if (provider === "chatgpt-web") return cfg.mcpToolsChatgptWebModel || "gpt-4o"
+  if (provider === "chatgpt-web") return cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
   return String(provider)
 }
 

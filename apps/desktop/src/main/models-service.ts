@@ -47,11 +47,11 @@ function mapToModelsDevProviderId(providerId: string, baseUrl?: string): string 
 }
 
 const CHATGPT_WEB_FALLBACK_MODELS: ModelInfo[] = [
-  { id: "gpt-4o", name: "GPT-4o" },
-  { id: "gpt-4.1", name: "GPT-4.1" },
-  { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
-  { id: "gpt-5", name: "GPT-5" },
-  { id: "gpt-5-mini", name: "GPT-5 Mini" },
+  { id: "gpt-5.4", name: "GPT-5.4" },
+  { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
+  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
+  { id: "gpt-5.3-codex-spark", name: "GPT-5.3 Codex Spark" },
+  { id: "gpt-5.2-codex", name: "GPT-5.2 Codex" },
 ]
 
 async function fetchChatGptWebModels(): Promise<ModelInfo[]> {

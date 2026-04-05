@@ -598,12 +598,12 @@ export async function processTranscriptWithAgentMode(
     : providerId === "gemini"
     ? config.mcpToolsGeminiModel || "gemini-2.5-flash"
     : providerId === "chatgpt-web"
-    ? config.mcpToolsChatgptWebModel || "gpt-4o"
+    ? config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
     : "gpt-4.1-mini"
   // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
   const providerDisplayName = providerId === "openai"
     ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)
-    : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId === "chatgpt-web" ? "ChatGPT Web" : providerId
+    : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId === "chatgpt-web" ? "OpenAI Codex" : providerId
   const modelInfoRef = { provider: providerDisplayName, model: modelName }
   // Seed lastEmittedUserResponse with the latest respond_to_user content from
   // previous conversation history. This prevents the emit() guard from

@@ -417,7 +417,7 @@ export function ProviderModelSelector({
     openai: "OpenAI",
     groq: "Groq",
     gemini: "Gemini",
-    "chatgpt-web": "ChatGPT Web",
+    "chatgpt-web": "OpenAI Codex",
   }
 
   const providerName = providerNames[providerId] || providerId
