@@ -931,7 +931,7 @@ function ExternalAgentSetupStep({
             </div>
 
             <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-              After installing, run: codex login (requires OpenAI API key from platform.openai.com)
+              After installing, run: codex login (requires OpenAI API key once, then no config needed)
             </div>
           </div>
         )}
@@ -950,6 +950,11 @@ function ExternalAgentSetupStep({
             <p className="text-muted-foreground">
               {commandVerification.details || commandVerification.error}
             </p>
+            {!commandVerification.ok && isCodex && (
+              <p className="mt-1 font-medium text-amber-600">
+                To authenticate: Run 'codex login' in terminal with your OpenAI API key
+              </p>
+            )}
             {!commandVerification.ok && isOpenCode && openCodeSetupMode === "existing-auth" && (
               <p className="mt-1 font-medium text-amber-600">
                 To authenticate: 1) Restart terminal 2) Run: opencode auth login 3) Get free key from opencode.ai

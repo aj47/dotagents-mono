@@ -28,7 +28,8 @@ export function getManagedCodexBinaryPath(): string {
 
 function updateInstallState(partial: Partial<CodexInstallStatus>): CodexInstallStatus {
   Object.assign(installState, partial)
-  installState.installed = false
+  installState.installed = !!(installState.version || partial.installed)
+  installState.binaryPath = "codex-acp"
   return { ...installState }
 }
 
