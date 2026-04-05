@@ -52,6 +52,14 @@ type OpenCodeInstallStatus = {
   error?: string
 }
 
+type CodexInstallStatus = {
+  installed: boolean
+  installing: boolean
+  binaryPath: string
+  version?: string
+  error?: string
+}
+
 const BYOK_PROVIDER_DETAILS: Record<ByokProviderId, { label: string; placeholder: string; url: string }> = {
   openai: {
     label: "OpenAI",
@@ -91,7 +99,7 @@ function getProviderLabel(providerId?: string): string {
 
 export function Component() {
   const [step, setStep] = useState<OnboardingStep>("welcome")
-  const [selectedChoiceId, setSelectedChoiceId] = useState<OnboardingMainAgentChoiceId>("opencode")
+  const [selectedChoiceId, setSelectedChoiceId] = useState<OnboardingMainAgentChoiceId>("codex")
   const [byokProviderId, setByokProviderId] = useState<ByokProviderId>("groq")
   const [apiKey, setApiKey] = useState("")
   const [isApplyingSetup, setIsApplyingSetup] = useState(false)
@@ -105,6 +113,8 @@ export function Component() {
   const [openCodeApiKey, setOpenCodeApiKey] = useState("")
   const [openCodeInstallStatus, setOpenCodeInstallStatus] = useState<OpenCodeInstallStatus | null>(null)
   const [isInstallingOpenCode, setIsInstallingOpenCode] = useState(false)
+  const [codexInstallStatus, setCodexInstallStatus] = useState<CodexInstallStatus | null>(null)
+  const [isInstallingCodex, setIsInstallingCodex] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [dictationResult, setDictationResult] = useState<string | null>(null)
@@ -209,11 +219,25 @@ export function Component() {
   }, [selectedChoiceId])
 
   useEffect(() => {
+    if (selectedChoiceId !== "codex") return
+    void tipcClient.getCodexInstallStatus().then(setCodexInstallStatus).catch(() => {
+      setCodexInstallStatus(null)
+    })
+  }, [selectedChoiceId])
+
+  useEffect(() => {
     if (selectedChoiceId !== "opencode") return
     if (!openCodeInstallStatus?.installed) return
     if (commandVerification?.ok) return
     void handleVerifyExternalAgent()
   }, [selectedChoiceId, openCodeInstallStatus])
+
+  useEffect(() => {
+    if (selectedChoiceId !== "codex") return
+    if (!codexInstallStatus?.installed) return
+    if (commandVerification?.ok) return
+    void handleVerifyExternalAgent()
+  }, [selectedChoiceId, codexInstallStatus])
 
   useEffect(() => {
     if (!parakeetStatusQuery.data?.downloaded) return
@@ -482,6 +506,23 @@ export function Component() {
     }
   }, [handleVerifyExternalAgent])
 
+  const handleInstallCodex = useCallback(async () => {
+    setIsInstallingCodex(true)
+    setSetupError(null)
+    try {
+      const status = await tipcClient.installManagedCodex()
+      setCodexInstallStatus(status)
+      if (!status.installed) {
+        throw new Error(status.error || "Codex install did not complete successfully.")
+      }
+      await handleVerifyExternalAgent()
+    } catch (error) {
+      setSetupError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsInstallingCodex(false)
+    }
+  }, [handleVerifyExternalAgent])
+
   const shellClassName =
     step === "welcome"
       ? "w-full max-w-2xl mx-auto my-auto px-6 py-10"
@@ -519,6 +560,9 @@ export function Component() {
             openCodeInstallStatus={openCodeInstallStatus}
             onInstallOpenCode={handleInstallOpenCode}
             isInstallingOpenCode={isInstallingOpenCode}
+            codexInstallStatus={codexInstallStatus}
+            onInstallCodex={handleInstallCodex}
+            isInstallingCodex={isInstallingCodex}
             openCodeSetupMode={openCodeSetupMode}
             onOpenCodeSetupModeChange={setOpenCodeSetupMode}
             openCodeProviderId={openCodeProviderId}
@@ -752,6 +796,9 @@ function ExternalAgentSetupStep({
   openCodeInstallStatus,
   onInstallOpenCode,
   isInstallingOpenCode,
+  codexInstallStatus,
+  onInstallCodex,
+  isInstallingCodex,
   openCodeSetupMode,
   onOpenCodeSetupModeChange,
   openCodeProviderId,
@@ -770,6 +817,9 @@ function ExternalAgentSetupStep({
   openCodeInstallStatus: OpenCodeInstallStatus | null
   onInstallOpenCode: () => void
   isInstallingOpenCode: boolean
+  codexInstallStatus: CodexInstallStatus | null
+  onInstallCodex: () => void
+  isInstallingCodex: boolean
   openCodeSetupMode: "existing-auth" | "managed-api-key"
   onOpenCodeSetupModeChange: (value: "existing-auth" | "managed-api-key") => void
   openCodeProviderId: ByokProviderId
@@ -787,6 +837,7 @@ function ExternalAgentSetupStep({
   const preset = EXTERNAL_AGENT_PRESETS[presetKey]
   const commandPreview = [preset.connectionCommand, preset.connectionArgs].filter(Boolean).join(" ")
   const isOpenCode = presetKey === "opencode"
+  const isCodex = presetKey === "codex"
   const openCodeProvider = BYOK_PROVIDER_DETAILS[openCodeProviderId]
   const requiresManagedOpenCodeKey = isOpenCode && openCodeSetupMode === "managed-api-key" && !openCodeApiKey.trim()
 
@@ -856,6 +907,31 @@ function ExternalAgentSetupStep({
               {openCodeSetupMode === "managed-api-key" 
                 ? "Using API key from DotAgents config."
                 : "After installing, run in terminal: opencode auth login (requires free API key from opencode.ai)"}
+            </div>
+          </div>
+        )}
+
+        {isCodex && (
+          <div className="space-y-3 rounded-md border bg-background/80 px-3 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 px-2.5 text-xs"
+                disabled={isInstallingCodex}
+                onClick={onInstallCodex}
+              >
+                <span className={`i-mingcute-download-2-line ${isInstallingCodex ? "animate-pulse" : ""}`}></span>
+                {codexInstallStatus?.installed ? "Reinstall" : "Install"}
+              </Button>
+              {codexInstallStatus?.installed && (
+                <span className="text-xs text-muted-foreground">v{codexInstallStatus.version}</span>
+              )}
+            </div>
+
+            <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+              After installing, run: codex login (requires OpenAI API key from platform.openai.com)
             </div>
           </div>
         )}

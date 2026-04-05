@@ -48,7 +48,7 @@ export const EXTERNAL_AGENT_PRESETS: Record<ExternalAgentPresetKey, ExternalAgen
   },
   codex: {
     displayName: "Codex",
-    description: "OpenAI Codex via the official ACP adapter",
+    description: "OpenAI Codex via the official ACP adapter — powered by OpenAI models",
     connectionType: "acp",
     connectionCommand: "codex-acp",
     connectionArgs: "",
@@ -58,7 +58,7 @@ export const EXTERNAL_AGENT_PRESETS: Record<ExternalAgentPresetKey, ExternalAgen
     cwdHint: "Set the working directory to the project Codex should inspect and edit.",
     verifyArgs: ["--help"],
     setupMode: "connect-existing",
-    onboardingNote: "Connect an existing Codex ACP adapter and verify the command path.",
+    onboardingNote: "Recommended — uses OpenAI's powerful Codex model with full ACP support.",
   },
   opencode: {
     displayName: "OpenCode",

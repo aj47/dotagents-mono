@@ -4173,6 +4173,16 @@ export const router = {
     return installManagedOpencode()
   }),
 
+  getCodexInstallStatus: t.procedure.action(async () => {
+    const { getCodexInstallStatus } = await import("./codex-installer")
+    return getCodexInstallStatus()
+  }),
+
+  installManagedCodex: t.procedure.action(async () => {
+    const { installManagedCodex } = await import("./codex-installer")
+    return installManagedCodex()
+  }),
+
   spawnAcpAgent: t.procedure
     .input<{ agentName: string; workingDirectory?: string }>()
     .action(async ({ input }) => {
