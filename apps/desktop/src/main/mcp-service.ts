@@ -2858,9 +2858,29 @@ export class MCPService {
 
     // Split PATH and search for the command
     const pathDirs = systemPath.split(pathSeparator)
+    const appPath = app.getAppPath()
+    const resourcesPath = process.resourcesPath || appPath
+    const userDataPath = app.getPath("userData")
+    const opencodeResourceSuffix =
+      process.platform === "darwin"
+        ? `darwin-${process.arch}`
+        : process.platform === "win32"
+          ? `windows-${process.arch}`
+          : `${process.platform}-${process.arch}`
 
-    // Add common Node.js paths that might be missing in Electron
+    // Add common Node.js, repo-local, and packaged-app binary locations that might be missing in Electron.
     const additionalPaths = [
+      path.join(userDataPath, "external-tools", "opencode", "current"),
+      path.join(resourcesPath, "opencode", opencodeResourceSuffix),
+      path.join(appPath, "resources", "opencode", opencodeResourceSuffix),
+      path.join(resourcesPath, "bin"),
+      path.join(appPath, "resources", "bin"),
+      path.join(appPath, "node_modules", ".bin"),
+      path.join(appPath, "..", "node_modules", ".bin"),
+      path.join(appPath, "..", "..", "node_modules", ".bin"),
+      path.join(process.cwd(), "node_modules", ".bin"),
+      path.join(process.cwd(), "..", "node_modules", ".bin"),
+      path.join(process.cwd(), "..", "..", "node_modules", ".bin"),
       "/usr/local/bin",
       "/opt/homebrew/bin",
       path.join(os.homedir(), ".npm-global", "bin"),

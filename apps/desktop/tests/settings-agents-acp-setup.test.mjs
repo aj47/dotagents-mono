@@ -8,6 +8,11 @@ const settingsAgentsSource = fs.readFileSync(
   'utf8',
 )
 
+const presetSource = fs.readFileSync(
+  path.join(process.cwd(), 'apps/desktop/src/shared/external-agent-presets.ts'),
+  'utf8',
+)
+
 const tipcSource = fs.readFileSync(
   path.join(process.cwd(), 'apps/desktop/src/main/tipc.ts'),
   'utf8',
@@ -19,13 +24,14 @@ const commandVerificationSource = fs.readFileSync(
 )
 
 test('desktop agent presets include Codex and OpenCode ACP defaults with setup guidance', () => {
-  assert.match(settingsAgentsSource, /codex:\s*\{[\s\S]*displayName: "Codex"/)
-  assert.match(settingsAgentsSource, /codex:[\s\S]*connectionCommand: "codex-acp"/)
-  assert.match(settingsAgentsSource, /codex:[\s\S]*installCommand: "npm install -g @zed-industries\/codex-acp"/)
-  assert.match(settingsAgentsSource, /opencode:\s*\{[\s\S]*displayName: "OpenCode"/)
-  assert.match(settingsAgentsSource, /opencode:[\s\S]*connectionCommand: "opencode"/)
-  assert.match(settingsAgentsSource, /opencode:[\s\S]*connectionArgs: "acp"/)
-  assert.match(settingsAgentsSource, /opencode:[\s\S]*docsUrl: "https:\/\/opencode\.ai\/docs\/acp\/"/)
+  assert.match(presetSource, /codex:\s*\{[\s\S]*displayName: "Codex"/)
+  assert.match(presetSource, /codex:[\s\S]*connectionCommand: "codex-acp"/)
+  assert.match(presetSource, /codex:[\s\S]*installCommand: "npm install -g @zed-industries\/codex-acp"/)
+  assert.match(presetSource, /opencode:\s*\{[\s\S]*displayName: "OpenCode"/)
+  assert.match(presetSource, /opencode:[\s\S]*connectionCommand: "opencode"/)
+  assert.match(presetSource, /opencode:[\s\S]*connectionArgs: "acp"/)
+  assert.match(presetSource, /opencode:[\s\S]*docsUrl: "https:\/\/opencode\.ai\/docs\/acp\/"/)
+  assert.match(presetSource, /setupMode: "managed"/)
 })
 
 test('desktop agent edit form exposes external-agent verification and actionable setup copy', () => {
