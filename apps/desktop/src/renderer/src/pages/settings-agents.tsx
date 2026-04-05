@@ -34,6 +34,12 @@ import { BundleExportDialog } from "@renderer/components/bundle-export-dialog"
 import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
 import { SandboxSlotSwitcher } from "@renderer/components/sandbox-slot-switcher"
 import {
+  EXTERNAL_AGENT_PRESETS,
+  detectExternalAgentPresetKey,
+  type ExternalAgentPresetDefinition,
+  type ExternalAgentPresetKey,
+} from "@shared/external-agent-presets"
+import {
   AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill, DetailedToolInfo,
 } from "../../../shared/types"
@@ -61,17 +67,9 @@ interface EditingAgent {
   avatarDataUrl?: string | null
 }
 
-type AgentPresetKey = "auggie" | "claude-code" | "codex" | "opencode"
+type AgentPresetKey = ExternalAgentPresetKey
 
-interface AgentPresetDefinition extends Partial<EditingAgent> {
-  displayName: string
-  description: string
-  docsUrl?: string
-  installCommand?: string
-  authHint?: string
-  cwdHint?: string
-  verifyArgs?: string[]
-}
+type AgentPresetDefinition = ExternalAgentPresetDefinition & Partial<EditingAgent>
 
 interface ExternalAgentCommandVerificationResult {
   ok: boolean
@@ -83,57 +81,21 @@ interface ExternalAgentCommandVerificationResult {
 
 type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
 
-const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
-  auggie: {
-    displayName: "Auggie (Augment Code)",
-    description: "Augment Code's AI coding assistant with native ACP support",
-    connectionType: "acp", connectionCommand: "auggie", connectionArgs: "--acp", enabled: true,
-    docsUrl: "https://www.augmentcode.com/",
-    cwdHint: "Point the working directory at the repo you want Auggie to operate in.",
-    verifyArgs: ["--help"],
-  },
-  "claude-code": {
-    displayName: "Claude Code",
-    description: "Anthropic's Claude for coding tasks via ACP adapter",
-    connectionType: "acp", connectionCommand: "claude-code-acp", connectionArgs: "", enabled: true,
-    docsUrl: "https://github.com/zed-industries/claude-code-acp",
-    installCommand: "npm install -g @zed-industries/claude-code-acp",
-    authHint: "Sign in to Claude Code in your terminal before verifying if this is your first run.",
-    cwdHint: "Use your repo root so Claude Code inherits the right project context.",
-    verifyArgs: ["--help"],
-  },
-  codex: {
-    displayName: "Codex",
-    description: "OpenAI Codex via the official ACP adapter",
-    connectionType: "acp", connectionCommand: "codex-acp", connectionArgs: "", enabled: true,
-    docsUrl: "https://github.com/zed-industries/codex-acp",
-    installCommand: "npm install -g @zed-industries/codex-acp",
-    authHint: "Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying.",
-    cwdHint: "Set the working directory to the project Codex should inspect and edit.",
-    verifyArgs: ["--help"],
-  },
-  opencode: {
-    displayName: "OpenCode",
-    description: "OpenCode's native ACP server for terminal-first agent workflows",
-    connectionType: "acp", connectionCommand: "opencode", connectionArgs: "acp", enabled: true,
-    docsUrl: "https://opencode.ai/docs/acp/",
-    installCommand: "npm install -g opencode-ai",
-    authHint: "OpenCode stores provider auth after you run opencode and complete /connect in the TUI.",
-    cwdHint: "Use your workspace root so opencode acp can load the right project and config.",
-    verifyArgs: ["--help"],
-  },
-}
+const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = Object.fromEntries(
+  Object.entries(EXTERNAL_AGENT_PRESETS).map(([key, preset]) => [
+    key,
+    {
+      ...preset,
+      connectionType: preset.connectionType,
+      connectionCommand: preset.connectionCommand,
+      connectionArgs: preset.connectionArgs,
+      enabled: true,
+    },
+  ])
+) as Record<AgentPresetKey, AgentPresetDefinition>
 
 function detectPresetKey(agent?: Partial<EditingAgent> | null): AgentPresetKey | undefined {
-  if (!agent) return undefined
-  const args = (agent.connectionArgs || "").trim()
-
-  if (agent.connectionType === "acp" && agent.connectionCommand === "auggie" && args === "--acp") return "auggie"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "claude-code-acp") return "claude-code"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "codex-acp") return "codex"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "opencode" && args === "acp") return "opencode"
-
-  return undefined
+  return detectExternalAgentPresetKey(agent)
 }
 
 function buildCommandPreview(command?: string, args?: string): string {

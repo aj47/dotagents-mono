@@ -60,6 +60,15 @@ function execCommand(command, args) {
 }
 
 async function main() {
+  // On Windows, skip native module rebuild entirely
+  // - electron-panel-window is Mac-only (no Windows sources)
+  // - nodeGypRebuild: false in electron-builder.config.cjs disables it during packaging
+  if (isWindows) {
+    console.log('[postinstall] Windows detected, skipping native module rebuild');
+    console.log('[postinstall] Note: electron-panel-window (floating panel) requires macOS');
+    process.exit(0);
+  }
+
   try {
     // Use npx on all platforms to find electron-builder from node_modules
     // On Windows, this also avoids the issue where electron-builder tries
@@ -68,9 +77,6 @@ async function main() {
     // The --no flag prevents npx from prompting to install if electron-builder
     // is not found locally, avoiding interactive prompts or non-deterministic
     // installs in CI/production environments
-    if (isWindows) {
-      console.log('[postinstall] Windows detected, using npx with shell...');
-    }
     await execCommand('npx', ['--no', 'electron-builder', 'install-app-deps']);
 
     console.log('[postinstall] Native dependencies installed successfully!');
