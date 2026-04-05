@@ -4,6 +4,10 @@ const { getPromptCachingConfigMock } = vi.hoisted(() => ({
   getPromptCachingConfigMock: vi.fn<any, any>(() => undefined),
 }))
 
+const { makeChatGptWebCompletionMock } = vi.hoisted(() => ({
+  makeChatGptWebCompletionMock: vi.fn<any, any>(),
+}))
+
 // Mock dependencies
 vi.mock('./config', () => ({
   configStore: {
@@ -76,6 +80,11 @@ vi.mock('./langfuse-service', () => ({
   endLLMGeneration: vi.fn(),
 }))
 
+vi.mock('./chatgpt-web-provider', () => ({
+  isChatGptWebProvider: vi.fn((providerId: string) => providerId === 'chatgpt-web'),
+  makeChatGptWebCompletion: makeChatGptWebCompletionMock,
+}))
+
 // Mock the context-budget module (imported for recordActualTokenUsage)
 vi.mock('./context-budget', () => ({
   recordActualTokenUsage: vi.fn(),
@@ -87,6 +96,7 @@ describe('LLM Fetch with AI SDK', () => {
     vi.resetModules()
     getPromptCachingConfigMock.mockReset()
     getPromptCachingConfigMock.mockReturnValue(undefined)
+    makeChatGptWebCompletionMock.mockReset()
   })
 
   it('passes prompt-caching provider options through to generateText when available', async () => {
@@ -989,5 +999,31 @@ describe('LLM Fetch with AI SDK', () => {
         vi.fn(),
       )
     ).rejects.toThrow('provider returned malformed chunk')
+  })
+
+  it('routes chatgpt-web text completions through the custom conversation client', async () => {
+    makeChatGptWebCompletionMock.mockResolvedValue('chatgpt transcript')
+
+    const { makeTextCompletionWithFetch } = await import('./llm-fetch')
+    const result = await makeTextCompletionWithFetch('clean this up', 'chatgpt-web')
+
+    expect(result).toBe('chatgpt transcript')
+    expect(makeChatGptWebCompletionMock).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'clean this up' }],
+      expect.objectContaining({ modelContext: 'transcript' }),
+    )
+  })
+
+  it('routes chatgpt-web llm calls through the custom conversation client', async () => {
+    makeChatGptWebCompletionMock.mockResolvedValue('chatgpt answer')
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch([{ role: 'user', content: 'hello' }], 'chatgpt-web')
+
+    expect(result).toEqual({ content: 'chatgpt answer' })
+    expect(makeChatGptWebCompletionMock).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'hello' }],
+      expect.objectContaining({ modelContext: 'mcp' }),
+    )
   })
 })

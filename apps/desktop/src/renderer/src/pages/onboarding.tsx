@@ -570,10 +570,20 @@ function AgentStep({
       ? !!config?.groqApiKey
       : providerId === "gemini"
       ? !!config?.geminiApiKey
+      : providerId === "chatgpt-web"
+      ? !!(config?.chatgptWebAccessToken || config?.chatgptWebSessionToken)
       : !!config?.openaiApiKey
 
     if (!hasApiKey) {
-      setAgentError(`No API key configured. Please go back and enter your ${providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : "OpenAI"} API key, or configure it in Settings.`)
+      const providerLabel =
+        providerId === "groq"
+          ? "Groq"
+          : providerId === "gemini"
+            ? "Gemini"
+            : providerId === "chatgpt-web"
+              ? "ChatGPT Web auth"
+              : "OpenAI"
+      setAgentError(`No API key configured. Please go back and enter your ${providerLabel}, or configure it in Settings.`)
       return
     }
 
@@ -813,4 +823,3 @@ function FeatureCard({
     </div>
   )
 }
-

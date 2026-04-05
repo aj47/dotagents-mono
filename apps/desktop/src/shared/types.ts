@@ -243,20 +243,22 @@ export type ProfileMcpServerConfig = {
 
 export type ProfileModelConfig = {
   // Agent/MCP Tools settings
-  mcpToolsProviderId?: "openai" | "groq" | "gemini"
+  mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
   mcpToolsOpenaiModel?: string
   mcpToolsGroqModel?: string
   mcpToolsGeminiModel?: string
+  mcpToolsChatgptWebModel?: string
   currentModelPresetId?: string
   // STT Provider settings
   sttProviderId?: "openai" | "groq" | "parakeet"
   openaiSttModel?: string
   groqSttModel?: string
   // Transcript Post-Processing settings
-  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini"
+  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
   transcriptPostProcessingOpenaiModel?: string
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
+  transcriptPostProcessingChatgptWebModel?: string
   // TTS Provider settings
   ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
 }
@@ -335,7 +337,7 @@ type PersonaMcpServerConfig = {
  */
 type PersonaModelConfig = {
   /** LLM provider for this agent */
-  providerId: "openai" | "groq" | "gemini"
+  providerId: "openai" | "groq" | "gemini" | "chatgpt-web"
   /** Model name/identifier */
   model: string
   /** Optional temperature override (0-2) */
@@ -989,6 +991,13 @@ export type Config = {
   geminiApiKey?: string
   geminiBaseUrl?: string
 
+  // ChatGPT Web Auth Configuration
+  // Either access token directly, or session token (to resolve access token via /api/auth/session)
+  chatgptWebAccessToken?: string
+  chatgptWebSessionToken?: string
+  chatgptWebAccountId?: string
+  chatgptWebBaseUrl?: string
+
   // Speech-to-Text Language Configuration
   sttLanguage?: string
   openaiSttLanguage?: string
@@ -1050,6 +1059,7 @@ export type Config = {
   transcriptPostProcessingOpenaiModel?: string
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
+  transcriptPostProcessingChatgptWebModel?: string
 
   // Audio Device Selection
   audioInputDeviceId?: string   // Microphone device ID (from enumerateDevices)
@@ -1084,6 +1094,7 @@ export type Config = {
   mcpToolsOpenaiModel?: string
   mcpToolsGroqModel?: string
   mcpToolsGeminiModel?: string
+  mcpToolsChatgptWebModel?: string
   /** @deprecated Kept for backward compatibility but ignored */
   mcpToolsSystemPrompt?: string
   /** @deprecated Kept for backward compatibility but ignored */
@@ -1121,6 +1132,7 @@ export type Config = {
   providerSectionCollapsedOpenai?: boolean
   providerSectionCollapsedGroq?: boolean
   providerSectionCollapsedGemini?: boolean
+  providerSectionCollapsedChatgptWeb?: boolean
   providerSectionCollapsedParakeet?: boolean
   providerSectionCollapsedKitten?: boolean
   providerSectionCollapsedSupertonic?: boolean

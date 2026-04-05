@@ -10,7 +10,7 @@ import type { LanguageModel } from "ai"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 
-export type ProviderType = "openai" | "groq" | "gemini"
+export type ProviderType = "openai" | "groq" | "gemini" | "chatgpt-web"
 
 const DEFAULT_CHAT_MODELS = {
   openai: {
@@ -24,6 +24,10 @@ const DEFAULT_CHAT_MODELS = {
   gemini: {
     mcp: "gemini-2.5-flash",
     transcript: "gemini-2.5-flash",
+  },
+  "chatgpt-web": {
+    mcp: "gpt-4o",
+    transcript: "gpt-4o",
   },
 } as const
 
@@ -122,6 +126,16 @@ function getProviderConfig(
             : config.transcriptPostProcessingGeminiModel || DEFAULT_CHAT_MODELS.gemini.transcript,
       }
 
+    case "chatgpt-web":
+      return {
+        apiKey: config.chatgptWebAccessToken || config.chatgptWebSessionToken || "",
+        baseURL: config.chatgptWebBaseUrl || "https://chatgpt.com",
+        model:
+          modelContext === "mcp"
+            ? config.mcpToolsChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].mcp
+            : config.transcriptPostProcessingChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].transcript,
+      }
+
     default:
       throw new Error(`Unknown provider: ${providerId}`)
   }
@@ -172,6 +186,9 @@ export function createLanguageModel(
       })
       return google(providerConfig.model)
     }
+
+    case "chatgpt-web":
+      throw new Error("chatgpt-web provider uses a custom fetch transport, not AI SDK createLanguageModel")
 
     default:
       throw new Error(`Unknown provider: ${effectiveProviderId}`)
@@ -235,6 +252,10 @@ export function getPromptCachingConfig(
     providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
   const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
+
+  if (effectiveProviderId === "chatgpt-web") {
+    return undefined
+  }
 
   // Vercel AI Gateway handles caching automatically for all providers
   if (normalizedBaseURL.includes("ai-gateway.vercel.sh")) {

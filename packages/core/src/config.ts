@@ -261,6 +261,7 @@ const getConfig = (): LoadedConfig => {
     providerSectionCollapsedOpenai: true,
     providerSectionCollapsedGroq: true,
     providerSectionCollapsedGemini: true,
+    providerSectionCollapsedChatgptWeb: true,
 
     // API Retry defaults
     apiRetryCount: 3,

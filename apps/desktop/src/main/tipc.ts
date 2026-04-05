@@ -2539,7 +2539,10 @@ export const router = {
           (prev as any)?.groqBaseUrl !== (merged as any)?.groqBaseUrl ||
           (prev as any)?.groqApiKey !== (merged as any)?.groqApiKey ||
           (prev as any)?.geminiBaseUrl !== (merged as any)?.geminiBaseUrl ||
-          (prev as any)?.geminiApiKey !== (merged as any)?.geminiApiKey
+          (prev as any)?.geminiApiKey !== (merged as any)?.geminiApiKey ||
+          (prev as any)?.chatgptWebBaseUrl !== (merged as any)?.chatgptWebBaseUrl ||
+          (prev as any)?.chatgptWebAccessToken !== (merged as any)?.chatgptWebAccessToken ||
+          (prev as any)?.chatgptWebSessionToken !== (merged as any)?.chatgptWebSessionToken
 
         if (providerConfigChanged) {
           const { clearModelsCache } = await import("./models-service")
@@ -3628,6 +3631,9 @@ export const router = {
         ...(profile.modelConfig?.mcpToolsGeminiModel && {
           mcpToolsGeminiModel: profile.modelConfig.mcpToolsGeminiModel,
         }),
+        ...(profile.modelConfig?.mcpToolsChatgptWebModel && {
+          mcpToolsChatgptWebModel: profile.modelConfig.mcpToolsChatgptWebModel,
+        }),
         ...(profile.modelConfig?.currentModelPresetId && {
           currentModelPresetId: profile.modelConfig.currentModelPresetId,
         }),
@@ -3653,6 +3659,9 @@ export const router = {
         }),
         ...(profile.modelConfig?.transcriptPostProcessingGeminiModel && {
           transcriptPostProcessingGeminiModel: profile.modelConfig.transcriptPostProcessingGeminiModel,
+        }),
+        ...(profile.modelConfig?.transcriptPostProcessingChatgptWebModel && {
+          transcriptPostProcessingChatgptWebModel: profile.modelConfig.transcriptPostProcessingChatgptWebModel,
         }),
         // TTS Provider settings
         ...(profile.modelConfig?.ttsProviderId && {
@@ -3734,6 +3743,7 @@ export const router = {
         mcpToolsOpenaiModel: config.mcpToolsOpenaiModel,
         mcpToolsGroqModel: config.mcpToolsGroqModel,
         mcpToolsGeminiModel: config.mcpToolsGeminiModel,
+        mcpToolsChatgptWebModel: config.mcpToolsChatgptWebModel,
         currentModelPresetId: config.currentModelPresetId,
         // STT Provider settings
         sttProviderId: config.sttProviderId,
@@ -3744,6 +3754,7 @@ export const router = {
         transcriptPostProcessingOpenaiModel: config.transcriptPostProcessingOpenaiModel,
         transcriptPostProcessingGroqModel: config.transcriptPostProcessingGroqModel,
         transcriptPostProcessingGeminiModel: config.transcriptPostProcessingGeminiModel,
+        transcriptPostProcessingChatgptWebModel: config.transcriptPostProcessingChatgptWebModel,
         // TTS Provider settings
         ttsProviderId: config.ttsProviderId,
       })
@@ -3754,20 +3765,22 @@ export const router = {
     .input<{
       profileId: string
       // Agent/MCP Tools settings
-      mcpToolsProviderId?: "openai" | "groq" | "gemini"
+      mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
       mcpToolsOpenaiModel?: string
       mcpToolsGroqModel?: string
       mcpToolsGeminiModel?: string
+      mcpToolsChatgptWebModel?: string
       currentModelPresetId?: string
       // STT Provider settings
       sttProviderId?: "openai" | "groq" | "parakeet"
       openaiSttModel?: string
       groqSttModel?: string
       // Transcript Post-Processing settings
-      transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini"
+      transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
       transcriptPostProcessingOpenaiModel?: string
       transcriptPostProcessingGroqModel?: string
       transcriptPostProcessingGeminiModel?: string
+      transcriptPostProcessingChatgptWebModel?: string
       // TTS Provider settings
       ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
     }>()
@@ -3778,6 +3791,7 @@ export const router = {
         mcpToolsOpenaiModel: input.mcpToolsOpenaiModel,
         mcpToolsGroqModel: input.mcpToolsGroqModel,
         mcpToolsGeminiModel: input.mcpToolsGeminiModel,
+        mcpToolsChatgptWebModel: input.mcpToolsChatgptWebModel,
         currentModelPresetId: input.currentModelPresetId,
         // STT Provider settings
         sttProviderId: input.sttProviderId,
@@ -3788,6 +3802,7 @@ export const router = {
         transcriptPostProcessingOpenaiModel: input.transcriptPostProcessingOpenaiModel,
         transcriptPostProcessingGroqModel: input.transcriptPostProcessingGroqModel,
         transcriptPostProcessingGeminiModel: input.transcriptPostProcessingGeminiModel,
+        transcriptPostProcessingChatgptWebModel: input.transcriptPostProcessingChatgptWebModel,
         // TTS Provider settings
         ttsProviderId: input.ttsProviderId,
       })

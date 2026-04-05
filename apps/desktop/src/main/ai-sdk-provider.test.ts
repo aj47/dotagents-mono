@@ -160,4 +160,19 @@ describe("ai-sdk-provider chat model sanitization", () => {
 
     expect(mod.getPromptCachingConfig("openai")).toBeUndefined()
   })
-})
+
+  it("returns configured model metadata for chatgpt-web and disables prompt caching hints", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "chatgpt-web",
+      mcpToolsChatgptWebModel: "gpt-5",
+      chatgptWebAccessToken: "chatgpt-token",
+      chatgptWebBaseUrl: "https://chatgpt.com",
+    })
+
+    expect(mod.getCurrentModelName("chatgpt-web")).toBe("gpt-5")
+    expect(mod.getPromptCachingConfig("chatgpt-web")).toBeUndefined()
+    expect(() => mod.createLanguageModel("chatgpt-web")).toThrow(
+      "chatgpt-web provider uses a custom fetch transport, not AI SDK createLanguageModel",
+    )
+  })
+}) 

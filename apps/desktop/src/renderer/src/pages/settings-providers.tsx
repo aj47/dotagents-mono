@@ -22,7 +22,15 @@ import { getSelectableMainAcpAgents } from "./settings-general-main-agent-option
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
-type ProviderDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+type ProviderDraftKey =
+  | "groqApiKey"
+  | "groqBaseUrl"
+  | "geminiApiKey"
+  | "geminiBaseUrl"
+  | "chatgptWebAccessToken"
+  | "chatgptWebSessionToken"
+  | "chatgptWebAccountId"
+  | "chatgptWebBaseUrl"
 
 function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
   return {
@@ -30,6 +38,10 @@ function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, str
     groqBaseUrl: config?.groqBaseUrl || "",
     geminiApiKey: config?.geminiApiKey || "",
     geminiBaseUrl: config?.geminiBaseUrl || "",
+    chatgptWebAccessToken: config?.chatgptWebAccessToken || "",
+    chatgptWebSessionToken: config?.chatgptWebSessionToken || "",
+    chatgptWebAccountId: config?.chatgptWebAccountId || "",
+    chatgptWebBaseUrl: config?.chatgptWebBaseUrl || "",
   }
 }
 
@@ -666,6 +678,10 @@ export function Component() {
     configQuery.data?.groqBaseUrl,
     configQuery.data?.geminiApiKey,
     configQuery.data?.geminiBaseUrl,
+    configQuery.data?.chatgptWebAccessToken,
+    configQuery.data?.chatgptWebSessionToken,
+    configQuery.data?.chatgptWebAccountId,
+    configQuery.data?.chatgptWebBaseUrl,
   ])
 
   useEffect(() => {
@@ -708,7 +724,7 @@ export function Component() {
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
-    if (!configQuery.data) return { openai: [], groq: [], gemini: [], parakeet: [], kitten: [], supertonic: [] }
+    if (!configQuery.data) return { openai: [], groq: [], gemini: [], chatgptWeb: [], parakeet: [], kitten: [], supertonic: [] }
 
     const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acp"
     const stt = configQuery.data.sttProviderId || "openai"
@@ -733,6 +749,10 @@ export function Component() {
         ...(transcript === "gemini" ? [{ label: "Cleanup", icon: FileText }] : []),
         ...(mcp === "gemini" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
         ...(tts === "gemini" ? [{ label: "TTS", icon: Volume2 }] : []),
+      ],
+      chatgptWeb: [
+        ...(transcript === "chatgpt-web" ? [{ label: "Cleanup", icon: FileText }] : []),
+        ...(mcp === "chatgpt-web" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
       ],
       parakeet: [
         ...(stt === "parakeet" ? [{ label: "STT", icon: Mic }] : []),
@@ -762,6 +782,7 @@ export function Component() {
   // Determine which providers are active (selected for at least one feature)
   const isGroqActive = activeProviders.groq.length > 0
   const isGeminiActive = activeProviders.gemini.length > 0
+  const isChatgptWebActive = activeProviders.chatgptWeb.length > 0
   const isParakeetActive = activeProviders.parakeet.length > 0
   const isKittenActive = activeProviders.kitten.length > 0
   const isSupertonicActive = activeProviders.supertonic.length > 0
@@ -776,7 +797,7 @@ export function Component() {
       placeholder,
     }: {
       label: string
-      type: "password" | "url"
+      type: "password" | "url" | "text"
       placeholder?: string
     },
   ) => (
@@ -957,6 +978,62 @@ export function Component() {
           </div>
         )}
 
+        {/* ChatGPT Web Provider Section - rendered in order based on active status */}
+        {isChatgptWebActive && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5">
+            <button
+              type="button"
+              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => saveConfig({ providerSectionCollapsedChatgptWeb: !configQuery.data.providerSectionCollapsedChatgptWeb })}
+              aria-expanded={!configQuery.data.providerSectionCollapsedChatgptWeb}
+              aria-controls="chatgpt-web-provider-content"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {configQuery.data.providerSectionCollapsedChatgptWeb ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                ChatGPT Web
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+              </span>
+              <div className="flex gap-1.5 flex-wrap justify-end">
+                {activeProviders.chatgptWeb.map((badge) => (
+                  <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+                ))}
+              </div>
+            </button>
+            {!configQuery.data.providerSectionCollapsedChatgptWeb && (
+              <div id="chatgpt-web-provider-content" className="divide-y border-t">
+                {renderProviderDraftInput("chatgptWebAccessToken", {
+                  label: "Access Token",
+                  type: "password",
+                })}
+
+                {renderProviderDraftInput("chatgptWebSessionToken", {
+                  label: "Session Token",
+                  type: "password",
+                })}
+
+                {renderProviderDraftInput("chatgptWebAccountId", {
+                  label: "Account ID",
+                  type: "text",
+                })}
+
+                {renderProviderDraftInput("chatgptWebBaseUrl", {
+                  label: "Base URL",
+                  type: "url",
+                  placeholder: "https://chatgpt.com",
+                })}
+
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                  Use an access token directly, or a session token so DotAgents can resolve the access token from ChatGPT web auth.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Parakeet (Local) Provider Section */}
         {isParakeetActive && (
           <ParakeetProviderSection
@@ -1076,6 +1153,60 @@ export function Component() {
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
                   Gemini model selection now lives on the Models page.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Inactive ChatGPT Web Provider Section - shown at bottom when not selected */}
+        {!isChatgptWebActive && (
+          <div className="rounded-lg border">
+            <button
+              type="button"
+              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => saveConfig({ providerSectionCollapsedChatgptWeb: !configQuery.data.providerSectionCollapsedChatgptWeb })}
+              aria-expanded={!configQuery.data.providerSectionCollapsedChatgptWeb}
+              aria-controls="chatgpt-web-provider-content-inactive"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {configQuery.data.providerSectionCollapsedChatgptWeb ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                ChatGPT Web
+              </span>
+            </button>
+            {!configQuery.data.providerSectionCollapsedChatgptWeb && (
+              <div id="chatgpt-web-provider-content-inactive" className="divide-y border-t">
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Not selected above. You can still configure it here.
+                </p>
+
+                {renderProviderDraftInput("chatgptWebAccessToken", {
+                  label: "Access Token",
+                  type: "password",
+                })}
+
+                {renderProviderDraftInput("chatgptWebSessionToken", {
+                  label: "Session Token",
+                  type: "password",
+                })}
+
+                {renderProviderDraftInput("chatgptWebAccountId", {
+                  label: "Account ID",
+                  type: "text",
+                })}
+
+                {renderProviderDraftInput("chatgptWebBaseUrl", {
+                  label: "Base URL",
+                  type: "url",
+                  placeholder: "https://chatgpt.com",
+                })}
+
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                  Provide a session token to resolve ChatGPT web access automatically, or paste an access token and account ID directly.
                 </p>
               </div>
             )}

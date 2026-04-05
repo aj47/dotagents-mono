@@ -21,6 +21,9 @@ describe("desktop provider settings draft behavior", () => {
     expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.groqBaseUrl/)
     expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.geminiApiKey/)
     expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.geminiBaseUrl/)
+    expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.chatgptWebAccessToken/)
+    expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.chatgptWebSessionToken/)
+    expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.chatgptWebAccountId/)
+    expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.chatgptWebBaseUrl/)
   })
 })
-
