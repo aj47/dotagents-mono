@@ -363,6 +363,7 @@ module.exports = {
     artifactName: "${productName}-${version}-${arch}.${ext}",
   },
   npmRebuild: false,
+  nodeGypRebuild: false,
   // After packing, clean up unnecessary files
   afterPack: async (context) => {
     const path = require('path');
