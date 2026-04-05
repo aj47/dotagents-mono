@@ -976,15 +976,10 @@ export function Component() {
       mcpTranscribeMutation.reset()
       textInputMutation.reset()
       mcpTextInputMutation.reset()
-
-      // End conversation if active
-      if (isConversationActive) {
-        endConversation()
-      }
     })
 
     return unlisten
-  }, [isConversationActive, endConversation, transcribeMutation, mcpTranscribeMutation, textInputMutation, mcpTextInputMutation])
+  }, [transcribeMutation, mcpTranscribeMutation, textInputMutation, mcpTextInputMutation])
 
 	  // Track latest state values in a ref to avoid race conditions with auto-close timeout
 	  const autoCloseStateRef = useRef({

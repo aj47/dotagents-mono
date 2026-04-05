@@ -4,7 +4,6 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { acpProcessManager, acpClientService } from "./acp"
 import { acpService } from "./acp-service"
-import { clearSessionUserResponse } from "./session-user-response-store"
 
 /**
  * Centralized emergency stop: abort LLM requests, kill tracked child processes,
@@ -90,9 +89,9 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
 
   const after = agentProcessManager.getActiveProcessCount()
 
-	  // Clean up all session states (including user response)
+	  // Clean up all session states while preserving cached response history so
+	  // the stopped session can still display its prior conversation in the UI.
   for (const [sessionId] of state.agentSessions) {
-	    clearSessionUserResponse(sessionId)
     agentSessionStateManager.cleanupSession(sessionId)
   }
 

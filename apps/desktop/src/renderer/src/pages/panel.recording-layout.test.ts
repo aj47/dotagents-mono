@@ -99,4 +99,14 @@ describe("panel recording layout", () => {
     expect(mcpRecordingSection).toContain("await tipcClient.createMcpRecording({")
     expect(mcpRecordingSection).not.toContain('await startNewConversation(transcript, "user")')
   })
+
+  it("preserves the active conversation when the emergency stop handler fires", () => {
+    const emergencyStopSection = panelSource.slice(
+      panelSource.indexOf("const unlisten = rendererHandlers.emergencyStopAgent.listen(() => {"),
+      panelSource.indexOf("return unlisten", panelSource.indexOf("const unlisten = rendererHandlers.emergencyStopAgent.listen(() => {")),
+    )
+
+    expect(emergencyStopSection).toContain('ttsManager.stopAll("panel-emergency-stop")')
+    expect(emergencyStopSection).not.toContain("endConversation()")
+  })
 })
