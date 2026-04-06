@@ -22,5 +22,11 @@ describe("desktop provider settings draft behavior", () => {
     expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.geminiApiKey/)
     expect(settingsProvidersSource).toMatch(/configQuery\.data\?\.geminiBaseUrl/)
   })
-})
 
+  it("surfaces codex auth through explicit actions instead of manual credential drafts", () => {
+    expect(settingsProvidersSource).toMatch(/queryKey: \["chatgpt-web-auth-status"\]/)
+    expect(settingsProvidersSource).toMatch(/tipcClient\.loginChatGptWebOAuth\(\)/)
+    expect(settingsProvidersSource).toMatch(/tipcClient\.logoutChatGptWebOAuth\(\)/)
+    expect(settingsProvidersSource).toMatch(/Copy Callback URL/)
+  })
+})

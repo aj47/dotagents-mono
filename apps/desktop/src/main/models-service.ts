@@ -32,6 +32,10 @@ function mapToModelsDevProviderId(providerId: string, baseUrl?: string): string 
     return "openrouter"
   }
 
+  if (providerId === "chatgpt-web") {
+    return "openai"
+  }
+
   // Map our provider IDs to models.dev provider IDs
   const providerMap: Record<string, string> = {
     openai: "openai",
@@ -40,6 +44,20 @@ function mapToModelsDevProviderId(providerId: string, baseUrl?: string): string 
   }
 
   return providerMap[providerId] || providerId
+}
+
+const CHATGPT_WEB_FALLBACK_MODELS: ModelInfo[] = [
+  { id: "gpt-5.4", name: "GPT-5.4" },
+  { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
+  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
+  { id: "gpt-5.3-codex-spark", name: "GPT-5.3 Codex Spark" },
+  { id: "gpt-5.2-codex", name: "GPT-5.2 Codex" },
+]
+
+async function fetchChatGptWebModels(): Promise<ModelInfo[]> {
+  // ChatGPT Web model list endpoint is not stable across deployments.
+  // Keep this provider reliable by surfacing known model IDs as selectable defaults.
+  return CHATGPT_WEB_FALLBACK_MODELS
 }
 
 /**
@@ -523,6 +541,14 @@ export async function fetchAvailableModels(
     if (apiKey) {
       cacheKeyParts.push(apiKey.slice(0, 8))
     }
+  } else if (providerId === "chatgpt-web") {
+    const baseUrl = config.chatgptWebBaseUrl || "https://chatgpt.com"
+    cacheKeyParts.push(baseUrl)
+    if (config.chatgptWebAccessToken) {
+      cacheKeyParts.push(config.chatgptWebAccessToken.slice(0, 8))
+    } else if (config.chatgptWebSessionToken) {
+      cacheKeyParts.push(config.chatgptWebSessionToken.slice(0, 8))
+    }
   }
 
   const cacheKey = cacheKeyParts.join("|")
@@ -569,6 +595,8 @@ export async function fetchAvailableModels(
         hasOpenaiApiKey: !!config.openaiApiKey,
         hasGroqApiKey: !!config.groqApiKey,
         hasGeminiApiKey: !!config.geminiApiKey,
+        hasChatgptWebAccessToken: !!config.chatgptWebAccessToken,
+        hasChatgptWebSessionToken: !!config.chatgptWebSessionToken,
       },
     )
 
@@ -586,6 +614,10 @@ export async function fetchAvailableModels(
       case "gemini":
         baseUrl = config.geminiBaseUrl
         models = await fetchGeminiModels(baseUrl, config.geminiApiKey)
+        break
+      case "chatgpt-web":
+        baseUrl = config.chatgptWebBaseUrl || "https://chatgpt.com"
+        models = await fetchChatGptWebModels()
         break
       default:
         throw new Error(`Unsupported provider: ${providerId}`)
@@ -684,6 +716,7 @@ const HARDCODED_FALLBACK_MODELS: Record<string, ModelInfo[]> = {
   openai: [
     { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
   ],
+  "chatgpt-web": CHATGPT_WEB_FALLBACK_MODELS,
   openrouter: [
     { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini (OpenAI)" },
     { id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4 (Anthropic)" },

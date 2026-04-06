@@ -3,6 +3,7 @@
  */
 
 import type { ToolCall, ToolResult } from './types';
+import { filterVisibleChatMessages } from './chat-utils';
 
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi;
 
@@ -116,7 +117,8 @@ export function sessionToListItem(session: Session): SessionListItem {
     };
   }
 
-  const lastMsg = session.messages[session.messages.length - 1];
+  const visibleMessages = filterVisibleChatMessages(session.messages);
+  const lastMsg = visibleMessages[visibleMessages.length - 1];
   const preview = sanitizeSessionText(lastMsg?.content || '');
 
   return {

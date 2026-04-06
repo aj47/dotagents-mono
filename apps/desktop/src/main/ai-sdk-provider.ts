@@ -10,7 +10,7 @@ import type { LanguageModel } from "ai"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 
-export type ProviderType = "openai" | "groq" | "gemini"
+export type ProviderType = "openai" | "groq" | "gemini" | "chatgpt-web"
 
 const DEFAULT_CHAT_MODELS = {
   openai: {
@@ -24,6 +24,10 @@ const DEFAULT_CHAT_MODELS = {
   gemini: {
     mcp: "gemini-2.5-flash",
     transcript: "gemini-2.5-flash",
+  },
+  "chatgpt-web": {
+    mcp: "gpt-5.4-mini",
+    transcript: "gpt-5.4-mini",
   },
 } as const
 
@@ -41,6 +45,14 @@ interface ProviderConfig {
 export interface PromptCachingConfig {
   strategy: string
   providerOptions?: Record<string, unknown>
+}
+
+function normalizeProviderType(providerId: string): ProviderType {
+  const normalized = providerId.trim().toLowerCase()
+  if (normalized === "openai" || normalized === "groq" || normalized === "gemini" || normalized === "chatgpt-web") {
+    return normalized
+  }
+  throw new Error(`Unknown provider: ${providerId}`)
 }
 
 function isTranscriptionOnlyModel(providerId: ProviderType, model: string): boolean {
@@ -84,8 +96,9 @@ function getProviderConfig(
   modelContext: "mcp" | "transcript" = "mcp"
 ): ProviderConfig {
   const config = configStore.get()
+  const normalizedProviderId = normalizeProviderType(providerId)
 
-  switch (providerId) {
+  switch (normalizedProviderId) {
     case "openai":
       return {
         apiKey: config.openaiApiKey || "",
@@ -122,6 +135,16 @@ function getProviderConfig(
             : config.transcriptPostProcessingGeminiModel || DEFAULT_CHAT_MODELS.gemini.transcript,
       }
 
+    case "chatgpt-web":
+      return {
+        apiKey: config.chatgptWebAccessToken || config.chatgptWebSessionToken || "",
+        baseURL: config.chatgptWebBaseUrl || "https://chatgpt.com",
+        model:
+          modelContext === "mcp"
+            ? config.mcpToolsChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].mcp
+            : config.transcriptPostProcessingChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].transcript,
+      }
+
     default:
       throw new Error(`Unknown provider: ${providerId}`)
   }
@@ -135,8 +158,9 @@ export function createLanguageModel(
   modelContext: "mcp" | "transcript" = "mcp"
 ): LanguageModel {
   const config = configStore.get()
-  const effectiveProviderId =
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
 
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
 
@@ -173,6 +197,9 @@ export function createLanguageModel(
       return google(providerConfig.model)
     }
 
+    case "chatgpt-web":
+      throw new Error("chatgpt-web provider uses a custom fetch transport, not AI SDK createLanguageModel")
+
     default:
       throw new Error(`Unknown provider: ${effectiveProviderId}`)
   }
@@ -183,7 +210,7 @@ export function createLanguageModel(
  */
 export function getCurrentProviderId(): ProviderType {
   const config = configStore.get()
-  return (config.mcpToolsProviderId as ProviderType) || "openai"
+  return normalizeProviderType((config.mcpToolsProviderId as ProviderType) || "openai")
 }
 
 /**
@@ -191,7 +218,7 @@ export function getCurrentProviderId(): ProviderType {
  */
 export function getTranscriptProviderId(): ProviderType {
   const config = configStore.get()
-  return (config.transcriptPostProcessingProviderId as ProviderType) || "openai"
+  return normalizeProviderType((config.transcriptPostProcessingProviderId as ProviderType) || "openai")
 }
 
 /**
@@ -202,8 +229,9 @@ export function getCurrentModelName(
   modelContext: "mcp" | "transcript" = "mcp"
 ): string {
   const config = configStore.get()
-  const effectiveProviderId =
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
 
   return getProviderConfig(effectiveProviderId, modelContext).model
 }
@@ -231,10 +259,15 @@ export function getPromptCachingConfig(
   modelContext: "mcp" | "transcript" = "mcp",
 ): PromptCachingConfig | undefined {
   const config = configStore.get()
-  const effectiveProviderId =
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
   const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
+
+  if (effectiveProviderId === "chatgpt-web") {
+    return undefined
+  }
 
   // Vercel AI Gateway handles caching automatically for all providers
   if (normalizedBaseURL.includes("ai-gateway.vercel.sh")) {

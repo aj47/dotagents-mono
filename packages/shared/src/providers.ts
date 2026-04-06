@@ -29,6 +29,7 @@ export const CHAT_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
   { label: "Groq", value: "groq" },
   { label: "Gemini", value: "gemini" },
+  { label: "OpenAI Codex", value: "chatgpt-web" },
 ] as const;
 
 export type CHAT_PROVIDER_ID = (typeof CHAT_PROVIDERS)[number]["value"];

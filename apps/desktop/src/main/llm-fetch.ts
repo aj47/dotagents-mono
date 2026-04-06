@@ -35,6 +35,7 @@ import {
   isLangfuseEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
+import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -740,9 +741,6 @@ export async function makeLLMCallWithFetch(
 
   return withRetry(
     async () => {
-      const model = createLanguageModel(effectiveProviderId)
-      const { system, messages: convertedMessages } = convertMessages(messages)
-      const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const abortController = createSessionAbortController(sessionId)
 
       try {
@@ -753,6 +751,90 @@ export async function makeLLMCallWithFetch(
         ) {
           abortController.abort()
         }
+
+        if (isChatGptWebProvider(effectiveProviderId)) {
+          const modelName = getCurrentChatGptWebModelName("mcp")
+          const generationId = isLangfuseEnabled() ? randomUUID() : null
+          if (generationId) {
+            createLLMGeneration(sessionId || null, generationId, {
+              name: "LLM Call",
+              model: modelName,
+              modelParameters: {
+                provider: effectiveProviderId,
+                hasTools: !!(tools && tools.length > 0),
+                toolCount: tools?.length || 0,
+              },
+              input: { messages },
+            })
+          }
+
+          let result
+          try {
+            result = await makeChatGptWebResponse(messages, {
+              modelContext: "mcp",
+              signal: abortController.signal,
+              tools,
+            })
+          } catch (error) {
+            if (generationId) {
+              endLLMGeneration(generationId, {
+                level: "ERROR",
+                statusMessage: error instanceof Error ? error.message : "chatgpt-web call failed",
+              })
+            }
+            throw error
+          }
+
+          const text = result.text.trim()
+
+          if (!text && !result.toolCalls?.length) {
+            if (generationId) {
+              endLLMGeneration(generationId, {
+                level: "ERROR",
+                statusMessage: "LLM returned empty response",
+              })
+            }
+            throw new Error("LLM returned empty response")
+          }
+
+          if (result.toolCalls?.length) {
+            const response = {
+              content: text || undefined,
+              toolCalls: result.toolCalls,
+            } satisfies LLMToolCallResponse
+
+            if (generationId) {
+              endLLMGeneration(generationId, {
+                output: JSON.stringify(response),
+                usage: buildTokenUsage(result.usage),
+              })
+            }
+            return response
+          }
+
+          const hasToolMarkers =
+            /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(text)
+          const cleaned = text.replace(/<\|[^|]*\|>/g, "").trim()
+
+          if (generationId) {
+            endLLMGeneration(generationId, {
+              output: hasToolMarkers ? text : (cleaned || text),
+              usage: buildTokenUsage(result.usage),
+            })
+          }
+
+          if (hasToolMarkers) {
+            return { content: text }
+          }
+
+          return {
+            content: cleaned || text,
+          }
+        }
+
+        const model = createLanguageModel(effectiveProviderId)
+        const { system, messages: convertedMessages } = convertMessages(messages)
+        const promptCaching = getPromptCachingConfig(effectiveProviderId)
 
         // Convert MCP tools to AI SDK format if provided
         const convertedTools = tools && tools.length > 0
@@ -955,16 +1037,85 @@ export async function makeLLMCallWithStreamingAndTools(
 
   return withRetry(
     async () => {
-      const model = createLanguageModel(effectiveProviderId)
-      const { system, messages: convertedMessages } = convertMessages(messages)
-      const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const abortController = createSessionAbortController(sessionId)
 
+      const modelName = isChatGptWebProvider(effectiveProviderId)
+        ? getCurrentChatGptWebModelName("mcp")
+        : getCurrentModelName(effectiveProviderId)
       const convertedTools = tools && tools.length > 0
         ? convertMCPToolsToAISDKTools(tools)
         : undefined
 
-      const modelName = getCurrentModelName(effectiveProviderId)
+      if (isChatGptWebProvider(effectiveProviderId)) {
+        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        if (generationId) {
+          createLLMGeneration(sessionId || null, generationId, {
+            name: "Streaming LLM Call",
+            model: modelName,
+            modelParameters: {
+              provider: effectiveProviderId,
+              hasTools: !!convertedTools,
+              toolCount: tools?.length || 0,
+            },
+            input: { messages },
+          })
+        }
+
+        try {
+          if (
+            state.shouldStopAgent ||
+            (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
+          ) {
+            abortController.abort()
+          }
+
+          const result = await makeChatGptWebResponse(messages, {
+            modelContext: "mcp",
+            signal: abortController.signal,
+            onTextChunk: onChunk,
+            tools,
+          })
+          const text = result.text
+
+          if (generationId) {
+            endLLMGeneration(generationId, {
+              output: result.toolCalls?.length
+                ? JSON.stringify({ content: text, toolCalls: result.toolCalls })
+                : text,
+              usage: buildTokenUsage(result.usage),
+            })
+          }
+
+          if (!text.trim() && !result.toolCalls?.length) {
+            throw new Error("LLM returned empty response")
+          }
+
+          if (result.toolCalls?.length) {
+            return {
+              content: text || undefined,
+              toolCalls: result.toolCalls,
+            }
+          }
+
+          return {
+            content: text.trim(),
+          }
+        } catch (error: any) {
+          if (generationId) {
+            endLLMGeneration(generationId, {
+              level: "ERROR",
+              statusMessage: getErrorMessage(error, "Streaming+tools LLM call failed"),
+            })
+          }
+          throw error
+        } finally {
+          unregisterSessionAbortController(abortController, sessionId)
+        }
+      }
+
+      const model = createLanguageModel(effectiveProviderId)
+      const { system, messages: convertedMessages } = convertMessages(messages)
+      const promptCaching = getPromptCachingConfig(effectiveProviderId)
 
       if (isDebugLLM()) {
         logLLM("🚀 AI SDK streamText+tools call", {
@@ -1115,7 +1266,9 @@ export async function makeTextCompletionWithFetch(
 
       // Create Langfuse generation if enabled
       const generationId = isLangfuseEnabled() ? randomUUID() : null
-      const modelName = getCurrentModelName(effectiveProviderId, "transcript")
+      const modelName = isChatGptWebProvider(effectiveProviderId)
+        ? getCurrentChatGptWebModelName("transcript")
+        : getCurrentModelName(effectiveProviderId, "transcript")
 
       if (generationId) {
         createLLMGeneration(sessionId || null, generationId, {
@@ -1135,33 +1288,45 @@ export async function makeTextCompletionWithFetch(
           abortController.abort()
         }
 
-        const model = createLanguageModel(effectiveProviderId, "transcript")
-        const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
+        let usage: ExtendedUsage | undefined
+        const text = isChatGptWebProvider(effectiveProviderId)
+          ? (await makeChatGptWebCompletion(
+              [{ role: "user", content: prompt }],
+              {
+                modelContext: "transcript",
+                signal: abortController.signal,
+              },
+            )).trim()
+          : await (async () => {
+              const model = createLanguageModel(effectiveProviderId, "transcript")
+              const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
 
-        if (isDebugLLM()) {
-          logLLM("🚀 AI SDK text completion call", {
-            provider: effectiveProviderId,
-            promptLength: prompt.length,
-          })
-        }
+              if (isDebugLLM()) {
+                logLLM("🚀 AI SDK text completion call", {
+                  provider: effectiveProviderId,
+                  promptLength: prompt.length,
+                })
+              }
 
-        const result = await generateText({
-          model,
-          prompt,
-          abortSignal: abortController.signal,
-          providerOptions: promptCaching?.providerOptions as any,
-        })
+              const result = await generateText({
+                model,
+                prompt,
+                abortSignal: abortController.signal,
+                providerOptions: promptCaching?.providerOptions as any,
+              })
 
-        // Log prompt cache metrics
-        logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
+              // Log prompt cache metrics
+              logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
+              usage = result.usage as ExtendedUsage
 
-        const text = result.text?.trim() || ""
+              return result.text?.trim() || ""
+            })()
 
         // End Langfuse generation
         if (generationId) {
           endLLMGeneration(generationId, {
             output: text,
-            usage: buildTokenUsage(result.usage),
+            usage: buildTokenUsage(usage),
           })
         }
 
@@ -1210,21 +1375,16 @@ export async function verifyCompletionWithFetch(
           abortController.abort()
         }
 
-        const model = createLanguageModel(effectiveProviderId)
-        const modelName = getCurrentModelName(effectiveProviderId)
-        const { system, messages: convertedMessages } = convertMessages(messages)
-
-        if (isDebugLLM()) {
-          logLLM("🚀 AI SDK verification call", {
-            provider: effectiveProviderId,
-            messagesCount: messages.length,
-            hasSystem: !!system,
-          })
-        }
+        const modelName = isChatGptWebProvider(effectiveProviderId)
+          ? getCurrentChatGptWebModelName("mcp")
+          : getCurrentModelName(effectiveProviderId)
 
         // Create Langfuse generation if enabled
         const generationId = isLangfuseEnabled() ? randomUUID() : null
-        const promptCaching = getPromptCachingConfig(effectiveProviderId)
+        const promptCaching = isChatGptWebProvider(effectiveProviderId)
+          ? undefined
+          : getPromptCachingConfig(effectiveProviderId)
+        const { system, messages: convertedMessages } = convertMessages(messages)
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
             name: "Verification Call",
@@ -1237,15 +1397,36 @@ export async function verifyCompletionWithFetch(
           })
         }
 
-        let result
-        try {
-          result = await generateText({
-            model,
-            system,
-            messages: convertedMessages,
-            abortSignal: abortController.signal,
-            providerOptions: promptCaching?.providerOptions as any,
+        if (isDebugLLM()) {
+          logLLM("🚀 AI SDK verification call", {
+            provider: effectiveProviderId,
+            messagesCount: messages.length,
+            hasSystem: !!system,
           })
+        }
+
+        let text = ""
+        let usage: ExtendedUsage | undefined
+        try {
+          if (isChatGptWebProvider(effectiveProviderId)) {
+            text = (await makeChatGptWebCompletion(messages, {
+              modelContext: "mcp",
+              signal: abortController.signal,
+            })).trim()
+          } else {
+            const model = createLanguageModel(effectiveProviderId)
+            const result = await generateText({
+              model,
+              system,
+              messages: convertedMessages,
+              abortSignal: abortController.signal,
+              providerOptions: promptCaching?.providerOptions as any,
+            })
+            usage = result.usage as ExtendedUsage
+            // Log prompt cache metrics
+            logCacheMetrics(usage, promptCaching?.strategy, effectiveProviderId)
+            text = result.text?.trim() || ""
+          }
         } catch (error) {
           // End Langfuse generation with error before rethrowing
           if (generationId) {
@@ -1257,10 +1438,6 @@ export async function verifyCompletionWithFetch(
           throw error
         }
 
-        // Log prompt cache metrics
-        logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
-
-        const text = result.text?.trim() || ""
         const jsonObject = extractJsonObject(text)
 
         if (jsonObject && (typeof jsonObject.isComplete === "boolean" || typeof jsonObject.conversationState === "string")) {
@@ -1270,7 +1447,7 @@ export async function verifyCompletionWithFetch(
           if (generationId) {
             endLLMGeneration(generationId, {
               output: JSON.stringify(normalizedVerification),
-              usage: buildTokenUsage(result.usage),
+              usage: buildTokenUsage(usage),
             })
           }
           return normalizedVerification as CompletionVerification
@@ -1280,7 +1457,7 @@ export async function verifyCompletionWithFetch(
         if (generationId) {
           endLLMGeneration(generationId, {
             output: text,
-            usage: buildTokenUsage(result.usage),
+            usage: buildTokenUsage(usage),
             level: "WARNING",
             statusMessage: "Failed to parse verification response as JSON",
           })

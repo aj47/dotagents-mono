@@ -6,7 +6,7 @@ import { parseContinueReplayFixture, resolveContinueReplayMessages, type Continu
 const liveReplayEnabled = process.env.LIVE_LLM_REPLAY === "1"
 const liveReplayConfig = {
   fixtureInput: process.env.CONTINUE_REPLAY_FIXTURE,
-  providerId: (process.env.LIVE_LLM_PROVIDER_ID || "openai") as "openai" | "groq" | "gemini",
+  providerId: (process.env.LIVE_LLM_PROVIDER_ID || "openai") as "openai" | "groq" | "gemini" | "chatgpt-web",
   apiKey: process.env.LIVE_LLM_API_KEY || "",
   baseUrl: process.env.LIVE_LLM_BASE_URL || "",
   model: process.env.LIVE_LLM_MODEL || "",
@@ -42,6 +42,9 @@ vi.mock("./config", () => ({
       geminiApiKey: liveReplayConfig.providerId === "gemini" ? liveReplayConfig.apiKey : "",
       geminiBaseUrl: liveReplayConfig.providerId === "gemini" ? liveReplayConfig.baseUrl || undefined : undefined,
       mcpToolsGeminiModel: liveReplayConfig.providerId === "gemini" ? liveReplayConfig.model : undefined,
+      chatgptWebAccessToken: liveReplayConfig.providerId === "chatgpt-web" ? liveReplayConfig.apiKey : "",
+      chatgptWebBaseUrl: liveReplayConfig.providerId === "chatgpt-web" ? liveReplayConfig.baseUrl || undefined : undefined,
+      mcpToolsChatgptWebModel: liveReplayConfig.providerId === "chatgpt-web" ? liveReplayConfig.model : undefined,
       langfuseEnabled: false,
     }),
   },

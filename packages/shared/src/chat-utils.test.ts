@@ -6,10 +6,13 @@ import {
   formatToolArguments,
   formatArgumentsPreview,
   RESPOND_TO_USER_TOOL,
+  MARK_WORK_COMPLETE_TOOL,
   extractRespondToUserContentFromArgs,
   extractRespondToUserResponseEvents,
   resolveMessageTimestamps,
   isToolOnlyMessage,
+  isInternalCompletionControlMessage,
+  filterVisibleChatMessages,
 } from './chat-utils'
 
 // ── Collapse Logic ───────────────────────────────────────────────────────────
@@ -322,10 +325,54 @@ describe('isToolOnlyMessage', () => {
   })
 })
 
+describe('isInternalCompletionControlMessage', () => {
+  it('treats empty respond_to_user assistant wrappers as internal', () => {
+    expect(isInternalCompletionControlMessage({
+      role: 'assistant',
+      content: '',
+      toolCalls: [{ name: 'respond_to_user' }],
+    })).toBe(true)
+  })
+
+  it('treats respond_to_user tool result messages as internal', () => {
+    expect(isInternalCompletionControlMessage({
+      role: 'tool',
+      content: '[respond_to_user] {"success":true,"message":"Response recorded for delivery to user."}',
+    })).toBe(true)
+  })
+
+  it('keeps normal assistant messages visible', () => {
+    expect(isInternalCompletionControlMessage({
+      role: 'assistant',
+      content: 'Hi — what can I help with?',
+    })).toBe(false)
+  })
+})
+
+describe('filterVisibleChatMessages', () => {
+  it('filters internal respond_to_user wrapper steps from previews', () => {
+    const messages = [
+      { role: 'user' as const, content: 'hi' },
+      { role: 'assistant' as const, content: '', toolCalls: [{ name: 'respond_to_user' }] },
+      { role: 'tool' as const, content: '[respond_to_user] {"success":true}' },
+      { role: 'assistant' as const, content: 'Hi — what can I help with?' },
+    ]
+
+    expect(filterVisibleChatMessages(messages)).toEqual([
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'Hi — what can I help with?' },
+    ])
+  })
+})
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 describe('Constants', () => {
   it('RESPOND_TO_USER_TOOL is "respond_to_user"', () => {
     expect(RESPOND_TO_USER_TOOL).toBe('respond_to_user')
+  })
+
+  it('MARK_WORK_COMPLETE_TOOL is "mark_work_complete"', () => {
+    expect(MARK_WORK_COMPLETE_TOOL).toBe('mark_work_complete')
   })
 })

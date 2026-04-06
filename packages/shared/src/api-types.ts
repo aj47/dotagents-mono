@@ -54,10 +54,11 @@ export interface PredefinedPromptSummary {
 
 export interface Settings {
   // MCP Tools Model Configuration
-  mcpToolsProviderId: 'openai' | 'groq' | 'gemini';
+  mcpToolsProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   mcpToolsOpenaiModel?: string;
   mcpToolsGroqModel?: string;
   mcpToolsGeminiModel?: string;
+  mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
   availablePresets?: Array<{ id: string; name: string; baseUrl: string; isBuiltIn: boolean }>;
   predefinedPrompts?: PredefinedPromptSummary[];
@@ -85,10 +86,11 @@ export interface Settings {
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
-  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini';
+  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   transcriptPostProcessingOpenaiModel?: string;
   transcriptPostProcessingGroqModel?: string;
   transcriptPostProcessingGeminiModel?: string;
+  transcriptPostProcessingChatgptWebModel?: string;
   transcriptPostProcessingPrompt?: string;
 
   // Text-to-Speech Configuration
@@ -138,10 +140,11 @@ export interface Settings {
 
 export interface SettingsUpdate {
   // MCP Tools Model Configuration
-  mcpToolsProviderId?: 'openai' | 'groq' | 'gemini';
+  mcpToolsProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   mcpToolsOpenaiModel?: string;
   mcpToolsGroqModel?: string;
   mcpToolsGeminiModel?: string;
+  mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
 
   // Agent Execution Settings
@@ -167,10 +170,11 @@ export interface SettingsUpdate {
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
-  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini';
+  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   transcriptPostProcessingOpenaiModel?: string;
   transcriptPostProcessingGroqModel?: string;
   transcriptPostProcessingGeminiModel?: string;
+  transcriptPostProcessingChatgptWebModel?: string;
   transcriptPostProcessingPrompt?: string;
 
   // Text-to-Speech Configuration

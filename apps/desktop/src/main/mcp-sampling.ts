@@ -95,6 +95,12 @@ export async function executeSampling(
       if (hint?.name) {
         model = hint.name
       }
+    } else if (providerId === "groq") {
+      model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
+    } else if (providerId === "gemini") {
+      model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
+    } else if (providerId === "chatgpt-web") {
+      model = config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
     }
 
     // Execute the LLM call
@@ -196,4 +202,3 @@ export function cancelAllSamplingRequests(serverName?: string): void {
     }
   }
 }
-

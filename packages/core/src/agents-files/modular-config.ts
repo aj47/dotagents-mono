@@ -160,6 +160,7 @@ function isModelsKey(key: string): boolean {
     key.startsWith("openai") ||
     key.startsWith("groq") ||
     key.startsWith("gemini") ||
+    key.startsWith("chatgpt") ||
     key.startsWith("stt") ||
     key.startsWith("tts") ||
     key.startsWith("parakeet") ||

@@ -421,6 +421,7 @@ function resolveActiveModelId(cfg: any): string {
   if (provider === "openai") return cfg.mcpToolsOpenaiModel || "openai"
   if (provider === "groq") return cfg.mcpToolsGroqModel || "groq"
   if (provider === "gemini") return cfg.mcpToolsGeminiModel || "gemini"
+  if (provider === "chatgpt-web") return cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
   return String(provider)
 }
 
@@ -1038,7 +1039,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const params = req.params as { providerId: string }
       const providerId = params.providerId
 
-      const validProviders = ["openai", "groq", "gemini"]
+      const validProviders = ["openai", "groq", "gemini", "chatgpt-web"]
       if (!validProviders.includes(providerId)) {
         return reply.code(400).send({ error: `Invalid provider: ${providerId}. Valid providers: ${validProviders.join(", ")}` })
       }
@@ -1265,6 +1266,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
+        mcpToolsChatgptWebModel: cfg.mcpToolsChatgptWebModel,
         // OpenAI compatible preset settings
         currentModelPresetId: cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID,
         availablePresets: [...mergedPresets, ...customPresets].map(p => ({
@@ -1329,6 +1331,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || "",
         transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || "",
         transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || "",
+        transcriptPostProcessingChatgptWebModel: cfg.transcriptPostProcessingChatgptWebModel || "",
         // ACP Agent settings
         mainAgentName: cfg.mainAgentName || "",
         acpInjectRuntimeTools: cfg.acpInjectRuntimeTools !== false,
@@ -1379,9 +1382,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.mcpMaxIterations = Math.floor(body.mcpMaxIterations)
       }
       // Model settings
-      const validProviders = ["openai", "groq", "gemini"]
+      const validProviders = ["openai", "groq", "gemini", "chatgpt-web"]
       if (typeof body.mcpToolsProviderId === "string" && validProviders.includes(body.mcpToolsProviderId)) {
-        updates.mcpToolsProviderId = body.mcpToolsProviderId as "openai" | "groq" | "gemini"
+        updates.mcpToolsProviderId = body.mcpToolsProviderId as "openai" | "groq" | "gemini" | "chatgpt-web"
       }
       if (typeof body.mcpToolsOpenaiModel === "string") {
         updates.mcpToolsOpenaiModel = body.mcpToolsOpenaiModel
@@ -1391,6 +1394,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.mcpToolsGeminiModel === "string") {
         updates.mcpToolsGeminiModel = body.mcpToolsGeminiModel
+      }
+      if (typeof body.mcpToolsChatgptWebModel === "string") {
+        updates.mcpToolsChatgptWebModel = body.mcpToolsChatgptWebModel
+      }
+      if (typeof body.chatgptWebAccessToken === "string") {
+        updates.chatgptWebAccessToken = body.chatgptWebAccessToken
+      }
+      if (typeof body.chatgptWebSessionToken === "string") {
+        updates.chatgptWebSessionToken = body.chatgptWebSessionToken
+      }
+      if (typeof body.chatgptWebAccountId === "string") {
+        updates.chatgptWebAccountId = body.chatgptWebAccountId
+      }
+      if (typeof body.chatgptWebBaseUrl === "string") {
+        updates.chatgptWebBaseUrl = body.chatgptWebBaseUrl
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {
@@ -1510,9 +1528,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.ttsProviderId = body.ttsProviderId as "openai" | "groq" | "gemini" | "kitten" | "supertonic"
       }
       // Transcript Post-Processing Provider
-      const validPostProcessingProviders = ["openai", "groq", "gemini"]
+      const validPostProcessingProviders = ["openai", "groq", "gemini", "chatgpt-web"]
       if (typeof body.transcriptPostProcessingProviderId === "string" && validPostProcessingProviders.includes(body.transcriptPostProcessingProviderId)) {
-        updates.transcriptPostProcessingProviderId = body.transcriptPostProcessingProviderId as "openai" | "groq" | "gemini"
+        updates.transcriptPostProcessingProviderId = body.transcriptPostProcessingProviderId as "openai" | "groq" | "gemini" | "chatgpt-web"
       }
       if (typeof body.transcriptPostProcessingOpenaiModel === "string") {
         updates.transcriptPostProcessingOpenaiModel = body.transcriptPostProcessingOpenaiModel
@@ -1522,6 +1540,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.transcriptPostProcessingGeminiModel === "string") {
         updates.transcriptPostProcessingGeminiModel = body.transcriptPostProcessingGeminiModel
+      }
+      if (typeof body.transcriptPostProcessingChatgptWebModel === "string") {
+        updates.transcriptPostProcessingChatgptWebModel = body.transcriptPostProcessingChatgptWebModel
       }
       // ACP Agent settings
       if (typeof body.mainAgentName === "string") {

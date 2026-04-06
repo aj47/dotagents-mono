@@ -160,7 +160,9 @@ export function Component() {
     ? config.transcriptPostProcessingOpenaiModel
     : transcriptProcessingProviderId === "groq"
       ? config.transcriptPostProcessingGroqModel
-      : config.transcriptPostProcessingGeminiModel
+      : transcriptProcessingProviderId === "gemini"
+        ? config.transcriptPostProcessingGeminiModel
+        : config.transcriptPostProcessingChatgptWebModel
   const dualModelEnabled = config.dualModelEnabled ?? false
   const strongPresetId = config.dualModelStrongPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
   const weakPresetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
@@ -198,12 +200,26 @@ export function Component() {
             </div>
           )}
 
-          {(agentProviderId === "groq" || agentProviderId === "gemini") && (
+          {(agentProviderId === "groq" || agentProviderId === "gemini" || agentProviderId === "chatgpt-web") && (
             <div className="px-3 py-2">
               <ProviderModelSelector
                 providerId={agentProviderId}
-                mcpModel={agentProviderId === "groq" ? config.mcpToolsGroqModel : config.mcpToolsGeminiModel}
-                onMcpModelChange={(value) => saveConfig(agentProviderId === "groq" ? { mcpToolsGroqModel: value } : { mcpToolsGeminiModel: value })}
+                mcpModel={
+                  agentProviderId === "groq"
+                    ? config.mcpToolsGroqModel
+                    : agentProviderId === "gemini"
+                      ? config.mcpToolsGeminiModel
+                      : config.mcpToolsChatgptWebModel
+                }
+                onMcpModelChange={(value) =>
+                  saveConfig(
+                    agentProviderId === "groq"
+                      ? { mcpToolsGroqModel: value }
+                      : agentProviderId === "gemini"
+                        ? { mcpToolsGeminiModel: value }
+                        : { mcpToolsChatgptWebModel: value },
+                  )
+                }
                 showMcpModel={true}
                 showTranscriptModel={false}
               />
@@ -285,8 +301,10 @@ export function Component() {
                     onValueChange={(value) => {
                       if (transcriptProcessingProviderId === "groq") {
                         saveConfig({ transcriptPostProcessingGroqModel: value })
-                      } else {
+                      } else if (transcriptProcessingProviderId === "gemini") {
                         saveConfig({ transcriptPostProcessingGeminiModel: value })
+                      } else {
+                        saveConfig({ transcriptPostProcessingChatgptWebModel: value })
                       }
                     }}
                     label="Transcript Processing model"

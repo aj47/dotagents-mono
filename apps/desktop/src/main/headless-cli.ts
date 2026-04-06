@@ -73,6 +73,7 @@ function printStatus() {
   if (provider === "openai") modelName = cfg.mcpToolsOpenaiModel || "gpt-4.1-mini"
   else if (provider === "groq") modelName = cfg.mcpToolsGroqModel || "openai/gpt-oss-120b"
   else if (provider === "gemini") modelName = cfg.mcpToolsGeminiModel || "gemini-2.5-flash"
+  else if (provider === "chatgpt-web") modelName = cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
 
   console.log(`\n${colors.bold}Server Status:${colors.reset}`)
   console.log(`  Model: ${colors.cyan}${provider}/${modelName}${colors.reset}`)

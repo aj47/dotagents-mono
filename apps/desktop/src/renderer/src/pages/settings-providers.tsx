@@ -14,7 +14,9 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
+import { tipcClient } from "@renderer/lib/tipc-client"
 import { Config } from "@shared/types"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
@@ -22,7 +24,11 @@ import { getSelectableMainAcpAgents } from "./settings-general-main-agent-option
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
-type ProviderDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+type ProviderDraftKey =
+  | "groqApiKey"
+  | "groqBaseUrl"
+  | "geminiApiKey"
+  | "geminiBaseUrl"
 
 function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
   return {
@@ -634,11 +640,17 @@ function SupertonicProviderSection({
 
 export function Component() {
   const configQuery = useConfigQuery()
+  const chatgptWebAuthQuery = useQuery({
+    queryKey: ["chatgpt-web-auth-status"],
+    queryFn: () => tipcClient.getChatGptWebAuthStatus(),
+  })
 
   const saveConfigMutation = useSaveConfigMutation()
   const cfgRef = useRef(configQuery.data)
   const providerSaveTimeoutsRef = useRef<Partial<Record<ProviderDraftKey, ReturnType<typeof setTimeout>>>>({})
   const [providerDrafts, setProviderDrafts] = useState(() => getProviderDrafts(configQuery.data))
+  const [chatgptWebAuthBusy, setChatgptWebAuthBusy] = useState(false)
+  const [chatgptWebAuthError, setChatgptWebAuthError] = useState<string | null>(null)
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
@@ -706,9 +718,51 @@ export function Component() {
     scheduleProviderSave(key, value)
   }, [scheduleProviderSave])
 
+  const handleChatgptWebAuth = useCallback(async () => {
+    setChatgptWebAuthBusy(true)
+    setChatgptWebAuthError(null)
+    try {
+      await tipcClient.loginChatGptWebOAuth()
+      await Promise.all([
+        chatgptWebAuthQuery.refetch(),
+        configQuery.refetch(),
+      ])
+    } catch (error) {
+      setChatgptWebAuthError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setChatgptWebAuthBusy(false)
+    }
+  }, [chatgptWebAuthQuery, configQuery])
+
+  const handleChatgptWebLogout = useCallback(async () => {
+    setChatgptWebAuthBusy(true)
+    setChatgptWebAuthError(null)
+    try {
+      await tipcClient.logoutChatGptWebOAuth()
+      await Promise.all([
+        chatgptWebAuthQuery.refetch(),
+        configQuery.refetch(),
+      ])
+    } catch (error) {
+      setChatgptWebAuthError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setChatgptWebAuthBusy(false)
+    }
+  }, [chatgptWebAuthQuery, configQuery])
+
+  const handleCopyChatgptCallbackUrl = useCallback(async () => {
+    const callbackUrl = (chatgptWebAuthQuery.data as { callbackUrl?: string } | undefined)?.callbackUrl || "http://localhost:1455/auth/callback"
+    try {
+      await copyTextToClipboard(callbackUrl)
+      setChatgptWebAuthError(null)
+    } catch (error) {
+      setChatgptWebAuthError(error instanceof Error ? error.message : String(error))
+    }
+  }, [chatgptWebAuthQuery.data])
+
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
-    if (!configQuery.data) return { openai: [], groq: [], gemini: [], parakeet: [], kitten: [], supertonic: [] }
+    if (!configQuery.data) return { openai: [], groq: [], gemini: [], chatgptWeb: [], parakeet: [], kitten: [], supertonic: [] }
 
     const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acp"
     const stt = configQuery.data.sttProviderId || "openai"
@@ -733,6 +787,10 @@ export function Component() {
         ...(transcript === "gemini" ? [{ label: "Cleanup", icon: FileText }] : []),
         ...(mcp === "gemini" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
         ...(tts === "gemini" ? [{ label: "TTS", icon: Volume2 }] : []),
+      ],
+      chatgptWeb: [
+        ...(transcript === "chatgpt-web" ? [{ label: "Cleanup", icon: FileText }] : []),
+        ...(mcp === "chatgpt-web" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
       ],
       parakeet: [
         ...(stt === "parakeet" ? [{ label: "STT", icon: Mic }] : []),
@@ -762,6 +820,7 @@ export function Component() {
   // Determine which providers are active (selected for at least one feature)
   const isGroqActive = activeProviders.groq.length > 0
   const isGeminiActive = activeProviders.gemini.length > 0
+  const isChatgptWebActive = activeProviders.chatgptWeb.length > 0
   const isParakeetActive = activeProviders.parakeet.length > 0
   const isKittenActive = activeProviders.kitten.length > 0
   const isSupertonicActive = activeProviders.supertonic.length > 0
@@ -776,7 +835,7 @@ export function Component() {
       placeholder,
     }: {
       label: string
-      type: "password" | "url"
+      type: "password" | "url" | "text"
       placeholder?: string
     },
   ) => (
@@ -957,6 +1016,83 @@ export function Component() {
           </div>
         )}
 
+        {/* ChatGPT Web Provider Section - rendered in order based on active status */}
+        {isChatgptWebActive && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5">
+            <button
+              type="button"
+              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => saveConfig({ providerSectionCollapsedChatgptWeb: !configQuery.data.providerSectionCollapsedChatgptWeb })}
+              aria-expanded={!configQuery.data.providerSectionCollapsedChatgptWeb}
+              aria-controls="chatgpt-web-provider-content"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {configQuery.data.providerSectionCollapsedChatgptWeb ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                OpenAI Codex
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+              </span>
+              <div className="flex gap-1.5 flex-wrap justify-end">
+                {activeProviders.chatgptWeb.map((badge) => (
+                  <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
+                ))}
+              </div>
+            </button>
+            {!configQuery.data.providerSectionCollapsedChatgptWeb && (
+              <div id="chatgpt-web-provider-content" className="divide-y border-t">
+                <div className="px-3 py-3 space-y-3">
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {(chatgptWebAuthQuery.data as any)?.authenticated
+                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
+                        : "Not connected"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {(chatgptWebAuthQuery.data as any)?.planType
+                        ? `Plan: ${(chatgptWebAuthQuery.data as any).planType}`
+                        : "Uses your ChatGPT Codex subscription via OAuth."}
+                    </div>
+                    {(chatgptWebAuthQuery.data as any)?.accountId && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Account ID: {(chatgptWebAuthQuery.data as any).accountId}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={handleChatgptWebAuth} disabled={chatgptWebAuthBusy}>
+                      {chatgptWebAuthBusy
+                        ? "Working..."
+                        : (chatgptWebAuthQuery.data as any)?.authenticated
+                          ? "Re-auth"
+                          : "Connect"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleCopyChatgptCallbackUrl} disabled={chatgptWebAuthBusy}>
+                      Copy Callback URL
+                    </Button>
+                    {(chatgptWebAuthQuery.data as any)?.authenticated && (
+                      <Button size="sm" variant="outline" onClick={handleChatgptWebLogout} disabled={chatgptWebAuthBusy}>
+                        Disconnect
+                      </Button>
+                    )}
+                  </div>
+
+                  {chatgptWebAuthError && (
+                    <p className="text-xs text-destructive">{chatgptWebAuthError}</p>
+                  )}
+                </div>
+
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                  Browser sign-in should return to `http://localhost:1455/auth/callback`. Use Copy Callback URL if you need to inspect or paste the callback target.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Parakeet (Local) Provider Section */}
         {isParakeetActive && (
           <ParakeetProviderSection
@@ -1076,6 +1212,74 @@ export function Component() {
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
                   Gemini model selection now lives on the Models page.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Inactive ChatGPT Web Provider Section - shown at bottom when not selected */}
+        {!isChatgptWebActive && (
+          <div className="rounded-lg border">
+            <button
+              type="button"
+              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => saveConfig({ providerSectionCollapsedChatgptWeb: !configQuery.data.providerSectionCollapsedChatgptWeb })}
+              aria-expanded={!configQuery.data.providerSectionCollapsedChatgptWeb}
+              aria-controls="chatgpt-web-provider-content-inactive"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {configQuery.data.providerSectionCollapsedChatgptWeb ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                OpenAI Codex
+              </span>
+            </button>
+            {!configQuery.data.providerSectionCollapsedChatgptWeb && (
+              <div id="chatgpt-web-provider-content-inactive" className="divide-y border-t">
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Not selected above. You can still configure it here.
+                </p>
+
+                <div className="px-3 py-3 space-y-3">
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {(chatgptWebAuthQuery.data as any)?.authenticated
+                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
+                        : "Not connected"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Uses your ChatGPT Codex subscription via OAuth.
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={handleChatgptWebAuth} disabled={chatgptWebAuthBusy}>
+                      {chatgptWebAuthBusy
+                        ? "Working..."
+                        : (chatgptWebAuthQuery.data as any)?.authenticated
+                          ? "Re-auth"
+                          : "Connect"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleCopyChatgptCallbackUrl} disabled={chatgptWebAuthBusy}>
+                      Copy Callback URL
+                    </Button>
+                    {(chatgptWebAuthQuery.data as any)?.authenticated && (
+                      <Button size="sm" variant="outline" onClick={handleChatgptWebLogout} disabled={chatgptWebAuthBusy}>
+                        Disconnect
+                      </Button>
+                    )}
+                  </div>
+
+                  {chatgptWebAuthError && (
+                    <p className="text-xs text-destructive">{chatgptWebAuthError}</p>
+                  )}
+                </div>
+
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
+                  Browser sign-in should return to `http://localhost:1455/auth/callback`. This provider now talks to the Codex responses transport, not the legacy conversation endpoint.
                 </p>
               </div>
             )}

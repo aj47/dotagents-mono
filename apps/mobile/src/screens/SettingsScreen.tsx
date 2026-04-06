@@ -856,7 +856,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   // Fetch available models for the current provider
-  const fetchModels = useCallback(async (providerId: 'openai' | 'groq' | 'gemini') => {
+  const fetchModels = useCallback(async (providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
     if (!settingsClient) return;
 
     setIsLoadingModels(true);
@@ -886,7 +886,7 @@ export default function SettingsScreen({ navigation }: any) {
   }, [remoteSettings?.mcpToolsProviderId, settingsClient, fetchModels]);
 
   // Handle provider change
-  const handleProviderChange = async (provider: 'openai' | 'groq' | 'gemini') => {
+  const handleProviderChange = async (provider: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
     if (!settingsClient || !remoteSettings || remoteSettings.mcpToolsProviderId === provider) return;
 
     // Cancel any pending model update to avoid writing to the wrong provider's model key
@@ -948,7 +948,8 @@ export default function SettingsScreen({ navigation }: any) {
     if (remoteSettings) {
       const pendingModelKey = remoteSettings.mcpToolsProviderId === 'openai' ? 'mcpToolsOpenaiModel'
         : remoteSettings.mcpToolsProviderId === 'groq' ? 'mcpToolsGroqModel'
-        : 'mcpToolsGeminiModel';
+        : remoteSettings.mcpToolsProviderId === 'gemini' ? 'mcpToolsGeminiModel'
+        : 'mcpToolsChatgptWebModel';
       markRemotePending(pendingModelKey);
     }
     setSaveStatusMessage(null);
@@ -965,7 +966,8 @@ export default function SettingsScreen({ navigation }: any) {
       const provider = remoteSettings.mcpToolsProviderId;
       const modelKey = provider === 'openai' ? 'mcpToolsOpenaiModel'
         : provider === 'groq' ? 'mcpToolsGroqModel'
-        : 'mcpToolsGeminiModel';
+        : provider === 'gemini' ? 'mcpToolsGeminiModel'
+        : 'mcpToolsChatgptWebModel';
 
       // Update local state
       setRemoteSettings(prev => prev ? { ...prev, [modelKey]: modelName } : null);
@@ -997,7 +999,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (remoteSettings) {
       setCustomModelDraft(getCurrentModelValue());
     }
-  }, [remoteSettings?.mcpToolsProviderId, remoteSettings?.mcpToolsOpenaiModel, remoteSettings?.mcpToolsGroqModel, remoteSettings?.mcpToolsGeminiModel]);
+  }, [remoteSettings?.mcpToolsProviderId, remoteSettings?.mcpToolsOpenaiModel, remoteSettings?.mcpToolsGroqModel, remoteSettings?.mcpToolsGeminiModel, remoteSettings?.mcpToolsChatgptWebModel]);
 
   // Get current model value based on provider
   const getCurrentModelValue = () => {
@@ -1005,7 +1007,8 @@ export default function SettingsScreen({ navigation }: any) {
     const provider = remoteSettings.mcpToolsProviderId;
     if (provider === 'openai') return remoteSettings.mcpToolsOpenaiModel || '';
     if (provider === 'groq') return remoteSettings.mcpToolsGroqModel || '';
-    return remoteSettings.mcpToolsGeminiModel || '';
+    if (provider === 'gemini') return remoteSettings.mcpToolsGeminiModel || '';
+    return remoteSettings.mcpToolsChatgptWebModel || '';
   };
 
   // Get placeholder based on provider
@@ -1014,7 +1017,8 @@ export default function SettingsScreen({ navigation }: any) {
     const provider = remoteSettings.mcpToolsProviderId;
     if (provider === 'openai') return 'gpt-4.1-mini';
     if (provider === 'groq') return 'openai/gpt-oss-120b';
-    return 'gemini-2.5-flash';
+    if (provider === 'gemini') return 'gemini-2.5-flash';
+    return 'gpt-5.4-mini';
   };
 
   // Get display name for current model
@@ -1088,14 +1092,18 @@ export default function SettingsScreen({ navigation }: any) {
           ? 'mcpToolsOpenaiModel'
           : remoteSettings.mcpToolsProviderId === 'groq'
             ? 'mcpToolsGroqModel'
-            : 'mcpToolsGeminiModel';
+            : remoteSettings.mcpToolsProviderId === 'gemini'
+              ? 'mcpToolsGeminiModel'
+              : 'mcpToolsChatgptWebModel';
         if (pendingKeys.has(modelKey)) {
           if (modelKey === 'mcpToolsOpenaiModel') {
             updates.mcpToolsOpenaiModel = customModelDraft;
           } else if (modelKey === 'mcpToolsGroqModel') {
             updates.mcpToolsGroqModel = customModelDraft;
-          } else {
+          } else if (modelKey === 'mcpToolsGeminiModel') {
             updates.mcpToolsGeminiModel = customModelDraft;
+          } else {
+            updates.mcpToolsChatgptWebModel = customModelDraft;
           }
         }
 
@@ -1526,7 +1534,7 @@ export default function SettingsScreen({ navigation }: any) {
                         styles.providerOption,
                         (remoteSettings.mcpToolsProviderId || 'openai') === provider.value && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleProviderChange(provider.value as 'openai' | 'groq' | 'gemini')}
+                      onPress={() => handleProviderChange(provider.value as 'openai' | 'groq' | 'gemini' | 'chatgpt-web')}
                     >
                       <Text style={[
                         styles.providerOptionText,
@@ -1618,7 +1626,7 @@ export default function SettingsScreen({ navigation }: any) {
                 {/* Model Settings */}
                 <Text style={styles.label}>Provider</Text>
                 <View style={styles.providerSelector}>
-                  {(['openai', 'groq', 'gemini'] as const).map((provider) => (
+                  {(['openai', 'groq', 'gemini', 'chatgpt-web'] as const).map((provider) => (
                     <Pressable
                       key={provider}
                       style={[
@@ -1631,7 +1639,7 @@ export default function SettingsScreen({ navigation }: any) {
                         styles.providerOptionText,
                         remoteSettings.mcpToolsProviderId === provider && styles.providerOptionTextActive,
                       ]}>
-                        {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                        {provider === 'chatgpt-web' ? 'OpenAI Codex' : provider.charAt(0).toUpperCase() + provider.slice(1)}
                       </Text>
                     </Pressable>
                   ))}

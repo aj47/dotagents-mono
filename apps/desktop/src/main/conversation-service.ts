@@ -12,7 +12,7 @@ import {
 } from "../shared/types"
 import { summarizeContent } from "./context-budget"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 
 // Threshold for compacting conversations on load
@@ -211,7 +211,8 @@ export class ConversationService {
 
   private buildConversationHistoryItem(conversation: Conversation): ConversationHistoryItem {
     const storedMessages = this.getStoredRawMessages(conversation)
-    const lastMessage = storedMessages[storedMessages.length - 1]
+    const visibleMessages = filterVisibleChatMessages(storedMessages)
+    const lastMessage = visibleMessages[visibleMessages.length - 1] || storedMessages[storedMessages.length - 1]
 
     return {
       id: conversation.id,
@@ -220,7 +221,7 @@ export class ConversationService {
       updatedAt: conversation.updatedAt,
       messageCount: this.getRepresentedMessageCount(conversation),
       lastMessage: lastMessage?.content || "",
-      preview: this.generatePreview(storedMessages),
+      preview: this.generatePreview(visibleMessages),
     }
   }
 

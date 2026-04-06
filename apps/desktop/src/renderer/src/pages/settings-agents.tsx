@@ -917,7 +917,7 @@ export function SettingsAgents() {
                       if (v === "__global__") {
                         setEditing({ ...editing, modelConfig: undefined })
                       } else {
-                        updateModelConfig({ mcpToolsProviderId: v as "openai" | "groq" | "gemini" })
+                        updateModelConfig({ mcpToolsProviderId: v as "openai" | "groq" | "gemini" | "chatgpt-web" })
                       }
                     }}
                   >
@@ -927,6 +927,7 @@ export function SettingsAgents() {
                       <SelectItem value="openai">OpenAI</SelectItem>
                       <SelectItem value="groq">Groq</SelectItem>
                       <SelectItem value="gemini">Gemini</SelectItem>
+                      <SelectItem value="chatgpt-web">ChatGPT Web</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -936,13 +937,15 @@ export function SettingsAgents() {
                     value={
                       editing.modelConfig.mcpToolsProviderId === "openai" ? editing.modelConfig.mcpToolsOpenaiModel :
                       editing.modelConfig.mcpToolsProviderId === "groq" ? editing.modelConfig.mcpToolsGroqModel :
-                      editing.modelConfig.mcpToolsGeminiModel
+                      editing.modelConfig.mcpToolsProviderId === "gemini" ? editing.modelConfig.mcpToolsGeminiModel :
+                      editing.modelConfig.mcpToolsChatgptWebModel
                     }
                     onValueChange={model => {
                       const p = editing.modelConfig?.mcpToolsProviderId
                       if (p === "openai") updateModelConfig({ mcpToolsOpenaiModel: model })
                       else if (p === "groq") updateModelConfig({ mcpToolsGroqModel: model })
                       else if (p === "gemini") updateModelConfig({ mcpToolsGeminiModel: model })
+                      else if (p === "chatgpt-web") updateModelConfig({ mcpToolsChatgptWebModel: model })
                     }}
                     label="Agent Model"
                     placeholder="Select model for this agent"

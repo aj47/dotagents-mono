@@ -597,11 +597,13 @@ export async function processTranscriptWithAgentMode(
     ? config.mcpToolsGroqModel || "openai/gpt-oss-120b"
     : providerId === "gemini"
     ? config.mcpToolsGeminiModel || "gemini-2.5-flash"
+    : providerId === "chatgpt-web"
+    ? config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
     : "gpt-4.1-mini"
   // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
   const providerDisplayName = providerId === "openai"
     ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)
-    : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId
+    : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId === "chatgpt-web" ? "OpenAI Codex" : providerId
   const modelInfoRef = { provider: providerDisplayName, model: modelName }
   // Seed lastEmittedUserResponse with the latest respond_to_user content from
   // previous conversation history. This prevents the emit() guard from
@@ -632,7 +634,12 @@ export async function processTranscriptWithAgentMode(
       update.isComplete &&
       typeof update.finalContent === "string" &&
       update.finalContent.includes("emergency kill switch")
-    const conversationState = resolveProgressConversationState(update)
+    const conversationState = resolveProgressConversationState({
+      conversationState: update.conversationState,
+      isComplete: update.isComplete,
+      pendingToolApproval: update.pendingToolApproval,
+      finalContent: update.finalContent,
+    })
     const userResponseForUpdate =
       update.userResponse ??
       normalizedStoredUserResponse ??

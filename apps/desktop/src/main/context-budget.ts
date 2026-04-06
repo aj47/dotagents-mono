@@ -47,6 +47,7 @@ function mapToModelsDevProviderId(providerId: string): string {
     if (baseUrl?.includes("openrouter.ai")) return "openrouter"
   }
 
+  if (providerId === "chatgpt-web") return "openai"
   if (providerId === "gemini") return "google"
 
   return providerId
@@ -769,6 +770,8 @@ function getProviderAndModel(): { providerId: string; model: string } {
     model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
   } else if (providerId === "gemini") {
     model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
+  } else if (providerId === "chatgpt-web") {
+    model = config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
   }
   return { providerId, model }
 }

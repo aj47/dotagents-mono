@@ -79,18 +79,20 @@ export type ProfileMcpServerConfig = {
 }
 
 export type ProfileModelConfig = {
-  mcpToolsProviderId?: "openai" | "groq" | "gemini"
+  mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
   mcpToolsOpenaiModel?: string
   mcpToolsGroqModel?: string
   mcpToolsGeminiModel?: string
+  mcpToolsChatgptWebModel?: string
   currentModelPresetId?: string
   sttProviderId?: "openai" | "groq" | "parakeet"
   openaiSttModel?: string
   groqSttModel?: string
-  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini"
+  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
   transcriptPostProcessingOpenaiModel?: string
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
+  transcriptPostProcessingChatgptWebModel?: string
   ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
 }
 

@@ -60,7 +60,7 @@ export class OAuthCallbackServer {
     try {
       const url = new URL(req.url || '', `http://localhost:${this.port}`)
 
-      if (url.pathname === '/callback') {
+      if (url.pathname === '/callback' || url.pathname === '/auth/callback') {
         this.handleOAuthCallback(url, res)
       } else if (url.pathname === '/') {
         this.handleRootRequest(res)
