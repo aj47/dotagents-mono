@@ -44,7 +44,6 @@ const TTS_PROVIDERS = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Groq', value: 'groq' },
   { label: 'Gemini', value: 'gemini' },
-  { label: 'Edge TTS (Free)', value: 'edge' },
   { label: 'Kitten', value: 'kitten' },
   { label: 'Supertonic', value: 'supertonic' },
 ] as const;
@@ -127,19 +126,6 @@ const GEMINI_TTS_MODELS = [
   { label: 'Gemini 2.5 Pro TTS', value: 'gemini-2.5-pro-preview-tts' },
 ] as const;
 
-const EDGE_TTS_VOICES = [
-  { label: 'Aria (US, Female)', value: 'en-US-AriaNeural' },
-  { label: 'Guy (US, Male)', value: 'en-US-GuyNeural' },
-  { label: 'Jenny (US, Female)', value: 'en-US-JennyNeural' },
-  { label: 'Davis (US, Male)', value: 'en-US-DavisNeural' },
-  { label: 'Sonia (UK, Female)', value: 'en-GB-SoniaNeural' },
-  { label: 'Ryan (UK, Male)', value: 'en-GB-RyanNeural' },
-] as const;
-
-const EDGE_TTS_MODELS = [
-  { label: 'Edge Neural (Free)', value: 'edge-tts' },
-] as const;
-
 // Helper to get TTS voices for a provider
 const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonly { label: string; value: string }[] => {
   switch (providerId) {
@@ -150,8 +136,6 @@ const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonl
       return ttsModel === 'canopylabs/orpheus-arabic-saudi' ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH;
     case 'gemini':
       return GEMINI_TTS_VOICES;
-    case 'edge':
-      return EDGE_TTS_VOICES;
     default:
       return [];
   }
@@ -166,40 +150,8 @@ const getTtsModelsForProvider = (providerId: string): readonly { label: string; 
       return GROQ_TTS_MODELS;
     case 'gemini':
       return GEMINI_TTS_MODELS;
-    case 'edge':
-      return EDGE_TTS_MODELS;
     default:
       return [];
-  }
-};
-
-const getTtsModelSettingKey = (providerId?: string): keyof SettingsUpdate => {
-  switch (providerId) {
-    case 'openai':
-      return 'openaiTtsModel';
-    case 'groq':
-      return 'groqTtsModel';
-    case 'gemini':
-      return 'geminiTtsModel';
-    case 'edge':
-      return 'edgeTtsModel';
-    default:
-      return 'openaiTtsModel';
-  }
-};
-
-const getTtsVoiceSettingKey = (providerId?: string): keyof SettingsUpdate => {
-  switch (providerId) {
-    case 'openai':
-      return 'openaiTtsVoice';
-    case 'groq':
-      return 'groqTtsVoice';
-    case 'gemini':
-      return 'geminiTtsVoice';
-    case 'edge':
-      return 'edgeTtsVoice';
-    default:
-      return 'openaiTtsVoice';
   }
 };
 
@@ -1919,7 +1871,7 @@ export default function SettingsScreen({ navigation }: any) {
                     </ScrollView>
 
                     {/* Per-provider Voice/Model Settings */}
-                    {(remoteSettings.ttsProviderId === 'openai' || remoteSettings.ttsProviderId === 'groq' || remoteSettings.ttsProviderId === 'gemini' || remoteSettings.ttsProviderId === 'edge') && (
+                    {(remoteSettings.ttsProviderId === 'openai' || remoteSettings.ttsProviderId === 'groq' || remoteSettings.ttsProviderId === 'gemini') && (
                       <>
                         {/* TTS Model Selector */}
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
@@ -1933,8 +1885,7 @@ export default function SettingsScreen({ navigation }: any) {
                                 const models = getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai');
                                 const modelValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
                                   : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
-                                  : remoteSettings.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
-                                  : remoteSettings.edgeTtsModel;
+                                  : remoteSettings.geminiTtsModel;
                                 const model = models.find(m => m.value === modelValue);
                                 return model?.label || modelValue || 'Select model';
                               })()}
@@ -1956,8 +1907,7 @@ export default function SettingsScreen({ navigation }: any) {
                                 const voices = getTtsVoicesForProvider(remoteSettings.ttsProviderId || 'openai', ttsModel);
                                 const voiceValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
                                   : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
-                                  : remoteSettings.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
-                                  : remoteSettings.edgeTtsVoice;
+                                  : remoteSettings.geminiTtsVoice;
                                 const voice = voices.find(v => v.value === voiceValue);
                                 return voice?.label || voiceValue || 'Select voice';
                               })()}
@@ -1982,28 +1932,6 @@ export default function SettingsScreen({ navigation }: any) {
                               step={0.25}
                               value={remoteSettings.openaiTtsSpeed ?? 1.0}
                               onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
-                              minimumTrackTintColor={theme.colors.primary}
-                              maximumTrackTintColor={theme.colors.muted}
-                              thumbTintColor={theme.colors.primary}
-                            />
-                          </View>
-                        )}
-
-                        {remoteSettings.ttsProviderId === 'edge' && (
-                          <View style={{ marginTop: spacing.sm }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={styles.label}>Speed</Text>
-                              <Text style={[styles.helperText, { marginTop: 0 }]}>
-                                {(remoteSettings.edgeTtsRate ?? 1.0).toFixed(1)}x
-                              </Text>
-                            </View>
-                            <Slider
-                              style={{ width: '100%', height: 40 }}
-                              minimumValue={0.5}
-                              maximumValue={2.0}
-                              step={0.1}
-                              value={remoteSettings.edgeTtsRate ?? 1.0}
-                              onSlidingComplete={(v) => handleRemoteSettingUpdate('edgeTtsRate', v)}
                               minimumTrackTintColor={theme.colors.primary}
                               maximumTrackTintColor={theme.colors.muted}
                               thumbTintColor={theme.colors.primary}
@@ -2894,8 +2822,7 @@ export default function SettingsScreen({ navigation }: any) {
               {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').map((model) => {
                 const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
                   : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
-                  : remoteSettings?.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
-                  : remoteSettings?.edgeTtsModel;
+                  : remoteSettings?.geminiTtsModel;
                 const isSelected = currentValue === model.value;
                 return (
                   <TouchableOpacity
@@ -2905,7 +2832,9 @@ export default function SettingsScreen({ navigation }: any) {
                       isSelected && styles.modelItemActive,
                     ]}
                     onPress={() => {
-                      const key = getTtsModelSettingKey(remoteSettings?.ttsProviderId);
+                      const key = remoteSettings?.ttsProviderId === 'openai' ? 'openaiTtsModel'
+                        : remoteSettings?.ttsProviderId === 'groq' ? 'groqTtsModel'
+                        : 'geminiTtsModel';
                       handleRemoteSettingUpdate(key, model.value);
                       setShowTtsModelPicker(false);
                     }}
@@ -2964,8 +2893,7 @@ export default function SettingsScreen({ navigation }: any) {
                 return voices.map((voice) => {
                   const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
                     : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
-                    : remoteSettings?.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
-                    : remoteSettings?.edgeTtsVoice;
+                    : remoteSettings?.geminiTtsVoice;
                   const isSelected = currentValue === voice.value;
                   return (
                     <TouchableOpacity
@@ -2975,7 +2903,9 @@ export default function SettingsScreen({ navigation }: any) {
                         isSelected && styles.modelItemActive,
                       ]}
                       onPress={() => {
-                        const key = getTtsVoiceSettingKey(remoteSettings?.ttsProviderId);
+                        const key = remoteSettings?.ttsProviderId === 'openai' ? 'openaiTtsVoice'
+                          : remoteSettings?.ttsProviderId === 'groq' ? 'groqTtsVoice'
+                          : 'geminiTtsVoice';
                         handleRemoteSettingUpdate(key, voice.value);
                         setShowTtsVoicePicker(false);
                       }}

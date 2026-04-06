@@ -29,8 +29,6 @@ import {
   GROQ_TTS_VOICES_ENGLISH,
   GEMINI_TTS_MODELS,
   GEMINI_TTS_VOICES,
-  EDGE_TTS_MODELS,
-  EDGE_TTS_VOICES,
   KITTEN_TTS_VOICES,
   SUPERTONIC_TTS_LANGUAGES,
   SUPERTONIC_TTS_VOICES,
@@ -459,46 +457,6 @@ export function Component() {
                     </SelectContent>
                   </Select>
                 </Control>
-              </>
-            )}
-
-            {ttsProviderId === "edge" && (
-              <>
-                <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the Edge TTS model to use." />}>
-                  <Select value={config.edgeTtsModel || "edge-tts"} onValueChange={(value) => saveConfig({ edgeTtsModel: value as "edge-tts" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {EDGE_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Control>
-
-                <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for Edge TTS." />}>
-                  <Select value={config.edgeTtsVoice || "en-US-AriaNeural"} onValueChange={(value) => saveConfig({ edgeTtsVoice: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {EDGE_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Control>
-
-                <Control label={<ControlLabel label="Text-to-Speech speed" tooltip="Speech speed between 0.5 and 2.0." />}>
-                  <Input
-                    type="number"
-                    min="0.5"
-                    max="2.0"
-                    step="0.1"
-                    defaultValue={config.edgeTtsRate?.toString()}
-                    placeholder="1.0"
-                    onChange={(e) => {
-                      const speed = parseFloat(e.currentTarget.value)
-                      if (!isNaN(speed) && speed >= 0.5 && speed <= 2.0) {
-                        saveConfig({ edgeTtsRate: speed })
-                      }
-                    }}
-                  />
-                </Control>
-                <p className="pb-2 text-xs text-muted-foreground">Edge TTS is cloud-based and does not require an API key.</p>
               </>
             )}
 

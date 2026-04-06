@@ -62,7 +62,7 @@ const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
 const VALID_PROVIDER_IDS = ["openai", "groq", "gemini", "chatgpt-web"]
 const VALID_STT_PROVIDER_IDS = ["openai", "groq", "parakeet"]
-const VALID_TTS_PROVIDER_IDS = ["openai", "groq", "gemini", "edge", "kitten", "supertonic"]
+const VALID_TTS_PROVIDER_IDS = ["openai", "groq", "gemini", "kitten", "supertonic"]
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string")

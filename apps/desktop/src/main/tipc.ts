@@ -71,7 +71,6 @@ import {
   PanelPosition,
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
-import { generateEdgeTTS, type TTSGenerationResult } from "./edge-tts"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
@@ -3280,8 +3279,6 @@ export const router = {
           ttsResult = await generateGroqTTS(processedText, input, config)
         } else if (providerId === "gemini") {
           ttsResult = await generateGeminiTTS(processedText, input, config)
-        } else if (providerId === "edge") {
-          ttsResult = await generateEdgeTTS(processedText, input, config)
         } else if (providerId === "kitten") {
           const { synthesize } = await import('./kitten-tts')
           const voiceId = config.kittenVoiceId ?? 0 // Default to Voice 2 - Male
@@ -3785,7 +3782,7 @@ export const router = {
       transcriptPostProcessingGeminiModel?: string
       transcriptPostProcessingChatgptWebModel?: string
       // TTS Provider settings
-      ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
+      ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
     }>()
     .action(async ({ input }) => {
         return agentProfileService.updateProfileModelConfig(input.profileId, {
@@ -5124,6 +5121,11 @@ export const router = {
 }
 
 // TTS Provider Implementation Functions
+
+type TTSGenerationResult = {
+  audio: ArrayBuffer
+  mimeType: string
+}
 
 function getOpenAITTSMimeType(responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"): string {
   switch (responseFormat) {

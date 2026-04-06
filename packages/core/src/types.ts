@@ -93,7 +93,7 @@ export type ProfileModelConfig = {
   transcriptPostProcessingGroqModel?: string
   transcriptPostProcessingGeminiModel?: string
   transcriptPostProcessingChatgptWebModel?: string
-  ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
+  ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
 }
 
 export type ProfileSkillsConfig = {
