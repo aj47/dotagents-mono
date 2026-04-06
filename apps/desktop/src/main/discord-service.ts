@@ -739,6 +739,24 @@ async function readOperatorPayload(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * Per-command operator request timeout (ms).
+ *
+ * The original implementation used a flat 5s ceiling for everything except
+ * `run-agent`, which is too tight for legitimately slow actions like
+ * `updater download`, `tunnel start`, integration `connect`/`logout`, or app
+ * restarts. We tier the timeout instead:
+ *
+ *   - `run-agent`             → 120s (long-running LLM call)
+ *   - any other POST action   →  60s (downloads, tunnel start, restarts, etc.)
+ *   - GET reads (status/logs) →  10s (still fail fast if the server is down)
+ */
+function getOperatorCommandTimeoutMs(command: ParsedOperatorCommand): number {
+  if (command.key === "run-agent") return 120_000
+  if (command.method === "POST") return 60_000
+  return 10_000
+}
+
 async function executeDiscordOperatorCommand(command: ParsedOperatorCommand): Promise<string> {
   if (command.key === "help") {
     return getOperatorHelpText("Discord")
@@ -765,7 +783,7 @@ async function executeDiscordOperatorCommand(command: ParsedOperatorCommand): Pr
         Authorization: `Bearer ${apiKey}`,
         ...(command.body ? { "Content-Type": "application/json" } : {}),
       },
-      signal: AbortSignal.timeout(command.key === "run-agent" ? 120_000 : 5000),
+      signal: AbortSignal.timeout(getOperatorCommandTimeoutMs(command)),
     }
     if (command.body) {
       fetchOptions.body = JSON.stringify(command.body)
