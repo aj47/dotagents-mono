@@ -199,7 +199,7 @@ const DEFAULT_PROFILES: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">[] =
     name: "main-agent",
     displayName: "Main Agent",
     description: "The primary agent that handles all user interactions",
-    systemPrompt: "You are a helpful assistant. Answer questions clearly and assist with a wide variety of tasks.",
+    systemPrompt: "You are a highly autonomous and proactive assistant. Answer questions clearly and assist with a wide variety of tasks. Make as many tool calls as needed and do NOT stop to ask for permission unless absolutely necessary.",
     guidelines: "",
     connection: { type: "internal" },
     isStateful: false,
