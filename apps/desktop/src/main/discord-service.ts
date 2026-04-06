@@ -855,6 +855,13 @@ class DiscordService {
   private readonly processingChains = new Map<string, Promise<void>>()
   /** Buffered non-mentioned messages per channel, injected as context when bot IS mentioned */
   private readonly pendingHistory = new Map<string, PendingMessage[]>()
+  /**
+   * IDs of the Discord application owner (or, if the application is owned by a
+   * Team, every team member). Populated on `ready` via `client.application.fetch()`.
+   * Owners are always allowed to invoke slash commands so they can bootstrap the
+   * `discordDmAllowUserIds` allowlist on a fresh install via `/dm allow`.
+   */
+  private applicationOwnerIds: ReadonlySet<string> = new Set()
 
   private addPendingMessage(channelId: string, msg: PendingMessage) {
     const list = this.pendingHistory.get(channelId) ?? []
@@ -995,6 +1002,11 @@ class DiscordService {
         })
         this.addLog("info", `Connected as ${client.user?.username || "unknown bot"}`)
 
+        // Cache application owner / team member IDs so they can always invoke
+        // slash commands (used to bootstrap `discordDmAllowUserIds` from a
+        // fresh install via `/dm allow`).
+        await this.loadApplicationOwners(client)
+
         // Register slash commands
         try {
           await this.registerSlashCommands(discord, client)
@@ -1046,6 +1058,7 @@ class DiscordService {
       }
       this.processingChains.clear()
       this.pendingHistory.clear()
+      this.applicationOwnerIds = new Set()
       this.setStatus({ connected: false, connecting: false, botId: undefined, botUsername: undefined })
       this.addLog("info", "Discord integration stopped")
       return { success: true }
@@ -1386,10 +1399,57 @@ class DiscordService {
     this.addLog("info", `Registered ${commands.length} slash commands`)
   }
 
+  /**
+   * Fetch the Discord application's owner (or, for team-owned apps, every team
+   * member) and cache the resulting user IDs. These IDs are always allowed to
+   * invoke slash commands so the bot owner can bootstrap the
+   * `discordDmAllowUserIds` allowlist on a fresh install via `/dm allow`.
+   *
+   * The desktop settings UI does not currently expose `discordDmAllowUserIds`,
+   * so without this bypass a fresh install would have no way to authorize the
+   * first user without hand-editing the config file.
+   */
+  private async loadApplicationOwners(client: import("discord.js").Client): Promise<void> {
+    try {
+      const application = await client.application?.fetch()
+      if (!application) {
+        this.applicationOwnerIds = new Set()
+        return
+      }
+      const owner = application.owner
+      const ids = new Set<string>()
+      if (owner) {
+        if ("members" in owner) {
+          // Team-owned application: trust every team member.
+          for (const member of owner.members.values()) {
+            ids.add(member.user.id)
+          }
+        } else {
+          // User-owned application.
+          ids.add(owner.id)
+        }
+      }
+      this.applicationOwnerIds = ids
+      if (ids.size > 0) {
+        this.addLog("info", `Cached ${ids.size} Discord application owner ID(s) for slash command authorization`)
+      } else {
+        this.addLog("warn", "Could not determine Discord application owner; slash commands will require discordDmAllowUserIds")
+      }
+    } catch (err) {
+      this.addLog("warn", `Failed to load Discord application owner: ${err instanceof Error ? err.message : String(err)}`)
+      this.applicationOwnerIds = new Set()
+    }
+  }
+
   private isSlashCommandAuthorized(userId: string): boolean {
+    // Discord application owner / team members are always allowed so they can
+    // bootstrap the slash command allowlist (e.g. `/dm allow @user`) on a
+    // fresh install before `discordDmAllowUserIds` has been seeded.
+    if (this.applicationOwnerIds.has(userId)) return true
+
     const cfg = configStore.get()
     const dmAllowList = sanitizeDiscordAllowlist(cfg.discordDmAllowUserIds)
-    // If no DM allowlist is configured, no one can use slash commands (safety default)
+    // If no DM allowlist is configured AND the caller isn't an app owner, deny.
     if (dmAllowList.length === 0) return false
     return dmAllowList.includes(userId)
   }
