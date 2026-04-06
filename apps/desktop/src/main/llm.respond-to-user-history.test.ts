@@ -506,7 +506,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(thirdPrompt).toContain("provide one concise final answer now")
   })
 
-  it("accepts the first respond_to_user answer after the inspection-only final-answer nudge", async () => {
+  it("keeps iterating when the first respond_to_user answer after the inspection-only final-answer nudge fails verification", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")
 
@@ -520,14 +520,32 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .mockResolvedValueOnce({ content: "", toolCalls: [
         { name: "respond_to_user", arguments: { text: "The replay fix prevents duplicate final answers by keeping respond_to_user as a one-time side effect during the original run." } },
       ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "The replay fix is still incomplete because the inspection-only final-answer path can stop even after the verifier says the run is still running. The runtime should keep iterating until that verifier passes." } },
+        { name: "mark_work_complete", arguments: { summary: "Explained why the verifier-running result must keep the loop alive" } },
+      ] })
 
-    mocks.verifyCompletionWithFetch.mockResolvedValueOnce({
-      isComplete: false,
-      conversationState: "running",
-      confidence: 0.51,
-      missingItems: ["The answer was already delivered to the user."],
-      reason: "The user-facing answer is already present; do not continue looping.",
-    })
+    mocks.verifyCompletionWithFetch
+      .mockResolvedValueOnce({
+        isComplete: false,
+        conversationState: "running",
+        confidence: 0.51,
+        missingItems: ["The runtime still needs to keep iterating after the verifier says the run is still running."],
+        reason: "The first respond_to_user answer is premature.",
+      })
+      .mockResolvedValueOnce({
+        isComplete: false,
+        conversationState: "running",
+        confidence: 0.49,
+        missingItems: ["A corrected final answer is still required."],
+        reason: "The run still owes the fix explanation.",
+      })
+      .mockResolvedValueOnce({
+        isComplete: true,
+        conversationState: "complete",
+        confidence: 0.94,
+        missingItems: [],
+      })
 
     const result = await processTranscriptWithAgentMode(
       "Give me one clean final answer about the respond_to_user replay fix.",
@@ -542,15 +560,20 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       1,
     )
 
-    expect(result.content).toContain("one-time side effect")
-    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
-    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes((currentConfig.mcpVerifyRetryCount ?? 1) + 1)
+    expect(result.content).toContain("inspection-only final-answer path can stop")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(4)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes((currentConfig.mcpVerifyRetryCount ?? 1) + 2)
 
     const thirdPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0] ?? [])
       .map((message: any) => message.content)
       .join("\n")
     expect(thirdPrompt).toContain("stop calling more inspection tools")
     expect(thirdPrompt).toContain("provide one concise final answer now")
+
+    const fourthPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[3]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(fourthPrompt).toContain("Continue and finish remaining work")
   })
 
   it("nudges repeated inspection-only explanation prompts toward one clean final answer", async () => {

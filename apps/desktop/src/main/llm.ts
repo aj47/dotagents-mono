@@ -2794,6 +2794,7 @@ export async function processTranscriptWithAgentMode(
 
       if (shouldFinalizeRequestedToolOnlyAnswer) {
         finalContent = latestCommunicationOnlyResponse
+        let completionForcedByVerificationLimit = false
         let finalConversationState: AgentConversationState = "complete"
 
         if (config.mcpVerifyCompletionEnabled) {
@@ -2822,18 +2823,30 @@ export async function processTranscriptWithAgentMode(
             },
           )
           verificationFailCount = result.newFailCount
-          if (!result.shouldContinue) {
-            finalConversationState = result.conversationState
+          completionForcedByVerificationLimit = result.forcedByLimit
+
+          if (result.shouldContinue) {
+            awaitingToolOnlyFinalAnswerResponse = false
+            noOpCount = 0
+            totalNudgeCount = 0
+            garbledToolCallCount = 0
+            completionSignalHintCount = 0
+            successfulToolOnlyIterationsWithoutResponse = 0
+            continue
           }
+
+          finalConversationState = result.conversationState
         }
 
         awaitingToolOnlyFinalAnswerResponse = false
 
         const completionStep = createProgressStep(
           "completion",
-          "Task completed",
-          "Accepted the requested final answer after repeated inspection-only iterations",
-          "completed",
+          completionForcedByVerificationLimit ? "Task incomplete" : "Task completed",
+          completionForcedByVerificationLimit
+            ? "Verification did not confirm completion before retry limit"
+            : "Accepted the requested final answer after repeated inspection-only iterations",
+          completionForcedByVerificationLimit ? "error" : "completed",
         )
         progressSteps.push(completionStep)
 
@@ -2842,7 +2855,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: true,
-          conversationState: finalConversationState,
+          conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
           finalContent,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })
