@@ -95,7 +95,7 @@ export interface Settings {
   // Text-to-Speech Configuration
   ttsEnabled?: boolean;
   ttsAutoPlay?: boolean;
-  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'kitten' | 'supertonic';
+  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
   ttsPreprocessingEnabled?: boolean;
   ttsRemoveCodeBlocks?: boolean;
   ttsRemoveUrls?: boolean;
@@ -110,6 +110,9 @@ export interface Settings {
   groqTtsVoice?: string;
   geminiTtsModel?: string;
   geminiTtsVoice?: string;
+  edgeTtsModel?: string;
+  edgeTtsVoice?: string;
+  edgeTtsRate?: number;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;
@@ -178,7 +181,7 @@ export interface SettingsUpdate {
   // Text-to-Speech Configuration
   ttsEnabled?: boolean;
   ttsAutoPlay?: boolean;
-  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'kitten' | 'supertonic';
+  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
   ttsPreprocessingEnabled?: boolean;
   ttsRemoveCodeBlocks?: boolean;
   ttsRemoveUrls?: boolean;
@@ -193,6 +196,9 @@ export interface SettingsUpdate {
   groqTtsVoice?: string;
   geminiTtsModel?: string;
   geminiTtsVoice?: string;
+  edgeTtsModel?: string;
+  edgeTtsVoice?: string;
+  edgeTtsRate?: number;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;
