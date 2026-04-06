@@ -71,6 +71,7 @@ import {
   PanelPosition,
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
+import { generateEdgeTTS, type TTSGenerationResult } from "./edge-tts"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
@@ -5121,11 +5122,6 @@ export const router = {
 }
 
 // TTS Provider Implementation Functions
-
-type TTSGenerationResult = {
-  audio: ArrayBuffer
-  mimeType: string
-}
 
 function getOpenAITTSMimeType(responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"): string {
   switch (responseFormat) {
