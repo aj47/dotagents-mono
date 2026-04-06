@@ -35,7 +35,7 @@ import {
   isLangfuseEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
-import { isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
+import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -753,7 +753,7 @@ export async function makeLLMCallWithFetch(
         }
 
         if (isChatGptWebProvider(effectiveProviderId)) {
-          const modelName = getCurrentModelName(effectiveProviderId)
+          const modelName = getCurrentChatGptWebModelName("mcp")
           const generationId = isLangfuseEnabled() ? randomUUID() : null
           if (generationId) {
             createLLMGeneration(sessionId || null, generationId, {
@@ -1039,7 +1039,9 @@ export async function makeLLMCallWithStreamingAndTools(
     async () => {
       const abortController = createSessionAbortController(sessionId)
 
-      const modelName = getCurrentModelName(effectiveProviderId)
+      const modelName = isChatGptWebProvider(effectiveProviderId)
+        ? getCurrentChatGptWebModelName("mcp")
+        : getCurrentModelName(effectiveProviderId)
       const convertedTools = tools && tools.length > 0
         ? convertMCPToolsToAISDKTools(tools)
         : undefined
@@ -1264,7 +1266,9 @@ export async function makeTextCompletionWithFetch(
 
       // Create Langfuse generation if enabled
       const generationId = isLangfuseEnabled() ? randomUUID() : null
-      const modelName = getCurrentModelName(effectiveProviderId, "transcript")
+      const modelName = isChatGptWebProvider(effectiveProviderId)
+        ? getCurrentChatGptWebModelName("transcript")
+        : getCurrentModelName(effectiveProviderId, "transcript")
 
       if (generationId) {
         createLLMGeneration(sessionId || null, generationId, {
@@ -1371,7 +1375,9 @@ export async function verifyCompletionWithFetch(
           abortController.abort()
         }
 
-        const modelName = getCurrentModelName(effectiveProviderId)
+        const modelName = isChatGptWebProvider(effectiveProviderId)
+          ? getCurrentChatGptWebModelName("mcp")
+          : getCurrentModelName(effectiveProviderId)
 
         // Create Langfuse generation if enabled
         const generationId = isLangfuseEnabled() ? randomUUID() : null

@@ -154,6 +154,24 @@ describe('sessionToListItem', () => {
     expect(item.lastMessage).toBe('Hi there')
   })
 
+  it('ignores internal respond_to_user wrapper messages when deriving list preview', () => {
+    const session: Session = {
+      id: 'test-respond-to-user',
+      title: 'Test Session',
+      createdAt: 1000,
+      updatedAt: 2000,
+      messages: [
+        { id: 'msg-1', role: 'user', content: 'Hello', timestamp: 1000 },
+        { id: 'msg-2', role: 'assistant', content: '', timestamp: 1100, toolCalls: [{ name: 'respond_to_user', arguments: { text: 'Hi there' } }] },
+        { id: 'msg-3', role: 'tool', content: '[respond_to_user] {"success":true}', timestamp: 1200 },
+        { id: 'msg-4', role: 'assistant', content: 'Hi there', timestamp: 1300 },
+      ],
+    }
+    const item = sessionToListItem(session)
+    expect(item.lastMessage).toBe('Hi there')
+    expect(item.preview).toBe('Hi there')
+  })
+
   it('uses serverMetadata for stub sessions', () => {
     const session: Session = {
       id: 'stub-1',

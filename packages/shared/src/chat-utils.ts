@@ -258,6 +258,11 @@ export function formatArgumentsPreview(args: unknown): string {
 
 /** The tool name used to explicitly respond to the user */
 export const RESPOND_TO_USER_TOOL = 'respond_to_user';
+export const MARK_WORK_COMPLETE_TOOL = 'mark_work_complete';
+
+function isCompletionControlTool(name: string | undefined): boolean {
+  return name === RESPOND_TO_USER_TOOL || name === MARK_WORK_COMPLETE_TOOL;
+}
 
 /**
  * Extract text content from respond_to_user tool call arguments
@@ -417,4 +422,39 @@ export function isToolOnlyMessage(message: {
     'running tools',
   ];
   return placeholderPhrases.includes(trimmedContent);
+}
+
+export function isInternalCompletionControlMessage(message: {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  toolCalls?: Array<{ name: string }>;
+  toolResults?: Array<unknown>;
+}): boolean {
+  if (message.role === 'assistant' && (message.toolCalls?.length ?? 0) > 0) {
+    const onlyCompletionControlTools = message.toolCalls!.every((call) => isCompletionControlTool(call.name));
+    if (onlyCompletionControlTools && isToolOnlyMessage(message)) {
+      return true;
+    }
+  }
+
+  if (message.role === 'tool') {
+    const normalized = message.content?.trim().toLowerCase() || '';
+    if (normalized.startsWith(`[${RESPOND_TO_USER_TOOL}]`) || normalized.startsWith(`[${MARK_WORK_COMPLETE_TOOL}]`)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function filterVisibleChatMessages<
+  T extends {
+    role: 'user' | 'assistant' | 'tool';
+    content?: string;
+    toolCalls?: Array<{ name: string }>;
+    toolResults?: Array<unknown>;
+  },
+>(messages: T[]): T[] {
+  const filtered = messages.filter((message) => !isInternalCompletionControlMessage(message));
+  return filtered.length > 0 ? filtered : messages;
 }

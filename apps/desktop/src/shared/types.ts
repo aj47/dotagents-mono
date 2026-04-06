@@ -997,6 +997,9 @@ export type Config = {
   chatgptWebSessionToken?: string
   chatgptWebAccountId?: string
   chatgptWebBaseUrl?: string
+  chatgptWebAuthEmail?: string
+  chatgptWebPlanType?: string
+  chatgptWebConnectedAt?: number
 
   // Speech-to-Text Language Configuration
   sttLanguage?: string

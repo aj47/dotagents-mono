@@ -14,7 +14,9 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
+import { tipcClient } from "@renderer/lib/tipc-client"
 import { Config } from "@shared/types"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
@@ -27,10 +29,6 @@ type ProviderDraftKey =
   | "groqBaseUrl"
   | "geminiApiKey"
   | "geminiBaseUrl"
-  | "chatgptWebAccessToken"
-  | "chatgptWebSessionToken"
-  | "chatgptWebAccountId"
-  | "chatgptWebBaseUrl"
 
 function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
   return {
@@ -38,10 +36,6 @@ function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, str
     groqBaseUrl: config?.groqBaseUrl || "",
     geminiApiKey: config?.geminiApiKey || "",
     geminiBaseUrl: config?.geminiBaseUrl || "",
-    chatgptWebAccessToken: config?.chatgptWebAccessToken || "",
-    chatgptWebSessionToken: config?.chatgptWebSessionToken || "",
-    chatgptWebAccountId: config?.chatgptWebAccountId || "",
-    chatgptWebBaseUrl: config?.chatgptWebBaseUrl || "",
   }
 }
 
@@ -646,11 +640,17 @@ function SupertonicProviderSection({
 
 export function Component() {
   const configQuery = useConfigQuery()
+  const chatgptWebAuthQuery = useQuery({
+    queryKey: ["chatgpt-web-auth-status"],
+    queryFn: () => tipcClient.getChatGptWebAuthStatus(),
+  })
 
   const saveConfigMutation = useSaveConfigMutation()
   const cfgRef = useRef(configQuery.data)
   const providerSaveTimeoutsRef = useRef<Partial<Record<ProviderDraftKey, ReturnType<typeof setTimeout>>>>({})
   const [providerDrafts, setProviderDrafts] = useState(() => getProviderDrafts(configQuery.data))
+  const [chatgptWebAuthBusy, setChatgptWebAuthBusy] = useState(false)
+  const [chatgptWebAuthError, setChatgptWebAuthError] = useState<string | null>(null)
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
@@ -678,10 +678,6 @@ export function Component() {
     configQuery.data?.groqBaseUrl,
     configQuery.data?.geminiApiKey,
     configQuery.data?.geminiBaseUrl,
-    configQuery.data?.chatgptWebAccessToken,
-    configQuery.data?.chatgptWebSessionToken,
-    configQuery.data?.chatgptWebAccountId,
-    configQuery.data?.chatgptWebBaseUrl,
   ])
 
   useEffect(() => {
@@ -721,6 +717,48 @@ export function Component() {
     }))
     scheduleProviderSave(key, value)
   }, [scheduleProviderSave])
+
+  const handleChatgptWebAuth = useCallback(async () => {
+    setChatgptWebAuthBusy(true)
+    setChatgptWebAuthError(null)
+    try {
+      await tipcClient.loginChatGptWebOAuth()
+      await Promise.all([
+        chatgptWebAuthQuery.refetch(),
+        configQuery.refetch(),
+      ])
+    } catch (error) {
+      setChatgptWebAuthError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setChatgptWebAuthBusy(false)
+    }
+  }, [chatgptWebAuthQuery, configQuery])
+
+  const handleChatgptWebLogout = useCallback(async () => {
+    setChatgptWebAuthBusy(true)
+    setChatgptWebAuthError(null)
+    try {
+      await tipcClient.logoutChatGptWebOAuth()
+      await Promise.all([
+        chatgptWebAuthQuery.refetch(),
+        configQuery.refetch(),
+      ])
+    } catch (error) {
+      setChatgptWebAuthError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setChatgptWebAuthBusy(false)
+    }
+  }, [chatgptWebAuthQuery, configQuery])
+
+  const handleCopyChatgptCallbackUrl = useCallback(async () => {
+    const callbackUrl = (chatgptWebAuthQuery.data as { callbackUrl?: string } | undefined)?.callbackUrl || "http://localhost:1455/auth/callback"
+    try {
+      await copyTextToClipboard(callbackUrl)
+      setChatgptWebAuthError(null)
+    } catch (error) {
+      setChatgptWebAuthError(error instanceof Error ? error.message : String(error))
+    }
+  }, [chatgptWebAuthQuery.data])
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
@@ -1005,29 +1043,50 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedChatgptWeb && (
               <div id="chatgpt-web-provider-content" className="divide-y border-t">
-                {renderProviderDraftInput("chatgptWebAccessToken", {
-                  label: "Codex Access Token",
-                  type: "password",
-                })}
+                <div className="px-3 py-3 space-y-3">
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {(chatgptWebAuthQuery.data as any)?.authenticated
+                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
+                        : "Not connected"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {(chatgptWebAuthQuery.data as any)?.planType
+                        ? `Plan: ${(chatgptWebAuthQuery.data as any).planType}`
+                        : "Uses your ChatGPT Codex subscription via OAuth."}
+                    </div>
+                    {(chatgptWebAuthQuery.data as any)?.accountId && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Account ID: {(chatgptWebAuthQuery.data as any).accountId}
+                      </div>
+                    )}
+                  </div>
 
-                {renderProviderDraftInput("chatgptWebSessionToken", {
-                  label: "Session Token",
-                  type: "password",
-                })}
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={handleChatgptWebAuth} disabled={chatgptWebAuthBusy}>
+                      {chatgptWebAuthBusy
+                        ? "Working..."
+                        : (chatgptWebAuthQuery.data as any)?.authenticated
+                          ? "Re-auth"
+                          : "Connect"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleCopyChatgptCallbackUrl} disabled={chatgptWebAuthBusy}>
+                      Copy Callback URL
+                    </Button>
+                    {(chatgptWebAuthQuery.data as any)?.authenticated && (
+                      <Button size="sm" variant="outline" onClick={handleChatgptWebLogout} disabled={chatgptWebAuthBusy}>
+                        Disconnect
+                      </Button>
+                    )}
+                  </div>
 
-                {renderProviderDraftInput("chatgptWebAccountId", {
-                  label: "ChatGPT Account ID",
-                  type: "text",
-                })}
-
-                {renderProviderDraftInput("chatgptWebBaseUrl", {
-                  label: "Codex Base URL",
-                  type: "url",
-                  placeholder: "https://chatgpt.com",
-                })}
+                  {chatgptWebAuthError && (
+                    <p className="text-xs text-destructive">{chatgptWebAuthError}</p>
+                  )}
+                </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Uses the Codex responses endpoint on `chatgpt.com/backend-api/codex/responses`. Access token + account ID are required.
+                  Browser sign-in should return to `http://localhost:1455/auth/callback`. Use Copy Callback URL if you need to inspect or paste the callback target.
                 </p>
               </div>
             )}
@@ -1184,29 +1243,43 @@ export function Component() {
                   Not selected above. You can still configure it here.
                 </p>
 
-                {renderProviderDraftInput("chatgptWebAccessToken", {
-                  label: "Codex Access Token",
-                  type: "password",
-                })}
+                <div className="px-3 py-3 space-y-3">
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      {(chatgptWebAuthQuery.data as any)?.authenticated
+                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
+                        : "Not connected"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Uses your ChatGPT Codex subscription via OAuth.
+                    </div>
+                  </div>
 
-                {renderProviderDraftInput("chatgptWebSessionToken", {
-                  label: "Session Token",
-                  type: "password",
-                })}
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={handleChatgptWebAuth} disabled={chatgptWebAuthBusy}>
+                      {chatgptWebAuthBusy
+                        ? "Working..."
+                        : (chatgptWebAuthQuery.data as any)?.authenticated
+                          ? "Re-auth"
+                          : "Connect"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleCopyChatgptCallbackUrl} disabled={chatgptWebAuthBusy}>
+                      Copy Callback URL
+                    </Button>
+                    {(chatgptWebAuthQuery.data as any)?.authenticated && (
+                      <Button size="sm" variant="outline" onClick={handleChatgptWebLogout} disabled={chatgptWebAuthBusy}>
+                        Disconnect
+                      </Button>
+                    )}
+                  </div>
 
-                {renderProviderDraftInput("chatgptWebAccountId", {
-                  label: "ChatGPT Account ID",
-                  type: "text",
-                })}
-
-                {renderProviderDraftInput("chatgptWebBaseUrl", {
-                  label: "Codex Base URL",
-                  type: "url",
-                  placeholder: "https://chatgpt.com",
-                })}
+                  {chatgptWebAuthError && (
+                    <p className="text-xs text-destructive">{chatgptWebAuthError}</p>
+                  )}
+                </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Provide a Codex-capable ChatGPT access token and account ID. This provider now talks to the Codex responses transport, not the legacy conversation endpoint.
+                  Browser sign-in should return to `http://localhost:1455/auth/callback`. This provider now talks to the Codex responses transport, not the legacy conversation endpoint.
                 </p>
               </div>
             )}

@@ -47,6 +47,14 @@ export interface PromptCachingConfig {
   providerOptions?: Record<string, unknown>
 }
 
+function normalizeProviderType(providerId: string): ProviderType {
+  const normalized = providerId.trim().toLowerCase()
+  if (normalized === "openai" || normalized === "groq" || normalized === "gemini" || normalized === "chatgpt-web") {
+    return normalized
+  }
+  throw new Error(`Unknown provider: ${providerId}`)
+}
+
 function isTranscriptionOnlyModel(providerId: ProviderType, model: string): boolean {
   const patterns = TRANSCRIPTION_ONLY_MODEL_PATTERNS[providerId as keyof typeof TRANSCRIPTION_ONLY_MODEL_PATTERNS]
   if (!patterns) {
@@ -88,8 +96,9 @@ function getProviderConfig(
   modelContext: "mcp" | "transcript" = "mcp"
 ): ProviderConfig {
   const config = configStore.get()
+  const normalizedProviderId = normalizeProviderType(providerId)
 
-  switch (providerId) {
+  switch (normalizedProviderId) {
     case "openai":
       return {
         apiKey: config.openaiApiKey || "",
@@ -149,8 +158,9 @@ export function createLanguageModel(
   modelContext: "mcp" | "transcript" = "mcp"
 ): LanguageModel {
   const config = configStore.get()
-  const effectiveProviderId =
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
 
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
 
@@ -200,7 +210,7 @@ export function createLanguageModel(
  */
 export function getCurrentProviderId(): ProviderType {
   const config = configStore.get()
-  return (config.mcpToolsProviderId as ProviderType) || "openai"
+  return normalizeProviderType((config.mcpToolsProviderId as ProviderType) || "openai")
 }
 
 /**
@@ -208,7 +218,7 @@ export function getCurrentProviderId(): ProviderType {
  */
 export function getTranscriptProviderId(): ProviderType {
   const config = configStore.get()
-  return (config.transcriptPostProcessingProviderId as ProviderType) || "openai"
+  return normalizeProviderType((config.transcriptPostProcessingProviderId as ProviderType) || "openai")
 }
 
 /**
@@ -219,8 +229,9 @@ export function getCurrentModelName(
   modelContext: "mcp" | "transcript" = "mcp"
 ): string {
   const config = configStore.get()
-  const effectiveProviderId =
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
 
   return getProviderConfig(effectiveProviderId, modelContext).model
 }
@@ -248,8 +259,9 @@ export function getPromptCachingConfig(
   modelContext: "mcp" | "transcript" = "mcp",
 ): PromptCachingConfig | undefined {
   const config = configStore.get()
-  const effectiveProviderId =
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai"
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
   const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
 

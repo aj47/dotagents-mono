@@ -21,7 +21,7 @@ test('desktop provider sections keep shorter orientation copy while surfacing co
   assert.match(settingsProvidersSource, /Local text-to-speech with Kitten on your device\./)
   assert.match(settingsProvidersSource, /Local text-to-speech with Supertonic on your device\. Supports English, Korean, Spanish, Portuguese, and French\./)
   assert.match(settingsProvidersSource, /Not selected above\. You can still configure it here\./)
-  assert.match(settingsProvidersSource, /Uses the Codex responses endpoint on `chatgpt\.com\/backend-api\/codex\/responses`\./)
+  assert.match(settingsProvidersSource, /Browser sign-in should return to `http:\/\/localhost:1455\/auth\/callback`\./)
 })
 
 test('desktop local provider model status rows keep labels compact because the row already says Model Status', () => {

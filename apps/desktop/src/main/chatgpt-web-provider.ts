@@ -1,10 +1,17 @@
 import { randomUUID } from "crypto"
 import { configStore } from "./config"
+import { oauthStorage } from "./oauth-storage"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
 const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
 const DEFAULT_CHATGPT_WEB_INSTRUCTIONS = "You are a helpful assistant."
 const AUTH_JWT_CLAIM_PATH = "https://api.openai.com/auth"
+const CHATGPT_CODEX_AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"
+const CHATGPT_CODEX_TOKEN_URL = "https://auth.openai.com/oauth/token"
+const CHATGPT_CODEX_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
+const CHATGPT_CODEX_SCOPE = "openid profile email offline_access"
+const CHATGPT_CODEX_REDIRECT_URI = "http://localhost:1455/auth/callback"
+const CHATGPT_CODEX_STORAGE_KEY = `${DEFAULT_CHATGPT_WEB_BASE_URL}/backend-api/codex/responses`
 
 type ChatGptWebModelContext = "mcp" | "transcript"
 
@@ -46,10 +53,25 @@ export interface ChatGptWebResponse {
   usage?: ChatGptWebUsage
 }
 
+interface PreparedCodexTools {
+  tools: Array<Record<string, unknown>>
+  nameMap: Map<string, string>
+}
+
 interface ResolvedChatGptWebAuth {
   accessToken: string
   accountId?: string
   baseUrl: string
+}
+
+export interface ChatGptWebAuthStatus {
+  authenticated: boolean
+  accountId?: string
+  email?: string
+  planType?: string
+  connectedAt?: number
+  expiresAt?: number
+  callbackUrl: string
 }
 
 interface ChatGptWebCompletedEventResponse {
@@ -110,11 +132,248 @@ function extractChatGptAccountId(accessToken: string): string | undefined {
     : undefined
 }
 
+function extractChatGptAuthEmail(accessToken: string): string | undefined {
+  const payload = decodeJwtPayload(accessToken)
+  if (!payload) return undefined
+
+  const profileClaim = payload["https://api.openai.com/profile"]
+  if (!profileClaim || typeof profileClaim !== "object") return undefined
+
+  const email = (profileClaim as Record<string, unknown>).email
+  return typeof email === "string" && email.trim().length > 0 ? email.trim() : undefined
+}
+
+function extractChatGptPlanType(accessToken: string): string | undefined {
+  const payload = decodeJwtPayload(accessToken)
+  if (!payload) return undefined
+
+  const authClaim = payload[AUTH_JWT_CLAIM_PATH]
+  if (!authClaim || typeof authClaim !== "object") return undefined
+
+  const planType = (authClaim as Record<string, unknown>).chatgpt_plan_type
+  return typeof planType === "string" && planType.trim().length > 0 ? planType.trim() : undefined
+}
+
+function extractTokenExpiry(accessToken: string): number | undefined {
+  const payload = decodeJwtPayload(accessToken)
+  const exp = payload?.exp
+  return typeof exp === "number" ? exp * 1000 : undefined
+}
+
+function encodeBase64Url(value: Buffer | string): string {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "")
+}
+
+function generatePkce() {
+  const verifier = encodeBase64Url(randomUUID() + randomUUID())
+  const challenge = encodeBase64Url(
+    require("crypto").createHash("sha256").update(verifier).digest(),
+  )
+  return { verifier, challenge }
+}
+
+function buildChatGptWebAuthUrl(state: string, challenge: string): string {
+  const url = new URL(CHATGPT_CODEX_AUTHORIZE_URL)
+  url.searchParams.set("response_type", "code")
+  url.searchParams.set("client_id", CHATGPT_CODEX_CLIENT_ID)
+  url.searchParams.set("redirect_uri", CHATGPT_CODEX_REDIRECT_URI)
+  url.searchParams.set("scope", CHATGPT_CODEX_SCOPE)
+  url.searchParams.set("code_challenge", challenge)
+  url.searchParams.set("code_challenge_method", "S256")
+  url.searchParams.set("state", state)
+  url.searchParams.set("id_token_add_organizations", "true")
+  url.searchParams.set("codex_cli_simplified_flow", "true")
+  url.searchParams.set("originator", "dotagents")
+  return url.toString()
+}
+
+async function exchangeCodeForTokens(code: string, codeVerifier: string) {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: CHATGPT_CODEX_CLIENT_ID,
+    code,
+    code_verifier: codeVerifier,
+    redirect_uri: CHATGPT_CODEX_REDIRECT_URI,
+  })
+
+  const response = await fetch(CHATGPT_CODEX_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: body.toString(),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    throw new Error(`ChatGPT OAuth token exchange failed (${response.status}): ${errorText || response.statusText}`)
+  }
+
+  const data = await response.json() as {
+    access_token?: string
+    refresh_token?: string
+    token_type?: string
+    scope?: string
+    expires_in?: number
+  }
+
+  if (!data.access_token || !data.refresh_token || typeof data.expires_in !== "number") {
+    throw new Error("ChatGPT OAuth token exchange returned incomplete credentials")
+  }
+
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    token_type: data.token_type || "Bearer",
+    scope: data.scope,
+    expires_in: data.expires_in,
+    expires_at: Date.now() + data.expires_in * 1000,
+  }
+}
+
+async function refreshStoredChatGptTokens(refreshToken: string) {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+    client_id: CHATGPT_CODEX_CLIENT_ID,
+  })
+
+  const response = await fetch(CHATGPT_CODEX_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: body.toString(),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    throw new Error(`ChatGPT OAuth refresh failed (${response.status}): ${errorText || response.statusText}`)
+  }
+
+  const data = await response.json() as {
+    access_token?: string
+    refresh_token?: string
+    token_type?: string
+    scope?: string
+    expires_in?: number
+  }
+
+  if (!data.access_token || typeof data.expires_in !== "number") {
+    throw new Error("ChatGPT OAuth refresh returned incomplete credentials")
+  }
+
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || refreshToken,
+    token_type: data.token_type || "Bearer",
+    scope: data.scope,
+    expires_in: data.expires_in,
+    expires_at: Date.now() + data.expires_in * 1000,
+  }
+}
+
+function persistChatGptWebMetadata(accessToken: string, connectedAt = Date.now()): void {
+  const config = configStore.get()
+  configStore.save({
+    ...config,
+    chatgptWebAccessToken: "",
+    chatgptWebSessionToken: "",
+    chatgptWebBaseUrl: DEFAULT_CHATGPT_WEB_BASE_URL,
+    chatgptWebAccountId: extractChatGptAccountId(accessToken),
+    chatgptWebAuthEmail: extractChatGptAuthEmail(accessToken),
+    chatgptWebPlanType: extractChatGptPlanType(accessToken),
+    chatgptWebConnectedAt: connectedAt,
+  })
+}
+
+async function getStoredChatGptWebTokens() {
+  const storedTokens = await oauthStorage.getTokens(CHATGPT_CODEX_STORAGE_KEY)
+  if (storedTokens?.access_token) {
+    const isExpired = storedTokens.expires_at ? Date.now() >= storedTokens.expires_at : false
+    if (!isExpired) {
+      return storedTokens
+    }
+    if (storedTokens.refresh_token) {
+      const refreshed = await refreshStoredChatGptTokens(storedTokens.refresh_token)
+      await oauthStorage.storeTokens(CHATGPT_CODEX_STORAGE_KEY, refreshed)
+      persistChatGptWebMetadata(refreshed.access_token, configStore.get().chatgptWebConnectedAt || Date.now())
+      return refreshed
+    }
+  }
+  return null
+}
+
+export async function getChatGptWebAuthStatus(): Promise<ChatGptWebAuthStatus> {
+  const tokens = await getStoredChatGptWebTokens()
+  const config = configStore.get()
+  const fallbackAccessToken = config.chatgptWebAccessToken?.trim()
+  const accessToken = tokens?.access_token || fallbackAccessToken
+
+  return {
+    authenticated: !!accessToken,
+    accountId: accessToken ? extractChatGptAccountId(accessToken) : config.chatgptWebAccountId,
+    email: accessToken ? extractChatGptAuthEmail(accessToken) : config.chatgptWebAuthEmail,
+    planType: accessToken ? extractChatGptPlanType(accessToken) : config.chatgptWebPlanType,
+    connectedAt: config.chatgptWebConnectedAt,
+    expiresAt: tokens?.expires_at || (accessToken ? extractTokenExpiry(accessToken) : undefined),
+    callbackUrl: CHATGPT_CODEX_REDIRECT_URI,
+  }
+}
+
+export async function loginChatGptWebOAuth(): Promise<ChatGptWebAuthStatus> {
+  const { shell } = await import("electron")
+  const { OAuthCallbackServer } = await import("./oauth-callback-server")
+  const { verifier, challenge } = generatePkce()
+  const state = randomUUID()
+  const callbackServer = new OAuthCallbackServer(1455)
+
+  await callbackServer.startServer()
+  try {
+    await shell.openExternal(buildChatGptWebAuthUrl(state, challenge))
+    const callback = await callbackServer.waitForCallback(300000)
+    if (callback.error) {
+      throw new Error(callback.error_description || callback.error)
+    }
+    if (!callback.code || callback.state !== state) {
+      throw new Error("Invalid ChatGPT OAuth callback state")
+    }
+
+    const tokens = await exchangeCodeForTokens(callback.code, verifier)
+    await oauthStorage.storeTokens(CHATGPT_CODEX_STORAGE_KEY, tokens)
+    persistChatGptWebMetadata(tokens.access_token)
+    return await getChatGptWebAuthStatus()
+  } finally {
+    callbackServer.stop()
+  }
+}
+
+export async function logoutChatGptWebOAuth(): Promise<void> {
+  await oauthStorage.clearTokens(CHATGPT_CODEX_STORAGE_KEY)
+  const config = configStore.get()
+  configStore.save({
+    ...config,
+    chatgptWebAccessToken: "",
+    chatgptWebSessionToken: "",
+    chatgptWebAccountId: "",
+    chatgptWebBaseUrl: DEFAULT_CHATGPT_WEB_BASE_URL,
+    chatgptWebAuthEmail: "",
+    chatgptWebPlanType: "",
+    chatgptWebConnectedAt: undefined,
+  })
+}
+
 async function resolveChatGptWebAuth(signal?: AbortSignal): Promise<ResolvedChatGptWebAuth> {
-  const { configStore } = await import("./config")
   const config = configStore.get()
   const baseUrl = normalizeChatGptWebBaseUrl(config.chatgptWebBaseUrl)
-  const accessToken = config.chatgptWebAccessToken?.trim()
+  const storedTokens = await getStoredChatGptWebTokens()
+  const accessToken = storedTokens?.access_token || config.chatgptWebAccessToken?.trim()
   const configuredAccountId = config.chatgptWebAccountId?.trim()
 
   if (!accessToken) {
@@ -168,6 +427,39 @@ function normalizeToolInputSchema(inputSchema: unknown): Record<string, unknown>
   return schema
 }
 
+function sanitizeToolName(name: string, suffix?: string): string {
+  let sanitized = name.replace(/:/g, "__COLON__")
+  sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, "_")
+
+  if (suffix) {
+    const suffixStr = `_${suffix}`
+    const maxBaseLength = 64 - suffixStr.length
+    if (sanitized.length > maxBaseLength) {
+      sanitized = sanitized.substring(0, maxBaseLength)
+    }
+    sanitized = `${sanitized}${suffixStr}`
+  } else if (sanitized.length > 64) {
+    sanitized = sanitized.substring(0, 64)
+  }
+
+  return sanitized
+}
+
+function restoreToolName(sanitizedName: string, toolNameMap: Map<string, string>): string {
+  if (toolNameMap.has(sanitizedName)) {
+    return toolNameMap.get(sanitizedName)!
+  }
+
+  if (sanitizedName.startsWith("proxy_")) {
+    const cleaned = sanitizedName.slice(6)
+    if (toolNameMap.has(cleaned)) {
+      return toolNameMap.get(cleaned)!
+    }
+  }
+
+  return sanitizedName.replace(/__COLON__/g, ":")
+}
+
 function buildCodexInstructions(messages: ChatGptWebMessage[]): string {
   const instructions = messages
     .filter((message) => message.role === "system")
@@ -188,16 +480,36 @@ function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, un
     }))
 }
 
-function buildCodexTools(tools: ChatGptWebTool[] | undefined): Array<Record<string, unknown>> | undefined {
+function buildCodexTools(tools: ChatGptWebTool[] | undefined): PreparedCodexTools | undefined {
   if (!tools?.length) return undefined
 
-  return tools.map((tool) => ({
-    type: "function",
-    name: tool.name,
-    description: tool.description || `Tool: ${tool.name}`,
-    parameters: normalizeToolInputSchema(tool.inputSchema),
-    strict: true,
-  }))
+  const nameMap = new Map<string, string>()
+  const collisionCount = new Map<string, number>()
+
+  const preparedTools = tools.map((tool) => {
+    let sanitizedName = sanitizeToolName(tool.name)
+
+    if (nameMap.has(sanitizedName) && nameMap.get(sanitizedName) !== tool.name) {
+      const count = (collisionCount.get(sanitizedName) || 0) + 1
+      collisionCount.set(sanitizedName, count)
+      sanitizedName = sanitizeToolName(tool.name, String(count))
+    }
+
+    nameMap.set(sanitizedName, tool.name)
+
+    return {
+      type: "function",
+      name: sanitizedName,
+      description: tool.description || `Tool: ${tool.name}`,
+      parameters: normalizeToolInputSchema(tool.inputSchema),
+      strict: false,
+    }
+  })
+
+  return {
+    tools: preparedTools,
+    nameMap,
+  }
 }
 
 function findSseBoundary(buffer: string): { index: number; length: number } | null {
@@ -274,9 +586,9 @@ export async function makeChatGptWebResponse(
     parallel_tool_calls: true,
   }
 
-  const codexTools = buildCodexTools(options.tools)
-  if (codexTools?.length) {
-    payload.tools = codexTools
+  const preparedTools = buildCodexTools(options.tools)
+  if (preparedTools?.tools.length) {
+    payload.tools = preparedTools.tools
     payload.tool_choice = "auto"
   }
 
@@ -375,7 +687,7 @@ export async function makeChatGptWebResponse(
 
           if (name) {
             completedToolCalls.set(itemId || `${name}-${completedToolCalls.size}`, {
-              name,
+              name: preparedTools ? restoreToolName(name, preparedTools.nameMap) : name,
               arguments: parseJsonObject(argumentsText),
             })
           }

@@ -2378,6 +2378,22 @@ export const router = {
     return configStore.get()
   }),
 
+  getChatGptWebAuthStatus: t.procedure.action(async () => {
+    const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+    return getChatGptWebAuthStatus()
+  }),
+
+  loginChatGptWebOAuth: t.procedure.action(async () => {
+    const { loginChatGptWebOAuth } = await import("./chatgpt-web-provider")
+    return loginChatGptWebOAuth()
+  }),
+
+  logoutChatGptWebOAuth: t.procedure.action(async () => {
+    const { logoutChatGptWebOAuth } = await import("./chatgpt-web-provider")
+    await logoutChatGptWebOAuth()
+    return { success: true }
+  }),
+
   // ============================================================================
   // .agents (modular config) helpers
   // ============================================================================
