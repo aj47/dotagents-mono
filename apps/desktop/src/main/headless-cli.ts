@@ -3,16 +3,18 @@
  * Provides a readline-based REPL for interacting with the agent from SSH.
  */
 import readline from "readline"
-import { configStore } from "./config"
+import { configStore, trySaveConfig } from "./config"
 import { mcpService, MCPToolResult } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
 import { state } from "./state"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import { discordService } from "./discord-service"
+import { getDiscordLifecycleAction } from "./discord-config"
 import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "./error-utils"
-import { SessionProfileSnapshot, AgentProgressUpdate } from "@shared/types"
+import { SessionProfileSnapshot, AgentProgressUpdate, Config } from "@shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 
 // ANSI color codes (no external deps)
@@ -55,17 +57,111 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/quit${colors.reset}, ${colors.cyan}/exit${colors.reset}  - Exit the CLI
   ${colors.cyan}/stop${colors.reset}          - Emergency stop current agent session
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
+  ${colors.cyan}/profiles${colors.reset}      - List available user profiles for Discord routing
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/new${colors.reset}           - Start a new conversation
+  ${colors.cyan}/discord status${colors.reset} - Show Discord config and connection state
+  ${colors.cyan}/discord enable${colors.reset} - Enable Discord and start the bot
+  ${colors.cyan}/discord disable${colors.reset} - Disable Discord and stop the bot
+  ${colors.cyan}/discord token <token>${colors.reset} - Save or clear the Discord bot token
+  ${colors.cyan}/discord profile <id|clear>${colors.reset} - Set or clear the default profile
+  ${colors.cyan}/discord logs [count]${colors.reset} - Show recent Discord logs
 
 ${colors.dim}Type any message to interact with the agent.${colors.reset}
 `)
+}
+
+function getUserProfiles() {
+  return agentProfileService
+    .getAll()
+    .filter((profile) => profile.enabled !== false && (profile.role === "user-profile" || profile.isUserProfile))
+}
+
+function printProfiles() {
+  const profiles = getUserProfiles()
+  console.log(`\n${colors.bold}Available User Profiles:${colors.reset}`)
+  if (profiles.length === 0) {
+    console.log(`  ${colors.dim}(no enabled user profiles found)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const profile of profiles) {
+    const marker = profile.isDefault ? colors.green + " *" : "  "
+    console.log(`${marker} ${profile.id}${colors.reset}: ${profile.displayName}`)
+  }
+  console.log()
+}
+
+function printDiscordStatus() {
+  const status = discordService.getStatus()
+
+  console.log(`\n${colors.bold}Discord Status:${colors.reset}`)
+  console.log(`  Enabled: ${status.enabled ? colors.green + "yes" : colors.red + "no"}${colors.reset}`)
+  console.log(`  Connected: ${status.connected ? colors.green + "yes" : (status.connecting ? colors.yellow + "connecting" : colors.red + "no")}${colors.reset}`)
+  console.log(`  Token: ${status.tokenConfigured ? colors.green + `configured${status.tokenSource ? ` (${status.tokenSource})` : ""}` : colors.red + "missing"}${colors.reset}`)
+  console.log(`  Default profile: ${colors.cyan}${status.defaultProfileName || status.defaultProfileId || "(none)"}${colors.reset}`)
+  if (status.botUsername || status.botId) {
+    console.log(`  Bot: ${colors.cyan}${status.botUsername || "unknown"}${status.botId ? ` (${status.botId})` : ""}${colors.reset}`)
+  }
+  if (status.lastError) {
+    console.log(`  Last error: ${colors.red}${status.lastError}${colors.reset}`)
+  }
+  console.log()
+}
+
+function printDiscordLogs(count: number) {
+  const logs = discordService.getLogs().slice(-count).reverse()
+  console.log(`\n${colors.bold}Discord Logs:${colors.reset}`)
+  if (logs.length === 0) {
+    console.log(`  ${colors.dim}(no Discord logs yet)${colors.reset}`)
+    console.log()
+    return
+  }
+
+  for (const entry of logs) {
+    const timestamp = new Date(entry.timestamp).toLocaleString()
+    const levelColor = entry.level === "error" ? colors.red : (entry.level === "warn" ? colors.yellow : colors.dim)
+    console.log(`  ${levelColor}[${entry.level}]${colors.reset} ${timestamp} - ${entry.message}`)
+  }
+  console.log()
+}
+
+async function saveDiscordConfig(partial: Partial<Config>, successMessage: string) {
+  const prev = configStore.get()
+  const next = { ...prev, ...partial } as Config
+  const saveError = trySaveConfig(next)
+  if (saveError) {
+    printColored(colors.red, saveError.message)
+    return false
+  }
+
+  const lifecycleAction = getDiscordLifecycleAction(prev, next)
+  let lifecycleError: string | undefined
+  if (lifecycleAction === "start") {
+    const result = await discordService.start()
+    if (!result.success) lifecycleError = result.error || "Failed to start Discord"
+  } else if (lifecycleAction === "restart") {
+    const result = await discordService.restart()
+    if (!result.success) lifecycleError = result.error || "Failed to restart Discord"
+  } else if (lifecycleAction === "stop") {
+    const result = await discordService.stop()
+    if (!result.success) lifecycleError = result.error || "Failed to stop Discord"
+  }
+
+  if (lifecycleError) {
+    printColored(colors.yellow, `${successMessage} Discord lifecycle warning: ${lifecycleError}`)
+  } else {
+    printColored(colors.green, successMessage)
+  }
+  return true
 }
 
 function printStatus() {
   const serverStatus = mcpService.getServerStatus()
   const activeSessions = agentSessionTracker.getActiveSessions()
   const cfg = configStore.get()
+  const discordStatus = discordService.getStatus()
 
   // Determine current model info
   const provider = cfg.mcpToolsProviderId || "openai"
@@ -79,6 +175,7 @@ function printStatus() {
   console.log(`  Model: ${colors.cyan}${provider}/${modelName}${colors.reset}`)
   console.log(`  Current conversation: ${colors.cyan}${currentConversationId || "(none)"}${colors.reset}`)
   console.log(`  Processing: ${isProcessing ? colors.yellow + "yes" : colors.green + "no"}${colors.reset}`)
+  console.log(`  Discord: ${discordStatus.connected ? colors.green + "connected" : (discordStatus.enabled ? colors.yellow + "enabled" : colors.dim + "disabled")}${colors.reset}`)
 
   console.log(`\n${colors.bold}MCP Servers:${colors.reset}`)
   const serverNames = Object.keys(serverStatus)
@@ -137,8 +234,67 @@ function startNewConversation() {
   printColored(colors.green, "Started new conversation. Next message will create a new conversation.")
 }
 
+async function handleDiscordCommand(input: string): Promise<boolean> {
+  const trimmed = input.trim()
+  const args = trimmed.split(/\s+/).filter(Boolean)
+  const subcommand = (args[0] || "status").toLowerCase()
+  const remainder = trimmed.slice(args[0]?.length || 0).trim()
+
+  switch (subcommand) {
+    case "status":
+      printDiscordStatus()
+      return true
+    case "enable":
+      await saveDiscordConfig({ discordEnabled: true }, "Discord enabled.")
+      return true
+    case "disable":
+      await saveDiscordConfig({ discordEnabled: false }, "Discord disabled.")
+      return true
+    case "token": {
+      if (!remainder) {
+        printColored(colors.yellow, "Usage: /discord token <token> or /discord token clear")
+        return true
+      }
+      const tokenValue = remainder.toLowerCase() === "clear" ? "" : remainder
+      await saveDiscordConfig(
+        { discordBotToken: tokenValue },
+        tokenValue ? "Discord bot token saved." : "Discord bot token cleared.",
+      )
+      return true
+    }
+    case "profile": {
+      if (!remainder) {
+        printColored(colors.yellow, "Usage: /discord profile <profile-id> or /discord profile clear")
+        return true
+      }
+      if (remainder.toLowerCase() === "clear") {
+        await saveDiscordConfig({ discordDefaultProfileId: "" }, "Discord default profile cleared.")
+        return true
+      }
+      const profile = getUserProfiles().find((item) => item.id === remainder)
+      if (!profile) {
+        printColored(colors.red, `Unknown user profile: ${remainder}. Use /profiles to list valid profile IDs.`)
+        return true
+      }
+      await saveDiscordConfig({ discordDefaultProfileId: profile.id }, `Discord default profile set to ${profile.displayName}.`)
+      return true
+    }
+    case "logs": {
+      const rawCount = args[1]
+      const parsed = rawCount ? Number.parseInt(rawCount, 10) : 10
+      const count = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 50) : 10
+      printDiscordLogs(count)
+      return true
+    }
+    default:
+      printColored(colors.red, `Unknown Discord command: ${subcommand}. Type /help for available commands.`)
+      return true
+  }
+}
+
 async function handleSlashCommand(input: string): Promise<boolean> {
-  const cmd = input.trim().toLowerCase()
+  const trimmed = input.trim()
+  const cmd = trimmed.toLowerCase()
   switch (cmd) {
     case "/help":
       printHelp()
@@ -153,6 +309,9 @@ async function handleSlashCommand(input: string): Promise<boolean> {
     case "/status":
       printStatus()
       return true
+    case "/profiles":
+      printProfiles()
+      return true
     case "/conversations":
       await printConversations()
       return true
@@ -160,6 +319,10 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       startNewConversation()
       return true
     default:
+      if (cmd.startsWith("/discord")) {
+        await handleDiscordCommand(trimmed.slice("/discord".length))
+        return true
+      }
       if (cmd.startsWith("/")) {
         printColored(colors.red, `Unknown command: ${cmd}. Type /help for available commands.`)
         return true
@@ -334,6 +497,23 @@ ${colors.dim}Type /help for available commands.${colors.reset}
   printColored(colors.green, `MCP initialized: ${connectedCount}/${totalCount} servers connected`)
 
   console.log()
+
+  // If stdin is not a TTY (e.g. running as a systemd service), skip the
+  // interactive REPL and keep the process alive via the remote server / Discord.
+  const isTTY = process.stdin.isTTY
+  if (!isTTY) {
+    printColored(colors.dim, "No interactive terminal detected — running in daemon mode.")
+    printColored(colors.dim, "Use the remote API or Discord to interact with the agent.")
+
+    // Keep the process alive — SIGTERM/SIGINT will trigger shutdown
+    process.on("SIGTERM", async () => {
+      await requestShutdown("Received SIGTERM, shutting down...")
+    })
+    process.on("SIGINT", async () => {
+      await requestShutdown("Received SIGINT, shutting down...")
+    })
+    return
+  }
 
   rl = readline.createInterface({
     input: process.stdin,

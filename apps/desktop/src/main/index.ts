@@ -48,6 +48,7 @@ import { initModelsDevService } from "./models-dev-service"
 import { loopService, startTasksFolderWatcher } from "./loop-service"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
+import { discordService } from "./discord-service"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
   downloadHubBundleToTempFile,
@@ -104,6 +105,20 @@ function releaseAppSingleInstanceLock() {
   try {
     app.releaseSingleInstanceLock()
   } catch {}
+}
+
+async function startDiscordIfConfigured(
+  context: "headless" | "desktop",
+): Promise<void> {
+  const cfg = configStore.get()
+  if (!cfg.discordEnabled) return
+
+  const result = await discordService.start()
+  if (!result.success) {
+    logApp(
+      `Discord integration failed to start (${context}): ${result.error || "Unknown error"}`,
+    )
+  }
 }
 
 function openPendingHubBundleInstall(): boolean {
@@ -342,6 +357,7 @@ if (!gotSingleInstanceLock) {
         loopService.stopAllLoops()
         await acpService.shutdown().catch(() => {})
         await mcpService.cleanup().catch(() => {})
+        await discordService.stop().catch(() => {})
         await stopRemoteServer().catch(() => {})
         process.exit(exitCode)
       }
@@ -393,6 +409,9 @@ if (!gotSingleInstanceLock) {
           return
         }
         logApp("Remote server started on 0.0.0.0 (headless)")
+
+        // Start Discord integration if configured
+        await startDiscordIfConfigured("headless")
 
         // Start headless CLI
         const { startHeadlessCLI } = await import("./headless-cli")
@@ -642,6 +661,10 @@ if (!gotSingleInstanceLock) {
             ),
           )
       }
+    } catch (_e) {}
+
+    try {
+      void startDiscordIfConfigured("desktop")
     } catch (_e) {}
 
     import("./updater").then((res) => res.init()).catch(console.error)
