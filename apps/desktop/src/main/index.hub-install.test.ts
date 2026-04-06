@@ -127,6 +127,16 @@ async function loadIndexForHubInstall(
         ...configOverrides,
       })),
     },
+    dataFolder: "/tmp/dotagents-hub-install-test",
+    recordingsFolder: "/tmp/dotagents-hub-install-test/recordings",
+    conversationsFolder: "/tmp/dotagents-hub-install-test/conversations",
+  }))
+  vi.doMock("./discord-service", () => ({
+    discordService: {
+      start: vi.fn(() => Promise.resolve({ success: true })),
+      stop: vi.fn(() => Promise.resolve()),
+      getStatus: vi.fn(() => ({ connected: false })),
+    },
   }))
   vi.doMock("./remote-server", () => ({
     startRemoteServer: vi.fn(() => Promise.resolve({ running: false })),

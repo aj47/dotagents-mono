@@ -1230,6 +1230,23 @@ export type Config = {
   whatsappAutoReply?: boolean   // Auto-reply to messages using agent
   whatsappLogMessages?: boolean // Log message content (privacy concern)
 
+  // Discord Integration Configuration
+  discordEnabled?: boolean
+  discordBotToken?: string
+  discordDmEnabled?: boolean
+  discordRequireMention?: boolean
+  discordAllowUserIds?: string[]
+  discordAllowGuildIds?: string[]
+  discordAllowChannelIds?: string[]
+  discordAllowRoleIds?: string[]
+  discordDmAllowUserIds?: string[]
+  discordOperatorAllowUserIds?: string[]
+  discordOperatorAllowGuildIds?: string[]
+  discordOperatorAllowChannelIds?: string[]
+  discordOperatorAllowRoleIds?: string[]
+  discordDefaultProfileId?: string
+  discordLogMessages?: boolean
+
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
   streamStatusFilePath?: string

@@ -493,6 +493,7 @@ function extractUserPrompt(body: any): string | null {
 interface RunAgentOptions {
   prompt: string
   conversationId?: string
+  profileId?: string
   onProgress?: (update: AgentProgressUpdate) => void
 }
 
@@ -533,7 +534,7 @@ function formatConversationHistoryForApi(
   }))
 }
 
-async function runAgent(options: RunAgentOptions): Promise<{
+export async function runAgent(options: RunAgentOptions): Promise<{
   content: string
   conversationId: string
   conversationHistory: Array<{
@@ -544,7 +545,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
     timestamp?: number
   }>
 }> {
-  const { prompt, conversationId: inputConversationId, onProgress } = options
+  const { prompt, conversationId: inputConversationId, profileId, onProgress } = options
   const cfg = configStore.get()
 
   // Set agent mode state for process management - ensure clean state
@@ -661,9 +662,17 @@ async function runAgent(options: RunAgentOptions): Promise<{
 
   // Only capture a new snapshot if we don't have one from an existing session
   if (!profileSnapshot) {
-    const currentProfile = agentProfileService.getCurrentProfile()
-    if (currentProfile) {
-      profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
+    if (profileId) {
+      const configuredProfile = agentProfileService.getById(profileId)
+      if (!configuredProfile) {
+        throw new Error(`Configured profile not found: ${profileId}`)
+      }
+      profileSnapshot = createSessionSnapshotFromProfile(configuredProfile)
+    } else {
+      const currentProfile = agentProfileService.getCurrentProfile()
+      if (currentProfile) {
+        profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
+      }
     }
   }
 
