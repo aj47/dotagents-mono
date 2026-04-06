@@ -43,7 +43,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Create specialized agents with distinct skills and tools. Agents can
-        delegate tasks to each other via the Agent Client Protocol (ACP).
+        delegate tasks to each other through `acpx`, which runs ACP-compatible agents.
       </>
     ),
     link: '/agents/profiles',
@@ -150,7 +150,7 @@ function HomepageHeader() {
           </div>
           <div className={styles.signalCard}>
             <strong>Provider-agnostic</strong>
-            <span>Open standards like <code>.agents</code>, MCP, and ACP keep you out of lock-in.</span>
+            <span>Open standards like <code>.agents</code>, MCP, ACP, and `acpx` keep you out of lock-in.</span>
           </div>
         </div>
       </div>

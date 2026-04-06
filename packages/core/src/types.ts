@@ -113,10 +113,11 @@ export type SessionProfileSnapshot = {
   skillsConfig?: ProfileSkillsConfig
 }
 
-export type AgentProfileConnectionType = "internal" | "acp" | "stdio" | "remote"
+export type AgentProfileConnectionType = "internal" | "acpx" | "acp" | "stdio" | "remote"
 
 export type AgentProfileConnection = {
   type: AgentProfileConnectionType
+  agent?: string
   command?: string
   args?: string[]
   env?: Record<string, string>

@@ -26,8 +26,6 @@ import { randomUUID } from "crypto"
 import { logApp } from "./debug"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getRuntimeToolNames } from "./runtime-tool-definitions"
-import { acpRegistry } from "./acp/acp-registry"
-import type { ACPAgentDefinition } from "./acp/types"
 import { getAgentsLayerPaths, writeAgentsPrompts, loadAgentsPrompts } from "./agents-files/modular-config"
 import {
   loadAgentProfilesLayer,
@@ -225,6 +223,84 @@ class AgentProfileService {
   constructor() {
     this.loadProfiles()
     this.loadConversations()
+    this.migrateAcpxRuntimeConfig()
+  }
+
+  private normalizeConnection(profile: AgentProfile): boolean {
+    if (profile.connection.type === 'internal' || profile.connection.type === 'remote') {
+      return false
+    }
+
+    const legacyConnection = profile.connection as AgentProfile['connection'] & {
+      command?: string
+      args?: string[]
+      env?: Record<string, string>
+      cwd?: string
+      agent?: string
+    }
+
+    profile.connection = {
+      type: 'acpx',
+      ...(legacyConnection.command || legacyConnection.agent ? {} : { agent: profile.name }),
+      ...(legacyConnection.agent ? { agent: legacyConnection.agent } : {}),
+      ...(legacyConnection.command ? { command: legacyConnection.command } : {}),
+      ...(legacyConnection.args ? { args: legacyConnection.args } : {}),
+      ...(legacyConnection.env ? { env: legacyConnection.env } : {}),
+      ...(legacyConnection.cwd ? { cwd: legacyConnection.cwd } : {}),
+    }
+
+    return true
+  }
+
+  private migrateAcpxRuntimeConfig(): void {
+    if (!this.profilesData) return
+
+    let profilesChanged = false
+    const seenNames = new Set(this.profilesData.profiles.map(profile => profile.name))
+
+    for (const profile of this.profilesData.profiles) {
+      profilesChanged = this.normalizeConnection(profile) || profilesChanged
+    }
+
+    const config = configStore.get()
+    let configChanged = false
+    const nextConfig = { ...config } as typeof config & { acpInjectRuntimeTools?: boolean }
+
+    const legacyMainAgentMode = (config as { mainAgentMode?: string }).mainAgentMode
+    if (legacyMainAgentMode === 'acp') {
+      nextConfig.mainAgentMode = 'acpx'
+      configChanged = true
+    }
+
+    if (Array.isArray(nextConfig.acpAgents) && nextConfig.acpAgents.length > 0) {
+      for (const legacyAgent of nextConfig.acpAgents) {
+        if (legacyAgent.connection.type === 'remote') {
+          logApp(`[AgentProfileService] Skipping unsupported legacy remote ACP agent during acpx migration: ${legacyAgent.name}`)
+          continue
+        }
+
+        if (seenNames.has(legacyAgent.name)) continue
+        this.profilesData.profiles.push(acpAgentConfigToAgentProfile(legacyAgent))
+        seenNames.add(legacyAgent.name)
+        profilesChanged = true
+      }
+
+      delete nextConfig.acpAgents
+      configChanged = true
+    }
+
+    if ('acpInjectRuntimeTools' in nextConfig) {
+      delete nextConfig.acpInjectRuntimeTools
+      configChanged = true
+    }
+
+    if (profilesChanged) {
+      this.saveProfiles()
+    }
+
+    if (configChanged) {
+      configStore.save(nextConfig)
+    }
   }
 
   private syncPromptsFromLayer(data: AgentProfilesData) {
@@ -607,9 +683,9 @@ class AgentProfileService {
         case "delegation-target":
           return p.isAgentTarget === true
         case "external-agent":
-          // External agents have acp/stdio/remote connection types and are agent targets
+          // External agents have acpx/remote connection types and are agent targets
           return p.isAgentTarget === true &&
-            (p.connection.type === "acp" || p.connection.type === "stdio" || p.connection.type === "remote")
+            (p.connection.type === 'acpx' || p.connection.type === 'remote')
         default:
           return false
       }
@@ -643,13 +719,12 @@ class AgentProfileService {
   }
 
   /**
-   * Get external agents (ACP/stdio/remote agents).
+   * Get external agents (acpx/remote agents).
    */
   getExternalAgents(): AgentProfile[] {
     return this.getAll().filter((profile) =>
       profile.role === "external-agent"
-      || profile.connection.type === "acp"
-      || profile.connection.type === "stdio"
+      || profile.connection.type === 'acpx'
       || profile.connection.type === "remote"
     )
   }
@@ -744,60 +819,11 @@ class AgentProfileService {
   }
 
   // ============================================================================
-  // ACP Integration
+  // Legacy ACP integration shim
   // ============================================================================
 
-  /**
-   * Sync enabled agent profiles (delegation targets) to the ACP registry.
-   * Converts agent profiles to ACPAgentDefinition and registers them.
-   * This allows agent profiles to appear as available agents for delegation.
-   */
   syncAgentProfilesToACPRegistry(): void {
-    const enabledTargets = this.getEnabledAgentTargets()
-
-    for (const profile of enabledTargets) {
-      const definition = this.agentProfileToACPDefinition(profile)
-      acpRegistry.registerAgent(definition)
-    }
-
-    logApp(`Synced ${enabledTargets.length} agent profile(s) to ACP registry`)
-  }
-
-  /**
-   * Convert an AgentProfile to an ACPAgentDefinition.
-   */
-  private agentProfileToACPDefinition(profile: AgentProfile): ACPAgentDefinition {
-    // Determine baseUrl based on connection type
-    let baseUrl: string
-    if (profile.connection.type === "remote" && profile.connection.baseUrl) {
-      baseUrl = profile.connection.baseUrl
-    } else if (profile.connection.type === "internal") {
-      // Internal profiles don't have a baseUrl, use a placeholder
-      baseUrl = "internal://"
-    } else {
-      // acp/stdio profiles use localhost
-      baseUrl = "http://localhost"
-    }
-
-    // Build spawn config for stdio/acp profiles
-    const spawnConfig =
-      (profile.connection.type === "stdio" || profile.connection.type === "acp") &&
-      profile.connection.command
-        ? {
-            command: profile.connection.command,
-            args: profile.connection.args ?? [],
-            env: profile.connection.env,
-            cwd: profile.connection.cwd,
-          }
-        : undefined
-
-    return {
-      name: profile.name,
-      displayName: profile.displayName,
-      description: profile.description ?? "",
-      baseUrl,
-      spawnConfig,
-    }
+    logApp('[AgentProfileService] ACP registry sync is disabled; acpx agent profiles are used directly')
   }
 
   // ============================================================================

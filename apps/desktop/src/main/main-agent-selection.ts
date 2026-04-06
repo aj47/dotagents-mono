@@ -18,11 +18,11 @@ export function resolveMainAcpAgentSelection(
 
   const spawnableProfileCandidates = profileAgents.filter((profile) =>
     profile.enabled !== false
-    && (profile.connection.type === "acp" || profile.connection.type === "stdio")
+    && (profile.connection.type === 'acpx' || profile.connection.type === 'acp' || profile.connection.type === 'stdio')
   )
 
   const fallbackLegacyAgents = legacyAgents.filter((agent) =>
-    agent.enabled !== false && agent.connection.type === "stdio"
+    agent.enabled !== false && (agent.connection.type === 'stdio' || agent.connection.type === 'acp')
   )
 
   const configuredProfile = spawnableProfileCandidates.find((profile) =>
@@ -65,11 +65,11 @@ export function resolveMainAcpAgentSelection(
   return {
     error: availableNames.length > 0
       ? hasConfiguredName
-        ? `ACP main agent "${configuredName}" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
-        : `ACP main agent is not configured. Configure mainAgentName to one of: ${availableNames.join(", ")}`
+        ? `acpx main agent "${configuredName}" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
+        : `acpx main agent is not configured. Configure mainAgentName to one of: ${availableNames.join(", ")}`
       : hasConfiguredName
-        ? `ACP main agent "${configuredName}" is not available and no enabled ACP/stdio agents were found.`
-        : "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
+        ? `acpx main agent "${configuredName}" is not available and no enabled acpx agents were found.`
+        : 'acpx main agent is not configured and no enabled acpx agents were found.',
   }
 }
 
@@ -83,7 +83,7 @@ export function resolvePreferredTopLevelAcpAgentSelection({
 }: {
   currentProfile?: AgentProfile
   sessionProfileId?: string
-  mainAgentMode?: "api" | "acp"
+  mainAgentMode?: 'api' | 'acpx' | 'acp'
   mainAgentName?: string
   profileAgents?: AgentProfile[]
   legacyAgents?: ACPAgentConfig[]
@@ -96,7 +96,7 @@ export function resolvePreferredTopLevelAcpAgentSelection({
   if (
     selectedProfile
     && selectedProfile.enabled !== false
-    && (selectedProfile.connection.type === "acp" || selectedProfile.connection.type === "stdio")
+    && (selectedProfile.connection.type === 'acpx' || selectedProfile.connection.type === 'acp' || selectedProfile.connection.type === 'stdio')
   ) {
     return {
       resolvedName: selectedProfile.name,
@@ -104,7 +104,7 @@ export function resolvePreferredTopLevelAcpAgentSelection({
     }
   }
 
-  if (mainAgentMode !== "acp") {
+  if (mainAgentMode !== 'acpx' && mainAgentMode !== 'acp') {
     return null
   }
 

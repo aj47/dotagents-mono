@@ -342,17 +342,17 @@ export async function runInternalSubSession(
 
   // Priority 1: Use agentProfile directly if provided
   if (agentProfile) {
-    // Check if this profile should delegate to an external ACP agent
-    if (agentProfile.connection.type === 'acp' || (agentProfile.connection as { acpAgentName?: string }).acpAgentName) {
+    // Check if this profile should delegate to an external acpx agent
+    if (agentProfile.connection.type === 'acpx' || (agentProfile.connection as { acpAgentName?: string }).acpAgentName) {
       const acpAgentName = (agentProfile.connection as { acpAgentName?: string }).acpAgentName ?? agentProfile.name;
-      logSubSession(`AgentProfile "${agentProfile.name}" uses external ACP agent "${acpAgentName}" - should be routed externally`);
+      logSubSession(`AgentProfile "${agentProfile.name}" uses external acpx agent "${acpAgentName}" - should be routed externally`);
       // Clean up the sub-session registration since we're not running internally
       activeSubSessions.delete(subSessionId);
       parentToChildren.get(parentSessionId)?.delete(subSessionId);
       return {
         success: false,
         subSessionId,
-        error: `AgentProfile "${agentProfile.name}" is configured to use external ACP agent and should be routed through the ACP system, not the internal agent.`,
+        error: `AgentProfile "${agentProfile.name}" is configured to use an external acpx agent and should be routed through the external-agent system, not the internal agent.`,
         conversationHistory: [],
         duration: Date.now() - subSession.startTime,
       };
@@ -375,8 +375,8 @@ export async function runInternalSubSession(
   else if (personaName) {
     const unifiedProfile = agentProfileService.getByName(personaName);
     if (unifiedProfile && unifiedProfile.enabled) {
-      // Check if this profile should delegate to an external ACP agent
-      if (unifiedProfile.connection.type === 'acp' || unifiedProfile.connection.type === 'stdio' || unifiedProfile.connection.type === 'remote') {
+      // Check if this profile should delegate to an external acpx/remote agent
+      if (unifiedProfile.connection.type === 'acpx' || unifiedProfile.connection.type === 'remote') {
         logSubSession(`AgentProfile "${personaName}" uses external connection "${unifiedProfile.connection.type}" - should be routed externally`);
         // Clean up the sub-session registration since we're not running internally
         activeSubSessions.delete(subSessionId);

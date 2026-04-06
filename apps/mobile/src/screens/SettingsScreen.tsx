@@ -20,7 +20,7 @@ import {
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop } from '../lib/settingsApi';
-import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
+import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 import Slider from '@react-native-community/slider';
@@ -213,7 +213,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const availableAcpMainAgents = useMemo(
-    () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
+    () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
   );
 
@@ -2026,7 +2026,7 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agentSettings" title="Agent Settings">
                 <Text style={styles.label}>Main Agent Mode</Text>
                 <View style={styles.providerSelector}>
-                  {(['api', 'acp'] as const).map((mode) => (
+                  {(['api', 'acpx'] as const).map((mode) => (
                     <Pressable
                       key={mode}
                       style={[
@@ -2045,13 +2045,13 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
                 <Text style={styles.helperText}>
-                  API uses external LLMs, ACP routes to an ACP agent
+                  API uses external LLMs, acpx routes to an acpx-managed agent
                 </Text>
 
-                {/* ACP-specific settings - only show when ACP mode selected */}
-                {remoteSettings.mainAgentMode === 'acp' && (
+                {/* acpx-specific settings - only show when acpx mode selected */}
+                {remoteSettings.mainAgentMode === 'acpx' && (
                   <>
-                    <Text style={styles.label}>ACP Agent</Text>
+                    <Text style={styles.label}>acpx Agent</Text>
                     {availableAcpMainAgents.length > 0 ? (
                       <View style={styles.providerSelector}>
                         {availableAcpMainAgents.map((agent) => (
@@ -2073,23 +2073,10 @@ export default function SettingsScreen({ navigation }: any) {
                         ))}
                       </View>
                     ) : (
-                      <Text style={styles.helperText}>No ACP agents available</Text>
+                      <Text style={styles.helperText}>No acpx agents available</Text>
                     )}
                     <Text style={styles.helperText}>
-                      Select which ACP agent handles requests
-                    </Text>
-
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Inject Runtime Tools</Text>
-                      <Switch
-                        value={remoteSettings.acpInjectRuntimeTools ?? true}
-                        onValueChange={(v) => handleRemoteSettingToggle('acpInjectRuntimeTools', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.acpInjectRuntimeTools ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-                    <Text style={styles.helperText}>
-                      Add DotAgents runtime tools to ACP sessions
+                      Select which acpx agent handles requests
                     </Text>
                   </>
                 )}

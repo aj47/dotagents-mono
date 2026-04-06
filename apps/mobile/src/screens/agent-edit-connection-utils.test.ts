@@ -13,10 +13,10 @@ describe('agent-edit connection persistence helpers', () => {
       connectionArgs: 'agent.js --acp',
       connectionBaseUrl: ' https://remote.example/v1 ',
       connectionCwd: '/tmp/agent',
-    }, 'acp');
+    }, 'acpx');
 
     expect(nextFormData).toMatchObject({
-      connectionType: 'acp',
+      connectionType: 'acpx',
       connectionBaseUrl: '',
       connectionCommand: 'node',
       connectionArgs: 'agent.js --acp',
@@ -24,9 +24,9 @@ describe('agent-edit connection persistence helpers', () => {
     });
   });
 
-  it('omits hidden Base URL fields from ACP saves while preserving visible local launch fields', () => {
+  it('omits hidden Base URL fields from acpx saves while preserving visible local launch fields', () => {
     const requestFields = buildAgentConnectionRequestFields({
-      connectionType: 'acp',
+      connectionType: 'acpx',
       connectionCommand: ' node ',
       connectionArgs: ' agent.js --acp ',
       connectionBaseUrl: 'https://stale-hidden.example/v1',
@@ -34,7 +34,7 @@ describe('agent-edit connection persistence helpers', () => {
     });
 
     expect(requestFields).toEqual({
-      connectionType: 'acp',
+      connectionType: 'acpx',
       connectionCommand: 'node',
       connectionArgs: 'agent.js --acp',
       connectionCwd: '/workspace/agent',

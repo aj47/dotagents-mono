@@ -1,9 +1,10 @@
-export const VALID_AGENT_PROFILE_CONNECTION_TYPES = ['internal', 'acp', 'stdio', 'remote'] as const;
+export const VALID_AGENT_PROFILE_CONNECTION_TYPES = ['internal', 'acpx', 'acp', 'stdio', 'remote'] as const;
 
 export type AgentProfileConnectionTypeValue = typeof VALID_AGENT_PROFILE_CONNECTION_TYPES[number];
 
 export interface AgentProfileConnectionDraft {
   type: AgentProfileConnectionTypeValue;
+  agent?: string;
   command?: string;
   args?: string[];
   baseUrl?: string;
@@ -12,6 +13,7 @@ export interface AgentProfileConnectionDraft {
 
 export interface AgentProfileConnectionInput {
   connectionType?: AgentProfileConnectionTypeValue;
+  connectionAgent?: string;
   connectionCommand?: string;
   connectionArgs?: string;
   connectionBaseUrl?: string;
@@ -38,7 +40,7 @@ export function sanitizeAgentProfileConnection(
   existingConnection?: AgentProfileConnectionDraft,
 ): AgentProfileConnectionDraft {
   const connectionType = input.connectionType ?? existingConnection?.type ?? 'internal';
-  const existingLocalConnection = existingConnection && (existingConnection.type === 'acp' || existingConnection.type === 'stdio')
+  const existingLocalConnection = existingConnection?.type === 'acpx'
     ? existingConnection
     : undefined;
 
@@ -55,7 +57,10 @@ export function sanitizeAgentProfileConnection(
     };
   }
 
-  if (connectionType === 'acp' || connectionType === 'stdio') {
+  if (connectionType === 'acpx' || connectionType === 'acp' || connectionType === 'stdio') {
+    const agent = input.connectionAgent !== undefined
+      ? normalizeText(input.connectionAgent)
+      : normalizeText(existingLocalConnection?.agent);
     const command = input.connectionCommand !== undefined
       ? normalizeText(input.connectionCommand)
       : normalizeText(existingLocalConnection?.command);
@@ -67,7 +72,8 @@ export function sanitizeAgentProfileConnection(
       : normalizeText(existingLocalConnection?.cwd);
 
     return {
-      type: connectionType,
+      type: 'acpx',
+      ...(agent ? { agent } : {}),
       ...(command ? { command } : {}),
       ...(args ? { args } : {}),
       ...(cwd ? { cwd } : {}),

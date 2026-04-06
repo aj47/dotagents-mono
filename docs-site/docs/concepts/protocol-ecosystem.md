@@ -10,7 +10,7 @@ DotAgents integrates five complementary protocols that together form a complete 
 | Protocol | Question It Answers |
 |----------|-------------------|
 | **MCP** | "What tools can I access?" |
-| **ACP** | "What agents can I delegate to?" |
+| **ACP / acpx** | "What agents can I delegate to, and what runtime executes them?" |
 | **Skills** | "What knowledge do I have?" |
 | **Agent Profiles** | "Who am I and how am I configured?" |
 | **.agents/** | "How is my configuration stored and shared?" |
@@ -45,9 +45,9 @@ When an MCP server connects, DotAgents discovers all available tools and makes t
 
 ---
 
-## ACP — Agent Client Protocol
+## ACP + acpx — Agent Delegation Runtime
 
-ACP is a protocol for agent-to-agent communication and delegation. DotAgents can spawn and coordinate with external AI agents.
+ACP is a protocol for agent-to-agent communication and delegation. DotAgents now uses the `acpx` CLI as its external ACP runtime instead of speaking ACP transport directly.
 
 ### Delegation Flow
 
@@ -84,7 +84,7 @@ Results → Main Agent → User
 | Type | Description | Example |
 |------|-------------|---------|
 | **Internal** | Runs within DotAgents | Default agent |
-| **ACP (stdio)** | Spawns a local process | Claude Code, Auggie |
+| **acpx** | Runs an ACP-compatible local agent through `acpx` | Claude Code, Auggie |
 | **Remote** | Connects to HTTP endpoint | Cloud-hosted agents |
 
 ### Bidirectional Communication
@@ -208,4 +208,4 @@ Agents have fine-grained tool access:
 - **[MCP Tools](/tools/mcp)** — Configure and use MCP tool servers
 - **[Agent Profiles](/agents/profiles)** — Create specialized agents
 - **[Skills](/agents/skills)** — Build portable agent capabilities
-- **[Multi-Agent Delegation](/agents/delegation)** — Set up ACP coordination
+- **[Multi-Agent Delegation](/agents/delegation)** — Set up `acpx`/ACP coordination

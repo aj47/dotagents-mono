@@ -15,14 +15,9 @@ const CONNECTION_TYPES = [
     description: 'Uses the built-in DotAgents runtime with this profile’s prompts and settings.',
   },
   {
-    label: 'ACP',
-    value: 'acp',
-    description: 'Launches an ACP-compatible local agent command for delegation and tool work.',
-  },
-  {
-    label: 'Stdio',
-    value: 'stdio',
-    description: 'Runs a local command directly over standard input and output.',
+    label: 'acpx',
+    value: 'acpx',
+    description: 'Runs this external agent through the acpx CLI adapter.',
   },
   {
     label: 'Remote',
@@ -176,7 +171,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
 
   // Check if connection fields should be shown
-  const showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio';
+  const showCommandFields = formData.connectionType === 'acpx';
   const showRemoteBaseUrlField = formData.connectionType === 'remote';
 
   if (isLoading) {

@@ -1458,9 +1458,10 @@ const getDelegationSourceLabel = (delegation: ACPDelegationProgress): string => 
   switch (delegation.connectionType) {
     case "internal":
       return "Internal session"
-    case "acp":
-    case "stdio":
-      return delegation.acpSessionId ? "ACP session" : "ACP agent"
+    case 'acpx':
+    case 'acp':
+    case 'stdio':
+      return delegation.acpSessionId ? 'acpx session' : 'acpx agent'
     case "remote":
       return delegation.acpRunId ? "Remote ACP run" : "Remote agent"
     default:

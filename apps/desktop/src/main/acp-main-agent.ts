@@ -14,8 +14,10 @@ import {
 } from "./acp-service"
 import {
   getSessionForConversation,
+  getMainAcpxSessionName,
   setSessionForConversation,
   setAcpToAppSessionMapping,
+  updateConversationRuntimeSessionId,
 } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { AgentProgressUpdate, AgentProgressStep, SessionProfileSnapshot, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
@@ -519,6 +521,20 @@ export async function processTranscriptWithACPAgent(
   const getAcpSessionInfo = () => {
     const agentInstance = acpService.getAgentInstance(agentName)
     if (!agentInstance) return undefined
+    const availableModelsFromMetadata = agentInstance.sessionInfo?.models?.availableModels
+      ?.filter((model): model is { modelId: string; name: string; description?: string } => Boolean(model.modelId && model.name))
+      .map(model => ({
+        id: model.modelId,
+        name: model.name,
+        description: model.description,
+      }))
+    const availableModesFromMetadata = agentInstance.sessionInfo?.modes?.availableModes
+      ?.filter((mode): mode is { id: string; name: string; description?: string } => Boolean(mode.id && mode.name))
+      .map(mode => ({
+        id: mode.id,
+        name: mode.name,
+        description: mode.description,
+      }))
     return {
       agentName: agentInstance.agentInfo?.name,
       agentTitle: agentInstance.agentInfo?.title,
@@ -528,18 +544,10 @@ export async function processTranscriptWithACPAgent(
       currentMode: getCurrentConfigOptionLabel(getConfigOptionByCategory(agentInstance.sessionInfo?.configOptions, "mode"))
         || agentInstance.sessionInfo?.modes?.currentModeId,
       availableModels: getConfigOptionChoices(getConfigOptionByCategory(agentInstance.sessionInfo?.configOptions, "model"))
-        || agentInstance.sessionInfo?.models?.availableModels?.map(m => ({
-        id: m.modelId,
-        name: m.name,
-        description: m.description,
-      })),
+        || availableModelsFromMetadata,
       availableModes: getConfigOptionChoices(getConfigOptionByCategory(agentInstance.sessionInfo?.configOptions, "mode"))
-        || agentInstance.sessionInfo?.modes?.availableModes?.map(m => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-      })),
-      configOptions: agentInstance.sessionInfo?.configOptions,
+        || availableModesFromMetadata,
+      configOptions: agentInstance.sessionInfo?.configOptions as ACPConfigOption[] | undefined,
     }
   }
 
@@ -618,27 +626,27 @@ export async function processTranscriptWithACPAgent(
   }
 
   try {
-    // Get or create ACP session
+    // Get or create acpx-managed session
     const existingSession = forceNewSession ? undefined : getSessionForConversation(conversationId)
-    const preferredSessionId = existingSession?.agentName === agentName
-      ? existingSession.sessionId
-      : undefined
+    const preferredSessionName = existingSession?.agentName === agentName
+      ? (existingSession.sessionName ?? getMainAcpxSessionName(conversationId))
+      : getMainAcpxSessionName(conversationId)
     const acpSessionId = await acpService.getOrCreateSession(
       agentName,
-      !preferredSessionId,
+      forceNewSession,
       undefined,
       { appSessionId: sessionId },
-      preferredSessionId,
+      preferredSessionName,
       emitSetupProgress,
     )
 
-    setSessionForConversation(conversationId, acpSessionId, agentName)
-    if (preferredSessionId && preferredSessionId === acpSessionId) {
-      logApp(`[ACP Main] Reused existing session ${acpSessionId}`)
-    } else if (preferredSessionId) {
-      logApp(`[ACP Main] Replaced stale session ${preferredSessionId} with ${acpSessionId}`)
+    setSessionForConversation(conversationId, acpSessionId, agentName, preferredSessionName)
+    if (existingSession?.sessionId && existingSession.sessionId === acpSessionId) {
+      logApp(`[ACP Main] Reused acpx session ${acpSessionId}`)
+    } else if (existingSession?.sessionId) {
+      logApp(`[ACP Main] Replaced stale acpx session ${existingSession.sessionId} with ${acpSessionId}`)
     } else {
-      logApp(`[ACP Main] Created new session ${acpSessionId}`)
+      logApp(`[ACP Main] Created new acpx session ${acpSessionId} (${preferredSessionName})`)
     }
 
     // Register the ACP session → DotAgents session mapping
@@ -817,7 +825,11 @@ export async function processTranscriptWithACPAgent(
       // Send the prompt
       await emitSetupProgress("sending_prompt")
       const promptContext = buildProfileContext(profileSnapshot, ACP_RUNTIME_TOOL_PROMPT_CONTEXT)
-      const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
+    const result = await acpService.sendPrompt(agentName, preferredSessionName, transcript, promptContext)
+    if (result.sessionId && result.sessionId !== acpSessionId) {
+      updateConversationRuntimeSessionId(conversationId, result.sessionId)
+      setAcpToAppSessionMapping(result.sessionId, sessionId, runId)
+    }
 
       const { userResponse, finalResponse } = deriveFinalAssistantResponse(result.response)
 

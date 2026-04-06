@@ -2,7 +2,6 @@ import { agentProcessManager, llmRequestAbortManager, state, agentSessionStateMa
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
-import { acpProcessManager, acpClientService } from "./acp"
 import { acpService } from "./acp-service"
 
 /**
@@ -90,7 +89,7 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
   const after = agentProcessManager.getActiveProcessCount()
 
 	  // Clean up all session states while preserving cached response history so
-	  // the stopped session can still display its prior conversation in the UI.
+	  // stopped sessions can still render prior conversation context in the UI.
   for (const [sessionId] of state.agentSessions) {
     agentSessionStateManager.cleanupSession(sessionId)
   }
@@ -103,23 +102,12 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
   state.isAgentModeActive = false
   state.agentIterationCount = 0
 
-  // Cancel all ACP runs
-  acpClientService.cancelAllRuns()
-
-  // Stop all spawned ACP agents - isolated so failures don't prevent rest of cleanup
-  try {
-    await acpProcessManager.stopAllAgents()
-  } catch (error) {
-    // Log but don't fail - emergency stop should be best-effort
-    console.error('[EmergencyStop] Error stopping ACP agents:', error)
-  }
-
-  // Stop all ACP stdio agents - isolated so failures don't prevent rest of cleanup
+  // Stop all acpx-managed agents/sessions - isolated so failures don't prevent rest of cleanup
   try {
     await acpService.shutdown()
   } catch (error) {
     // Log but don't fail - emergency stop should be best-effort
-    console.error('[EmergencyStop] Error shutting down ACP service:', error)
+    console.error('[EmergencyStop] Error shutting down acpx service:', error)
   }
 
   return { before, after }

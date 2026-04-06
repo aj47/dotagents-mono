@@ -68,7 +68,7 @@ function tryGetFileMtimeMs(filePath: string | undefined): number | undefined {
   }
 }
 
-const VALID_CONNECTION_TYPES = new Set<string>(["internal", "acp", "stdio", "remote"])
+const VALID_CONNECTION_TYPES = new Set<string>(['internal', 'acpx', 'acp', 'stdio', 'remote'])
 const VALID_ROLES = new Set<string>(["user-profile", "delegation-target", "external-agent"])
 
 // ============================================================================
@@ -233,7 +233,7 @@ function assembleAgentProfile(
     type: mdPartial.connection?.type ?? "internal",
   }
 
-  const isExternalConnection = connection.type === "acp" || connection.type === "stdio" || connection.type === "remote"
+  const isExternalConnection = connection.type === 'acpx' || connection.type === 'acp' || connection.type === 'stdio' || connection.type === 'remote'
   const role = mdPartial.role ?? (isExternalConnection ? "delegation-target" : undefined)
 
   return {

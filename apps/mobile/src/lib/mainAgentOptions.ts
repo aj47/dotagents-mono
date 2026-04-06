@@ -5,7 +5,7 @@ export interface MainAgentOption {
   displayName: string;
 }
 
-export function getAcpMainAgentOptions(
+export function getAcpxMainAgentOptions(
   settings?: Settings | null,
   agentProfiles: AgentProfile[] = []
 ): MainAgentOption[] {
@@ -14,14 +14,14 @@ export function getAcpMainAgentOptions(
 
   for (const profile of agentProfiles) {
     if (!profile.enabled) continue;
-    if (profile.connectionType !== 'acp' && profile.connectionType !== 'stdio') continue;
+    if (profile.connectionType !== 'acpx') continue;
     const key = profile.name.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);
     options.push({ name: profile.name, displayName: profile.displayName || profile.name });
   }
 
-  for (const agent of settings?.acpAgents || []) {
+  for (const agent of settings?.acpxAgents || []) {
     const key = agent.name.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);
@@ -35,6 +35,6 @@ export function toMainAgentProfile(option: MainAgentOption): Profile {
   return {
     id: `main-agent:${option.name}`,
     name: option.displayName,
-    guidelines: 'ACP main agent',
+    guidelines: 'acpx main agent',
   };
 }

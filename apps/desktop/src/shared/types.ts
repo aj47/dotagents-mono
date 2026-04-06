@@ -456,24 +456,25 @@ export type PersonasData = {
 /**
  * Connection type for an agent profile.
  * - "internal": Uses built-in DotAgents agent (model config from profile)
- * - "acp": External ACP-compatible agent (stdio spawn)
- * - "stdio": Direct stdio process spawn
+ * - "acpx": External agent executed through the acpx CLI
  * - "remote": Remote HTTP endpoint
  */
-export type AgentProfileConnectionType = "internal" | "acp" | "stdio" | "remote"
+export type AgentProfileConnectionType = "internal" | "acpx" | "acp" | "stdio" | "remote"
 
 /**
  * Connection configuration for an agent profile.
  */
 export type AgentProfileConnection = {
   type: AgentProfileConnectionType
-  /** For acp/stdio: command to run */
+  /** For acpx custom adapters: command to run through `acpx --agent` */
   command?: string
-  /** For acp/stdio: command arguments */
+  /** For acpx custom adapters: command arguments */
   args?: string[]
-  /** For acp/stdio: environment variables */
+  /** For acpx sessions: built-in or configured acpx agent id */
+  agent?: string
+  /** For acpx custom adapters: environment variables */
   env?: Record<string, string>
-  /** For acp/stdio: working directory */
+  /** For acpx sessions: preferred working directory */
   cwd?: string
   /** For remote: base URL of the agent server */
   baseUrl?: string
@@ -502,7 +503,7 @@ export type AgentProfileToolConfig = {
  * Can represent:
  * - User-facing profiles (isUserProfile: true) - shows in profile picker
  * - Delegation targets (isAgentTarget: true) - available for delegate_to_agent
- * - External ACP agents (connection.type: "acp" or "stdio")
+ * - External acpx agents (connection.type: "acpx")
  * - Internal sub-sessions (connection.type: "internal")
  */
 
@@ -510,7 +511,7 @@ export type AgentProfileToolConfig = {
  * Role classification for an agent profile.
  * - "user-profile": User-facing profile shown in profile picker
  * - "delegation-target": Available as a target for delegate_to_agent
- * - "external-agent": External ACP/stdio agent
+ * - "external-agent": External acpx agent
  */
 export type AgentProfileRole = "user-profile" | "delegation-target" | "external-agent"
 
@@ -631,7 +632,7 @@ export function profileToAgentProfile(profile: Profile): AgentProfile {
 export function personaToAgentProfile(persona: Persona): AgentProfile {
   // Map legacy connection type to AgentProfile connection type
   const connectionType: AgentProfileConnectionType =
-    persona.connection.type === "acp-agent" ? "acp" : persona.connection.type
+    persona.connection.type === "acp-agent" ? "acpx" : persona.connection.type === 'stdio' ? 'acpx' : persona.connection.type
 
   return {
     id: persona.id,
@@ -675,7 +676,7 @@ export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): AgentProfi
   const now = Date.now()
   const connectionType: AgentProfileConnectionType =
     config.connection.type === "internal" ? "internal" :
-    config.connection.type === "remote" ? "remote" : "acp"
+    config.connection.type === "remote" ? "remote" : "acpx"
 
   return {
     id: config.name,
@@ -684,6 +685,7 @@ export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): AgentProfi
     description: config.description,
     connection: {
       type: connectionType,
+      agent: config.name,
       command: config.connection.command,
       args: config.connection.args,
       env: config.connection.env,
@@ -893,8 +895,8 @@ export interface EnhancedModelInfo extends ModelInfo {
   outputModalities?: string[]
 }
 
-// ACP Agent Configuration Types
-type ACPConnectionType = "stdio" | "remote" | "internal"
+// Legacy ACP Agent Configuration Types (read-only migration input)
+type ACPConnectionType = "stdio" | "remote" | "internal" | "acp"
 
 // ACPConfigOptionValue and ACPConfigOption — re-exported from @dotagents/shared (see above)
 
@@ -913,15 +915,15 @@ export interface ACPAgentConfig {
   isInternal?: boolean
   // Connection configuration
   connection: {
-    // Connection type: "stdio" for local process, "remote" for HTTP endpoint, "internal" for built-in
+    // Legacy connection type retained for one-way migration into acpx-backed profiles.
     type: ACPConnectionType
-    // For stdio: command to run (e.g., "auggie", "claude-code-acp")
+    // For stdio/acp: command to run (e.g., "auggie", "claude-code-acp")
     command?: string
-    // For stdio: command arguments (e.g., ["--acp"])
+    // For stdio/acp: command arguments (e.g., ["--acp"])
     args?: string[]
-    // For stdio: environment variables
+    // For stdio/acp: environment variables
     env?: Record<string, string>
-    // For stdio: working directory to spawn the agent in
+    // For stdio/acp: working directory to spawn the agent in
     cwd?: string
     // For remote: base URL of the ACP server
     baseUrl?: string
@@ -1232,22 +1234,17 @@ export type Config = {
   streamStatusWatcherEnabled?: boolean
   streamStatusFilePath?: string
 
-  // ACP Agent Configuration
+  // Legacy ACP Agent Configuration retained only for migration
   acpAgents?: ACPAgentConfig[]
 
   // Unified Agent Profiles (managed by agent-profile-service)
   agentProfiles?: AgentProfile[]
 
-  // Main agent mode: "api" uses external LLM API, "acp" uses an ACP agent as the brain
-  mainAgentMode?: "api" | "acp"
+  // Main agent mode: "api" uses external LLM API, "acpx" uses an acpx-managed agent as the brain
+  mainAgentMode?: "api" | "acpx"
 
-  // Name of the ACP agent to use when mainAgentMode is "acp"
+  // Name of the acpx agent profile to use when mainAgentMode is "acpx"
   mainAgentName?: string
-
-  // ACP Tool Injection: When true (default), DotAgents runtime tools are injected
-  // into ACP agent sessions so they can use delegation, user communication, completion signaling, etc.
-  // Set to false for "pure" ACP mode where the agent only uses its own tools.
-  acpInjectRuntimeTools?: boolean
 
   // Streamer Mode Configuration
   // When enabled, hides sensitive information (phone numbers, QR codes, API keys) for screen sharing

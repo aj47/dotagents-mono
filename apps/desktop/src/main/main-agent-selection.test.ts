@@ -2,92 +2,92 @@ import { describe, expect, it } from "vitest"
 import { resolveMainAcpAgentSelection, resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 
 describe("resolveMainAcpAgentSelection", () => {
-  it("resolves ACP profile display names to canonical profile names", () => {
+  it("resolves acpx profile display names to canonical profile names", () => {
     const result = resolveMainAcpAgentSelection("Claude Code", [
       {
         name: "claude-code",
         displayName: "Claude Code",
         enabled: true,
-        connection: { type: "acp", command: "claude-code-acp" },
+        connection: { type: 'acpx', command: 'claude-code-acp' },
       } as any,
     ])
 
     expect(result).toEqual({ resolvedName: "claude-code" })
   })
 
-  it("repairs stale selections when exactly one ACP-capable agent is available", () => {
+  it("repairs stale selections when exactly one acpx-capable agent is available", () => {
     const result = resolveMainAcpAgentSelection("missing-agent", [
       {
         name: "augustus",
         displayName: "augustus",
         enabled: true,
-        connection: { type: "acp", command: "auggie", args: ["--acp"] },
+        connection: { type: 'acpx', command: 'auggie', args: ['--acp'] },
       } as any,
     ])
 
     expect(result).toEqual({ resolvedName: "augustus", repairedName: "augustus" })
   })
 
-  it("returns a helpful error when multiple ACP-capable agents are available", () => {
+  it("returns a helpful error when multiple acpx-capable agents are available", () => {
     const result = resolveMainAcpAgentSelection("missing-agent", [
       {
         name: "agent-one",
         displayName: "Agent One",
         enabled: true,
-        connection: { type: "acp", command: "agent-one" },
+        connection: { type: 'acpx', command: 'agent-one' },
       } as any,
       {
         name: "agent-two",
         displayName: "Agent Two",
         enabled: true,
-        connection: { type: "stdio", command: "agent-two" },
+        connection: { type: 'acpx', command: 'agent-two' },
       } as any,
     ])
 
     expect(result).toEqual({
-      error: 'ACP main agent "missing-agent" is not available. Configure mainAgentName to one of: agent-one, agent-two',
+      error: 'acpx main agent "missing-agent" is not available. Configure mainAgentName to one of: agent-one, agent-two',
     })
   })
 
-  it("returns a clearer configuration error when no ACP main agent has been selected", () => {
+  it("returns a clearer configuration error when no acpx main agent has been selected", () => {
     const result = resolveMainAcpAgentSelection("   ", [
       {
         name: "agent-one",
         displayName: "Agent One",
         enabled: true,
-        connection: { type: "acp", command: "agent-one" },
+        connection: { type: 'acpx', command: 'agent-one' },
       } as any,
       {
         name: "agent-two",
         displayName: "Agent Two",
         enabled: true,
-        connection: { type: "stdio", command: "agent-two" },
+        connection: { type: 'acpx', command: 'agent-two' },
       } as any,
     ])
 
     expect(result).toEqual({
-      error: "ACP main agent is not configured. Configure mainAgentName to one of: agent-one, agent-two",
+      error: 'acpx main agent is not configured. Configure mainAgentName to one of: agent-one, agent-two',
     })
   })
 
-  it("returns a clearer configuration error when no ACP-capable agents are available", () => {
+  it("returns a clearer configuration error when no acpx-capable agents are available", () => {
     const result = resolveMainAcpAgentSelection("   ", [])
 
     expect(result).toEqual({
-      error: "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
+      error: 'acpx main agent is not configured and no enabled acpx agents were found.',
     })
   })
 })
 
 describe("resolvePreferredTopLevelAcpAgentSelection", () => {
-  it("prefers the selected ACP-backed profile even when global main agent mode is api", () => {
+  it("prefers the selected acpx-backed profile even when global main agent mode is api", () => {
     const result = resolvePreferredTopLevelAcpAgentSelection({
       currentProfile: {
         id: "augustus-profile",
         name: "augustus",
         displayName: "Augustus",
         enabled: true,
-        connection: { type: "acp", command: "auggie", args: ["--acp"] },
+        connection: { type: 'acpx', command: 'auggie', args: ['--acp'] },
       } as any,
       mainAgentMode: "api",
       profileAgents: [],
@@ -113,7 +113,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
           name: "augustus",
           displayName: "Augustus",
           enabled: true,
-          connection: { type: "stdio", command: "auggie", args: ["--acp"] },
+          connection: { type: 'acpx', command: 'auggie', args: ['--acp'] },
         } as any,
       ],
     })
@@ -121,7 +121,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
     expect(result).toEqual({ resolvedName: "augustus", source: "profile" })
   })
 
-  it("falls back to configured ACP main agent selection when the selected profile is internal", () => {
+  it("falls back to configured acpx main agent selection when the selected profile is internal", () => {
     const result = resolvePreferredTopLevelAcpAgentSelection({
       currentProfile: {
         id: "main-profile",
@@ -130,7 +130,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
         enabled: true,
         connection: { type: "internal" },
       } as any,
-      mainAgentMode: "acp",
+      mainAgentMode: 'acpx',
       mainAgentName: "Augustus",
       profileAgents: [
         {
@@ -138,7 +138,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
           name: "augustus",
           displayName: "Augustus",
           enabled: true,
-          connection: { type: "acp", command: "auggie", args: ["--acp"] },
+          connection: { type: 'acpx', command: 'auggie', args: ['--acp'] },
         } as any,
       ],
     })
@@ -146,7 +146,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
     expect(result).toEqual({ resolvedName: "augustus", source: "main-agent" })
   })
 
-  it("returns null when neither the selected profile nor config opts into ACP", () => {
+  it("returns null when neither the selected profile nor config opts into acpx", () => {
     const result = resolvePreferredTopLevelAcpAgentSelection({
       currentProfile: {
         id: "main-profile",
@@ -162,7 +162,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
     expect(result).toBeNull()
   })
 
-  it("returns null when ACP main-agent mode is enabled without a configured main agent name", () => {
+  it("returns null when acpx main-agent mode is enabled without a configured main agent name", () => {
     const result = resolvePreferredTopLevelAcpAgentSelection({
       currentProfile: {
         id: "main-profile",
@@ -171,7 +171,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
         enabled: true,
         connection: { type: "internal" },
       } as any,
-      mainAgentMode: "acp",
+      mainAgentMode: 'acpx',
       mainAgentName: "   ",
       profileAgents: [
         {
@@ -179,7 +179,7 @@ describe("resolvePreferredTopLevelAcpAgentSelection", () => {
           name: "augustus",
           displayName: "Augustus",
           enabled: true,
-          connection: { type: "acp", command: "auggie", args: ["--acp"] },
+          connection: { type: 'acpx', command: 'auggie', args: ['--acp'] },
         } as any,
       ],
     })

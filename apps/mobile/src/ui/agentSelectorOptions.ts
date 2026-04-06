@@ -1,9 +1,9 @@
 import type { AgentProfile, Profile, Settings } from '../lib/settingsApi';
-import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
+import { getAcpxMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
 
 export interface SelectableProfile extends Profile {
   description?: string;
-  selectorMode: 'profile' | 'acp';
+  selectorMode: 'profile' | 'acpx';
   selectionValue: string;
 }
 
@@ -23,15 +23,15 @@ export function toSelectableAgentProfile(profile: AgentProfile): SelectableProfi
 export function buildSelectorProfiles(
   settings?: Settings | null,
   agentProfiles: AgentProfile[] = []
-): { selectorMode: 'profile' | 'acp'; profiles: SelectableProfile[] } {
+): { selectorMode: 'profile' | 'acpx'; profiles: SelectableProfile[] } {
   const enabledAgentProfiles = agentProfiles.filter((profile) => profile.enabled !== false);
 
-  if (settings?.mainAgentMode === 'acp') {
+  if (settings?.mainAgentMode === 'acpx') {
     return {
-      selectorMode: 'acp',
-      profiles: getAcpMainAgentOptions(settings, enabledAgentProfiles).map((option) => ({
+      selectorMode: 'acpx',
+      profiles: getAcpxMainAgentOptions(settings, enabledAgentProfiles).map((option) => ({
         ...toMainAgentProfile(option),
-        selectorMode: 'acp',
+        selectorMode: 'acpx',
         selectionValue: option.name,
       })),
     };

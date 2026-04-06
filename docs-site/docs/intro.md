@@ -26,7 +26,7 @@ Built on the `.agents` open standard, your skills and notes work across Claude C
 
 - **[Architecture Overview](concepts/architecture)** — How DotAgents is built and how the pieces fit together
 - **[The .agents Protocol](concepts/dot-agents-protocol)** — The open standard for agent configuration
-- **[Protocol Ecosystem](concepts/protocol-ecosystem)** — MCP, ACP, Skills, and how they interoperate
+- **[Protocol Ecosystem](concepts/protocol-ecosystem)** — MCP, ACP, `acpx`, Skills, and how they interoperate
 
 ### Platform Guides
 
@@ -39,7 +39,7 @@ Built on the `.agents` open standard, your skills and notes work across Claude C
 - **[Agent Profiles](agents/profiles)** — Specialized AI personas with distinct skills and tools
 - **[Skills](agents/skills)** — Portable, reusable agent capabilities
 - **[Knowledge & Notes](agents/knowledge-notes)** — Durable knowledge across sessions
-- **[Multi-Agent Delegation (ACP)](agents/delegation)** — Agents delegating tasks to other agents
+- **[Multi-Agent Delegation (acpx/ACP)](agents/delegation)** — Agents delegating tasks to other agents
 
 ### Tools & Integrations
 

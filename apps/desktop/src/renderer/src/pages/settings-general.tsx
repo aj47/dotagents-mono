@@ -106,7 +106,7 @@ export function Component() {
   const isLangfuseInstalled = langfuseInstalledQuery.data ?? true // Default to true while loading
   const selectableMainAcpAgents = getSelectableMainAcpAgents(
     externalAgentsQuery.data,
-    configQuery.data?.acpAgents
+    []
   )
 
   const openGlobalAgentsFolder = useCallback(async () => {
@@ -386,10 +386,10 @@ export function Component() {
         {/* Agent Settings */}
         <ControlGroup collapsible defaultCollapsed title="Agent Settings" forceOpen={isSearching}>
           {/* Main Agent Mode Selection */}
-          <Control label={<ControlLabel label="Main Agent Mode" tooltip="Choose how the main agent processes your requests. API mode uses external LLM APIs (OpenAI, Groq, Gemini). ACP mode routes prompts to a configured ACP agent like Claude Code." />} className="px-3">
+          <Control label={<ControlLabel label="Main Agent Mode" tooltip="Choose how the main agent processes your requests. API mode uses external LLM APIs (OpenAI, Groq, Gemini). acpx mode routes prompts to a configured acpx agent profile like Codex or Claude." />} className="px-3">
             <Select
               value={configQuery.data?.mainAgentMode || "api"}
-              onValueChange={(value: "api" | "acp") => {
+              onValueChange={(value: "api" | "acpx") => {
                 saveConfig({ mainAgentMode: value })
               }}
             >
@@ -398,14 +398,14 @@ export function Component() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="api">API (OpenAI, Groq, Gemini)</SelectItem>
-                <SelectItem value="acp">ACP Agent</SelectItem>
+                <SelectItem value="acpx">acpx Agent</SelectItem>
               </SelectContent>
             </Select>
           </Control>
 
-          {configQuery.data?.mainAgentMode === "acp" && (
+          {configQuery.data?.mainAgentMode === "acpx" && (
             <>
-              <Control label={<ControlLabel label="ACP Agent" tooltip="Select which configured ACP agent to use as the main agent. The agent must be configured in the Agents settings page." />} className="px-3">
+              <Control label={<ControlLabel label="acpx Agent" tooltip="Select which configured acpx agent profile to use as the main agent. The agent must be configured in the Agents settings page." />} className="px-3">
                 <Select
                   value={configQuery.data?.mainAgentName || ""}
                   onValueChange={(value: string) => {
@@ -427,21 +427,7 @@ export function Component() {
 
               {configQuery.data?.mainAgentName && (
                 <div className="px-3 py-2 text-sm text-muted-foreground bg-muted/30 rounded-md mx-3 mb-2">
-                  <span className="font-medium">Note:</span> When using ACP mode, the agent will use its own MCP tools and LLM, not DotAgents's configured providers and tools.
-                </div>
-              )}
-
-              <Control label={<ControlLabel label="Inject DotAgents Runtime Tools" tooltip="When enabled, DotAgents runtime tools (delegation, user communication, completion signaling, command execution, skill loading) are injected into ACP agent sessions. Requires Remote Server to be enabled." />} className="px-3">
-                <Switch
-                  checked={configQuery.data?.acpInjectRuntimeTools !== false}
-                  disabled={!configQuery.data?.remoteServerEnabled}
-                  onCheckedChange={(value) => saveConfig({ acpInjectRuntimeTools: value })}
-                />
-              </Control>
-              {!configQuery.data?.remoteServerEnabled && (
-                <div className="px-3 py-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2 mx-3 mb-2">
-                  <span className="i-mingcute-warning-line h-4 w-4" />
-                  <span>Enable Remote Server in settings to use tool injection</span>
+                  <span className="font-medium">Note:</span> When using acpx mode, the agent will use its own runtime/tooling stack via acpx instead of DotAgents directly speaking ACP.
                 </div>
               )}
             </>

@@ -32,6 +32,7 @@ import { ModelSelector } from "@renderer/components/model-selector"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { BundleExportDialog } from "@renderer/components/bundle-export-dialog"
 import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
+import { invalidateAgentProfileQueries } from "@renderer/lib/invalidate-agent-profile-queries"
 import { SandboxSlotSwitcher } from "@renderer/components/sandbox-slot-switcher"
 import {
   AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
@@ -87,7 +88,7 @@ const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   auggie: {
     displayName: "Auggie (Augment Code)",
     description: "Augment Code's AI coding assistant with native ACP support",
-    connectionType: "acp", connectionCommand: "auggie", connectionArgs: "--acp", enabled: true,
+    connectionType: 'acpx', connectionCommand: 'auggie', connectionArgs: '--acp', enabled: true,
     docsUrl: "https://www.augmentcode.com/",
     cwdHint: "Point the working directory at the repo you want Auggie to operate in.",
     verifyArgs: ["--help"],
@@ -95,7 +96,7 @@ const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   "claude-code": {
     displayName: "Claude Code",
     description: "Anthropic's Claude for coding tasks via ACP adapter",
-    connectionType: "acp", connectionCommand: "claude-code-acp", connectionArgs: "", enabled: true,
+    connectionType: 'acpx', connectionCommand: 'claude-code-acp', connectionArgs: '', enabled: true,
     docsUrl: "https://github.com/zed-industries/claude-code-acp",
     installCommand: "npm install -g @zed-industries/claude-code-acp",
     authHint: "Sign in to Claude Code in your terminal before verifying if this is your first run.",
@@ -105,7 +106,7 @@ const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   codex: {
     displayName: "Codex",
     description: "OpenAI Codex via the official ACP adapter",
-    connectionType: "acp", connectionCommand: "codex-acp", connectionArgs: "", enabled: true,
+    connectionType: 'acpx', connectionCommand: 'codex-acp', connectionArgs: '', enabled: true,
     docsUrl: "https://github.com/zed-industries/codex-acp",
     installCommand: "npm install -g @zed-industries/codex-acp",
     authHint: "Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying.",
@@ -115,7 +116,7 @@ const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
   opencode: {
     displayName: "OpenCode",
     description: "OpenCode's native ACP server for terminal-first agent workflows",
-    connectionType: "acp", connectionCommand: "opencode", connectionArgs: "acp", enabled: true,
+    connectionType: 'acpx', connectionCommand: 'opencode', connectionArgs: 'acp', enabled: true,
     docsUrl: "https://opencode.ai/docs/acp/",
     installCommand: "npm install -g opencode-ai",
     authHint: "OpenCode stores provider auth after you run opencode and complete /connect in the TUI.",
@@ -128,10 +129,10 @@ function detectPresetKey(agent?: Partial<EditingAgent> | null): AgentPresetKey |
   if (!agent) return undefined
   const args = (agent.connectionArgs || "").trim()
 
-  if (agent.connectionType === "acp" && agent.connectionCommand === "auggie" && args === "--acp") return "auggie"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "claude-code-acp") return "claude-code"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "codex-acp") return "codex"
-  if (agent.connectionType === "acp" && agent.connectionCommand === "opencode" && args === "acp") return "opencode"
+  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'auggie' && args === '--acp') return 'auggie'
+  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'claude-code-acp') return 'claude-code'
+  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'codex-acp') return 'codex'
+  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'opencode' && args === 'acp') return 'opencode'
 
   return undefined
 }
@@ -266,6 +267,8 @@ export function SettingsAgents() {
 
   const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()); setCommandVerification(null) }
 
+  const refreshAgentProfileQueries = () => invalidateAgentProfileQueries(queryClient)
+
   const applyPreset = (presetKey: AgentPresetKey) => {
     const preset = AGENT_PRESETS[presetKey]
     setEditing({ ...emptyAgent(), ...preset, presetKey })
@@ -299,8 +302,8 @@ export function SettingsAgents() {
 
   const handleSave = async () => {
     if (!editing) return
-    if ((editing.connectionType === "acp" || editing.connectionType === "stdio") && !editing.connectionCommand?.trim()) {
-      toast.error("Add a command for ACP or stdio agents before saving.")
+    if (editing.connectionType === 'acpx' && !editing.connectionCommand?.trim()) {
+      toast.error('Add a command for acpx agents before saving.')
       return
     }
     if (editing.connectionType === "remote" && !editing.connectionBaseUrl?.trim()) {
@@ -330,14 +333,13 @@ export function SettingsAgents() {
     if (isCreating) await tipcClient.createAgentProfile({ profile: data })
     else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
     setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); setCommandVerification(null); loadAgents()
-    // Invalidate sidebar query so it reflects changes immediately
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    refreshAgentProfileQueries()
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this agent?")) return
     await tipcClient.deleteAgentProfile({ id }); loadAgents()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    refreshAgentProfileQueries()
   }
 
   const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); setCommandVerification(null) }
@@ -521,8 +523,7 @@ export function SettingsAgents() {
     void loadSkills()
     void loadServers()
     void loadAllTools()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
+    refreshAgentProfileQueries()
     queryClient.invalidateQueries({ queryKey: ["skills"] })
     queryClient.invalidateQueries({ queryKey: ["skillsSidebar"] })
     queryClient.invalidateQueries({ queryKey: ["mcp-server-status"] })
@@ -546,7 +547,7 @@ export function SettingsAgents() {
   const selectedPreset = selectedPresetKey ? AGENT_PRESETS[selectedPresetKey] : undefined
 
   const handleVerifyExternalAgent = async () => {
-    if (!editing || (editing.connectionType !== "acp" && editing.connectionType !== "stdio")) return
+    if (!editing || editing.connectionType !== 'acpx') return
 
     setIsVerifyingCommand(true)
     try {
@@ -582,7 +583,7 @@ export function SettingsAgents() {
           <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => setIsPublishDialogOpen(true)}>
             <Globe className="h-4 w-4" />Export for Hub
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); refreshAgentProfileQueries() }}>
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
           <Button size="sm" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
@@ -794,13 +795,12 @@ export function SettingsAgents() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="internal">Internal (built-in agent)</SelectItem>
-                    <SelectItem value="acp">ACP (external agent)</SelectItem>
-                    <SelectItem value="stdio">Stdio (process spawn)</SelectItem>
+                    <SelectItem value="acpx">acpx (external agent)</SelectItem>
                     <SelectItem value="remote">Remote (HTTP endpoint)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {(editing.connectionType === "acp" || editing.connectionType === "stdio") && (
+              {editing.connectionType === 'acpx' && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="command">Command</Label>
@@ -893,7 +893,7 @@ export function SettingsAgents() {
                   <Switch id="enabled" checked={editing.enabled} onCheckedChange={v => setEditing({ ...editing, enabled: v })} />
                   <Label htmlFor="enabled">Enabled</Label>
                 </div>
-                {(editing.connectionType === "acp" || editing.connectionType === "stdio") && (
+                {editing.connectionType === 'acpx' && (
                   <div className="flex items-center space-x-2">
                     <Switch id="autoSpawn" checked={editing.autoSpawn ?? false} onCheckedChange={v => setEditing({ ...editing, autoSpawn: v })} />
                     <Label htmlFor="autoSpawn">Auto-spawn on startup</Label>

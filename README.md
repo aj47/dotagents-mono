@@ -53,7 +53,7 @@ DotAgents is three things:
 | **Agent Profiles** | Specialized AI personas with distinct skills and tools. Delegate tasks to the right agent. |
 | **Voice Interface** | Hold-to-record, 30+ languages, auto-insert results into any app. Voice is the primary interface. |
 | **MCP Tools** | Model Context Protocol integration for tool execution, OAuth 2.1 auth, and real-time progress. |
-| **ACP Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents. |
+| **acpx Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents through the `acpx` runner. |
 
 ## The `.agents` Protocol
 
@@ -103,7 +103,7 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 |----------|--------------|
 | **Voice** | Hold-to-record, 30+ languages, Fn toggle mode, auto-insert to any app |
 | **TTS** | 50+ AI voices via OpenAI, Groq, and Gemini with auto-play |
-| **Multi-Agent** | Agent profiles, skill-based delegation, persistent knowledge, ACP coordination |
+| **Multi-Agent** | Agent profiles, skill-based delegation, persistent knowledge, `acpx`-backed coordination |
 | **MCP Tools** | Tool execution, OAuth 2.1 auth, real-time progress, conversation context |
 | **Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging |
 | **Platform** | macOS/Windows/Linux, rate limit handling, multi-provider AI |

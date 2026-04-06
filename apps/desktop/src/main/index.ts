@@ -359,17 +359,9 @@ if (!gotSingleInstanceLock) {
         loopService.startAllLoops()
         logApp("Loop service started (headless)")
 
-        // Initialize ACP service
+        // Initialize acpx runtime service
         await acpService.initialize()
-        logApp("ACP service initialized (headless)")
-
-        // Sync agent profiles to ACP registry
-        try {
-          agentProfileService.syncAgentProfilesToACPRegistry()
-          logApp("Agent profiles synced to ACP registry (headless)")
-        } catch (error) {
-          logApp("Failed to sync agent profiles to ACP registry:", error)
-        }
+        logApp("acpx runtime service initialized (headless)")
 
         // Initialize bundled skills
         try {
@@ -535,19 +527,11 @@ if (!gotSingleInstanceLock) {
     initModelsDevService()
     logApp("Models.dev service initialization started")
 
-    // Initialize ACP service (spawns auto-start agents)
+    // Initialize acpx runtime service
     acpService
       .initialize()
       .then(() => {
-        logApp("ACP service initialized successfully")
-
-        // Sync agent profiles to ACP registry (unified service - preferred)
-        try {
-          agentProfileService.syncAgentProfilesToACPRegistry()
-          logApp("Agent profiles synced to ACP registry")
-        } catch (error) {
-          logApp("Failed to sync agent profiles to ACP registry:", error)
-        }
+        logApp("acpx runtime service initialized successfully")
       })
       .catch((error) => {
         logApp("Failed to initialize ACP service:", error)

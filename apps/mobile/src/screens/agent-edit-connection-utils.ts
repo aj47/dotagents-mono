@@ -1,7 +1,8 @@
-export type ConnectionType = 'internal' | 'acp' | 'stdio' | 'remote';
+export type ConnectionType = 'internal' | 'acpx' | 'remote';
 
 export interface AgentConnectionFormFields {
   connectionType: ConnectionType;
+  connectionAgent?: string;
   connectionCommand: string;
   connectionArgs: string;
   connectionBaseUrl: string;
@@ -10,6 +11,7 @@ export interface AgentConnectionFormFields {
 
 export interface AgentConnectionRequestFields {
   connectionType: ConnectionType;
+  connectionAgent?: string;
   connectionCommand?: string;
   connectionArgs?: string;
   connectionBaseUrl?: string;
@@ -40,9 +42,11 @@ export function buildAgentConnectionRequestFields(formData: AgentConnectionFormF
     };
   }
 
-  if (formData.connectionType === 'acp' || formData.connectionType === 'stdio') {
+  if (formData.connectionType === 'acpx') {
+    const connectionAgent = trimField((formData as AgentConnectionFormFields & { connectionAgent?: string }).connectionAgent || '');
     return {
       connectionType: formData.connectionType,
+      ...(connectionAgent ? { connectionAgent } : {}),
       connectionCommand: trimField(formData.connectionCommand),
       connectionArgs: trimField(formData.connectionArgs),
       connectionCwd: trimField(formData.connectionCwd),
