@@ -37,7 +37,7 @@ export interface ACPDelegationProgress {
   /** Name of the ACP agent being delegated to */
   agentName: string
   /** How this delegated run is connected/executed */
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote'
+  connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote'
   /** The task that was delegated */
   task: string
   /** Current status of the delegation */

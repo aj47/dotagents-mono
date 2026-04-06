@@ -26,7 +26,7 @@ export class ACPSmartRouter {
    *
    * @example
    * ```typescript
-   * const agents = acpRegistry.getReadyAgents()
+   * const agents = acpxService.getAgents().filter(agent => agent.status === 'ready')
    * const promptAddition = acpSmartRouter.generateDelegationPromptAddition(agents)
    * // Returns: "You have access to the following specialized agents..."
    * ```

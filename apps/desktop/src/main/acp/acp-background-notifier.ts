@@ -1,199 +1,34 @@
-import { Notification } from 'electron'
-import { acpClientService } from './acp-client-service'
-import { emitAgentProgress } from '../emit-agent-progress'
-import { agentSessionStateManager } from '../state'
-import { agentSessionTracker } from '../agent-session-tracker'
-import type { ACPDelegationProgress } from '../../shared/types'
-import { logApp } from '../debug'
 import type { ACPSubAgentState } from './types'
-import { INTERNAL_COMPLETION_NUDGE_TEXT } from '../../shared/runtime-tool-names'
+import { agentSessionTracker } from '../agent-session-tracker'
+import { logApp } from '../debug'
 
-/**
- * Background polling and notification system for ACP delegations.
- * Monitors running delegated tasks and emits completion notifications to the UI.
- */
+const INTERNAL_COMPLETION_NUDGE_TEXT = [
+  'A delegated run you started has completed.',
+  'Review its result from the session state and continue only if more work is still required.',
+  'If the overall task is done, produce the final response and mark work complete instead of repeating completed delegation work.',
+].join(' ')
+
 export class ACPBackgroundNotifier {
-  private pollingInterval: ReturnType<typeof setInterval> | undefined
   private delegatedRuns: Map<string, ACPSubAgentState> | undefined
-  private readonly POLL_INTERVAL_MS = 3000
 
-  /**
-   * Sets the reference to the delegated runs map from acp-router-tools.
-   */
   setDelegatedRunsMap(map: Map<string, ACPSubAgentState>): void {
     this.delegatedRuns = map
   }
 
-  /**
-   * Starts the polling loop if not already running.
-   */
   startPolling(): void {
-    if (this.pollingInterval) {
-      return
-    }
-
-    logApp('[ACPBackgroundNotifier] Starting polling for delegated tasks')
-    this.pollingInterval = setInterval(() => {
-      this.pollRunningTasks().catch((error) => {
-        logApp('[ACPBackgroundNotifier] Error during polling:', error)
-      })
-    }, this.POLL_INTERVAL_MS)
+    // Remote ACP polling was removed during the acpx migration.
   }
 
-  /**
-   * Clears the polling interval.
-   */
   stopPolling(): void {
-    if (this.pollingInterval) {
-      logApp('[ACPBackgroundNotifier] Stopping polling')
-      clearInterval(this.pollingInterval)
-      this.pollingInterval = undefined
-    }
+    // No-op: acpx delegated runs complete via local session events.
   }
 
-  /**
-   * Returns true if any tasks are poll-worthy or awaiting setup.
-   * 
-   * Includes:
-   * - Running tasks with baseUrl and acpRunId (actively pollable)
-   * - Running tasks with baseUrl but no acpRunId yet (async POST /runs in flight)
-   * 
-   * The second case prevents premature stopPolling() when a remote async run
-   * is being started and acpRunId hasn't been populated yet.
-   */
   hasRunningTasks(): boolean {
-    if (!this.delegatedRuns) {
-      return false
-    }
-
+    if (!this.delegatedRuns) return false
     for (const state of this.delegatedRuns.values()) {
-      // Actively pollable: running + remote baseUrl + acpRunId assigned
-      if (state.status === 'running' && state.baseUrl && state.acpRunId) {
-        return true
-      }
-      // Awaiting acpRunId: running + remote baseUrl but POST /runs still in flight
-      // Keep polling alive to avoid dropping notifications on slow networks
-      if (state.status === 'running' && state.baseUrl && !state.acpRunId) {
-        return true
-      }
+      if (state.status === 'running' && state.isAsync) return true
     }
     return false
-  }
-
-  /**
-   * Polls running tasks for status updates and emits notifications.
-   */
-  async pollRunningTasks(): Promise<void> {
-    if (!this.delegatedRuns) {
-      return
-    }
-
-    for (const [runId, state] of this.delegatedRuns.entries()) {
-      if (state.status !== 'running' || !state.baseUrl || !state.acpRunId) {
-        continue
-      }
-
-      try {
-        const result = await acpClientService.getRunStatus(state.baseUrl, state.acpRunId)
-
-        // Handle all terminal states: completed, failed, and cancelled
-        if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
-          // Update the task state
-          state.status = result.status
-          state.result = result
-
-          logApp(
-            `[ACPBackgroundNotifier] Task ${runId} (${state.agentName}) ${result.status}`
-          )
-
-          // Notify the UI
-          await this.emitDelegationComplete(state)
-        }
-      } catch (error) {
-        logApp(
-          `[ACPBackgroundNotifier] Error checking status for task ${runId}:`,
-          error
-        )
-      }
-    }
-
-    // Stop polling if no running tasks remain
-    if (!this.hasRunningTasks()) {
-      this.stopPolling()
-    }
-  }
-
-  /**
-   * Emits a notification when a delegation completes.
-   */
-  private async emitDelegationComplete(state: ACPSubAgentState): Promise<void> {
-    logApp(
-      `[ACPBackgroundNotifier] Emitting completion notification for ${state.agentName} (${state.runId})`
-    )
-
-    // Extract result summary from output messages
-    let resultSummary: string | undefined
-    if (state.result?.output && state.result.output.length > 0) {
-      // Get text content from the first message's parts
-      const firstMessage = state.result.output[0]
-      if (firstMessage.parts && firstMessage.parts.length > 0) {
-        // Filter for text parts (content_type is undefined or text/plain)
-        const textParts = firstMessage.parts
-          .filter((p) => !p.content_type || p.content_type.startsWith('text/'))
-          .map((p) => p.content)
-          .join(' ')
-        resultSummary = textParts.substring(0, 200)
-      }
-    }
-
-    const delegationProgress: ACPDelegationProgress = {
-      runId: state.runId,
-      agentName: state.agentName,
-      connectionType: state.connectionType,
-      task: state.task,
-      status: state.status,
-      startTime: state.startTime,
-      endTime: Date.now(),
-      progressMessage: state.progress,
-      resultSummary,
-      error: state.status === 'failed' ? state.result?.error : undefined,
-      acpSessionId: state.acpSessionId,
-      subSessionId: state.subSessionId,
-      conversationId: state.conversationId,
-      acpRunId: state.acpRunId,
-    }
-
-    // Map status to step status - completed is success, everything else (failed/cancelled) is error
-    const stepStatus = state.status === 'completed' ? 'completed' : 'error'
-
-    // Emit progress update to UI
-    // IMPORTANT: isComplete is always false because this is a delegation progress update,
-    // not a completion of the parent session. The parent session may continue running after
-    // the delegation completes (e.g., the main agent processes the result and continues).
-    // Setting isComplete: true here would incorrectly mark the parent session as done.
-    await emitAgentProgress({
-      sessionId: state.parentSessionId,
-      runId: state.parentRunId ?? agentSessionStateManager.getSessionRunId(state.parentSessionId),
-      currentIteration: 0,
-      maxIterations: 1,
-      isComplete: false,
-      steps: [
-        {
-          id: `delegation-complete-${state.runId}`,
-          type: 'completion',
-          title: `Delegation ${state.status}: ${state.agentName}`,
-          description: state.task,
-          status: stepStatus,
-          timestamp: Date.now(),
-          delegation: delegationProgress,
-        },
-      ],
-    })
-
-    // Show native OS notification
-    this.showSystemNotification(state, resultSummary)
-
-    await this.resumeParentSessionIfNeeded(state)
   }
 
   async resumeParentSessionIfNeeded(state: ACPSubAgentState): Promise<void> {
@@ -204,16 +39,15 @@ export class ACPBackgroundNotifier {
     const activeParentSession = agentSessionTracker.getSession(state.parentSessionId)
     if (activeParentSession?.status === 'active') {
       logApp(
-        `[ACPBackgroundNotifier] Skipping parent resume for ${state.runId}; parent session ${state.parentSessionId} is already active`
+        `[ACPBackgroundNotifier] Skipping parent resume for ${state.runId}; parent session ${state.parentSessionId} is already active`,
       )
       return
     }
 
-    // Check if the session was explicitly stopped by the user — don't revive zombie sessions
     const completedSession = agentSessionTracker.findCompletedSession(state.parentSessionId)
     if (completedSession?.status === 'stopped') {
       logApp(
-        `[ACPBackgroundNotifier] Skipping parent resume for ${state.runId}; parent session ${state.parentSessionId} was explicitly stopped by user`
+        `[ACPBackgroundNotifier] Skipping parent resume for ${state.runId}; parent session ${state.parentSessionId} was explicitly stopped by user`,
       )
       return
     }
@@ -221,7 +55,7 @@ export class ACPBackgroundNotifier {
     const conversationId = agentSessionTracker.getConversationIdForSession(state.parentSessionId)
     if (!conversationId) {
       logApp(
-        `[ACPBackgroundNotifier] Cannot resume parent for ${state.runId}; conversation not found for session ${state.parentSessionId}`
+        `[ACPBackgroundNotifier] Cannot resume parent for ${state.runId}; conversation not found for session ${state.parentSessionId}`,
       )
       return
     }
@@ -229,7 +63,7 @@ export class ACPBackgroundNotifier {
     const revived = agentSessionTracker.reviveSession(state.parentSessionId, true)
     if (!revived) {
       logApp(
-        `[ACPBackgroundNotifier] Cannot resume parent for ${state.runId}; failed to revive session ${state.parentSessionId}`
+        `[ACPBackgroundNotifier] Cannot resume parent for ${state.runId}; failed to revive session ${state.parentSessionId}`,
       )
       return
     }
@@ -244,47 +78,11 @@ export class ACPBackgroundNotifier {
         state.parentSessionId,
       )
       logApp(
-        `[ACPBackgroundNotifier] Resumed parent session ${state.parentSessionId} after delegated run ${state.runId}`
+        `[ACPBackgroundNotifier] Resumed parent session ${state.parentSessionId} after delegated run ${state.runId}`,
       )
     } catch (error) {
       state.parentResumeQueued = false
       logApp('[ACPBackgroundNotifier] Failed to resume parent session:', error)
-    }
-  }
-
-  /**
-   * Shows a native OS notification for delegation completion.
-   */
-  private showSystemNotification(state: ACPSubAgentState, resultSummary?: string): void {
-    try {
-      if (!Notification.isSupported()) {
-        logApp('[ACPBackgroundNotifier] System notifications not supported')
-        return
-      }
-
-      const duration = Math.round((Date.now() - state.startTime) / 1000)
-
-      // Determine title based on status (completed, failed, or cancelled)
-      let title: string
-      if (state.status === 'completed') {
-        title = `✅ ${state.agentName} completed`
-      } else if (state.status === 'cancelled') {
-        title = `⚠️ ${state.agentName} cancelled`
-      } else {
-        title = `❌ ${state.agentName} failed`
-      }
-
-      const notification = new Notification({
-        title,
-        body: resultSummary
-          ? `${state.task.substring(0, 50)}${state.task.length > 50 ? '...' : ''}\n${resultSummary.substring(0, 100)}${resultSummary.length > 100 ? '...' : ''}`
-          : `${state.task.substring(0, 100)}${state.task.length > 100 ? '...' : ''}\nCompleted in ${duration}s`,
-        silent: false,
-      })
-
-      notification.show()
-    } catch (error) {
-      logApp('[ACPBackgroundNotifier] Failed to show system notification:', error)
     }
   }
 }

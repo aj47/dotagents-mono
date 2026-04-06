@@ -3,7 +3,6 @@
  * These tools allow the main agent to discover, spawn, delegate to, and manage sub-agents.
  */
 
-import { acpClientService } from './acp-client-service';
 import { acpRouterToolDefinitions, resolveToolName } from './acp-router-tool-definitions';
 import type {
   ACPRunResult,
@@ -26,6 +25,7 @@ import {
   generateSubSessionId,
 } from './internal-agent';
 import { agentProfileService } from '../agent-profile-service';
+import { getDelegationAcpxSessionName } from '../acp-session-state';
 import type { AgentProfile } from '../../shared/types';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 
@@ -89,7 +89,7 @@ interface CreateSubAgentStateArgs {
   parentSessionId: string;
   workingDirectory?: string;
   isInternal?: boolean;
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionType?: 'internal' | 'acpx' | 'remote';
   isAsync?: boolean;
 }
 
@@ -802,8 +802,7 @@ async function executeAgentProfileDelegation(
         waitForResult
       );
 
-    case 'acp':
-    case 'stdio':
+    case 'acpx':
       // Add profile context (system prompt, guidelines) to the task context
       const profileContext = buildProfileContext({
         ...profile,
@@ -991,7 +990,7 @@ interface ResolvedAcpAgentConfig {
   source: 'profile' | 'legacy';
   name: string;
   enabled: boolean;
-  connectionType: 'acp' | 'stdio' | 'remote' | 'internal';
+  connectionType: 'acpx' | 'remote' | 'internal';
   baseUrl?: string;
 }
 
@@ -1005,7 +1004,11 @@ function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null
       source: 'profile',
       name: profile.name,
       enabled: profile.enabled !== false,
-      connectionType: profile.connection.type,
+      connectionType: profile.connection.type === 'remote'
+        ? 'remote'
+        : profile.connection.type === 'internal'
+          ? 'internal'
+          : 'acpx',
       baseUrl: profile.connection.baseUrl,
     };
   }
@@ -1020,13 +1023,17 @@ function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null
     source: 'legacy',
     name: legacy.name,
     enabled: legacy.enabled !== false,
-    connectionType: legacy.connection.type,
+    connectionType: legacy.connection.type === 'remote'
+      ? 'remote'
+      : legacy.connection.type === 'internal'
+        ? 'internal'
+        : 'acpx',
     baseUrl: legacy.connection.baseUrl,
   };
 }
 
 /**
- * Execute delegation to an external ACP agent (stdio or remote).
+ * Execute delegation to an external acpx agent.
  * Handles both synchronous and asynchronous execution modes.
  */
 async function executeACPAgent(
@@ -1053,58 +1060,27 @@ async function executeACPAgent(
       return { success: false, error: `Agent "${args.agentName}" is disabled` };
     }
 
-    let spawnResult: Awaited<ReturnType<typeof acpService.spawnAgent>> | null = null;
-
-    // Ensure local ACP/stdio agents are spawned
-    if (resolvedAgent.connectionType === 'acp' || resolvedAgent.connectionType === 'stdio') {
-      try {
-        spawnResult = await acpService.spawnAgent(args.agentName, {
-          workingDirectory: args.workingDirectory,
-        });
-      } catch (spawnError) {
-        return {
-          success: false,
-          error: `Failed to spawn agent "${args.agentName}": ${spawnError instanceof Error ? spawnError.message : String(spawnError)}`,
-        };
-      }
-    } else if (resolvedAgent.connectionType === 'internal') {
+    if (resolvedAgent.connectionType === 'internal') {
       return {
         success: false,
-        error: `Agent "${args.agentName}" is configured as internal and cannot be delegated through external ACP routing`,
+        error: `Agent "${args.agentName}" is configured as internal and cannot be delegated through external-agent routing`,
+      };
+    }
+
+    if (resolvedAgent.connectionType === 'remote') {
+      return {
+        success: false,
+        error: `Remote ACP agents are not supported by the acpx runtime path. Reconfigure "${args.agentName}" as an acpx agent profile.`,
       };
     }
 
     if (args.prepareOnly) {
-      if (resolvedAgent.connectionType === 'remote') {
-        return {
-          success: true,
-          prepared: true,
-          agentName: args.agentName,
-          status: 'ready',
-          message: `Remote agent "${args.agentName}" is externally managed and ready for delegation.`,
-          note: args.workingDirectory
-            ? 'workingDirectory is ignored for remote ACP agents unless the remote server supports it.'
-            : undefined,
-        };
-      }
-
       return {
         success: true,
         prepared: true,
         agentName: args.agentName,
         status: 'ready',
-        message: `Agent "${args.agentName}" is ready for delegated work.`,
-        effectiveWorkingDirectory: spawnResult?.effectiveWorkingDirectory,
-        reusedExistingProcess: spawnResult?.reusedExistingProcess,
-        restartedProcess: spawnResult?.restartedProcess,
-      };
-    }
-
-    if (waitForResult && resolvedAgent.connectionType === 'remote') {
-      return {
-        success: false,
-        error: `Remote agent "${args.agentName}" does not support synchronous delegation in this path. ` +
-          'Use waitForResult=false to run asynchronously.',
+        message: `Agent "${args.agentName}" is ready for delegated acpx work.`,
       };
     }
 
@@ -1135,21 +1111,27 @@ async function executeACPAgent(
       }
     };
 
-    const ensureStdioSession = async (): Promise<string> => {
+    const sessionName = getDelegationAcpxSessionName(
+      parentSessionId || `orphaned-${Date.now()}`,
+      subAgentState.runId,
+    );
+
+    const ensureAcpxSession = async (): Promise<string> => {
       const sessionId = await acpService.getOrCreateSession(
         args.agentName,
         false,
         args.workingDirectory,
         parentSessionId ? { appSessionId: parentSessionId } : undefined,
+        sessionName,
       );
       registerSessionMapping(sessionId);
       return sessionId;
     };
 
     if (waitForResult) {
-      return executeACPAgentSync(subAgentState, args, ensureStdioSession);
+      return executeACPAgentSync(subAgentState, args, ensureAcpxSession, sessionName);
     } else {
-      return executeACPAgentAsync(subAgentState, args, resolvedAgent, parentSessionId, ensureStdioSession);
+      return executeACPAgentAsync(subAgentState, args, resolvedAgent, ensureAcpxSession, sessionName);
     }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -1162,17 +1144,22 @@ async function executeACPAgent(
 async function executeACPAgentSync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
-  ensureStdioSession: () => Promise<string>
+  ensureAcpxSession: () => Promise<string>,
+  sessionName: string,
 ): Promise<object> {
   try {
-    const sessionId = await ensureStdioSession();
+    await ensureAcpxSession();
 
     const result = await acpService.sendPrompt(
       args.agentName,
-      sessionId,
+      sessionName,
       args.task,
       args.context,
     );
+
+    if (result.sessionId) {
+      subAgentState.acpSessionId = result.sessionId;
+    }
 
     // Add final assistant message if we got a result
     if (result.response) {
@@ -1203,74 +1190,44 @@ function executeACPAgentAsync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
   agentConfig: ResolvedAcpAgentConfig,
-  parentSessionId: string | undefined,
-  ensureStdioSession: () => Promise<string>
+  ensureAcpxSession: () => Promise<string>,
+  sessionName: string,
 ): DelegationResult {
   // Start background polling for notifications
   acpBackgroundNotifier.startPolling();
 
-  if (agentConfig.connectionType === 'remote' && agentConfig.baseUrl) {
-    executeRemoteAgentAsync(subAgentState, args, agentConfig.baseUrl, parentSessionId);
-  } else if (agentConfig.connectionType === 'remote') {
-    // Remote agent without baseUrl is a configuration error
+  if (agentConfig.connectionType === 'internal' || agentConfig.connectionType === 'remote') {
     subAgentState.status = 'failed';
-    return createFailedResult(subAgentState, `Remote agent "${args.agentName}" has no baseUrl configured`);
-  } else if (agentConfig.connectionType === 'internal') {
-    subAgentState.status = 'failed';
-    return createFailedResult(subAgentState, `Agent "${args.agentName}" is internal and not executable via ACP external delegation`);
-  } else {
-    // ACP/stdio local process-backed agents
-    executeStdioAgentAsync(subAgentState, args, ensureStdioSession);
+    return createFailedResult(subAgentState, `Agent "${args.agentName}" is not executable via the acpx external delegation path`);
   }
+
+  executeStdioAgentAsync(subAgentState, args, ensureAcpxSession, sessionName);
 
   return createRunningResult(subAgentState);
 }
 
 /**
- * Execute async remote HTTP agent delegation (fire-and-forget).
- */
-function executeRemoteAgentAsync(
-  subAgentState: DelegatedRun,
-  args: { agentName: string; task: string; workingDirectory?: string },
-  baseUrl: string,
-  parentSessionId: string | undefined
-): void {
-  subAgentState.baseUrl = baseUrl;
-
-  acpClientService.runAgentAsync({
-    agentName: args.agentName,
-    input: args.task,
-    workingDirectory: args.workingDirectory,
-    mode: 'async',
-    parentSessionId,
-  }).then(
-    (acpRunId) => {
-      subAgentState.acpRunId = acpRunId;
-    },
-    (error) => {
-      finalizeAsyncRunWithError(subAgentState, args.agentName, error);
-    }
-  );
-}
-
-/**
- * Execute async stdio agent delegation (fire-and-forget).
+ * Execute async acpx agent delegation (fire-and-forget).
  */
 function executeStdioAgentAsync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
-  ensureStdioSession: () => Promise<string>
+  ensureAcpxSession: () => Promise<string>,
+  sessionName: string,
 ): void {
   Promise.resolve()
-    .then(() => ensureStdioSession())
-    .then((sessionId) => acpService.sendPrompt(
+    .then(() => ensureAcpxSession())
+    .then(() => acpService.sendPrompt(
       args.agentName,
-      sessionId,
+      sessionName,
       args.task,
       args.context,
     ))
     .then(
     (result) => {
+      if (result.sessionId) {
+        subAgentState.acpSessionId = result.sessionId;
+      }
       const endTime = Date.now();
 
       if (result.success) {
@@ -1347,26 +1304,6 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
         success: false,
         error: `Run "${args.runId}" not found. It may have expired or never existed.`,
       };
-    }
-
-    // Query remote server for actual status if we have tracking info and the task is still running
-    if (subAgentState.acpRunId && subAgentState.baseUrl && subAgentState.status === 'running') {
-      try {
-        // ACP protocol: Use ACP client to query run status
-        const acpResult = await acpClientService.getRunStatus(
-          subAgentState.baseUrl,
-          subAgentState.acpRunId
-        );
-
-        // Update local state based on ACP server response for terminal states
-        if (acpResult.status === 'completed' || acpResult.status === 'failed' || acpResult.status === 'cancelled') {
-          subAgentState.status = acpResult.status;
-          subAgentState.result = acpResult;
-        }
-        // If still running, keep local status as 'running'
-      } catch {
-        // Continue with local state if query fails
-      }
     }
 
     const response: Record<string, unknown> = {

@@ -764,7 +764,7 @@ export function Component() {
   const activeProviders = useMemo(() => {
     if (!configQuery.data) return { openai: [], groq: [], gemini: [], chatgptWeb: [], parakeet: [], kitten: [], supertonic: [] }
 
-    const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acp"
+    const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acpx"
     const stt = configQuery.data.sttProviderId || "openai"
     const transcript = configQuery.data.transcriptPostProcessingProviderId || "openai"
     const mcp = configQuery.data.mcpToolsProviderId || "openai"
@@ -805,8 +805,8 @@ export function Component() {
   }, [configQuery.data])
 
   const selectableMainAcpAgents = useMemo(
-    () => getSelectableMainAcpAgents(configQuery.data?.agentProfiles || [], configQuery.data?.acpAgents || []),
-    [configQuery.data?.agentProfiles, configQuery.data?.acpAgents]
+    () => getSelectableMainAcpAgents(configQuery.data?.agentProfiles || [], []),
+    [configQuery.data?.agentProfiles]
   )
 
   const selectedMainAcpAgentDisplayName = useMemo(() => {
@@ -815,7 +815,7 @@ export function Component() {
     return selectableMainAcpAgents.find(agent => agent.name === selectedAgentName)?.displayName || selectedAgentName
   }, [configQuery.data?.mainAgentName, selectableMainAcpAgents])
 
-  const isMainAgentAcpMode = configQuery.data?.mainAgentMode === "acp"
+  const isMainAgentAcpMode = configQuery.data?.mainAgentMode === "acpx"
 
   // Determine which providers are active (selected for at least one feature)
   const isGroqActive = activeProviders.groq.length > 0

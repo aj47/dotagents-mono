@@ -143,7 +143,7 @@ export interface ACPSubAgentState {
   /** Name of the sub-agent */
   agentName: string;
   /** How this delegated run is connected/executed */
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionType?: 'internal' | 'acpx' | 'remote';
   /** Parent session ID linking to the main DotAgents session */
   parentSessionId: string;
   /** Parent session run ID captured when delegation started */

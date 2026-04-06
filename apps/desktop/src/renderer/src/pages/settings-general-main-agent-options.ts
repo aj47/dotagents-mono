@@ -28,13 +28,13 @@ export function getSelectableMainAcpAgents(
 
   for (const agent of profileAgents) {
     if (agent.enabled === false) continue
-    if (agent.connection.type !== "acp" && agent.connection.type !== "stdio") continue
+    if (agent.connection.type !== 'acpx') continue
     addOption(agent.name, agent.displayName)
   }
 
   for (const agent of legacyAgents) {
     if (agent.enabled === false) continue
-    if (agent.connection.type !== "stdio") continue
+    if (agent.connection.type !== 'stdio' && agent.connection.type !== 'acp') continue
     addOption(agent.name, agent.displayName)
   }
 

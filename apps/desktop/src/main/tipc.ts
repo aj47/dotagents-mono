@@ -50,7 +50,6 @@ import {
   Conversation,
   ConversationHistoryItem,
   AgentProgressUpdate,
-  ACPAgentConfig,
   SessionProfileSnapshot,
   LoopConfig,
 } from "../shared/types"
@@ -80,7 +79,6 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
-import { acpService, ACPRunRequest } from "./acp-service"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { getAppSessionForAcpSession } from "./acp-session-state"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
@@ -600,7 +598,6 @@ async function refreshRuntimeAfterBundleImport(): Promise<void> {
 
   try {
     agentProfileService.reload()
-    agentProfileService.syncAgentProfilesToACPRegistry()
   } catch (error) {
     logApp("[tipc] Failed to reload agent profiles after bundle load", { error })
   }
@@ -1178,19 +1175,6 @@ export const router = {
 
       // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
       toolApprovalManager.cancelSessionApprovals(input.sessionId)
-
-      // Abort client-side tracking of ACP runs spawned by this session.
-      // This stops our polling/streaming but does NOT cancel the server-side run.
-      // Prevents completed remote runs from writing back to the dead session (zombie prevention).
-      try {
-        const { acpClientService } = await import("./acp")
-        const cancelledAcpRuns = acpClientService.cancelRunsByParentSession(input.sessionId)
-        if (cancelledAcpRuns > 0) {
-          logLLM(`[stopAgentSession] Cancelled ${cancelledAcpRuns} ACP run(s) for session ${input.sessionId}`)
-        }
-      } catch (error) {
-        logApp("[stopAgentSession] Error cancelling ACP runs:", error)
-      }
 
       // Cancel any internal sub-sessions spawned by this session
       try {
@@ -4085,147 +4069,11 @@ export const router = {
       return true
     }),
 
-  // ACP Agent Configuration handlers
-  getAcpAgents: t.procedure.action(async () => {
-    const config = configStore.get()
-    const externalAgents = config.acpAgents || []
-    // Include internal agent in the list, but filter out any persisted 'internal' entries
-    // from externalAgents to avoid duplicates (can happen after toggling enabled state)
-    const { getInternalAgentConfig } = await import('./acp/acp-router-tools')
-    const internalAgent = getInternalAgentConfig()
-    // Merge any persisted enabled state from config into the internal agent
-    const persistedInternalAgent = externalAgents.find(a => a.name === 'internal')
-    if (persistedInternalAgent && typeof persistedInternalAgent.enabled === 'boolean') {
-      internalAgent.enabled = persistedInternalAgent.enabled
-    }
-    const filteredExternalAgents = externalAgents.filter(a => a.name !== 'internal')
-    return [internalAgent, ...filteredExternalAgents]
-  }),
-
-  saveAcpAgent: t.procedure
-    .input<{ agent: ACPAgentConfig }>()
-    .action(async ({ input }) => {
-      // Block saving agent with reserved name "internal" to avoid config conflicts
-      // The internal agent is a built-in and should not be persisted as an external agent
-      if (input.agent.name === 'internal') {
-        return { success: false, error: 'Cannot save agent with reserved name "internal"' }
-      }
-
-      const config = configStore.get()
-      const agents = config.acpAgents || []
-
-      // Check if agent with this name already exists
-      const existingIndex = agents.findIndex(a => a.name === input.agent.name)
-
-      if (existingIndex >= 0) {
-        // Update existing agent
-        agents[existingIndex] = input.agent
-      } else {
-        // Add new agent
-        agents.push(input.agent)
-      }
-
-      configStore.save({ ...config, acpAgents: agents })
-      return { success: true }
-    }),
-
-  deleteAcpAgent: t.procedure
-    .input<{ agentName: string }>()
-    .action(async ({ input }) => {
-      const config = configStore.get()
-      const agents = config.acpAgents || []
-
-      const filteredAgents = agents.filter(a => a.name !== input.agentName)
-
-      configStore.save({ ...config, acpAgents: filteredAgents })
-      return { success: true }
-    }),
-
-  toggleAcpAgentEnabled: t.procedure
-    .input<{ agentName: string; enabled: boolean }>()
-    .action(async ({ input }) => {
-      const config = configStore.get()
-      const agents = config.acpAgents || []
-
-      const agentIndex = agents.findIndex(a => a.name === input.agentName)
-      if (agentIndex >= 0) {
-        agents[agentIndex] = { ...agents[agentIndex], enabled: input.enabled }
-      } else {
-        // Agent not in config (e.g., built-in 'internal' agent) - add an entry to persist enabled state
-        // We include displayName to satisfy the ACPAgentConfig contract and avoid undefined issues
-        agents.push({
-          name: input.agentName,
-          displayName: input.agentName === 'internal' ? 'DotAgents Internal' : input.agentName,
-          enabled: input.enabled,
-          isInternal: input.agentName === 'internal',
-          connection: { type: 'internal' as const }
-        } as import('../shared/types').ACPAgentConfig)
-      }
-
-      configStore.save({ ...config, acpAgents: agents })
-
-      // When disabling an agent, automatically stop it if it's running
-      if (!input.enabled) {
-        const agentStatus = acpService.getAgentStatus(input.agentName)
-        if (agentStatus && (agentStatus.status === "ready" || agentStatus.status === "starting")) {
-          try {
-            await acpService.stopAgent(input.agentName)
-          } catch (error) {
-            // Log but don't fail the toggle operation
-            logApp(`[ACP] Failed to auto-stop agent ${input.agentName} on disable:`, error)
-          }
-        }
-      }
-
-      return { success: true }
-    }),
-
-  // ACP Agent Runtime handlers
-  getAcpAgentStatuses: t.procedure.action(async () => {
-    return acpService.getAgents()
-  }),
-
   verifyExternalAgentCommand: t.procedure
     .input<{ command: string; args?: string[]; cwd?: string; probeArgs?: string[] }>()
     .action(async ({ input }) => {
       const { verifyExternalAgentCommand } = await import("./command-verification-service")
       return verifyExternalAgentCommand(input)
-    }),
-
-  spawnAcpAgent: t.procedure
-    .input<{ agentName: string; workingDirectory?: string }>()
-    .action(async ({ input }) => {
-      try {
-        const spawnResult = await acpService.spawnAgent(input.agentName, {
-          workingDirectory: input.workingDirectory,
-        })
-        return { success: true, ...spawnResult }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : String(error)
-        }
-      }
-    }),
-
-  stopAcpAgent: t.procedure
-    .input<{ agentName: string }>()
-    .action(async ({ input }) => {
-      try {
-        await acpService.stopAgent(input.agentName)
-        return { success: true }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : String(error)
-        }
-      }
-    }),
-
-  runAcpTask: t.procedure
-    .input<{ request: ACPRunRequest }>()
-    .action(async ({ input }) => {
-      return acpService.runTask(input.request)
     }),
 
   // Get all subagent delegations with conversations for a session

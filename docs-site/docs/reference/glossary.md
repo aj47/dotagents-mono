@@ -11,13 +11,13 @@ Key terms and definitions used throughout DotAgents.
 
 | Term | Definition |
 |------|-----------|
-| **ACP** | Agent Client Protocol — protocol for agent-to-agent communication and delegation. Based on JSON-RPC 2.0. |
+| **ACP** | Agent Client Protocol — the underlying delegation protocol. In DotAgents, external ACP agents are now executed through the `acpx` CLI runtime. |
 | **Agent** | An AI persona with specific skills, tools, and behavior. Runs internally or as an external process. |
 | **Agent Bundle** | A portable package containing an agent's profile, skills, and configuration for sharing. |
 | **Agent Profile** | The complete definition of an agent: identity, system prompt, tool access, skills, and connection. |
 | **.agents/** | The open standard directory for agent configuration. Works across DotAgents, Claude Code, Cursor, and others. |
 | **Context Budgeting** | Automatic management of the LLM's context window, shrinking messages when limits approach. |
-| **Delegation** | When one agent assigns a subtask to another agent via ACP. |
+| **Delegation** | When one agent assigns a subtask to another agent, typically through an `acpx`-managed external runtime. |
 | **Dictation Mode** | Voice mode that transcribes speech and inserts text into the active application. |
 | **Elicitation** | MCP 2025 protocol feature where a server requests additional input from the user during tool execution. |
 | **Emergency Stop** | `Ctrl+Shift+Escape` — immediately aborts all active agent sessions and tool executions. |

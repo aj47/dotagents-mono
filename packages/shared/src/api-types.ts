@@ -67,9 +67,8 @@ export interface Settings {
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
   mcpUnlimitedIterations?: boolean;
-  mainAgentMode?: 'api' | 'acp';
+  mainAgentMode?: 'api' | 'acpx';
   mainAgentName?: string;
-  acpInjectRuntimeTools?: boolean;
   mcpVerifyCompletionEnabled?: boolean;
   mcpFinalSummaryEnabled?: boolean;
 
@@ -134,8 +133,8 @@ export interface Settings {
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
 
-  // ACP Agents list (read-only, from GET only)
-  acpAgents?: Array<{ name: string; displayName: string }>;
+  // acpx-capable agent profile summaries (read-only, from GET only)
+  acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
 export interface SettingsUpdate {
@@ -151,9 +150,8 @@ export interface SettingsUpdate {
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
   mcpUnlimitedIterations?: boolean;
-  mainAgentMode?: 'api' | 'acp';
+  mainAgentMode?: 'api' | 'acpx';
   mainAgentName?: string;
-  acpInjectRuntimeTools?: boolean;
   mcpVerifyCompletionEnabled?: boolean;
   mcpFinalSummaryEnabled?: boolean;
 
@@ -331,7 +329,7 @@ export interface ApiAgentProfile {
   isAgentTarget?: boolean;
   isDefault?: boolean;
   role?: 'user-profile' | 'delegation-target' | 'external-agent';
-  connectionType: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionType: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   autoSpawn?: boolean;
   createdAt: number;
   updatedAt: number;
@@ -344,7 +342,8 @@ export interface ApiAgentProfileFull extends ApiAgentProfile {
   isStateful?: boolean;
   conversationId?: string;
   connection?: {
-    type: 'internal' | 'acp' | 'stdio' | 'remote';
+    type: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
+    agent?: string;
     command?: string;
     args?: string[];
     baseUrl?: string;
@@ -364,9 +363,10 @@ export interface AgentProfileCreateRequest {
   description?: string;
   systemPrompt?: string;
   guidelines?: string;
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   connectionCommand?: string;
   connectionArgs?: string;
+  connectionAgent?: string;
   connectionBaseUrl?: string;
   connectionCwd?: string;
   enabled?: boolean;
@@ -379,9 +379,10 @@ export interface AgentProfileUpdateRequest {
   description?: string;
   systemPrompt?: string;
   guidelines?: string;
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   connectionCommand?: string;
   connectionArgs?: string;
+  connectionAgent?: string;
   connectionBaseUrl?: string;
   connectionCwd?: string;
   enabled?: boolean;

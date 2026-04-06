@@ -677,7 +677,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
   }
 
   try {
-    if (cfg.mainAgentMode === "acp" && cfg.mainAgentName) {
+    if (cfg.mainAgentMode === "acpx" && cfg.mainAgentName) {
       const mainAgentSelection = resolveMainAcpAgentSelection(
         cfg.mainAgentName,
         agentProfileService.getAll(),
@@ -698,7 +698,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
         configStore.save({ ...cfg, mainAgentName: resolvedMainAgentName })
         diagnosticsService.logInfo(
           "remote-server",
-          `ACP main agent \"${cfg.mainAgentName}\" not found. Auto-switched to \"${resolvedMainAgentName}\".`
+          `acpx main agent \"${cfg.mainAgentName}\" not found. Auto-switched to \"${resolvedMainAgentName}\".`
         )
       }
 
@@ -1332,9 +1332,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || "",
         transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || "",
         transcriptPostProcessingChatgptWebModel: cfg.transcriptPostProcessingChatgptWebModel || "",
-        // ACP Agent settings
+        // acpx Agent settings
         mainAgentName: cfg.mainAgentName || "",
-        acpInjectRuntimeTools: cfg.acpInjectRuntimeTools !== false,
         // TTS voice/model per provider
         openaiTtsModel: cfg.openaiTtsModel || "gpt-4o-mini-tts",
         openaiTtsVoice: cfg.openaiTtsVoice || "alloy",
@@ -1343,9 +1342,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         groqTtsVoice: cfg.groqTtsVoice || "autumn",
         geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash-preview-tts",
         geminiTtsVoice: cfg.geminiTtsVoice || "Kore",
-        // ACP Agent list for agent selection
-        acpAgents: agentProfileService.getAll()
-          .filter(p => p.connection.type === 'acp' && p.enabled !== false)
+        // acpx Agent list for agent selection
+        acpxAgents: agentProfileService.getAll()
+          .filter(p => p.connection.type === 'acpx' && p.enabled !== false)
           .map(p => ({ name: p.name, displayName: p.displayName })),
         // Session History (pinned/archived conversation IDs)
         pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds) ? cfg.pinnedSessionIds.filter((id: unknown): id is string => typeof id === 'string') : [],
@@ -1457,9 +1456,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.ttsUseLLMPreprocessing = body.ttsUseLLMPreprocessing
       }
       // Agent settings
-      const validAgentModes = ["api", "acp"]
+      const validAgentModes = ["api", "acpx"]
       if (typeof body.mainAgentMode === "string" && validAgentModes.includes(body.mainAgentMode)) {
-        updates.mainAgentMode = body.mainAgentMode as "api" | "acp"
+        updates.mainAgentMode = body.mainAgentMode as "api" | "acpx"
       }
       if (typeof body.mcpMessageQueueEnabled === "boolean") {
         updates.mcpMessageQueueEnabled = body.mcpMessageQueueEnabled
@@ -1544,12 +1543,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.transcriptPostProcessingChatgptWebModel === "string") {
         updates.transcriptPostProcessingChatgptWebModel = body.transcriptPostProcessingChatgptWebModel
       }
-      // ACP Agent settings
+      // acpx Agent settings
       if (typeof body.mainAgentName === "string") {
         updates.mainAgentName = body.mainAgentName
-      }
-      if (typeof body.acpInjectRuntimeTools === "boolean") {
-        updates.acpInjectRuntimeTools = body.acpInjectRuntimeTools
       }
       // OpenAI TTS settings
       if (typeof body.openaiTtsModel === "string") {

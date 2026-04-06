@@ -40,7 +40,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectorMode, setSelectorMode] = useState<'profile' | 'acp'>('profile');
+  const [selectorMode, setSelectorMode] = useState<'profile' | 'acpx'>('profile');
 
   const fetchProfiles = useCallback(async () => {
     if (!hasApiConfig) {
@@ -90,7 +90,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     setIsSwitching(true);
     try {
       const client = new SettingsApiClient(config.baseUrl, config.apiKey);
-      if (profile.selectorMode === 'acp' && profile.selectionValue) {
+      if (profile.selectorMode === 'acpx' && profile.selectionValue) {
         await client.updateSettings({ mainAgentName: profile.selectionValue });
         setCurrentProfile(profile);
       } else {
@@ -146,7 +146,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>
-            {selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}
+            {selectorMode === 'acpx' ? 'Select Main Agent' : 'Select Agent'}
           </Text>
           <TouchableOpacity
             style={styles.headerCloseButton}
@@ -172,7 +172,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           </View>
         ) : profiles.length === 0 ? (
           <Text style={styles.emptyText}>
-            {selectorMode === 'acp' ? 'No ACP agents available' : 'No agents available'}
+            {selectorMode === 'acpx' ? 'No acpx agents available' : 'No agents available'}
           </Text>
         ) : (
           <FlatList
