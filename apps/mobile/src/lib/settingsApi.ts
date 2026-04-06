@@ -29,8 +29,33 @@ export type {
   AgentProfileUpdateRequest,
   Loop,
   LoopsResponse,
+  OperatorRemoteServerStatus,
+  OperatorTunnelStatus,
+  OperatorHealthCheck,
+  OperatorHealthSnapshot,
+  OperatorRecentError,
+  OperatorRecentErrorsResponse,
+  OperatorLogSummary,
+  OperatorDiscordIntegrationSummary,
+  OperatorWhatsAppIntegrationSummary,
+  OperatorPushNotificationsSummary,
+  OperatorIntegrationsSummary,
+  OperatorUpdaterStatus,
+  OperatorRuntimeStatus,
+  OperatorSystemMetrics,
+  OperatorSessionsSummary,
+  OperatorConversationItem,
+  OperatorConversationsResponse,
+  OperatorLogsResponse,
+  OperatorMCPStatusResponse,
+  OperatorMCPServerSummary,
+  OperatorActionResponse,
+  OperatorAuditEntry,
+  OperatorAuditResponse,
+  OperatorApiKeyRotationResponse,
 } from '@dotagents/shared';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
+import { getDeviceIdentity } from './deviceIdentity';
 
 // Re-export agent profile types with backward-compatible names
 // The shared package uses Api* prefix to avoid conflicts with desktop's AgentProfile
@@ -65,10 +90,75 @@ import type {
   AgentProfileUpdateRequest,
   Loop,
   LoopsResponse,
+  OperatorRemoteServerStatus,
+  OperatorTunnelStatus,
+  OperatorHealthSnapshot,
+  OperatorRecentErrorsResponse,
+  OperatorDiscordIntegrationSummary,
+  OperatorWhatsAppIntegrationSummary,
+  OperatorIntegrationsSummary,
+  OperatorUpdaterStatus,
+  OperatorRuntimeStatus,
+  OperatorActionResponse,
+  OperatorAuditResponse,
+  OperatorApiKeyRotationResponse,
+  OperatorConversationsResponse,
+  OperatorLogsResponse,
+  OperatorMCPStatusResponse,
 } from '@dotagents/shared';
 
 // ModelPreset — re-exported from shared package (single source of truth)
 export type { ModelPreset } from '@dotagents/shared';
+
+const DEVICE_ID_HEADER = 'x-dotagents-device-id';
+
+let stableDeviceIdPromise: Promise<string | undefined> | null = null;
+
+async function getStableDeviceId(): Promise<string | undefined> {
+  if (!stableDeviceIdPromise) {
+    stableDeviceIdPromise = getDeviceIdentity()
+      .then((identity) => identity.deviceId)
+      .catch((error) => {
+        stableDeviceIdPromise = null;
+        console.warn('[SettingsApiClient] Failed to load stable device identity:', error);
+        return undefined;
+      });
+  }
+
+  return stableDeviceIdPromise;
+}
+
+export interface OperatorTunnelSetupTunnel {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
+export interface OperatorTunnelSetupSummary {
+  installed: boolean;
+  loggedIn: boolean;
+  mode: 'quick' | 'named';
+  autoStart: boolean;
+  namedTunnelConfigured: boolean;
+  configuredTunnelId?: string;
+  configuredHostname?: string;
+  credentialsPathConfigured: boolean;
+  tunnelCount: number;
+  tunnels: OperatorTunnelSetupTunnel[];
+  error?: string;
+}
+
+export interface OperatorDiscordLogEntry {
+  id: string;
+  level: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface OperatorDiscordLogsResponse {
+  count: number;
+  logs: OperatorDiscordLogEntry[];
+}
 
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 
@@ -127,6 +217,14 @@ export interface LoopUpdateRequest {
   profileId?: string;
 }
 
+export interface EmergencyStopResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  processesKilled?: number;
+  processesRemaining?: number;
+}
+
 export class SettingsApiClient {
   private baseUrl: string;
   private apiKey: string;
@@ -140,6 +238,11 @@ export class SettingsApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${this.apiKey}`);
+
+    const deviceId = await getStableDeviceId();
+    if (deviceId) {
+      headers.set(DEVICE_ID_HEADER, deviceId);
+    }
 
     // Only send a JSON content type when a request body exists. Fastify treats
     // an empty JSON body as a 400 for methods like DELETE/POST when the header is present.
@@ -214,6 +317,177 @@ export class SettingsApiClient {
   // Models Management
   async getModels(providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web'): Promise<ModelsResponse> {
     return this.request<ModelsResponse>(`/models/${providerId}`);
+  }
+
+  // Operator / Admin Management
+  async getOperatorStatus(): Promise<OperatorRuntimeStatus> {
+    return this.request<OperatorRuntimeStatus>('/operator/status');
+  }
+
+  async getOperatorHealth(): Promise<OperatorHealthSnapshot> {
+    return this.request<OperatorHealthSnapshot>('/operator/health');
+  }
+
+  async getOperatorErrors(count: number = 10): Promise<OperatorRecentErrorsResponse> {
+    const query = `?count=${encodeURIComponent(String(count))}`;
+    return this.request<OperatorRecentErrorsResponse>(`/operator/errors${query}`);
+  }
+
+  async getOperatorLogs(count: number = 20, level?: 'error' | 'warning' | 'info'): Promise<OperatorLogsResponse> {
+    const params = new URLSearchParams({ count: String(count) });
+    if (level) params.set('level', level);
+    return this.request<OperatorLogsResponse>(`/operator/logs?${params.toString()}`);
+  }
+
+  async getOperatorAudit(count: number = 20): Promise<OperatorAuditResponse> {
+    const query = `?count=${encodeURIComponent(String(count))}`;
+    return this.request<OperatorAuditResponse>(`/operator/audit${query}`);
+  }
+
+  async getOperatorMCP(): Promise<OperatorMCPStatusResponse> {
+    return this.request<OperatorMCPStatusResponse>('/operator/mcp');
+  }
+
+  async restartMCPServer(server: string): Promise<{ success: boolean; error?: string }> {
+    return this.request<{ success: boolean; error?: string }>('/operator/actions/mcp-restart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async getOperatorConversations(count: number = 10): Promise<OperatorConversationsResponse> {
+    const query = `?count=${encodeURIComponent(String(count))}`;
+    return this.request<OperatorConversationsResponse>(`/operator/conversations${query}`);
+  }
+
+  async getOperatorRemoteServer(): Promise<OperatorRemoteServerStatus> {
+    return this.request<OperatorRemoteServerStatus>('/operator/remote-server');
+  }
+
+  async getOperatorTunnel(): Promise<OperatorTunnelStatus> {
+    return this.request<OperatorTunnelStatus>('/operator/tunnel');
+  }
+
+  async getOperatorTunnelSetup(): Promise<OperatorTunnelSetupSummary> {
+    return this.request<OperatorTunnelSetupSummary>('/operator/tunnel/setup');
+  }
+
+  async startOperatorTunnel(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/tunnel/start', {
+      method: 'POST',
+    });
+  }
+
+  async stopOperatorTunnel(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/tunnel/stop', {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorIntegrations(): Promise<OperatorIntegrationsSummary> {
+    return this.request<OperatorIntegrationsSummary>('/operator/integrations');
+  }
+
+  async getOperatorUpdater(): Promise<OperatorUpdaterStatus> {
+    return this.request<OperatorUpdaterStatus>('/operator/updater');
+  }
+
+  async checkOperatorUpdater(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/check', {
+      method: 'POST',
+    });
+  }
+
+  async downloadOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/download-latest', {
+      method: 'POST',
+    });
+  }
+
+  async revealOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/reveal-download', {
+      method: 'POST',
+    });
+  }
+
+  async openOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/open-download', {
+      method: 'POST',
+    });
+  }
+
+  async openOperatorReleasesPage(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/updater/open-releases', {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorDiscord(): Promise<OperatorDiscordIntegrationSummary> {
+    return this.request<OperatorDiscordIntegrationSummary>('/operator/discord');
+  }
+
+  async getOperatorDiscordLogs(count: number = 20): Promise<OperatorDiscordLogsResponse> {
+    const query = `?count=${encodeURIComponent(String(count))}`;
+    return this.request<OperatorDiscordLogsResponse>(`/operator/discord/logs${query}`);
+  }
+
+  async connectOperatorDiscord(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/discord/connect', {
+      method: 'POST',
+    });
+  }
+
+  async disconnectOperatorDiscord(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/discord/disconnect', {
+      method: 'POST',
+    });
+  }
+
+  async clearOperatorDiscordLogs(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/discord/logs/clear', {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorWhatsApp(): Promise<OperatorWhatsAppIntegrationSummary> {
+    return this.request<OperatorWhatsAppIntegrationSummary>('/operator/whatsapp');
+  }
+
+  async connectOperatorWhatsApp(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/whatsapp/connect', {
+      method: 'POST',
+    });
+  }
+
+  async logoutOperatorWhatsApp(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/whatsapp/logout', {
+      method: 'POST',
+    });
+  }
+
+  async emergencyStop(): Promise<EmergencyStopResponse> {
+    return this.request<EmergencyStopResponse>('/emergency-stop', {
+      method: 'POST',
+    });
+  }
+
+  async restartRemoteServer(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/actions/restart-remote-server', {
+      method: 'POST',
+    });
+  }
+
+  async restartApp(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/actions/restart-app', {
+      method: 'POST',
+    });
+  }
+
+  async rotateOperatorApiKey(): Promise<OperatorApiKeyRotationResponse> {
+    return this.request<OperatorApiKeyRotationResponse>('/operator/access/rotate-api-key', {
+      method: 'POST',
+    });
   }
 
   // Conversation Sync Management
