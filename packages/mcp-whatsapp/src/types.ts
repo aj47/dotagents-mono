@@ -7,6 +7,8 @@ export interface WhatsAppConfig {
   authDir: string
   /** Phone numbers (E.164 format) allowed to trigger agent responses */
   allowFrom?: string[]
+  /** Phone numbers allowed to issue /ops commands */
+  operatorAllowFrom?: string[]
   /** Whether to auto-reply to messages */
   autoReply?: boolean
   /** Callback URL for forwarding messages to DotAgents */

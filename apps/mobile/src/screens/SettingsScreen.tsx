@@ -1244,6 +1244,24 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[styles.connectionCard, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
+          onPress={() => navigation.navigate('Operations')}
+          disabled={!(config.baseUrl && config.apiKey)}
+          accessibilityRole="button"
+          accessibilityLabel="Operator console"
+        >
+          <View style={styles.connectionCardContent}>
+            <View style={styles.connectionCardLeft}>
+              <Text style={styles.connectionCardTitle}>Operator Console</Text>
+              <Text style={styles.connectionCardUrl}>
+                Health, recent errors, and safe restart actions for the connected desktop.
+              </Text>
+            </View>
+            <Text style={styles.connectionCardChevron}>›</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Go to Chats button */}
         <TouchableOpacity
           style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
