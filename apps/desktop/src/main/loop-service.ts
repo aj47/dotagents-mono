@@ -7,14 +7,19 @@
  * migrated on first load.
  */
 
+import fs from "fs"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import { getRendererHandlers } from "@egoist/tipc/main"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import type { RendererHandlers } from "./renderer-handlers"
+import { WINDOWS } from "./window"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
+  getTasksDir,
   loadTasksLayer,
   writeTaskFile,
   writeAllTaskFiles,
@@ -176,6 +181,14 @@ class LoopService {
   /** Reload tasks from disk (for external changes). */
   reload(): void {
     this.loadFromDisk()
+  }
+
+  /** Reload tasks from disk and rebuild scheduling state for external file changes. */
+  reloadAndRestartAllLoops(): void {
+    this.stopAllLoops()
+    this.reload()
+    this.resumeScheduling()
+    this.startAllLoops()
   }
 
   // ============================================================================
@@ -388,3 +401,165 @@ class LoopService {
 }
 
 export const loopService = LoopService.getInstance()
+
+function notifyLoopsFolderChanged(): void {
+  const windows = [WINDOWS.get("main"), WINDOWS.get("panel")]
+  for (const win of windows) {
+    if (!win) continue
+    try {
+      const handlers = getRendererHandlers<RendererHandlers>(win.webContents)
+      handlers.loopsFolderChanged?.send()
+    } catch {
+      // Window may not be ready yet, ignore.
+    }
+  }
+}
+
+let tasksWatchers: fs.FSWatcher[] = []
+let tasksDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const TASKS_DEBOUNCE_MS = 500
+
+function getCanonicalTasksDirs(): string[] {
+  const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+  const globalTasksDir = getTasksDir(globalLayer)
+  const dirs = [globalTasksDir]
+
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  if (workspaceAgentsFolder) {
+    const workspaceLayer = getAgentsLayerPaths(workspaceAgentsFolder)
+    dirs.push(getTasksDir(workspaceLayer))
+  }
+
+  return dirs
+}
+
+function handleTasksWatcherEvent(eventType: string, filename: string | null): void {
+  const isUnknownChange = !filename
+  const isTaskFile = filename?.endsWith("task.md") || filename?.endsWith(".md")
+  const isDirectory = filename ? !filename.includes(".") : false
+
+  if (!isUnknownChange && !isTaskFile && !isDirectory) return
+
+  logApp(`[LoopService] Tasks folder changed: ${eventType} ${filename ?? "(unknown)"}`)
+
+  if (tasksDebounceTimer) {
+    clearTimeout(tasksDebounceTimer)
+  }
+
+  tasksDebounceTimer = setTimeout(() => {
+    tasksDebounceTimer = null
+    if (process.platform === "linux" && (isDirectory || isUnknownChange)) {
+      refreshLinuxTaskWatchers()
+    }
+
+    try {
+      loopService.reloadAndRestartAllLoops()
+    } catch (error) {
+      logApp("[LoopService] Failed to reload repeat tasks after external change:", error)
+    }
+
+    notifyLoopsFolderChanged()
+  }, TASKS_DEBOUNCE_MS)
+}
+
+function setupTasksWatcher(dirPath: string): fs.FSWatcher | null {
+  try {
+    const watcher = fs.watch(dirPath, (eventType, filename) => {
+      handleTasksWatcherEvent(eventType, filename)
+    })
+
+    watcher.on("error", (error) => {
+      logApp(`[LoopService] Tasks folder watcher error for ${dirPath}:`, error)
+    })
+
+    return watcher
+  } catch (error) {
+    logApp(`[LoopService] Failed to watch tasks folder ${dirPath}:`, error)
+    return null
+  }
+}
+
+function refreshLinuxTaskWatchers(): void {
+  if (process.platform !== "linux") return
+
+  stopTasksFolderWatcher()
+
+  const dirs = getCanonicalTasksDirs()
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue
+    const rootWatcher = setupTasksWatcher(dir)
+    if (rootWatcher) tasksWatchers.push(rootWatcher)
+
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const watcher = setupTasksWatcher(`${dir}/${entry.name}`)
+        if (watcher) tasksWatchers.push(watcher)
+      }
+    } catch {
+      // best-effort
+    }
+  }
+}
+
+export function startTasksFolderWatcher(): void {
+  if (tasksWatchers.length > 0) {
+    logApp("[LoopService] Tasks folder watcher already running")
+    return
+  }
+
+  const dirs = getCanonicalTasksDirs()
+
+  for (const dir of dirs) {
+    fs.mkdirSync(dir, { recursive: true })
+
+    try {
+      if (process.platform === "linux") {
+        const rootWatcher = setupTasksWatcher(dir)
+        if (rootWatcher) tasksWatchers.push(rootWatcher)
+
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue
+          const watcher = setupTasksWatcher(`${dir}/${entry.name}`)
+          if (watcher) tasksWatchers.push(watcher)
+        }
+      } else {
+        const watcher = fs.watch(dir, { recursive: true }, (eventType, filename) => {
+          handleTasksWatcherEvent(eventType, filename)
+        })
+
+        watcher.on("error", (error) => {
+          logApp(`[LoopService] Tasks folder watcher error for ${dir}:`, error)
+        })
+
+        tasksWatchers.push(watcher)
+      }
+
+      logApp(`[LoopService] Started watching tasks folder: ${dir}`)
+    } catch (error) {
+      logApp(`[LoopService] Failed to start tasks folder watcher for ${dir}:`, error)
+    }
+  }
+}
+
+export function stopTasksFolderWatcher(): void {
+  for (const watcher of tasksWatchers) {
+    try {
+      watcher.close()
+    } catch {
+      // Ignore close errors.
+    }
+  }
+
+  if (tasksWatchers.length > 0) {
+    logApp(`[LoopService] Stopped ${tasksWatchers.length} tasks folder watcher(s)`)
+    tasksWatchers = []
+  }
+
+  if (tasksDebounceTimer) {
+    clearTimeout(tasksDebounceTimer)
+    tasksDebounceTimer = null
+  }
+}

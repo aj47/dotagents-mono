@@ -57,6 +57,9 @@ export type RendererHandlers = {
   // Skills folder change notification
   skillsFolderChanged: () => void
 
+  // Repeat tasks folder change notification
+  loopsFolderChanged: () => void
+
   // Theme sync across windows
   themeChanged: (themeMode: string) => void
 }

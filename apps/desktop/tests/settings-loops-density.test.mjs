@@ -47,3 +47,9 @@ test('desktop repeat-task list keeps runtime state compact by removing redundant
   assert.doesNotMatch(renderLoopListBlock, /<Badge variant="secondary">Run on startup<\/Badge>/)
   assert.match(renderLoopListBlock, /\{loop\.runOnStartup && <div>Runs on startup<\/div>\}/)
 })
+
+test('desktop repeat-task settings auto-refresh when the tasks folder changes on disk', () => {
+  assert.match(settingsLoopsSource, /rendererHandlers\.loopsFolderChanged\.listen\(\(\) => \{/) 
+  assert.match(settingsLoopsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["loops"\] \}\)/)
+  assert.match(settingsLoopsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["loop-statuses"\] \}\)/)
+})

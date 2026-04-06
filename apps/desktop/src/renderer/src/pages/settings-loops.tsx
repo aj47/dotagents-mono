@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@renderer/components/ui/button"
 import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
@@ -8,7 +8,7 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig } from "@shared/types"
@@ -104,6 +104,13 @@ export function SettingsLoops() {
     queryFn: async () => tipcClient.getLoopStatuses() as Promise<LoopRuntimeStatus[]>,
     refetchInterval: 5000,
   })
+
+  useEffect(() => {
+    return rendererHandlers.loopsFolderChanged.listen(() => {
+      queryClient.invalidateQueries({ queryKey: ["loops"] })
+      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+    })
+  }, [queryClient])
 
   const loops: LoopConfig[] = loopsQuery.data || []
   const statusByLoopId = new Map(

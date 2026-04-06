@@ -45,7 +45,7 @@ import {
   checkCloudflaredInstalled,
 } from "./cloudflare-tunnel"
 import { initModelsDevService } from "./models-dev-service"
-import { loopService } from "./loop-service"
+import { loopService, startTasksFolderWatcher } from "./loop-service"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
@@ -358,6 +358,7 @@ if (!gotSingleInstanceLock) {
         // Start all enabled repeat tasks
         loopService.startAllLoops()
         logApp("Loop service started (headless)")
+        startTasksFolderWatcher()
 
         // Initialize acpx runtime service
         await acpService.initialize()
@@ -519,6 +520,7 @@ if (!gotSingleInstanceLock) {
     try {
       loopService.startAllLoops()
       logApp("Repeat tasks started")
+      startTasksFolderWatcher()
     } catch (error) {
       logApp("Failed to start repeat tasks:", error)
     }
