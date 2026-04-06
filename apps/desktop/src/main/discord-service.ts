@@ -1084,6 +1084,20 @@ class DiscordService {
       this.client.user.displayName,
     )
 
+    // Strip the bot mention up front so we can detect operator commands
+    // (`/ops ...`) before applying the regular Discord chat gate. Operator
+    // commands have their own dedicated allowlists (`discordOperatorAllow*`)
+    // enforced inside `maybeHandleOperatorCommand`, so they must bypass the
+    // chat-mention / DM gate — otherwise the documented `/ops` text commands
+    // are silently dropped under the safe defaults (DMs off, @-mention
+    // required for guilds).
+    const prompt = this.stripBotMention(message.content).trim()
+
+    if (prompt && parseOperatorCommand(prompt)) {
+      await this.maybeHandleOperatorCommand(message, prompt)
+      return
+    }
+
     const rejectionReason = getDiscordMessageRejectionReason({
       authorId: message.author.id,
       channelId: message.channel.id,
@@ -1114,13 +1128,8 @@ class DiscordService {
       return
     }
 
-    const prompt = this.stripBotMention(message.content).trim()
     if (!prompt) {
       this.addLog("info", `Ignored Discord message from ${message.author.id}: empty prompt after mention stripping`)
-      return
-    }
-
-    if (await this.maybeHandleOperatorCommand(message, prompt)) {
       return
     }
 
