@@ -308,6 +308,23 @@ const getConfig = (): LoadedConfig => {
     whatsappAutoReply: false,
     whatsappLogMessages: false,
 
+    // Discord Integration defaults
+    discordEnabled: false,
+    discordBotToken: "",
+    discordDmEnabled: false,         // DMs off by default (safety)
+    discordRequireMention: true,     // Require @mention in servers by default (safety)
+    discordAllowUserIds: [],
+    discordAllowGuildIds: [],
+    discordAllowChannelIds: [],
+    discordAllowRoleIds: [],
+    discordDmAllowUserIds: [],
+    discordOperatorAllowUserIds: [],
+    discordOperatorAllowGuildIds: [],
+    discordOperatorAllowChannelIds: [],
+    discordOperatorAllowRoleIds: [],
+    discordDefaultProfileId: undefined,
+    discordLogMessages: false,
+
     // Streamer Mode - hides sensitive info for screen sharing
     streamerModeEnabled: false,
 

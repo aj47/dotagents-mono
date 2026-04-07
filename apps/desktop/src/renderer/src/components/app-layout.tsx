@@ -103,6 +103,7 @@ export const Component = () => {
   }, [isCollapsed, refetchSessionData])
 
   const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
+  const discordEnabled = configQuery.data?.discordEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
   const trackedActiveSessions = sessionData?.activeSessions ?? []
   const recentCompletedSessions =
@@ -313,6 +314,15 @@ export const Component = () => {
             text: "WhatsApp",
             href: "/settings/whatsapp",
             icon: "i-mingcute-message-4-line",
+          },
+        ]
+      : []),
+    ...(discordEnabled
+      ? [
+          {
+            text: "Discord",
+            href: "/settings/discord",
+            icon: "i-mingcute-discord-line",
           },
         ]
       : []),

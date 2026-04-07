@@ -1307,6 +1307,31 @@ export function Component() {
           </Control>
         </ControlGroup>
 
+        {/* Discord Integration */}
+        <ControlGroup
+          collapsible
+          defaultCollapsed
+          title="Discord Integration"
+          // Auto-open when the user is searching or when Discord is currently
+          // disabled. The Discord settings page is hidden from the sidebar
+          // while disabled, so this section is the only place to turn it on
+          // — surface it by default until the user enables it.
+          forceOpen={isSearching || !(configQuery.data?.discordEnabled ?? false)}
+          endDescription={(
+            <div className="break-words whitespace-normal">
+              Enable a Discord bot for DMs, mentions, and threads. {" "}
+              <a href="/settings/discord" className="underline">Configure Discord settings</a>.
+            </div>
+          )}
+        >
+          <Control label={<ControlLabel label="Enable Discord" tooltip="When enabled, DotAgents can receive Discord DMs and server mentions using your configured bot token. The Discord settings page only appears in the sidebar while this is on." />} className="px-3">
+            <Switch
+              checked={configQuery.data?.discordEnabled ?? false}
+              onCheckedChange={(value) => saveConfig({ discordEnabled: value })}
+            />
+          </Control>
+        </ControlGroup>
+
         {/* Langfuse Observability */}
         <ControlGroup
           collapsible
