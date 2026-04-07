@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # DotAgents VPS Install Script
-# One-line install: curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/issue-108-discord-integration/scripts/install-vps.sh | bash
+# One-line install: curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install-vps.sh | bash
 # ═══════════════════════════════════════════════════════════════
 # Detect interactive mode BEFORE set -e.
 # When piped through curl, stdin is the script. Try to reopen from /dev/tty.
@@ -20,7 +20,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
 
 INSTALL_DIR="${DOTAGENTS_INSTALL_DIR:-$HOME/dotagents}"
-BRANCH="${DOTAGENTS_BRANCH:-issue-108-discord-integration}"
+BRANCH="${DOTAGENTS_BRANCH:-main}"
 REPO_URL="${DOTAGENTS_REPO:-https://github.com/aj47/dotagents-mono.git}"
 CONFIG_DIR="$HOME/.config/app.dotagents"
 CONFIG_FILE="$CONFIG_DIR/config.json"
@@ -218,15 +218,47 @@ run_onboarding() {
 
   local port; port="$(ask "Remote server port [default: 3210]" DOTAGENTS_PORT "3210")"
 
-  # Build config JSON using a node one-liner for proper escaping
+  # Build config JSON using a node one-liner for proper escaping.
+  # IMPORTANT: We must seed modelPresets/currentModelPresetId — not just the legacy
+  # openaiApiKey/openaiBaseUrl/mcpToolsOpenaiModel fields. On startup the desktop app
+  # calls syncPresetToLegacyFields(), which rebuilds the legacy fields from the
+  # *active preset*. The default built-in preset has an empty apiKey, so without
+  # seeding presets the credential we just collected gets wiped on first launch and
+  # the daemon comes up unable to reach the LLM.
   local config_json
   config_json=$(node -e "
+    const apiKey = $(printf '%s' "$api_key" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+    const baseUrl = $(printf '%s' "$base_url" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+    const model = $(printf '%s' "$model" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+
+    // Detect which built-in preset matches the base URL (mirrors dotagents-cli.sh)
+    const presetMap = {
+      'https://api.openai.com/v1': 'builtin-openai',
+      'https://openrouter.ai/api/v1': 'builtin-openrouter',
+      'https://api.together.xyz/v1': 'builtin-together',
+      'https://api.cerebras.ai/v1': 'builtin-cerebras',
+      'https://api.perplexity.ai': 'builtin-perplexity',
+    };
+    const presetId = presetMap[baseUrl] || 'builtin-openai';
+
     const cfg = {
-      openaiApiKey: $(printf '%s' "$api_key" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))"),
-      openaiBaseUrl: $(printf '%s' "$base_url" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))"),
+      openaiApiKey: apiKey,
+      openaiBaseUrl: baseUrl,
       mcpToolsProviderId: 'openai',
-      mcpToolsOpenaiModel: '$model',
-      transcriptPostProcessingOpenaiModel: '$model',
+      mcpToolsOpenaiModel: model,
+      transcriptPostProcessingOpenaiModel: model,
+      // Seed the model preset system so syncPresetToLegacyFields() preserves the
+      // credentials/model on every load instead of resetting them to the empty
+      // defaults of the built-in preset.
+      currentModelPresetId: presetId,
+      modelPresets: [{
+        id: presetId,
+        apiKey: apiKey,
+        baseUrl: baseUrl || undefined,
+        mcpToolsModel: model,
+        transcriptProcessingModel: model,
+        isBuiltIn: true,
+      }],
       remoteServerEnabled: true,
       remoteServerPort: $port,
       remoteServerBindAddress: '0.0.0.0',
