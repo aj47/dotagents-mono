@@ -178,8 +178,15 @@ function getDiscordOperatorAccessRejectionReason(
   const allowChannelIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowChannelIds)
   const allowRoleIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowRoleIds)
 
+  // Fail closed: if no operator allowlist is configured, deny all operator
+  // commands. Previously this branch returned `null` ("allow") which combined
+  // with parsing `/ops` before the normal Discord chat gate would let any
+  // Discord user that can message the bot run privileged operator commands
+  // (e.g. `/ops restart-server`, `/ops tunnel start`) on a fresh install.
+  // Operator command access is now opt-in and must be explicitly configured
+  // via `discordOperatorAllow*` (user / role / guild / channel).
   if (allowUserIds.length === 0 && allowGuildIds.length === 0 && allowChannelIds.length === 0 && allowRoleIds.length === 0) {
-    return null
+    return "Discord operator commands are disabled. Configure discordOperatorAllowUserIds (or guild/channel/role) to enable them."
   }
 
   // Check if user has an allowed role (role match grants access regardless of user/channel allowlists)
