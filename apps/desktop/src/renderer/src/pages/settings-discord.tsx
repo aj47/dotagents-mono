@@ -268,6 +268,18 @@ export function Component() {
             />
           </Control>
 
+          <div className="mx-3 rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
+            💡 <span className="font-medium">You usually don't need to fill these in.</span> The Discord
+            bot's <span className="font-medium">application owner</span> (or Team members, for
+            Team‑owned apps) is automatically trusted — no IDs required. To grant a friend read‑only
+            access, DM the bot <code className="rounded bg-muted px-1">/dm allow @user</code> — it uses
+            Discord's native user picker. Any user can also run{" "}
+            <code className="rounded bg-muted px-1">/whoami</code> in Discord to see their own ID if
+            you prefer to paste it here manually. Mutating commands like{" "}
+            <code className="rounded bg-muted px-1">/dm allow</code> remain restricted to the
+            application owner.
+          </div>
+
           <Control label="Allowed user IDs" className="px-3">
             <Textarea
               rows={3}

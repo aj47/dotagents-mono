@@ -87,6 +87,50 @@ export function splitDiscordMessageContent(content: string, maxLength: number = 
   return chunks
 }
 
+/**
+ * Input for the slash command authorization helpers.
+ *
+ * The Discord bot's privilege model has two tiers:
+ *   1. **Application owner** — whoever created the bot in the Discord
+ *      developer portal (or, for Team-owned apps, every team member).
+ *      Auto-detected on `ready` via `client.application.fetch()` and
+ *      cached in `DiscordService.applicationOwnerIds`. Owners can do
+ *      anything — read state and mutate access lists.
+ *   2. **DM allowlist** — users explicitly added via `/dm allow @user`
+ *      by an owner. These users can DM the bot and invoke read-only
+ *      slash commands (`/status`, `/logs`, `/whoami`) but CANNOT mutate
+ *      access lists. This prevents the transitive-escalation chain
+ *      where a single allowlisted user could grant admin to any other
+ *      user and effectively become root.
+ */
+export interface DiscordSlashCommandAuthInput {
+  userId: string
+  applicationOwnerIds: ReadonlySet<string>
+  dmAllowUserIds?: string[]
+}
+
+/**
+ * Can the caller use read-only slash commands (`/status`, `/logs`,
+ * `/whoami`)? Owners always can. Anyone on the DM allowlist also can.
+ */
+export function canUseReadOnlySlashCommand(input: DiscordSlashCommandAuthInput): boolean {
+  if (input.applicationOwnerIds.has(input.userId)) return true
+  const dmAllowList = normalizeIds(input.dmAllowUserIds)
+  return dmAllowList.includes(input.userId)
+}
+
+/**
+ * Can the caller use mutating slash commands (`/dm allow|deny|on|off`,
+ * `/access allow-x|deny-x`, `/mention on|off`, `/stop`)? ONLY application
+ * owners can. This closes the transitive escalation chain where anyone
+ * on the DM allowlist could otherwise promote other users to admin.
+ */
+export function canUseMutatingSlashCommand(
+  input: Pick<DiscordSlashCommandAuthInput, "userId" | "applicationOwnerIds">,
+): boolean {
+  return input.applicationOwnerIds.has(input.userId)
+}
+
 export function getDiscordMessageRejectionReason(input: DiscordMessageGateInput): string | null {
   const allowUserIds = normalizeIds(input.allowUserIds)
   const allowGuildIds = normalizeIds(input.allowGuildIds)

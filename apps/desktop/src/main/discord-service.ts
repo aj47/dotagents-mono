@@ -9,6 +9,8 @@ import {
   getDiscordResolvedToken,
 } from "./discord-config"
 import {
+  canUseMutatingSlashCommand,
+  canUseReadOnlySlashCommand,
   getDiscordConversationId,
   getDiscordMessageRejectionReason,
   isBotNameMentioned,
@@ -1337,7 +1339,13 @@ class DiscordService {
   // ── Slash Commands ───────────────────────────────────────────
 
   private async registerSlashCommands(discord: typeof import("discord.js"), client: Client) {
-    const { SlashCommandBuilder, REST, Routes } = discord
+    const { SlashCommandBuilder, REST, Routes, PermissionFlagsBits } = discord
+
+    // Mutating commands are hidden in Discord's command picker from members
+    // who lack the Administrator permission as a first line of defense. The
+    // authoritative runtime check (see `handleSlashCommand`) still denies
+    // non-application-owners regardless of server permissions.
+    const adminOnly = PermissionFlagsBits.Administrator
 
     const commands = [
       new SlashCommandBuilder()
@@ -1345,8 +1353,13 @@ class DiscordService {
         .setDescription("Show bot status, health, and integrations"),
 
       new SlashCommandBuilder()
+        .setName("whoami")
+        .setDescription("Show your Discord ID and trust level for this bot"),
+
+      new SlashCommandBuilder()
         .setName("dm")
         .setDescription("Manage DM access control")
+        .setDefaultMemberPermissions(adminOnly)
         .addSubcommand((sub) =>
           sub.setName("on").setDescription("Enable DMs (with allowlist filtering)"),
         )
@@ -1372,6 +1385,7 @@ class DiscordService {
       new SlashCommandBuilder()
         .setName("access")
         .setDescription("Manage bot access control")
+        .setDefaultMemberPermissions(adminOnly)
         .addSubcommand((sub) =>
           sub.setName("show").setDescription("Show current access rules"),
         )
@@ -1415,6 +1429,7 @@ class DiscordService {
       new SlashCommandBuilder()
         .setName("mention")
         .setDescription("Configure mention requirements")
+        .setDefaultMemberPermissions(adminOnly)
         .addSubcommand((sub) =>
           sub.setName("on").setDescription("Require @mention or name mention to respond (default)"),
         )
@@ -1431,7 +1446,8 @@ class DiscordService {
 
       new SlashCommandBuilder()
         .setName("stop")
-        .setDescription("Emergency stop — cancel all running agent tasks"),
+        .setDescription("Emergency stop — cancel all running agent tasks")
+        .setDefaultMemberPermissions(adminOnly),
     ]
 
     const rest = new REST({ version: "10" }).setToken(client.token!)
@@ -1483,34 +1499,82 @@ class DiscordService {
     }
   }
 
-  private isSlashCommandAuthorized(userId: string): boolean {
-    // Discord application owner / team members are always allowed so they can
-    // bootstrap the slash command allowlist (e.g. `/dm allow @user`) on a
-    // fresh install before `discordDmAllowUserIds` has been seeded.
-    if (this.applicationOwnerIds.has(userId)) return true
+  /**
+   * Slash commands that only READ state or identify the caller. These are
+   * safe for any user in the DM allowlist (as well as app owners) because
+   * they cannot mutate access lists, run agents, or cancel work.
+   */
+  private static readonly READ_ONLY_SLASH_COMMANDS: ReadonlySet<string> = new Set([
+    "status",
+    "logs",
+    "whoami",
+  ])
 
+  /**
+   * Returns the trust level of a caller for logging/reporting purposes.
+   *   - "owner"      → Discord application owner (or Team member)
+   *   - "allowlist"  → on `discordDmAllowUserIds`
+   *   - "none"       → no trust
+   */
+  private classifyCaller(userId: string): "owner" | "allowlist" | "none" {
+    if (this.applicationOwnerIds.has(userId)) return "owner"
     const cfg = configStore.get()
     const dmAllowList = sanitizeDiscordAllowlist(cfg.discordDmAllowUserIds)
-    // If no DM allowlist is configured AND the caller isn't an app owner, deny.
-    if (dmAllowList.length === 0) return false
-    return dmAllowList.includes(userId)
+    return dmAllowList.includes(userId) ? "allowlist" : "none"
   }
 
   private async handleSlashCommand(interaction: import("discord.js").Interaction) {
     if (!interaction.isChatInputCommand()) return
 
-    // Auth check — only DM-allowlisted users can use slash commands
-    if (!this.isSlashCommandAuthorized(interaction.user.id)) {
-      await interaction.reply({ content: "⛔ You don't have permission to use bot commands.", ephemeral: true })
+    const { commandName } = interaction
+    const userId = interaction.user.id
+    const isReadOnly = DiscordService.READ_ONLY_SLASH_COMMANDS.has(commandName)
+    const cfg = configStore.get()
+    const dmAllowUserIds = sanitizeDiscordAllowlist(cfg.discordDmAllowUserIds)
+
+    // Two-tier auth:
+    //   • Read-only commands (/status, /logs, /whoami) → owner OR allowlist
+    //   • Mutating commands (/dm, /access, /mention, /stop) → owner ONLY
+    //
+    // The mutating tier is locked to the Discord application owner (or Team
+    // members) because anyone on the DM allowlist can otherwise transitively
+    // grant admin via `/dm allow @other_user`, effectively escalating to
+    // owner-equivalent privileges.
+    const authorized = isReadOnly
+      ? canUseReadOnlySlashCommand({
+          userId,
+          applicationOwnerIds: this.applicationOwnerIds,
+          dmAllowUserIds,
+        })
+      : canUseMutatingSlashCommand({
+          userId,
+          applicationOwnerIds: this.applicationOwnerIds,
+        })
+
+    if (!authorized) {
+      // Security event: always logged (overrides the privacy default) so an
+      // operator can see unauthorized attempts in the desktop app log panel.
+      const displayName = interaction.user.username ?? "unknown"
+      this.addLog(
+        "warn",
+        `Denied /${commandName} from ${displayName} (${userId}) — ${
+          isReadOnly ? "not in allowlist and not application owner" : "mutating command is owner-only"
+        }`,
+      )
+      const reason = isReadOnly
+        ? "⛔ You don't have permission to use bot commands. Ask the bot owner to run `/dm allow @you`."
+        : "⛔ This command is restricted to the Discord application owner. Run `/whoami` to see your current trust level."
+      await interaction.reply({ content: reason, ephemeral: true })
       return
     }
-
-    const { commandName } = interaction
 
     try {
       switch (commandName) {
         case "status":
           await this.handleStatusCommand(interaction)
+          break
+        case "whoami":
+          await this.handleWhoamiCommand(interaction)
           break
         case "dm":
           await this.handleDmCommand(interaction)
@@ -1544,15 +1608,38 @@ class DiscordService {
   private async handleStatusCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
     const cfg = configStore.get()
     const status = this.getStatus()
+    const ownerCount = this.applicationOwnerIds.size
+    const ownerLine =
+      ownerCount > 0
+        ? `• Owners: ${ownerCount} trusted (auto-detected from Discord app)`
+        : `• Owners: ⚠️ none detected — restart the bot to refresh`
     const lines = [
       `**Bot Status**`,
       `• Connected: ${status.connected ? "✅ yes" : "❌ no"}${status.botUsername ? ` (${status.botUsername})` : ""}`,
+      ownerLine,
       `• DMs: ${cfg.discordDmEnabled ? "✅ enabled" : "❌ disabled"}`,
       `• Require mention: ${cfg.discordRequireMention !== false ? "yes" : "no"}`,
       `• DM allowlist: ${(cfg.discordDmAllowUserIds || []).length} users`,
       `• User allowlist: ${(cfg.discordAllowUserIds || []).length} users`,
       `• Role allowlist: ${(cfg.discordAllowRoleIds || []).length} roles`,
       `• Channel allowlist: ${(cfg.discordAllowChannelIds || []).length} channels`,
+    ]
+    await interaction.reply({ content: lines.join("\n"), ephemeral: true })
+  }
+
+  private async handleWhoamiCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const userId = interaction.user.id
+    const level = this.classifyCaller(userId)
+    const trustLine =
+      level === "owner"
+        ? "✅ **Application owner** — full access (all slash commands, no allowlist required)"
+        : level === "allowlist"
+          ? "✅ **Allowlisted** — can use read-only slash commands (`/status`, `/logs`, `/whoami`) and DM the bot. Mutating commands are owner-only."
+          : "⛔ **No access** — ask the bot owner to run `/dm allow @you` to grant read-only access."
+    const lines = [
+      `**You are:** <@${userId}>`,
+      `**Your Discord ID:** \`${userId}\``,
+      `**Trust level:** ${trustLine}`,
     ]
     await interaction.reply({ content: lines.join("\n"), ephemeral: true })
   }

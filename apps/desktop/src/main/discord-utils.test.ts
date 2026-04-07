@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  canUseMutatingSlashCommand,
+  canUseReadOnlySlashCommand,
   getDiscordConversationId,
   getDiscordMessageRejectionReason,
   splitDiscordMessageContent,
@@ -51,5 +53,45 @@ describe("discord utils", () => {
     const chunks = splitDiscordMessageContent(`${"a".repeat(1200)}\n${"b".repeat(1200)}`, 1900)
     expect(chunks.length).toBe(2)
     expect(chunks.every((chunk) => chunk.length <= 1900)).toBe(true)
+  })
+
+  it("restricts slash command mutations to Discord application owners only", () => {
+    const ownerIds = new Set(["owner-1", "team-member-2"])
+    const dmAllowUserIds = ["user-a", "user-b"]
+
+    // Owners can both read and mutate
+    expect(canUseReadOnlySlashCommand({ userId: "owner-1", applicationOwnerIds: ownerIds, dmAllowUserIds })).toBe(true)
+    expect(canUseMutatingSlashCommand({ userId: "owner-1", applicationOwnerIds: ownerIds })).toBe(true)
+    expect(canUseReadOnlySlashCommand({ userId: "team-member-2", applicationOwnerIds: ownerIds, dmAllowUserIds })).toBe(true)
+    expect(canUseMutatingSlashCommand({ userId: "team-member-2", applicationOwnerIds: ownerIds })).toBe(true)
+
+    // Allowlisted users can read but NOT mutate — this is the key fix.
+    // Without this, any allowlisted user could transitively grant admin via
+    // `/dm allow @other_user` and escalate to owner-equivalent privileges.
+    expect(canUseReadOnlySlashCommand({ userId: "user-a", applicationOwnerIds: ownerIds, dmAllowUserIds })).toBe(true)
+    expect(canUseMutatingSlashCommand({ userId: "user-a", applicationOwnerIds: ownerIds })).toBe(false)
+
+    // Unknown users can do neither
+    expect(canUseReadOnlySlashCommand({ userId: "randomer", applicationOwnerIds: ownerIds, dmAllowUserIds })).toBe(false)
+    expect(canUseMutatingSlashCommand({ userId: "randomer", applicationOwnerIds: ownerIds })).toBe(false)
+
+    // Empty owner set + empty allowlist = locked down (fresh install safety)
+    expect(canUseReadOnlySlashCommand({ userId: "anyone", applicationOwnerIds: new Set(), dmAllowUserIds: [] })).toBe(false)
+    expect(canUseMutatingSlashCommand({ userId: "anyone", applicationOwnerIds: new Set() })).toBe(false)
+
+    // Whitespace entries in dmAllowUserIds are filtered, but trimmed values
+    // are accepted (matches the normalization other allowlists use throughout
+    // discord-utils.ts).
+    expect(canUseReadOnlySlashCommand({
+      userId: "user-a",
+      applicationOwnerIds: new Set(),
+      dmAllowUserIds: ["  ", "", "user-a "],
+    })).toBe(true)
+    // But an entry that's only whitespace never matches a real userId.
+    expect(canUseReadOnlySlashCommand({
+      userId: "nobody",
+      applicationOwnerIds: new Set(),
+      dmAllowUserIds: ["  ", ""],
+    })).toBe(false)
   })
 })
