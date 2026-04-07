@@ -54,18 +54,28 @@ export function getMaskedDiscordBotToken(
 export function getDiscordLifecycleAction(
   prev: Pick<Config, "discordEnabled" | "discordBotToken">,
   next: Pick<Config, "discordEnabled" | "discordBotToken">,
+  env: NodeJS.ProcessEnv = process.env,
 ): DiscordLifecycleAction {
   const prevEnabled = !!prev.discordEnabled
   const nextEnabled = !!next.discordEnabled
-  const prevToken = trimValue(prev.discordBotToken)
-  const nextToken = trimValue(next.discordBotToken)
 
-  // Treat clearing the token as an implicit stop. Returning "restart" here
-  // would trigger a stop+start where start() then immediately fails with
-  // "Discord bot token is required" while the integration stays enabled,
-  // leaving the UI in a confusing half-broken state during token rotation
-  // or removal flows. The bot remains `discordEnabled=true` (the user's
-  // explicit setting) but is no longer running until a new token is saved.
+  // Resolve effective tokens through `getDiscordResolvedToken` so the
+  // env-var fallback (`DOTAGENTS_DISCORD_BOT_TOKEN`) is honored. Without
+  // this, clearing `discordBotToken` in config while the env var is still
+  // set would falsely look like a token removal and trigger an unnecessary
+  // stop, leaving the bot disconnected even though a valid token is still
+  // available via the env. Headless installs and CI flows that ship the
+  // token via env are the primary beneficiaries.
+  const prevToken = getDiscordResolvedToken(prev, env).token
+  const nextToken = getDiscordResolvedToken(next, env).token
+
+  // Treat clearing the token (across both config and env) as an implicit
+  // stop. Returning "restart" here would trigger a stop+start where
+  // start() then immediately fails with "Discord bot token is required"
+  // while the integration stays enabled, leaving the UI in a confusing
+  // half-broken state during token rotation or removal flows. The bot
+  // remains `discordEnabled=true` (the user's explicit setting) but is no
+  // longer running until a new token is saved.
   if (nextEnabled && !nextToken && prevToken) {
     return "stop"
   }
