@@ -1036,9 +1036,13 @@ class DiscordService {
         // fresh install via `/dm allow`).
         await this.loadApplicationOwners(client)
 
-        // Register slash commands
+        // Register slash commands. Pass the login token explicitly so
+        // `registerSlashCommands` doesn't have to reach into the
+        // discord.js internal `client.token` field (which is typed as
+        // possibly null and would silently fail registration if discord.js
+        // ever changed when the field is populated).
         try {
-          await this.registerSlashCommands(discord, client)
+          await this.registerSlashCommands(discord, client, token)
         } catch (err) {
           this.addLog("warn", `Failed to register slash commands: ${err instanceof Error ? err.message : String(err)}`)
         }
@@ -1375,7 +1379,11 @@ class DiscordService {
 
   // ── Slash Commands ───────────────────────────────────────────
 
-  private async registerSlashCommands(discord: typeof import("discord.js"), client: Client) {
+  private async registerSlashCommands(
+    discord: typeof import("discord.js"),
+    client: Client,
+    token: string,
+  ) {
     const { SlashCommandBuilder, REST, Routes, PermissionFlagsBits } = discord
 
     // Mutating commands are hidden in Discord's command picker from members
@@ -1495,7 +1503,13 @@ class DiscordService {
         .setDefaultMemberPermissions(adminOnly),
     ]
 
-    const rest = new REST({ version: "10" }).setToken(client.token!)
+    // Use the login token passed in from `startInternal` rather than
+    // reading the discord.js internal `client.token` field. The latter
+    // is typed `string | null`, so the previous `client.token!`
+    // non-null assertion would have silently failed registration (and
+    // only logged a warning) if discord.js ever changed when that field
+    // is populated relative to the `ready` event.
+    const rest = new REST({ version: "10" }).setToken(token)
     await rest.put(Routes.applicationCommands(client.user!.id), {
       body: commands.map((c) => c.toJSON()),
     })
