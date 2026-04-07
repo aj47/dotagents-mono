@@ -1058,7 +1058,10 @@ class DiscordService {
       })
 
       client.on("interactionCreate", (interaction) => {
-        void this.handleSlashCommand(interaction)
+        void this.handleSlashCommand(interaction).catch((error) => {
+          const messageText = error instanceof Error ? error.message : String(error)
+          this.addLog("error", `Failed to handle Discord interaction: ${messageText}`)
+        })
       })
 
       await client.login(token)
