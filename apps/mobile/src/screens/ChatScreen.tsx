@@ -509,6 +509,16 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
   const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
+  // Effective TTS provider/voice/rate — local mobile config takes precedence over
+  // any value pulled from the connected desktop's settings. Edge TTS only plays on web.
+  const effectiveTtsProvider: 'native' | 'edge' =
+    config.ttsProvider === 'edge' ? 'edge' : remoteTtsProvider;
+  const effectiveEdgeTtsVoice =
+    config.ttsProvider === 'edge' && config.edgeTtsVoice
+      ? config.edgeTtsVoice
+      : remoteEdgeTtsVoice;
+  const effectiveEdgeTtsRate =
+    config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
@@ -1049,10 +1059,11 @@ export default function ChatScreen({ route, navigation }: any) {
 			voiceLog('tts-started', `Assistant speech started (${reason}).`);
 		}
 
-		if (remoteTtsProvider === 'edge' && Platform.OS === 'web') {
+		if (effectiveTtsProvider === 'edge') {
+			// Edge TTS runs on web + native (expo-audio).
 			void speakEdgeTts(processedText, {
-				voice: remoteEdgeTtsVoice,
-				rate: remoteEdgeTtsRate,
+				voice: effectiveEdgeTtsVoice,
+				rate: effectiveEdgeTtsRate,
 				onDone: settle,
 				onError: settle,
 				onStopped: settle,
@@ -1073,7 +1084,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, remoteEdgeTtsRate, remoteEdgeTtsVoice, remoteTtsProvider, voiceLog]);
+		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -1197,10 +1208,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
     setSpeakingMessageIndex(index);
-    if (remoteTtsProvider === 'edge' && Platform.OS === 'web') {
+    if (effectiveTtsProvider === 'edge') {
+      // Edge TTS runs on web + native (expo-audio).
       void speakEdgeTts(processedText, {
-        voice: remoteEdgeTtsVoice,
-        rate: remoteEdgeTtsRate,
+        voice: effectiveEdgeTtsVoice,
+        rate: effectiveEdgeTtsRate,
         onDone: () => {
           intendedSpeakingIndexRef.current = null;
           if (handsFree) {
@@ -1271,9 +1283,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
-		remoteEdgeTtsRate,
-		remoteEdgeTtsVoice,
-		remoteTtsProvider,
+		effectiveEdgeTtsRate,
+		effectiveEdgeTtsVoice,
+		effectiveTtsProvider,
 		handsFree,
 		handsFreeController,
 		voiceLog,
@@ -3532,8 +3544,8 @@ export default function ChatScreen({ route, navigation }: any) {
         {respondToUserHistory.length > 0 && (
           <ResponseHistoryPanel
             responses={respondToUserHistory}
-            ttsProvider={remoteTtsProvider}
-            edgeTtsVoice={remoteEdgeTtsVoice}
+            ttsProvider={effectiveTtsProvider}
+            edgeTtsVoice={effectiveEdgeTtsVoice}
             ttsRate={config.ttsRate ?? 1.0}
             ttsPitch={config.ttsPitch ?? 1.0}
             ttsVoiceId={config.ttsVoiceId}

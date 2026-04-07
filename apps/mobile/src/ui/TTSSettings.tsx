@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
 import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
+import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
 
 export type Voice = {
   identifier: string;
@@ -13,28 +14,66 @@ export type Voice = {
   language: string;
 };
 
+// Free Edge TTS neural voices (web-only playback via public Microsoft endpoint)
+const EDGE_TTS_VOICE_OPTIONS: ReadonlyArray<{
+  identifier: string;
+  name: string;
+  language: string;
+}> = [
+  { identifier: 'en-US-AriaNeural', name: 'Aria (Edge Neural)', language: 'en-US' },
+  { identifier: 'en-US-GuyNeural', name: 'Guy (Edge Neural)', language: 'en-US' },
+  { identifier: 'en-US-JennyNeural', name: 'Jenny (Edge Neural)', language: 'en-US' },
+  { identifier: 'en-US-DavisNeural', name: 'Davis (Edge Neural)', language: 'en-US' },
+  { identifier: 'en-GB-SoniaNeural', name: 'Sonia (Edge Neural)', language: 'en-GB' },
+  { identifier: 'en-GB-RyanNeural', name: 'Ryan (Edge Neural)', language: 'en-GB' },
+];
+
+type UnifiedVoice =
+  | { provider: 'native'; identifier: string; name: string; quality: string; language: string }
+  | { provider: 'edge'; identifier: string; name: string; language: string };
+
 type TTSSettingsProps = {
   voiceId?: string;
   rate: number;
   pitch: number;
+  ttsProvider?: 'native' | 'edge';
+  edgeTtsVoice?: string;
   onVoiceChange: (voiceId: string | undefined) => void;
   onRateChange: (rate: number) => void;
   onPitchChange: (pitch: number) => void;
+  onTtsProviderChange?: (provider: 'native' | 'edge') => void;
+  onEdgeTtsVoiceChange?: (voice: string) => void;
 };
 
 export function TTSSettings({
   voiceId,
   rate,
   pitch,
+  ttsProvider = 'native',
+  edgeTtsVoice,
   onVoiceChange,
   onRateChange,
   onPitchChange,
+  onTtsProviderChange,
+  onEdgeTtsVoiceChange,
 }: TTSSettingsProps) {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const [voices, setVoices] = useState<Voice[]>([]);
+  const [nativeVoices, setNativeVoices] = useState<Voice[]>([]);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
+
+  // Edge TTS voices are available on all platforms (web via HTMLAudioElement,
+  // native via expo-audio + expo-file-system).
+  const edgeVoices: UnifiedVoice[] = useMemo(
+    () =>
+      EDGE_TTS_VOICE_OPTIONS.map((v) => ({
+        provider: 'edge' as const,
+        identifier: v.identifier,
+        name: v.name,
+        language: v.language,
+      })),
+    [],
+  );
 
   const loadVoices = useCallback(async () => {
     try {
@@ -44,7 +83,7 @@ export function TTSSettings({
       const sortedVoices = sortVoicesForTtsPicker(voicesForPicker, {
         preferGoogleVoices: Platform.OS === 'web',
       });
-      setVoices(sortedVoices as Voice[]);
+      setNativeVoices(sortedVoices as Voice[]);
     } catch (error) {
       console.error('[TTS] Failed to load voices:', error);
     }
@@ -73,31 +112,62 @@ export function TTSSettings({
     };
   }, [loadVoices]);
 
-  useEffect(() => {
-    if (!voiceId) {
-      setSelectedVoice(null);
-      return;
+  // Derive the currently-selected unified voice from props (no local state needed)
+  const selectedVoice: UnifiedVoice | null = useMemo(() => {
+    if (ttsProvider === 'edge' && edgeTtsVoice) {
+      const match = edgeVoices.find((v) => v.identifier === edgeTtsVoice);
+      if (match) return match;
     }
-
-    if (voices.length > 0) {
-      const voice = voices.find(v => v.identifier === voiceId);
-      setSelectedVoice(voice || null);
+    if (voiceId) {
+      const native = nativeVoices.find((v) => v.identifier === voiceId);
+      if (native) {
+        return {
+          provider: 'native',
+          identifier: native.identifier,
+          name: native.name,
+          quality: native.quality,
+          language: native.language,
+        };
+      }
     }
-  }, [voiceId, voices]);
+    return null;
+  }, [ttsProvider, edgeTtsVoice, edgeVoices, voiceId, nativeVoices]);
 
-  const handleVoiceSelect = (voice: Voice | null) => {
-    setSelectedVoice(voice);
-    onVoiceChange(voice?.identifier);
+  const handleVoiceSelect = (voice: UnifiedVoice | null) => {
+    if (!voice) {
+      // System default -> native, clear voiceId
+      onTtsProviderChange?.('native');
+      onVoiceChange(undefined);
+    } else if (voice.provider === 'edge') {
+      onTtsProviderChange?.('edge');
+      onEdgeTtsVoiceChange?.(voice.identifier);
+      // Leave ttsVoiceId untouched so native fallback is preserved
+    } else {
+      onTtsProviderChange?.('native');
+      onVoiceChange(voice.identifier);
+    }
     setShowVoicePicker(false);
   };
 
   const testVoice = () => {
+    // Stop any in-flight playback before testing
+    Speech.stop();
+    stopEdgeTts();
+
+    if (selectedVoice?.provider === 'edge') {
+      void speakEdgeTts('Hello! This is a test of the text to speech voice.', {
+        voice: selectedVoice.identifier,
+        rate,
+      });
+      return;
+    }
+
     const options: Speech.SpeechOptions = {
       language: 'en-US',
       rate,
       pitch,
     };
-    if (selectedVoice) {
+    if (selectedVoice?.provider === 'native') {
       options.voice = selectedVoice.identifier;
     }
     Speech.speak('Hello! This is a test of the text to speech voice.', options);
@@ -204,31 +274,79 @@ export function TTSSettings({
                 </Text>
               </TouchableOpacity>
 
-              {voices.map((voice) => (
-                <TouchableOpacity
-                  key={voice.identifier}
-                  style={[
-                    styles.voiceItem,
-                    selectedVoice?.identifier === voice.identifier && styles.voiceItemSelected,
-                  ]}
-                  onPress={() => handleVoiceSelect(voice)}
-                >
-                  <View>
-                    <Text style={[
-                      styles.voiceItemText,
-                      selectedVoice?.identifier === voice.identifier && styles.voiceItemTextSelected,
-                    ]}>
-                      {voice.name}
-                    </Text>
-                    <Text style={styles.voiceItemSubtext}>
-                      {voice.language} {voice.quality === 'Enhanced' ? '• Enhanced' : ''}
-                    </Text>
-                  </View>
-                  {selectedVoice?.identifier === voice.identifier && (
-                    <Text style={styles.checkmark}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
+              {/* Edge TTS voices — free cloud neural voices (web + native) */}
+              {edgeVoices.length > 0 && (
+                <>
+                  <Text style={styles.voiceGroupHeader}>Edge TTS (Free)</Text>
+                  {edgeVoices.map((voice) => {
+                    const isSelected =
+                      selectedVoice?.provider === 'edge' &&
+                      selectedVoice.identifier === voice.identifier;
+                    return (
+                      <TouchableOpacity
+                        key={`edge-${voice.identifier}`}
+                        style={[styles.voiceItem, isSelected && styles.voiceItemSelected]}
+                        onPress={() => handleVoiceSelect(voice)}
+                      >
+                        <View>
+                          <Text
+                            style={[
+                              styles.voiceItemText,
+                              isSelected && styles.voiceItemTextSelected,
+                            ]}
+                          >
+                            {voice.name}
+                          </Text>
+                          <Text style={styles.voiceItemSubtext}>
+                            {voice.language} • Neural
+                          </Text>
+                        </View>
+                        {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Native device voices */}
+              {nativeVoices.length > 0 && (
+                <Text style={styles.voiceGroupHeader}>Device Voices</Text>
+              )}
+              {nativeVoices.map((voice) => {
+                const isSelected =
+                  selectedVoice?.provider === 'native' &&
+                  selectedVoice.identifier === voice.identifier;
+                return (
+                  <TouchableOpacity
+                    key={`native-${voice.identifier}`}
+                    style={[styles.voiceItem, isSelected && styles.voiceItemSelected]}
+                    onPress={() =>
+                      handleVoiceSelect({
+                        provider: 'native',
+                        identifier: voice.identifier,
+                        name: voice.name,
+                        quality: voice.quality,
+                        language: voice.language,
+                      })
+                    }
+                  >
+                    <View>
+                      <Text
+                        style={[
+                          styles.voiceItemText,
+                          isSelected && styles.voiceItemTextSelected,
+                        ]}
+                      >
+                        {voice.name}
+                      </Text>
+                      <Text style={styles.voiceItemSubtext}>
+                        {voice.language} {voice.quality === 'Enhanced' ? '• Enhanced' : ''}
+                      </Text>
+                    </View>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -349,6 +467,16 @@ const createStyles = (theme: Theme) =>
     },
     voiceList: {
       padding: spacing.md,
+    },
+    voiceGroupHeader: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.mutedForeground,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+      paddingHorizontal: spacing.sm,
     },
     voiceItem: {
       flexDirection: 'row',

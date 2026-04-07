@@ -263,6 +263,9 @@ importers:
       expo:
         specifier: ~54.0.6
         version: 54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo-audio:
+        specifier: ~1.1.1
+        version: 1.1.1(expo-asset@12.0.12(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       expo-camera:
         specifier: ^17.0.9
         version: 17.0.10(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-web@0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -275,6 +278,9 @@ importers:
       expo-device:
         specifier: ^8.0.10
         version: 8.0.10(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))
+      expo-file-system:
+        specifier: ~19.0.21
+        version: 19.0.21(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))
       expo-image-picker:
         specifier: ^55.0.10
         version: 55.0.10(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))
@@ -3826,6 +3832,14 @@ packages:
     resolution: {integrity: sha512-CsXFCQbx2fElSMn0lyTdRIyKlSXOal6ilLJd+yeZ6xaC7I9AICQgscY5nj0QcwgA+KYYCCEQEBndMsmj7drOWQ==}
     peerDependencies:
       expo: '*'
+      react: '*'
+      react-native: '*'
+
+  expo-audio@1.1.1:
+    resolution: {integrity: sha512-CPCpJ+0AEHdzWROc0f00Zh6e+irLSl2ALos/LPvxEeIcJw1APfBa4DuHPkL4CQCWsVe7EnUjFpdwpqsEUWcP0g==}
+    peerDependencies:
+      expo: '*'
+      expo-asset: '*'
       react: '*'
       react-native: '*'
 
@@ -11353,6 +11367,13 @@ snapshots:
       react-native: 0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0)
     transitivePeerDependencies:
       - supports-color
+
+  expo-audio@1.1.1(expo-asset@12.0.12(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+    dependencies:
+      expo: 54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo-asset: 12.0.12(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      react: 19.1.0
+      react-native: 0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0)
 
   expo-camera@17.0.10(expo@54.0.30(@babel/core@7.28.5)(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-web@0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:

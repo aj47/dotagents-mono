@@ -1485,12 +1485,16 @@ export default function SettingsScreen({ navigation }: any) {
               voiceId={draft.ttsVoiceId}
               rate={draft.ttsRate ?? 1.0}
               pitch={draft.ttsPitch ?? 1.0}
+              ttsProvider={draft.ttsProvider ?? 'native'}
+              edgeTtsVoice={draft.edgeTtsVoice}
               onVoiceChange={(v) => updateLocalConfig({ ttsVoiceId: v })}
               onRateChange={(r) => updateLocalConfig({ ttsRate: r })}
               onPitchChange={(p) => updateLocalConfig({ ttsPitch: p })}
+              onTtsProviderChange={(p) => updateLocalConfig({ ttsProvider: p })}
+              onEdgeTtsVoiceChange={(v) => updateLocalConfig({ edgeTtsVoice: v })}
             />
             <Text style={styles.helperText}>
-              Cloud voices/models (OpenAI, Groq, Gemini, Edge) are under the desktop-connected Text-to-Speech section below.
+              Edge TTS voices play on web only. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
             </Text>
           </>
         )}

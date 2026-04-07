@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -141,7 +140,9 @@ export function ResponseHistoryPanel({
     };
 
     safeSetSpeakingIndex(index);
-    if (ttsProvider === 'edge' && Platform.OS === 'web') {
+    if (ttsProvider === 'edge') {
+      // Edge TTS runs on all platforms: HTMLAudioElement on web,
+      // expo-audio + expo-file-system on native (iOS/Android).
       void speakEdgeTts(processedText, {
         voice: edgeTtsVoice,
         rate: ttsRate,

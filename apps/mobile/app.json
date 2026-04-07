@@ -21,7 +21,9 @@
         "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to transcribe your voice.",
         "NSCameraUsageDescription": "This app uses the camera to scan QR codes for configuration.",
         "NSUserNotificationsUsageDescription": "This app sends notifications when new messages arrive from your AI assistant.",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -56,7 +58,8 @@
           "sounds": [],
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-audio"
     ]
   }
 }
