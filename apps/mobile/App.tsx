@@ -6,6 +6,7 @@ import ChatScreen from './src/screens/ChatScreen';
 import SessionListScreen from './src/screens/SessionListScreen';
 import SplitChatScreen from './src/screens/SplitChatScreen';
 import ConnectionSettingsScreen from './src/screens/ConnectionSettingsScreen';
+import OperationsScreen from './src/screens/OperationsScreen';
 import AgentEditScreen from './src/screens/AgentEditScreen';
 import KnowledgeNoteEditScreen from './src/screens/KnowledgeNoteEditScreen';
 import LoopEditScreen from './src/screens/LoopEditScreen';
@@ -401,6 +402,11 @@ function Navigation() {
                       name="ConnectionSettings"
                       component={ConnectionSettingsScreen}
                       options={{ title: 'Connection' }}
+                    />
+                    <Stack.Screen
+                      name="Operations"
+                      component={OperationsScreen}
+                      options={{ title: 'Operations' }}
                     />
                     <Stack.Screen
                       name="Sessions"
