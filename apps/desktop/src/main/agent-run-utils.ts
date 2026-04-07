@@ -5,7 +5,13 @@ import {
   resolveLatestUserFacingResponse,
 } from "./respond-to-user-utils"
 
-export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
+// When the caller asks for unlimited iterations we still need *some* upper
+// bound to scale loop guardrails (verification fail limits, nudge caps, etc.)
+// against. This budget is intentionally large so deep-research and long
+// experiment runs aren't artificially capped. Individual guardrails are
+// otherwise expected to track *consecutive* failures and reset on progress,
+// so this number does not have to match a typical run length.
+export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 10000
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
 

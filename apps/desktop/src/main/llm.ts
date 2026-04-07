@@ -1136,10 +1136,6 @@ export async function processTranscriptWithAgentMode(
       : baseMessage
   }
 
-  const buildToolOnlyFinalAnswerNudge = () => {
-    return "You already have multiple rounds of recent tool output for this request. Unless one specific missing fact is still required, stop calling more inspection tools and provide one concise final answer now. If the work is already complete, call mark_work_complete after the user-facing answer."
-  }
-
   const buildMissingFinalAnswerAfterCompletionNudge = () => {
     return `You called ${MARK_WORK_COMPLETE_TOOL} without first providing the final user-facing answer. Provide that answer now. If ${RESPOND_TO_USER_TOOL} is available, use it for the final user-facing answer and then call ${MARK_WORK_COMPLETE_TOOL} again only if needed. Do not add a second recap or summary unless the user explicitly asked for one.`
   }
@@ -1405,16 +1401,25 @@ export async function processTranscriptWithAgentMode(
   // Derive loop safety budgets from the configured iteration budget so we don't
   // give up too early on recoverable tasks (e.g. tool-heavy flows that need
   // several correction nudges before converging).
+  // NOTE: All of the failure counters below are tracked as *consecutive*
+  // failures (they reset on any forward progress, e.g. a successful tool call
+  // or a verifier "yes"). Their upper clamps therefore do not need to match a
+  // typical run length — they only cap how long a single recovery streak is
+  // allowed to run before we give up.
   const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
   const effectiveIterationBudget = guardrailBudget
 
-  // Verification failure limit - after this many failed completion checks, end as incomplete.
-  // Scales with iteration budget instead of a fixed low constant.
-  const VERIFICATION_FAIL_LIMIT = clamp(Math.ceil(effectiveIterationBudget * 0.8), 5, 60)
+  // Consecutive verification failure limit - after this many failed completion
+  // checks *in a row* (without any successful tool batch or verifier "yes" in
+  // between), end as incomplete. Scales with iteration budget; the high upper
+  // clamp keeps long deep-research runs from being killed by a verifier that
+  // is correctly saying "still more work to do".
+  const VERIFICATION_FAIL_LIMIT = clamp(Math.ceil(effectiveIterationBudget * 0.8), 5, 1000)
 
-  // Max nudges before forcing an incomplete fallback.
-  // Scales with iteration budget to avoid premature fallback on long tasks.
-  const MAX_NUDGES = clamp(Math.ceil(effectiveIterationBudget * 0.6), 3, 40)
+  // Max consecutive nudges before forcing an incomplete fallback. Resets on
+  // any successful tool batch (see `totalNudgeCount = 0` reset paths below),
+  // so this only caps "how stuck can the agent be in one segment".
+  const MAX_NUDGES = clamp(Math.ceil(effectiveIterationBudget * 0.6), 3, 1000)
 
   // Empty response retry limit - after this many retries, break to prevent infinite loops
   const MAX_EMPTY_RESPONSE_RETRIES = 3
@@ -1576,16 +1581,28 @@ export async function processTranscriptWithAgentMode(
   })
 
   let noOpCount = 0 // Track iterations without meaningful progress
-  let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
+  // Counts *consecutive* nudges since the last forward step. Forward steps —
+  // real tool calls, successful verifications, explicit user-facing responses,
+  // and completion signals — all reset this counter, so a single recovery
+  // segment is what's bounded, not the lifetime of the run.
+  let totalNudgeCount = 0
   let garbledToolCallCount = 0 // Track consecutive garbled tool-call-as-text responses
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
-  let successfulToolOnlyIterationsWithoutResponse = 0 // Track repeated inspect-only tool loops that never converge to a final answer
-  let awaitingToolOnlyFinalAnswerResponse = false // Track when we've explicitly asked the model to stop inspecting and give the final answer
   const MAX_COMPLETION_SIGNAL_HINTS = 2
-  const MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE = 20
-  let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
-  const toolFailureCount = new Map<string, number>() // Track failures per tool name
-  const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
+  // Count *consecutive* verification failures. Resets to 0 on any verifier
+  // "yes" (handled inside runVerificationAndHandleResult by returning
+  // newFailCount: 0) and on any successful tool batch (see the reset right
+  // after `allToolsSuccessful` is computed below). This makes a long deep
+  // research run with many legitimate "not done yet" verifier verdicts safe,
+  // because every successful tool call breaks the failure streak.
+  let verificationFailCount = 0
+  // Track *consecutive* failures per tool name. The counter resets to 0 the
+  // next time that specific tool succeeds, so a tool that fails twice while the
+  // agent iterates on its arguments and then succeeds is fully reinstated. This
+  // is critical for experiment-style flows where the agent legitimately needs
+  // to retry the same tool with progressively refined inputs.
+  const toolFailureCount = new Map<string, number>()
+  const MAX_TOOL_FAILURES = 3 // Max consecutive failures of a tool before excluding it
   let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
   let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
 
@@ -2149,7 +2166,6 @@ export async function processTranscriptWithAgentMode(
             totalNudgeCount = 0
             garbledToolCallCount = 0
             completionSignalHintCount = 0
-            successfulToolOnlyIterationsWithoutResponse = 0
             continue
           }
         }
@@ -2246,8 +2262,12 @@ export async function processTranscriptWithAgentMode(
         break
       }
 
-      // Nudge path for no-progress responses.
-      if (config.mcpVerifyCompletionEnabled && (noOpCount >= 2 || (hasToolsAvailable && noOpCount >= 1))) {
+      // Nudge path for no-progress responses. Allow at least one "thinking
+      // only" iteration before nudging — agents doing deep research often
+      // legitimately need to reflect on a tool result for one turn before
+      // acting again, and firing the verifier on the very first text-only
+      // iteration was punishing that workflow.
+      if (config.mcpVerifyCompletionEnabled && noOpCount >= 2) {
         // Detect garbled tool-call-as-text loops: the model keeps outputting
         // "[Calling tools: ...]" as plain text instead of actual tool calls.
         // After a few consecutive garbled responses, the model is in a degraded
@@ -2474,6 +2494,10 @@ export async function processTranscriptWithAgentMode(
         garbledToolCallCount = 0 // Reset on successful tool execution
         if (execResult.result.isError) {
           failedTools.push(execResult.toolCall.name)
+        } else {
+          // Reset the consecutive-failure counter for this specific tool on
+          // success so the agent gets a fresh budget after recovering.
+          toolFailureCount.delete(execResult.toolCall.name)
         }
       }
 
@@ -2682,23 +2706,18 @@ export async function processTranscriptWithAgentMode(
     const hasErrors = toolResults.some((result) => result.isError)
     const allToolsSuccessful = toolResults.length > 0 && !hasErrors
 
+    // A successful tool batch is forward progress, so it breaks any
+    // verifier-failure streak. This keeps long deep-research runs from being
+    // killed by VERIFICATION_FAIL_LIMIT just because the verifier (correctly)
+    // said "still more work to do" several times before the agent finished.
+    if (allToolsSuccessful) {
+      verificationFailCount = 0
+    }
+
     // Deferred completion signal: only treat mark_work_complete as a completion signal
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
-    const hasExplicitUserFacingResponse = !!latestMaterializedUserResponse?.trim().length
-
-    if (hasErrors || onlyCommunicationTools || hasExplicitUserFacingResponse || completionSignalConfirmed) {
-      successfulToolOnlyIterationsWithoutResponse = 0
-    } else if (allToolsSuccessful) {
-      successfulToolOnlyIterationsWithoutResponse += 1
-      if (successfulToolOnlyIterationsWithoutResponse >= MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE) {
-        awaitingToolOnlyFinalAnswerResponse = true
-        addEphemeralMessage("user", buildToolOnlyFinalAnswerNudge())
-      }
-    } else {
-      successfulToolOnlyIterationsWithoutResponse = 0
-    }
 
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions
@@ -2788,80 +2807,6 @@ export async function processTranscriptWithAgentMode(
         sinceIndex: currentPromptIndex,
       })
 
-      const shouldFinalizeRequestedToolOnlyAnswer =
-        awaitingToolOnlyFinalAnswerResponse
-        && !!latestCommunicationOnlyResponse?.trim().length
-
-      if (shouldFinalizeRequestedToolOnlyAnswer) {
-        finalContent = latestCommunicationOnlyResponse
-        let completionForcedByVerificationLimit = false
-        let finalConversationState: AgentConversationState = "complete"
-
-        if (config.mcpVerifyCompletionEnabled) {
-          const verifyStep = createProgressStep(
-            "thinking",
-            "Verifying completion",
-            "Checking whether the requested final answer is ready to present",
-            "in_progress",
-          )
-          progressSteps.push(verifyStep)
-          emit({
-            currentIteration: iteration,
-            maxIterations,
-            steps: progressSteps.slice(-3),
-            isComplete: false,
-            conversationHistory: formatConversationForProgress(conversationHistory),
-          })
-
-          const result = await runVerificationAndHandleResult(
-            finalContent,
-            verifyStep,
-            verificationFailCount,
-            {
-              nudgeForToolUsage: true,
-              currentPromptIndex,
-            },
-          )
-          verificationFailCount = result.newFailCount
-          completionForcedByVerificationLimit = result.forcedByLimit
-
-          if (result.shouldContinue) {
-            awaitingToolOnlyFinalAnswerResponse = false
-            noOpCount = 0
-            totalNudgeCount = 0
-            garbledToolCallCount = 0
-            completionSignalHintCount = 0
-            successfulToolOnlyIterationsWithoutResponse = 0
-            continue
-          }
-
-          finalConversationState = result.conversationState
-        }
-
-        awaitingToolOnlyFinalAnswerResponse = false
-
-        const completionStep = createProgressStep(
-          "completion",
-          completionForcedByVerificationLimit ? "Task incomplete" : "Task completed",
-          completionForcedByVerificationLimit
-            ? "Verification did not confirm completion before retry limit"
-            : "Accepted the requested final answer after repeated inspection-only iterations",
-          completionForcedByVerificationLimit ? "error" : "completed",
-        )
-        progressSteps.push(completionStep)
-
-        emit({
-          currentIteration: iteration,
-          maxIterations,
-          steps: progressSteps.slice(-3),
-          isComplete: true,
-          conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
-          finalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
-        })
-        break
-      }
-
       const shouldVerifyCommunicationOnlyResponse =
         noOpCount >= 2
         && config.mcpVerifyCompletionEnabled
@@ -2905,7 +2850,6 @@ export async function processTranscriptWithAgentMode(
           totalNudgeCount = 0
           garbledToolCallCount = 0
           completionSignalHintCount = 0
-          successfulToolOnlyIterationsWithoutResponse = 0
           continue
         }
 
@@ -3085,7 +3029,6 @@ export async function processTranscriptWithAgentMode(
         totalNudgeCount = 0
         garbledToolCallCount = 0
         completionSignalHintCount = 0
-        successfulToolOnlyIterationsWithoutResponse = 0
         continue
       }
 
@@ -3138,7 +3081,6 @@ export async function processTranscriptWithAgentMode(
 		          totalNudgeCount = 0
 		          garbledToolCallCount = 0
 		          completionSignalHintCount = 0
-		          successfulToolOnlyIterationsWithoutResponse = 0
 	          continue
 	        }
 	      }
