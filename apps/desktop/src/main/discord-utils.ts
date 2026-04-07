@@ -48,18 +48,54 @@ function normalizeIds(values: string[] | undefined): string[] {
   return (values || []).map((value) => value.trim()).filter(Boolean)
 }
 
-export function getDiscordConversationId(input: {
+/**
+ * Shape describing the Discord location a message was sent from. The same
+ * object is used for both the conversation ID (the stable key the agent uses
+ * to persist conversation history) and the session epoch lookup key.
+ */
+export interface DiscordConversationLocation {
   channelId: string
   guildId?: string | null
   threadId?: string | null
   isDirectMessage: boolean
-}): string {
+}
+
+/**
+ * Base key used to look up a per-location session epoch in
+ * `config.discordConversationEpochs`. Unlike `getDiscordConversationId`, this
+ * key is epoch-agnostic — it describes the physical Discord location only, not
+ * the logical session iteration.
+ *
+ * The key has the same shape as the legacy (epoch-0) conversation ID, so any
+ * existing channel that has never been `/new`'d keeps its historical ID.
+ */
+export function getDiscordConversationKey(input: DiscordConversationLocation): string {
   if (input.isDirectMessage) {
     return `discord_dm_${input.channelId}`
   }
 
   const base = `discord_g${input.guildId || "unknown"}_c${input.channelId}`
   return input.threadId ? `${base}_t${input.threadId}` : base
+}
+
+/**
+ * Deterministic conversation ID for a Discord message location.
+ *
+ * When the optional `epoch` is undefined, 0, or negative, the function returns
+ * the legacy base key so existing channels keep their historical conversation
+ * history (backward compatible). When epoch > 0, the suffix `_s<epoch>` is
+ * appended, forking the conversation into a fresh session while leaving the
+ * previous session's history intact in the agent's conversation store.
+ *
+ * The epoch is incremented by the `/new` slash command (see
+ * `handleNewCommand` in discord-service.ts).
+ */
+export function getDiscordConversationId(
+  input: DiscordConversationLocation & { epoch?: number },
+): string {
+  const base = getDiscordConversationKey(input)
+  const epoch = input.epoch ?? 0
+  return epoch > 0 ? `${base}_s${epoch}` : base
 }
 
 export function splitDiscordMessageContent(content: string, maxLength: number = 1900): string[] {

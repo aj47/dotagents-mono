@@ -3,6 +3,7 @@ import {
   canUseMutatingSlashCommand,
   canUseReadOnlySlashCommand,
   getDiscordConversationId,
+  getDiscordConversationKey,
   getDiscordMessageRejectionReason,
   splitDiscordMessageContent,
 } from "./discord-utils"
@@ -12,6 +13,46 @@ describe("discord utils", () => {
     expect(getDiscordConversationId({ channelId: "dm-1", isDirectMessage: true })).toBe("discord_dm_dm-1")
     expect(getDiscordConversationId({ channelId: "chan-1", guildId: "guild-1", isDirectMessage: false })).toBe("discord_gguild-1_cchan-1")
     expect(getDiscordConversationId({ channelId: "chan-1", guildId: "guild-1", threadId: "thread-1", isDirectMessage: false })).toBe("discord_gguild-1_cchan-1_tthread-1")
+  })
+
+  it("forks into a new conversation id when a session epoch > 0 is supplied", () => {
+    // Epoch 0 / undefined is the backward-compatible default: the id matches
+    // the legacy (pre-session) format so every existing channel keeps its
+    // historical conversation history.
+    expect(getDiscordConversationId({ channelId: "dm-1", isDirectMessage: true, epoch: 0 })).toBe("discord_dm_dm-1")
+    expect(getDiscordConversationId({ channelId: "dm-1", isDirectMessage: true, epoch: undefined })).toBe("discord_dm_dm-1")
+
+    // Epoch 1+ appends `_s<epoch>` so /new starts a fresh conversation.
+    expect(getDiscordConversationId({ channelId: "dm-1", isDirectMessage: true, epoch: 1 })).toBe("discord_dm_dm-1_s1")
+    expect(getDiscordConversationId({ channelId: "dm-1", isDirectMessage: true, epoch: 42 })).toBe("discord_dm_dm-1_s42")
+
+    // Works for guild channels and threads too.
+    expect(getDiscordConversationId({ channelId: "chan-1", guildId: "guild-1", isDirectMessage: false, epoch: 2 })).toBe("discord_gguild-1_cchan-1_s2")
+    expect(getDiscordConversationId({ channelId: "chan-1", guildId: "guild-1", threadId: "thread-1", isDirectMessage: false, epoch: 3 })).toBe("discord_gguild-1_cchan-1_tthread-1_s3")
+
+    // Defensive: a negative epoch (should never happen) falls back to the
+    // base key rather than corrupting the conversation id.
+    expect(getDiscordConversationId({ channelId: "dm-1", isDirectMessage: true, epoch: -1 })).toBe("discord_dm_dm-1")
+  })
+
+  it("derives a stable per-location key used to look up the session epoch", () => {
+    // The base key is identical to the legacy conversation id (epoch 0), so
+    // config entries written under this key are backward-compatible with the
+    // IDs used by every channel that predates the epoch feature.
+    expect(getDiscordConversationKey({ channelId: "dm-1", isDirectMessage: true })).toBe("discord_dm_dm-1")
+    expect(getDiscordConversationKey({ channelId: "chan-1", guildId: "guild-1", isDirectMessage: false })).toBe("discord_gguild-1_cchan-1")
+    expect(getDiscordConversationKey({ channelId: "chan-1", guildId: "guild-1", threadId: "thread-1", isDirectMessage: false })).toBe("discord_gguild-1_cchan-1_tthread-1")
+
+    // DM and guild channels with the same channelId do NOT collide — the DM
+    // branch uses a distinct prefix. This matters because a bot can end up
+    // with a DM channel id that numerically matches a guild channel id.
+    expect(getDiscordConversationKey({ channelId: "same-id", isDirectMessage: true }))
+      .not.toBe(getDiscordConversationKey({ channelId: "same-id", guildId: "guild-1", isDirectMessage: false }))
+
+    // Threads and their parent channels resolve to distinct keys so /new in
+    // a thread does not reset the parent channel's session, and vice versa.
+    expect(getDiscordConversationKey({ channelId: "chan-1", guildId: "guild-1", threadId: "thread-1", isDirectMessage: false }))
+      .not.toBe(getDiscordConversationKey({ channelId: "chan-1", guildId: "guild-1", isDirectMessage: false }))
   })
 
   it("rejects messages that fail DM, mention, or allowlist rules", () => {

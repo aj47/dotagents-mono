@@ -12,9 +12,11 @@ import {
   canUseMutatingSlashCommand,
   canUseReadOnlySlashCommand,
   getDiscordConversationId,
+  getDiscordConversationKey,
   getDiscordMessageRejectionReason,
   isBotNameMentioned,
   splitDiscordMessageContent,
+  type DiscordConversationLocation,
 } from "./discord-utils"
 import {
   DISCORD_UNAVAILABLE_ERROR,
@@ -1228,12 +1230,18 @@ class DiscordService {
       return
     }
 
-    const conversationId = getDiscordConversationId({
+    // Resolve the physical Discord location, look up the current session
+    // epoch (bumped by `/new`), and compose the final conversation ID. When
+    // epoch is 0 or missing the ID matches the legacy format, so existing
+    // channels keep their historical conversation history with no migration.
+    const location: DiscordConversationLocation = {
       channelId: message.channel.isThread() ? (message.channel.parentId || message.channel.id) : message.channel.id,
       guildId: message.guildId,
       threadId: message.channel.isThread() ? message.channel.id : undefined,
       isDirectMessage,
-    })
+    }
+    const epoch = this.getConversationEpoch(cfg, location)
+    const conversationId = getDiscordConversationId({ ...location, epoch })
 
     // Consume any buffered channel context and prepend to the prompt
     const pendingMessages = !isDirectMessage ? this.consumePendingHistory(message.channel.id) : []
@@ -1378,6 +1386,14 @@ class DiscordService {
       new SlashCommandBuilder()
         .setName("whoami")
         .setDescription("Show your Discord ID and trust level for this bot"),
+
+      // /new is intentionally NOT marked as admin-only: it's a per-caller,
+      // per-channel reset that cannot affect other users or grant access. The
+      // read-only auth tier (`READ_ONLY_SLASH_COMMANDS`) handles the actual
+      // permission check inside `handleSlashCommand`.
+      new SlashCommandBuilder()
+        .setName("new")
+        .setDescription("Start a fresh conversation in this channel (prior context is preserved, not deleted)"),
 
       new SlashCommandBuilder()
         .setName("dm")
@@ -1526,12 +1542,77 @@ class DiscordService {
    * Slash commands that only READ state or identify the caller. These are
    * safe for any user in the DM allowlist (as well as app owners) because
    * they cannot mutate access lists, run agents, or cancel work.
+   *
+   * `/new` is included because it only affects the caller's own conversation
+   * with the bot in one specific channel — it cannot grant access to anyone,
+   * touch any allowlist, or interrupt an in-flight response. If you're allowed
+   * to talk to the bot, you're allowed to reset your own chat.
    */
   private static readonly READ_ONLY_SLASH_COMMANDS: ReadonlySet<string> = new Set([
     "status",
     "logs",
     "whoami",
+    "new",
   ])
+
+  /**
+   * Read the current session epoch for a Discord conversation key. Returns 0
+   * for any key that has never been bumped, which makes the resulting
+   * conversation ID identical to the legacy (pre-session) format. See
+   * `getDiscordConversationId` in discord-utils.ts.
+   */
+  private getConversationEpoch(
+    cfg: ReturnType<typeof configStore.get>,
+    location: DiscordConversationLocation,
+  ): number {
+    const key = getDiscordConversationKey(location)
+    const value = cfg.discordConversationEpochs?.[key]
+    // Defensive: NaN, negative, or non-finite values fall back to 0 so a
+    // corrupt config file can never produce a malformed conversation ID.
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 0
+    return Math.floor(value)
+  }
+
+  /**
+   * Increment the session epoch for a Discord conversation key by one and
+   * persist the new value to the config store. Returns the new epoch.
+   *
+   * Used by the `/new` slash command to fork the conversation into a fresh
+   * session while leaving the previous session's history intact in the
+   * agent's conversation store.
+   */
+  private bumpConversationEpoch(location: DiscordConversationLocation): number {
+    const key = getDiscordConversationKey(location)
+    const cfg = configStore.get()
+    const current = this.getConversationEpoch(cfg, location)
+    const next = current + 1
+    const epochs = { ...(cfg.discordConversationEpochs ?? {}), [key]: next }
+    configStore.save({ ...cfg, discordConversationEpochs: epochs })
+    return next
+  }
+
+  /**
+   * Build a `DiscordConversationLocation` from a slash-command interaction.
+   * Mirrors the same channel/thread/DM logic used in `handleMessage` so the
+   * key derived here matches the key used to look up the epoch on incoming
+   * messages. Returns `null` if the interaction has no channel context (which
+   * should never happen for chat-input commands but is defensively handled).
+   */
+  private getInteractionLocation(
+    interaction: import("discord.js").ChatInputCommandInteraction,
+  ): DiscordConversationLocation | null {
+    const channel = interaction.channel
+    if (!channel) return null
+    const isDirectMessage = !interaction.inGuild()
+    const isThread = "isThread" in channel && typeof channel.isThread === "function" && channel.isThread()
+    const parentId = isThread && "parentId" in channel ? channel.parentId : null
+    return {
+      channelId: isThread ? (parentId || channel.id) : channel.id,
+      guildId: interaction.guildId,
+      threadId: isThread ? channel.id : undefined,
+      isDirectMessage,
+    }
+  }
 
   /**
    * Returns the trust level of a caller for logging/reporting purposes.
@@ -1599,6 +1680,9 @@ class DiscordService {
         case "whoami":
           await this.handleWhoamiCommand(interaction)
           break
+        case "new":
+          await this.handleNewCommand(interaction)
+          break
         case "dm":
           await this.handleDmCommand(interaction)
           break
@@ -1636,6 +1720,15 @@ class DiscordService {
       ownerCount > 0
         ? `• Owners: ${ownerCount} trusted (auto-detected from Discord app)`
         : `• Owners: ⚠️ none detected — restart the bot to refresh`
+
+    // If the caller is inside a known Discord location, surface the current
+    // session epoch so they can see whether `/new` has been used here. The
+    // line is omitted entirely on epoch 0 to keep the default status output
+    // unchanged for the common case.
+    const callerLocation = this.getInteractionLocation(interaction)
+    const callerEpoch = callerLocation ? this.getConversationEpoch(cfg, callerLocation) : 0
+    const sessionLine = callerEpoch > 0 ? `• Current session: #${callerEpoch} (use \`/new\` to fork again)` : null
+
     const lines = [
       `**Bot Status**`,
       `• Connected: ${status.connected ? "✅ yes" : "❌ no"}${status.botUsername ? ` (${status.botUsername})` : ""}`,
@@ -1646,6 +1739,7 @@ class DiscordService {
       `• User allowlist: ${(cfg.discordAllowUserIds || []).length} users`,
       `• Role allowlist: ${(cfg.discordAllowRoleIds || []).length} roles`,
       `• Channel allowlist: ${(cfg.discordAllowChannelIds || []).length} channels`,
+      ...(sessionLine ? [sessionLine] : []),
     ]
     await interaction.reply({ content: lines.join("\n"), ephemeral: true })
   }
@@ -1665,6 +1759,36 @@ class DiscordService {
       `**Trust level:** ${trustLine}`,
     ]
     await interaction.reply({ content: lines.join("\n"), ephemeral: true })
+  }
+
+  /**
+   * `/new` — Fork the conversation in this channel into a fresh session.
+   *
+   * Increments the per-location session epoch in the config store, which
+   * causes the next message in this channel to use a new conversation ID
+   * (suffixed with `_s<epoch>`). The previous session's history remains in
+   * the agent's conversation store and can still be inspected via
+   * `/ops conversations`.
+   *
+   * In-flight requests against the previous epoch are NOT interrupted —
+   * `/new` only affects subsequent messages, which is intentional: an
+   * interrupted response would leave the user with no reply at all.
+   */
+  private async handleNewCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const location = this.getInteractionLocation(interaction)
+    if (!location) {
+      await interaction.reply({
+        content: "⚠️ Could not determine the channel for this command. Try again from inside a channel or DM.",
+        ephemeral: true,
+      })
+      return
+    }
+    const epoch = this.bumpConversationEpoch(location)
+    this.addLog(
+      "info",
+      `Discord /new: forked conversation for ${getDiscordConversationKey(location)} → session #${epoch}`,
+    )
+    await interaction.reply({ content: "✅ Fresh conversation started.", ephemeral: true })
   }
 
   private async handleDmCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
