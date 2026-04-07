@@ -1166,6 +1166,20 @@ class DiscordService {
           timestamp: Date.now(),
         })
       }
+
+      // Always surface the rejection reason in the Recent Logs panel so the
+      // operator can see why a message was dropped. Without this, the only
+      // observable symptom is "the bot doesn't reply", which gives no clue
+      // whether the gate, allowlist, or DM-disabled flag is responsible.
+      //
+      // Author IDs are PII and are omitted by default. If the operator opts
+      // into verbose diagnostics via `discordLogMessages`, include the author
+      // ID — mirroring the privacy escalation used by the accepted-message
+      // path below.
+      const shouldLogAuthor = cfg.discordLogMessages ?? false
+      const context = isDirectMessage ? "DM" : "guild message"
+      const authorSuffix = shouldLogAuthor ? ` from ${message.author.id}` : ""
+      this.addLog("info", `Dropped Discord ${context}${authorSuffix}: ${rejectionReason}`)
       return
     }
 
