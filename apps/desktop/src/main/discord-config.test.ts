@@ -28,4 +28,30 @@ describe("discord config helpers", () => {
     expect(getDiscordLifecycleAction({ discordEnabled: true, discordBotToken: "token" }, { discordEnabled: false, discordBotToken: "token" })).toBe("stop")
     expect(getDiscordLifecycleAction({ discordEnabled: true, discordBotToken: "token" }, { discordEnabled: true, discordBotToken: "token" })).toBe("noop")
   })
+
+  it("treats clearing the bot token while enabled as an implicit stop", () => {
+    // Clearing the token should not trigger restart (which would fail with
+    // "Discord bot token is required" while leaving discordEnabled=true).
+    // Instead it should stop the bot cleanly.
+    expect(
+      getDiscordLifecycleAction(
+        { discordEnabled: true, discordBotToken: "token" },
+        { discordEnabled: true, discordBotToken: "" },
+      ),
+    ).toBe("stop")
+    // Whitespace-only also counts as cleared.
+    expect(
+      getDiscordLifecycleAction(
+        { discordEnabled: true, discordBotToken: "token" },
+        { discordEnabled: true, discordBotToken: "   " },
+      ),
+    ).toBe("stop")
+    // Both empty stays noop (no previous token to stop).
+    expect(
+      getDiscordLifecycleAction(
+        { discordEnabled: true, discordBotToken: "" },
+        { discordEnabled: true, discordBotToken: "" },
+      ),
+    ).toBe("noop")
+  })
 })

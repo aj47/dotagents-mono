@@ -57,6 +57,18 @@ export function getDiscordLifecycleAction(
 ): DiscordLifecycleAction {
   const prevEnabled = !!prev.discordEnabled
   const nextEnabled = !!next.discordEnabled
+  const prevToken = trimValue(prev.discordBotToken)
+  const nextToken = trimValue(next.discordBotToken)
+
+  // Treat clearing the token as an implicit stop. Returning "restart" here
+  // would trigger a stop+start where start() then immediately fails with
+  // "Discord bot token is required" while the integration stays enabled,
+  // leaving the UI in a confusing half-broken state during token rotation
+  // or removal flows. The bot remains `discordEnabled=true` (the user's
+  // explicit setting) but is no longer running until a new token is saved.
+  if (nextEnabled && !nextToken && prevToken) {
+    return "stop"
+  }
 
   if (!prevEnabled && nextEnabled) {
     return "start"
@@ -67,8 +79,6 @@ export function getDiscordLifecycleAction(
   }
 
   if (prevEnabled && nextEnabled) {
-    const prevToken = trimValue(prev.discordBotToken)
-    const nextToken = trimValue(next.discordBotToken)
     if (prevToken !== nextToken) {
       return "restart"
     }
