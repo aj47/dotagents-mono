@@ -1087,6 +1087,27 @@ class DiscordService {
   }
 
   async stop(): Promise<{ success: boolean; error?: string }> {
+    // Wait for any in-flight startup to finish before tearing down.
+    //
+    // Why: startInternal() only assigns `this.client` *after*
+    // `client.login()` resolves. If we don't await the in-flight
+    // startPromise here, a quick enable→disable (or token change →
+    // restart) races: stop() runs while login is mid-flight, finds
+    // this.client still null and no-ops, then login completes and assigns
+    // this.client, leaving the bot connected with stale settings even
+    // though the user just disabled it (or rotated the token). This is
+    // reachable from the saveConfig lifecycle dispatch in tipc.ts, where
+    // rapid config changes translate into rapid start/stop/restart calls.
+    //
+    // We ignore the start result — we're about to destroy either way.
+    if (this.startPromise) {
+      try {
+        await this.startPromise
+      } catch {
+        // startup errored; nothing to tear down
+      }
+    }
+
     try {
       if (this.client) {
         await this.client.destroy()
@@ -1107,6 +1128,9 @@ class DiscordService {
   }
 
   async restart(): Promise<{ success: boolean; error?: string }> {
+    // stop() now awaits any in-flight startPromise, so restart() composes
+    // correctly: any pending login is allowed to complete (or fail) before
+    // we tear down and kick off a fresh start with the new config.
     await this.stop()
     return this.start()
   }
