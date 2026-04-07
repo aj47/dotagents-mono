@@ -255,11 +255,10 @@ run_setup() {
   echo ""
 
   # Read current config
-  local cur_key cur_base cur_model cur_provider cur_discord
+  local cur_key cur_base cur_model cur_discord
   cur_key="$(get_config_val openaiApiKey)"
   cur_base="$(get_config_val openaiBaseUrl)"
   cur_model="$(get_config_val mcpToolsOpenaiModel)"
-  cur_provider="$(get_config_val mcpToolsProviderId)"
   cur_discord="$(get_config_val discordBotToken)"
 
   # ── Step 1: LLM Provider ──
@@ -279,11 +278,16 @@ run_setup() {
   model="$(ask_val "Model name" "gpt-4.1-mini" "$cur_model")"
   model="${model:-gpt-4.1-mini}"
 
-  # Auto-detect provider from base URL
-  local provider="openai"
-  if [[ "$base_url" == *"groq"* ]]; then provider="groq"
-  elif [[ "$base_url" == *"gemini"* || "$base_url" == *"google"* ]]; then provider="gemini"
-  fi
+  # NOTE: The setup wizard is deliberately OpenAI-compatible-only. We persist the
+  # OpenAI legacy fields (openaiApiKey / openaiBaseUrl / mcpToolsOpenaiModel) and
+  # force mcpToolsProviderId="openai" below. This works with OpenAI itself plus
+  # OpenAI-compatible endpoints like Groq (https://api.groq.com/openai/v1),
+  # OpenRouter, Together, Cerebras, Perplexity, and Gemini's OpenAI-compat
+  # endpoint. DO NOT auto-detect groq/gemini here and set mcpToolsProviderId to
+  # those values — the runtime would then read groqApiKey / geminiApiKey
+  # (provider-specific fields we never write), causing "missing API key" errors
+  # on startup. Users who want the native Groq/Gemini SDK paths should use
+  # /config set to populate the provider-specific keys directly.
 
   echo ""
   echo -ne "  ${D}Testing API key...${R} "
@@ -332,10 +336,13 @@ run_setup() {
     c.modelPresets = savedPresets;
     c.currentModelPresetId = presetId;
 
-    // Also set legacy fields (used by some code paths)
+    // Also set legacy fields (used by some code paths).
+    // Force provider to 'openai' because this wizard only persists OpenAI
+    // legacy fields — picking groq/gemini here would point the runtime at
+    // provider-specific keys that were never written.
     c.openaiApiKey = apiKey;
     c.openaiBaseUrl = baseUrl;
-    c.mcpToolsProviderId = '$provider';
+    c.mcpToolsProviderId = 'openai';
     c.mcpToolsOpenaiModel = model;
     c.transcriptPostProcessingOpenaiModel = model;
 
