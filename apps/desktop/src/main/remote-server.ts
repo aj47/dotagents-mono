@@ -2087,7 +2087,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         },
       }
 
-    recordOperatorAuditEvent(req, response)
+    // Audit is written once by the shared onResponse hook via the context below;
+    // setOperatorAuditContext avoids duplicating entries for every POST /v1/operator/*.
+    setOperatorAuditContext(req, {
+      action: response.action,
+      success: response.success,
+      details: response.details,
+      ...(response.error ? { failureReason: response.error } : {}),
+    })
     return reply.send(response)
   })
 
@@ -2105,7 +2112,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           releaseTag: result.updateInfo.latestRelease?.tagName,
         },
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        details: response.details,
+      })
       return reply.send(response)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -2115,7 +2126,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         message,
         error: message,
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        failureReason: message,
+      })
       return reply.send(response)
     }
   })
@@ -2132,7 +2147,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           filePath: downloadedAsset.filePath,
         },
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        details: response.details,
+      })
       return reply.send(response)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -2142,7 +2161,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         message,
         error: message,
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        failureReason: message,
+      })
       return reply.send(response)
     }
   })
@@ -2159,7 +2182,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           filePath: downloadedAsset.filePath,
         },
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        details: response.details,
+      })
       return reply.send(response)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -2169,7 +2196,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         message,
         error: message,
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        failureReason: message,
+      })
       return reply.send(response)
     }
   })
@@ -2185,7 +2216,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           url: result.url,
         },
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        details: response.details,
+      })
       return reply.send(response)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -2195,7 +2230,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         message,
         error: message,
       }
-      recordOperatorAuditEvent(req, response)
+      setOperatorAuditContext(req, {
+        action: response.action,
+        success: response.success,
+        failureReason: message,
+      })
       return reply.send(response)
     }
   })
@@ -3206,7 +3245,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.remoteServerBindAddress = body.remoteServerBindAddress as "127.0.0.1" | "0.0.0.0"
       }
       if (typeof body.remoteServerApiKey === "string" && body.remoteServerApiKey !== REMOTE_SERVER_SECRET_MASK) {
-        updates.remoteServerApiKey = body.remoteServerApiKey.trim()
+        // Reject blank/whitespace-only keys: saving an empty string here would make
+        // the onRequest auth hook reject all subsequent requests after the scheduled
+        // restart, locking operators out until local config is repaired by hand.
+        const trimmedKey = body.remoteServerApiKey.trim()
+        if (trimmedKey.length > 0) {
+          updates.remoteServerApiKey = trimmedKey
+        }
       }
       if (typeof body.remoteServerLogLevel === "string" && ["error", "info", "debug"].includes(body.remoteServerLogLevel)) {
         updates.remoteServerLogLevel = body.remoteServerLogLevel as "error" | "info" | "debug"
