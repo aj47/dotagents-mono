@@ -522,31 +522,36 @@ while true; do
 
     # ── Discord Access Control ────────────────────────────────
     "/discord access")
-      api_get /v1/operator/discord | node_print "
-        const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
-        const s=d.settings||d;
+      # Access-control state lives in /v1/settings (not /v1/operator/discord,
+      # which only returns runtime integration summary). Field names match the
+      # ConfigStore schema exactly. Note: GET /v1/settings does not currently
+      # return discordAllowRoleIds / discordDmAllowUserIds /
+      # discordOperatorAllowRoleIds — those are write-only via PATCH today, so
+      # they are intentionally not displayed here.
+      api_get /v1/settings | node_print "
+        const s=JSON.parse(require('fs').readFileSync(0,'utf8'));
         const show=(label,arr)=>{
-          if(!arr||!arr.length) return;
+          if(!Array.isArray(arr)||!arr.length) return;
           console.log('  '+label+': '+arr.join(', '));
         };
         console.log('\x1b[1mAccess Control\x1b[0m');
-        console.log('  DMs:             '+(s.dmEnabled?'\x1b[32menabled':'\x1b[31mdisabled')+'\x1b[0m');
-        console.log('  Require mention: '+(s.requireMention!==false?'\x1b[32myes':'\x1b[33mno')+'\x1b[0m');
-        show('User allowlist   ',s.allowUserIds||s.discordAllowUserIds);
-        show('Role allowlist   ',s.allowRoleIds||s.discordAllowRoleIds);
-        show('Guild allowlist  ',s.allowGuildIds||s.discordAllowGuildIds);
-        show('Channel allowlist',s.allowChannelIds||s.discordAllowChannelIds);
-        show('DM user allowlist',s.dmAllowUserIds||s.discordDmAllowUserIds);
+        console.log('  DMs:             '+(s.discordDmEnabled?'\x1b[32menabled':'\x1b[31mdisabled')+'\x1b[0m');
+        console.log('  Require mention: '+(s.discordRequireMention!==false?'\x1b[32myes':'\x1b[33mno')+'\x1b[0m');
+        show('User allowlist   ',s.discordAllowUserIds);
+        show('Guild allowlist  ',s.discordAllowGuildIds);
+        show('Channel allowlist',s.discordAllowChannelIds);
         console.log('\x1b[1mOperator Access\x1b[0m');
-        show('Operator users   ',s.operatorAllowUserIds||s.discordOperatorAllowUserIds);
-        show('Operator roles   ',s.operatorAllowRoleIds||s.discordOperatorAllowRoleIds);
-        show('Operator guilds  ',s.operatorAllowGuildIds||s.discordOperatorAllowGuildIds);
-        show('Operator channels',s.operatorAllowChannelIds||s.discordOperatorAllowChannelIds);
-        if(!(s.allowUserIds||s.discordAllowUserIds||[]).length &&
-           !(s.allowRoleIds||s.discordAllowRoleIds||[]).length &&
-           !(s.allowGuildIds||s.discordAllowGuildIds||[]).length)
+        show('Operator users   ',s.discordOperatorAllowUserIds);
+        show('Operator guilds  ',s.discordOperatorAllowGuildIds);
+        show('Operator channels',s.discordOperatorAllowChannelIds);
+        if (s.discordDefaultProfileId)
+          console.log('  Default profile: '+s.discordDefaultProfileId);
+        const empty = !(s.discordAllowUserIds||[]).length
+          && !(s.discordAllowGuildIds||[]).length
+          && !(s.discordAllowChannelIds||[]).length;
+        if (empty)
           console.log('\n\x1b[2m  No restrictions — all users can interact (when mentioned).\x1b[0m');
-      " || echo -e "${RED}Failed${R}" ;;
+      " || echo -e "${RED}Failed to fetch access settings${R}" ;;
 
     "/discord dm on")
       api_patch /v1/settings -d '{"discordDmEnabled":true}' > /dev/null \
@@ -649,10 +654,32 @@ while true; do
       REST="${INPUT#/config set }"; KEY="${REST%% *}"; VAL="${REST#* }"
       if [[ -z "$KEY" || "$KEY" == "$VAL" ]]; then
         echo -e "${Y}Usage: /config set <key> <value>${R}"
+        echo -e "${D}  Booleans: true|false   Numbers: 3210   Lists: '[\"a\",\"b\"]'${R}"
       else
-        api_patch /v1/settings -d "{\"$KEY\":\"$VAL\"}" > /dev/null \
-          && echo -e "${G}✓ $KEY updated${R}" \
-          || echo -e "${RED}✗ Failed to update $KEY${R}"
+        # Type-detect the value so PATCH /v1/settings accepts it. The server's
+        # type guards reject string "true" / "3210" for fields typed as boolean
+        # or number, so we coerce here based on shape:
+        #   true|false        → boolean
+        #   numeric           → number
+        #   starts with [ or {→ JSON literal (array/object)
+        #   anything else     → JSON-encoded string
+        BODY="$(KEY_RAW="$KEY" VAL_RAW="$VAL" node -e "
+          const k=process.env.KEY_RAW, v=process.env.VAL_RAW;
+          let parsed;
+          if (v==='true' || v==='false') parsed = (v==='true');
+          else if (/^-?[0-9]+(\.[0-9]+)?$/.test(v)) parsed = Number(v);
+          else if (v.startsWith('[') || v.startsWith('{')) {
+            try { parsed = JSON.parse(v); } catch { parsed = v; }
+          } else parsed = v;
+          process.stdout.write(JSON.stringify({[k]: parsed}));
+        " 2>/dev/null)"
+        if [[ -z "$BODY" ]]; then
+          echo -e "${RED}✗ Failed to encode value${R}"
+        elif api_patch /v1/settings -d "$BODY" > /dev/null; then
+          echo -e "${G}✓ $KEY updated${R}"
+        else
+          echo -e "${RED}✗ Failed to update $KEY${R} ${D}(unknown key, wrong type, or sensitive field — see /help)${R}"
+        fi
       fi ;;
     /logs)
       api_get "/v1/operator/errors?count=10" | node_print "
