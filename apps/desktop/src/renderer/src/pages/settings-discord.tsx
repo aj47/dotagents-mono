@@ -64,24 +64,38 @@ export function Component() {
     setChannelAllowlistDraft(formatIdList(cfg?.discordAllowChannelIds))
   }, [cfg?.discordBotToken, cfg?.discordAllowUserIds, cfg?.discordAllowGuildIds, cfg?.discordAllowChannelIds])
 
+  // Pure: returns the merged config without touching `cfgRef.current`. The
+  // ref is only advanced AFTER the save mutation actually succeeds, so an
+  // in-flight or failed save can never make `cfgRef.current` look like a
+  // pending change is already persisted. Without this, `handleConnect()`
+  // could compare a pasted token against the optimistic ref value, skip
+  // `saveConfigAsync`, and call `discordConnect()` while the main process
+  // still had the old `discordBotToken`.
   const mergeConfig = useCallback((partial: Partial<Config>) => {
     if (!cfgRef.current) return null
-
-    const nextConfig = { ...cfgRef.current, ...partial }
-    cfgRef.current = nextConfig
-    return nextConfig
+    return { ...cfgRef.current, ...partial }
   }, [])
 
   const saveConfig = useCallback((partial: Partial<Config>) => {
     const nextConfig = mergeConfig(partial)
     if (!nextConfig) return
-    saveConfigMutation.mutate({ config: nextConfig })
+    saveConfigMutation.mutate(
+      { config: nextConfig },
+      {
+        onSuccess: () => {
+          cfgRef.current = nextConfig
+        },
+      },
+    )
   }, [mergeConfig, saveConfigMutation])
 
   const saveConfigAsync = useCallback(async (partial: Partial<Config>) => {
     const nextConfig = mergeConfig(partial)
     if (!nextConfig) return
     await saveConfigMutation.mutateAsync({ config: nextConfig })
+    // Only advance the ref after the mutation resolves successfully. If the
+    // mutation throws, the await above re-throws and we never reach here.
+    cfgRef.current = nextConfig
   }, [mergeConfig, saveConfigMutation])
 
   const fetchStatus = useCallback(async () => {
