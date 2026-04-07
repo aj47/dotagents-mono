@@ -90,6 +90,65 @@ describe("discord utils", () => {
     })).toBe("guild not allowlisted")
   })
 
+  it("exempts Discord application owners from the DM allowlist (bootstrap path)", () => {
+    // Without the owner bypass: the owner gets locked out by their own
+    // DM allowlist as soon as it's non-empty, breaking the bootstrap flow
+    // where the owner DMs the bot to add other users via `/dm allow`.
+    expect(getDiscordMessageRejectionReason({
+      authorId: "owner-1",
+      channelId: "dm-1",
+      isDirectMessage: true,
+      mentioned: false,
+      nameMentioned: false,
+      requireMention: true,
+      dmEnabled: true,
+      dmAllowUserIds: ["other-user"],
+    })).toBe("user not in DM allowlist")
+
+    // With the owner bypass: same input, but the author is in
+    // applicationOwnerIds → allowed through.
+    expect(getDiscordMessageRejectionReason({
+      authorId: "owner-1",
+      channelId: "dm-1",
+      isDirectMessage: true,
+      mentioned: false,
+      nameMentioned: false,
+      requireMention: true,
+      dmEnabled: true,
+      dmAllowUserIds: ["other-user"],
+      applicationOwnerIds: new Set(["owner-1", "team-member-2"]),
+    })).toBe(null)
+
+    // The bypass does NOT override `dmEnabled=false` — owners still
+    // respect the explicit "DMs disabled" setting (treating that as
+    // operator intent, not a misconfiguration).
+    expect(getDiscordMessageRejectionReason({
+      authorId: "owner-1",
+      channelId: "dm-1",
+      isDirectMessage: true,
+      mentioned: false,
+      nameMentioned: false,
+      requireMention: true,
+      dmEnabled: false,
+      dmAllowUserIds: ["other-user"],
+      applicationOwnerIds: new Set(["owner-1"]),
+    })).toBe("direct messages are disabled")
+
+    // The bypass does NOT promote a non-owner just because the
+    // applicationOwnerIds set is non-empty.
+    expect(getDiscordMessageRejectionReason({
+      authorId: "stranger",
+      channelId: "dm-1",
+      isDirectMessage: true,
+      mentioned: false,
+      nameMentioned: false,
+      requireMention: true,
+      dmEnabled: true,
+      dmAllowUserIds: ["other-user"],
+      applicationOwnerIds: new Set(["owner-1"]),
+    })).toBe("user not in DM allowlist")
+  })
+
   it("chunks long Discord replies without exceeding the limit", () => {
     const chunks = splitDiscordMessageContent(`${"a".repeat(1200)}\n${"b".repeat(1200)}`, 1900)
     expect(chunks.length).toBe(2)

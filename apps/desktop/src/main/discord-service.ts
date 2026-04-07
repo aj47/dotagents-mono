@@ -1181,6 +1181,12 @@ class DiscordService {
       allowRoleIds: cfg.discordAllowRoleIds,
       dmAllowUserIds: cfg.discordDmAllowUserIds,
       authorRoleIds,
+      // Owners bypass the DM allowlist so a fresh install can be
+      // bootstrapped without hand-editing the config file. See
+      // `getDiscordMessageRejectionReason` for the precise scope of
+      // the bypass (it does NOT override `dmEnabled=false` or any of
+      // the guild-side allowlists).
+      applicationOwnerIds: this.applicationOwnerIds,
     })
 
     if (rejectionReason) {

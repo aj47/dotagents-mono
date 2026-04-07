@@ -14,6 +14,19 @@ export interface DiscordMessageGateInput {
   dmAllowUserIds?: string[]
   /** Role IDs the message author has in the current guild */
   authorRoleIds?: string[]
+  /**
+   * Discord application owner IDs (auto-detected from
+   * `client.application.owner`). Owners always bypass the DM allowlist
+   * check, so a fresh install can be bootstrapped: the owner DMs the bot,
+   * gets a reply, and runs `/dm allow @other` to grant access to
+   * additional users.
+   *
+   * Owners do NOT bypass `dmEnabled=false`, `allowUserIds`, `allowRoleIds`,
+   * `allowChannelIds`, or `allowGuildIds` — those represent explicit
+   * operator intent to lock the bot down, and silently overriding them
+   * would be a surprising security regression.
+   */
+  applicationOwnerIds?: ReadonlySet<string>
 }
 
 /**
@@ -178,8 +191,19 @@ export function getDiscordMessageRejectionReason(input: DiscordMessageGateInput)
     if (!input.dmEnabled) {
       return "direct messages are disabled"
     }
-    // DM user allowlist — when set, only these users can DM the bot
-    if (dmAllowUserIds.length > 0 && !dmAllowUserIds.includes(input.authorId)) {
+    // DM user allowlist — when set, only these users can DM the bot.
+    // Discord application owners are exempt so a fresh install can be
+    // bootstrapped (the owner DMs the bot, gets a reply, and uses
+    // `/dm allow @other` to grant access to additional users). Without
+    // this bypass an owner who forgot to add their own ID to the DM
+    // allowlist is silently locked out — the exact scenario flagged in
+    // PR #305 review.
+    const isApplicationOwner = !!input.applicationOwnerIds?.has(input.authorId)
+    if (
+      dmAllowUserIds.length > 0 &&
+      !dmAllowUserIds.includes(input.authorId) &&
+      !isApplicationOwner
+    ) {
       return "user not in DM allowlist"
     }
   } else {
