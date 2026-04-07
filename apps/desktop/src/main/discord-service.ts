@@ -1106,13 +1106,36 @@ class DiscordService {
   }
 
   private async handleMessage(message: Message<boolean>) {
-    if (!this.client?.user) return
+    // One-line diagnostic for every incoming message. This answers the #1
+    // question when a user reports "the bot isn't replying": did the gateway
+    // actually deliver the event, and what context did it arrive with?
+    //
+    // Without this log, messages dropped in the two early returns immediately
+    // below (self-bot message, integration disabled) are completely silent,
+    // which makes it impossible to distinguish "gateway delivered but we
+    // filtered it" from "gateway never delivered it" (e.g. missing intents,
+    // no mutual server for DMs, bot not online). Author IDs are PII-adjacent
+    // but necessary for correlating with the Discord UI; message content is
+    // still gated behind `discordLogMessages` below.
+    const inGuild = message.inGuild()
+    this.addLog(
+      "info",
+      `messageCreate received: ${inGuild ? `guild=${message.guildId} channel=${message.channelId}` : "DM"} author=${message.author.id} isBot=${message.author.bot} contentLen=${message.content.length}`,
+    )
+
+    if (!this.client?.user) {
+      this.addLog("warn", "Dropped messageCreate: client user is not ready")
+      return
+    }
     if (message.author.bot) return
 
     const cfg = configStore.get()
-    if (!cfg.discordEnabled) return
+    if (!cfg.discordEnabled) {
+      this.addLog("info", "Dropped messageCreate: discordEnabled=false")
+      return
+    }
 
-    const isDirectMessage = !message.inGuild()
+    const isDirectMessage = !inGuild
 
     // Fetch the author's role IDs from the guild member (if in a guild)
     let authorRoleIds: string[] | undefined
