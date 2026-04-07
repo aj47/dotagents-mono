@@ -9,7 +9,17 @@ set -uo pipefail
 # NOTE: no `set -e` — a REPL must not exit on command failures
 
 INSTALL_DIR="__INSTALL_DIR__"
-CONFIG_DIR="$HOME/.config/app.dotagents"
+
+# Config location: prefer XDG (Linux/VPS install layout), fall back to the
+# macOS Electron user-data dir so the same script is testable on a developer
+# Mac that has the desktop app running.
+if [[ -f "$HOME/.config/app.dotagents/config.json" ]]; then
+  CONFIG_DIR="$HOME/.config/app.dotagents"
+elif [[ -f "$HOME/Library/Application Support/app.dotagents/config.json" ]]; then
+  CONFIG_DIR="$HOME/Library/Application Support/app.dotagents"
+else
+  CONFIG_DIR="$HOME/.config/app.dotagents"
+fi
 CONFIG_FILE="$CONFIG_DIR/config.json"
 
 C='\033[0;36m'; G='\033[0;32m'; Y='\033[1;33m'; D='\033[2m'
@@ -54,6 +64,12 @@ is_running() {
 }
 
 if ! is_running; then
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo -e "${RED}✗ DotAgents daemon is not running on port $PORT.${R}" >&2
+    echo -e "${D}  This CLI attaches to a running headless daemon. On macOS, start the${R}" >&2
+    echo -e "${D}  desktop app first (it exposes the same /v1/operator/* API).${R}" >&2
+    exit 1
+  fi
   exec xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh"
 fi
 
@@ -104,7 +120,8 @@ if [[ -n "$STATUS" ]]; then
     const h=d.health||{};
     const i=d.integrations||{};
     const dc=i.discord||{};
-    const hc=h.overall==='pass'?'\x1b[32m✓':h.overall==='warning'?'\x1b[33m⚠':'\x1b[31m✗';
+    // Health overall enum (server: OperatorHealthOverall): healthy | warning | critical
+    const hc=h.overall==='healthy'?'\x1b[32m✓':h.overall==='warning'?'\x1b[33m⚠':'\x1b[31m✗';
     const ds=dc.connected?'\x1b[32m● connected':'\x1b[2m○ disconnected';
     console.log('  Health: '+hc+' '+h.overall+'\x1b[0m');
     console.log('  Discord: '+ds+'\x1b[0m');
@@ -435,7 +452,7 @@ while true; do
     /health)
       api_get /v1/operator/health | node_print "
         const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
-        const icon=d.overall==='pass'?'✓':d.overall==='warning'?'⚠':'✗';
+        const icon=d.overall==='healthy'?'✓':d.overall==='warning'?'⚠':'✗';
         console.log(icon+' '+d.overall);
       " || echo -e "${RED}Failed${R}" ;;
     /discord)
@@ -680,29 +697,123 @@ while true; do
         process.stdout.write(JSON.stringify(body));
       " "$INPUT" "$CONVERSATION_ID" 2>/dev/null)"
 
-      curl -sfN -X POST \
-        -H "Authorization: Bearer $API_KEY" \
-        -H "Content-Type: application/json" \
-        -d "$BODY" \
-        "http://127.0.0.1:$PORT/v1/chat/completions" 2>/dev/null \
-      | while IFS= read -r line; do
-        [[ "$line" != data:* ]] && continue
-        DATA="${line#data: }"
-        echo "$DATA" | node_print "
-          const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
-          if(d.type==='progress'){
-            const p=d.data||{};
-            if(p.content) process.stdout.write(p.content);
-            else if(p.message) process.stdout.write('\x1b[2m'+p.message+'\x1b[0m\n');
-          } else if(d.type==='done'){
-            const r=d.data||{};
-            if(r.content) console.log('\n'+r.content);
-            if(r.conversation_id) require('fs').writeFileSync('$INSTALL_DIR/.last_cid','CID:'+r.conversation_id);
-          } else if(d.type==='error'){
-            console.log('\x1b[31mError: '+(d.data?.message||'Unknown')+'\x1b[0m');
-          }
-        "
-      done
+      CURL_ERR_FILE="$(mktemp -t dotagents-curl-err.XXXXXX 2>/dev/null || echo "/tmp/dotagents-curl-err.$$")"
+
+      # Stream SSE through a single long-lived node consumer so we can:
+      #   (1) track step ids globally across chunks (server windows steps[] to last 3),
+      #   (2) render streamingContent.text deltas as the model types,
+      #   (3) surface curl/HTTP failures that the previous -sfN 2>/dev/null swallowed.
+      {
+        curl -sN -X POST \
+          -H "Authorization: Bearer $API_KEY" \
+          -H "Content-Type: application/json" \
+          -d "$BODY" \
+          -w 'HTTP_STATUS:%{http_code}\n' \
+          "http://127.0.0.1:$PORT/v1/chat/completions" 2>"$CURL_ERR_FILE"
+        echo "CURL_EXIT:$?"
+      } | node -e "$(cat <<'NODE'
+const readline = require('readline');
+const fs = require('fs');
+const rl = readline.createInterface({ input: process.stdin });
+
+const dim = '\x1b[2m', reset = '\x1b[0m', red = '\x1b[0;31m';
+const stepIcons = {
+  thinking: '•', tool_call: '⚒', tool_result: '✓',
+  completion: '✓', tool_approval: '?', response: '▸',
+  error: '✗', pending_approval: '?',
+};
+
+const installDir = process.argv[1] || '';
+const curlErrFile = process.argv[2] || '';
+const seenStepIds = new Set();
+let streamedLen = 0;
+let onNewLine = true;
+let httpStatus = 0;
+let curlExit = 0;
+
+function ensureNewline() {
+  if (!onNewLine) { process.stdout.write('\n'); onNewLine = true; }
+}
+
+rl.on('line', (line) => {
+  if (line.startsWith('HTTP_STATUS:')) {
+    httpStatus = parseInt(line.slice('HTTP_STATUS:'.length), 10) || 0;
+    return;
+  }
+  if (line.startsWith('CURL_EXIT:')) {
+    curlExit = parseInt(line.slice('CURL_EXIT:'.length), 10) || 0;
+    return;
+  }
+  if (!line.startsWith('data: ')) return;
+  let d;
+  try { d = JSON.parse(line.slice(6)); } catch { return; }
+
+  if (d.type === 'progress') {
+    const p = d.data || {};
+
+    // Step lifecycle: print each new step id once (dim, with a type icon).
+    const steps = Array.isArray(p.steps) ? p.steps : [];
+    for (const s of steps) {
+      if (!s || !s.id || seenStepIds.has(s.id)) continue;
+      seenStepIds.add(s.id);
+      ensureNewline();
+      const icon = stepIcons[s.type] || '•';
+      const title = s.title || s.type || 'step';
+      const desc = s.description ? ' — ' + s.description : '';
+      process.stdout.write(dim + icon + ' ' + title + desc + reset + '\n');
+    }
+
+    // Streaming assistant text: emit only the new suffix since last write.
+    const sc = p.streamingContent;
+    if (sc && typeof sc.text === 'string' && sc.text.length > streamedLen) {
+      const delta = sc.text.slice(streamedLen);
+      streamedLen = sc.text.length;
+      process.stdout.write(delta);
+      onNewLine = delta.endsWith('\n');
+    }
+  } else if (d.type === 'done') {
+    const r = d.data || {};
+    ensureNewline();
+    if (r.content) {
+      if (streamedLen === 0) {
+        // No streaming happened — print the full final reply.
+        process.stdout.write('\n' + r.content + '\n');
+      } else {
+        // We already streamed it incrementally; just terminate the line.
+        process.stdout.write('\n');
+      }
+    }
+    if (r.conversation_id && installDir) {
+      try { fs.writeFileSync(installDir + '/.last_cid', 'CID:' + r.conversation_id); } catch {}
+    }
+  } else if (d.type === 'error') {
+    ensureNewline();
+    const m = (d.data && d.data.message) || 'Unknown';
+    process.stdout.write(red + 'Error: ' + m + reset + '\n');
+  }
+});
+
+rl.on('close', () => {
+  if (curlExit !== 0) {
+    ensureNewline();
+    process.stderr.write(red + '✗ Network error talking to daemon (curl exit ' + curlExit + ')' + reset + '\n');
+    try {
+      if (curlErrFile) {
+        const e = fs.readFileSync(curlErrFile, 'utf8').trim();
+        if (e) process.stderr.write(dim + '  ' + e + reset + '\n');
+      }
+    } catch {}
+  } else if (httpStatus && httpStatus >= 400) {
+    ensureNewline();
+    process.stderr.write(red + '✗ Daemon returned HTTP ' + httpStatus + reset + '\n');
+    process.stderr.write(dim + '  Hint: /status for health, /logs for recent errors.' + reset + '\n');
+  }
+});
+NODE
+)" "$INSTALL_DIR" "$CURL_ERR_FILE"
+
+      rm -f "$CURL_ERR_FILE"
+
       CID_LINE="$(cat "$INSTALL_DIR/.last_cid" 2>/dev/null || true)"
       if [[ "${CID_LINE:-}" == CID:* ]]; then
         CONVERSATION_ID="${CID_LINE#CID:}"
