@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TUNNEL_METADATA_KEY = 'dotagents_tunnel_metadata_v1';
+const TUNNEL_API_KEY_SECURE_KEY = 'dotagents_tunnel_api_key_v1';
 
 /**
  * Tunnel metadata for connection persistence.
@@ -21,6 +22,85 @@ export interface TunnelMetadata {
   isCloudflareTunnel?: boolean;
 }
 
+type StoredTunnelMetadata = Omit<TunnelMetadata, 'apiKey'> & {
+  apiKey?: string;
+};
+
+interface SecureStoreLike {
+  isAvailableAsync: () => Promise<boolean>;
+  setItemAsync: (key: string, value: string) => Promise<void>;
+  getItemAsync: (key: string) => Promise<string | null>;
+  deleteItemAsync: (key: string) => Promise<void>;
+}
+
+function getSecureStore(): SecureStoreLike | null {
+  try {
+    // Keep SecureStore optional so mobile web/dev environments without the module
+    // still work without crashing.
+    const optionalRequire = Function('return require')() as (moduleName: string) => unknown;
+    return optionalRequire('expo-secure-store') as SecureStoreLike;
+  } catch {
+    return null;
+  }
+}
+
+async function saveApiKey(apiKey: string): Promise<boolean> {
+  const secureStore = getSecureStore();
+  if (!secureStore) {
+    return false;
+  }
+
+  try {
+    const isSecureStoreAvailable = await secureStore.isAvailableAsync();
+    if (!isSecureStoreAvailable) {
+      return false;
+    }
+
+    await secureStore.setItemAsync(TUNNEL_API_KEY_SECURE_KEY, apiKey);
+    return true;
+  } catch (error) {
+    console.warn('[TunnelPersistence] Failed to save API key to secure storage, falling back to AsyncStorage:', error);
+    return false;
+  }
+}
+
+async function loadApiKey(): Promise<string | null> {
+  const secureStore = getSecureStore();
+  if (!secureStore) {
+    return null;
+  }
+
+  try {
+    const isSecureStoreAvailable = await secureStore.isAvailableAsync();
+    if (!isSecureStoreAvailable) {
+      return null;
+    }
+
+    return await secureStore.getItemAsync(TUNNEL_API_KEY_SECURE_KEY);
+  } catch (error) {
+    console.warn('[TunnelPersistence] Failed to load API key from secure storage:', error);
+    return null;
+  }
+}
+
+async function clearApiKey(): Promise<void> {
+  const secureStore = getSecureStore();
+  if (!secureStore) {
+    return;
+  }
+
+  try {
+    const isSecureStoreAvailable = await secureStore.isAvailableAsync();
+    if (!isSecureStoreAvailable) {
+      return;
+    }
+
+    await secureStore.deleteItemAsync(TUNNEL_API_KEY_SECURE_KEY);
+  } catch (error) {
+    console.warn('[TunnelPersistence] Failed to clear API key from secure storage:', error);
+  }
+}
+
 /**
  * Save tunnel metadata for later reconnection.
  *
@@ -30,12 +110,21 @@ export interface TunnelMetadata {
  */
 export async function saveTunnelMetadata(metadata: TunnelMetadata): Promise<void> {
   try {
-    await AsyncStorage.setItem(TUNNEL_METADATA_KEY, JSON.stringify(metadata));
+    const savedInSecureStore = await saveApiKey(metadata.apiKey);
+    const metadataForStorage: StoredTunnelMetadata = savedInSecureStore
+      ? {
+          ...metadata,
+          apiKey: undefined,
+        }
+      : metadata;
+
+    await AsyncStorage.setItem(TUNNEL_METADATA_KEY, JSON.stringify(metadataForStorage));
     console.log('[TunnelPersistence] Saved tunnel metadata:', {
       baseUrl: metadata.baseUrl,
       hasApiKey: !!metadata.apiKey,
       hasSessionId: !!metadata.sessionId,
       hasResumeToken: !!metadata.resumeToken,
+      apiKeyStorage: savedInSecureStore ? 'secure-store' : 'async-storage',
     });
   } catch (error) {
     console.error('[TunnelPersistence] Failed to save tunnel metadata:', error);
@@ -53,19 +142,24 @@ export async function loadTunnelMetadata(): Promise<TunnelMetadata | null> {
       return null;
     }
 
-    const parsed = JSON.parse(stored);
+    const parsed = JSON.parse(stored) as StoredTunnelMetadata;
+    const secureStoreApiKey = await loadApiKey();
+    const apiKey = secureStoreApiKey ?? parsed.apiKey;
 
     // Validate required fields exist and have correct types
     if (
       typeof parsed.baseUrl !== 'string' ||
-      typeof parsed.apiKey !== 'string' ||
+      typeof apiKey !== 'string' ||
       typeof parsed.lastConnectedAt !== 'number'
     ) {
       console.warn('[TunnelPersistence] Invalid stored metadata: missing required fields or incorrect types');
       return null;
     }
 
-    return parsed as TunnelMetadata;
+    return {
+      ...parsed,
+      apiKey,
+    };
   } catch (error) {
     console.error('[TunnelPersistence] Failed to load tunnel metadata:', error);
     return null;
@@ -99,7 +193,7 @@ export async function updateTunnelMetadata(
  */
 export async function clearTunnelMetadata(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(TUNNEL_METADATA_KEY);
+    await Promise.all([AsyncStorage.removeItem(TUNNEL_METADATA_KEY), clearApiKey()]);
     console.log('[TunnelPersistence] Cleared tunnel metadata');
   } catch (error) {
     console.error('[TunnelPersistence] Failed to clear tunnel metadata:', error);
@@ -127,4 +221,3 @@ export async function isTunnelMetadataFresh(maxAgeMs: number = 24 * 60 * 60 * 10
   const age = Date.now() - metadata.lastConnectedAt;
   return age < maxAgeMs;
 }
-
