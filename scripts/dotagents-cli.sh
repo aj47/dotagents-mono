@@ -561,10 +561,7 @@ SLASHEOF
     "/discord access")
       # Access-control state lives in /v1/settings (not /v1/operator/discord,
       # which only returns runtime integration summary). Field names match the
-      # ConfigStore schema exactly. Note: GET /v1/settings does not currently
-      # return discordAllowRoleIds / discordDmAllowUserIds /
-      # discordOperatorAllowRoleIds — those are write-only via PATCH today, so
-      # they are intentionally not displayed here.
+      # ConfigStore schema exactly.
       api_get /v1/settings | node_print "
         const s=JSON.parse(require('fs').readFileSync(0,'utf8'));
         const show=(label,arr)=>{
@@ -575,15 +572,19 @@ SLASHEOF
         console.log('  DMs:             '+(s.discordDmEnabled?'\x1b[32menabled':'\x1b[31mdisabled')+'\x1b[0m');
         console.log('  Require mention: '+(s.discordRequireMention!==false?'\x1b[32myes':'\x1b[33mno')+'\x1b[0m');
         show('User allowlist   ',s.discordAllowUserIds);
+        show('Role allowlist   ',s.discordAllowRoleIds);
         show('Guild allowlist  ',s.discordAllowGuildIds);
         show('Channel allowlist',s.discordAllowChannelIds);
+        show('DM user allowlist',s.discordDmAllowUserIds);
         console.log('\x1b[1mOperator Access\x1b[0m');
         show('Operator users   ',s.discordOperatorAllowUserIds);
+        show('Operator roles   ',s.discordOperatorAllowRoleIds);
         show('Operator guilds  ',s.discordOperatorAllowGuildIds);
         show('Operator channels',s.discordOperatorAllowChannelIds);
         if (s.discordDefaultProfileId)
           console.log('  Default profile: '+s.discordDefaultProfileId);
         const empty = !(s.discordAllowUserIds||[]).length
+          && !(s.discordAllowRoleIds||[]).length
           && !(s.discordAllowGuildIds||[]).length
           && !(s.discordAllowChannelIds||[]).length;
         if (empty)
@@ -591,15 +592,13 @@ SLASHEOF
         // Server is fail-closed on /ops since commit 54a2fa0d: an empty
         // operator allowlist means /ops slash commands in Discord are
         // rejected with a 'configure the operator allowlists' message.
-        // Note: GET /v1/settings does not currently return
-        // discordOperatorAllowRoleIds, so a configuration that uses ONLY
-        // role-based operator access will trigger a false positive here.
         const opsEmpty = !(s.discordOperatorAllowUserIds||[]).length
+          && !(s.discordOperatorAllowRoleIds||[]).length
           && !(s.discordOperatorAllowGuildIds||[]).length
           && !(s.discordOperatorAllowChannelIds||[]).length;
         if (opsEmpty) {
           console.log('\n\x1b[33m  ⚠ /ops slash commands are blocked: no operator allowlist configured.\x1b[0m');
-          console.log('\x1b[2m    Add a Discord ID to discordOperatorAllowUserIds (or guilds/channels) to enable.\x1b[0m');
+          console.log('\x1b[2m    Add a Discord ID to discordOperatorAllowUserIds (or roles/guilds/channels) to enable.\x1b[0m');
           console.log('\x1b[2m    Example: /config set discordOperatorAllowUserIds [\"123456789012345678\"]\x1b[0m');
         }
       " || echo -e "${RED}Failed to fetch access settings${R}" ;;
@@ -625,7 +624,14 @@ SLASHEOF
         || echo -e "${RED}✗ Failed${R}" ;;
 
     /discord\ dm\ allow\ *|/discord\ dm\ deny\ *|/discord\ allow\ *|/discord\ deny\ *)
-      # Unified allow/deny handler — uses PATCH API so changes apply immediately
+      # Unified allow/deny handler — uses PATCH API so changes apply immediately.
+      #
+      # SAFETY: This is a read-modify-write of a list field. We MUST refuse to
+      # PATCH if the GET response does not include the field at all, otherwise
+      # cfg[field] === undefined would coerce to [] and we'd silently wipe any
+      # existing entries. The current server (post fix) returns all five list
+      # fields below, but older daemons (pre-rebase) only returned three —
+      # so we keep the guard as defense-in-depth for forward/backward compat.
       node -e "
         const http=require('http');
         const input=process.argv[1], apiKey=process.argv[2], port=parseInt(process.argv[3]);
@@ -642,7 +648,16 @@ SLASHEOF
         http.get({hostname:'127.0.0.1',port,path:'/v1/settings',headers:h},res=>{
           let body='';res.on('data',d=>body+=d);res.on('end',()=>{
             let cfg={};try{cfg=JSON.parse(body)}catch{}
-            let list=cfg[field]||[];
+            // Defensive guard: refuse to write if the daemon does not echo this
+            // field back. Otherwise we would wipe the existing list. This protects
+            // against running the CLI against an older daemon that has not been
+            // restarted with the GET-side fix.
+            if(!Array.isArray(cfg[field])){
+              console.log('\x1b[31m✗ Refusing to update '+field+': daemon GET /v1/settings does not return it.\x1b[0m');
+              console.log('\x1b[2m  Restart the daemon (sudo systemctl restart dotagents) and retry.\x1b[0m');
+              process.exit(1);
+            }
+            let list=cfg[field];
             if(action==='allow') list=[...new Set([...list,id])];
             else list=list.filter(x=>x!==id);
             const patch={[field]:list};

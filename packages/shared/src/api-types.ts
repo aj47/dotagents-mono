@@ -378,9 +378,12 @@ export interface Settings {
   discordAllowUserIds?: string[];
   discordAllowGuildIds?: string[];
   discordAllowChannelIds?: string[];
+  discordAllowRoleIds?: string[];
+  discordDmAllowUserIds?: string[];
   discordOperatorAllowUserIds?: string[];
   discordOperatorAllowGuildIds?: string[];
   discordOperatorAllowChannelIds?: string[];
+  discordOperatorAllowRoleIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 
@@ -495,9 +498,12 @@ export interface SettingsUpdate {
   discordAllowUserIds?: string[];
   discordAllowGuildIds?: string[];
   discordAllowChannelIds?: string[];
+  discordAllowRoleIds?: string[];
+  discordDmAllowUserIds?: string[];
   discordOperatorAllowUserIds?: string[];
   discordOperatorAllowGuildIds?: string[];
   discordOperatorAllowChannelIds?: string[];
+  discordOperatorAllowRoleIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 

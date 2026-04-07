@@ -64,9 +64,12 @@ describe("remote-server route registration", () => {
     expect(settingsGetSection).toContain("discordEnabled")
     expect(settingsGetSection).toContain("discordBotToken: getMaskedDiscordBotToken(cfg)")
     expect(settingsGetSection).toContain("whatsappOperatorAllowFrom")
+    expect(settingsGetSection).toContain("discordAllowRoleIds")
+    expect(settingsGetSection).toContain("discordDmAllowUserIds")
     expect(settingsGetSection).toContain("discordOperatorAllowUserIds")
     expect(settingsGetSection).toContain("discordOperatorAllowGuildIds")
     expect(settingsGetSection).toContain("discordOperatorAllowChannelIds")
+    expect(settingsGetSection).toContain("discordOperatorAllowRoleIds")
     expect(settingsGetSection).toContain("discordDefaultProfileId")
 
     expect(settingsPatchSection).toContain("body.remoteServerEnabled")
