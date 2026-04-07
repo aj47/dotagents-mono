@@ -79,6 +79,7 @@ COMMANDS=(
   "/profiles" "/conversations" "/logs"
   "/discord" "/discord status" "/discord enable" "/discord disable"
   "/discord token" "/discord profile" "/discord logs" "/discord connect" "/discord disconnect"
+  "/discord slash" "/discord help"
   "/discord mention on" "/discord mention off"
   "/discord access" "/discord dm" "/discord dm on" "/discord dm off"
   "/discord dm allow" "/discord dm deny" "/discord allow user" "/discord allow role"
@@ -152,6 +153,7 @@ $(echo -e "${B}Discord${R}")
   $(echo -e "${C}/discord token <t>${R}")  Set bot token
   $(echo -e "${C}/discord profile <id>${R}") Set default profile
   $(echo -e "${C}/discord logs [n]${R}")   Show recent Discord logs
+  $(echo -e "${C}/discord slash${R}")      Reference for Discord-side slash commands
 
 $(echo -e "${B}Discord Access Control${R}")
   $(echo -e "${C}/discord access${R}")           Show current access rules
@@ -520,6 +522,41 @@ while true; do
         });
       " || echo -e "${RED}Failed${R}" ;;
 
+    # ── Discord-side Slash Command Reference ──────────────────
+    # Static reference: lists the slash commands the bot REGISTERS in
+    # Discord for end users. These are NOT CLI commands — they run from
+    # the Discord client. The list and tier are kept in sync with
+    # apps/desktop/src/main/discord-service.ts (registerSlashCommands +
+    # READ_ONLY_SLASH_COMMANDS). Update both sides if either changes.
+    "/discord slash"|"/discord help")
+      cat <<SLASHEOF
+
+$(echo -e "${B}Discord-side slash commands${R} ${D}(run inside Discord, not the CLI)${R}")
+
+$(echo -e "${B}Read-only${R} ${D}— Discord app owner OR users in discordDmAllowUserIds${R}")
+  $(echo -e "${C}/status${R}")             Bot status, health, integrations, owner count, session
+  $(echo -e "${C}/whoami${R}")             Your Discord ID and trust level (no Developer Mode needed)
+  $(echo -e "${C}/logs [count]${R}")       Recent bot logs (1-50)
+  $(echo -e "${C}/new${R}")                Start a fresh conversation in the current channel
+
+$(echo -e "${B}Mutating${R} ${D}— Discord application owner only${R}")
+  $(echo -e "${C}/dm on|off${R}")          Enable or disable DMs (allowlist still applies)
+  $(echo -e "${C}/dm allow|deny <user>${R}")  Add or remove a user from the DM allowlist
+  $(echo -e "${C}/dm list${R}")            Show the DM allowlist
+  $(echo -e "${C}/access show${R}")        Show current access rules
+  $(echo -e "${C}/access allow-user|deny-user <user>${R}")
+  $(echo -e "${C}/access allow-role|deny-role <role>${R}")
+  $(echo -e "${C}/access allow-channel|deny-channel <channel>${R}")
+  $(echo -e "${C}/mention on|off${R}")     Toggle @mention requirement
+  $(echo -e "${C}/stop${R}")               Emergency stop — cancel all running agent tasks
+
+$(echo -e "${D}The application owner is auto-detected from the Discord app at startup.${R}")
+$(echo -e "${D}/ops commands are blocked until at least one discordOperatorAllow* list is set.${R}")
+$(echo -e "${D}/new only resets your own conversation in this channel; prior history is preserved.${R}")
+
+SLASHEOF
+      ;;
+
     # ── Discord Access Control ────────────────────────────────
     "/discord access")
       # Access-control state lives in /v1/settings (not /v1/operator/discord,
@@ -551,6 +588,20 @@ while true; do
           && !(s.discordAllowChannelIds||[]).length;
         if (empty)
           console.log('\n\x1b[2m  No restrictions — all users can interact (when mentioned).\x1b[0m');
+        // Server is fail-closed on /ops since commit 54a2fa0d: an empty
+        // operator allowlist means /ops slash commands in Discord are
+        // rejected with a 'configure the operator allowlists' message.
+        // Note: GET /v1/settings does not currently return
+        // discordOperatorAllowRoleIds, so a configuration that uses ONLY
+        // role-based operator access will trigger a false positive here.
+        const opsEmpty = !(s.discordOperatorAllowUserIds||[]).length
+          && !(s.discordOperatorAllowGuildIds||[]).length
+          && !(s.discordOperatorAllowChannelIds||[]).length;
+        if (opsEmpty) {
+          console.log('\n\x1b[33m  ⚠ /ops slash commands are blocked: no operator allowlist configured.\x1b[0m');
+          console.log('\x1b[2m    Add a Discord ID to discordOperatorAllowUserIds (or guilds/channels) to enable.\x1b[0m');
+          console.log('\x1b[2m    Example: /config set discordOperatorAllowUserIds [\"123456789012345678\"]\x1b[0m');
+        }
       " || echo -e "${RED}Failed to fetch access settings${R}" ;;
 
     "/discord dm on")
