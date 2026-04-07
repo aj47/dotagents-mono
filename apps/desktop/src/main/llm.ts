@@ -1582,7 +1582,7 @@ export async function processTranscriptWithAgentMode(
   let successfulToolOnlyIterationsWithoutResponse = 0 // Track repeated inspect-only tool loops that never converge to a final answer
   let awaitingToolOnlyFinalAnswerResponse = false // Track when we've explicitly asked the model to stop inspecting and give the final answer
   const MAX_COMPLETION_SIGNAL_HINTS = 2
-  const MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE = 2
+  const MAX_SUCCESSFUL_TOOL_ONLY_ITERATIONS_WITHOUT_RESPONSE = 20
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
   const toolFailureCount = new Map<string, number>() // Track failures per tool name
   const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
