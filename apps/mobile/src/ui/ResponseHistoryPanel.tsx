@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -18,6 +19,7 @@ import { preprocessTextForTTS } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
+import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
 
 export interface ResponseHistoryEntry {
   id?: string;
@@ -27,6 +29,8 @@ export interface ResponseHistoryEntry {
 
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
+  ttsProvider?: 'native' | 'edge';
+  edgeTtsVoice?: string;
   ttsRate?: number;
   ttsPitch?: number;
   ttsVoiceId?: string;
@@ -63,6 +67,8 @@ function AnimatedResponseItem({
 
 export function ResponseHistoryPanel({
   responses,
+  ttsProvider = 'native',
+  edgeTtsVoice = 'en-US-AriaNeural',
   ttsRate = 1.0,
   ttsPitch = 1.0,
   ttsVoiceId,
@@ -90,6 +96,7 @@ export function ResponseHistoryPanel({
       isMountedRef.current = false;
       nextSpeechRequestId();
       Speech.stop();
+      stopEdgeTts();
     };
   }, [nextSpeechRequestId]);
 
@@ -97,6 +104,7 @@ export function ResponseHistoryPanel({
     if (isCollapsed && speakingIndex !== null) {
       nextSpeechRequestId();
       Speech.stop();
+      stopEdgeTts();
       safeSetSpeakingIndex(null);
     }
   }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId]);
@@ -110,6 +118,7 @@ export function ResponseHistoryPanel({
     if (speakingIndex === index) {
       nextSpeechRequestId();
       Speech.stop();
+      stopEdgeTts();
       safeSetSpeakingIndex(null);
       return;
     }
@@ -117,6 +126,7 @@ export function ResponseHistoryPanel({
     // Stop any current speech
     const requestId = nextSpeechRequestId();
     Speech.stop();
+    stopEdgeTts();
 
     const processedText = preprocessTextForTTS(text);
     if (!processedText) {
@@ -130,6 +140,18 @@ export function ResponseHistoryPanel({
       }
     };
 
+    safeSetSpeakingIndex(index);
+    if (ttsProvider === 'edge' && Platform.OS === 'web') {
+      void speakEdgeTts(processedText, {
+        voice: edgeTtsVoice,
+        rate: ttsRate,
+        onDone: clearIfCurrentRequest,
+        onStopped: clearIfCurrentRequest,
+        onError: clearIfCurrentRequest,
+      });
+      return;
+    }
+
     const speechOptions: Speech.SpeechOptions = {
       language: 'en-US',
       rate: ttsRate,
@@ -141,8 +163,6 @@ export function ResponseHistoryPanel({
     if (ttsVoiceId) {
       speechOptions.voice = ttsVoiceId;
     }
-
-    safeSetSpeakingIndex(index);
     Speech.speak(processedText, speechOptions);
   };
 

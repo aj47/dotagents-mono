@@ -260,7 +260,7 @@ export type ProfileModelConfig = {
   transcriptPostProcessingGeminiModel?: string
   transcriptPostProcessingChatgptWebModel?: string
   // TTS Provider settings
-  ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
+  ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
 }
 
 // Per-profile skills configuration
@@ -1037,6 +1037,11 @@ export type Config = {
   geminiTtsModel?: "gemini-2.5-flash-preview-tts" | "gemini-2.5-pro-preview-tts"
   geminiTtsVoice?: string
   geminiTtsLanguage?: string
+
+  // Edge TTS Configuration
+  edgeTtsModel?: "edge-tts"
+  edgeTtsVoice?: string
+  edgeTtsRate?: number // 0.5 to 2.0
 
   // Kitten (Local) TTS Configuration
   kittenModelDownloaded?: boolean // Whether model has been downloaded

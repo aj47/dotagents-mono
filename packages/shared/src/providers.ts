@@ -38,6 +38,7 @@ export const TTS_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
   { label: "Groq", value: "groq" },
   { label: "Gemini", value: "gemini" },
+  { label: "Edge TTS (Free)", value: "edge" },
   { label: "Kitten (Local)", value: "kitten" },
   { label: "Supertonic (Local)", value: "supertonic" },
 ] as const;
@@ -120,6 +121,20 @@ export const GEMINI_TTS_VOICES = [
 export const GEMINI_TTS_MODELS = [
   { label: "Gemini 2.5 Flash TTS", value: "gemini-2.5-flash-preview-tts" },
   { label: "Gemini 2.5 Pro TTS", value: "gemini-2.5-pro-preview-tts" },
+] as const;
+
+// Edge TTS (Microsoft Edge cloud TTS) options
+export const EDGE_TTS_MODELS = [
+  { label: "Edge Neural (Free)", value: "edge-tts" },
+] as const;
+
+export const EDGE_TTS_VOICES = [
+  { label: "Aria (US, Female)", value: "en-US-AriaNeural" },
+  { label: "Guy (US, Male)", value: "en-US-GuyNeural" },
+  { label: "Jenny (US, Female)", value: "en-US-JennyNeural" },
+  { label: "Davis (US, Male)", value: "en-US-DavisNeural" },
+  { label: "Sonia (UK, Female)", value: "en-GB-SoniaNeural" },
+  { label: "Ryan (UK, Male)", value: "en-GB-RyanNeural" },
 ] as const;
 
 // Kitten TTS Voice Options (8 voices, sid 0-7)

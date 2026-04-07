@@ -13,11 +13,13 @@ export type AppConfig = {
   handsFreeDebug?: boolean; // show structured handsfree debug state/events in chat
   handsFreeForegroundOnly?: boolean; // v1 safeguard: only run while chat is foregrounded
   ttsEnabled?: boolean; // text-to-speech toggle (optional for backward compatibility)
+  ttsProvider?: 'native' | 'edge';
   messageQueueEnabled?: boolean; // message queue toggle (allows queuing messages while agent is busy)
   // TTS voice settings
   ttsVoiceId?: string; // Voice identifier (e.g., "Google US English" or native voice URI)
   ttsRate?: number; // Speech rate (0.1 to 10, default 1.0)
   ttsPitch?: number; // Voice pitch (0 to 2, default 1.0)
+  edgeTtsVoice?: string; // Edge voice id (web playback)
   // Audio input device settings
   // On web (Expo Web), this deviceId is passed to getUserMedia before starting the
   // Web Speech API recognizer so the browser routes audio from the selected mic.
@@ -50,10 +52,12 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   handsFreeDebug: false,
   handsFreeForegroundOnly: true,
   ttsEnabled: true,
+  ttsProvider: 'native',
   messageQueueEnabled: true,
   ttsVoiceId: undefined, // Use system default
   ttsRate: 1.0,
   ttsPitch: 1.0,
+  edgeTtsVoice: 'en-US-AriaNeural',
   audioInputDeviceId: undefined, // Use system default microphone
 };
 
@@ -107,4 +111,3 @@ export function useConfigContext() {
   if (!ctx) throw new Error('ConfigContext missing');
   return ctx;
 }
-

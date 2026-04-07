@@ -10,6 +10,8 @@ import {
   GROQ_TTS_MODELS,
   GEMINI_TTS_VOICES,
   GEMINI_TTS_MODELS,
+  EDGE_TTS_VOICES,
+  EDGE_TTS_MODELS,
   KITTEN_TTS_VOICES,
   SUPERTONIC_TTS_VOICES,
   SUPERTONIC_TTS_LANGUAGES,
@@ -54,6 +56,7 @@ describe('TTS_PROVIDERS', () => {
     expect(values).toContain('openai')
     expect(values).toContain('groq')
     expect(values).toContain('gemini')
+    expect(values).toContain('edge')
     expect(values).toContain('kitten')
     expect(values).toContain('supertonic')
   })
@@ -81,6 +84,11 @@ describe('Voice lists', () => {
 
   it('KITTEN_TTS_VOICES has 8 voices', () => {
     expect(KITTEN_TTS_VOICES).toHaveLength(8)
+  })
+
+  it('EDGE_TTS_VOICES has at least 4 voices', () => {
+    expect(EDGE_TTS_VOICES.length).toBeGreaterThanOrEqual(4)
+    expect(EDGE_TTS_VOICES.map(v => v.value)).toContain('en-US-AriaNeural')
   })
 
   it('SUPERTONIC_TTS_VOICES has 10 voices (5 male + 5 female)', () => {
@@ -113,6 +121,11 @@ describe('TTS Models', () => {
 
   it('GEMINI_TTS_MODELS has 2 models', () => {
     expect(GEMINI_TTS_MODELS).toHaveLength(2)
+  })
+
+  it('EDGE_TTS_MODELS has 1 model', () => {
+    expect(EDGE_TTS_MODELS).toHaveLength(1)
+    expect(EDGE_TTS_MODELS[0].value).toBe('edge-tts')
   })
 })
 

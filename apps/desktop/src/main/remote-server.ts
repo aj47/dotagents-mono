@@ -3084,6 +3084,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         groqTtsVoice: cfg.groqTtsVoice || "autumn",
         geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash-preview-tts",
         geminiTtsVoice: cfg.geminiTtsVoice || "Kore",
+        edgeTtsModel: cfg.edgeTtsModel || "edge-tts",
+        edgeTtsVoice: cfg.edgeTtsVoice || "en-US-AriaNeural",
+        edgeTtsRate: cfg.edgeTtsRate ?? 1.0,
         // acpx Agent list for agent selection
         acpxAgents: agentProfileService.getAll()
           .filter(p => p.connection.type === 'acpx' && p.enabled !== false)
@@ -3374,9 +3377,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.groqSttModel = body.groqSttModel
       }
       // TTS Provider
-      const validTtsProviders = ["openai", "groq", "gemini", "kitten", "supertonic"]
+      const validTtsProviders = ["openai", "groq", "gemini", "edge", "kitten", "supertonic"]
       if (typeof body.ttsProviderId === "string" && validTtsProviders.includes(body.ttsProviderId)) {
-        updates.ttsProviderId = body.ttsProviderId as "openai" | "groq" | "gemini" | "kitten" | "supertonic"
+        updates.ttsProviderId = body.ttsProviderId as "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
       }
       // Transcript Post-Processing Provider
       const validPostProcessingProviders = ["openai", "groq", "gemini", "chatgpt-web"]
@@ -3424,6 +3427,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.geminiTtsVoice === "string") {
         updates.geminiTtsVoice = body.geminiTtsVoice
+      }
+      // Edge TTS settings
+      if (typeof body.edgeTtsModel === "string") {
+        updates.edgeTtsModel = body.edgeTtsModel as "edge-tts"
+      }
+      if (typeof body.edgeTtsVoice === "string") {
+        updates.edgeTtsVoice = body.edgeTtsVoice
+      }
+      if (typeof body.edgeTtsRate === "number" && body.edgeTtsRate >= 0.5 && body.edgeTtsRate <= 2.0) {
+        updates.edgeTtsRate = body.edgeTtsRate
       }
 
       // Session History (pinned/archived conversation IDs)
