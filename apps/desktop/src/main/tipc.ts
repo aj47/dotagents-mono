@@ -1,4 +1,5 @@
 import fs from "fs"
+import { randomUUID } from "crypto"
 import { logApp, logLLM, getDebugFlags } from "./debug"
 import { getErrorMessage } from "./error-utils"
 import { getRendererHandlers, tipc } from "@egoist/tipc/main"
@@ -3279,6 +3280,8 @@ export const router = {
           ttsResult = await generateGroqTTS(processedText, input, config)
         } else if (providerId === "gemini") {
           ttsResult = await generateGeminiTTS(processedText, input, config)
+        } else if (providerId === "edge") {
+          ttsResult = await generateEdgeTTS(processedText, input, config)
         } else if (providerId === "kitten") {
           const { synthesize } = await import('./kitten-tts')
           const voiceId = config.kittenVoiceId ?? 0 // Default to Voice 2 - Male
@@ -3782,7 +3785,7 @@ export const router = {
       transcriptPostProcessingGeminiModel?: string
       transcriptPostProcessingChatgptWebModel?: string
       // TTS Provider settings
-      ttsProviderId?: "openai" | "groq" | "gemini" | "kitten" | "supertonic"
+      ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
     }>()
     .action(async ({ input }) => {
         return agentProfileService.updateProfileModelConfig(input.profileId, {
@@ -5334,6 +5337,155 @@ async function generateGeminiTTS(
     audio: bytes.buffer,
     mimeType: inlineAudioData?.mimeType || "audio/L16",
   }
+}
+
+async function generateEdgeTTS(
+  text: string,
+  input: { voice?: string; model?: string; speed?: number },
+  config: Config
+): Promise<TTSGenerationResult> {
+  // Model is kept for consistency with other providers/settings UI.
+  // The underlying edge-tts package currently uses one cloud backend.
+  const _model = input.model || config.edgeTtsModel || "edge-tts"
+  const voice = input.voice || config.edgeTtsVoice || "en-US-AriaNeural"
+  const speed = input.speed || config.edgeTtsRate || 1.0
+  const clampedSpeed = Math.min(2.0, Math.max(0.5, speed))
+  const ratePercent = Math.round((clampedSpeed - 1) * 100)
+  const rate = `${ratePercent >= 0 ? "+" : ""}${ratePercent}%`
+  const trustedClientToken = "6A5AA1D4EAFF4E9FB37E23D68491D6F4"
+  const connectionId = randomUUID().replace(/-/g, "")
+  const requestId = randomUUID().replace(/-/g, "")
+  const timestamp = new Date().toISOString()
+  const wsUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${trustedClientToken}&ConnectionId=${connectionId}`
+
+  const audioChunks: Uint8Array[] = []
+
+  await new Promise<void>((resolve, reject) => {
+    const ws = new WebSocket(wsUrl)
+
+    const cleanup = () => {
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onerror = null
+      ws.onclose = null
+    }
+
+    ws.onopen = () => {
+      const speechConfig = [
+        `X-Timestamp:${timestamp}`,
+        "Content-Type:application/json; charset=utf-8",
+        "Path:speech.config",
+        "",
+        JSON.stringify({
+          context: {
+            synthesis: {
+              audio: {
+                metadataoptions: {
+                  sentenceBoundaryEnabled: "false",
+                  wordBoundaryEnabled: "false",
+                },
+                outputFormat: "audio-24khz-48kbitrate-mono-mp3",
+              },
+            },
+          },
+        }),
+      ].join("\r\n")
+
+      const ssml = [
+        `<speak version='1.0' xml:lang='en-US'>`,
+        `<voice name='${escapeXml(voice)}'>`,
+        `<prosody rate='${escapeXml(rate)}'>${escapeXml(text)}</prosody>`,
+        "</voice>",
+        "</speak>",
+      ].join("")
+
+      const ssmlRequest = [
+        `X-RequestId:${requestId}`,
+        "Content-Type:application/ssml+xml",
+        `X-Timestamp:${timestamp}`,
+        "Path:ssml",
+        "",
+        ssml,
+      ].join("\r\n")
+
+      ws.send(speechConfig)
+      ws.send(ssmlRequest)
+    }
+
+    ws.onmessage = async (event) => {
+      try {
+        const data = typeof event.data === "string" ? event.data : new Uint8Array(await (event.data as Blob).arrayBuffer())
+        if (typeof data === "string") {
+          if (data.includes("Path:turn.end")) {
+            cleanup()
+            try { ws.close() } catch { /* noop */ }
+            resolve()
+          }
+          return
+        }
+
+        const headerEndIndex = findHeaderBoundary(data)
+        if (headerEndIndex < 0) return
+
+        const headerText = new TextDecoder().decode(data.subarray(0, headerEndIndex))
+        if (!headerText.includes("Path:audio")) return
+
+        const audioData = data.subarray(headerEndIndex + 4)
+        if (audioData.length > 0) {
+          audioChunks.push(audioData)
+        }
+      } catch (error) {
+        cleanup()
+        try { ws.close() } catch { /* noop */ }
+        reject(error)
+      }
+    }
+
+    ws.onerror = () => {
+      cleanup()
+      reject(new Error("Edge TTS websocket connection failed"))
+    }
+
+    ws.onclose = () => {
+      // Some runs close right after turn.end; resolve happens in onmessage.
+      // If close arrives first, reject so callers can surface a clear error.
+      if (audioChunks.length === 0) {
+        cleanup()
+        reject(new Error("Edge TTS connection closed before audio was received"))
+      }
+    }
+  })
+
+  const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  const merged = new Uint8Array(totalLength)
+  let offset = 0
+  for (const chunk of audioChunks) {
+    merged.set(chunk, offset)
+    offset += chunk.length
+  }
+
+  return {
+    audio: merged.buffer,
+    mimeType: "audio/mpeg",
+  }
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+}
+
+function findHeaderBoundary(buffer: Uint8Array): number {
+  for (let i = 0; i < buffer.length - 3; i++) {
+    if (buffer[i] === 13 && buffer[i + 1] === 10 && buffer[i + 2] === 13 && buffer[i + 3] === 10) {
+      return i
+    }
+  }
+  return -1
 }
 
 export type Router = typeof router

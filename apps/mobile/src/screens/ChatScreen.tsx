@@ -33,6 +33,7 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
 import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
+import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
@@ -505,6 +506,9 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [config.apiKey, config.baseUrl]);
   const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
+  const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
+  const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
@@ -532,6 +536,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      handsFreeController.reset();
       void stopRecognitionOnly?.();
       Speech.stop();
+      stopEdgeTts();
       setDebugInfo('Handsfree mode turned off.');
     } else {
       setDebugInfo('Handsfree mode turned on. Say the wake phrase to begin.');
@@ -1044,6 +1049,17 @@ export default function ChatScreen({ route, navigation }: any) {
 			voiceLog('tts-started', `Assistant speech started (${reason}).`);
 		}
 
+		if (remoteTtsProvider === 'edge' && Platform.OS === 'web') {
+			void speakEdgeTts(processedText, {
+				voice: remoteEdgeTtsVoice,
+				rate: remoteEdgeTtsRate,
+				onDone: settle,
+				onError: settle,
+				onStopped: settle,
+			});
+			return true;
+		}
+
 		const speechOptions: Speech.SpeechOptions = {
 			language: 'en-US',
 			rate: config.ttsRate ?? 1.0,
@@ -1057,7 +1073,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, voiceLog]);
+		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, handsFree, handsFreeController, remoteEdgeTtsRate, remoteEdgeTtsVoice, remoteTtsProvider, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -1170,6 +1186,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Stop any current speech first
     intendedSpeakingIndexRef.current = index;
     Speech.stop();
+    stopEdgeTts();
     const processedText = preprocessTextForTTS(content);
     if (!processedText) {
       intendedSpeakingIndexRef.current = null;
@@ -1180,6 +1197,39 @@ export default function ChatScreen({ route, navigation }: any) {
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
     setSpeakingMessageIndex(index);
+    if (remoteTtsProvider === 'edge' && Platform.OS === 'web') {
+      void speakEdgeTts(processedText, {
+        voice: remoteEdgeTtsVoice,
+        rate: remoteEdgeTtsRate,
+        onDone: () => {
+          intendedSpeakingIndexRef.current = null;
+          if (handsFree) {
+            handsFreeController.onSpeechFinished();
+            voiceLog('tts-stopped', 'Assistant speech finished from message playback.');
+          }
+          setSpeakingMessageIndex(null);
+        },
+        onError: () => {
+          intendedSpeakingIndexRef.current = null;
+          if (handsFree) {
+            handsFreeController.onSpeechFinished();
+            voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
+          }
+          setSpeakingMessageIndex(null);
+        },
+        onStopped: () => {
+          if (intendedSpeakingIndexRef.current === null) {
+            if (handsFree) {
+              handsFreeController.onSpeechFinished();
+              voiceLog('tts-stopped', 'Assistant speech stopped during message playback.');
+            }
+            setSpeakingMessageIndex(null);
+          }
+        },
+      });
+      return;
+    }
+
     const speechOptions: Speech.SpeechOptions = {
       language: 'en-US',
       rate: config.ttsRate ?? 1.0,
@@ -1221,6 +1271,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
+		remoteEdgeTtsRate,
+		remoteEdgeTtsVoice,
+		remoteTtsProvider,
 		handsFree,
 		handsFreeController,
 		voiceLog,
@@ -1242,6 +1295,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => {
     return () => {
       Speech.stop();
+      stopEdgeTts();
     };
   }, []);
 
@@ -1357,6 +1411,9 @@ export default function ChatScreen({ route, navigation }: any) {
         if (cancelled) return;
         const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
         setPredefinedPrompts(nextPrompts);
+        setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
+        setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
+        setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
       })
       .catch(() => {
         if (cancelled) return;
@@ -3475,6 +3532,8 @@ export default function ChatScreen({ route, navigation }: any) {
         {respondToUserHistory.length > 0 && (
           <ResponseHistoryPanel
             responses={respondToUserHistory}
+            ttsProvider={remoteTtsProvider}
+            edgeTtsVoice={remoteEdgeTtsVoice}
             ttsRate={config.ttsRate ?? 1.0}
             ttsPitch={config.ttsPitch ?? 1.0}
             ttsVoiceId={config.ttsVoiceId}
