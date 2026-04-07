@@ -347,14 +347,26 @@ export default function SettingsScreen({ navigation }: any) {
     setSaveStatusMessage(null);
   }, []);
 
+  // Keep a ref to the latest draft so multiple synchronous updateLocalConfig
+  // calls within the same tick compose instead of clobbering each other.
+  // This matters for flows like TTSSettings.handleVoiceSelect which calls
+  // onTtsProviderChange + onEdgeTtsVoiceChange back-to-back: without the ref,
+  // the second call would read a stale `draft` from closure and overwrite
+  // the first call's patch.
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
   const updateLocalConfig = useCallback((patch: Partial<AppConfig>) => {
-    const next = { ...draft, ...patch };
+    const next = { ...draftRef.current, ...patch };
+    draftRef.current = next;
     setDraft(next);
     setConfig(next);
     void saveConfig(next);
     setHasPendingLocalSave(false);
     setSaveStatusMessage('Saved');
-  }, [draft, setConfig]);
+  }, [setConfig]);
 
   const handleHandsFreeDebounceInputChange = useCallback((value: string) => {
     const sanitized = value.replace(/[^0-9]/g, '');
