@@ -1919,6 +1919,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     if (!trustedDeviceIds.includes(deviceId)) {
       recordRejectedOperatorDeviceAttempt(req, "Device is not allowed for operator access")
       reply.code(403).send({ error: "Device not allowed for operator access" })
+      // Must return — falling through here lets the request reach the route
+      // handler and perform side effects despite operator access being denied.
+      return
     }
   })
 

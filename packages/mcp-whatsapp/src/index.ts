@@ -770,22 +770,35 @@ async function maybeHandleWhatsAppOperatorCommand(message: WhatsAppMessage): Pro
 
   const replyTarget = message.chatId || message.from
   const operatorAllowFrom = config.operatorAllowFrom ?? []
-  if (operatorAllowFrom.length > 0) {
-    const senderId = normalizeWhatsAppOperatorIdentity(message.from)
-    const chatId = normalizeWhatsAppOperatorIdentity(message.chatId)
-    const isOperatorAllowed = operatorAllowFrom.some((allowed) => {
-      const normalizedAllowed = normalizeWhatsAppOperatorIdentity(allowed)
-      return normalizedAllowed.length >= 7 && (normalizedAllowed === senderId || normalizedAllowed === chatId)
-    })
 
-    if (!isOperatorAllowed) {
-      console.error(`[MCP-WhatsApp] Denied operator command from ${replyTarget}: sender not in WHATSAPP_OPERATOR_ALLOW_FROM`)
-      await whatsapp.sendMessage({
-        to: replyTarget,
-        text: "Operator access denied for this WhatsApp sender/chat. Add the sender to the WhatsApp operator allowlist to grant /ops access.",
-      })
-      return true
-    }
+  // Fail-closed: when no operator allowlist is configured, refuse /ops entirely.
+  // The previous behaviour fell through with no allowlist check at all (the
+  // start-up log incorrectly claimed it "follows the normal allowlist"), which
+  // meant any WhatsApp sender that could reach this bot could trigger operator
+  // actions. Mirrors the Discord-side fail-closed /ops behaviour.
+  if (operatorAllowFrom.length === 0) {
+    console.error(`[MCP-WhatsApp] Denied operator command from ${replyTarget}: WHATSAPP_OPERATOR_ALLOW_FROM is empty (fail-closed)`)
+    await whatsapp.sendMessage({
+      to: replyTarget,
+      text: "Operator access is disabled: no WhatsApp operator allowlist is configured. Set WHATSAPP_OPERATOR_ALLOW_FROM to a comma-separated list of allowed senders/chats to enable /ops.",
+    })
+    return true
+  }
+
+  const senderId = normalizeWhatsAppOperatorIdentity(message.from)
+  const chatId = normalizeWhatsAppOperatorIdentity(message.chatId)
+  const isOperatorAllowed = operatorAllowFrom.some((allowed) => {
+    const normalizedAllowed = normalizeWhatsAppOperatorIdentity(allowed)
+    return normalizedAllowed.length >= 7 && (normalizedAllowed === senderId || normalizedAllowed === chatId)
+  })
+
+  if (!isOperatorAllowed) {
+    console.error(`[MCP-WhatsApp] Denied operator command from ${replyTarget}: sender not in WHATSAPP_OPERATOR_ALLOW_FROM`)
+    await whatsapp.sendMessage({
+      to: replyTarget,
+      text: "Operator access denied for this WhatsApp sender/chat. Add the sender to the WhatsApp operator allowlist to grant /ops access.",
+    })
+    return true
   }
 
   console.error(`[MCP-WhatsApp] Handling operator command from ${replyTarget}: ${command.label}`)
@@ -1623,7 +1636,7 @@ async function main() {
   if (config.operatorAllowFrom && config.operatorAllowFrom.length > 0) {
     console.error(`[MCP-WhatsApp] Operator allowlist: ${config.operatorAllowFrom.join(", ")}`)
   } else {
-    console.error("[MCP-WhatsApp] No operator allowlist configured - /ops follows the normal allowlist")
+    console.error("[MCP-WhatsApp] No operator allowlist configured - /ops commands are disabled (fail-closed)")
   }
 
   if (config.callbackUrl) {
