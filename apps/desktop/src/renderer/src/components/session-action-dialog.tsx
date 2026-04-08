@@ -264,44 +264,46 @@ export function SessionActionDialog({
       }
       onOpenChange(nextOpen)
     }}>
-      <DialogContent className={cn("sm:max-w-2xl", mode === "voice" && "sm:max-w-xl")}>
+      <DialogContent className={cn("flex max-h-[calc(100vh-48px)] flex-col sm:max-w-2xl", mode === "voice" && "sm:max-w-xl")}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {mode === "text" ? (
-          <div className="min-h-[360px]">
-            <TextInputPanel
-              onSubmit={handleTextSubmit}
-              selectedAgentId={selectedAgentId}
-              onSelectAgent={onSelectAgent}
-              onCancel={closeDialog}
-              isProcessing={isSubmitting}
-              initialText={initialText}
-              continueConversationTitle={continueConversationTitle}
-              showAgentSelector={false}
-            />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-[360px]">
+              <TextInputPanel
+                onSubmit={handleTextSubmit}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={onSelectAgent}
+                onCancel={closeDialog}
+                isProcessing={isSubmitting}
+                initialText={initialText}
+                continueConversationTitle={continueConversationTitle}
+                showAgentSelector={false}
+              />
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
               {agentName && !continueConversationTitle && (
-                <div className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-primary">
-                  <Bot className="h-3 w-3" />
-                  <span className="font-medium">{agentName}</span>
+                <div className="inline-flex min-w-0 items-center gap-1 rounded bg-primary/10 px-2 py-1 text-primary">
+                  <Bot className="h-3 w-3 shrink-0" />
+                  <span className="truncate font-medium">{agentName}</span>
                 </div>
               )}
               {continueConversationTitle && (
-                <div className="inline-flex max-w-full items-center gap-1 rounded bg-blue-500/10 px-2 py-1 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
-                  <span className="opacity-70">Continuing:</span>
+                <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded bg-blue-500/10 px-2 py-1 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
+                  <span className="shrink-0 opacity-70">Continuing:</span>
                   <span className="truncate font-medium">{continueConversationTitle}</span>
                 </div>
               )}
             </div>
 
             <div className="rounded-xl border bg-muted/20 p-4">
-              <div className="flex min-h-[168px] flex-col items-center justify-center gap-4">
+              <div className="flex min-h-[140px] flex-col items-center justify-center gap-4">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   {isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />

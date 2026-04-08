@@ -42,7 +42,7 @@ vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWa
 vi.mock("./context-budget", () => ({
   shrinkMessagesForLLM: vi.fn(async ({ messages }: any) => ({ messages, estTokensAfter: 0, maxTokens: 0, appliedStrategies: [] })),
   estimateTokensFromMessages: vi.fn(() => 0),
-  clearActualTokenUsage: vi.fn(), clearIterativeSummary: vi.fn(), clearContextRefs: vi.fn(), clearArchiveFrontier: vi.fn(),
+  clearActualTokenUsage: vi.fn(), clearIterativeSummary: vi.fn(), clearContextRefs: vi.fn(), clearArchiveFrontier: vi.fn(), clearSummarizationFailureFlags: vi.fn(),
 }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mocks.emitAgentProgress }))
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: mocks }))

@@ -36,6 +36,17 @@ const TRANSCRIPTION_ONLY_MODEL_PATTERNS = {
   groq: ["whisper-large-v3", "whisper-large-v3-turbo", "distil-whisper-large-v3-en"],
 } as const
 
+/**
+ * Model families that only exist inside the ChatGPT-Web transport. Routing these
+ * through the direct OpenAI REST endpoint always fails and burns retry budget.
+ * See issue #310.
+ */
+const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
+  "codex-spark",
+  "gpt-5.3-codex",
+  "gpt-5.2-codex",
+] as const
+
 interface ProviderConfig {
   apiKey: string
   baseURL?: string
@@ -65,27 +76,50 @@ function isTranscriptionOnlyModel(providerId: ProviderType, model: string): bool
   return patterns.some(pattern => normalizedModel.includes(pattern))
 }
 
+function isChatGptWebOnlyModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase()
+  return CHATGPT_WEB_ONLY_MODEL_PATTERNS.some(pattern => normalized.includes(pattern))
+}
+
 function sanitizeChatModelSelection(
   providerId: ProviderType,
   model: string,
   modelContext: "mcp" | "transcript",
 ): string {
-  if (!isTranscriptionOnlyModel(providerId, model)) {
-    return model
+  if (isTranscriptionOnlyModel(providerId, model)) {
+    const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext]
+
+    if (isDebugLLM()) {
+      logLLM("Replacing STT-only model configured for chat/text usage", {
+        providerId,
+        modelContext,
+        invalidModel: model,
+        fallbackModel,
+      })
+    }
+
+    return fallbackModel
   }
 
-  const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext]
+  // A ChatGPT-Web-only model cannot be served by any non-chatgpt-web transport.
+  // Fall back to the provider's default chat model so we never emit a guaranteed
+  // failing HTTP call through the AI SDK (see issue #310).
+  if (providerId !== "chatgpt-web" && isChatGptWebOnlyModel(model)) {
+    const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext]
 
-  if (isDebugLLM()) {
-    logLLM("Replacing STT-only model configured for chat/text usage", {
-      providerId,
-      modelContext,
-      invalidModel: model,
-      fallbackModel,
-    })
+    if (isDebugLLM()) {
+      logLLM("Replacing ChatGPT-Web-only model configured for non-chatgpt-web provider", {
+        providerId,
+        modelContext,
+        invalidModel: model,
+        fallbackModel,
+      })
+    }
+
+    return fallbackModel
   }
 
-  return fallbackModel
+  return model
 }
 
 /**
@@ -311,4 +345,97 @@ export function getPromptCachingConfig(
   }
 
   return undefined
+}
+
+/**
+ * Model families that benefit from an explicit `reasoning.effort` when driven
+ * via the OpenAI Chat Completions API. GPT-5.x reasoning models default to
+ * `none`, which causes them to answer too quickly on agentic tasks (issue #297).
+ * Newer series like GPT-5.4 also benefit from being run with an explicit effort
+ * so they spend time gathering context before responding.
+ */
+const OPENAI_REASONING_MODEL_PATTERNS = [
+  "gpt-5",
+  "o1",
+  "o3",
+  "o4",
+] as const
+
+function isOpenAiReasoningModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase()
+  return OPENAI_REASONING_MODEL_PATTERNS.some(pattern => normalized.startsWith(pattern))
+}
+
+export type OpenAiReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+
+/**
+ * Compute provider options contributed by the reasoning-effort setting for
+ * OpenAI (or OpenAI-compatible) reasoning-capable chat models. Returns
+ * `undefined` when no reasoning override applies so the caller can skip merging.
+ * See issue #297.
+ */
+export function getReasoningEffortProviderOptions(
+  providerId?: ProviderType,
+  modelContext: "mcp" | "transcript" = "mcp",
+): Record<string, any> | undefined {
+  const config = configStore.get()
+  const effectiveProviderId = normalizeProviderType(
+    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+  )
+
+  // Only OpenAI-compatible Chat Completions path supports this option.
+  // Gemini/chatgpt-web use different transports.
+  if (effectiveProviderId !== "openai" && effectiveProviderId !== "groq") {
+    return undefined
+  }
+
+  const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
+  if (!isOpenAiReasoningModel(providerConfig.model)) {
+    return undefined
+  }
+
+  // User override wins — including the sentinel "none" which keeps the
+  // provider default and is a no-op for us (return undefined).
+  const override = (config as any).openaiReasoningEffort as OpenAiReasoningEffort | undefined
+  if (override === "none") {
+    return undefined
+  }
+  const effort: OpenAiReasoningEffort = override || "medium"
+
+  if (isDebugLLM()) {
+    logLLM("Applying OpenAI reasoning effort override", {
+      providerId: effectiveProviderId,
+      modelContext,
+      model: providerConfig.model,
+      effort,
+      source: override ? "user-config" : "default",
+    })
+  }
+
+  return {
+    openai: {
+      reasoningEffort: effort,
+    },
+  }
+}
+
+/**
+ * Merge multiple provider-option records, giving later entries precedence on
+ * conflicts within the same provider namespace. Helper used by llm-fetch so
+ * that prompt caching and reasoning effort can coexist in a single
+ * `providerOptions` payload (issue #297).
+ */
+export function mergeProviderOptions(
+  ...sources: Array<Record<string, any> | undefined>
+): Record<string, any> | undefined {
+  const merged: Record<string, any> = {}
+  let hasAny = false
+  for (const source of sources) {
+    if (!source) continue
+    for (const [provider, options] of Object.entries(source)) {
+      merged[provider] = { ...(merged[provider] || {}), ...(options || {}) }
+      hasAny = true
+    }
+  }
+  return hasAny ? merged : undefined
 }

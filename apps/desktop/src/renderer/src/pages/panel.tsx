@@ -148,6 +148,24 @@ export function Component() {
     audioInputDeviceIdRef.current = configQuery.data?.audioInputDeviceId
   }, [configQuery.data?.audioInputDeviceId])
 
+  // Start recording with the latest configured input device. We read the main-process
+  // config via IPC first so a microphone change in Settings applies to the very next
+  // recording without waiting for the React Query cache to refetch (issue #303). The
+  // ref is refreshed in the background so the synchronous visualizer UI stays accurate.
+  const startRecordingWithFreshDevice = async () => {
+    let deviceId = audioInputDeviceIdRef.current
+    try {
+      const freshConfig = await tipcClient.getConfig()
+      if (freshConfig) {
+        deviceId = freshConfig.audioInputDeviceId
+        audioInputDeviceIdRef.current = deviceId
+      }
+    } catch {
+      // Best-effort: fall back to the ref value on IPC failure.
+    }
+    return recorderRef.current?.startRecording(deviceId)
+  }
+
   // Apply selected audio output device to sound effects (recording start/stop beeps)
   useEffect(() => {
     setSoundOutputDevice(configQuery.data?.audioOutputDeviceId)
@@ -607,7 +625,7 @@ export function Component() {
       setRecording(true)
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-      recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch((err: unknown) => {
+      startRecordingWithFreshDevice()?.catch((err: unknown) => {
         console.error('[panel] startRecording failed, resetting recording state:', err)
         setRecording(false)
         recordingRef.current = false
@@ -657,7 +675,7 @@ export function Component() {
         recordingRef.current = true
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         tipcClient.showPanelWindow({})
-        recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch?.((err: unknown) => {
+        startRecordingWithFreshDevice()?.catch?.((err: unknown) => {
           console.error('[panel] startRecording failed, resetting recording state:', err)
           setRecording(false)
           recordingRef.current = false
@@ -798,7 +816,7 @@ export function Component() {
       setRecording(true)
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-      recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch?.((err: unknown) => {
+      startRecordingWithFreshDevice()?.catch?.((err: unknown) => {
         console.error('[panel] startRecording failed, resetting recording state:', err)
         setRecording(false)
         recordingRef.current = false
@@ -853,7 +871,7 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         requestPanelMode("normal") // Ensure panel is normal size for recording
         tipcClient.showPanelWindow({})
-        recorderRef.current?.startRecording(audioInputDeviceIdRef.current)?.catch?.((err: unknown) => {
+        startRecordingWithFreshDevice()?.catch?.((err: unknown) => {
           console.error('[panel] startRecording failed, resetting recording state:', err)
           setRecording(false)
           recordingRef.current = false

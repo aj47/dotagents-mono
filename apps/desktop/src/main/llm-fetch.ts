@@ -18,7 +18,9 @@ import {
   getCurrentProviderId,
   getCurrentModelName,
   getPromptCachingConfig,
+  getReasoningEffortProviderOptions,
   getTranscriptProviderId,
+  mergeProviderOptions,
   type ProviderType,
 } from "./ai-sdk-provider"
 import { configStore } from "./config"
@@ -835,6 +837,11 @@ export async function makeLLMCallWithFetch(
         const model = createLanguageModel(effectiveProviderId)
         const { system, messages: convertedMessages } = convertMessages(messages)
         const promptCaching = getPromptCachingConfig(effectiveProviderId)
+        const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
+        const mergedProviderOptions = mergeProviderOptions(
+          promptCaching?.providerOptions,
+          reasoningOptions,
+        )
 
         // Convert MCP tools to AI SDK format if provided
         const convertedTools = tools && tools.length > 0
@@ -864,6 +871,7 @@ export async function makeLLMCallWithFetch(
               hasTools: !!convertedTools,
               toolCount: tools?.length || 0,
               promptCaching: promptCaching?.strategy,
+              reasoningEffort: (reasoningOptions?.openai as any)?.reasoningEffort,
             },
             input: { system, messages: convertedMessages },
           })
@@ -876,7 +884,7 @@ export async function makeLLMCallWithFetch(
             system,
             messages: convertedMessages,
             abortSignal: abortController.signal,
-            providerOptions: promptCaching?.providerOptions as any,
+            providerOptions: mergedProviderOptions as any,
             tools: convertedTools?.tools,
             // Allow the model to choose whether to use tools or respond with text
             toolChoice: convertedTools?.tools ? "auto" : undefined,
@@ -1116,6 +1124,11 @@ export async function makeLLMCallWithStreamingAndTools(
       const model = createLanguageModel(effectiveProviderId)
       const { system, messages: convertedMessages } = convertMessages(messages)
       const promptCaching = getPromptCachingConfig(effectiveProviderId)
+      const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
+      const mergedProviderOptions = mergeProviderOptions(
+        promptCaching?.providerOptions,
+        reasoningOptions,
+      )
 
       if (isDebugLLM()) {
         logLLM("🚀 AI SDK streamText+tools call", {
@@ -1137,6 +1150,7 @@ export async function makeLLMCallWithStreamingAndTools(
             hasTools: !!convertedTools,
             toolCount: tools?.length || 0,
             promptCaching: promptCaching?.strategy,
+            reasoningEffort: (reasoningOptions?.openai as any)?.reasoningEffort,
           },
           input: { system, messages: convertedMessages },
         })
@@ -1155,7 +1169,7 @@ export async function makeLLMCallWithStreamingAndTools(
           system,
           messages: convertedMessages,
           abortSignal: abortController.signal,
-          providerOptions: promptCaching?.providerOptions as any,
+          providerOptions: mergedProviderOptions as any,
           tools: convertedTools?.tools,
           toolChoice: convertedTools?.tools ? "auto" : undefined,
         })
@@ -1300,6 +1314,11 @@ export async function makeTextCompletionWithFetch(
           : await (async () => {
               const model = createLanguageModel(effectiveProviderId, "transcript")
               const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
+              const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId, "transcript")
+              const mergedProviderOptions = mergeProviderOptions(
+                promptCaching?.providerOptions,
+                reasoningOptions,
+              )
 
               if (isDebugLLM()) {
                 logLLM("🚀 AI SDK text completion call", {
@@ -1312,7 +1331,7 @@ export async function makeTextCompletionWithFetch(
                 model,
                 prompt,
                 abortSignal: abortController.signal,
-                providerOptions: promptCaching?.providerOptions as any,
+                providerOptions: mergedProviderOptions as any,
               })
 
               // Log prompt cache metrics
@@ -1384,6 +1403,13 @@ export async function verifyCompletionWithFetch(
         const promptCaching = isChatGptWebProvider(effectiveProviderId)
           ? undefined
           : getPromptCachingConfig(effectiveProviderId)
+        const reasoningOptions = isChatGptWebProvider(effectiveProviderId)
+          ? undefined
+          : getReasoningEffortProviderOptions(effectiveProviderId)
+        const mergedProviderOptions = mergeProviderOptions(
+          promptCaching?.providerOptions,
+          reasoningOptions,
+        )
         const { system, messages: convertedMessages } = convertMessages(messages)
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
@@ -1392,6 +1418,7 @@ export async function verifyCompletionWithFetch(
             modelParameters: {
               provider: effectiveProviderId,
               promptCaching: promptCaching?.strategy,
+              reasoningEffort: (reasoningOptions?.openai as any)?.reasoningEffort,
             },
             input: { system, messages: convertedMessages },
           })
@@ -1420,7 +1447,7 @@ export async function verifyCompletionWithFetch(
               system,
               messages: convertedMessages,
               abortSignal: abortController.signal,
-              providerOptions: promptCaching?.providerOptions as any,
+              providerOptions: mergedProviderOptions as any,
             })
             usage = result.usage as ExtendedUsage
             // Log prompt cache metrics

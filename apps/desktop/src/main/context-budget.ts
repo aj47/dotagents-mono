@@ -37,6 +37,33 @@ const contextRefRegistryBySession = new Map<string, Map<string, ContextRefEntry>
 const archiveFrontierCountBySession = new Map<string, number>()
 const archiveHistoryRefBySession = new Map<string, string>()
 
+// Short-circuit cache: when summarization has already hard-failed for a
+// (sessionId, providerId, model) combo, skip further LLM calls for the rest
+// of the session to avoid burning rate-limit slots and amplifying failure.
+// See issue #310.
+const summarizationFailureCache = new Set<string>()
+function summarizationFailureKey(sessionId: string | undefined, providerId: string, model: string): string {
+  return `${sessionId || "_global"}|${providerId}|${model}`
+}
+function isSummarizationDisabled(sessionId: string | undefined, providerId: string, model: string): boolean {
+  return summarizationFailureCache.has(summarizationFailureKey(sessionId, providerId, model))
+}
+function markSummarizationFailed(sessionId: string | undefined, providerId: string, model: string): void {
+  summarizationFailureCache.add(summarizationFailureKey(sessionId, providerId, model))
+}
+
+/**
+ * Clear per-session summarization failure flags (call on session end).
+ */
+export function clearSummarizationFailureFlags(sessionId: string): void {
+  const prefix = `${sessionId}|`
+  for (const key of summarizationFailureCache) {
+    if (key.startsWith(prefix)) {
+      summarizationFailureCache.delete(key)
+    }
+  }
+}
+
 function key(providerId: string, model: string) {
   return `${providerId}|${model}`
 }
@@ -106,6 +133,8 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
   // OpenAI models
   // -------------------------------------------------------------------------
   // GPT-5.x series (future-proofing based on pi-mono registry)
+  "gpt-5.4-mini": { contextWindow: 128_000, maxOutputTokens: 64_000 },
+  "gpt-5.4": { contextWindow: 128_000, maxOutputTokens: 128_000 },
   "gpt-5.2": { contextWindow: 128_000, maxOutputTokens: 64_000 },
   "gpt-5.1": { contextWindow: 128_000, maxOutputTokens: 128_000 },
   "gpt-5-codex": { contextWindow: 128_000, maxOutputTokens: 128_000 },
@@ -777,9 +806,23 @@ function getProviderAndModel(): { providerId: string; model: string } {
 }
 
 export async function summarizeContent(content: string, sessionId?: string): Promise<string> {
-  const { providerId: provider } = getProviderAndModel() // align with agent provider
+  const { providerId: provider, model } = getProviderAndModel() // align with agent provider
   const MAX_TOKENS_HINT = 400 // soft guidance via prompt only
   const CHUNK_SIZE = 16000 // ~4k tokens per chunk (roughly)
+
+  // If this session has already hard-failed for the current provider/model,
+  // skip further LLM calls entirely and return the source unchanged. This
+  // prevents retry amplification and rate-limit burn (see issue #310).
+  if (isSummarizationDisabled(sessionId, provider, model)) {
+    if (isDebugLLM()) {
+      logLLM("[Context Budget] Skipping summarization: previous failure recorded", {
+        sessionId,
+        provider,
+        model,
+      })
+    }
+    return content
+  }
 
   const makePrompt = (src: string) => `Summarize tool output or conversation focusing on WHAT WAS LEARNED, not what was executed.
 
@@ -810,9 +853,24 @@ ${src}`
       if (sessionId && agentSessionStateManager.shouldStopSession(sessionId)) {
         return src
       }
+      // Bail out early if a prior chunk already failed for this provider/model.
+      if (isSummarizationDisabled(sessionId, provider, model)) {
+        return src
+      }
       const summary = await makeTextCompletionWithFetch(makePrompt(src), provider, sessionId)
       return summary?.trim() || src
     } catch (e) {
+      // Mark this (session, provider, model) as disabled so subsequent summarization
+      // attempts in the same session return immediately instead of retrying 3× each.
+      markSummarizationFailed(sessionId, provider, model)
+      if (isDebugLLM()) {
+        logLLM("[Context Budget] Summarization failed — disabling further attempts for this session", {
+          sessionId,
+          provider,
+          model,
+          error: String(e),
+        })
+      }
       return src
     }
   }
@@ -1030,9 +1088,16 @@ function buildBatchSummaryFallback(items: SummaryCandidate[]): string {
 }
 
 async function summarizeMessageBatch(items: SummaryCandidate[], sessionId?: string): Promise<string> {
-  const { providerId } = getProviderAndModel()
+  const { providerId, model } = getProviderAndModel()
   const source = formatBatchSummaryInput(items)
   const fallback = buildBatchSummaryFallback(items)
+
+  // Skip the LLM call entirely if a prior summarization already hard-failed
+  // for this (session, provider, model) combo — see issue #310.
+  if (isSummarizationDisabled(sessionId, providerId, model)) {
+    return fallback
+  }
+
   const prompt = `Compress these earlier conversation messages into one concise context block.
 
 KEEP:
@@ -1057,6 +1122,7 @@ ${source}`
     const summary = await makeTextCompletionWithFetch(prompt, providerId, sessionId)
     return summary?.trim() || fallback
   } catch {
+    markSummarizationFailed(sessionId, providerId, model)
     return fallback
   }
 }
@@ -1139,6 +1205,13 @@ async function updateIterativeSummaryForDroppedMessages(
 ): Promise<void> {
   if (droppedMessages.length === 0) return
 
+  const { providerId: iterativeProvider, model: iterativeModel } = getProviderAndModel()
+  // Skip iterative summary when prior calls have already hard-failed for this
+  // (session, provider, model) — see issue #310.
+  if (isSummarizationDisabled(sessionId, iterativeProvider, iterativeModel)) {
+    return
+  }
+
   const previousSummary = iterativeSummaryCache.get(sessionId)
   const droppedText = droppedMessages
     .map(m => {
@@ -1184,12 +1257,13 @@ Keep the summary under 1000 characters. Be factual and specific.`
       onSummarizationProgress(0, 1, "Updating archived session summary...")
     }
 
-    const iterativeSummary = await makeTextCompletionWithFetch(updatePrompt, getProviderAndModel().providerId, sessionId)
+    const iterativeSummary = await makeTextCompletionWithFetch(updatePrompt, iterativeProvider, sessionId)
     if (iterativeSummary?.trim()) {
       iterativeSummaryCache.set(sessionId, iterativeSummary.trim())
       if (isDebugLLM()) logLLM("[Context Budget] Updated iterative session summary", { length: iterativeSummary.length })
     }
   } catch (e) {
+    markSummarizationFailed(sessionId, iterativeProvider, iterativeModel)
     if (isDebugLLM()) logLLM("[Context Budget] Iterative summary generation failed, continuing", { error: String(e) })
   }
 }

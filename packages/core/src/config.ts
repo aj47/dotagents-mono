@@ -413,6 +413,24 @@ function getActivePreset(config: Partial<Config>): ModelPreset | undefined {
 }
 
 /**
+ * Patterns that identify ChatGPT-Web-only model families. These must never be copied
+ * into legacy OpenAI fields (`mcpToolsOpenaiModel`, `transcriptPostProcessingOpenaiModel`)
+ * because the direct OpenAI REST endpoint cannot serve them, causing every request to
+ * fail and burn through retries. See issue #310.
+ */
+const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
+  "codex-spark",
+  "gpt-5.3-codex",
+  "gpt-5.2-codex",
+]
+
+function isLikelyChatGptWebOnlyModel(model: string | undefined): boolean {
+  if (!model) return false
+  const normalized = model.trim().toLowerCase()
+  return CHATGPT_WEB_ONLY_MODEL_PATTERNS.some(pattern => normalized.includes(pattern))
+}
+
+/**
  * Sync the active preset's credentials and model preferences to legacy config fields for backward compatibility.
  * Always syncs all fields together to keep them consistent with the active preset.
  */
@@ -425,9 +443,15 @@ function syncPresetToLegacyFields(config: Partial<Config>): Partial<Config> {
     config.openaiBaseUrl = activePreset.baseUrl || ''
 
     // Always sync model preferences to keep legacy fields consistent with the active preset
-    // If preset has empty/undefined values, legacy fields should reflect that
-    config.mcpToolsOpenaiModel = activePreset.mcpToolsModel || ''
-    config.transcriptPostProcessingOpenaiModel = activePreset.transcriptProcessingModel || ''
+    // If preset has empty/undefined values, legacy fields should reflect that.
+    // Skip models that belong to ChatGPT-Web-only families so they never reach the
+    // direct OpenAI REST endpoint (see issue #310).
+    config.mcpToolsOpenaiModel = isLikelyChatGptWebOnlyModel(activePreset.mcpToolsModel)
+      ? ''
+      : (activePreset.mcpToolsModel || '')
+    config.transcriptPostProcessingOpenaiModel = isLikelyChatGptWebOnlyModel(activePreset.transcriptProcessingModel)
+      ? ''
+      : (activePreset.transcriptProcessingModel || '')
   }
   return config
 }

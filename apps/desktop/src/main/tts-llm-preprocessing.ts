@@ -5,6 +5,7 @@
  */
 
 import { makeTextCompletionWithFetch } from "./llm-fetch"
+import { getCurrentProviderId } from "./ai-sdk-provider"
 import { configStore } from "./config"
 import { Config } from "@shared/types"
 import { diagnosticsService } from "./diagnostics"
@@ -57,10 +58,17 @@ export async function preprocessTextForTTSWithLLM(
   providerId?: string
 ): Promise<string> {
   const config = configStore.get()
-  
-  // Use the configured TTS LLM provider, or fall back to transcript post-processing provider, or openai
-  const llmProviderId = providerId || config.ttsLLMPreprocessingProviderId || config.transcriptPostProcessingProviderId || "openai"
-  
+
+  // Use the configured TTS LLM provider, or fall back to transcript post-processing
+  // provider, or the active agent (MCP tools) provider as a last resort. Falling
+  // back to a literal "openai" burned rate limits whenever the agent was running
+  // on ChatGPT-Web (see issue #310).
+  const llmProviderId =
+    providerId ||
+    config.ttsLLMPreprocessingProviderId ||
+    config.transcriptPostProcessingProviderId ||
+    getCurrentProviderId()
+
   try {
     // Build the dynamic prompt based on user config, then append the text
     const prompt = buildTTSPreprocessingPrompt(config) + text

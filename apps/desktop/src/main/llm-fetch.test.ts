@@ -75,6 +75,19 @@ vi.mock('./ai-sdk-provider', () => ({
   getTranscriptProviderId: vi.fn(() => 'openai'),
   getCurrentModelName: vi.fn(() => 'gpt-4.1-mini'),
   getPromptCachingConfig: getPromptCachingConfigMock,
+  getReasoningEffortProviderOptions: vi.fn(() => undefined),
+  mergeProviderOptions: vi.fn((...sources: Array<Record<string, any> | undefined>) => {
+    const merged: Record<string, any> = {}
+    let hasAny = false
+    for (const source of sources) {
+      if (!source) continue
+      for (const [provider, options] of Object.entries(source)) {
+        merged[provider] = { ...(merged[provider] || {}), ...(options || {}) }
+        hasAny = true
+      }
+    }
+    return hasAny ? merged : undefined
+  }),
 }))
 
 // Mock the langfuse-service module
