@@ -244,18 +244,15 @@ export function ActiveAgentsSidebar({
     []
 
   const activeSessions = useMemo<SidebarSessionRecord[]>(() => {
-    const recentStatusById = new Map(
-      recentCompletedSessions.map((session) => [session.id, session.status] as const),
-    )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      const recentStatus = recentStatusById.get(sessionId)
-      if (recentStatus === "stopped" || recentStatus === "error") {
-        continue
-      }
+      // Keep errored and user-stopped sessions visible in the sidebar so the
+      // user can still see their final state until they explicitly dismiss
+      // them (see issue #302). Previously these were filtered out, which
+      // made the kill switch appear to silently jump focus elsewhere.
 
       const existingSession = mergedSessions.get(sessionId)
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
@@ -299,7 +296,7 @@ export function ActiveAgentsSidebar({
         b.startTime
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, recentCompletedSessions, agentProgressById])
+  }, [trackedActiveSessions, agentProgressById])
 
   const savedConversationEntries = useMemo(() => {
     const items: SidebarSessionEntry[] = []

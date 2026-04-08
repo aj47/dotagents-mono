@@ -359,8 +359,6 @@ export function Component() {
   }, [refetchSessionData])
 
   const trackedActiveSessions = sessionData?.activeSessions || []
-  const recentCompletedSessions =
-    sessionData?.recentCompletedSessions || sessionData?.recentSessions || []
 
   const [sessionOrder, setSessionOrder] = useState<string[]>([])
   const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
@@ -402,9 +400,6 @@ export function Component() {
   }, [pendingResumeConversationId])
 
   const activeSessionEntries = React.useMemo<VisibleSessionEntry[]>(() => {
-    const recentStatusById = new Map(
-      recentCompletedSessions.map((session) => [session.id, session.status] as const),
-    )
     const mergedEntries = new Map<string, VisibleSessionEntry>()
 
     for (const session of trackedActiveSessions) {
@@ -422,13 +417,10 @@ export function Component() {
         continue
       }
 
-      const recentStatus = recentStatusById.get(sessionId)
-      // Keep errored sessions visible so the user can see the emitted failure
-      // details after a resumed conversation fails. Only stopped sessions
-      // should disappear automatically.
-      if (recentStatus === "stopped") {
-        continue
-      }
+      // Keep errored AND user-stopped sessions visible so the user can read
+      // the final state. Focus stays pinned to the killed session until it
+      // is explicitly cleared via the "Clear inactive" button or dismissed
+      // from the sidebar (see issue #302).
 
       const existing = mergedEntries.get(sessionId)
       const mergedProgress = existing
@@ -490,7 +482,6 @@ export function Component() {
     getLastActivityTimestamp,
     pendingResumeConversationId,
     pinnedSessionIds,
-    recentCompletedSessions,
     sessionOrder,
     trackedActiveSessions,
   ])

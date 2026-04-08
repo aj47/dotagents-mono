@@ -71,6 +71,35 @@ describe("ai-sdk-provider chat model sanitization", () => {
     expect(mod.getCurrentModelName("groq", "transcript")).toBe("openai/gpt-oss-120b")
   })
 
+  it.each([
+    "gpt-5.3-codex-spark",
+    "gpt-5.3-codex",
+    "gpt-5.2-codex",
+  ])("falls back when a ChatGPT-Web-only model is configured for the openai provider: %s", async (configuredModel) => {
+    const { mod, chat } = await loadModule({
+      mcpToolsOpenaiModel: configuredModel,
+      transcriptPostProcessingOpenaiModel: configuredModel,
+    })
+
+    mod.createLanguageModel("openai", "mcp")
+    expect(chat).toHaveBeenCalledWith("gpt-4.1-mini")
+    expect(mod.getCurrentModelName("openai", "mcp")).toBe("gpt-4.1-mini")
+    expect(mod.getCurrentModelName("openai", "transcript")).toBe("gpt-4.1-mini")
+  })
+
+  it.each([
+    "gpt-5.3-codex-spark",
+    "gpt-5.2-codex",
+  ])("falls back when a ChatGPT-Web-only model is configured for the groq provider: %s", async (configuredModel) => {
+    const { mod, chat } = await loadModule({
+      mcpToolsGroqModel: configuredModel,
+    })
+
+    mod.createLanguageModel("groq", "mcp")
+    expect(chat).toHaveBeenCalledWith("openai/gpt-oss-120b")
+    expect(mod.getCurrentModelName("groq", "mcp")).toBe("openai/gpt-oss-120b")
+  })
+
   it("reports implicit prefix caching for direct OpenAI", async () => {
     const { mod } = await loadModule({
       openaiBaseUrl: "https://api.openai.com/v1",
@@ -175,4 +204,63 @@ describe("ai-sdk-provider chat model sanitization", () => {
       "chatgpt-web provider uses a custom fetch transport, not AI SDK createLanguageModel",
     )
   })
-}) 
+
+  it("returns medium reasoning effort by default for GPT-5 family openai models", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "openai",
+      mcpToolsOpenaiModel: "gpt-5.4",
+    })
+    expect(mod.getReasoningEffortProviderOptions("openai", "mcp")).toEqual({
+      openai: { reasoningEffort: "medium" },
+    })
+  })
+
+  it("honors user override for openai reasoning effort", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "openai",
+      mcpToolsOpenaiModel: "gpt-5.4-mini",
+      openaiReasoningEffort: "high",
+    })
+    expect(mod.getReasoningEffortProviderOptions("openai", "mcp")).toEqual({
+      openai: { reasoningEffort: "high" },
+    })
+  })
+
+  it("returns undefined when user explicitly disables reasoning effort with 'none'", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "openai",
+      mcpToolsOpenaiModel: "gpt-5",
+      openaiReasoningEffort: "none",
+    })
+    expect(mod.getReasoningEffortProviderOptions("openai", "mcp")).toBeUndefined()
+  })
+
+  it("returns undefined for non-reasoning openai models", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "openai",
+      mcpToolsOpenaiModel: "gpt-4.1-mini",
+    })
+    expect(mod.getReasoningEffortProviderOptions("openai", "mcp")).toBeUndefined()
+  })
+
+  it("returns undefined for gemini provider even on a reasoning-like model name", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "gemini",
+    })
+    expect(mod.getReasoningEffortProviderOptions("gemini", "mcp")).toBeUndefined()
+  })
+
+  it("merges prompt caching options with reasoning effort for anthropic-via-openai", async () => {
+    const { mod } = await loadModule({
+      mcpToolsProviderId: "openai",
+      mcpToolsOpenaiModel: "gpt-5",
+      openaiBaseUrl: "https://api.openai.com/v1",
+    })
+    const caching = mod.getPromptCachingConfig("openai")
+    const reasoning = mod.getReasoningEffortProviderOptions("openai", "mcp")
+    const merged = mod.mergeProviderOptions(caching?.providerOptions, reasoning)
+    expect(merged).toEqual({
+      openai: { reasoningEffort: "medium" },
+    })
+  })
+})
