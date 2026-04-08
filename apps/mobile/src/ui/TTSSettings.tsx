@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, ScrollView, Modal, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
 import { useTheme } from './ThemeProvider';
@@ -23,7 +23,7 @@ const EDGE_TTS_VOICE_OPTIONS: ReadonlyArray<{
   { identifier: 'en-US-AriaNeural', name: 'Aria (Edge Neural)', language: 'en-US' },
   { identifier: 'en-US-GuyNeural', name: 'Guy (Edge Neural)', language: 'en-US' },
   { identifier: 'en-US-JennyNeural', name: 'Jenny (Edge Neural)', language: 'en-US' },
-  { identifier: 'en-US-DavisNeural', name: 'Davis (Edge Neural)', language: 'en-US' },
+  { identifier: 'en-US-BrianNeural', name: 'Brian (Edge Neural)', language: 'en-US' },
   { identifier: 'en-GB-SoniaNeural', name: 'Sonia (Edge Neural)', language: 'en-GB' },
   { identifier: 'en-GB-RyanNeural', name: 'Ryan (Edge Neural)', language: 'en-GB' },
 ];
@@ -158,6 +158,22 @@ export function TTSSettings({
       void speakEdgeTts('Hello! This is a test of the text to speech voice.', {
         voice: selectedVoice.identifier,
         rate,
+        // Surface Edge TTS failures so users don't think the button did nothing.
+        // speakEdgeTts already logs the detailed error to console; this just
+        // pops a human-readable Alert so it's visible without opening devtools.
+        onError: () => {
+          if (Platform.OS === 'web') {
+            Alert.alert(
+              'Edge TTS failed',
+              'Could not reach the Edge TTS service. On Expo Web this usually means the dev-server proxy is down — restart `pnpm --filter @dotagents/mobile web` and try again. Check the browser console for [edge-tts] details.',
+            );
+          } else {
+            Alert.alert(
+              'Edge TTS failed',
+              'Could not synthesize speech with the selected Edge voice. Check the device logs for [edge-tts] details.',
+            );
+          }
+        },
       });
       return;
     }

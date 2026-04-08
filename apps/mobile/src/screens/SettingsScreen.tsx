@@ -131,7 +131,7 @@ const EDGE_TTS_VOICES = [
   { label: 'Aria (US, Female)', value: 'en-US-AriaNeural' },
   { label: 'Guy (US, Male)', value: 'en-US-GuyNeural' },
   { label: 'Jenny (US, Female)', value: 'en-US-JennyNeural' },
-  { label: 'Davis (US, Male)', value: 'en-US-DavisNeural' },
+  { label: 'Brian (US, Male)', value: 'en-US-BrianNeural' },
   { label: 'Sonia (UK, Female)', value: 'en-GB-SoniaNeural' },
   { label: 'Ryan (UK, Male)', value: 'en-GB-RyanNeural' },
 ] as const;

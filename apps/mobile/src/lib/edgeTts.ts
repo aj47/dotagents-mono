@@ -7,6 +7,74 @@ import {
 import { File, Paths } from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 
+// Microsoft's consumer Edge TTS endpoint rejects requests without a rolling
+// Sec-MS-GEC token and a handful of Edge-lookalike headers. These constants are
+// reverse-engineered from the real Edge Read Aloud extension via the canonical
+// `rany2/edge-tts` Python library.
+const TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const SEC_MS_GEC_VERSION = '1-143.0.3650.75';
+const WSS_BASE_URL =
+  'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
+const WSS_FAKE_ORIGIN = 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold';
+const WSS_FAKE_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0';
+
+// Unix timestamp of the Windows file time epoch (1601-01-01 00:00:00 UTC).
+const WIN_EPOCH_SECONDS = 11644473600n;
+
+// Allow-list of Edge Neural voices shipped with the app. Microsoft's consumer
+// endpoint returns close code 1007 ("Unsupported voice") for any voice not in
+// its active catalog, so we validate here and fall back gracefully for stale
+// persisted values (e.g. 'en-US-DavisNeural', which Microsoft deprecated).
+const SUPPORTED_EDGE_VOICES: ReadonlySet<string> = new Set([
+  'en-US-AriaNeural',
+  'en-US-GuyNeural',
+  'en-US-JennyNeural',
+  'en-US-BrianNeural',
+  'en-GB-SoniaNeural',
+  'en-GB-RyanNeural',
+]);
+const DEFAULT_EDGE_VOICE = 'en-US-AriaNeural';
+
+/** Returns `voice` if it's in the supported catalog, otherwise the default. */
+export function resolveEdgeTtsVoice(voice: string | undefined | null): string {
+  if (voice && SUPPORTED_EDGE_VOICES.has(voice)) return voice;
+  return DEFAULT_EDGE_VOICE;
+}
+
+function logEdgeTts(level: 'warn' | 'info', message: string, extra?: unknown): void {
+  const prefix = '[edge-tts]';
+  if (extra !== undefined) {
+    if (level === 'warn') console.warn(prefix, message, extra);
+    else console.log(prefix, message, extra);
+  } else {
+    if (level === 'warn') console.warn(prefix, message);
+    else console.log(prefix, message);
+  }
+}
+
+/**
+ * Generate the Sec-MS-GEC token value. Microsoft's server accepts any token
+ * generated within the current 5-minute window (the token rounds the timestamp
+ * down to the nearest 300 seconds before hashing, so it's stable within that
+ * window). Uses BigInt to avoid floating-point precision loss when converting
+ * seconds to Windows 100-nanosecond ticks (~1.36e17, above Number.MAX_SAFE_INTEGER).
+ *
+ * @see https://github.com/rany2/edge-tts/issues/290#issuecomment-2464956570
+ */
+async function generateSecMsGec(): Promise<string> {
+  const nowSec = BigInt(Math.floor(Date.now() / 1000));
+  let ticks = nowSec + WIN_EPOCH_SECONDS;
+  ticks -= ticks % 300n;
+  ticks *= 10000000n; // seconds -> 100-nanosecond intervals
+  const strToHash = ticks.toString() + TRUSTED_CLIENT_TOKEN;
+  const hex = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    strToHash,
+  );
+  return hex.toUpperCase();
+}
+
 type EdgeSpeakOptions = {
   voice?: string;
   rate?: number;
@@ -47,11 +115,18 @@ export async function speakEdgeTts(text: string, options: EdgeSpeakOptions = {})
   if (!text.trim()) return false;
 
   try {
-    const audioBuffer = await synthesizeEdgeTts(
-      text,
-      options.voice ?? 'en-US-AriaNeural',
-      options.rate ?? 1.0,
-    );
+    // Platform.OS === 'web' has to round-trip through the Metro dev-server
+    // proxy (see apps/mobile/metro.config.js) because browsers cannot set
+    // the Origin/User-Agent headers Microsoft requires on the WebSocket.
+    // Native platforms open the WebSocket directly with custom headers.
+    // resolveEdgeTtsVoice() falls back to the default for any value not in
+    // the supported catalog (e.g. the deprecated 'en-US-DavisNeural').
+    const voice = resolveEdgeTtsVoice(options.voice);
+    const rate = options.rate ?? 1.0;
+    const audioBuffer =
+      Platform.OS === 'web'
+        ? await synthesizeEdgeTtsViaDevProxy(text, voice, rate)
+        : await synthesizeEdgeTts(text, voice, rate);
     stopEdgeTts();
 
     if (Platform.OS === 'web') {
@@ -59,10 +134,36 @@ export async function speakEdgeTts(text: string, options: EdgeSpeakOptions = {})
     }
     await ensureNativeAudioMode();
     return startNativePlayback(audioBuffer, options);
-  } catch {
+  } catch (error) {
+    logEdgeTts('warn', 'speakEdgeTts failed', error);
     options.onError?.();
     return false;
   }
+}
+
+/**
+ * Fetches Edge TTS audio via the dev-server middleware at POST /edge-tts.
+ * Used on Expo Web where a direct WebSocket to Microsoft is blocked by
+ * browser Origin restrictions.
+ */
+async function synthesizeEdgeTtsViaDevProxy(
+  text: string,
+  voice: string,
+  rate: number,
+): Promise<ArrayBuffer> {
+  const response = await fetch('/edge-tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice, rate }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => response.statusText);
+    throw new Error(
+      `Edge TTS dev proxy returned ${response.status}: ${detail}. ` +
+        'Make sure the Metro dev server is running (pnpm --filter @dotagents/mobile web).',
+    );
+  }
+  return await response.arrayBuffer();
 }
 
 function startWebPlayback(audioBuffer: ArrayBuffer, options: EdgeSpeakOptions): boolean {
@@ -184,16 +285,46 @@ async function synthesizeEdgeTts(text: string, voice: string, speed: number): Pr
   const ratePercent = Math.round((clampedSpeed - 1) * 100);
   const rate = `${ratePercent >= 0 ? '+' : ''}${ratePercent}%`;
 
-  const trustedClientToken = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
   const connectionId = generateUuidHex();
   const requestId = generateUuidHex();
   const timestamp = new Date().toISOString();
-  const wsUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${trustedClientToken}&ConnectionId=${connectionId}`;
+
+  // Required by Microsoft's consumer endpoint as of late 2024. Without the
+  // Sec-MS-GEC token the server responds 403 Forbidden during the WebSocket
+  // handshake.
+  const secMsGec = await generateSecMsGec();
+  const wsUrl =
+    `${WSS_BASE_URL}?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}` +
+    `&Sec-MS-GEC=${secMsGec}` +
+    `&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}` +
+    `&ConnectionId=${connectionId}`;
 
   const audioChunks: Uint8Array[] = [];
 
   await new Promise<void>((resolve, reject) => {
-    const ws = new WebSocket(wsUrl);
+    // Microsoft also validates the WebSocket handshake `Origin` and
+    // `User-Agent` headers against what the real Edge Read Aloud extension
+    // sends. React Native's WebSocket accepts a third options argument for
+    // custom headers, but the DOM `WebSocket` constructor type does not — we
+    // cast so both platforms compile. Browsers forbid setting these headers,
+    // so on web this call still goes out with the page's own Origin and will
+    // be rejected until a same-origin proxy is set up (see `speakEdgeTts`).
+    const wsOptions = {
+      headers: {
+        Pragma: 'no-cache',
+        'Cache-Control': 'no-cache',
+        Origin: WSS_FAKE_ORIGIN,
+        'User-Agent': WSS_FAKE_USER_AGENT,
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    };
+    const ws =
+      Platform.OS === 'web'
+        ? new WebSocket(wsUrl)
+        : new (WebSocket as unknown as {
+            new (url: string, protocols: string[] | undefined, opts: typeof wsOptions): WebSocket;
+          })(wsUrl, undefined, wsOptions);
+
     // On React Native the default binary type can be 'blob' and blob.arrayBuffer() is
     // not always implemented; force arraybuffer so we get ArrayBuffer everywhere.
     try {
@@ -257,17 +388,38 @@ async function synthesizeEdgeTts(text: string, voice: string, speed: number): Pr
         }
       }
 
-      const headerEndIndex = findHeaderBoundary(buffer);
-      if (headerEndIndex < 0) return;
-      const headerText = new TextDecoder().decode(buffer.subarray(0, headerEndIndex));
+      // Edge TTS binary frames are framed as:
+      //   [uint16 BE header length][header text][audio bytes]
+      // The header text contains lines like "Path:audio\r\n" (no blank line
+      // terminator); the audio data starts immediately after the header.
+      if (buffer.length < 2) return;
+      const headerLength = (buffer[0] << 8) | buffer[1];
+      if (headerLength <= 0 || headerLength + 2 > buffer.length) return;
+      const headerText = new TextDecoder().decode(buffer.subarray(2, 2 + headerLength));
       if (!headerText.includes('Path:audio')) return;
-      const audioData = buffer.subarray(headerEndIndex + 4);
+      const audioData = buffer.subarray(2 + headerLength);
       if (audioData.length > 0) audioChunks.push(audioData);
     };
 
-    ws.onerror = () => reject(new Error('Edge TTS websocket failed'));
-    ws.onclose = () => {
-      if (audioChunks.length === 0) reject(new Error('No Edge TTS audio received'));
+    ws.onerror = (event) => {
+      // Most browsers don't expose the underlying failure reason on the
+      // `error` event (CORS, 403, DNS, etc). Log whatever we have and the
+      // `close` handler will often follow up with a richer `code`/`reason`.
+      logEdgeTts('warn', 'websocket onerror', event);
+      reject(new Error('Edge TTS websocket failed'));
+    };
+    ws.onclose = (event) => {
+      if (audioChunks.length === 0) {
+        const code = (event as CloseEvent).code ?? 'unknown';
+        const reasonText = (event as CloseEvent).reason || '(empty)';
+        logEdgeTts('warn', `websocket closed with no audio (code=${code}, reason=${reasonText})`);
+        reject(
+          new Error(
+            `Edge TTS websocket closed without audio (code=${code}, reason=${reasonText}). ` +
+              'Microsoft likely rejected the handshake — check Sec-MS-GEC token or Origin/User-Agent headers.',
+          ),
+        );
+      }
     };
   });
 
@@ -306,11 +458,4 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function findHeaderBoundary(buffer: Uint8Array): number {
-  for (let i = 0; i < buffer.length - 3; i++) {
-    if (buffer[i] === 13 && buffer[i + 1] === 10 && buffer[i + 2] === 13 && buffer[i + 3] === 10) {
-      return i;
-    }
-  }
-  return -1;
-}
+

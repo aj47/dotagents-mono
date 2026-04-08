@@ -58,4 +58,25 @@ describe('normalizeStoredConfig', () => {
     expect(tooLow.handsFreeMessageDebounceMs).toBe(MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS);
     expect(arbitraryHigh.handsFreeMessageDebounceMs).toBe(customHighValue);
   });
+
+  it('migrates deprecated Edge TTS voices to the default', () => {
+    // Microsoft removed en-US-DavisNeural from the consumer catalog; any
+    // stored value pointing at it must be rewritten on load so existing users
+    // do not hit a close code 1007 "Unsupported voice" at synthesis time.
+    const migrated = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      edgeTtsVoice: 'en-US-DavisNeural',
+    });
+
+    expect(migrated.edgeTtsVoice).toBe('en-US-AriaNeural');
+  });
+
+  it('preserves still-supported Edge TTS voices', () => {
+    const preserved = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      edgeTtsVoice: 'en-GB-SoniaNeural',
+    });
+
+    expect(preserved.edgeTtsVoice).toBe('en-GB-SoniaNeural');
+  });
 });

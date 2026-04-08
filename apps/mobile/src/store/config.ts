@@ -33,6 +33,19 @@ export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = 'go to sleep';
 export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 1500;
 export const MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 0;
 
+// Edge TTS voices removed from Microsoft's active catalog. Stored values
+// matching one of these get migrated to the default on load/save so users
+// don't hit a close-code 1007 at synthesis time.
+const DEPRECATED_EDGE_TTS_VOICES: ReadonlySet<string> = new Set([
+  'en-US-DavisNeural',
+]);
+const DEFAULT_EDGE_TTS_VOICE = 'en-US-AriaNeural';
+
+function migrateEdgeTtsVoice(voice: string | undefined): string | undefined {
+  if (voice && DEPRECATED_EDGE_TTS_VOICES.has(voice)) return DEFAULT_EDGE_TTS_VOICE;
+  return voice;
+}
+
 function normalizeHandsFreeMessageDebounceMs(value?: number) {
   if (!Number.isFinite(value)) {
     return DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
@@ -73,6 +86,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     handsFreeSleepPhrase: cfg.handsFreeSleepPhrase?.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
     handsFreeDebug: cfg.handsFreeDebug ?? false,
     handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? true,
+    edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
   };
 }
 
