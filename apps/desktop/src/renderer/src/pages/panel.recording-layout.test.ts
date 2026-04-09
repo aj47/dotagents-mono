@@ -63,8 +63,12 @@ describe("panel recording layout", () => {
       'await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })'
     )
     expect(showTextInputSection).toContain("textInputPanelRef.current?.focus()")
-    expect(mainProcessTextInputSection).toContain("const shouldHideVisibleMainBeforeTextInputOpen =")
-    expect(mainProcessTextInputSection).toContain("hideMainWindowForTextInputPanelOpen()")
+    // Text-input open must preserve main window visibility. Neither the
+    // shouldHideVisibleMainBeforeTextInputOpen guard nor the helper call should
+    // exist in the main-process flow anymore.
+    expect(mainProcessTextInputSection).not.toContain("const shouldHideVisibleMainBeforeTextInputOpen =")
+    expect(mainProcessTextInputSection).not.toContain("hideMainWindowForTextInputPanelOpen()")
+    expect(mainWindowSource).not.toContain("function hideMainWindowForTextInputPanelOpen")
     expect(mainProcessTextInputSection).toContain("setPanelFocusable(true)")
     expect(mainProcessTextInputSection).not.toContain("setPanelFocusable(true, true)")
     expect(mainWindowSource).toContain('logApp(`[showPanelWindow] Showing panel with showInactive() for ${mode} mode`)')

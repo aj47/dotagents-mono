@@ -6,6 +6,14 @@ const sidebarSource = readFileSync(new URL("../components/active-agents-sidebar.
 const agentProgressSource = readFileSync(new URL("../components/agent-progress.tsx", import.meta.url), "utf8")
 const sessionsSource = readFileSync(new URL("./sessions.tsx", import.meta.url), "utf8")
 const tileFollowUpSource = readFileSync(new URL("../components/tile-follow-up-input.tsx", import.meta.url), "utf8")
+const sessionActionDialogSource = readFileSync(
+  new URL("../components/session-action-dialog.tsx", import.meta.url),
+  "utf8",
+)
+const tipcSource = readFileSync(
+  new URL("../../../main/tipc.ts", import.meta.url),
+  "utf8",
+)
 
 describe("sessions in-app actions", () => {
   it("opens the in-app session action dialog from shared layout handlers instead of the hover panel", () => {
@@ -97,5 +105,48 @@ describe("sessions in-app actions", () => {
     expect(agentProgressSource).toContain('const navigate = useNavigate()')
     expect(agentProgressSource).toContain('navigate(`/${branched.id}`)')
     expect(agentProgressSource).not.toContain('Conversation branched — find it in Saved Conversations')
+  })
+
+  it("forces sessions started from SessionActionDialog to stay snoozed so the hover panel never auto-shows", () => {
+    // The dialog description literally promises "without opening the hover panel",
+    // so both text and voice submit paths must hardcode fromTile: true regardless
+    // of the prop value. Guards against the regression where sidebar + modal
+    // submits would surface the floating panel and drop the app from Cmd+Tab.
+    const textSubmitIndex = sessionActionDialogSource.indexOf("const handleTextSubmit")
+    const voiceCreateIndex = sessionActionDialogSource.indexOf("tipcClient.createMcpRecording")
+    expect(textSubmitIndex).toBeGreaterThan(-1)
+    expect(voiceCreateIndex).toBeGreaterThan(-1)
+
+    const textSubmitBlock = sessionActionDialogSource.slice(textSubmitIndex, textSubmitIndex + 800)
+    expect(textSubmitBlock).toContain("tipcClient.createMcpTextInput")
+    expect(textSubmitBlock).toContain("fromTile: true")
+
+    const voiceSubmitBlock = sessionActionDialogSource.slice(voiceCreateIndex, voiceCreateIndex + 600)
+    expect(voiceSubmitBlock).toContain("fromTile: true")
+
+    // The fromTile prop must NOT be destructured into a local variable — the
+    // dialog always ignores it in favor of the hardcoded snoozed flag.
+    expect(sessionActionDialogSource).not.toContain("fromTile = false,")
+    // Sanity: both submit paths must not pass a plain `fromTile` identifier,
+    // which would bypass the hardcoded true.
+    expect(textSubmitBlock).not.toContain("fromTile,\n      })")
+  })
+
+  it("time-suppresses panel auto-show in createMcpTextInput/createMcpRecording when fromTile is true", () => {
+    // Defensive safety net: even with the session starting snoozed, an early
+    // progress update can race the flag on the main process. suppressPanelAutoShow
+    // closes that window so the floating panel cannot briefly flash.
+    const textInputIndex = tipcSource.indexOf("createMcpTextInput: t.procedure")
+    const recordingIndex = tipcSource.indexOf("createMcpRecording: t.procedure")
+    expect(textInputIndex).toBeGreaterThan(-1)
+    expect(recordingIndex).toBeGreaterThan(-1)
+
+    const textInputBlock = tipcSource.slice(textInputIndex, textInputIndex + 2000)
+    const recordingBlock = tipcSource.slice(recordingIndex, recordingIndex + 2000)
+
+    expect(textInputBlock).toContain("if (input.fromTile === true) {")
+    expect(textInputBlock).toContain("suppressPanelAutoShow(2000)")
+    expect(recordingBlock).toContain("if (input.fromTile === true) {")
+    expect(recordingBlock).toContain("suppressPanelAutoShow(2000)")
   })
 })

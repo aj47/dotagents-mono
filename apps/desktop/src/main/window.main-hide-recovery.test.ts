@@ -270,7 +270,7 @@ describe("main window hide recovery", () => {
     }
   })
 
-  it("hides the visible main window before opening text input from another app", async () => {
+  it("preserves a visible main window when opening text input from another app", async () => {
     vi.useFakeTimers()
 
     try {
@@ -293,8 +293,44 @@ describe("main window hide recovery", () => {
       await showPanelWindowAndShowTextInput()
       await vi.runAllTimersAsync()
 
-      expect(main.hide).toHaveBeenCalledTimes(1)
+      // Main window must remain visible across the text-input open flow so the
+      // user's prior window state is preserved when the prompt is submitted.
+      expect(main.hide).not.toHaveBeenCalled()
+      expect(main.isVisible()).toBe(true)
       expect(mockApp.show).not.toHaveBeenCalled()
+      expect(panel.showInactive).toHaveBeenCalledTimes(1)
+      expect(mockRendererHandlers.showTextInput.send).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not hide a hidden main window when opening text input from another app", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const keyboard = await import("./keyboard")
+      vi.mocked(keyboard.getFocusedAppInfo).mockResolvedValue("Other App")
+
+      const { createMainWindow, createPanelWindow, showPanelWindowAndShowTextInput } = await import("./window")
+      const main = createMainWindow() as MockBrowserWindow | undefined
+      const panel = createPanelWindow() as MockBrowserWindow | undefined
+
+      expect(main).toBeDefined()
+      expect(panel).toBeDefined()
+
+      if (!main || !panel) return
+
+      main.visible = false
+      main.focused = false
+      mockGetFocusedWindow.mockReturnValue(null)
+
+      await showPanelWindowAndShowTextInput()
+      await vi.runAllTimersAsync()
+
+      expect(main.hide).not.toHaveBeenCalled()
+      expect(main.show).not.toHaveBeenCalled()
+      expect(main.isVisible()).toBe(false)
       expect(panel.showInactive).toHaveBeenCalledTimes(1)
       expect(mockRendererHandlers.showTextInput.send).toHaveBeenCalledTimes(1)
     } finally {

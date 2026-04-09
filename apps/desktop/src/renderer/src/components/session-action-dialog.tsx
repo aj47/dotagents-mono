@@ -22,6 +22,9 @@ interface SessionActionDialogProps {
   initialText?: string
   conversationId?: string
   sessionId?: string
+  // Retained for prop compatibility; the dialog always starts sessions snoozed
+  // because it runs inside the main window. Submit handlers force fromTile=true
+  // when calling createMcpTextInput/createMcpRecording regardless of this prop.
   fromTile?: boolean
   continueConversationTitle?: string | null
   agentName?: string | null
@@ -46,7 +49,6 @@ export function SessionActionDialog({
   initialText,
   conversationId,
   sessionId,
-  fromTile = false,
   continueConversationTitle,
   agentName,
   onSubmitted,
@@ -93,10 +95,14 @@ export function SessionActionDialog({
         useAgentStore.getState().appendUserMessageToSession(sessionId, text)
       }
 
+      // SessionActionDialog is rendered inside the main app window and its
+      // description explicitly promises "without opening the hover panel".
+      // Force the session snoozed regardless of the fromTile prop so the
+      // floating panel never auto-shows from this dialog's submit path.
       await tipcClient.createMcpTextInput({
         text,
         conversationId,
-        fromTile,
+        fromTile: true,
       })
 
       await invalidateConversationQueries(conversationId)
@@ -158,13 +164,16 @@ export function SessionActionDialog({
             ? await decodeBlobToPcm(blob)
             : undefined
 
+          // Match handleTextSubmit: always start voice sessions snoozed so the
+          // floating panel never auto-shows while the user is interacting with
+          // the in-app dialog. See comment in handleTextSubmit above.
           await tipcClient.createMcpRecording({
             recording: await blob.arrayBuffer(),
             pcmRecording,
             duration,
             conversationId,
             sessionId,
-            fromTile,
+            fromTile: true,
           })
 
           await invalidateConversationQueries(conversationId)
@@ -264,26 +273,30 @@ export function SessionActionDialog({
       }
       onOpenChange(nextOpen)
     }}>
-      <DialogContent className={cn("flex max-h-[calc(100vh-48px)] flex-col sm:max-w-2xl", mode === "voice" && "sm:max-w-xl")}>
+      <DialogContent
+        className={cn(
+          "flex max-h-[calc(100vh-48px)] flex-col sm:max-w-2xl",
+          mode === "text" && "min-h-[560px]",
+          mode === "voice" && "sm:max-w-xl",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {mode === "text" ? (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="min-h-[360px]">
-              <TextInputPanel
-                onSubmit={handleTextSubmit}
-                selectedAgentId={selectedAgentId}
-                onSelectAgent={onSelectAgent}
-                onCancel={closeDialog}
-                isProcessing={isSubmitting}
-                initialText={initialText}
-                continueConversationTitle={continueConversationTitle}
-                showAgentSelector={false}
-              />
-            </div>
+          <div className="flex min-h-0 flex-1">
+            <TextInputPanel
+              onSubmit={handleTextSubmit}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={onSelectAgent}
+              onCancel={closeDialog}
+              isProcessing={isSubmitting}
+              initialText={initialText}
+              continueConversationTitle={continueConversationTitle}
+              showAgentSelector={false}
+            />
           </div>
         ) : (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">

@@ -277,26 +277,6 @@ function setPanelOpenedWithMain() {
   }
 }
 
-function hideMainWindowForTextInputPanelOpen() {
-  const main = WINDOWS.get("main")
-  if (!main || !main.isVisible()) return false
-
-  // macOS can surface any already-visible regular app window when our app becomes
-  // active for the floating text-input panel. If DotAgents is backgrounded and the
-  // main window is still visible behind another app, explicitly hide it first so
-  // the later panel focus handoff does not drag the main UI in front.
-  allowExpectedMainHide = true
-  clearPanelOpenedWithMain()
-  clearPanelHiddenByMainFocus()
-
-  logApp("[textInput.open] Hiding main window before activating floating text-input panel", {
-    snapshot: getWindowFocusDebugSnapshot(),
-  })
-
-  main.hide()
-  return true
-}
-
 export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow | undefined {
   // In headless mode, skip all window operations
   if (isHeadlessMode) {
@@ -1186,21 +1166,17 @@ export async function showPanelWindowAndShowTextInput(initialText?: string, conv
 
   const main = WINDOWS.get("main")
   const focusedWindow = BrowserWindow.getFocusedWindow()
-  const shouldHideVisibleMainBeforeTextInputOpen =
-    process.platform === "darwin" && !focusedWindow && main?.isVisible?.() === true
 
-  // Guard the "Ctrl+T from another app" case. The panel still needs a later
-  // explicit focus handoff, but if the main window remains visible in the
-  // background macOS can surface it as part of app activation.
+  // Preserve the main window's current visibility across the text-input flow.
+  // Previously we hid a visible-but-unfocused main window here to avoid macOS
+  // surfacing it during the panel focus handoff; removing the hide restores the
+  // user-visible state but relies on the renderer-side focus handoff in 2553e8d1
+  // to keep the panel textarea from dragging main to the front.
   logApp("[textInput.open] Preparing floating text-input open", {
     hasFocusedWindow: Boolean(focusedWindow),
-    shouldHideVisibleMainBeforeTextInputOpen,
+    mainVisible: main?.isVisible?.() ?? false,
     snapshot: getWindowFocusDebugSnapshot(),
   })
-
-  if (shouldHideVisibleMainBeforeTextInputOpen) {
-    hideMainWindowForTextInputPanelOpen()
-  }
 
   // Resize panel for text input mode before showing
   // This fixes the issue where panel was too small after waveform recording (#840)
