@@ -8,16 +8,13 @@ const screenSource = fs.readFileSync(
   'utf8'
 );
 
-test('blocks first-time save when no API key is provided', () => {
-  assert.match(screenSource, /if \(!isConnected && !hasApiKey\) \{/);
-  assert.match(screenSource, /Enter an API key or scan a DotAgents QR code before saving/);
+test('requires both a DotAgents server URL and API key before saving', () => {
+  assert.match(screenSource, /if \(!normalizedDraft\.baseUrl \|\| !normalizedDraft\.apiKey\) \{/);
+  assert.match(screenSource, /Scan a DotAgents QR code or enter both a DotAgents server URL and API key before saving\./);
 });
 
-test('keeps the custom URL validation after the no-key guard', () => {
-  assert.match(
-    screenSource,
-    /if \(!isConnected && !hasApiKey\) \{[\s\S]*?return;[\s\S]*?if \(hasCustomUrl && !hasApiKey\) \{/
-  );
+test('validates the DotAgents handshake through the settings API', () => {
+  assert.match(screenSource, /checkDotAgentsServerConnection\(/);
 });
 
 test('exposes the API key visibility toggle as a button with a larger touch target', () => {
@@ -25,15 +22,22 @@ test('exposes the API key visibility toggle as a button with a larger touch targ
   assert.match(screenSource, /inlineActionButton:\s*\{[\s\S]*?createMinimumTouchTargetStyle\([\s\S]*?minSize:\s*44,/);
 });
 
-test('exposes the reset action as an accessible button with a descriptive label', () => {
-  assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
-  assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
+test('removes the generic base URL reset affordance', () => {
+  assert.doesNotMatch(screenSource, /Reset base URL to default/);
+  assert.doesNotMatch(screenSource, /Restores the default OpenAI-compatible base URL/);
 });
 
 test('surfaces a clear error when QR scanning cannot get camera permission', () => {
   assert.match(screenSource, /\{connectionError && \(/);
   assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{connectionError\}<\/Text>/);
   assert.match(screenSource, /accessibilityLabel="Scan QR Code"/);
+});
+
+test('uses DotAgents-specific copy for manual connection fallback', () => {
+  assert.match(screenSource, />DotAgents Server URL</);
+  assert.match(screenSource, /placeholder='https:\/\/your-server\.example\.com\/v1'/);
+  assert.match(screenSource, /Enter the API key for your DotAgents server/);
+  assert.match(screenSource, /Enter the base URL for your DotAgents server/);
 });
 
 test('supports opening the QR scanner immediately from navigation params', () => {

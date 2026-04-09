@@ -4,7 +4,7 @@ import { normalizeApiBaseUrl } from '@dotagents/shared';
 
 export type AppConfig = {
   apiKey: string;
-  baseUrl: string; // OpenAI-compatible API base URL e.g., https://api.openai.com/v1
+  baseUrl: string; // DotAgents API base URL e.g., https://example.com/v1
   model: string; // model name required by /v1/chat/completions
   handsFree?: boolean; // hands-free voice mode toggle (optional for backward compatibility)
   handsFreeMessageDebounceMs?: number; // silence window before auto-sending a hands-free message
@@ -56,7 +56,7 @@ function normalizeHandsFreeMessageDebounceMs(value?: number) {
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   apiKey: '',
-  baseUrl: 'https://api.openai.com/v1',
+  baseUrl: '',
   model: 'gpt-4.1-mini',
   handsFree: false,
   handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,

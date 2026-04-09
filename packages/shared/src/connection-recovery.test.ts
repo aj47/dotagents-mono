@@ -7,6 +7,7 @@ import {
   formatConnectionStatus,
   DEFAULT_RECOVERY_CONFIG,
   checkServerConnection,
+  checkDotAgentsServerConnection,
 } from './connection-recovery'
 import type { RecoveryState, ConnectionStatus } from './connection-recovery'
 
@@ -184,6 +185,42 @@ describe('checkServerConnection', () => {
     const result = await checkServerConnection('https://api.openai.com/v1', '   ')
     expect(result.success).toBe(false)
     expect(result.error).toContain('API Key is required')
+  })
+})
+
+// ── checkDotAgentsServerConnection ──────────────────────────────────────────
+
+describe('checkDotAgentsServerConnection', () => {
+  it('returns error for empty base URL', async () => {
+    const result = await checkDotAgentsServerConnection('', 'key')
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Base URL is required')
+  })
+
+  it('returns error for empty API key', async () => {
+    const result = await checkDotAgentsServerConnection('https://example.com/v1', '')
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('API Key is required')
+  })
+
+  it('reports a missing DotAgents settings API as an invalid backend', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: vi.fn().mockResolvedValue({ error: 'Not found' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await checkDotAgentsServerConnection('https://example.com/v1', 'test-key')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example.com/v1/settings',
+      expect.objectContaining({ method: 'GET' })
+    )
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('/v1/settings')
+
+    vi.unstubAllGlobals()
   })
 })
 

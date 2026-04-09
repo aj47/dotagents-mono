@@ -7,6 +7,7 @@ import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest,
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
+import { useTunnelConnection } from '../store/tunnelConnection';
 
 const CONNECTION_TYPES = [
   {
@@ -53,6 +54,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
+  const { connectionInfo } = useTunnelConnection();
+  const isDotAgentsConnected = connectionInfo.state === 'connected';
   const agentId = route.params?.agentId as string | undefined;
   const isEditing = !!agentId;
 
@@ -65,11 +68,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (isDotAgentsConnected && config.baseUrl && config.apiKey) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, isDotAgentsConnected]);
 
   // Fetch existing profile if editing
   useEffect(() => {
@@ -108,6 +111,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
       title: isEditing ? 'Edit Agent' : 'Create Agent',
     });
   }, [navigation, isEditing]);
+
+  useEffect(() => {
+    if (!settingsClient) {
+      setError((prev) => prev || 'Connect to a DotAgents server in Settings to edit agents');
+    }
+  }, [settingsClient]);
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) return;
@@ -362,10 +371,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
         />
       </View>
 
+      {!settingsClient && (
+        <Text style={styles.switchHelperText}>Connect to a DotAgents server in Settings before saving agent changes.</Text>
+      )}
+
       <TouchableOpacity
-        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        style={[styles.saveButton, (isSaving || !settingsClient) && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={isSaving}
+        disabled={isSaving || !settingsClient}
       >
         {isSaving ? (
           <ActivityIndicator color={theme.colors.primaryForeground} size="small" />

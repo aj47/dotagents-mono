@@ -14,6 +14,7 @@ export {
   delay,
   formatConnectionStatus,
   checkServerConnection,
+  checkDotAgentsServerConnection,
   DEFAULT_RECOVERY_CONFIG,
 } from '@dotagents/shared';
 
@@ -268,4 +269,3 @@ export class ConnectionRecoveryManager {
     return this.state.conversationId;
   }
 }
-

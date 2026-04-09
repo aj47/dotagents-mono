@@ -17,5 +17,5 @@ test('avoids decorative emoji chrome in the mobile connection settings screen', 
 test('keeps QR actions explicitly labeled after removing decorative glyphs', () => {
   assert.match(screenSource, /accessibilityLabel="Scan QR Code"/);
   assert.match(screenSource, /accessibilityLabel="Close QR scanner"/);
-  assert.match(screenSource, /Scan the QR code from your DotAgents desktop app to connect/);
+  assert.match(screenSource, /Scan the QR code from your DotAgents desktop app to pair this device\./);
 });

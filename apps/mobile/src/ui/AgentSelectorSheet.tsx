@@ -21,6 +21,7 @@ import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
 import { SelectableProfile, buildSelectorProfiles } from './agentSelectorOptions';
+import { useTunnelConnection } from '../store/tunnelConnection';
 
 interface AgentSelectorSheetProps {
   visible: boolean;
@@ -31,10 +32,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
+  const { connectionInfo } = useTunnelConnection();
   const { currentProfile, setCurrentProfile } = useProfile();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
-  const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
-  const missingConfigError = 'Configure server URL and API key to switch agents';
+  const hasApiConfig = connectionInfo.state === 'connected' && Boolean(config.baseUrl && config.apiKey);
+  const missingConfigError = 'Connect to a DotAgents server to switch agents';
 
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);

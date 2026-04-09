@@ -23,6 +23,7 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import { useTunnelConnection } from '../store/tunnelConnection';
 
 type LoopFormData = {
   name: string;
@@ -44,6 +45,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
+  const { connectionInfo } = useTunnelConnection();
+  const isDotAgentsConnected = connectionInfo.state === 'connected';
 
   const loopFromRoute = route.params?.loop as Loop | undefined;
   const loopId = route.params?.loopId as string | undefined;
@@ -70,11 +73,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (isDotAgentsConnected && config.baseUrl && config.apiKey) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, isDotAgentsConnected]);
 
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit Loop' : 'Create Loop' });
@@ -83,7 +86,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   useEffect(() => {
     if (isEditing && !loopFromRoute && !settingsClient) {
       setIsLoading(false);
-      setError('Configure Base URL and API key to load and save loops');
+      setError('Connect to a DotAgents server in Settings to load and save loops');
     }
   }, [isEditing, loopFromRoute, settingsClient]);
 
@@ -150,7 +153,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
-      setError('Configure Base URL and API key in Settings before saving');
+      setError('Connect to a DotAgents server in Settings before saving');
       return;
     }
 
@@ -220,7 +223,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         keyboardShouldPersistTaps="handled"
       >
       {error && <Text style={styles.errorText}>{error}</Text>}
-      {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
+      {!settingsClient && <Text style={styles.helperText}>Connect to a DotAgents server in Settings to save changes.</Text>}
 
       <Text style={styles.label}>Name *</Text>
       <TextInput

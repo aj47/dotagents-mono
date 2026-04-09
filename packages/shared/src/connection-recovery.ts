@@ -140,6 +140,25 @@ export type ConnectionCheckResult = {
   normalizedUrl?: string;
 };
 
+async function parseConnectionErrorResponse(response: Response, fallbackMessage: string) {
+  try {
+    const errorBody = await response.json();
+    if (errorBody?.error?.message) {
+      return errorBody.error.message as string;
+    }
+    if (typeof errorBody?.error === 'string') {
+      return errorBody.error;
+    }
+    if (typeof errorBody?.message === 'string') {
+      return errorBody.message;
+    }
+  } catch {
+    // Ignore JSON parsing errors and fall back to the provided message.
+  }
+
+  return fallbackMessage;
+}
+
 export function formatConnectionStatus(state: RecoveryState): string {
   switch (state.status) {
     case 'connected':
@@ -154,6 +173,152 @@ export function formatConnectionStatus(state: RecoveryState): string {
       return `Connection failed: ${state.lastError || 'Unknown error'}`;
     default:
       return 'Unknown';
+  }
+}
+
+/**
+ * Check connectivity to a DotAgents server by verifying the mobile settings API.
+ *
+ * @param baseUrl - The API base URL to check (e.g., https://example.com/v1)
+ * @param apiKey - The API key to use for authentication
+ * @param timeoutMs - Timeout in milliseconds (default: 10000)
+ * @returns ConnectionCheckResult with success status and optional error
+ */
+export async function checkDotAgentsServerConnection(
+  baseUrl: string,
+  apiKey: string,
+  timeoutMs: number = 10000
+): Promise<ConnectionCheckResult> {
+  const startTime = Date.now();
+
+  if (!baseUrl || !baseUrl.trim()) {
+    return { success: false, error: 'Base URL is required' };
+  }
+
+  if (!apiKey || !apiKey.trim()) {
+    return { success: false, error: 'API Key is required' };
+  }
+
+  const trimmedApiKey = apiKey.trim();
+  const normalizedUrl = normalizeApiBaseUrl(baseUrl);
+  const settingsUrl = `${normalizedUrl}/settings`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(settingsUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${trimmedApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    const responseTime = Date.now() - startTime;
+
+    if (response.ok) {
+      return {
+        success: true,
+        statusCode: response.status,
+        responseTime,
+        normalizedUrl,
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: 'Invalid API key. Please check your DotAgents server credentials.',
+        statusCode: response.status,
+        responseTime,
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: 'Access forbidden. Your DotAgents API key may not have the required permissions.',
+        statusCode: response.status,
+        responseTime,
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: 'This server does not expose the DotAgents mobile settings API at /v1/settings.',
+        statusCode: response.status,
+        responseTime,
+      };
+    }
+
+    if (response.status >= 500) {
+      return {
+        success: false,
+        error: `DotAgents server error (${response.status}). The server may be temporarily unavailable.`,
+        statusCode: response.status,
+        responseTime,
+      };
+    }
+
+    const errorMessage = await parseConnectionErrorResponse(
+      response,
+      `DotAgents server returned status ${response.status}`
+    );
+
+    return {
+      success: false,
+      error: errorMessage,
+      statusCode: response.status,
+      responseTime,
+    };
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    const responseTime = Date.now() - startTime;
+    const err = error as Error & { name?: string };
+
+    if (err.name === 'AbortError') {
+      return {
+        success: false,
+        error: 'Connection timed out. Please check your network and DotAgents server URL.',
+        responseTime,
+      };
+    }
+
+    const errorMessage = err.message?.toLowerCase() || '';
+
+    if (errorMessage.includes('network') || errorMessage.includes('failed to fetch')) {
+      return {
+        success: false,
+        error: 'Network error. Please check your internet connection.',
+        responseTime,
+      };
+    }
+
+    if (errorMessage.includes('unable to resolve host') || errorMessage.includes('dns')) {
+      return {
+        success: false,
+        error: 'Could not resolve server address. Please check the URL.',
+        responseTime,
+      };
+    }
+
+    if (errorMessage.includes('connection refused') || errorMessage.includes('econnrefused')) {
+      return {
+        success: false,
+        error: 'Connection refused. Is the DotAgents server running?',
+        responseTime,
+      };
+    }
+
+    return {
+      success: false,
+      error: err.message || 'Unknown connection error',
+      responseTime,
+    };
   }
 }
 
@@ -253,16 +418,10 @@ export async function checkServerConnection(
       };
     }
 
-    // Try to get error message from response body
-    let errorMessage = `Server returned status ${response.status}`;
-    try {
-      const errorBody = await response.json();
-      if (errorBody?.error?.message) {
-        errorMessage = errorBody.error.message;
-      }
-    } catch {
-      // Ignore JSON parsing errors
-    }
+    const errorMessage = await parseConnectionErrorResponse(
+      response,
+      `Server returned status ${response.status}`
+    );
 
     return {
       success: false,
@@ -317,4 +476,3 @@ export async function checkServerConnection(
     };
   }
 }
-

@@ -493,17 +493,18 @@ export default function ChatScreen({ route, navigation }: any) {
   const messageQueue = useMessageQueueContext();
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
+  const isDotAgentsConnected = connectionInfo.state === 'connected';
   const { currentProfile } = useProfile();
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const currentSession = sessionStore.getCurrentSession();
   const isCurrentSessionPinned = !!currentSession?.isPinned;
   const handsFree = !!config.handsFree;
   const settingsClient = useMemo(() => {
-    if (!config.baseUrl || !config.apiKey) {
+    if (!isDotAgentsConnected || !config.baseUrl || !config.apiKey) {
       return null;
     }
     return new SettingsApiClient(config.baseUrl, config.apiKey);
-  }, [config.apiKey, config.baseUrl]);
+  }, [config.apiKey, config.baseUrl, isDotAgentsConnected]);
   const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
@@ -591,11 +592,15 @@ export default function ChatScreen({ route, navigation }: any) {
       console.warn('[ChatScreen] No current session ID, cannot get client');
       return null;
     }
+    if (!isDotAgentsConnected) {
+      console.warn('[ChatScreen] DotAgents connection is not ready');
+      return null;
+    }
     const connection = connectionManager.getOrCreateConnection(currentSessionId);
     // Note: Connection status callback is set up via subscribeToConnectionStatus in useEffect below
     // This avoids overwriting the SessionConnectionManager's internal callback (PR review fix)
     return connection.client;
-  }, [connectionManager, sessionStore.currentSessionId]);
+  }, [connectionManager, isDotAgentsConnected, sessionStore.currentSessionId]);
 
   // Subscribe to connection status changes for the current session
   // Uses subscribeToConnectionStatus to avoid overwriting the internal callback in SessionConnectionManager
@@ -1489,7 +1494,7 @@ export default function ChatScreen({ route, navigation }: any) {
   // Load messages when currentSession changes (fixes #470)
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
-    const hasServerAuth = !!config.baseUrl && !!config.apiKey;
+    const hasServerAuth = isDotAgentsConnected && !!config.baseUrl && !!config.apiKey;
     let currentSession = sessionStore.getCurrentSession();
     const shouldAttemptStubLoad = !!(
       currentSession &&
@@ -1627,7 +1632,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages([]);
 	      replaceResponseHistory([]);
     }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, isDotAgentsConnected, settingsClient, replaceResponseHistory]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -2005,7 +2010,13 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo('Error: No session available');
+      const errorText = isDotAgentsConnected
+        ? 'Error: No session available'
+        : 'Connect to a DotAgents server before sending messages.';
+      setDebugInfo(errorText);
+      if (!isDotAgentsConnected) {
+        Alert.alert('Connection Required', 'Connect to a DotAgents server before sending messages.');
+      }
       return;
     }
 
@@ -3023,38 +3034,44 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           {!sessionStore.isLoadingMessages && messages.length === 0 && (
             <View style={styles.chatHomeCard}>
-              {quickStartSections.map((section) => (
-                <View key={section.id} style={styles.chatHomeSection}>
-                  <Text style={styles.chatHomeSectionTitle}>{section.title}</Text>
-                  <View style={styles.chatHomeShortcutGrid}>
-                    {section.items.map((item) => (
-                      <Pressable
-                        key={item.id}
-                        style={({ pressed }) => [
-                          styles.chatHomeShortcutCard,
-                          item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
-                          pressed && styles.chatHomeShortcutCardPressed,
-                        ]}
-                        onPress={() => {
-                          if (item.action === 'add-prompt') {
-                            setAddPromptModalVisible(true);
-                          } else {
-                            handleInsertQuickStartPrompt(item.content);
-                          }
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : `${section.title}: ${item.title}`)}
-                        accessibilityHint={item.action === 'add-prompt' ? 'Create a new saved prompt.' : 'Inserts this launcher text into the composer.'}
-                      >
-                        <Text style={[
-                          styles.chatHomeShortcutTitle,
-                          item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
-                        ]} numberOfLines={2}>{item.title}</Text>
-                      </Pressable>
-                    ))}
+              <Text style={styles.chatHomeEyebrow}>Quick start</Text>
+              <Text style={styles.chatHomeDescription}>
+                Custom commands, saved prompts, and starter packs
+              </Text>
+              <View style={styles.quickStartCategoryPills}>
+                {quickStartSections.map((section) => (
+                  <View key={section.id} style={styles.chatHomeSection}>
+                    <Text style={styles.chatHomeSectionTitle}>{section.title}</Text>
+                    <View style={styles.chatHomeShortcutGrid}>
+                      {section.items.map((item) => (
+                        <Pressable
+                          key={item.id}
+                          style={({ pressed }) => [
+                            styles.chatHomeShortcutCard,
+                            item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
+                            pressed && styles.chatHomeShortcutCardPressed,
+                          ]}
+                          onPress={() => {
+                            if (item.action === 'add-prompt') {
+                              setAddPromptModalVisible(true);
+                            } else {
+                              handleInsertQuickStartPrompt(item.content);
+                            }
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : `${section.title}: ${item.title}`)}
+                          accessibilityHint={item.action === 'add-prompt' ? 'Create a new saved prompt.' : 'Inserts this launcher text into the composer.'}
+                        >
+                          <Text style={[
+                            styles.chatHomeShortcutTitle,
+                            item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
+                          ]} numberOfLines={2}>{item.title}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           )}
           {canLoadOlderMessages && (
@@ -4276,6 +4293,21 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
+      gap: spacing.sm,
+    },
+    chatHomeEyebrow: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    chatHomeDescription: {
+      ...theme.typography.body,
+      color: theme.colors.mutedForeground,
+      lineHeight: 20,
+    },
+    quickStartCategoryPills: {
       gap: spacing.sm,
     },
     chatHomeSection: {

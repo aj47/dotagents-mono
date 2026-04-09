@@ -9,6 +9,7 @@ import {
 } from '../store/config';
 import { useSessionContext } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
+import { useTunnelConnection } from '../store/tunnelConnection';
 import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
@@ -229,6 +230,9 @@ export default function SettingsScreen({ navigation }: any) {
   const { setCurrentProfile: setProfileContext } = useProfile();
   const sessionStore = useSessionContext();
   const connectionManager = useConnectionManager();
+  const { connectionInfo } = useTunnelConnection();
+  const isDotAgentsConnected = connectionInfo.state === 'connected';
+  const hasSavedConnection = Boolean(config.baseUrl && config.apiKey);
 
   // Push notification state
   const {
@@ -403,11 +407,11 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Create settings API client when we have valid credentials
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (isDotAgentsConnected && config.baseUrl && config.apiKey) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, isDotAgentsConnected]);
 
   // Clear pending model update timeout when settingsClient changes
   // to prevent sending updates to the previous server
@@ -433,7 +437,6 @@ export default function SettingsScreen({ navigation }: any) {
 
     try {
       const errors: string[] = [];
-      let successCount = 0;
 
       const [profilesRes, serversRes, settingsRes] = await Promise.all([
         settingsClient.getProfiles().catch((e) => { errors.push('profiles'); return null; }),
@@ -444,11 +447,9 @@ export default function SettingsScreen({ navigation }: any) {
       if (profilesRes) {
         setProfiles(profilesRes.profiles);
         setCurrentProfileId(profilesRes.currentProfileId);
-        successCount++;
       }
       if (serversRes) {
         setMcpServers(serversRes.servers);
-        successCount++;
       }
       if (settingsRes) {
         setRemoteSettings(settingsRes);
@@ -463,18 +464,17 @@ export default function SettingsScreen({ navigation }: any) {
           langfuseSecretKey: settingsRes.langfuseSecretKey === '••••••••' ? '' : (settingsRes.langfuseSecretKey || ''),
           langfuseBaseUrl: settingsRes.langfuseBaseUrl || '',
         });
-        successCount++;
+      } else {
+        setRemoteSettings(null);
       }
 
-      // Consider it a DotAgents server if at least one endpoint succeeded
-      // This gates the Desktop Settings section for non-DotAgents endpoints (e.g., OpenAI)
-      setIsDotAgentsServer(successCount > 0);
+      // The mobile app only considers a server valid when the DotAgents settings API responds.
+      setIsDotAgentsServer(!!settingsRes);
 
-      // Show error if any endpoint failed but at least one succeeded
-      if (errors.length > 0 && successCount > 0) {
+      // Show error if any secondary endpoint failed while settings succeeded.
+      if (errors.length > 0 && settingsRes) {
         setRemoteError(`Failed to load: ${errors.join(', ')}`);
-      } else if (successCount === 0) {
-        // All endpoints failed - not a DotAgents server
+      } else if (!settingsRes) {
         setIsDotAgentsServer(false);
       }
     } catch (error: any) {
@@ -896,8 +896,8 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Handle push notification toggle
   const handleNotificationToggle = async (enabled: boolean) => {
-    if (!config.baseUrl || !config.apiKey) {
-      Alert.alert('Configuration Required', 'Please configure your server connection first.');
+    if (!isDotAgentsConnected || !config.baseUrl || !config.apiKey) {
+      Alert.alert('Connection Required', 'Connect to a DotAgents server before changing push notification settings.');
       return;
     }
 
@@ -967,7 +967,7 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
-  // Handle preset change (OpenAI compatible providers)
+  // Handle preset change for DotAgents-managed model presets
   const handlePresetChange = async (presetId: string) => {
     if (!settingsClient || !remoteSettings || remoteSettings.currentModelPresetId === presetId) return;
 
@@ -996,9 +996,9 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Get current preset display name
   const getCurrentPresetName = () => {
-    if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return 'OpenAI';
+    if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return 'Preset';
     const preset = remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
-    return preset?.name || 'OpenAI';
+    return preset?.name || 'Preset';
   };
 
   // Handle model name change with debouncing to avoid request storms per keystroke
@@ -1286,12 +1286,12 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={[
                   styles.statusDot,
                   { width: 10, height: 10, borderRadius: 5 },
-                  config.baseUrl && config.apiKey
+                  isDotAgentsConnected
                     ? styles.statusConnected
                     : { backgroundColor: '#ef4444' }
                 ]} />
                 <Text style={styles.connectionCardTitle}>
-                  {config.baseUrl && config.apiKey ? 'Connected' : 'Not connected'}
+                  {isDotAgentsConnected ? 'Connected to DotAgents' : hasSavedConnection ? 'Reconnect to DotAgents' : 'Not connected'}
                 </Text>
               </View>
               {config.baseUrl && (
@@ -1324,7 +1324,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* Go to Chats button */}
         <TouchableOpacity
-          style={[styles.primaryButton, !(config.baseUrl && config.apiKey) && styles.primaryButtonDisabled]}
+          style={[styles.primaryButton, !isDotAgentsConnected && styles.primaryButtonDisabled]}
           onPress={() => {
             if (navigation.canGoBack?.()) {
               navigation.goBack();
@@ -1333,7 +1333,7 @@ export default function SettingsScreen({ navigation }: any) {
 
             navigation.navigate('Sessions');
           }}
-          disabled={!(config.baseUrl && config.apiKey)}
+          disabled={!isDotAgentsConnected}
           accessibilityRole="button"
           accessibilityLabel="Go to Chats"
         >
@@ -1734,7 +1734,7 @@ export default function SettingsScreen({ navigation }: any) {
 
                 {remoteSettings.mcpToolsProviderId === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
                   <>
-                    <Text style={styles.label}>OpenAI Compatible Endpoint</Text>
+                    <Text style={styles.label}>Model Preset</Text>
                     <TouchableOpacity
                       style={styles.modelSelector}
                       onPress={() => setShowPresetPicker(true)}

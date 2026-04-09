@@ -12,6 +12,7 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import { useTunnelConnection } from '../store/tunnelConnection';
 
 const CONTEXT_OPTIONS: { label: string; value: KnowledgeNoteContext; description: string }[] = [
   { label: 'Search only', value: 'search-only', description: 'Keep this note available for search and explicit retrieval.' },
@@ -56,6 +57,8 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
+  const { connectionInfo } = useTunnelConnection();
+  const isDotAgentsConnected = connectionInfo.state === 'connected';
 
   const noteFromRoute = route.params?.note as KnowledgeNote | undefined;
   const noteId = route.params?.noteId as string | undefined;
@@ -72,11 +75,11 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
+    if (isDotAgentsConnected && config.baseUrl && config.apiKey) {
       return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
     }
     return null;
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, isDotAgentsConnected]);
 
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit Note' : 'Create Note' });
@@ -85,7 +88,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   useEffect(() => {
     if (isEditing && !noteFromRoute && !settingsClient) {
       setIsLoading(false);
-      setError('Configure Base URL and API key to load and save notes');
+      setError('Connect to a DotAgents server in Settings to load and save notes');
     }
   }, [isEditing, noteFromRoute, settingsClient]);
 
@@ -121,7 +124,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
-      setError('Configure Base URL and API key in Settings before saving this note');
+      setError('Connect to a DotAgents server in Settings before saving this note');
       return;
     }
 
@@ -197,7 +200,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
       >
         {error && <Text style={styles.errorText}>{error}</Text>}
         {!settingsClient && (
-          <Text style={styles.helperText}>Configure Base URL and API key in Settings to save note changes.</Text>
+          <Text style={styles.helperText}>Connect to a DotAgents server in Settings to save note changes.</Text>
         )}
 
         <Text style={styles.label}>Note ID</Text>
