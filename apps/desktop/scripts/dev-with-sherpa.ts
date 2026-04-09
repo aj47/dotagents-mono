@@ -309,6 +309,21 @@ function main(): void {
     terminateChildProcessTree(child, "SIGTERM")
     process.exit(1)
   })
+
+  sharedChild.on("close", (code, signal) => {
+    if (shutdownSignal) return
+    if (signal === "SIGTERM") {
+      console.log(`[dev-with-sherpa] Shared watch stopped (${signal}).`)
+      return
+    }
+    if (code === 0) {
+      console.log(`[dev-with-sherpa] Shared watch exited cleanly (${code}).`)
+      return
+    }
+    console.error(`[dev-with-sherpa] Shared watch exited unexpectedly (${signal ?? code}); stopping desktop dev server...`)
+    terminateChildProcessTree(child, "SIGTERM")
+    process.exit(code ?? getSignalExitCode(signal ?? "SIGTERM"))
+  })
 }
 
 if (isDirectExecution()) {
