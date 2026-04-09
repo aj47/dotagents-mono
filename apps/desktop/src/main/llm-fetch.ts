@@ -307,6 +307,49 @@ export type CompletionVerification = {
   reason?: string
 }
 
+export interface TextCompletionOptions {
+  modelContext?: "mcp" | "transcript"
+  generationName?: string
+  generationMetadata?: Record<string, unknown>
+  maxRetries?: number
+  failureLogLevel?: "error" | "warning" | "info" | "silent"
+}
+
+function getGenerationLevelForFailure(
+  failureLogLevel: TextCompletionOptions["failureLogLevel"]
+): "DEFAULT" | "WARNING" | "ERROR" | undefined {
+  switch (failureLogLevel) {
+    case "warning":
+      return "WARNING"
+    case "info":
+    case "silent":
+      return "DEFAULT"
+    case "error":
+    default:
+      return "ERROR"
+  }
+}
+
+function logTextCompletionFailure(
+  failureLogLevel: TextCompletionOptions["failureLogLevel"],
+  message: string,
+  error: unknown,
+): void {
+  switch (failureLogLevel) {
+    case "warning":
+      diagnosticsService.logWarning("llm-fetch", message, error)
+      return
+    case "info":
+      diagnosticsService.logInfo("llm-fetch", message)
+      return
+    case "silent":
+      return
+    case "error":
+    default:
+      diagnosticsService.logError("llm-fetch", message, error)
+  }
+}
+
 /**
  * Calculate exponential backoff delay with jitter
  */
@@ -467,6 +510,13 @@ async function withRetry<T>(
     maxDelay?: number
     onRetryProgress?: RetryProgressCallback
     sessionId?: string
+    /**
+     * When true, HTTP 429 responses also respect `maxRetries` instead of
+     * retrying indefinitely. Opt-in so existing callers keep their rate-limit
+     * backoff policy; new callers that supply a bounded retry budget (e.g. the
+     * conversation title path) get a real cap.
+     */
+    enforceMaxRetriesOnRateLimit?: boolean
   } = {}
 ): Promise<T> {
   const config = configStore.get()
@@ -568,9 +618,15 @@ async function withRetry<T>(
         }
       }
 
-      // Rate limits retry indefinitely, other errors respect the limit
-      // Empty response errors also respect the limit but skip backoff
-      if (!isRateLimit && attempt >= maxRetries) {
+      // Rate limits retry indefinitely by default so the global backoff policy
+      // can outlast provider throttling. Callers that opt in via
+      // `enforceMaxRetriesOnRateLimit` get their `maxRetries` budget respected
+      // for 429s too. Empty response errors always respect the limit but skip
+      // backoff (handled below).
+      const capExhausted = attempt >= maxRetries
+      const rateLimitRetryAllowed =
+        isRateLimit && !options.enforceMaxRetriesOnRateLimit
+      if (capExhausted && !rateLimitRetryAllowed) {
         diagnosticsService.logError(
           "llm-fetch",
           "API call failed after all retries",
@@ -1268,11 +1324,19 @@ export async function makeTextCompletionWithFetch(
   prompt: string,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: RetryProgressCallback,
+  options: TextCompletionOptions = {},
 ): Promise<string> {
-  // Use transcript provider as default since this is primarily used for transcript post-processing
-  const effectiveProviderId = (providerId ||
-    getTranscriptProviderId()) as ProviderType
+  const modelContext = options.modelContext ?? "transcript"
+  const generationName = options.generationName ?? "Text Completion"
+  const failureLogLevel = options.failureLogLevel ?? "error"
+
+  // Default to the transcript provider for transcript-style tasks, but let MCP-context
+  // callers inherit the active session provider when they do not pass an explicit provider.
+  const effectiveProviderId = (
+    providerId ||
+    (modelContext === "mcp" ? getCurrentProviderId() : getTranscriptProviderId())
+  ) as ProviderType
 
   return withRetry(
     async () => {
@@ -1281,15 +1345,19 @@ export async function makeTextCompletionWithFetch(
       // Create Langfuse generation if enabled
       const generationId = isLangfuseEnabled() ? randomUUID() : null
       const modelName = isChatGptWebProvider(effectiveProviderId)
-        ? getCurrentChatGptWebModelName("transcript")
-        : getCurrentModelName(effectiveProviderId, "transcript")
+        ? getCurrentChatGptWebModelName(modelContext)
+        : getCurrentModelName(effectiveProviderId, modelContext)
 
       if (generationId) {
         createLLMGeneration(sessionId || null, generationId, {
-          name: "Text Completion",
+          name: generationName,
           model: modelName,
-          modelParameters: { provider: effectiveProviderId },
+          modelParameters: {
+            provider: effectiveProviderId,
+            modelContext,
+          },
           input: prompt,
+          metadata: options.generationMetadata,
         })
       }
 
@@ -1307,14 +1375,14 @@ export async function makeTextCompletionWithFetch(
           ? (await makeChatGptWebCompletion(
               [{ role: "user", content: prompt }],
               {
-                modelContext: "transcript",
+                modelContext,
                 signal: abortController.signal,
               },
             )).trim()
           : await (async () => {
-              const model = createLanguageModel(effectiveProviderId, "transcript")
-              const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
-              const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId, "transcript")
+              const model = createLanguageModel(effectiveProviderId, modelContext)
+              const promptCaching = getPromptCachingConfig(effectiveProviderId, modelContext)
+              const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId, modelContext)
               const mergedProviderOptions = mergeProviderOptions(
                 promptCaching?.providerOptions,
                 reasoningOptions,
@@ -1323,6 +1391,7 @@ export async function makeTextCompletionWithFetch(
               if (isDebugLLM()) {
                 logLLM("🚀 AI SDK text completion call", {
                   provider: effectiveProviderId,
+                  modelContext,
                   promptLength: prompt.length,
                 })
               }
@@ -1354,17 +1423,25 @@ export async function makeTextCompletionWithFetch(
         // End Langfuse generation with error
         if (generationId) {
           endLLMGeneration(generationId, {
-            level: "ERROR",
+            level: getGenerationLevelForFailure(failureLogLevel),
             statusMessage: error instanceof Error ? error.message : "Text completion failed",
           })
         }
-        diagnosticsService.logError("llm-fetch", "Text completion failed", error)
+        logTextCompletionFailure(failureLogLevel, `${generationName} failed`, error)
         throw error
       } finally {
         unregisterSessionAbortController(abortController, sessionId)
       }
     },
-    { onRetryProgress, sessionId }
+    {
+      onRetryProgress,
+      sessionId,
+      maxRetries: options.maxRetries,
+      // When the caller supplies an explicit retry budget, make it a real cap:
+      // 429s should also respect it so best-effort paths like conversation
+      // title generation cannot loop indefinitely under throttling.
+      enforceMaxRetriesOnRateLimit: options.maxRetries !== undefined,
+    }
   )
 }
 

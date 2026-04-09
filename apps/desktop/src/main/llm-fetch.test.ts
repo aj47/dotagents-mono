@@ -1045,4 +1045,28 @@ describe('LLM Fetch with AI SDK', () => {
       expect.objectContaining({ modelContext: 'mcp', tools: undefined }),
     )
   })
+
+  it('respects caller maxRetries=0 on HTTP 429 instead of retrying indefinitely', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const rateLimitError = Object.assign(new Error('rate limit exceeded'), {
+      statusCode: 429,
+    })
+    generateTextMock.mockRejectedValue(rateLimitError)
+
+    const { makeTextCompletionWithFetch } = await import('./llm-fetch')
+
+    await expect(
+      makeTextCompletionWithFetch(
+        'write a title',
+        'openai',
+        undefined,
+        undefined,
+        { maxRetries: 0, failureLogLevel: 'warning' },
+      ),
+    ).rejects.toThrow('rate limit exceeded')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
 })

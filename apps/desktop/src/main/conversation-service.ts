@@ -13,6 +13,7 @@ import {
 import { summarizeContent } from "./context-budget"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { getCurrentProviderId } from "./ai-sdk-provider"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 
 // Threshold for compacting conversations on load
@@ -163,7 +164,23 @@ export class ConversationService {
     ].join("\n")
 
     try {
-      const completion = await makeTextCompletionWithFetch(prompt, undefined, sessionId)
+      const completion = await makeTextCompletionWithFetch(
+        prompt,
+        getCurrentProviderId(),
+        sessionId,
+        undefined,
+        {
+          modelContext: "mcp",
+          generationName: "Conversation Title Generation",
+          generationMetadata: {
+            purpose: "conversation-title",
+            caller: "ConversationService.generateAgentSessionTitle",
+            optional: true,
+          },
+          maxRetries: 0,
+          failureLogLevel: "warning",
+        },
+      )
       return this.normalizeConversationTitle(completion, MAX_AGENT_SESSION_TITLE_WORDS) || null
     } catch (error) {
       logApp("[ConversationService] Failed to auto-generate session title:", error)
