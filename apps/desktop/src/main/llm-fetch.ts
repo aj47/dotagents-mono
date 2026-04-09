@@ -510,6 +510,13 @@ async function withRetry<T>(
     maxDelay?: number
     onRetryProgress?: RetryProgressCallback
     sessionId?: string
+    /**
+     * When true, HTTP 429 responses also respect `maxRetries` instead of
+     * retrying indefinitely. Opt-in so existing callers keep their rate-limit
+     * backoff policy; new callers that supply a bounded retry budget (e.g. the
+     * conversation title path) get a real cap.
+     */
+    enforceMaxRetriesOnRateLimit?: boolean
   } = {}
 ): Promise<T> {
   const config = configStore.get()
@@ -611,9 +618,15 @@ async function withRetry<T>(
         }
       }
 
-      // Rate limits retry indefinitely, other errors respect the limit
-      // Empty response errors also respect the limit but skip backoff
-      if (!isRateLimit && attempt >= maxRetries) {
+      // Rate limits retry indefinitely by default so the global backoff policy
+      // can outlast provider throttling. Callers that opt in via
+      // `enforceMaxRetriesOnRateLimit` get their `maxRetries` budget respected
+      // for 429s too. Empty response errors always respect the limit but skip
+      // backoff (handled below).
+      const capExhausted = attempt >= maxRetries
+      const rateLimitRetryAllowed =
+        isRateLimit && !options.enforceMaxRetriesOnRateLimit
+      if (capExhausted && !rateLimitRetryAllowed) {
         diagnosticsService.logError(
           "llm-fetch",
           "API call failed after all retries",
@@ -1424,6 +1437,10 @@ export async function makeTextCompletionWithFetch(
       onRetryProgress,
       sessionId,
       maxRetries: options.maxRetries,
+      // When the caller supplies an explicit retry budget, make it a real cap:
+      // 429s should also respect it so best-effort paths like conversation
+      // title generation cannot loop indefinitely under throttling.
+      enforceMaxRetriesOnRateLimit: options.maxRetries !== undefined,
     }
   )
 }
