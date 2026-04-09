@@ -273,26 +273,30 @@ export function SessionActionDialog({
       }
       onOpenChange(nextOpen)
     }}>
-      <DialogContent className={cn("flex max-h-[calc(100vh-48px)] flex-col sm:max-w-2xl", mode === "voice" && "sm:max-w-xl")}>
+      <DialogContent
+        className={cn(
+          "flex max-h-[calc(100vh-48px)] flex-col sm:max-w-2xl",
+          mode === "text" && "min-h-[560px]",
+          mode === "voice" && "sm:max-w-xl",
+        )}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {mode === "text" ? (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="min-h-[360px]">
-              <TextInputPanel
-                onSubmit={handleTextSubmit}
-                selectedAgentId={selectedAgentId}
-                onSelectAgent={onSelectAgent}
-                onCancel={closeDialog}
-                isProcessing={isSubmitting}
-                initialText={initialText}
-                continueConversationTitle={continueConversationTitle}
-                showAgentSelector={false}
-              />
-            </div>
+          <div className="flex min-h-0 flex-1">
+            <TextInputPanel
+              onSubmit={handleTextSubmit}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={onSelectAgent}
+              onCancel={closeDialog}
+              isProcessing={isSubmitting}
+              initialText={initialText}
+              continueConversationTitle={continueConversationTitle}
+              showAgentSelector={false}
+            />
           </div>
         ) : (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
