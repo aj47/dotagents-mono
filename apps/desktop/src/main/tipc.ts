@@ -1835,7 +1835,15 @@ export const router = {
         messageLength: input.text.length,
         queueEnabled,
       })
-        
+
+      // Defensive guard: when the caller explicitly asks for a snoozed session
+      // (fromTile=true, e.g. SessionActionDialog inside the main window), also
+      // time-suppress panel auto-show so an early progress update cannot race
+      // the snoozed flag and briefly surface the floating panel.
+      if (input.fromTile === true) {
+        suppressPanelAutoShow(2000)
+      }
+
       // Create or get conversation ID
       let conversationId = input.conversationId
       if (!conversationId) {
@@ -1979,6 +1987,13 @@ export const router = {
       fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
     }>()
     .action(async ({ input }) => {
+      // Defensive guard: see matching comment in createMcpTextInput. When a
+      // caller asks for a snoozed session, time-suppress panel auto-show to
+      // cover the window where progress updates may race the snoozed flag.
+      if (input.fromTile === true) {
+        suppressPanelAutoShow(2000)
+      }
+
       fs.mkdirSync(recordingsFolder, { recursive: true })
 
       const config = configStore.get()

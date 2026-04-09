@@ -278,10 +278,44 @@ Do these in order and record the outcome under "Attempts & findings":
     - With my changes: 651 passed / 73 failed. Zero new failures; one new passing test (the added hidden‑stay‑hidden case).
   - The 73 pre‑existing failures are in unrelated renderer settings/UI tests with `forwardRef`/`useContext` mock issues — not caused by this change.
 - **Typecheck:** Required `pnpm build:shared` and `pnpm --filter @dotagents/core build` first (stale dist in the workspace). After rebuild, only one error remains: `src/main/tipc.ts(75,10): Import declaration conflicts with local declaration of 'generateEdgeTTS'` — introduced by commit `1b3c68eae` ("Fix desktop Edge TTS websocket transport") on 2026-04-05, unrelated to this change.
-- **Commit status:** Not yet committed. Pending user approval before commit/push per repo policy.
+- **Commit status:** Committed as `7f2dc019`, pushed to branch `fix/preserve-main-on-text-input-open`, PR #316 opened.
 - **Still to verify manually on macOS after merge:**
   1. Cmd‑Tab behavior after a full open‑submit cycle from a backgrounded state (H3).
   2. Focus‑steal: does the main window briefly flash to the front when the panel text input opens? This is the regression risk called out in H1's fix section.
+
+### 2026-04-09 — user verified PR #316 works; reports new variant (sidebar "+" modal)
+- PR #316 fixes the backgrounded hotkey flow. The user confirmed manual verification passed.
+- **New report:** pressing the "Start with text" (+) button in the left sidebar, submitting a prompt:
+  - Main window "goes to background and drops out of Cmd+Tab"
+  - The floating "hover" panel sometimes becomes visible, which "should not happen if session triggered from main window"
+- This is a **different code path** from PR #316:
+  - Sidebar "+" button → `app-layout.tsx` `handleStartTextSession` → `openSessionActionDialog({ mode: "text" })` (no `fromTile`)
+  - `SessionActionDialog` (`session-action-dialog.tsx`) → `handleTextSubmit` → `tipcClient.createMcpTextInput({ text, conversationId, fromTile })` with `fromTile === false`
+  - `createMcpTextInput` in `tipc.ts` → `processWithAgentMode(..., startSnoozed = input.fromTile ?? false)` → session started **non-snoozed**
+  - `emitAgentProgress` → `sendToWindows` → sees `isSnoozed === false` + `hidePanelWhenMainFocused && isMainFocused` condition → any moment the main window isn't focused (e.g. brief blur as the dialog closes), the condition flips and `showPanelWindow({ markOpenedWithMain: false })` fires
+  - Panel shows via `showInactive()` then `ensurePanelZOrder` sets `setAlwaysOnTop(true, "modal-panel", 1)` on macOS, causing focus/activation churn that can drop the app from Cmd+Tab.
+- **Root cause:** `SessionActionDialog`'s user-visible description explicitly promises "without opening the hover panel", but the dialog was passing `fromTile ?? false` through to `createMcpTextInput` / `createMcpRecording`. When opened from the sidebar (where no `fromTile` is provided), `fromTile=false` → session non-snoozed → panel auto-shows. Semantic misnomer: `fromTile` is really "start snoozed, don't auto-show panel".
+
+### 2026-04-09 — fix implemented on branch `fix/session-dialog-snoozed-panel`
+- **`apps/desktop/src/renderer/src/components/session-action-dialog.tsx`**
+  - `handleTextSubmit` and the voice `createMcpRecording` call both now hardcode `fromTile: true` regardless of the `fromTile` prop value. Added comments explaining the dialog's "no hover panel" contract.
+  - Removed the unused `fromTile = false` destructure from the component parameters. Kept the prop on the interface with an explanatory comment so existing callers (`app-layout.tsx`, `sessions.tsx`) continue to compile without changes.
+- **`apps/desktop/src/main/tipc.ts`** — defensive safety net
+  - `createMcpTextInput` and `createMcpRecording` now call `suppressPanelAutoShow(2000)` up front when `input.fromTile === true`. This closes a race where an early progress update could fire before the session's snoozed flag is set, briefly surfacing the panel.
+  - No changes to the happy-path (tile/hover-panel) flows: `fromTile !== true` branches are untouched.
+- **Tests** (added to existing `apps/desktop/src/renderer/src/pages/sessions.in-app-actions.test.ts`):
+  - "forces sessions started from SessionActionDialog to stay snoozed so the hover panel never auto-shows" — source-asserts both text and voice submit paths pass `fromTile: true` and that the `fromTile = false` destructure is gone.
+  - "time-suppresses panel auto-show in createMcpTextInput/createMcpRecording when fromTile is true" — source-asserts the defensive `suppressPanelAutoShow(2000)` call is present in both handlers.
+- **Test results:**
+  - Targeted: both new tests pass. `emit-agent-progress.snoozed.test.ts` (3), `window.main-hide-recovery.test.ts` (7), and `session-action-dialog.voice.test.tsx` (1) all still pass.
+  - Full `pnpm --filter @dotagents/desktop test`: same 73 pre-existing failures as the previous fix — **zero new failures introduced**. The `sessions.in-app-actions.test.ts` file now has 14 tests (up from 12), with the same single pre-existing failure (`recentStatus === "stopped"` — unrelated to this change).
+- **Typecheck:** Same two pre-existing errors as before (duplicate `generateEdgeTTS` and `edge-tts.ts` WebSocket type mismatch). Neither is on lines I touched.
+- **Commit status:** Not yet committed; pending user approval.
+- **Still to verify manually on macOS after merge:**
+  1. Sidebar "+" button → text input modal → submit → main window stays in Cmd+Tab and in the foreground.
+  2. Sidebar "+" button → voice modal → record → submit → same assertions.
+  3. Tile follow-up input still auto-shows the hover panel only when you want it (tile flow → `fromTile=true`, but tiles use `tile-follow-up-input.tsx`, not the dialog, so should be unchanged).
+  4. Hover panel follow-up input (`overlay-follow-up-input.tsx`) still works — it doesn't pass `fromTile`, so session is non-snoozed and panel stays visible. This is the intended overlay behavior.
 
 <!-- Next entries template:
 
