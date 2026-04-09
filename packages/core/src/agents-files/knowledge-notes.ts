@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from "../types"
+import type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType, KnowledgePageType } from "../types"
 import type { AgentsLayerPaths } from "./modular-config"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "./safe-file"
@@ -21,6 +21,7 @@ export type LoadedAgentsKnowledgeNotesLayer = {
 
 const VALID_CONTEXT_VALUES = new Set<KnowledgeNoteContext>(["auto", "search-only"])
 const VALID_ENTRY_TYPE_VALUES = new Set<KnowledgeNoteEntryType>(["note", "entry", "overview"])
+const VALID_PAGE_TYPE_VALUES = new Set<KnowledgePageType>(["note", "topic", "entity", "project", "idea", "opportunity", "daily", "source"])
 
 function normalizeSingleLine(text: string): string {
   return text.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim()
@@ -195,10 +196,17 @@ export function stringifyKnowledgeNoteMarkdown(note: KnowledgeNote): string {
     ? note.entryType
     : undefined
   if (summary) frontmatter.summary = summary
+  const aliases = formatListValue(note.aliases)
+  const backlinks = formatListValue(note.backlinks)
   if (references) frontmatter.references = references
   if (group) frontmatter.group = group
   if (series) frontmatter.series = series
   if (entryType) frontmatter.entryType = entryType
+  if (VALID_PAGE_TYPE_VALUES.has(note.pageType as KnowledgePageType)) frontmatter.pageType = note.pageType as KnowledgePageType
+  if (aliases) frontmatter.aliases = aliases
+  if (backlinks) frontmatter.backlinks = backlinks
+  if (note.status) frontmatter.status = normalizeSingleLine(note.status)
+  if (typeof note.importance === "number" && Number.isFinite(note.importance)) frontmatter.importance = String(note.importance)
 
   return stringifyFrontmatterDocument({
     frontmatter,
@@ -235,6 +243,12 @@ export function parseKnowledgeNoteMarkdown(
   const entryType = VALID_ENTRY_TYPE_VALUES.has((fm.entryType ?? "").trim() as KnowledgeNoteEntryType)
     ? (fm.entryType ?? "").trim() as KnowledgeNoteEntryType
     : undefined
+  const pageType = VALID_PAGE_TYPE_VALUES.has((fm.pageType ?? "").trim() as KnowledgePageType)
+    ? (fm.pageType ?? "").trim() as KnowledgePageType
+    : undefined
+  const aliases = parseListValue(fm.aliases)
+  const backlinks = parseListValue(fm.backlinks)
+  const importance = parseTimestamp(fm.importance)
 
   return {
     id,
@@ -249,6 +263,11 @@ export function parseKnowledgeNoteMarkdown(
     group,
     series,
     entryType,
+    pageType,
+    aliases: aliases.length > 0 ? aliases : undefined,
+    backlinks: backlinks.length > 0 ? backlinks : undefined,
+    status: (fm.status ?? "").trim() || undefined,
+    importance,
   }
 }
 

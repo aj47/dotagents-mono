@@ -27,11 +27,34 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
 import { Textarea } from "@renderer/components/ui/textarea"
-import type { KnowledgeNote, KnowledgeNoteContext } from "@shared/types"
+import type { KnowledgeNote, KnowledgeNoteContext, KnowledgePageType } from "@shared/types"
 
 const contextBadgeClasses: Record<KnowledgeNoteContext, string> = {
   auto: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
   "search-only": "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20",
+}
+
+
+const pageTypeLabels: Record<KnowledgePageType, string> = {
+  note: "Note",
+  topic: "Topic",
+  entity: "Entity",
+  project: "Project",
+  idea: "Idea",
+  opportunity: "Opportunity",
+  daily: "Daily",
+  source: "Source",
+}
+
+const pageTypeBadgeClasses: Record<KnowledgePageType, string> = {
+  note: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20",
+  topic: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
+  entity: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20",
+  project: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+  idea: "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20",
+  opportunity: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+  daily: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20",
+  source: "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20",
 }
 
 const contextFilterOptions: { label: string; value: "all" | KnowledgeNoteContext }[] = [
@@ -159,6 +182,7 @@ function NoteSidebar({
       <div className="border-b px-6 py-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Badge className={cn("border", contextBadgeClasses[note.context])}>{note.context}</Badge>
+          <Badge className={cn("border", pageTypeBadgeClasses[note.pageType ?? "note"])}>{pageTypeLabels[note.pageType ?? "note"]}</Badge>
           {note.group ? <Badge variant="outline">{titleizePath(note.group)}</Badge> : null}
           {note.series ? <Badge variant="outline">{titleizePath(note.series)}</Badge> : null}
         </div>
@@ -178,7 +202,9 @@ function NoteSidebar({
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Metadata</div>
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2"><Calendar className="h-4 w-4" />{new Date(note.updatedAt || note.createdAt || Date.now()).toLocaleDateString()}</div>
+              <div className="flex items-center gap-2"><FolderOpen className="h-4 w-4" />{pageTypeLabels[note.pageType ?? "note"]}</div>
               {note.references?.length ? <div className="flex items-center gap-2"><FileText className="h-4 w-4" />{note.references.length} references</div> : null}
+              {note.backlinks?.length ? <div className="flex items-center gap-2"><Link2 className="h-4 w-4" />{note.backlinks.length} backlinks</div> : null}
             </div>
           </div>
 
@@ -194,8 +220,9 @@ function NoteSidebar({
           </div>
 
           <div>
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Related</div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Backlinks & Related</div>
             <div className="space-y-2">
+              {note.backlinks?.length ? <div className="mb-3 flex flex-wrap gap-2">{note.backlinks.map((backlink) => <Badge key={backlink} variant="secondary">{backlink}</Badge>)}</div> : null}
               {relatedNotes.length ? relatedNotes.map(({ note: related, score }) => (
                 <div key={related.id} className="rounded-xl border bg-background/80 px-3 py-2">
                   <div className="truncate text-sm font-medium">{related.title}</div>
@@ -218,6 +245,7 @@ export function Component() {
   const [searchInput, setSearchInput] = useState("")
   const [activeQuery, setActiveQuery] = useState("")
   const [contextFilter, setContextFilter] = useState<"all" | KnowledgeNoteContext>("all")
+  const [pageTypeFilter, setPageTypeFilter] = useState<"all" | KnowledgePageType>("all")
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(new Set())
   const [editingNote, setEditingNote] = useState<KnowledgeNote | null>(null)
@@ -266,9 +294,10 @@ export function Component() {
 
   const filteredNotes = useMemo(() => knowledgeNotes.filter((note) => {
     if (contextFilter !== "all" && note.context !== contextFilter) return false
+    if (pageTypeFilter !== "all" && (note.pageType ?? "note") !== pageTypeFilter) return false
     if (!matchesRelationFilter(note, relationFilter)) return false
     return true
-  }), [contextFilter, knowledgeNotes, relationFilter])
+  }), [contextFilter, knowledgeNotes, pageTypeFilter, relationFilter])
 
   const sections = useMemo(() => buildKnowledgeNoteSections(filteredNotes), [filteredNotes])
   const selectedNote = useMemo(() => {
@@ -354,6 +383,11 @@ export function Component() {
             {option.label}
           </Button>
         ))}
+        {(["all", "topic", "entity", "project", "idea", "opportunity"] as const).map((pageType) => (
+          <Button key={pageType} type="button" variant={pageTypeFilter === pageType ? "default" : "outline"} size="sm" onClick={() => setPageTypeFilter(pageType)}>
+            {pageType === "all" ? "All types" : pageTypeLabels[pageType]}
+          </Button>
+        ))}
         {relationFilter ? <Button variant="outline" size="sm" onClick={() => setRelationFilter("")}>Clear filter</Button> : null}
       </div>
 
@@ -388,6 +422,7 @@ export function Component() {
                             <CardContent className="p-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
+                                  <div className="mb-1 flex flex-wrap items-center gap-2"><Badge className={cn("border", pageTypeBadgeClasses[note.pageType ?? "note"])}>{pageTypeLabels[note.pageType ?? "note"]}</Badge></div>
                                   <div className="truncate text-sm font-medium">{note.title}</div>
                                   <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{summarizeNote(note)}</div>
                                 </div>
@@ -419,6 +454,7 @@ export function Component() {
                                       <CardContent className="p-3">
                                         <div className="flex items-start justify-between gap-2">
                                           <div className="min-w-0">
+                                            <div className="mb-1 flex flex-wrap items-center gap-2"><Badge className={cn("border", pageTypeBadgeClasses[note.pageType ?? "note"])}>{pageTypeLabels[note.pageType ?? "note"]}</Badge></div>
                                             <div className="truncate text-sm font-medium">{note.title}</div>
                                             <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{summarizeNote(note)}</div>
                                           </div>
