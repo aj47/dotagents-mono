@@ -22,6 +22,7 @@ export type Config = Record<string, any>
 // ============================================================================
 export type KnowledgeNoteContext = "auto" | "search-only"
 export type KnowledgeNoteEntryType = "note" | "entry" | "overview"
+export type KnowledgePageType = "note" | "topic" | "entity" | "project" | "idea" | "opportunity" | "daily" | "source"
 
 export interface KnowledgeNote {
   id: string
@@ -36,6 +37,11 @@ export interface KnowledgeNote {
   group?: string
   series?: string
   entryType?: KnowledgeNoteEntryType
+  pageType?: KnowledgePageType
+  aliases?: string[]
+  backlinks?: string[]
+  status?: string
+  importance?: number
 }
 
 // ============================================================================

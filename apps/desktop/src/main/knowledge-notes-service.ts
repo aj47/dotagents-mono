@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import type { AgentStepSummary, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from "@shared/types"
+import type { AgentStepSummary, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType, KnowledgePageType } from "@shared/types"
 import { logLLM, isDebugLLM } from "./debug"
 import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
@@ -39,6 +39,7 @@ function buildReadableId(...candidates: Array<string | undefined>): string {
 const DURABLE_NOTE_CANDIDATE_TYPES = new Set(["preference", "constraint", "decision", "fact", "insight"])
 const VALID_CONTEXT_VALUES = new Set<KnowledgeNoteContext>(["auto", "search-only"])
 const VALID_ENTRY_TYPE_VALUES = new Set<KnowledgeNoteEntryType>(["note", "entry", "overview"])
+const VALID_PAGE_TYPE_VALUES = new Set<KnowledgePageType>(["note", "topic", "entity", "project", "idea", "opportunity", "daily", "source"])
 const LEGACY_NOTE_META_PREFIX = "<!-- dotagents-memory-meta:"
 
 type KnowledgeOrigin = {
@@ -47,6 +48,19 @@ type KnowledgeOrigin = {
   filePath: string
   slug: string
   assetFilePaths: string[]
+}
+
+
+type PromoteKnowledgeNoteInput = {
+  id: string
+  pageType: KnowledgePageType
+  title?: string
+  summary?: string
+  aliases?: string[]
+  group?: string
+  series?: string
+  status?: string
+  importance?: number
 }
 
 function stripLegacyEmbeddedMetadata(body: string): string {
@@ -74,6 +88,12 @@ function normalizePathLikeValue(value: string | undefined): string | undefined {
 
 
 
+
+function inferBacklinks(note: KnowledgeNote): string[] | undefined {
+  const refs = Array.from(new Set(asStringArray(note.references).map(normalizeSingleLine).filter(Boolean)))
+  return refs.length > 0 ? refs : undefined
+}
+
 function normalizeKnowledgeNoteForStorage(note: KnowledgeNote): KnowledgeNote {
   const now = Date.now()
   const providedId = normalizeSingleLine(note.id ?? "")
@@ -90,6 +110,19 @@ function normalizeKnowledgeNoteForStorage(note: KnowledgeNote): KnowledgeNote {
   const entryType = VALID_ENTRY_TYPE_VALUES.has(note.entryType as KnowledgeNoteEntryType)
     ? note.entryType
     : undefined
+  const inferred = inferKnowledgeNoteGrouping({
+    id,
+    title,
+    summary,
+    tags: note.tags,
+    group,
+    series,
+    entryType,
+    pageType: note.pageType,
+  })
+  const pageType = VALID_PAGE_TYPE_VALUES.has(note.pageType as KnowledgePageType)
+    ? note.pageType
+    : inferred.pageType ?? "note"
 
   return {
     id,
@@ -100,9 +133,20 @@ function normalizeKnowledgeNoteForStorage(note: KnowledgeNote): KnowledgeNote {
     tags: Array.from(new Set(asStringArray(note.tags))),
     body,
     summary,
-    group,
-    series,
-    entryType,
+    group: group ?? inferred.group,
+    series: series ?? inferred.series,
+    entryType: entryType ?? inferred.entryType,
+    pageType,
+    aliases: (() => {
+      const aliases = Array.from(new Set(asStringArray(note.aliases)))
+      return aliases.length > 0 ? aliases : undefined
+    })(),
+    backlinks: (() => {
+      const backlinks = Array.from(new Set([...(asStringArray(note.backlinks)), ...(inferBacklinks(note) ?? [])]))
+      return backlinks.length > 0 ? backlinks : undefined
+    })(),
+    status: normalizeSingleLine(note.status ?? "") || undefined,
+    importance: typeof note.importance === "number" && Number.isFinite(note.importance) ? note.importance : undefined,
     references: (() => {
       const refs = Array.from(new Set(asStringArray(note.references)))
       return refs.length > 0 ? refs : undefined
@@ -289,6 +333,120 @@ export class KnowledgeNotesService {
       series: grouped.series,
       entryType: grouped.entryType,
     })
+  }
+
+  private findRelatedSourceNotes(target: KnowledgeNote): KnowledgeNote[] {
+    const targetTokens = new Set([
+      target.title.toLowerCase(),
+      ...(target.aliases ?? []).map((alias) => alias.toLowerCase()),
+    ].filter(Boolean))
+
+    return this.notes
+      .filter((note) => note.id !== target.id)
+      .filter((note) => {
+        const haystack = [
+          note.title,
+          note.summary ?? "",
+          note.body,
+          ...(note.tags ?? []),
+          ...(note.references ?? []),
+        ].join(" ").toLowerCase()
+        for (const token of targetTokens) {
+          if (token && haystack.includes(token)) return true
+        }
+        return false
+      })
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 12)
+  }
+
+  async promoteNote(input: PromoteKnowledgeNoteInput): Promise<KnowledgeNote | null> {
+    await this.initialize()
+    const existing = this.notes.find((item) => item.id === input.id)
+    if (!existing) return null
+
+    const nextTitle = normalizeSingleLine(input.title ?? existing.title) || existing.title
+    const nextAliases = Array.from(new Set([
+      ...asStringArray(existing.aliases),
+      ...asStringArray(input.aliases),
+      existing.title,
+    ].map(normalizeSingleLine).filter(Boolean))).filter((alias) => alias.toLowerCase() !== nextTitle.toLowerCase())
+
+    const promoted = normalizeKnowledgeNoteForStorage({
+      ...existing,
+      title: nextTitle,
+      summary: normalizeSingleLine(input.summary ?? existing.summary ?? "") || existing.summary,
+      pageType: input.pageType,
+      aliases: nextAliases,
+      group: input.group ?? existing.group,
+      series: input.series ?? existing.series,
+      status: input.status ?? existing.status,
+      importance: typeof input.importance === "number" ? input.importance : existing.importance,
+      updatedAt: Date.now(),
+    })
+
+    const related = this.findRelatedSourceNotes(promoted)
+    const backlinks = Array.from(new Set([
+      ...(promoted.backlinks ?? []),
+      ...related.map((note) => note.id),
+    ]))
+
+    const success = await this.saveNote({
+      ...promoted,
+      backlinks: backlinks.length > 0 ? backlinks : undefined,
+    })
+
+    if (!success) return null
+    return this.getNote(promoted.id)
+  }
+
+  async createSynthesisNote(input: {
+    title: string
+    pageType?: KnowledgePageType
+    sourceIds: string[]
+    summary?: string
+    group?: string
+    series?: string
+    context?: KnowledgeNoteContext
+  }): Promise<KnowledgeNote | null> {
+    await this.initialize()
+    const sourceNotes = input.sourceIds
+      .map((id) => this.notes.find((note) => note.id === id))
+      .filter((note): note is KnowledgeNote => !!note)
+
+    if (sourceNotes.length === 0) return null
+
+    const body = [
+      input.summary ? input.summary.trim() : undefined,
+      "## Sources",
+      ...sourceNotes.map((note) => `- ${note.title} (${note.id})`),
+      "",
+      "## Highlights",
+      ...sourceNotes
+        .slice(0, 8)
+        .map((note) => `### ${note.title}\n${(note.summary ?? note.body).trim().slice(0, 400)}`),
+    ].filter(Boolean).join("\n\n")
+
+    const synthesized = this.createNote({
+      title: input.title,
+      body,
+      summary: input.summary ?? `Synthesis from ${sourceNotes.length} source notes`,
+      context: input.context ?? "search-only",
+      tags: Array.from(new Set(sourceNotes.flatMap((note) => note.tags))).slice(0, 12),
+      references: sourceNotes.map((note) => note.id),
+    })
+
+    const saved = await this.saveNote({
+      ...synthesized,
+      pageType: input.pageType ?? "daily",
+      group: input.group,
+      series: input.series,
+      backlinks: sourceNotes.map((note) => note.id),
+      importance: Math.min(100, sourceNotes.length * 10),
+    })
+
+    if (!saved) return null
+    return this.getNote(synthesized.id)
   }
 
   async getNote(id: string): Promise<KnowledgeNote | null> {
