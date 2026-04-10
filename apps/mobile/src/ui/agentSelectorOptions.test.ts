@@ -6,7 +6,7 @@ describe('buildSelectorProfiles', () => {
     const result = buildSelectorProfiles(
       { mainAgentMode: 'api' } as any,
       [
-        { id: 'main', name: 'main-agent', displayName: 'Main Agent', enabled: true, connectionType: 'internal', role: 'user-profile' },
+        { id: 'main', name: 'main-agent', displayName: 'Main Agent', enabled: true, connectionType: 'internal', role: 'chat-agent' },
         { id: 'sub', name: 'augustus', displayName: 'Augustus', description: 'Delegated helper', enabled: true, connectionType: 'internal', role: 'delegation-target' },
         { id: 'off', name: 'disabled', displayName: 'Disabled', enabled: false, connectionType: 'internal', role: 'delegation-target' },
       ] as any
@@ -17,19 +17,19 @@ describe('buildSelectorProfiles', () => {
     expect(result.profiles.map((profile) => profile.name)).toEqual(['Main Agent', 'Augustus']);
   });
 
-  it('uses ACP-capable agent profiles when ACP mode is enabled', () => {
+  it('uses acpx-capable agent profiles when acpx mode is enabled', () => {
     const result = buildSelectorProfiles(
       {
-        mainAgentMode: 'acp',
-        acpAgents: [{ name: 'legacy-agent', displayName: 'Legacy Agent' }],
+        mainAgentMode: 'acpx',
+        acpxAgents: [{ name: 'legacy-agent', displayName: 'Legacy Agent' }],
       } as any,
       [
-        { id: 'stdio-1', name: 'augustus', displayName: 'Augustus', enabled: true, connectionType: 'stdio' },
+        { id: 'acpx-1', name: 'augustus', displayName: 'Augustus', enabled: true, connectionType: 'acpx' },
         { id: 'internal-1', name: 'helper', displayName: 'Helper', enabled: true, connectionType: 'internal' },
       ] as any
     );
 
-    expect(result.selectorMode).toBe('acp');
+    expect(result.selectorMode).toBe('acpx');
     expect(result.profiles.map((profile) => profile.selectionValue)).toEqual(['augustus', 'legacy-agent']);
     expect(result.profiles.map((profile) => profile.name)).toEqual(['Augustus', 'Legacy Agent']);
   });

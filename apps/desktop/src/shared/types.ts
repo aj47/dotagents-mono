@@ -501,7 +501,7 @@ export type AgentProfileToolConfig = {
  * Unified Agent Profile.
  *
  * Can represent:
- * - User-facing profiles (isUserProfile: true) - shows in profile picker
+ * - Chat agents (isUserProfile: true) - shows in the agent picker
  * - Delegation targets (isAgentTarget: true) - available for delegate_to_agent
  * - External acpx agents (connection.type: "acpx")
  * - Internal sub-sessions (connection.type: "internal")
@@ -509,11 +509,21 @@ export type AgentProfileToolConfig = {
 
 /**
  * Role classification for an agent profile.
- * - "user-profile": User-facing profile shown in profile picker
+ * - "chat-agent": Selectable chat/voice agent shown in the agent picker
  * - "delegation-target": Available as a target for delegate_to_agent
  * - "external-agent": External acpx agent
+ * - "user-profile": Deprecated alias for "chat-agent" kept for compatibility
  */
-export type AgentProfileRole = "user-profile" | "delegation-target" | "external-agent"
+export type PreferredAgentProfileRole = "chat-agent" | "delegation-target" | "external-agent"
+export type LegacyAgentProfileRole = "user-profile"
+export type AgentProfileRole = PreferredAgentProfileRole | LegacyAgentProfileRole
+
+export function normalizeAgentProfileRole(role: AgentProfileRole | string | undefined): PreferredAgentProfileRole | undefined {
+  if (!role) return undefined
+  if (role === "user-profile") return "chat-agent"
+  if (role === "chat-agent" || role === "delegation-target" || role === "external-agent") return role
+  return undefined
+}
 
 export type AgentProfile = {
   /** Unique identifier */
@@ -566,7 +576,7 @@ export type AgentProfile = {
   enabled: boolean
   /** Whether this is a built-in agent (cannot be deleted) */
   isBuiltIn?: boolean
-  /** Whether this appears in the user profile picker (legacy, use role instead) */
+  /** Whether this appears in the agent picker (legacy, use role instead) */
   isUserProfile?: boolean
   /** Whether this is available as a delegation target (legacy, use role instead) */
   isAgentTarget?: boolean
@@ -615,7 +625,7 @@ export function profileToAgentProfile(profile: Profile): AgentProfile {
     skillsConfig: profile.skillsConfig,
     connection: { type: "internal" },
     isStateful: false,
-    role: "user-profile",
+    role: "chat-agent",
     enabled: true,
     isBuiltIn: false,
     isUserProfile: true,

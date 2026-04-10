@@ -6,6 +6,7 @@ import type {
   AgentProfileConnectionType,
   AgentProfileRole,
   AgentProfileToolConfig,
+  PreferredAgentProfileRole,
   ProfileModelConfig,
   ProfileSkillsConfig,
 } from "../types"
@@ -69,7 +70,13 @@ function tryGetFileMtimeMs(filePath: string | undefined): number | undefined {
 }
 
 const VALID_CONNECTION_TYPES = new Set<string>(['internal', 'acpx', 'acp', 'stdio', 'remote'])
-const VALID_ROLES = new Set<string>(["user-profile", "delegation-target", "external-agent"])
+const VALID_ROLES = new Set<string>(["chat-agent", "user-profile", "delegation-target", "external-agent"])
+
+function normalizeAgentProfileRole(role: string | undefined): PreferredAgentProfileRole | undefined {
+  if (!role) return undefined
+  if (role === "user-profile") return "chat-agent"
+  return VALID_ROLES.has(role) ? (role as PreferredAgentProfileRole) : undefined
+}
 
 // ============================================================================
 // Directory / Path helpers
@@ -154,7 +161,7 @@ export function stringifyAgentProfileMarkdown(profile: AgentProfile): string {
 
   if (profile.description) frontmatter.description = normalizeSingleLine(profile.description)
   if (profile.connection.type) frontmatter["connection-type"] = profile.connection.type
-  if (profile.role) frontmatter.role = profile.role
+  if (profile.role) frontmatter.role = normalizeAgentProfileRole(profile.role) ?? profile.role
   if (profile.isBuiltIn) frontmatter.isBuiltIn = "true"
   if (profile.isDefault) frontmatter.isDefault = "true"
   if (profile.isStateful) frontmatter.isStateful = "true"
@@ -194,9 +201,7 @@ export function parseAgentProfileMarkdown(
     : "internal"
 
   const roleRaw = (fm.role ?? "").trim()
-  const role: AgentProfileRole | undefined = VALID_ROLES.has(roleRaw)
-    ? (roleRaw as AgentProfileRole)
-    : undefined
+  const role: AgentProfileRole | undefined = normalizeAgentProfileRole(roleRaw)
 
   return {
     id,

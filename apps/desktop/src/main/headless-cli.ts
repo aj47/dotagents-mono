@@ -57,7 +57,7 @@ ${colors.bold}Available Commands:${colors.reset}
   ${colors.cyan}/quit${colors.reset}, ${colors.cyan}/exit${colors.reset}  - Exit the CLI
   ${colors.cyan}/stop${colors.reset}          - Emergency stop current agent session
   ${colors.cyan}/status${colors.reset}        - Show server status and active sessions
-  ${colors.cyan}/profiles${colors.reset}      - List available user profiles for Discord routing
+  ${colors.cyan}/profiles${colors.reset}      - List available chat agents for Discord routing
   ${colors.cyan}/conversations${colors.reset} - List recent conversations
   ${colors.cyan}/new${colors.reset}           - Start a new conversation
   ${colors.cyan}/discord status${colors.reset} - Show Discord config and connection state
@@ -71,17 +71,17 @@ ${colors.dim}Type any message to interact with the agent.${colors.reset}
 `)
 }
 
-function getUserProfiles() {
+function getChatAgents() {
   return agentProfileService
     .getAll()
-    .filter((profile) => profile.enabled !== false && (profile.role === "user-profile" || profile.isUserProfile))
+    .filter((profile) => profile.enabled !== false && (profile.role === "chat-agent" || profile.role === "user-profile" || profile.isUserProfile))
 }
 
 function printProfiles() {
-  const profiles = getUserProfiles()
-  console.log(`\n${colors.bold}Available User Profiles:${colors.reset}`)
+  const profiles = getChatAgents()
+  console.log(`\n${colors.bold}Available Chat Agents:${colors.reset}`)
   if (profiles.length === 0) {
-    console.log(`  ${colors.dim}(no enabled user profiles found)${colors.reset}`)
+    console.log(`  ${colors.dim}(no enabled chat agents found)${colors.reset}`)
     console.log()
     return
   }
@@ -271,9 +271,9 @@ async function handleDiscordCommand(input: string): Promise<boolean> {
         await saveDiscordConfig({ discordDefaultProfileId: "" }, "Discord default profile cleared.")
         return true
       }
-      const profile = getUserProfiles().find((item) => item.id === remainder)
+      const profile = getChatAgents().find((item) => item.id === remainder)
       if (!profile) {
-        printColored(colors.red, `Unknown user profile: ${remainder}. Use /profiles to list valid profile IDs.`)
+        printColored(colors.red, `Unknown chat agent: ${remainder}. Use /profiles to list valid agent IDs.`)
         return true
       }
       await saveDiscordConfig({ discordDefaultProfileId: profile.id }, `Discord default profile set to ${profile.displayName}.`)

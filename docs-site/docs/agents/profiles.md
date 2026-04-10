@@ -51,7 +51,7 @@ AgentProfile
     ├── enabled         — Is this agent active?
     ├── isDefault       — Is this the default agent?
     ├── isBuiltIn       — Is this a system agent?
-    └── role            — delegation-target | user-profile | system-agent
+    └── role            — chat-agent | delegation-target | external-agent
 ```
 
 ## Creating Profiles
@@ -232,9 +232,11 @@ Control access to DotAgents runtime tools:
 
 | Role | Description |
 |------|-------------|
+| **chat-agent** | Selectable chat/voice agent shown in the agent picker |
 | **delegation-target** | Can receive delegated tasks from other agents |
-| **user-profile** | User-created agent profile |
-| **system-agent** | Built-in system agent |
+| **external-agent** | Agent backed by an external ACP/stdio/remote connection |
+
+`user-profile` is still accepted as a legacy alias for `chat-agent`, but new configs should use `chat-agent`.
 
 ## Sharing Profiles
 

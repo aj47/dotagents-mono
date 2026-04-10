@@ -311,7 +311,7 @@ const MCP_SERVER_CONFIG_KEYS = [
   "disabled",
 ] as const
 const AGENT_PROFILE_CONNECTION_TYPES = ['internal', 'acpx', 'remote'] as const
-const AGENT_PROFILE_ROLES = ["user-profile", "delegation-target", "external-agent"] as const
+const AGENT_PROFILE_ROLES = ["chat-agent", "user-profile", "delegation-target", "external-agent"] as const
 
 function isReservedTopLevelMcpKey(key: string): boolean {
   if (key === "mcpConfig" || key === "mcpServers") return true

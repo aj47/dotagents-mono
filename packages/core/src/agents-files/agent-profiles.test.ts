@@ -77,4 +77,32 @@ describe("agent-profiles role inference", () => {
     expect(profiles[0].role).toBe("external-agent")
     expect(profiles[0].isAgentTarget).toBe(true)
   })
+
+  it("preserves explicit chat-agent role", () => {
+    const layer = mkTempLayer("dotagents-agent-profiles-chat-agent-")
+    writeAgentProfileMarkdown(layer, {
+      id: "chat-agent",
+      connectionType: "internal",
+      role: "chat-agent",
+    })
+
+    const { profiles } = loadAgentProfilesLayer(layer)
+    expect(profiles).toHaveLength(1)
+    expect(profiles[0].role).toBe("chat-agent")
+    expect(profiles[0].isAgentTarget).toBeUndefined()
+  })
+
+  it("normalizes legacy user-profile role to chat-agent", () => {
+    const layer = mkTempLayer("dotagents-agent-profiles-legacy-user-profile-")
+    writeAgentProfileMarkdown(layer, {
+      id: "legacy-chat-agent",
+      connectionType: "internal",
+      role: "user-profile",
+    })
+
+    const { profiles } = loadAgentProfilesLayer(layer)
+    expect(profiles).toHaveLength(1)
+    expect(profiles[0].role).toBe("chat-agent")
+    expect(profiles[0].isAgentTarget).toBeUndefined()
+  })
 })

@@ -641,7 +641,7 @@ export interface ApiAgentProfile {
   isUserProfile?: boolean;
   isAgentTarget?: boolean;
   isDefault?: boolean;
-  role?: 'user-profile' | 'delegation-target' | 'external-agent';
+  role?: 'chat-agent' | 'delegation-target' | 'external-agent' | 'user-profile';
   connectionType: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   autoSpawn?: boolean;
   createdAt: number;

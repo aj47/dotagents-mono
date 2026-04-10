@@ -133,7 +133,9 @@ export type AgentProfileToolConfig = {
   allServersDisabledByDefault?: boolean
 }
 
-export type AgentProfileRole = "user-profile" | "delegation-target" | "external-agent"
+export type PreferredAgentProfileRole = "chat-agent" | "delegation-target" | "external-agent"
+export type LegacyAgentProfileRole = "user-profile"
+export type AgentProfileRole = PreferredAgentProfileRole | LegacyAgentProfileRole
 
 export type AgentProfile = {
   id: string

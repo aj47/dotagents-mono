@@ -35,7 +35,7 @@ import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config } from "../shared/types"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
@@ -4302,7 +4302,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Agent Management Endpoints (for mobile app)
   // ============================================
 
-  // GET /v1/agent-profiles - List all agent profiles (supports ?role=user-profile|delegation-target|external-agent filter)
+  // GET /v1/agent-profiles - List all agent profiles (supports ?role=chat-agent|delegation-target|external-agent filter; user-profile is a legacy alias)
   fastify.get("/v1/agent-profiles", async (req, reply) => {
     try {
       const query = req.query as { role?: string }
@@ -4311,8 +4311,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Filter by role if specified
       if (query.role) {
         profiles = profiles.filter(p => {
-          const role = p.role || (p.isUserProfile ? "user-profile" : p.isAgentTarget ? "delegation-target" : "delegation-target")
-          return role === query.role
+          const role = p.role || (p.isUserProfile ? "chat-agent" : p.isAgentTarget ? "delegation-target" : "delegation-target")
+          const requestedRole = normalizeAgentProfileRole(query.role)
+          const profileRole = normalizeAgentProfileRole(role)
+          return profileRole === requestedRole
         })
       }
 
@@ -4327,7 +4329,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           isUserProfile: p.isUserProfile,
           isAgentTarget: p.isAgentTarget,
           isDefault: p.isDefault,
-          role: p.role,
+          role: normalizeAgentProfileRole(p.role),
           connectionType: p.connection.type,
           autoSpawn: p.autoSpawn,
           guidelines: p.guidelines,
@@ -4393,7 +4395,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           connection: profile.connection,
           isStateful: profile.isStateful,
           conversationId: profile.conversationId,
-          role: profile.role,
+          role: normalizeAgentProfileRole(profile.role),
           enabled: profile.enabled,
           isBuiltIn: profile.isBuiltIn,
           isUserProfile: profile.isUserProfile,
@@ -4484,7 +4486,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           skillsConfig: newProfile.skillsConfig,
           connection: newProfile.connection,
           isStateful: newProfile.isStateful,
-          role: newProfile.role,
+          role: normalizeAgentProfileRole(newProfile.role),
           enabled: newProfile.enabled,
           isBuiltIn: newProfile.isBuiltIn,
           isUserProfile: newProfile.isUserProfile,
@@ -4600,7 +4602,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           connection: updatedProfile.connection,
           isStateful: updatedProfile.isStateful,
           conversationId: updatedProfile.conversationId,
-          role: updatedProfile.role,
+          role: normalizeAgentProfileRole(updatedProfile.role),
           enabled: updatedProfile.enabled,
           isBuiltIn: updatedProfile.isBuiltIn,
           isUserProfile: updatedProfile.isUserProfile,

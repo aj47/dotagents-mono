@@ -17,6 +17,7 @@ import {
   PersonasData,
   MCPServerConfig,
   ACPAgentConfig,
+  normalizeAgentProfileRole,
   profileToAgentProfile,
   personaToAgentProfile,
   acpAgentConfigToAgentProfile,
@@ -444,7 +445,7 @@ class AgentProfileService {
     const migrated: AgentProfile[] = []
     const seenIds = new Set<string>()
 
-    // Migrate legacy profiles (user profiles)
+    // Migrate legacy Profile records into chat-agent profiles.
     try {
       if (fs.existsSync(legacyProfilesPath)) {
         const data = JSON.parse(fs.readFileSync(legacyProfilesPath, "utf8")) as ProfilesData
@@ -672,12 +673,15 @@ class AgentProfileService {
    */
   getByRole(role: AgentProfileRole): AgentProfile[] {
     return this.getAll().filter((p) => {
+      const requestedRole = normalizeAgentProfileRole(role)
+
       // Use role field if present
       if (p.role) {
-        return p.role === role
+        return normalizeAgentProfileRole(p.role) === requestedRole
       }
       // Fall back to legacy flags for backward compatibility
       switch (role) {
+        case "chat-agent":
         case "user-profile":
           return p.isUserProfile === true
         case "delegation-target":
@@ -693,12 +697,12 @@ class AgentProfileService {
   }
 
   /**
-   * Get user profiles (shown in profile picker).
+   * Get chat agents (shown in the agent picker).
    * Uses getByRole internally for consistency.
    */
   getUserProfiles(): AgentProfile[] {
     // Use getByRole, but also include legacy isUserProfile for backward compatibility
-    const byRole = this.getByRole("user-profile")
+    const byRole = this.getByRole("chat-agent")
     const byLegacy = this.getAll().filter((p) => p.isUserProfile && !p.role)
     // Combine and deduplicate by id
     const ids = new Set(byRole.map(p => p.id))
@@ -1186,7 +1190,7 @@ class AgentProfileService {
 
   /**
    * Get profiles in legacy Profile format (for backward-compatible IPC handlers).
-   * Returns only user-profile role profiles shaped like the legacy Profile type.
+   * Returns only chat-agent profiles shaped like the legacy Profile type.
    */
   getProfilesLegacy(): Profile[] {
     return this.getUserProfiles().map(p => this.agentProfileToLegacyProfile(p))

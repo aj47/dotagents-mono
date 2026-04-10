@@ -107,7 +107,7 @@ export function Component() {
       ])
       setStatus(nextStatus as DiscordStatus)
       setLogs((nextLogs as DiscordLogEntry[]).slice().reverse())
-      setProfiles((nextProfiles as AgentProfile[]).filter((profile) => profile.enabled !== false && (profile.role === "user-profile" || profile.isUserProfile)))
+      setProfiles((nextProfiles as AgentProfile[]).filter((profile) => profile.enabled !== false && (profile.role === "chat-agent" || profile.role === "user-profile" || profile.isUserProfile)))
       setStatusError(null)
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : String(error))
