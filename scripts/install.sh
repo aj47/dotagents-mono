@@ -11,6 +11,9 @@
 #   DOTAGENTS_NODE_MAJOR=24    Node.js major to install for Linux source installs
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
+#   DOTAGENTS_AUTH_MODE=codex  Headless onboarding auth mode: provider, codex, or skip
+#   DOTAGENTS_CODEX_API_KEY=... Codex API key for codex auth mode
+#   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex auth mode
 
 INTERACTIVE=false
 HAS_TTY=false
@@ -93,6 +96,7 @@ MIN_NODE_VERSION="20.19.4"
 SOURCE_NODE_MAJOR="${DOTAGENTS_NODE_MAJOR:-24}"
 INSTALL_RUST="${DOTAGENTS_INSTALL_RUST:-1}"
 SKIP_ONBOARDING="${DOTAGENTS_SKIP_ONBOARDING:-0}"
+AUTH_MODE="${DOTAGENTS_AUTH_MODE:-}"
 CONFIG_DIR="$HOME/.config/app.dotagents"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 
@@ -511,6 +515,32 @@ EOF
   fi
 }
 
+ensure_acpx_for_codex() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  if has acpx; then
+    ok "acpx $(acpx --version 2>/dev/null | head -1) found"
+    return 0
+  fi
+
+  local install_acpx="${DOTAGENTS_INSTALL_ACPX:-}"
+  if [ -z "$install_acpx" ]; then
+    install_acpx="$(ask "Install acpx for Codex integration? [Y/n]: " DOTAGENTS_INSTALL_ACPX "y")"
+  fi
+
+  case "$(printf '%s' "$install_acpx" | tr '[:upper:]' '[:lower:]')" in
+    y|yes|1|true|on)
+      ensure_cmd npm "Install Node.js/npm first."
+      info "Installing acpx for Codex integration..."
+      npm install -g acpx@latest >/dev/null 2>&1 || run_as_root npm install -g acpx@latest >/dev/null
+      has acpx || warn "acpx install completed, but acpx was not found on PATH."
+      ;;
+    *)
+      warn "Skipping acpx install. Install later with: npm install -g acpx@latest"
+      ;;
+  esac
+}
+
 run_headless_onboarding() {
   [ "$PLATFORM" = "linux" ] || return 0
 
@@ -531,17 +561,49 @@ run_headless_onboarding() {
     info "No interactive terminal detected; using DOTAGENTS_* env vars and defaults."
   fi
 
-  local api_key base_url model discord_token remote_api_key port
-  api_key="$(ask "OpenAI-compatible API key: " DOTAGENTS_API_KEY "")"
-  base_url="$(ask "API base URL [leave empty for OpenAI default]: " DOTAGENTS_API_BASE_URL "")"
-  model="$(ask "Model name [gpt-4.1-mini]: " DOTAGENTS_MODEL "gpt-4.1-mini")"
+  printf "  ${BOLD}Auth mode${NC}\n"
+  printf "  1) Provider API token (OpenAI-compatible)\n"
+  printf "  2) Codex auth via acpx\n"
+  printf "  3) Skip for now\n\n"
+
+  local auth_mode api_key base_url model codex_api_key discord_token remote_api_key port
+  auth_mode="${AUTH_MODE:-$(ask "Choose auth mode [provider/codex/skip]: " DOTAGENTS_AUTH_MODE "provider")}"
+  auth_mode="$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')"
+  case "$auth_mode" in
+    1|provider|providers|api|token|openai) auth_mode="provider" ;;
+    2|codex|acpx) auth_mode="codex" ;;
+    3|skip|none|later) auth_mode="skip" ;;
+    *) warn "Unknown auth mode '$auth_mode'; defaulting to provider token."; auth_mode="provider" ;;
+  esac
+
+  api_key=""
+  base_url=""
+  model="${DOTAGENTS_MODEL:-gpt-4.1-mini}"
+  codex_api_key=""
+
+  if [ "$auth_mode" = "provider" ]; then
+    api_key="$(ask "OpenAI-compatible API key: " DOTAGENTS_API_KEY "")"
+    base_url="$(ask "API base URL [leave empty for OpenAI default]: " DOTAGENTS_API_BASE_URL "")"
+    model="$(ask "Model name [gpt-4.1-mini]: " DOTAGENTS_MODEL "gpt-4.1-mini")"
+  elif [ "$auth_mode" = "codex" ]; then
+    ensure_acpx_for_codex
+    codex_api_key="$(ask "Codex/OpenAI API key [optional if already logged in]: " DOTAGENTS_CODEX_API_KEY "${CODEX_API_KEY:-${OPENAI_API_KEY:-}}")"
+    if [ -z "$codex_api_key" ]; then
+      warn "No Codex API key saved. Make sure Codex auth is already available, or set CODEX_API_KEY later."
+    fi
+  else
+    info "Skipping provider/Codex auth. Run the CLI setup again later to configure it."
+  fi
+
   discord_token="$(ask "Discord bot token [optional]: " DOTAGENTS_DISCORD_TOKEN "")"
   port="$(ask "Remote server port [3210]: " DOTAGENTS_PORT "3210")"
   remote_api_key="${DOTAGENTS_REMOTE_API_KEY:-$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')}"
 
+  DOTAGENTS_ONBOARD_AUTH_MODE="$auth_mode" \
   DOTAGENTS_ONBOARD_API_KEY="$api_key" \
   DOTAGENTS_ONBOARD_BASE_URL="$base_url" \
   DOTAGENTS_ONBOARD_MODEL="$model" \
+  DOTAGENTS_ONBOARD_CODEX_API_KEY="$codex_api_key" \
   DOTAGENTS_ONBOARD_DISCORD_TOKEN="$discord_token" \
   DOTAGENTS_ONBOARD_REMOTE_API_KEY="$remote_api_key" \
   DOTAGENTS_ONBOARD_PORT="$port" \
@@ -551,9 +613,11 @@ const fs = require('fs')
 const path = require('path')
 
 const configFile = process.env.DOTAGENTS_ONBOARD_CONFIG_FILE
+const authMode = process.env.DOTAGENTS_ONBOARD_AUTH_MODE || 'provider'
 const apiKey = process.env.DOTAGENTS_ONBOARD_API_KEY || ''
 const baseUrl = process.env.DOTAGENTS_ONBOARD_BASE_URL || ''
 const model = process.env.DOTAGENTS_ONBOARD_MODEL || 'gpt-4.1-mini'
+const codexApiKey = process.env.DOTAGENTS_ONBOARD_CODEX_API_KEY || ''
 const discordToken = process.env.DOTAGENTS_ONBOARD_DISCORD_TOKEN || ''
 const remoteApiKey = process.env.DOTAGENTS_ONBOARD_REMOTE_API_KEY || ''
 const port = Number.parseInt(process.env.DOTAGENTS_ONBOARD_PORT || '3210', 10) || 3210
@@ -566,27 +630,68 @@ const presetMap = {
 }
 const presetId = presetMap[baseUrl] || 'builtin-openai'
 
-const cfg = {
-  openaiApiKey: apiKey,
-  openaiBaseUrl: baseUrl,
-  mcpToolsProviderId: 'openai',
-  mcpToolsOpenaiModel: model,
-  transcriptPostProcessingOpenaiModel: model,
-  currentModelPresetId: presetId,
-  modelPresets: [{
-    id: presetId,
-    apiKey,
-    baseUrl: baseUrl || undefined,
-    mcpToolsModel: model,
-    transcriptProcessingModel: model,
-    isBuiltIn: true,
-  }],
+let cfg = {}
+try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
+cfg = {
+  ...cfg,
   remoteServerEnabled: true,
   remoteServerPort: port,
   remoteServerBindAddress: '0.0.0.0',
   remoteServerApiKey: remoteApiKey,
   mcpMaxIterations: 25,
   mcpUnlimitedIterations: false,
+}
+
+if (authMode === 'provider') {
+  cfg.openaiApiKey = apiKey
+  cfg.openaiBaseUrl = baseUrl
+  cfg.mcpToolsProviderId = 'openai'
+  cfg.mcpToolsOpenaiModel = model
+  cfg.transcriptPostProcessingOpenaiModel = model
+  cfg.currentModelPresetId = presetId
+  const modelPresets = Array.isArray(cfg.modelPresets) ? cfg.modelPresets : []
+  const presetData = {
+    id: presetId,
+    apiKey,
+    baseUrl: baseUrl || undefined,
+    mcpToolsModel: model,
+    transcriptProcessingModel: model,
+    isBuiltIn: true,
+  }
+  const existingIdx = modelPresets.findIndex((preset) => preset?.id === presetId)
+  if (existingIdx >= 0) modelPresets[existingIdx] = { ...modelPresets[existingIdx], ...presetData }
+  else modelPresets.push(presetData)
+  cfg.modelPresets = modelPresets
+  cfg.mainAgentMode = 'api'
+} else if (authMode === 'codex') {
+  cfg.mainAgentMode = 'acpx'
+  cfg.mainAgentName = 'codex'
+
+  const now = Date.now()
+  const agentDir = path.join(process.env.HOME || '.', '.agents', 'agents', 'codex')
+  fs.mkdirSync(agentDir, { recursive: true })
+  fs.writeFileSync(path.join(agentDir, 'agent.md'), [
+    '---',
+    'kind: agent',
+    'id: codex',
+    'name: codex',
+    'displayName: Codex',
+    'description: OpenAI Codex via acpx',
+    'connection-type: acpx',
+    'role: external-agent',
+    'enabled: true',
+    `createdAt: ${now}`,
+    `updatedAt: ${now}`,
+    '---',
+    '',
+    'OpenAI Codex coding agent.',
+    '',
+  ].join('\n'))
+  const connection = { type: 'acpx', agent: 'codex' }
+  if (codexApiKey) {
+    connection.env = { CODEX_API_KEY: codexApiKey, OPENAI_API_KEY: codexApiKey }
+  }
+  fs.writeFileSync(path.join(agentDir, 'config.json'), JSON.stringify({ connection }, null, 2))
 }
 
 if (discordToken) {

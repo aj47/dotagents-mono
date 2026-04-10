@@ -46,6 +46,7 @@ interface AgentTarget {
   commandToken?: string
   agentCommand?: string
   cwd?: string
+  env?: Record<string, string>
   displayName?: string
 }
 
@@ -368,6 +369,7 @@ class ACPXService extends EventEmitter {
       command?: string
       args?: string[]
       cwd?: string
+      env?: Record<string, string>
     }
 
     // Resolve the acpx agent token:
@@ -384,6 +386,7 @@ class ACPXService extends EventEmitter {
         ? joinAgentCommand(connection.command, connection.args)
         : undefined,
       cwd: connection.cwd,
+      env: connection.env,
       displayName: profile.displayName,
     }
   }
@@ -439,12 +442,16 @@ class ACPXService extends EventEmitter {
     options: { cwd?: string; expectJsonDocument?: boolean; streamJsonRpc?: boolean; sessionName?: string },
   ): Promise<{ stdout: string; stderr: string }> {
     const resolved = await mcpService.resolveCommandPath('acpx').catch(() => 'acpx')
+    const targetEnv = this.resolveTarget(agentName)?.env
     const args = [...this.buildBaseArgs(agentName, options.cwd), ...commandArgs]
 
     return await new Promise((resolve, reject) => {
       const child = spawn(resolved, args, {
         cwd: options.cwd,
-        env: buildAcpxSpawnEnv(process.env as Record<string, string | undefined>) as typeof process.env,
+        env: {
+          ...buildAcpxSpawnEnv(process.env as Record<string, string | undefined>),
+          ...targetEnv,
+        } as typeof process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 

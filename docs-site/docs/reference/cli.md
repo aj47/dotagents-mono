@@ -50,12 +50,26 @@ dotagents
 /setup
 ```
 
-Setup asks for:
+Setup asks which auth mode to use:
 
-- OpenAI-compatible API key
-- Optional API base URL
-- Model name
+1. **Provider API token** — OpenAI-compatible API key, optional base URL, and model name.
+2. **Codex auth via acpx** — configure Codex as the main agent and optionally save a Codex/OpenAI API key.
+
+It also asks for:
+
 - Optional Discord bot token
+
+For Codex mode, the setup flow creates a Codex agent profile at:
+
+```bash
+~/.agents/agents/codex/
+```
+
+If `acpx` is not installed, setup can install it with npm. You can also install it manually:
+
+```bash
+npm install -g acpx@latest
+```
 
 The CLI stores headless config at:
 

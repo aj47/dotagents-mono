@@ -58,9 +58,38 @@ PORT="$(get_config_val remoteServerPort)"; PORT="${PORT:-3210}"
 API_KEY="$(get_config_val remoteServerApiKey)"
 
 is_running() {
+  local current_port current_api_key
+  current_port="$(get_config_val remoteServerPort)"
+  current_api_key="$(get_config_val remoteServerApiKey)"
+  PORT="${current_port:-$PORT}"
+  API_KEY="${current_api_key:-$API_KEY}"
+
   curl -sf -o /dev/null --max-time 2 \
     -H "Authorization: Bearer $API_KEY" \
     "http://127.0.0.1:$PORT/v1/operator/health" 2>/dev/null
+}
+
+start_headless_daemon() {
+  local log_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotagents/headless.log"
+  mkdir -p "$(dirname "$log_file")"
+
+  echo -e "${D}Starting DotAgents headless daemon on port $PORT...${R}" >&2
+  nohup xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh" \
+    >"$log_file" 2>&1 < /dev/null &
+
+  local i
+  for i in {1..40}; do
+    sleep 0.5
+    if is_running; then
+      echo -e "${G}✓ DotAgents daemon started${R}" >&2
+      return 0
+    fi
+  done
+
+  echo -e "${RED}✗ DotAgents daemon did not become healthy on port $PORT.${R}" >&2
+  echo -e "${D}  Recent log output from $log_file:${R}" >&2
+  tail -n 40 "$log_file" >&2 2>/dev/null || true
+  return 1
 }
 
 if ! is_running; then
@@ -70,7 +99,7 @@ if ! is_running; then
     echo -e "${D}  desktop app first (it exposes the same /v1/operator/* API).${R}" >&2
     exit 1
   fi
-  exec xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh"
+  start_headless_daemon || exit 1
 fi
 
 # ── Tab completion ────────────────────────────────────────────
@@ -247,6 +276,87 @@ test_api_key() {
   fi
 }
 
+ensure_acpx() {
+  if command -v acpx >/dev/null 2>&1; then
+    echo -e "  ${G}✓ acpx found: $(acpx --version 2>/dev/null | head -1)${R}"
+    return 0
+  fi
+
+  echo -en "  ${C}?${R} Install acpx for Codex integration? ${D}[Y/n]${R}: "
+  local answer
+  read -r answer
+  answer="${answer:-y}"
+  if [[ ! "$answer" =~ ^[Yy] ]]; then
+    echo -e "  ${Y}⚠ Skipped. Install later with: npm install -g acpx@latest${R}"
+    return 0
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo -e "  ${RED}✗ npm is required to install acpx${R}"
+    return 1
+  fi
+
+  echo -e "  ${D}Installing acpx...${R}"
+  npm install -g acpx@latest >/dev/null 2>&1 || sudo npm install -g acpx@latest >/dev/null
+  command -v acpx >/dev/null 2>&1 \
+    && echo -e "  ${G}✓ acpx installed${R}" \
+    || echo -e "  ${Y}⚠ acpx install finished, but acpx is not on PATH${R}"
+}
+
+configure_codex_auth() {
+  echo -e "  ${B}Codex via acpx${R}"
+  echo -e "  ${D}Uses acpx's built-in Codex adapter. You can save a token here or rely on existing Codex auth.${R}"
+  echo ""
+
+  ensure_acpx || true
+
+  local codex_key
+  codex_key="$(ask_val "Codex/OpenAI API key (blank if already logged in)" "" "${CODEX_API_KEY:-${OPENAI_API_KEY:-}}")"
+
+  CODEX_KEY_RAW="$codex_key" CONFIG_FILE_RAW="$CONFIG_FILE" node <<'NODE'
+const fs = require('fs')
+const path = require('path')
+
+const configFile = process.env.CONFIG_FILE_RAW
+const codexKey = process.env.CODEX_KEY_RAW || ''
+let cfg = {}
+try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
+cfg.mainAgentMode = 'acpx'
+cfg.mainAgentName = 'codex'
+fs.mkdirSync(path.dirname(configFile), { recursive: true })
+fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2))
+
+const now = Date.now()
+const agentDir = path.join(process.env.HOME || '.', '.agents', 'agents', 'codex')
+fs.mkdirSync(agentDir, { recursive: true })
+fs.writeFileSync(path.join(agentDir, 'agent.md'), [
+  '---',
+  'kind: agent',
+  'id: codex',
+  'name: codex',
+  'displayName: Codex',
+  'description: OpenAI Codex via acpx',
+  'connection-type: acpx',
+  'role: external-agent',
+  'enabled: true',
+  `createdAt: ${now}`,
+  `updatedAt: ${now}`,
+  '---',
+  '',
+  'OpenAI Codex coding agent.',
+  '',
+].join('\n'))
+const connection = { type: 'acpx', agent: 'codex' }
+if (codexKey) connection.env = { CODEX_API_KEY: codexKey, OPENAI_API_KEY: codexKey }
+fs.writeFileSync(path.join(agentDir, 'config.json'), JSON.stringify({ connection }, null, 2))
+NODE
+
+  echo -e "  ${G}✓ Codex configured as the main agent${R}"
+  if [[ -z "$codex_key" ]]; then
+    echo -e "  ${D}  No token saved. Make sure Codex auth is available before chatting.${R}"
+  fi
+}
+
 run_setup() {
   echo ""
   echo -e "${B}${C}╭───────────────────────────────────────────────────╮${R}"
@@ -261,9 +371,97 @@ run_setup() {
   cur_model="$(get_config_val mcpToolsOpenaiModel)"
   cur_discord="$(get_config_val discordBotToken)"
 
-  # ── Step 1: LLM Provider ──
-  echo -e "  ${B}Step 1/3 — LLM Configuration${R}"
-  echo -e "  ${D}Powers the AI agent. Works with OpenAI, Groq, Gemini, or any compatible API.${R}"
+  # ── Step 1: LLM Provider / Codex ──
+  echo -e "  ${B}Step 1/3 — Agent Auth${R}"
+  echo -e "  ${D}Choose DotAgents API mode with a provider token, or Codex via acpx.${R}"
+  echo ""
+
+  echo -e "  ${B}Auth mode${R}"
+  echo -e "  ${C}1${R}) Provider API token (OpenAI-compatible)"
+  echo -e "  ${C}2${R}) Codex auth via acpx"
+  echo ""
+
+  local auth_mode
+  auth_mode="$(ask_val "Choose auth mode" "1" "")"
+  case "$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')" in
+    2|codex|acpx)
+      configure_codex_auth
+      ;;
+    *)
+      configure_provider_auth "$cur_key" "$cur_base" "$cur_model"
+      ;;
+  esac
+
+  # ── Step 2: Discord ──
+  echo ""
+  echo -e "  ${B}Step 2/3 — Discord Bot ${D}(optional)${R}"
+  echo -e "  ${D}Connect a Discord bot to chat with the agent from Discord.${R}"
+  echo -e "  ${D}Create one at: ${C}https://discord.com/developers/applications${R}"
+  echo -e "  ${D}Required: ${B}Message Content Intent${D} enabled in Bot settings.${R}"
+  echo ""
+
+  local discord_token
+  discord_token="$(ask_val "Discord bot token (blank to skip)" "" "$cur_discord")"
+
+  if [[ -n "$discord_token" ]]; then
+    config_set_raw "discordBotToken" "\"$discord_token\""
+    config_set_raw "discordEnabled" "true"
+    config_set_raw "discordRequireMention" "true"
+    config_set_raw "discordDmEnabled" "false"
+    echo -e "  ${G}✓ Discord configured & enabled${R}"
+    echo -e "  ${D}  • Requires @mention in servers (safe default)${R}"
+    echo -e "  ${D}  • DMs disabled (enable with: /config set discordDmEnabled true)${R}"
+    echo ""
+    echo -e "  ${D}Don't forget to invite your bot to a server:${R}"
+    echo -e "  ${D}${C}https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=2048&scope=bot${R}"
+  else
+    echo -e "  ${D}Skipped. You can set this later with: /discord token <token>${R}"
+  fi
+
+  # ── Step 3: Restart ──
+  echo ""
+  echo -e "  ${B}Step 3/3 — Apply Changes${R}"
+  echo ""
+  echo -en "  ${C}?${R} Restart service to apply? ${D}[Y/n]${R}: "
+  local restart_answer
+  read -r restart_answer
+  restart_answer="${restart_answer:-y}"
+
+  if [[ "$restart_answer" =~ ^[Yy] ]]; then
+    echo -e "  ${D}Restarting...${R}"
+    sudo systemctl restart dotagents 2>/dev/null || true
+    sleep 5
+    # Re-read config for new API key
+    API_KEY="$(get_config_val remoteServerApiKey)"
+    if is_running; then
+      echo -e "  ${G}✓ Service restarted successfully${R}"
+      # Reconnect Discord if configured
+      if [[ -n "$discord_token" ]]; then
+        sleep 2
+        api_post /v1/operator/discord/connect -d '{}' > /dev/null 2>&1 || true
+        echo -e "  ${G}✓ Discord bot connecting...${R}"
+      fi
+    else
+      echo -e "  ${RED}✗ Service didn't start. Check: sudo journalctl -u dotagents -f${R}"
+    fi
+  else
+    echo -e "  ${D}Skipped. Run: sudo systemctl restart dotagents${R}"
+  fi
+
+  echo ""
+  echo -e "${B}${C}╭───────────────────────────────────────────────────╮${R}"
+  echo -e "${B}${C}│${R}  ${G}✓ Setup complete!${R}                                ${B}${C}│${R}"
+  echo -e "${B}${C}╰───────────────────────────────────────────────────╯${R}"
+  echo ""
+  echo -e "  ${D}Try chatting: just type a message below${R}"
+  echo -e "  ${D}Check status: /status${R}"
+  echo ""
+}
+
+configure_provider_auth() {
+  local cur_key="$1" cur_base="$2" cur_model="$3"
+  echo -e "  ${B}Provider API token${R}"
+  echo -e "  ${D}Works with OpenAI, Groq, Gemini-compatible endpoints, OpenRouter, Together, Cerebras, and Perplexity.${R}"
   echo ""
 
   local api_key base_url model
@@ -350,76 +548,12 @@ run_setup() {
     fs.writeFileSync(f, JSON.stringify(c, null, 2));
   " 2>/dev/null
   echo -e "  ${G}✓ LLM configuration saved${R}"
-
-  # ── Step 2: Discord ──
-  echo ""
-  echo -e "  ${B}Step 2/3 — Discord Bot ${D}(optional)${R}"
-  echo -e "  ${D}Connect a Discord bot to chat with the agent from Discord.${R}"
-  echo -e "  ${D}Create one at: ${C}https://discord.com/developers/applications${R}"
-  echo -e "  ${D}Required: ${B}Message Content Intent${D} enabled in Bot settings.${R}"
-  echo ""
-
-  local discord_token
-  discord_token="$(ask_val "Discord bot token (blank to skip)" "" "$cur_discord")"
-
-  if [[ -n "$discord_token" ]]; then
-    config_set_raw "discordBotToken" "\"$discord_token\""
-    config_set_raw "discordEnabled" "true"
-    config_set_raw "discordRequireMention" "true"
-    config_set_raw "discordDmEnabled" "false"
-    echo -e "  ${G}✓ Discord configured & enabled${R}"
-    echo -e "  ${D}  • Requires @mention in servers (safe default)${R}"
-    echo -e "  ${D}  • DMs disabled (enable with: /config set discordDmEnabled true)${R}"
-    echo ""
-    echo -e "  ${D}Don't forget to invite your bot to a server:${R}"
-    echo -e "  ${D}${C}https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=2048&scope=bot${R}"
-  else
-    echo -e "  ${D}Skipped. You can set this later with: /discord token <token>${R}"
-  fi
-
-  # ── Step 3: Restart ──
-  echo ""
-  echo -e "  ${B}Step 3/3 — Apply Changes${R}"
-  echo ""
-  echo -en "  ${C}?${R} Restart service to apply? ${D}[Y/n]${R}: "
-  local restart_answer
-  read -r restart_answer
-  restart_answer="${restart_answer:-y}"
-
-  if [[ "$restart_answer" =~ ^[Yy] ]]; then
-    echo -e "  ${D}Restarting...${R}"
-    sudo systemctl restart dotagents 2>/dev/null || true
-    sleep 5
-    # Re-read config for new API key
-    API_KEY="$(get_config_val remoteServerApiKey)"
-    if is_running; then
-      echo -e "  ${G}✓ Service restarted successfully${R}"
-      # Reconnect Discord if configured
-      if [[ -n "$discord_token" ]]; then
-        sleep 2
-        api_post /v1/operator/discord/connect -d '{}' > /dev/null 2>&1 || true
-        echo -e "  ${G}✓ Discord bot connecting...${R}"
-      fi
-    else
-      echo -e "  ${RED}✗ Service didn't start. Check: sudo journalctl -u dotagents -f${R}"
-    fi
-  else
-    echo -e "  ${D}Skipped. Run: sudo systemctl restart dotagents${R}"
-  fi
-
-  echo ""
-  echo -e "${B}${C}╭───────────────────────────────────────────────────╮${R}"
-  echo -e "${B}${C}│${R}  ${G}✓ Setup complete!${R}                                ${B}${C}│${R}"
-  echo -e "${B}${C}╰───────────────────────────────────────────────────╯${R}"
-  echo ""
-  echo -e "  ${D}Try chatting: just type a message below${R}"
-  echo -e "  ${D}Check status: /status${R}"
-  echo ""
 }
 
 # ── Auto-setup on missing config ──────────────────────────────
 CUR_API_KEY="$(get_config_val openaiApiKey)"
-if [[ -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ]]; then
+CUR_MAIN_AGENT_MODE="$(get_config_val mainAgentMode)"
+if [[ "$CUR_MAIN_AGENT_MODE" != "acpx" && ( -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ) ]]; then
   echo -e "  ${Y}⚠ No API key configured.${R} Let's set things up."
   run_setup
 else
