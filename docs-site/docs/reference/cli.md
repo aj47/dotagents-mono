@@ -53,7 +53,7 @@ dotagents
 Setup asks which auth mode to use:
 
 1. **Provider API token** — OpenAI-compatible API key, optional base URL, and model name.
-2. **Codex auth via acpx** — configure Codex as the main agent and optionally save a Codex/OpenAI API key.
+2. **Codex ChatGPT OAuth via acpx** — configure Codex as the main agent and run the Codex headless OAuth flow. No API key is required.
 
 It also asks for:
 
@@ -65,11 +65,20 @@ For Codex mode, the setup flow creates a Codex agent profile at:
 ~/.agents/agents/codex/
 ```
 
-If `acpx` is not installed, setup can install it with npm. You can also install it manually:
+If `acpx` or the Codex CLI are not installed, setup can install them with npm. You can also install them manually:
 
 ```bash
 npm install -g acpx@latest
+npm install -g @openai/codex@latest
 ```
+
+For headless SSH servers, Codex uses device-code OAuth:
+
+```bash
+codex login --device-auth
+```
+
+Open the shown link on your desktop browser, then enter the one-time code from the SSH session. Codex stores the login cache in `~/.codex/auth.json`.
 
 The CLI stores headless config at:
 

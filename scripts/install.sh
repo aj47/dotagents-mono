@@ -12,8 +12,10 @@
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
 #   DOTAGENTS_AUTH_MODE=codex  Headless onboarding auth mode: provider, codex, or skip
-#   DOTAGENTS_CODEX_API_KEY=... Codex API key for codex auth mode
+#   DOTAGENTS_CODEX_API_KEY=... Advanced: use API-key auth for codex mode instead of OAuth
 #   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex auth mode
+#   DOTAGENTS_INSTALL_CODEX=0 Skip installing Codex CLI when using codex auth mode
+#   DOTAGENTS_CODEX_LOGIN=0   Skip Codex ChatGPT OAuth login during onboarding
 
 INTERACTIVE=false
 HAS_TTY=false
@@ -541,6 +543,59 @@ ensure_acpx_for_codex() {
   esac
 }
 
+ensure_codex_cli_for_codex_auth() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  if has codex; then
+    ok "Codex CLI $(codex --version 2>/dev/null | head -1) found"
+    return 0
+  fi
+
+  local install_codex="${DOTAGENTS_INSTALL_CODEX:-}"
+  if [ -z "$install_codex" ]; then
+    install_codex="$(ask "Install Codex CLI for ChatGPT OAuth? [Y/n]: " DOTAGENTS_INSTALL_CODEX "y")"
+  fi
+
+  case "$(printf '%s' "$install_codex" | tr '[:upper:]' '[:lower:]')" in
+    y|yes|1|true|on)
+      ensure_cmd npm "Install Node.js/npm first."
+      info "Installing Codex CLI..."
+      npm install -g @openai/codex@latest >/dev/null 2>&1 || run_as_root npm install -g @openai/codex@latest >/dev/null
+      has codex || warn "Codex CLI install completed, but codex was not found on PATH."
+      ;;
+    *)
+      warn "Skipping Codex CLI install. Install later with: npm install -g @openai/codex@latest"
+      ;;
+  esac
+}
+
+run_codex_chatgpt_login() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  if has codex && codex login status >/dev/null 2>&1; then
+    ok "Codex ChatGPT auth already configured"
+    return 0
+  fi
+
+  local run_login="${DOTAGENTS_CODEX_LOGIN:-}" default_login="y"
+  [ "$INTERACTIVE" = "true" ] || default_login="0"
+  if [ -z "$run_login" ]; then
+    run_login="$(ask "Run Codex ChatGPT OAuth login now? [Y/n]: " DOTAGENTS_CODEX_LOGIN "$default_login")"
+  fi
+
+  case "$(printf '%s' "$run_login" | tr '[:upper:]' '[:lower:]')" in
+    y|yes|1|true|on)
+      has codex || { warn "Codex CLI is not installed; skipping login."; return 0; }
+      info "Starting Codex ChatGPT OAuth device login..."
+      info "Open the shown link on your desktop browser, then enter the one-time code."
+      codex login --device-auth || warn "Codex login did not complete. Run later with: codex login --device-auth"
+      ;;
+    *)
+      info "Skipping Codex login. Run later with: codex login --device-auth"
+      ;;
+  esac
+}
+
 run_headless_onboarding() {
   [ "$PLATFORM" = "linux" ] || return 0
 
@@ -587,10 +642,9 @@ run_headless_onboarding() {
     model="$(ask "Model name [gpt-4.1-mini]: " DOTAGENTS_MODEL "gpt-4.1-mini")"
   elif [ "$auth_mode" = "codex" ]; then
     ensure_acpx_for_codex
-    codex_api_key="$(ask "Codex/OpenAI API key [optional if already logged in]: " DOTAGENTS_CODEX_API_KEY "${CODEX_API_KEY:-${OPENAI_API_KEY:-}}")"
-    if [ -z "$codex_api_key" ]; then
-      warn "No Codex API key saved. Make sure Codex auth is already available, or set CODEX_API_KEY later."
-    fi
+    ensure_codex_cli_for_codex_auth
+    run_codex_chatgpt_login
+    codex_api_key="${DOTAGENTS_CODEX_API_KEY:-}"
   else
     info "Skipping provider/Codex auth. Run the CLI setup again later to configure it."
   fi

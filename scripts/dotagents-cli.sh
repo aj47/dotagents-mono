@@ -303,22 +303,75 @@ ensure_acpx() {
     || echo -e "  ${Y}⚠ acpx install finished, but acpx is not on PATH${R}"
 }
 
+ensure_codex_cli() {
+  if command -v codex >/dev/null 2>&1; then
+    echo -e "  ${G}✓ Codex CLI found: $(codex --version 2>/dev/null | head -1)${R}"
+    return 0
+  fi
+
+  echo -en "  ${C}?${R} Install Codex CLI for ChatGPT OAuth? ${D}[Y/n]${R}: "
+  local answer
+  read -r answer
+  answer="${answer:-y}"
+  if [[ ! "$answer" =~ ^[Yy] ]]; then
+    echo -e "  ${Y}⚠ Skipped. Install later with: npm install -g @openai/codex@latest${R}"
+    return 0
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo -e "  ${RED}✗ npm is required to install the Codex CLI${R}"
+    return 1
+  fi
+
+  echo -e "  ${D}Installing Codex CLI...${R}"
+  npm install -g @openai/codex@latest >/dev/null 2>&1 || sudo npm install -g @openai/codex@latest >/dev/null
+  command -v codex >/dev/null 2>&1 \
+    && echo -e "  ${G}✓ Codex CLI installed${R}" \
+    || echo -e "  ${Y}⚠ Codex CLI install finished, but codex is not on PATH${R}"
+}
+
+run_codex_login() {
+  if command -v codex >/dev/null 2>&1 && codex login status >/dev/null 2>&1; then
+    echo -e "  ${G}✓ Codex ChatGPT auth already configured${R}"
+    return 0
+  fi
+
+  echo ""
+  echo -e "  ${B}Codex ChatGPT OAuth${R}"
+  echo -e "  ${D}No API key required. This uses Codex's device-code login for headless SSH sessions.${R}"
+  echo -e "  ${D}Open the shown link on your desktop browser, then enter the one-time code.${R}"
+  echo ""
+  echo -en "  ${C}?${R} Run Codex ChatGPT OAuth login now? ${D}[Y/n]${R}: "
+  local answer
+  read -r answer
+  answer="${answer:-y}"
+  if [[ ! "$answer" =~ ^[Yy] ]]; then
+    echo -e "  ${D}Skipped. Run later with: codex login --device-auth${R}"
+    return 0
+  fi
+
+  if ! command -v codex >/dev/null 2>&1; then
+    echo -e "  ${Y}⚠ Codex CLI is not installed. Run later with: npm install -g @openai/codex@latest && codex login --device-auth${R}"
+    return 0
+  fi
+
+  codex login --device-auth || echo -e "  ${Y}⚠ Codex login did not complete. Run later with: codex login --device-auth${R}"
+}
+
 configure_codex_auth() {
   echo -e "  ${B}Codex via acpx${R}"
-  echo -e "  ${D}Uses acpx's built-in Codex adapter. You can save a token here or rely on existing Codex auth.${R}"
+  echo -e "  ${D}Uses acpx's built-in Codex adapter and Codex's ChatGPT OAuth cache.${R}"
   echo ""
 
   ensure_acpx || true
+  ensure_codex_cli || true
+  run_codex_login || true
 
-  local codex_key
-  codex_key="$(ask_val "Codex/OpenAI API key (blank if already logged in)" "" "${CODEX_API_KEY:-${OPENAI_API_KEY:-}}")"
-
-  CODEX_KEY_RAW="$codex_key" CONFIG_FILE_RAW="$CONFIG_FILE" node <<'NODE'
+  CONFIG_FILE_RAW="$CONFIG_FILE" node <<'NODE'
 const fs = require('fs')
 const path = require('path')
 
 const configFile = process.env.CONFIG_FILE_RAW
-const codexKey = process.env.CODEX_KEY_RAW || ''
 let cfg = {}
 try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
 cfg.mainAgentMode = 'acpx'
@@ -347,14 +400,11 @@ fs.writeFileSync(path.join(agentDir, 'agent.md'), [
   '',
 ].join('\n'))
 const connection = { type: 'acpx', agent: 'codex' }
-if (codexKey) connection.env = { CODEX_API_KEY: codexKey, OPENAI_API_KEY: codexKey }
 fs.writeFileSync(path.join(agentDir, 'config.json'), JSON.stringify({ connection }, null, 2))
 NODE
 
   echo -e "  ${G}✓ Codex configured as the main agent${R}"
-  if [[ -z "$codex_key" ]]; then
-    echo -e "  ${D}  No token saved. Make sure Codex auth is available before chatting.${R}"
-  fi
+  echo -e "  ${D}  Auth cache: ~/.codex/auth.json, if login completed successfully.${R}"
 }
 
 run_setup() {
