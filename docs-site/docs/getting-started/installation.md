@@ -27,6 +27,8 @@ These installers auto-detect your OS and architecture, download the correct rele
 
 Prefer a manual download? Use the latest release page for **[macOS](https://github.com/aj47/dotagents-mono/releases/latest)**, **[Windows](https://github.com/aj47/dotagents-mono/releases/latest)**, or **[Linux](https://github.com/aj47/dotagents-mono/releases/latest)** artifacts.
 
+Need a terminal-only Linux setup? Use the source/headless installer option below, then see the [Headless CLI reference](/reference/cli) for `dotagents`, `/setup`, `/status`, `/config`, and Discord commands.
+
 **Options:**
 
 ```bash

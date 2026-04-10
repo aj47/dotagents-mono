@@ -1,9 +1,9 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 sidebar_label: "Debug & Diagnostics"
 ---
 
-# CLI & Debug Flags
+# Debug & Diagnostics
 
 DotAgents includes comprehensive debug logging for development and troubleshooting.
 

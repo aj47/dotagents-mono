@@ -82,7 +82,8 @@ Prefer the full guide? See [Installation](getting-started/installation).
 ### Reference
 
 - **[Remote API](reference/api)** — HTTP API for mobile and external clients
-- **[CLI & Debug Flags](reference/debug)** — Debug logging and diagnostic tools
+- **[Headless CLI](reference/cli)** — Terminal setup, chat, status, config, and Discord commands
+- **[Debug & Diagnostics](reference/debug)** — Debug logging and diagnostic tools
 - **[Glossary](reference/glossary)** — Key terms and definitions
 
 ---
