@@ -36,9 +36,9 @@ All data is stored **exclusively** on your local machine:
 ## 🏗️ **Technical Details**
 
 ### Data Locations
-- **macOS**: `~/Library/Application Support/SpeakMCP/`
-- **Windows**: `%APPDATA%/SpeakMCP/`
-- **Linux**: `~/.config/SpeakMCP/`
+- **macOS**: `~/Library/Application Support/DotAgents/`
+- **Windows**: `%APPDATA%/DotAgents/`
+- **Linux**: `~/.config/DotAgents/`
 
 
 ### Encryption
@@ -88,7 +88,6 @@ When you use DotAgents with external services (OpenAI, Groq, Gemini, etc.):
 ## 📞 **Contact Information**
 
 ### Privacy Questions
-- **Email**: privacy@speakmcp.com
 - **GitHub**: Create an issue on our GitHub repository
 - **Response Time**: Within 48 hours
 

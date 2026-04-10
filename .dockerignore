@@ -11,7 +11,7 @@ out/
 build/
 
 # Rust build artifacts (will be rebuilt in container)
-apps/desktop/speakmcp-rs/target/
+apps/desktop/dotagents-rs/target/
 
 # IDE and editor files
 .idea/

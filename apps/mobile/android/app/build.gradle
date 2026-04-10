@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.aj47.speakmcp'
+    namespace 'com.aj47.dotagents'
     defaultConfig {
-        applicationId 'com.aj47.speakmcp'
+        applicationId 'com.aj47.dotagents'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

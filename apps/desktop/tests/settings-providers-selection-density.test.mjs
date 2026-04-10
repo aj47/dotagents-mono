@@ -8,21 +8,23 @@ const settingsProvidersSource = fs.readFileSync(
   'utf8',
 )
 
-const providerSelectionBlock = settingsProvidersSource.match(
-  /<ControlGroup title="Provider Selection">[\s\S]*?<\/ControlGroup>/,
+const providerSetupBlock = settingsProvidersSource.match(
+  /<h2 className="text-sm font-semibold">Provider Setup<\/h2>[\s\S]*?{isMainAgentAcpMode && \(/,
 )?.[0] ?? ''
 
 test('desktop provider selection removes redundant intro helper copy while keeping the actionable rows', () => {
-  assert.ok(providerSelectionBlock, 'expected to find the desktop provider selection group')
-  assert.doesNotMatch(providerSelectionBlock, /Select which AI provider to use for each feature\. Configure API keys and models in the provider sections below\./)
-  assert.match(providerSelectionBlock, /<ProviderSelector[\s\S]*?label="Voice Transcription \(STT\)"/)
-  assert.match(providerSelectionBlock, /<ProviderSelector[\s\S]*?label="Transcript Post-Processing"/)
-  assert.match(providerSelectionBlock, /<ProviderSelector[\s\S]*?label=\{isMainAgentAcpMode \? "Agent\/MCP Tools \(API mode\)" : "Agent\/MCP Tools"\}/)
-  assert.match(providerSelectionBlock, /<ProviderSelector[\s\S]*?label="Text-to-Speech \(TTS\)"/)
+  assert.ok(providerSetupBlock, 'expected to find the desktop provider setup section')
+  assert.doesNotMatch(providerSetupBlock, /Select which AI provider to use for each feature\. Configure API keys and models in the provider sections below\./)
+  assert.match(providerSetupBlock, /Use this page for API keys, base URLs, local engine downloads, and quick provider diagnostics\./)
+  assert.match(settingsProvidersSource, /label: "STT"/)
+  assert.match(settingsProvidersSource, /label: "Cleanup"/)
+  assert.match(settingsProvidersSource, /label: "Agent"/)
+  assert.match(settingsProvidersSource, /label: "TTS"/)
+  assert.doesNotMatch(settingsProvidersSource, /Agent\/MCP Tools/)
 })
 
 test('desktop provider selection still keeps ACP-specific orientation copy in source', () => {
-  assert.ok(providerSelectionBlock, 'expected to find the desktop provider selection group')
-  assert.match(providerSelectionBlock, /ACP Main Agent:/)
-  assert.match(providerSelectionBlock, /In ACP mode, this agent handles chat submissions\. API provider selection below for Agent\/MCP tools applies in API mode\./)
+  assert.ok(providerSetupBlock, 'expected to find the desktop provider setup section')
+  assert.match(settingsProvidersSource, /ACP Main Agent:/)
+  assert.match(settingsProvidersSource, /ACP mode handles chat submissions through the selected agent\. Provider setup below still applies to API-backed\s*tools, voice, and local engines\./)
 })

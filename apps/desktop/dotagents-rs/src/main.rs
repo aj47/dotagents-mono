@@ -391,7 +391,7 @@ fn main() {
             }
         }
     } else {
-        let name = args.get(0).map(|s| s.as_str()).unwrap_or("speakmcp-rs");
+        let name = args.get(0).map(|s| s.as_str()).unwrap_or("dotagents-rs");
         eprintln!("Usage: {} [listen|write <text>]", name);
         eprintln!("Commands:");
         eprintln!("  listen       - Listen for keyboard events");

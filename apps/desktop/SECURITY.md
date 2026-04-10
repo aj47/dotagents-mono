@@ -27,7 +27,6 @@ DotAgents is designed with security as a primary concern. This document outlines
 ## 🚨 Vulnerability Reporting
 
 ### How to Report
-- **Email**: security@speakmcp.com
 - **GitHub**: Create a security advisory on our GitHub repository
 - **Responsible Disclosure**: 90-day disclosure timeline
 
@@ -68,7 +67,7 @@ DotAgents is designed with security as a primary concern. This document outlines
 ## 📋 Incident Response
 
 ### Response Team
-- **Primary Contact**: security@speakmcp.com
+- **Primary Contact**: GitHub security advisories
 - **Response Time**: 24-48 hours for critical issues
 - **Communication**: Transparent public communication about security issues
 
@@ -94,8 +93,7 @@ DotAgents is designed with security as a primary concern. This document outlines
 ## 📞 Contact Information
 
 ### Security Team
-- **Email**: security@speakmcp.com
-- **PGP Key**: Available on keybase.io/speakmcp
+- **GitHub**: Create a security advisory on our GitHub repository
 - **Emergency**: Use GitHub security advisories for urgent issues
 
 ### Response SLA

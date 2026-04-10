@@ -1,4 +1,4 @@
-package com.aj47.speakmcp
+package com.aj47.dotagents
 
 import android.app.Application
 import android.content.res.Configuration

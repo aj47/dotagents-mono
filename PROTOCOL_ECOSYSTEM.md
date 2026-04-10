@@ -586,7 +586,7 @@ config.json (user settings)
 ## Conceptual Data Model
 
 ```
-@speakmcp/shared (packages/shared/src/types.ts)
+@dotagents/shared (packages/shared/src/types.ts)
   └─ ToolCall, ToolResult, BaseChatMessage, ChatApiResponse
 
 Conceptual .agents model

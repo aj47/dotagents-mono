@@ -29,7 +29,8 @@ test('avoids decorative emoji chrome in the mobile remote provider selection sub
   assert.match(providerSection, />Voice Transcription \(STT\)</);
   assert.doesNotMatch(providerSection, />Transcript Post-Processing</);
   assert.doesNotMatch(providerSection, />Transcript Processing</);
-  assert.match(providerSection, />Agent\/MCP Tools</);
+  assert.match(providerSection, />Agent</);
+  assert.doesNotMatch(providerSection, />Agent\/MCP Tools</);
   assert.match(providerSection, />Text-to-Speech \(TTS\)</);
 });
 
