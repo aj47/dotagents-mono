@@ -2969,7 +2969,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const customPresets = savedPresets.filter(p => !builtInIds.has(p.id))
 
       return reply.send({
-        // Model settings
+        // Agent model settings (agent* preferred; mcpTools* legacy aliases)
+        agentProviderId: cfg.agentProviderId || cfg.mcpToolsProviderId || "openai",
+        agentOpenaiModel: cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel,
+        agentGroqModel: cfg.agentGroqModel || cfg.mcpToolsGroqModel,
+        agentGeminiModel: cfg.agentGeminiModel || cfg.mcpToolsGeminiModel,
+        agentChatgptWebModel: cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel,
         mcpToolsProviderId: cfg.mcpToolsProviderId || "openai",
         mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
@@ -3133,22 +3138,32 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Coerce to integer to avoid surprising iteration counts with floats
         updates.mcpMaxIterations = Math.floor(body.mcpMaxIterations)
       }
-      // Model settings
+      // Agent model settings (agent* preferred; mcpTools* legacy aliases)
       const validProviders = ["openai", "groq", "gemini", "chatgpt-web"]
-      if (typeof body.mcpToolsProviderId === "string" && validProviders.includes(body.mcpToolsProviderId)) {
-        updates.mcpToolsProviderId = body.mcpToolsProviderId as "openai" | "groq" | "gemini" | "chatgpt-web"
+      const agentProviderId = typeof body.agentProviderId === "string" ? body.agentProviderId : body.mcpToolsProviderId
+      if (typeof agentProviderId === "string" && validProviders.includes(agentProviderId)) {
+        updates.agentProviderId = agentProviderId as "openai" | "groq" | "gemini" | "chatgpt-web"
+        updates.mcpToolsProviderId = updates.agentProviderId
       }
-      if (typeof body.mcpToolsOpenaiModel === "string") {
-        updates.mcpToolsOpenaiModel = body.mcpToolsOpenaiModel
+      const agentOpenaiModel = typeof body.agentOpenaiModel === "string" ? body.agentOpenaiModel : body.mcpToolsOpenaiModel
+      if (typeof agentOpenaiModel === "string") {
+        updates.agentOpenaiModel = agentOpenaiModel
+        updates.mcpToolsOpenaiModel = agentOpenaiModel
       }
-      if (typeof body.mcpToolsGroqModel === "string") {
-        updates.mcpToolsGroqModel = body.mcpToolsGroqModel
+      const agentGroqModel = typeof body.agentGroqModel === "string" ? body.agentGroqModel : body.mcpToolsGroqModel
+      if (typeof agentGroqModel === "string") {
+        updates.agentGroqModel = agentGroqModel
+        updates.mcpToolsGroqModel = agentGroqModel
       }
-      if (typeof body.mcpToolsGeminiModel === "string") {
-        updates.mcpToolsGeminiModel = body.mcpToolsGeminiModel
+      const agentGeminiModel = typeof body.agentGeminiModel === "string" ? body.agentGeminiModel : body.mcpToolsGeminiModel
+      if (typeof agentGeminiModel === "string") {
+        updates.agentGeminiModel = agentGeminiModel
+        updates.mcpToolsGeminiModel = agentGeminiModel
       }
-      if (typeof body.mcpToolsChatgptWebModel === "string") {
-        updates.mcpToolsChatgptWebModel = body.mcpToolsChatgptWebModel
+      const agentChatgptWebModel = typeof body.agentChatgptWebModel === "string" ? body.agentChatgptWebModel : body.mcpToolsChatgptWebModel
+      if (typeof agentChatgptWebModel === "string") {
+        updates.agentChatgptWebModel = agentChatgptWebModel
+        updates.mcpToolsChatgptWebModel = agentChatgptWebModel
       }
       if (typeof body.chatgptWebAccessToken === "string") {
         updates.chatgptWebAccessToken = body.chatgptWebAccessToken

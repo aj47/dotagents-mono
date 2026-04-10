@@ -11,6 +11,9 @@ export interface ModelPreset {
   isBuiltIn?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  /** Preferred agent model field. Deprecated legacy alias: mcpToolsModel. */
+  agentModel?: string;
+  /** @deprecated Use agentModel instead. */
   mcpToolsModel?: string;
   transcriptProcessingModel?: string;
   /** Model for dual-model summarization (weak model) */

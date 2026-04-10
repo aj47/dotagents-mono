@@ -124,12 +124,12 @@ function isValidMcpServerConfig(config: unknown): config is Partial<ProfileMcpSe
 function isValidModelConfig(config: unknown): boolean {
   if (typeof config !== "object" || config === null || Array.isArray(config)) return false
   const c = config as Record<string, unknown>
-  for (const field of ["mcpToolsProviderId", "transcriptPostProcessingProviderId"]) {
+  for (const field of ["agentProviderId", "mcpToolsProviderId", "transcriptPostProcessingProviderId"]) {
     if (c[field] !== undefined && (typeof c[field] !== "string" || !VALID_PROVIDER_IDS.includes(c[field] as string))) return false
   }
   if (c.sttProviderId !== undefined && (typeof c.sttProviderId !== "string" || !VALID_STT_PROVIDER_IDS.includes(c.sttProviderId as string))) return false
   if (c.ttsProviderId !== undefined && (typeof c.ttsProviderId !== "string" || !VALID_TTS_PROVIDER_IDS.includes(c.ttsProviderId as string))) return false
-  for (const field of ["mcpToolsOpenaiModel", "mcpToolsGroqModel", "mcpToolsGeminiModel", "mcpToolsChatgptWebModel", "currentModelPresetId", "openaiSttModel", "groqSttModel", "transcriptPostProcessingOpenaiModel", "transcriptPostProcessingGroqModel", "transcriptPostProcessingGeminiModel", "transcriptPostProcessingChatgptWebModel"]) {
+  for (const field of ["agentOpenaiModel", "agentGroqModel", "agentGeminiModel", "agentChatgptWebModel", "mcpToolsOpenaiModel", "mcpToolsGroqModel", "mcpToolsGeminiModel", "mcpToolsChatgptWebModel", "currentModelPresetId", "openaiSttModel", "groqSttModel", "transcriptPostProcessingOpenaiModel", "transcriptPostProcessingGroqModel", "transcriptPostProcessingGeminiModel", "transcriptPostProcessingChatgptWebModel"]) {
     if (c[field] !== undefined && typeof c[field] !== "string") return false
   }
   return true
@@ -893,11 +893,16 @@ class AgentProfileService {
 
     const mergedModelConfig: ProfileModelConfig = {
       ...(profile.modelConfig ?? {}),
-      ...(modelConfig.mcpToolsProviderId !== undefined && { mcpToolsProviderId: modelConfig.mcpToolsProviderId }),
-      ...(modelConfig.mcpToolsOpenaiModel !== undefined && { mcpToolsOpenaiModel: modelConfig.mcpToolsOpenaiModel }),
-      ...(modelConfig.mcpToolsGroqModel !== undefined && { mcpToolsGroqModel: modelConfig.mcpToolsGroqModel }),
-      ...(modelConfig.mcpToolsGeminiModel !== undefined && { mcpToolsGeminiModel: modelConfig.mcpToolsGeminiModel }),
-      ...(modelConfig.mcpToolsChatgptWebModel !== undefined && { mcpToolsChatgptWebModel: modelConfig.mcpToolsChatgptWebModel }),
+      ...(modelConfig.agentProviderId !== undefined && { agentProviderId: modelConfig.agentProviderId, mcpToolsProviderId: modelConfig.agentProviderId }),
+      ...(modelConfig.agentOpenaiModel !== undefined && { agentOpenaiModel: modelConfig.agentOpenaiModel, mcpToolsOpenaiModel: modelConfig.agentOpenaiModel }),
+      ...(modelConfig.agentGroqModel !== undefined && { agentGroqModel: modelConfig.agentGroqModel, mcpToolsGroqModel: modelConfig.agentGroqModel }),
+      ...(modelConfig.agentGeminiModel !== undefined && { agentGeminiModel: modelConfig.agentGeminiModel, mcpToolsGeminiModel: modelConfig.agentGeminiModel }),
+      ...(modelConfig.agentChatgptWebModel !== undefined && { agentChatgptWebModel: modelConfig.agentChatgptWebModel, mcpToolsChatgptWebModel: modelConfig.agentChatgptWebModel }),
+      ...(modelConfig.mcpToolsProviderId !== undefined && { mcpToolsProviderId: modelConfig.mcpToolsProviderId, agentProviderId: modelConfig.mcpToolsProviderId }),
+      ...(modelConfig.mcpToolsOpenaiModel !== undefined && { mcpToolsOpenaiModel: modelConfig.mcpToolsOpenaiModel, agentOpenaiModel: modelConfig.mcpToolsOpenaiModel }),
+      ...(modelConfig.mcpToolsGroqModel !== undefined && { mcpToolsGroqModel: modelConfig.mcpToolsGroqModel, agentGroqModel: modelConfig.mcpToolsGroqModel }),
+      ...(modelConfig.mcpToolsGeminiModel !== undefined && { mcpToolsGeminiModel: modelConfig.mcpToolsGeminiModel, agentGeminiModel: modelConfig.mcpToolsGeminiModel }),
+      ...(modelConfig.mcpToolsChatgptWebModel !== undefined && { mcpToolsChatgptWebModel: modelConfig.mcpToolsChatgptWebModel, agentChatgptWebModel: modelConfig.mcpToolsChatgptWebModel }),
       ...(modelConfig.currentModelPresetId !== undefined && { currentModelPresetId: modelConfig.currentModelPresetId }),
       ...(modelConfig.sttProviderId !== undefined && { sttProviderId: modelConfig.sttProviderId }),
       ...(modelConfig.openaiSttModel !== undefined && { openaiSttModel: modelConfig.openaiSttModel }),

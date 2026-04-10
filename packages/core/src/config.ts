@@ -55,6 +55,29 @@ const ORPHEUS_ARABIC_VOICES = ["fahad", "sultan", "lulwa", "noura"]
 // Valid Groq TTS model IDs
 const VALID_GROQ_TTS_MODELS = ["canopylabs/orpheus-v1-english", "canopylabs/orpheus-arabic-saudi"]
 
+const AGENT_CONFIG_ALIAS_PAIRS = [
+  ["agentProviderId", "mcpToolsProviderId"],
+  ["agentOpenaiModel", "mcpToolsOpenaiModel"],
+  ["agentGroqModel", "mcpToolsGroqModel"],
+  ["agentGeminiModel", "mcpToolsGeminiModel"],
+  ["agentChatgptWebModel", "mcpToolsChatgptWebModel"],
+  ["agentShortcut", "mcpToolsShortcut"],
+  ["customAgentShortcut", "customMcpToolsShortcut"],
+  ["customAgentShortcutMode", "customMcpToolsShortcutMode"],
+] as const
+
+function syncAgentConfigAliases(config: Partial<Config>): Partial<Config> {
+  const record = config as Record<string, unknown>
+  for (const [preferredKey, legacyKey] of AGENT_CONFIG_ALIAS_PAIRS) {
+    if (record[preferredKey] !== undefined) {
+      record[legacyKey] = record[preferredKey]
+    } else if (record[legacyKey] !== undefined) {
+      record[preferredKey] = record[legacyKey]
+    }
+  }
+  return config
+}
+
 /**
  * Migrate deprecated Groq TTS PlayAI models/voices to new Orpheus equivalents.
  * This ensures existing installs with saved PlayAI settings continue to work.
@@ -89,7 +112,7 @@ function migrateGroqTtsConfig(config: Partial<Config>): Partial<Config> {
     }
   }
 
-  return config
+  return syncAgentConfigAliases(config)
 }
 
 export function resolveWorkspaceAgentsFolder(): string | null {
@@ -446,14 +469,16 @@ function syncPresetToLegacyFields(config: Partial<Config>): Partial<Config> {
     // If preset has empty/undefined values, legacy fields should reflect that.
     // Skip models that belong to ChatGPT-Web-only families so they never reach the
     // direct OpenAI REST endpoint (see issue #310).
-    config.mcpToolsOpenaiModel = isLikelyChatGptWebOnlyModel(activePreset.mcpToolsModel)
+    const agentModel = activePreset.agentModel ?? activePreset.mcpToolsModel
+    config.agentOpenaiModel = isLikelyChatGptWebOnlyModel(agentModel)
       ? ''
-      : (activePreset.mcpToolsModel || '')
+      : (agentModel || '')
+    config.mcpToolsOpenaiModel = config.agentOpenaiModel
     config.transcriptPostProcessingOpenaiModel = isLikelyChatGptWebOnlyModel(activePreset.transcriptProcessingModel)
       ? ''
       : (activePreset.transcriptProcessingModel || '')
   }
-  return config
+  return syncAgentConfigAliases(config)
 }
 
 export class ConfigStore {

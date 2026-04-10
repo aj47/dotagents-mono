@@ -79,10 +79,20 @@ export type ProfileMcpServerConfig = {
 }
 
 export type ProfileModelConfig = {
+  agentProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  agentOpenaiModel?: string
+  agentGroqModel?: string
+  agentGeminiModel?: string
+  agentChatgptWebModel?: string
+  /** @deprecated Use agentProviderId instead. */
   mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  /** @deprecated Use agentOpenaiModel instead. */
   mcpToolsOpenaiModel?: string
+  /** @deprecated Use agentGroqModel instead. */
   mcpToolsGroqModel?: string
+  /** @deprecated Use agentGeminiModel instead. */
   mcpToolsGeminiModel?: string
+  /** @deprecated Use agentChatgptWebModel instead. */
   mcpToolsChatgptWebModel?: string
   currentModelPresetId?: string
   sttProviderId?: "openai" | "groq" | "parakeet"

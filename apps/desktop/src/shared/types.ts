@@ -243,10 +243,20 @@ export type ProfileMcpServerConfig = {
 
 export type ProfileModelConfig = {
   // Agent model settings
+  agentProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  agentOpenaiModel?: string
+  agentGroqModel?: string
+  agentGeminiModel?: string
+  agentChatgptWebModel?: string
+  /** @deprecated Use agentProviderId instead. */
   mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  /** @deprecated Use agentOpenaiModel instead. */
   mcpToolsOpenaiModel?: string
+  /** @deprecated Use agentGroqModel instead. */
   mcpToolsGroqModel?: string
+  /** @deprecated Use agentGeminiModel instead. */
   mcpToolsGeminiModel?: string
+  /** @deprecated Use agentChatgptWebModel instead. */
   mcpToolsChatgptWebModel?: string
   currentModelPresetId?: string
   // STT Provider settings
@@ -1104,16 +1114,33 @@ export type Config = {
     | "custom"
   customAgentKillSwitchHotkey?: string
 
-  // MCP Tool Calling Configuration
+  // Agent mode configuration
   /** @deprecated MCP tools are now always enabled. This field is kept for backwards compatibility but ignored. */
   mcpToolsEnabled?: boolean
+  agentShortcut?: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom"
+  customAgentShortcut?: string
+  customAgentShortcutMode?: "hold" | "toggle"
+  agentProviderId?: CHAT_PROVIDER_ID
+  agentOpenaiModel?: string
+  agentGroqModel?: string
+  agentGeminiModel?: string
+  agentChatgptWebModel?: string
+  agentSystemPrompt?: string
+  /** @deprecated Use agentShortcut instead. */
   mcpToolsShortcut?: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom"
+  /** @deprecated Use customAgentShortcut instead. */
   customMcpToolsShortcut?: string
-  customMcpToolsShortcutMode?: "hold" | "toggle" // Mode for custom MCP tools shortcut
+  /** @deprecated Use customAgentShortcutMode instead. */
+  customMcpToolsShortcutMode?: "hold" | "toggle"
+  /** @deprecated Use agentProviderId instead. */
   mcpToolsProviderId?: CHAT_PROVIDER_ID
+  /** @deprecated Use agentOpenaiModel instead. */
   mcpToolsOpenaiModel?: string
+  /** @deprecated Use agentGroqModel instead. */
   mcpToolsGroqModel?: string
+  /** @deprecated Use agentGeminiModel instead. */
   mcpToolsGeminiModel?: string
+  /** @deprecated Use agentChatgptWebModel instead. */
   mcpToolsChatgptWebModel?: string
   /**
    * Reasoning effort for OpenAI reasoning-capable models (GPT-5.x). Passed as
@@ -1124,7 +1151,7 @@ export type Config = {
    * this override is set.
    */
   openaiReasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
-  /** @deprecated Kept for backward compatibility but ignored */
+  /** @deprecated Use agentSystemPrompt instead; legacy field is ignored. */
   mcpToolsSystemPrompt?: string
   /** @deprecated Kept for backward compatibility but ignored */
   mcpCustomSystemPrompt?: string

@@ -286,7 +286,12 @@ export interface PredefinedPromptSummary {
 }
 
 export interface Settings {
-  // MCP Tools Model Configuration
+  // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
+  agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
+  agentOpenaiModel?: string;
+  agentGroqModel?: string;
+  agentGeminiModel?: string;
+  agentChatgptWebModel?: string;
   mcpToolsProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   mcpToolsOpenaiModel?: string;
   mcpToolsGroqModel?: string;
@@ -411,7 +416,12 @@ export interface Settings {
 }
 
 export interface SettingsUpdate {
-  // MCP Tools Model Configuration
+  // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
+  agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
+  agentOpenaiModel?: string;
+  agentGroqModel?: string;
+  agentGeminiModel?: string;
+  agentChatgptWebModel?: string;
   mcpToolsProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   mcpToolsOpenaiModel?: string;
   mcpToolsGroqModel?: string;
