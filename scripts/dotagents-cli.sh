@@ -604,10 +604,13 @@ configure_provider_auth() {
 CUR_API_KEY="$(get_config_val openaiApiKey)"
 CUR_MAIN_AGENT_MODE="$(get_config_val mainAgentMode)"
 CLI_COMMAND="${1:-}"
+SETUP_COMMAND_RAN=false
 case "$CLI_COMMAND" in
   setup|--setup|/setup)
     run_setup
-    exit 0
+    SETUP_COMMAND_RAN=true
+    PORT="$(get_config_val remoteServerPort)"; PORT="${PORT:-3210}"
+    API_KEY="$(get_config_val remoteServerApiKey)"
     ;;
   help|--help|-h|/help)
     print_help
@@ -635,7 +638,11 @@ case "$CLI_COMMAND" in
     ;;
 esac
 
-if [[ "$CUR_MAIN_AGENT_MODE" != "acpx" && ( -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ) ]]; then
+if [[ "$SETUP_COMMAND_RAN" == "true" ]]; then
+  echo -e "  ${D}Setup complete. Continuing to the CLI prompt.${R}"
+  echo -e "  ${D}Type ${C}/help${D} for commands, or just type a message to chat.${R}"
+  echo ""
+elif [[ "$CUR_MAIN_AGENT_MODE" != "acpx" && ( -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ) ]]; then
   echo -e "  ${Y}⚠ No API key configured.${R} Let's set things up."
   run_setup
 else
