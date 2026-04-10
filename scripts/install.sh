@@ -469,6 +469,17 @@ build_linux_headless_app() {
   run_pnpm --filter @dotagents/desktop exec electron-vite build
 }
 
+build_source_workspace_packages() {
+  info "Building shared workspace package..."
+  run_pnpm build:shared
+
+  info "Building core workspace package..."
+  run_pnpm build:core
+
+  info "Building WhatsApp MCP workspace package..."
+  run_pnpm --filter @dotagents/mcp-whatsapp build
+}
+
 setup_linux_headless_cli() {
   [ "$PLATFORM" = "linux" ] || return 0
 
@@ -613,8 +624,7 @@ install_from_source() {
   repair_corepack_node_gyp_permissions
   info "Installing dependencies..."
   run_pnpm install --frozen-lockfile
-  info "Building shared workspace package..."
-  run_pnpm build:shared
+  build_source_workspace_packages
 
   if has cargo; then
     info "Building Rust desktop binary..."
