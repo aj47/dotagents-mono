@@ -110,8 +110,7 @@ After editing `~/.zshrc`, reload it with `source ~/.zshrc` or open a new shell.
 ### Step 3: Build the Rust Binary
 
 ```bash
-cd apps/desktop
-pnpm run build-rs
+pnpm --filter @dotagents/desktop build-rs
 ```
 
 This builds and signs the native keyboard/input binary.
@@ -119,11 +118,8 @@ This builds and signs the native keyboard/input binary.
 ### Step 4: Build the Electron App
 
 ```bash
-# Build the app (skips type checking for faster builds)
-npx electron-vite build
-
-# Build signed DMG, ZIP, and PKG for both Intel and Apple Silicon
-npx electron-builder --mac --config electron-builder.config.cjs --publish=never
+# Build the app/package from the desktop workspace
+pnpm --filter @dotagents/desktop build:mac
 ```
 
 Or use the local desktop release script, which loads `.env` automatically and publishes only when `GH_TOKEN` is set:

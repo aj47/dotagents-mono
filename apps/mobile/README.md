@@ -1,15 +1,16 @@
-# OpenAI Chat Mobile
+# DotAgents Mobile
 
-A React Native (Expo) mobile interface with voice interaction for OpenAI-compatible APIs — chat with AI models wherever you are, even hands‑free in the car. Quickly configure your API endpoint and model, then chat by text or voice with real‑time transcription and optional text‑to‑speech playback.
+A React Native (Expo) mobile client for DotAgents. Pair it with the desktop remote server by QR code, or point it at any OpenAI-compatible API endpoint, then chat with agents by text, press-and-hold voice, or hands-free VAD.
 
 ## Features
 
-- Chat with any Inkeep Agent from your tenant
+- Chat with DotAgents agent profiles from your desktop runtime
 - Voice input two ways:
   - Press‑and‑hold mic for real‑time transcription; release to send (or release in edit mode to keep the text in the input)
   - Hands‑free mode (VAD-backed) to toggle listening without holding the button
 - Assistant responses can be spoken aloud using text‑to‑speech (expo-speech)
 - Local vs Cloud environment toggle with separate Manage API and Run API base URLs
+- Agent profile, skill, knowledge note, loop, and MCP management through the desktop remote API
 - Persisted settings (API key, IDs, URLs, voice prefs) via AsyncStorage
 - Clean, readable UI with safe area support and basic theming
 - Web fallback for speech recognition when available (Chrome/Edge over HTTPS)
@@ -21,7 +22,7 @@ A React Native (Expo) mobile interface with voice interaction for OpenAI-compati
 - Speech recognition: expo-speech-recognition (native); Web Speech API fallback in browsers
 - Speech synthesis: expo-speech
 - Persistent config: AsyncStorage
-- OpenAI-compatible API integration
+- DotAgents remote server + OpenAI-compatible API integration
   - Chat completions endpoint with optional streaming token updates
 
 Key files:
@@ -34,37 +35,35 @@ Key files:
 ## Getting started
 
 Prerequisites:
-- Node 18+
-- Expo CLI (optional): `npm i -g expo` (you can also use `npx expo`)
+- Node 20.19.4+ (Node 24.x recommended via the repo `.nvmrc`)
+- pnpm 9.x
 
-Install dependencies:
+Install dependencies from the repository root:
 
 ```bash
-npm install
+nvm use
+pnpm install
 ```
 
 Run the app:
 
 ```bash
 # Start Metro bundler (choose a platform in the UI)
-npm run start
+pnpm --filter @dotagents/mobile start
 
 # Or run directly on a device/simulator
-npm run ios
-npm run android
+pnpm --filter @dotagents/mobile ios
+pnpm --filter @dotagents/mobile android
 ```
 
 Open the app and configure Settings:
-- API Key: Your Inkeep API key (Bearer)
-- Tenant ID: Your tenant
-- Project ID: Your project under the tenant
-- Graph ID: Associated graph (if required by your setup)
-- Model: Model identifier used by Run API (default: gpt-4.1-mini)
+- API Key: Bearer token from DotAgents desktop remote server, or provider API key
+- Model: Model identifier used by the Run API (for example, `gpt-5.4-mini`)
 - Environment: Toggle Local vs Cloud
   - Run API Base URL (Local/Cloud)
   - Manage API Base URL (Local/Cloud)
 
-After saving, you’ll be taken to the Agents list. Pick an agent to start chatting.
+For the desktop flow, enable **Settings > Remote Server** in DotAgents desktop and scan the QR code from the mobile **Connection Settings** screen.
 
 ## Voice UX
 
@@ -102,14 +101,14 @@ You need to build and run the native app:
 
 ```bash
 # For Android
-npx expo run:android
+pnpm --filter @dotagents/mobile android
 
 # For iOS
-npx expo run:ios
+pnpm --filter @dotagents/mobile ios
 
 # If you have existing native folders and need a clean rebuild
 cd android && ./gradlew clean && cd ..
-npx expo run:android
+pnpm --filter @dotagents/mobile android
 ```
 
 This will compile the native code with all required modules and install the app on your device/emulator.
@@ -118,14 +117,14 @@ This will compile the native code with all required modules and install the app 
 
 - Speech recognition not starting on native / `Cannot find native module 'ExpoSpeechRecognition'`:
   - **You must use a development build** — Expo Go does not support native modules like `expo-speech-recognition`
-  - Run `npx expo run:android` or `npx expo run:ios` to build and install the development app
+  - Run `pnpm --filter @dotagents/mobile android` or `pnpm --filter @dotagents/mobile ios` to build and install the development app
   - See the "Important: Development Build Required" section above
   - Verify microphone/speech permissions are granted
 - Web speech not working:
   - Use Chrome or Edge over HTTPS; some browsers or insecure origins disable Web Speech API
 - Cannot list agents:
   - Confirm Manage API base URL is reachable and `/health` returns OK
-  - Verify tenant/project IDs and API key
+  - Verify the remote server API key
 - No assistant response:
   - Check Run API base URL and logs; the client supports SSE and non‑SSE responses
 

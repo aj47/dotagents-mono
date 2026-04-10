@@ -21,7 +21,8 @@ Everything you need to build DotAgents from source.
 > **pnpm is required.** Using npm or yarn will cause installation issues.
 
 ```bash
-npm install -g pnpm
+corepack enable
+corepack prepare pnpm@9 --activate
 ```
 
 ## Quick Start
@@ -31,7 +32,7 @@ git clone https://github.com/aj47/dotagents-mono.git
 cd dotagents-mono
 nvm use
 pnpm install
-pnpm build-rs    # Build Rust native binary
+pnpm --filter @dotagents/desktop build-rs    # Build Rust native binary
 pnpm dev         # Start development server
 ```
 
@@ -42,12 +43,12 @@ pnpm dev         # Start development server
 | `pnpm dev` | Start development server (desktop) |
 | `pnpm dev:mobile` | Start development server (mobile, Expo) |
 | `pnpm build` | Production build for current platform |
-| `pnpm build:mac` | macOS build (Apple Silicon + Intel universal) |
-| `pnpm build:win` | Windows build (x64) |
-| `pnpm build:linux` | Linux build for host architecture |
+| `pnpm --filter @dotagents/desktop build:mac` | macOS build (Apple Silicon + Intel universal) |
+| `pnpm --filter @dotagents/desktop build:win` | Windows build (x64) |
+| `pnpm --filter @dotagents/desktop build:linux` | Linux build for host architecture |
 | `pnpm --filter @dotagents/desktop build:linux:x64` | Linux x64 build |
 | `pnpm --filter @dotagents/desktop build:linux:arm64` | Linux ARM64 build |
-| `pnpm build-rs` | Build Rust native binary |
+| `pnpm --filter @dotagents/desktop build-rs` | Build Rust native binary |
 | `pnpm test` | Run test suite |
 | `pnpm test:run` | Run tests once (CI mode) |
 | `pnpm test:coverage` | Run tests with coverage |
@@ -91,12 +92,10 @@ DOTAGENTS_LINUX_TARGETS=AppImage,deb pnpm --filter @dotagents/desktop build:linu
 ## Mobile Development
 
 ```bash
-cd apps/mobile
-npm install
-npm run start                 # Start Metro bundler
-npx expo run:ios             # iOS (requires Xcode)
-npx expo run:android         # Android (requires Android Studio)
-npx expo start --web         # Web
+pnpm --filter @dotagents/mobile start    # Start Metro bundler
+pnpm --filter @dotagents/mobile ios      # iOS (requires Xcode)
+pnpm --filter @dotagents/mobile android  # Android (requires Android Studio)
+pnpm --filter @dotagents/mobile web      # Web
 ```
 
 ## Testing
@@ -134,7 +133,7 @@ pnpm.cmd -C apps/desktop exec electron-builder install-app-deps
 ### Node version mismatch
 
 ```bash
-nvm use    # Uses .nvmrc (24.1.0)
+nvm use    # Uses the repository .nvmrc
 ```
 
 ---

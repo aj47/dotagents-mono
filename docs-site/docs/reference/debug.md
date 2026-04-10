@@ -93,7 +93,7 @@ Check:
 - System microphone permissions
 - Correct microphone selected in OS settings
 - Keyboard accessibility permissions (macOS)
-- Rust binary is built (`pnpm build-rs`)
+- Rust binary is built (`pnpm --filter @dotagents/desktop build-rs`)
 
 ### Mobile App Not Connecting
 

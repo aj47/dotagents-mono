@@ -18,6 +18,7 @@ Built with Electron, React, and Rust, the desktop app provides:
 - **MCP tool execution** — Connect to any tool via the Model Context Protocol
 - **Real-time progress** — Watch agents think and act step by step
 - **Cross-platform** — macOS (full support), Windows, and Linux
+- **Remote server** — Optional local HTTP API for mobile pairing, operator dashboards, and automation
 
 ## Platform Support
 
@@ -60,6 +61,7 @@ The settings interface has dedicated sections:
 | **Agents** | Agent profile creation and management |
 | **Loops** | Recurring automated task scheduling |
 | **WhatsApp** | WhatsApp integration settings |
+| **Remote Server** | Mobile QR pairing, API key, port/bind address, and tunnel controls |
 
 ## Key Features
 
@@ -67,7 +69,7 @@ The settings interface has dedicated sections:
 
 Switch between agents using the **agent selector** dropdown in the main interface. Each agent has its own:
 
-- System prompt and personality
+- System prompt and operating style
 - Enabled tools and MCP servers
 - Skills and knowledge
 - Model configuration (can override the global model)
@@ -106,6 +108,10 @@ Export and import complete agent configurations:
 - **Export** — Package an agent's profile, skills, and config into a shareable bundle
 - **Import** — Load a bundle to recreate an agent on your machine
 - Share agents with teammates or the community
+
+### Remote Server and Mobile Pairing
+
+Enable **Settings > Remote Server** when you want DotAgents mobile, operator dashboards, or OpenAI-compatible clients to use your desktop runtime. The desktop app generates a bearer token and QR code for mobile pairing, and can optionally expose the server through a Cloudflare Tunnel.
 
 ### Loops (Recurring Tasks)
 
@@ -149,4 +155,5 @@ All data is stored locally on your machine:
 - **[Voice Interface](/voice/overview)** — Master the voice controls
 - **[MCP Tools](/tools/mcp)** — Connect tools and services
 - **[Agent Profiles](/agents/profiles)** — Create specialized agents
+- **[Remote Server & Pairing](/desktop/remote-server)** — Connect mobile and remote clients
 - **[Keyboard Shortcuts](/configuration/shortcuts)** — Full shortcut reference

@@ -50,7 +50,7 @@ DotAgents is three things:
 |---------|-------------|
 | **Skills** | Portable agent capabilities defined in `.agents/skills/`. Works across tools. |
 | **Knowledge notes** | Persistent agent context stored in `.agents/knowledge/`. Agents retain note-based context across sessions. |
-| **Agent Profiles** | Specialized AI personas with distinct skills and tools. Delegate tasks to the right agent. |
+| **Agent Profiles** | Specialized AI agents with distinct skills and tools. Delegate tasks to the right agent. |
 | **Voice Interface** | Hold-to-record, 30+ languages, auto-insert results into any app. Voice is the primary interface. |
 | **MCP Tools** | Model Context Protocol integration for tool execution, OAuth 2.1 auth, and real-time progress. |
 | **acpx Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents through the `acpx` runner. |
@@ -61,10 +61,14 @@ The `.agents/` directory is an open standard for agent configuration that works 
 
 ```
 .agents/
+├── agents/          # Agent profile definitions
 ├── skills/          # Reusable agent capabilities
 ├── knowledge/       # Persistent note context across sessions
 ├── commands/        # Custom agent commands
-└── config.yaml      # Agent profiles and settings
+├── tasks/           # Reusable task definitions
+├── dotagents-settings.json # DotAgents settings overlay
+├── mcp.json         # MCP server definitions
+└── models.json      # Provider/model presets
 ```
 
 Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool adopting the protocol. Protocol first, product second.
@@ -73,10 +77,25 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 
 ### Download
 
-**[Download Latest Release](https://github.com/aj47/dotagents-mono/releases/latest)**
+Install in one line:
 
-> **Platform Support**: macOS (Apple Silicon & Intel) with full MCP agent functionality.
-> Windows/Linux: MCP tools not currently supported — see [v0.2.2](https://github.com/aj47/dotagents-mono/releases/tag/v0.2.2) for dictation-only builds.
+```bash
+curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex
+```
+
+Manual downloads:
+
+- **[macOS latest release](https://github.com/aj47/dotagents-mono/releases/latest)** — `.dmg` builds
+- **[Windows latest release](https://github.com/aj47/dotagents-mono/releases/latest)** — `.exe` installer
+- **[Linux latest release](https://github.com/aj47/dotagents-mono/releases/latest)** — `.AppImage` and `.deb` artifacts
+
+> **Platform Support**: macOS, Windows, and Linux desktop builds are published from the same release channel. Some OS-level permissions and integrations differ by platform.
 
 ### Usage
 
@@ -86,7 +105,7 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 2. **Release** to stop recording and transcribe
 3. Text is automatically inserted into your active application
 
-**MCP Agent Mode** (macOS only):
+**MCP Agent Mode:**
 
 1. **Hold `Ctrl+Alt`** to start recording for agent mode
 2. **Release `Ctrl+Alt`** to process with MCP tools
@@ -105,6 +124,7 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 | **TTS** | 50+ AI voices via OpenAI, Groq, and Gemini with auto-play |
 | **Multi-Agent** | Agent profiles, skill-based delegation, persistent knowledge, `acpx`-backed coordination |
 | **MCP Tools** | Tool execution, OAuth 2.1 auth, real-time progress, conversation context |
+| **Remote Server** | Optional local API for mobile pairing, OpenAI-compatible clients, operator dashboards, and tunnels |
 | **Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging |
 | **Platform** | macOS/Windows/Linux, rate limit handling, multi-provider AI |
 | **UX** | Dark/light themes, resizable panels, kill switch, conversation history |
@@ -143,7 +163,7 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 ```bash
 git clone https://github.com/aj47/dotagents-mono.git && cd dotagents-mono
 nvm use
-pnpm install && pnpm build-rs && pnpm dev
+pnpm install && pnpm --filter @dotagents/desktop build-rs && pnpm dev
 ```
 
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
@@ -163,7 +183,10 @@ dotagents-mono/
 │   ├── desktop/     # Electron app (voice, agents, MCP)
 │   └── mobile/      # React Native mobile app
 ├── packages/
-│   └── shared/      # Shared utilities, types, and constants
+│   ├── core/        # Cross-app runtime/config primitives
+│   ├── shared/      # Shared utilities, types, and constants
+│   ├── acpx/        # Agent delegation adapter/proxy
+│   └── mcp-whatsapp/# WhatsApp MCP server
 ├── website/         # Static marketing site for dotagents.app
 └── .agents/         # The open standard — skills, knowledge notes, commands
 ```

@@ -109,6 +109,8 @@ function QuickLink({to, label, description}: {to: string; label: string; descrip
 
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
+  const releasesUrl = 'https://github.com/aj47/dotagents-mono/releases/latest';
+
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
@@ -126,6 +128,16 @@ function HomepageHeader() {
           Talk to agents naturally, give them tools and context, and let them keep
           going without babysitting every step.
         </p>
+        <div className={styles.installPanel}>
+          <span className={styles.installLabel}>Install in one line</span>
+          <code className={styles.installCommand}>curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash</code>
+          <span className={styles.installSubtext}>Windows PowerShell: <code>irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex</code></span>
+          <div className={styles.releaseLinks}>
+            <Link to={releasesUrl}>Download for macOS</Link>
+            <Link to={releasesUrl}>Download for Windows</Link>
+            <Link to={releasesUrl}>Download for Linux</Link>
+          </div>
+        </div>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
@@ -136,7 +148,7 @@ function HomepageHeader() {
             className="button button--outline button--lg"
             style={{color: 'white', borderColor: 'rgba(255,255,255,0.4)', marginLeft: '1rem'}}
             to="/getting-started/installation">
-            Install
+            Install guide
           </Link>
         </div>
         <div className={styles.signalGrid}>
@@ -170,9 +182,10 @@ export default function Home(): ReactNode {
           <div className="container">
             <div className={styles.quickLinksGrid}>
               <QuickLink to="/getting-started/quickstart" label="Quick Start" description="Up and running in 5 minutes" />
+              <QuickLink to="/getting-started/installation" label="Install" description="One-line install or releases" />
               <QuickLink to="/getting-started/first-agent" label="First Agent" description="Create your first AI agent" />
               <QuickLink to="/tools/mcp" label="Add Tools" description="Connect MCP tool servers" />
-              <QuickLink to="/mobile/overview" label="Mobile App" description="Agents on iOS & Android" />
+              <QuickLink to="/desktop/remote-server" label="Mobile Pairing" description="Remote server and QR setup" />
             </div>
           </div>
         </section>

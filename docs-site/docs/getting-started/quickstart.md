@@ -19,9 +19,9 @@ DotAgents needs at least one AI provider to work. Go to **Settings > Providers**
 
 | Provider | Models | Best For |
 |----------|--------|----------|
-| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3 | General purpose, highest quality |
-| **Groq** | Llama 3, Mixtral, Whisper | Fast inference, great for voice |
-| **Google Gemini** | Gemini 2.0 Flash, Gemini Pro | Multimodal, large context |
+| **OpenAI** | GPT-5.4, GPT-5.4 Mini, GPT-5.4 Nano | Frontier reasoning, coding, agentic work |
+| **Groq** | GPT-OSS 120B, Llama 4 Scout, Llama 3.3 70B | Fast inference, great for voice |
+| **Google Gemini** | Gemini 3.1 Pro Preview, Gemini 3 Flash Preview, Gemini 2.5 Flash | Multimodal, large context |
 | **Local Models** | Ollama, LM Studio | Privacy-first, offline capable |
 
 Enter your API key and select a model. For local models, set the custom base URL (e.g., `http://localhost:11434/v1` for Ollama).

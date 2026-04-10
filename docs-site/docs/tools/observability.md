@@ -63,7 +63,7 @@ Each agent session creates a trace containing:
 ### Generations
 
 Individual LLM API calls showing:
-- Model used (e.g., `gpt-4o`, `gemini-2.0-flash`)
+- Model used (e.g., `gpt-5.4-mini`, `gemini-3.1-pro-preview`)
 - Input messages/prompts
 - Output response
 - Token usage metrics (input/output/total)

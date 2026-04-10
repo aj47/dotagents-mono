@@ -25,6 +25,8 @@ irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.p
 
 These installers auto-detect your OS and architecture, download the correct release artifact, and install DotAgents without assuming Git, Node, pnpm, or Rust are already installed. Building from source is still available, but it is now an explicit opt-in.
 
+Prefer a manual download? Use the latest release page for **[macOS](https://github.com/aj47/dotagents-mono/releases/latest)**, **[Windows](https://github.com/aj47/dotagents-mono/releases/latest)**, or **[Linux](https://github.com/aj47/dotagents-mono/releases/latest)** artifacts.
+
 **Options:**
 
 ```bash
@@ -53,13 +55,13 @@ Alternatively, download manually:
 
 **[Download Latest Release](https://github.com/aj47/dotagents-mono/releases/latest)**
 
-| Platform | Architecture | Format |
-|----------|-------------|--------|
-| **macOS** | Apple Silicon (M1/M2/M3/M4) | `.dmg` |
-| **macOS** | Intel | `.dmg` |
-| **Windows** | x64 | `.exe` installer |
-| **Linux** | x64 | `.AppImage`, `.deb` |
-| **Linux** | ARM64 | `.AppImage`, `.deb` |
+| Platform | Architecture | Format | Link |
+|----------|-------------|--------|------|
+| **macOS** | Apple Silicon (M1/M2/M3/M4) | `.dmg` | [Latest macOS release](https://github.com/aj47/dotagents-mono/releases/latest) |
+| **macOS** | Intel | `.dmg` | [Latest macOS release](https://github.com/aj47/dotagents-mono/releases/latest) |
+| **Windows** | x64 | `.exe` installer | [Latest Windows release](https://github.com/aj47/dotagents-mono/releases/latest) |
+| **Linux** | x64 | `.AppImage`, `.deb` | [Latest Linux release](https://github.com/aj47/dotagents-mono/releases/latest) |
+| **Linux** | ARM64 | `.AppImage`, `.deb` | [Latest Linux release](https://github.com/aj47/dotagents-mono/releases/latest) |
 
 ### macOS
 
@@ -74,7 +76,7 @@ Alternatively, download manually:
 2. Run the installer and follow the setup wizard
 3. DotAgents will appear in your Start menu
 
-> **Note**: Windows currently supports dictation-only mode. Full MCP agent functionality requires macOS. See [v0.2.2](https://github.com/aj47/dotagents-mono/releases/tag/v0.2.2) for Windows dictation builds.
+Windows builds include the desktop app, voice shortcuts, text input, provider setup, and agent features. Some OS-level integrations may differ from macOS; see the in-app diagnostics if a native permission or tool integration is unavailable.
 
 ### Linux
 
@@ -82,7 +84,7 @@ Alternatively, download manually:
 2. For AppImage: `chmod +x DotAgents-*.AppImage && ./DotAgents-*.AppImage`
 3. For deb: `sudo dpkg -i dotagents-*.deb`
 
-See the [Linux Support Matrix](https://github.com/aj47/dotagents-mono/blob/main/LINUX_SUPPORT_MATRIX for detailed platform compatibility.
+See the [Linux Support Matrix](https://github.com/aj47/dotagents-mono/blob/main/LINUX_SUPPORT_MATRIX.md) for detailed platform compatibility.
 
 ---
 
@@ -92,26 +94,28 @@ The DotAgents mobile app connects to your desktop instance or any OpenAI-compati
 
 ### Prerequisites
 
-- Node.js 18+
-- Expo CLI: `npm install -g expo` (or use `npx expo`)
+- Node.js 20.19.4+ (Node 24.x recommended via `.nvmrc`)
+- pnpm 9.x
 - For native builds: Xcode (iOS) or Android Studio (Android)
 
 ### Install from Source
 
 ```bash
-cd apps/mobile
-npm install
+git clone https://github.com/aj47/dotagents-mono.git
+cd dotagents-mono
+nvm use
+pnpm install
 ```
 
 ### Run on Device
 
 ```bash
 # Start Metro bundler
-npm run start
+pnpm --filter @dotagents/mobile start
 
 # Or run directly on a device/simulator
-npx expo run:ios      # iOS (requires Xcode)
-npx expo run:android  # Android (requires Android Studio)
+pnpm --filter @dotagents/mobile ios      # iOS (requires Xcode)
+pnpm --filter @dotagents/mobile android  # Android (requires Android Studio)
 ```
 
 > **Important**: The mobile app uses `expo-speech-recognition`, a native module not available in Expo Go. You must use a **development build** to run on physical devices. See the [Mobile App guide](/mobile/overview) for details.
@@ -121,7 +125,7 @@ npx expo run:android  # Android (requires Android Studio)
 The mobile app also runs in the browser:
 
 ```bash
-npx expo start --web
+pnpm --filter @dotagents/mobile web
 ```
 
 Speech recognition on web requires Chrome or Edge over HTTPS.
@@ -159,16 +163,16 @@ pnpm dev                 # start the desktop app in dev mode
 The Rust binary powers native keyboard input and voice recording. Without it the app still runs, but those features won't work.
 
 ```bash
-pnpm build-rs
+pnpm --filter @dotagents/desktop build-rs
 ```
 
 ### Production Builds
 
 ```bash
-pnpm build              # current platform
-pnpm build:mac          # macOS (Apple Silicon + Intel universal)
-pnpm build:win          # Windows (x64)
-pnpm build:linux        # Linux (host architecture)
+pnpm build                                      # current platform desktop build
+pnpm --filter @dotagents/desktop build:mac      # macOS (Apple Silicon + Intel universal)
+pnpm --filter @dotagents/desktop build:win      # Windows (x64)
+pnpm --filter @dotagents/desktop build:linux    # Linux (host architecture)
 ```
 
 ### Updating

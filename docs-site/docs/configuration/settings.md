@@ -83,6 +83,22 @@ See [Agent Profiles](/agents/profiles) for details.
 | **Model Override** | Per-agent model/provider |
 | **Skills Configuration** | Per-agent skill access |
 
+## Remote Server Settings
+
+See [Remote Server & Mobile Pairing](/desktop/remote-server) for setup and security guidance.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Remote Server Enabled** | Starts the Fastify HTTP API for mobile/operator clients | `false` |
+| **Port** | Local HTTP port | `3210` |
+| **Bind Address** | Interface to listen on; use `127.0.0.1` for local-only, `0.0.0.0` for LAN/tunnel | `127.0.0.1` |
+| **API Key** | Bearer token required by remote clients | Generated locally |
+| **Log Level** | Remote API log verbosity | `info` |
+| **CORS Origins** | Allowed browser origins | `*` |
+| **Cloudflare Tunnel Enabled** | Expose the local server through a tunnel | `false` |
+| **Cloudflare Tunnel Mode** | Quick tunnel or named tunnel | Quick tunnel |
+| **Terminal QR** | Print QR payloads for headless pairing | Auto for QR/headless flows |
+
 ## Loop Settings
 
 | Setting | Description |
@@ -136,7 +152,7 @@ All settings are stored in **AsyncStorage** on the device:
 | Setting | Description |
 |---------|-------------|
 | **API Key** | Bearer token for authentication |
-| **Base URL** | API endpoint URL |
+| **Base URL** | Desktop remote server or OpenAI-compatible API endpoint URL |
 | **Model** | Model identifier |
 | **Environment** | Local vs Cloud toggle |
 | **Voice Preferences** | TTS voice, auto-play, language |

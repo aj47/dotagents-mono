@@ -63,6 +63,7 @@ dotagents-mono/
 │       │   └── hooks/                        # Custom hooks
 │       └── App.tsx                           # Entry point
 ├── packages/
+│   ├── core/src/                             # Cross-app runtime/config primitives
 │   ├── shared/src/                           # Shared types and utilities
 │   │   ├── types.ts                          # Core types
 │   │   ├── api-types.ts                      # API contract types
@@ -75,9 +76,11 @@ dotagents-mono/
 │   │   ├── shell-parse.ts                    # Shell command parsing
 │   │   ├── connection-recovery.ts            # Retry logic
 │   │   └── hub.ts                            # Agent bundle publishing
+│   ├── acpx/                                 # ACP adapter/proxy package
 │   └── mcp-whatsapp/                         # WhatsApp MCP server
 ├── website/                                  # Static marketing site
-├── scripts/                                  # Build scripts
+├── docs-site/                                # Docusaurus documentation site
+├── scripts/                                  # Build, installer, and release scripts
 └── tests/                                    # Integration tests
 ```
 
@@ -258,7 +261,7 @@ A native binary for cross-platform keyboard handling:
 - **Hotkey registration** — Registers global hotkeys
 - **Low-level input** — Works without window focus
 
-Built with `pnpm build-rs` and loaded by the main process.
+Built with `pnpm --filter @dotagents/desktop build-rs` and loaded by the main process.
 
 ---
 

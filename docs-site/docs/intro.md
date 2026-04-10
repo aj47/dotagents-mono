@@ -36,7 +36,7 @@ Built on the `.agents` open standard, your skills and notes work across Claude C
 
 ### Agent System
 
-- **[Agent Profiles](agents/profiles)** — Specialized AI personas with distinct skills and tools
+- **[Agent Profiles](agents/profiles)** — Specialized AI agents with distinct skills and tools
 - **[Skills](agents/skills)** — Portable, reusable agent capabilities
 - **[Knowledge & Notes](agents/knowledge-notes)** — Durable knowledge across sessions
 - **[Multi-Agent Delegation (acpx/ACP)](agents/delegation)** — Agents delegating tasks to other agents

@@ -19,9 +19,9 @@ These providers power the LLM that drives your agents' reasoning and responses.
 |---------|-------|
 | **API Key** | `sk-...` |
 | **Base URL** | `https://api.openai.com/v1` (default) |
-| **Models** | GPT-4o, GPT-4o-mini, o1, o3, GPT-4 Turbo |
+| **Models** | GPT-5.4, GPT-5.4 Mini, GPT-5.4 Nano |
 
-Best for: General-purpose, highest quality reasoning.
+Best for: Frontier reasoning, coding, and agentic workflows. Use smaller variants when latency and cost matter more than maximum capability.
 
 ### Groq
 
@@ -29,7 +29,7 @@ Best for: General-purpose, highest quality reasoning.
 |---------|-------|
 | **API Key** | `gsk_...` |
 | **Base URL** | `https://api.groq.com/openai/v1` (default) |
-| **Models** | Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B |
+| **Models** | GPT-OSS 120B, Llama 4 Scout, Llama 3.3 70B, Llama 3.1 8B |
 
 Best for: Fast inference, real-time voice interactions.
 
@@ -38,9 +38,15 @@ Best for: Fast inference, real-time voice interactions.
 | Setting | Value |
 |---------|-------|
 | **API Key** | Google AI API key |
-| **Models** | Gemini 2.0 Flash, Gemini Pro, Gemini Ultra |
+| **Models** | Gemini 3.1 Pro Preview, Gemini 3 Flash Preview, Gemini 2.5 Flash |
 
-Best for: Multimodal tasks, large context windows.
+Best for: Multimodal tasks, large context windows, and agentic reasoning. Prefer Gemini 3.1 Pro/Flash previews for the newest capabilities; use Gemini 2.5 stable models when you need stable model IDs.
+
+### Claude via OpenAI-compatible gateways
+
+DotAgents does not require a dedicated provider integration for every model family. If your gateway exposes an OpenAI-compatible API, configure it as a custom provider and use current Claude model IDs such as `claude-opus-4-6`, `claude-sonnet-4-6`, or `claude-haiku-4-5`.
+
+> Model examples were refreshed in April 2026 from the [OpenAI model guide](https://platform.openai.com/docs/models/), [Anthropic model guide](https://docs.anthropic.com/en/docs/about-claude/models), [Gemini model guide](https://ai.google.dev/gemini-api/docs/models), and [Groq model list](https://console.groq.com/docs/models). Provider catalogs change frequently; use the in-app model picker or refresh from provider APIs for exact availability on your account.
 
 ### Local Models
 
@@ -135,7 +141,7 @@ In `.agents/models.json`:
   },
   "defaultModel": {
     "provider": "openai",
-    "model": "gpt-4o"
+    "model": "gpt-5.4-mini"
   }
 }
 ```

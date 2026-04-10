@@ -5,7 +5,7 @@ sidebar_label: "Your First Agent"
 
 # Your First Agent
 
-DotAgents lets you create specialized AI agents — each with its own personality, skills, tools, and durable knowledge. This guide walks you through creating your first custom agent.
+DotAgents lets you create specialized AI agents — each with its own operating style, skills, tools, and durable knowledge. This guide walks you through creating your first custom agent.
 
 ---
 
@@ -87,7 +87,7 @@ Optionally, create `~/.agents/agents/<agent-id>/config.json` for tool and model 
   },
   "modelConfig": {
     "provider": "openai",
-    "model": "gpt-4o"
+    "model": "gpt-5.4-mini"
   }
 }
 ```

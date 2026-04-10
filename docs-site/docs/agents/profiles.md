@@ -5,7 +5,7 @@ sidebar_label: "Agent Profiles"
 
 # Agent Profiles
 
-Agent profiles define specialized AI personas — each with its own identity, behavior, skills, tools, and connection method. Think of them as job descriptions for your AI agents.
+Agent profiles define specialized AI agents — each with its own identity, behavior, skills, tools, and connection method. Think of them as job descriptions for your agents.
 
 ---
 
@@ -107,7 +107,7 @@ Optionally add `config.json` in the same directory:
   },
   "modelConfig": {
     "provider": "openai",
-    "model": "gpt-4o"
+    "model": "gpt-5.4-mini"
   },
   "skillsConfig": {
     "enabledSkills": ["docker-management", "ci-cd"]

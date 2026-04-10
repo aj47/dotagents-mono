@@ -68,6 +68,59 @@
   line-height: 1.7;
 }
 
+.installPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 58rem;
+  margin: 2rem auto 0;
+  padding: 1rem;
+  text-align: left;
+  border: 1px solid rgba(156, 220, 254, 0.24);
+  border-radius: 18px;
+  background: rgba(5, 10, 18, 0.58);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+}
+
+.installLabel {
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.installCommand {
+  display: block;
+  overflow-x: auto;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #d7fbe8;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.installSubtext {
+  color: var(--da-fg-muted);
+  font-size: 0.88rem;
+}
+
+.releaseLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.releaseLinks a {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .buttons {
   display: flex;
   align-items: center;
@@ -145,6 +198,10 @@
 
   .buttons {
     flex-direction: column;
+  }
+
+  .installCommand {
+    font-size: 0.78rem;
   }
 }
 

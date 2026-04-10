@@ -7,10 +7,7 @@
 - **Rust toolchain** for the native keyboard/input binary
 - **Xcode** (macOS only) for code signing
 
-> ⚠️ **Important**: This project uses **pnpm**. Using npm or yarn may cause installation issues.
-> ```bash
-> npm install -g pnpm
-> ```
+> ⚠️ **Important**: This project uses **pnpm**. Enable it with Corepack (`corepack enable`) and avoid npm/yarn for repo commands.
 
 ## Quick Start
 
@@ -19,7 +16,7 @@ git clone https://github.com/aj47/dotagents-mono.git
 cd dotagents-mono
 nvm use
 pnpm install
-pnpm build-rs  # Build Rust binary
+pnpm --filter @dotagents/desktop build-rs  # Build Rust binary
 pnpm dev       # Start development server
 ```
 
@@ -29,9 +26,9 @@ pnpm dev       # Start development server
 |---------|-------------|
 | `pnpm dev` | Start development server |
 | `pnpm build` | Production build for current platform |
-| `pnpm build:mac` | macOS build (Apple Silicon + Intel) |
-| `pnpm build:win` | Windows build (x64) |
-| `pnpm build:linux` | Linux build for the current host architecture |
+| `pnpm --filter @dotagents/desktop build:mac` | macOS build (Apple Silicon + Intel) |
+| `pnpm --filter @dotagents/desktop build:win` | Windows build (x64) |
+| `pnpm --filter @dotagents/desktop build:linux` | Linux build for the current host architecture |
 | `pnpm --filter @dotagents/desktop build:linux:x64` | Linux build targeting `x64` |
 | `pnpm --filter @dotagents/desktop build:linux:arm64` | Linux build targeting `arm64` |
 | `pnpm test` | Run test suite |
@@ -94,10 +91,13 @@ DotAgents/
 │   ├── desktop/         # Electron desktop application
 │   │   ├── src/main/    # Main process (MCP, TTS, system integration)
 │   │   ├── src/renderer/# React UI
-│   │   └── speakmcp-rs/ # Rust keyboard/input binary
+│   │   └── dotagents-rs/# Rust keyboard/input binary
 │   └── mobile/          # React Native mobile app (Expo)
 ├── packages/
-│   └── shared/          # Shared utilities and types
+│   ├── core/            # Cross-app runtime/config primitives
+│   ├── shared/          # Shared utilities and types
+│   ├── acpx/            # ACP adapter/proxy package
+│   └── mcp-whatsapp/    # WhatsApp MCP server
 └── scripts/             # Build and release scripts
 ```
 
@@ -137,7 +137,7 @@ This project is tested with Node.js 24.x and requires at least Node.js 20.19.4:
 
 ```bash
 node --version  # Recommended: v24.x
-nvm use         # Uses the repo's .nvmrc (24.1.0)
+nvm use         # Uses the repo's .nvmrc
 ```
 
 ## Architecture

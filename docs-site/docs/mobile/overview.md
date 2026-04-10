@@ -55,7 +55,7 @@ Configure your connection and preferences:
 |---------|-------------|
 | **API Key** | Your API key (Bearer token) |
 | **Base URL** | API endpoint URL |
-| **Model** | Model identifier (e.g., `gpt-4o-mini`) |
+| **Model** | Model identifier (e.g., `gpt-5.4-mini`) |
 | **Environment** | Toggle between Local and Cloud |
 | **Run API URL** | Endpoint for chat completions |
 | **Manage API URL** | Endpoint for agent management |
@@ -195,9 +195,9 @@ Multi-agent conversation view:
 
 The mobile app connects to your desktop app's remote server:
 
-1. **Start DotAgents desktop** — The remote server starts automatically
+1. **Start DotAgents desktop** and enable **Settings > Remote Server**
 2. **On mobile**, go to **Connection Settings**
-3. **Scan the QR code** displayed on your desktop, or manually enter the URL
+3. **Scan the QR code** displayed on your desktop, or manually enter the URL and API key
 4. The mobile app now communicates with your desktop's agent engine
 
 This gives the mobile app access to all your desktop's MCP tools, agent profiles, and conversation history.
@@ -219,26 +219,29 @@ The API key is sent as `Authorization: Bearer <API_KEY>`.
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.19.4+ (Node 24.x recommended via `.nvmrc`)
+- pnpm 9.x
 - For native builds: Xcode (iOS) or Android Studio (Android)
 
 ### Install
 
 ```bash
-cd apps/mobile
-npm install
+git clone https://github.com/aj47/dotagents-mono.git
+cd dotagents-mono
+nvm use
+pnpm install
 ```
 
 ### Run
 
 ```bash
 # Start Metro bundler (choose platform in UI)
-npm run start
+pnpm --filter @dotagents/mobile start
 
 # Or run directly
-npx expo run:ios        # iOS
-npx expo run:android    # Android
-npx expo start --web    # Web
+pnpm --filter @dotagents/mobile ios      # iOS
+pnpm --filter @dotagents/mobile android  # Android
+pnpm --filter @dotagents/mobile web      # Web
 ```
 
 ### Development Build
@@ -247,9 +250,9 @@ If you see `Cannot find native module 'ExpoSpeechRecognition'`:
 
 ```bash
 # Build and install the development app
-npx expo run:android
+pnpm --filter @dotagents/mobile android
 # or
-npx expo run:ios
+pnpm --filter @dotagents/mobile ios
 ```
 
 ## Troubleshooting
@@ -267,5 +270,6 @@ npx expo run:ios
 ## Next Steps
 
 - **[Voice Interface](/voice/overview)** — Advanced voice features
+- **[Remote Server & Pairing](/desktop/remote-server)** — Pair mobile with your desktop agent engine
 - **[AI Providers](/tools/providers)** — Configure API providers
 - **[Desktop App](/desktop/overview)** — Full desktop experience

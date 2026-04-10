@@ -32,6 +32,9 @@ Your skills, knowledge notes, and agent profiles become **portable assets** that
 │   └── <agent-id>/
 │       ├── agent.md         # Agent profile definition
 │       └── config.json      # Agent-specific configuration
+├── tasks/
+│   └── <task-id>/
+│       └── task.md          # Recurring loop/task definition
 ├── skills/
 │   └── <skill-id>/
 │       └── skill.md         # Skill definition and instructions
@@ -49,7 +52,7 @@ The `.agents` protocol uses a **two-layer** configuration system:
 
 ### Global Layer (`~/.agents/`)
 
-- Canonical source of truth for your personal agent configuration
+- Canonical source of truth for your global agent configuration
 - Created automatically on first app launch
 - Shared across all workspaces and projects
 - Stores global skills, agent profiles, and knowledge notes
@@ -68,7 +71,7 @@ Final Config = Global Config + Workspace Config
                               (workspace wins on conflicts)
 ```
 
-Skills and notes merge by ID — workspace versions override global versions with the same ID.
+Agents, tasks, skills, and notes merge by ID — workspace versions override global versions with the same ID. JSON config files are shallow-merged by key, so avoid assuming nested objects merge deeply.
 
 ## File Formats
 

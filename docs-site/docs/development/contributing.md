@@ -21,7 +21,7 @@ We welcome contributions to DotAgents. Here's how to get involved.
    ```bash
    nvm use
    pnpm install
-   pnpm build-rs
+   pnpm --filter @dotagents/desktop build-rs
    pnpm dev
    ```
 4. **Create** a feature branch:
