@@ -444,14 +444,20 @@ class ACPXService extends EventEmitter {
     const resolved = await mcpService.resolveCommandPath('acpx').catch(() => 'acpx')
     const targetEnv = this.resolveTarget(agentName)?.env
     const args = [...this.buildBaseArgs(agentName, options.cwd), ...commandArgs]
+    const env = {
+      ...buildAcpxSpawnEnv(process.env as Record<string, string | undefined>),
+      ...targetEnv,
+    } as typeof process.env
+
+    if (agentName === 'codex' && !targetEnv?.CODEX_API_KEY && !targetEnv?.OPENAI_API_KEY) {
+      delete env.CODEX_API_KEY
+      delete env.OPENAI_API_KEY
+    }
 
     return await new Promise((resolve, reject) => {
       const child = spawn(resolved, args, {
         cwd: options.cwd,
-        env: {
-          ...buildAcpxSpawnEnv(process.env as Record<string, string | undefined>),
-          ...targetEnv,
-        } as typeof process.env,
+        env,
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
