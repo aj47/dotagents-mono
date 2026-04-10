@@ -10,6 +10,15 @@
 #   DOTAGENTS_RELEASE_TAG=v1  Install a specific GitHub release tag
 #   DOTAGENTS_NODE_MAJOR=24    Node.js major to install for Linux source installs
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
+#   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
+
+INTERACTIVE=false
+if [[ -t 0 ]]; then
+  INTERACTIVE=true
+elif [ -e /dev/tty ] && (: < /dev/tty) 2>/dev/null; then
+  exec < /dev/tty
+  INTERACTIVE=true
+fi
 
 set -euo pipefail
 
@@ -22,6 +31,20 @@ warn()  { printf "${YELLOW}⚠${NC} %s\n" "$*"; }
 err()   { printf "${RED}✘${NC} %s\n" "$*" >&2; }
 die()   { err "$*"; exit 1; }
 has()   { command -v "$1" >/dev/null 2>&1; }
+
+ask() {
+  local prompt="$1" env_var="${2:-}" default="${3:-}" value=""
+  if [ -n "$env_var" ] && [ -n "${!env_var:-}" ]; then
+    printf '%s\n' "${!env_var}"
+    return 0
+  fi
+  if [ "$INTERACTIVE" != "true" ]; then
+    printf '%s\n' "$default"
+    return 0
+  fi
+  read -r -p "$(printf "${CYAN}?${NC} %s" "$prompt")" value
+  printf '%s\n' "${value:-$default}"
+}
 
 ensure_cmd() {
   local command="$1"
@@ -64,6 +87,9 @@ PNPM_CMD=()
 MIN_NODE_VERSION="20.19.4"
 SOURCE_NODE_MAJOR="${DOTAGENTS_NODE_MAJOR:-24}"
 INSTALL_RUST="${DOTAGENTS_INSTALL_RUST:-1}"
+SKIP_ONBOARDING="${DOTAGENTS_SKIP_ONBOARDING:-0}"
+CONFIG_DIR="$HOME/.config/app.dotagents"
+CONFIG_FILE="$CONFIG_DIR/config.json"
 
 detect_platform() {
   local os arch
@@ -415,6 +441,138 @@ run_pnpm() {
   fi
 }
 
+build_linux_headless_app() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  info "Building Electron app for headless CLI..."
+  run_pnpm --filter @dotagents/desktop exec electron-vite build
+}
+
+setup_linux_headless_cli() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  local repo_dir electron_bin app_main launcher_path user_bin
+  repo_dir="$INSTALL_DIR/repo"
+  electron_bin="$repo_dir/node_modules/electron/dist/electron"
+  app_main="$repo_dir/apps/desktop/out/main/index.js"
+  launcher_path="$INSTALL_DIR/dotagents"
+  user_bin="$HOME/.local/bin"
+
+  [ -x "$electron_bin" ] || die "Electron binary was not found at $electron_bin."
+  [ -f "$app_main" ] || die "Headless app entry was not built at $app_main."
+
+  cat > "$repo_dir/start-headless.sh" <<EOF
+#!/usr/bin/env bash
+exec "$electron_bin" --no-sandbox "$app_main" --headless "\$@"
+EOF
+  chmod +x "$repo_dir/start-headless.sh"
+
+  sed "s|__INSTALL_DIR__|$repo_dir|" "$repo_dir/scripts/dotagents-cli.sh" > "$launcher_path"
+  chmod +x "$launcher_path"
+
+  mkdir -p "$user_bin"
+  ln -sf "$launcher_path" "$user_bin/dotagents"
+  ok "Headless CLI installed at $user_bin/dotagents"
+  if [[ ":$PATH:" != *":$user_bin:"* ]]; then
+    warn "$user_bin is not currently on your PATH."
+    info "Run the headless CLI with: $user_bin/dotagents"
+  fi
+}
+
+run_headless_onboarding() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  if [ "$SKIP_ONBOARDING" = "1" ]; then
+    info "Skipping headless onboarding because DOTAGENTS_SKIP_ONBOARDING=1."
+    return 0
+  fi
+
+  printf "\n${BOLD}${CYAN}═══════════════════════════════════════════════════${NC}\n"
+  printf "${BOLD}  DotAgents Headless Onboarding${NC}\n"
+  printf "${BOLD}${CYAN}═══════════════════════════════════════════════════${NC}\n\n"
+
+  mkdir -p "$CONFIG_DIR"
+
+  if [ "$INTERACTIVE" = "true" ]; then
+    info "Configure the headless agent. Leave optional fields blank to set them later."
+  else
+    info "No interactive terminal detected; using DOTAGENTS_* env vars and defaults."
+  fi
+
+  local api_key base_url model discord_token remote_api_key port
+  api_key="$(ask "OpenAI-compatible API key: " DOTAGENTS_API_KEY "")"
+  base_url="$(ask "API base URL [leave empty for OpenAI default]: " DOTAGENTS_API_BASE_URL "")"
+  model="$(ask "Model name [gpt-4.1-mini]: " DOTAGENTS_MODEL "gpt-4.1-mini")"
+  discord_token="$(ask "Discord bot token [optional]: " DOTAGENTS_DISCORD_TOKEN "")"
+  port="$(ask "Remote server port [3210]: " DOTAGENTS_PORT "3210")"
+  remote_api_key="${DOTAGENTS_REMOTE_API_KEY:-$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')}"
+
+  DOTAGENTS_ONBOARD_API_KEY="$api_key" \
+  DOTAGENTS_ONBOARD_BASE_URL="$base_url" \
+  DOTAGENTS_ONBOARD_MODEL="$model" \
+  DOTAGENTS_ONBOARD_DISCORD_TOKEN="$discord_token" \
+  DOTAGENTS_ONBOARD_REMOTE_API_KEY="$remote_api_key" \
+  DOTAGENTS_ONBOARD_PORT="$port" \
+  DOTAGENTS_ONBOARD_CONFIG_FILE="$CONFIG_FILE" \
+  node <<'NODE'
+const fs = require('fs')
+const path = require('path')
+
+const configFile = process.env.DOTAGENTS_ONBOARD_CONFIG_FILE
+const apiKey = process.env.DOTAGENTS_ONBOARD_API_KEY || ''
+const baseUrl = process.env.DOTAGENTS_ONBOARD_BASE_URL || ''
+const model = process.env.DOTAGENTS_ONBOARD_MODEL || 'gpt-4.1-mini'
+const discordToken = process.env.DOTAGENTS_ONBOARD_DISCORD_TOKEN || ''
+const remoteApiKey = process.env.DOTAGENTS_ONBOARD_REMOTE_API_KEY || ''
+const port = Number.parseInt(process.env.DOTAGENTS_ONBOARD_PORT || '3210', 10) || 3210
+const presetMap = {
+  'https://api.openai.com/v1': 'builtin-openai',
+  'https://openrouter.ai/api/v1': 'builtin-openrouter',
+  'https://api.together.xyz/v1': 'builtin-together',
+  'https://api.cerebras.ai/v1': 'builtin-cerebras',
+  'https://api.perplexity.ai': 'builtin-perplexity',
+}
+const presetId = presetMap[baseUrl] || 'builtin-openai'
+
+const cfg = {
+  openaiApiKey: apiKey,
+  openaiBaseUrl: baseUrl,
+  mcpToolsProviderId: 'openai',
+  mcpToolsOpenaiModel: model,
+  transcriptPostProcessingOpenaiModel: model,
+  currentModelPresetId: presetId,
+  modelPresets: [{
+    id: presetId,
+    apiKey,
+    baseUrl: baseUrl || undefined,
+    mcpToolsModel: model,
+    transcriptProcessingModel: model,
+    isBuiltIn: true,
+  }],
+  remoteServerEnabled: true,
+  remoteServerPort: port,
+  remoteServerBindAddress: '0.0.0.0',
+  remoteServerApiKey: remoteApiKey,
+  mcpMaxIterations: 25,
+  mcpUnlimitedIterations: false,
+}
+
+if (discordToken) {
+  cfg.discordEnabled = true
+  cfg.discordBotToken = discordToken
+  cfg.discordDmEnabled = true
+  cfg.discordRequireMention = true
+  cfg.discordLogMessages = false
+}
+
+fs.mkdirSync(path.dirname(configFile), { recursive: true })
+fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2))
+NODE
+
+  ok "Headless configuration saved to $CONFIG_FILE"
+  info "Remote server API key: ${remote_api_key:0:8}..."
+}
+
 install_from_source() {
   info "Installing DotAgents from source..."
   ensure_source_requirements
@@ -443,9 +601,20 @@ install_from_source() {
     warn "Install Rust from https://rustup.rs if you need the native desktop binary."
   fi
 
+  if [ "$PLATFORM" = "linux" ]; then
+    build_linux_headless_app
+    setup_linux_headless_cli
+    run_headless_onboarding
+  fi
+
   ok "Source checkout is ready at $INSTALL_DIR/repo"
-  info "Start the desktop app with:"
-  info "  cd $INSTALL_DIR/repo && $(printf '%s ' "${PNPM_CMD[@]}")dev"
+  if [ "$PLATFORM" = "linux" ]; then
+    info "Start the headless CLI with: $HOME/.local/bin/dotagents"
+    info "Start the desktop app with: cd $INSTALL_DIR/repo && $(printf '%s ' "${PNPM_CMD[@]}")dev"
+  else
+    info "Start the desktop app with:"
+    info "  cd $INSTALL_DIR/repo && $(printf '%s ' "${PNPM_CMD[@]}")dev"
+  fi
 }
 
 main() {
