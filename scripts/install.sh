@@ -13,11 +13,12 @@
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
 
 INTERACTIVE=false
+HAS_TTY=false
 if [[ -t 0 ]]; then
   INTERACTIVE=true
 elif [ -e /dev/tty ] && (: < /dev/tty) 2>/dev/null; then
-  exec < /dev/tty
   INTERACTIVE=true
+  HAS_TTY=true
 fi
 
 set -euo pipefail
@@ -42,7 +43,11 @@ ask() {
     printf '%s\n' "$default"
     return 0
   fi
-  read -r -p "$(printf "${CYAN}?${NC} %s" "$prompt")" value
+  if [ "$HAS_TTY" = "true" ]; then
+    read -r -p "$(printf "${CYAN}?${NC} %s" "$prompt")" value < /dev/tty
+  else
+    read -r -p "$(printf "${CYAN}?${NC} %s" "$prompt")" value
+  fi
   printf '%s\n' "${value:-$default}"
 }
 
