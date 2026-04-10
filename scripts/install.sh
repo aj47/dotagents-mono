@@ -587,10 +587,10 @@ run_codex_chatgpt_login() {
       has codex || { warn "Codex CLI is not installed; skipping login."; return 0; }
       info "Starting Codex ChatGPT OAuth device login..."
       info "Open the shown link on your desktop browser, then enter the one-time code."
-      codex login --device-auth || warn "Codex login did not complete. Run later with: codex login --device-auth"
+      codex login --device-auth || warn "Codex login did not complete. Run later with: dotagents setup"
       ;;
     *)
-      info "Skipping Codex login. Run later with: codex login --device-auth"
+      info "Skipping Codex login. Run later with: dotagents setup"
       ;;
   esac
 }

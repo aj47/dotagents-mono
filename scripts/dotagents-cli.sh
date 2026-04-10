@@ -346,16 +346,16 @@ run_codex_login() {
   read -r answer
   answer="${answer:-y}"
   if [[ ! "$answer" =~ ^[Yy] ]]; then
-    echo -e "  ${D}Skipped. Run later with: codex login --device-auth${R}"
+    echo -e "  ${D}Skipped. Run later with: dotagents setup${R}"
     return 0
   fi
 
   if ! command -v codex >/dev/null 2>&1; then
-    echo -e "  ${Y}⚠ Codex CLI is not installed. Run later with: npm install -g @openai/codex@latest && codex login --device-auth${R}"
+    echo -e "  ${Y}⚠ Codex CLI is not installed. Run later with: dotagents setup${R}"
     return 0
   fi
 
-  codex login --device-auth || echo -e "  ${Y}⚠ Codex login did not complete. Run later with: codex login --device-auth${R}"
+  codex login --device-auth || echo -e "  ${Y}⚠ Codex login did not complete. Run later with: dotagents setup${R}"
 }
 
 configure_codex_auth() {
@@ -603,12 +603,44 @@ configure_provider_auth() {
 # ── Auto-setup on missing config ──────────────────────────────
 CUR_API_KEY="$(get_config_val openaiApiKey)"
 CUR_MAIN_AGENT_MODE="$(get_config_val mainAgentMode)"
+CLI_COMMAND="${1:-}"
+case "$CLI_COMMAND" in
+  setup|--setup|/setup)
+    run_setup
+    exit 0
+    ;;
+  help|--help|-h|/help)
+    print_help
+    exit 0
+    ;;
+  status|--status|/status)
+    api_get /v1/operator/status | node_print "
+      const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
+      const h=d.health||{};
+      console.log('Health: '+h.overall);
+      Object.entries(h.checks||{}).forEach(([k,v])=>console.log('  '+k+': '+v.status+' — '+v.message));
+      const i=d.integrations||{};
+      if(i.discord){const dc=i.discord;console.log('Discord: '+(dc.connected?'connected':'disconnected')+(dc.botUser?' ('+dc.botUser+')':''))}
+      if(i.whatsapp) console.log('WhatsApp: '+(i.whatsapp.connected?'connected':'disconnected'));
+      const m=d.mcp||{};
+      if(m.activeAgentProfile) console.log('Active Agent: '+m.activeAgentProfile);
+    " || echo -e "${RED}Failed${R}"
+    exit 0
+    ;;
+  "") ;;
+  *)
+    echo -e "${Y}Unknown command: $CLI_COMMAND${R}"
+    echo -e "${D}Usage: dotagents [setup|status|help]${R}"
+    exit 1
+    ;;
+esac
+
 if [[ "$CUR_MAIN_AGENT_MODE" != "acpx" && ( -z "$CUR_API_KEY" || "$CUR_API_KEY" == "test-key-placeholder" ) ]]; then
   echo -e "  ${Y}⚠ No API key configured.${R} Let's set things up."
   run_setup
 else
   echo -e "  ${D}Type ${C}/help${D} for commands, or just type a message to chat.${R}"
-  echo -e "  ${D}Tab completion available. Run ${C}/setup${D} to reconfigure.${R}"
+  echo -e "  ${D}Tab completion available. Run ${C}/setup${D} or ${C}dotagents setup${D} to reconfigure.${R}"
   echo ""
 fi
 

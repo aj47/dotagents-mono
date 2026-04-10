@@ -50,6 +50,12 @@ dotagents
 /setup
 ```
 
+Or run setup directly:
+
+```bash
+dotagents setup
+```
+
 Setup asks which auth mode to use:
 
 1. **Provider API token** — OpenAI-compatible API key, optional base URL, and model name.
@@ -72,13 +78,13 @@ npm install -g acpx@latest
 npm install -g @openai/codex@latest
 ```
 
-For headless SSH servers, Codex uses device-code OAuth:
+For headless SSH servers, DotAgents setup runs Codex device-code OAuth for you:
 
 ```bash
-codex login --device-auth
+dotagents setup
 ```
 
-Open the shown link on your desktop browser, then enter the one-time code from the SSH session. Codex stores the login cache in `~/.codex/auth.json`.
+Choose **Codex auth via acpx**, then choose to run OAuth. Open the shown link on your desktop browser, then enter the one-time code from the SSH session. Codex stores the login cache in `~/.codex/auth.json`.
 
 The CLI stores headless config at:
 
