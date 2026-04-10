@@ -250,17 +250,21 @@ export interface RunSubSessionOptions {
    */
   subSessionId?: string;
   /**
-   * Optional persona name to run the sub-session as.
-   * When specified, the persona's system prompt and configuration will be applied.
-   * @deprecated Use agentProfile instead for unified configuration.
-   */
-  personaName?: string;
-  /**
    * Optional AgentProfile to run the sub-session as.
    * When specified, the profile's configuration will be applied directly.
-   * Takes precedence over personaName if both are provided.
+   * Takes precedence over agentProfileName if both are provided.
    */
   agentProfile?: AgentProfile;
+  /**
+   * Optional agent profile name to run the sub-session as.
+   * When specified, the profile's system prompt and configuration will be applied.
+   */
+  agentProfileName?: string;
+  /**
+   * Legacy alias for agentProfileName.
+   * @deprecated Use agentProfileName or agentProfile instead.
+   */
+  personaName?: string;
 }
 
 export interface SubSessionResult {
@@ -279,13 +283,14 @@ export interface SubSessionResult {
 /**
  * Run an internal sub-session.
  * This creates an isolated agent session that runs within the same process.
- * When agentProfile or personaName is provided, uses that configuration.
- * agentProfile takes precedence over personaName if both are provided.
+ * When agentProfile or agentProfileName is provided, uses that configuration.
+ * agentProfile takes precedence over agentProfileName if both are provided.
  */
 export async function runInternalSubSession(
   options: RunSubSessionOptions
 ): Promise<SubSessionResult> {
-  const { task, context, parentSessionId, maxIterations, profileSnapshot, onProgress, personaName, agentProfile } = options;
+  const { task, context, parentSessionId, maxIterations, profileSnapshot, onProgress, agentProfile } = options;
+  const agentProfileName = options.agentProfileName ?? options.personaName;
 
   // Check if we can spawn
   const canSpawnError = canSpawnSubSession(parentSessionId);
@@ -309,7 +314,7 @@ export async function runInternalSubSession(
   const subSessionId = options.subSessionId ?? `subsession_${Date.now()}_${uuidv4().substring(0, 8)}`;
 
   // Determine the agent display name for UI display
-  const agentDisplayName = agentProfile?.displayName ?? personaName;
+  const agentDisplayName = agentProfile?.displayName ?? agentProfileName;
 
   // Create sub-session state
   const subSession: InternalSubSession = {
@@ -334,10 +339,10 @@ export async function runInternalSubSession(
   }
   parentToChildren.get(parentSessionId)!.add(subSessionId);
 
-  const agentIdentifier = agentProfile?.name ?? personaName;
+  const agentIdentifier = agentProfile?.name ?? agentProfileName;
   logSubSession(`Starting sub-session ${subSessionId} (depth: ${subSessionDepth}, parent: ${parentSessionId}${agentIdentifier ? `, agent: ${agentIdentifier}` : ''})`);
 
-  // Get profile snapshot - prioritize agentProfile, then personaName, then fallback
+  // Get profile snapshot - prioritize agentProfile, then agentProfileName, then fallback
   let effectiveProfileSnapshot: SessionProfileSnapshot | undefined;
 
   // Priority 1: Use agentProfile directly if provided
@@ -372,25 +377,25 @@ export async function runInternalSubSession(
     effectiveProfileSnapshot = createSessionSnapshotFromProfile(agentProfile, skillsInstructions);
   }
   // Priority 2: Look up by name in agent profile service
-  else if (personaName) {
-    const unifiedProfile = agentProfileService.getByName(personaName);
+  else if (agentProfileName) {
+    const unifiedProfile = agentProfileService.getByName(agentProfileName);
     if (unifiedProfile && unifiedProfile.enabled) {
       // Check if this profile should delegate to an external acpx/remote agent
       if (unifiedProfile.connection.type === 'acpx' || unifiedProfile.connection.type === 'remote') {
-        logSubSession(`AgentProfile "${personaName}" uses external connection "${unifiedProfile.connection.type}" - should be routed externally`);
+        logSubSession(`AgentProfile "${agentProfileName}" uses external connection "${unifiedProfile.connection.type}" - should be routed externally`);
         // Clean up the sub-session registration since we're not running internally
         activeSubSessions.delete(subSessionId);
         parentToChildren.get(parentSessionId)?.delete(subSessionId);
         return {
           success: false,
           subSessionId,
-          error: `AgentProfile "${personaName}" is configured to use external agent and should be routed through the ACP system, not the internal agent.`,
+          error: `AgentProfile "${agentProfileName}" is configured to use external agent and should be routed through the ACP system, not the internal agent.`,
           conversationHistory: [],
           duration: Date.now() - subSession.startTime,
         };
       }
 
-      logSubSession(`Using AgentProfile "${personaName}" configuration for sub-session`);
+      logSubSession(`Using AgentProfile "${agentProfileName}" configuration for sub-session`);
 
       // Get skills instructions for the profile's enabled skills
       const skillsInstructions = unifiedProfile.skillsConfig?.enabledSkillIds?.length
@@ -398,7 +403,7 @@ export async function runInternalSubSession(
         : undefined;
 
       if (skillsInstructions) {
-        logSubSession(`Loaded ${unifiedProfile.skillsConfig!.enabledSkillIds!.length} skill(s) for AgentProfile "${personaName}"`);
+        logSubSession(`Loaded ${unifiedProfile.skillsConfig!.enabledSkillIds!.length} skill(s) for AgentProfile "${agentProfileName}"`);
       }
 
       effectiveProfileSnapshot = createSessionSnapshotFromProfile(unifiedProfile, skillsInstructions);
@@ -406,7 +411,7 @@ export async function runInternalSubSession(
 
     // If not found, log and fall back to parent profile
     if (!effectiveProfileSnapshot) {
-      logSubSession(`Agent "${personaName}" not found in agent profile service, falling back to parent profile`);
+      logSubSession(`Agent "${agentProfileName}" not found in agent profile service, falling back to parent profile`);
     }
   }
 
@@ -450,9 +455,9 @@ export async function runInternalSubSession(
       logSubSession(`Loaded ${existingMessages.length} messages from stateful AgentProfile "${agentProfile.name}" conversation history`);
     }
   }
-  // Priority 2: Check by personaName in agent profile service
-  else if (personaName) {
-    const unifiedProfile = agentProfileService.getByName(personaName);
+  // Priority 2: Check by agent profile name in agent profile service
+  else if (agentProfileName) {
+    const unifiedProfile = agentProfileService.getByName(agentProfileName);
     if (unifiedProfile && unifiedProfile.isStateful) {
       statefulAgentId = unifiedProfile.id;
       useAgentProfileService = true;
@@ -465,7 +470,7 @@ export async function runInternalSubSession(
           // Note: toolCalls and toolResults from ConversationMessage use different types
           // but for context purposes, the content is sufficient
         }));
-        logSubSession(`Loaded ${existingMessages.length} messages from stateful AgentProfile "${personaName}" conversation history`);
+        logSubSession(`Loaded ${existingMessages.length} messages from stateful AgentProfile "${agentProfileName}" conversation history`);
       }
     }
   }
@@ -594,7 +599,7 @@ export async function runInternalSubSession(
       availableTools,
       executeToolCall,
       effectiveSubSessionMaxIterations,
-      previousConversationHistory, // Pass previous history for stateful agents/personas
+      previousConversationHistory, // Pass previous history for stateful agents
       conversationId, // Use appropriate conversation ID if stateful
       subSessionId,
       subSessionOnProgress,

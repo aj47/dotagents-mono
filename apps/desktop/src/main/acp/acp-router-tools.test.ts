@@ -69,6 +69,7 @@ vi.mock("../state", () => ({
 }))
 
 vi.mock("../acp-session-state", () => ({
+  getDelegationAcpxSessionName: vi.fn((parentSessionId: string, runId: string) => `dotagents:delegation:${parentSessionId}:${runId}`),
   setAcpToAppSessionMapping: mockSetAcpToAppSessionMapping,
   clearAcpToAppSessionMapping: vi.fn(),
 }))
@@ -139,6 +140,7 @@ describe("handleDelegateToAgent", () => {
       false,
       undefined,
       { appSessionId: "parent-session-1" },
+      expect.stringMatching(/^dotagents:delegation:parent-session-1:/),
     )
     expect(mockSetAcpToAppSessionMapping).toHaveBeenCalledWith("acp-session-1", "parent-session-1", 7)
   })

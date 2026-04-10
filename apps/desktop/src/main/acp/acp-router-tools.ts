@@ -606,7 +606,7 @@ export function getInternalAgentConfig(): import('../../shared/types').ACPAgentC
  * List all available ACP agents, optionally filtered by capability.
  * Uses configStore for agent definitions and acpService for runtime status.
  * Includes the built-in internal agent alongside configured external agents.
- * Also includes enabled personas as available agents for delegation.
+ * Also includes enabled internal agent profiles as available agents for delegation.
  * @param args - Arguments containing optional capability filter
  * @returns Object with list of available agents
  */
@@ -795,9 +795,9 @@ async function executeAgentProfileDelegation(
   switch (profile.connection.type) {
     case 'internal':
       // Use internal agent with profile's config
-      // Pass profile name as personaName so it can use the profile's configuration
+      // Pass profile name so it can use the profile's configuration
       return executeInternalAgent(
-        { ...args, personaName: profile.name },
+        { ...args, agentProfileName: profile.name },
         parentSessionId,
         waitForResult
       );
@@ -837,12 +837,14 @@ async function executeAgentProfileDelegation(
 /**
  * Execute delegation to the internal agent.
  * Uses the internal sub-session system with unified tracking.
- * Can optionally run as a specific persona when personaName is provided.
+ * Can optionally run as a specific agent profile when agentProfileName is provided.
  */
 async function executeInternalAgent(
   args: {
     task: string;
     context?: string;
+    agentProfileName?: string;
+    /** @deprecated Use agentProfileName instead. */
     personaName?: string;
     workingDirectory?: string;
     prepareOnly?: boolean;
@@ -856,8 +858,9 @@ async function executeInternalAgent(
     return { success: false, error: 'Internal agent is disabled' };
   }
 
-  // Use persona name for agent identification if provided, otherwise 'internal'
-  const agentName = args.personaName || 'internal';
+  // Use agent profile name for agent identification if provided, otherwise 'internal'
+  const agentProfileName = args.agentProfileName ?? args.personaName;
+  const agentName = agentProfileName || 'internal';
 
   if (args.prepareOnly) {
     return {
@@ -900,7 +903,7 @@ async function executeInternalAgent(
         context: args.context,
         parentSessionId,
         subSessionId: preGeneratedSubSessionId,
-        personaName: args.personaName,
+        agentProfileName,
       }))
       .then((result) => {
         subAgentState.conversationId = result.conversationId;
@@ -960,7 +963,7 @@ async function executeInternalAgent(
       context: args.context,
       parentSessionId,
       subSessionId: preGeneratedSubSessionId,
-      personaName: args.personaName,
+      agentProfileName,
     });
 
     subAgentState.conversationId = result.conversationId;
