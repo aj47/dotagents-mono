@@ -446,6 +446,22 @@ run_pnpm() {
   fi
 }
 
+repair_corepack_node_gyp_permissions() {
+  [ "$PLATFORM" = "linux" ] || return 0
+  [ -d "$HOME/.cache/node/corepack/v1/pnpm" ] || return 0
+
+  local file repaired="false"
+  while IFS= read -r file; do
+    [ -x "$file" ] && continue
+    chmod +x "$file" 2>/dev/null || true
+    [ -x "$file" ] && repaired="true"
+  done < <(find "$HOME/.cache/node/corepack/v1/pnpm" -path '*/node-gyp/gyp/gyp_main.py' -type f 2>/dev/null)
+
+  if [ "$repaired" = "true" ]; then
+    ok "Repaired Corepack node-gyp permissions"
+  fi
+}
+
 build_linux_headless_app() {
   [ "$PLATFORM" = "linux" ] || return 0
 
@@ -593,6 +609,8 @@ install_from_source() {
   fi
 
   cd "$INSTALL_DIR/repo"
+  run_pnpm --version >/dev/null 2>&1 || true
+  repair_corepack_node_gyp_permissions
   info "Installing dependencies..."
   run_pnpm install --frozen-lockfile
   info "Building shared workspace package..."
