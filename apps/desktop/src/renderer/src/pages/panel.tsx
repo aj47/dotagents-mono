@@ -180,15 +180,15 @@ export function Component() {
     }
 
     if (mcpMode) {
-      const shortcut = config.mcpToolsShortcut
+      const shortcut = config.agentShortcut || config.mcpToolsShortcut
       if (shortcut === "hold-ctrl-alt") {
         return "Release keys"
       } else if (shortcut === "toggle-ctrl-alt") {
         return "Ctrl+Alt"
       } else if (shortcut === "ctrl-alt-slash") {
         return "Ctrl+Alt+/"
-      } else if (shortcut === "custom" && config.customMcpToolsShortcut) {
-        return formatKeyComboForDisplay(config.customMcpToolsShortcut)
+      } else if (shortcut === "custom" && (config.customAgentShortcut || config.customMcpToolsShortcut)) {
+        return formatKeyComboForDisplay(config.customAgentShortcut || config.customMcpToolsShortcut || "")
       }
     } else {
       const shortcut = config.shortcut

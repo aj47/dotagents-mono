@@ -77,7 +77,7 @@ function getWeakModelConfig(): { model: string; apiKey: string; baseUrl: string 
   }
 
   // Get model name - fall back to a default if not set
-  const model = config.dualModelWeakModelName || preset.mcpToolsModel || "gpt-4.1-mini"
+  const model = config.dualModelWeakModelName || preset.agentModel || preset.mcpToolsModel || "gpt-4.1-mini"
 
   return {
     model,

@@ -938,16 +938,24 @@ export default function SettingsScreen({ navigation }: any) {
     }
   }, [settingsClient]);
 
+  const getAgentProvider = () => remoteSettings?.agentProviderId || remoteSettings?.mcpToolsProviderId || 'openai';
+
+  const getAgentModelKey = (provider: string) => provider === 'openai' ? 'agentOpenaiModel'
+    : provider === 'groq' ? 'agentGroqModel'
+    : provider === 'gemini' ? 'agentGeminiModel'
+    : 'agentChatgptWebModel';
+
   // Fetch models when remote settings load or provider changes
   useEffect(() => {
-    if (remoteSettings?.mcpToolsProviderId && settingsClient) {
-      fetchModels(remoteSettings.mcpToolsProviderId);
+    const providerId = remoteSettings?.agentProviderId || remoteSettings?.mcpToolsProviderId;
+    if (providerId && settingsClient) {
+      fetchModels(providerId);
     }
-  }, [remoteSettings?.mcpToolsProviderId, settingsClient, fetchModels]);
+  }, [remoteSettings?.agentProviderId, remoteSettings?.mcpToolsProviderId, settingsClient, fetchModels]);
 
   // Handle provider change
   const handleProviderChange = async (provider: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
-    if (!settingsClient || !remoteSettings || remoteSettings.mcpToolsProviderId === provider) return;
+    if (!settingsClient || !remoteSettings || getAgentProvider() === provider) return;
 
     // Cancel any pending model update to avoid writing to the wrong provider's model key
     if (modelUpdateTimeoutRef.current) {
@@ -956,8 +964,8 @@ export default function SettingsScreen({ navigation }: any) {
     }
 
     try {
-      await settingsClient.updateSettings({ mcpToolsProviderId: provider });
-      setRemoteSettings(prev => prev ? { ...prev, mcpToolsProviderId: provider } : null);
+      await settingsClient.updateSettings({ agentProviderId: provider });
+      setRemoteSettings(prev => prev ? { ...prev, agentProviderId: provider } : null);
       // Reset custom model mode when switching providers
       setUseCustomModel(false);
       // Models will be fetched via the useEffect above
@@ -985,7 +993,7 @@ export default function SettingsScreen({ navigation }: any) {
       setAvailableModels([]);
       setUseCustomModel(false);
       // Fetch models for the new preset
-      if (remoteSettings.mcpToolsProviderId === 'openai') {
+      if (getAgentProvider() === 'openai') {
         fetchModels('openai');
       }
     } catch (error: any) {
@@ -1006,10 +1014,7 @@ export default function SettingsScreen({ navigation }: any) {
     // Update draft state immediately for responsive UI
     setCustomModelDraft(modelName);
     if (remoteSettings) {
-      const pendingModelKey = remoteSettings.mcpToolsProviderId === 'openai' ? 'mcpToolsOpenaiModel'
-        : remoteSettings.mcpToolsProviderId === 'groq' ? 'mcpToolsGroqModel'
-        : remoteSettings.mcpToolsProviderId === 'gemini' ? 'mcpToolsGeminiModel'
-        : 'mcpToolsChatgptWebModel';
+      const pendingModelKey = getAgentModelKey(getAgentProvider());
       markRemotePending(pendingModelKey);
     }
     setSaveStatusMessage(null);
@@ -1023,11 +1028,8 @@ export default function SettingsScreen({ navigation }: any) {
     modelUpdateTimeoutRef.current = setTimeout(async () => {
       if (!settingsClient || !remoteSettings) return;
 
-      const provider = remoteSettings.mcpToolsProviderId;
-      const modelKey = provider === 'openai' ? 'mcpToolsOpenaiModel'
-        : provider === 'groq' ? 'mcpToolsGroqModel'
-        : provider === 'gemini' ? 'mcpToolsGeminiModel'
-        : 'mcpToolsChatgptWebModel';
+      const provider = getAgentProvider();
+      const modelKey = getAgentModelKey(provider);
 
       // Update local state
       setRemoteSettings(prev => prev ? { ...prev, [modelKey]: modelName } : null);
@@ -1059,22 +1061,22 @@ export default function SettingsScreen({ navigation }: any) {
     if (remoteSettings) {
       setCustomModelDraft(getCurrentModelValue());
     }
-  }, [remoteSettings?.mcpToolsProviderId, remoteSettings?.mcpToolsOpenaiModel, remoteSettings?.mcpToolsGroqModel, remoteSettings?.mcpToolsGeminiModel, remoteSettings?.mcpToolsChatgptWebModel]);
+  }, [remoteSettings?.agentProviderId, remoteSettings?.mcpToolsProviderId, remoteSettings?.agentOpenaiModel, remoteSettings?.agentGroqModel, remoteSettings?.agentGeminiModel, remoteSettings?.agentChatgptWebModel, remoteSettings?.mcpToolsOpenaiModel, remoteSettings?.mcpToolsGroqModel, remoteSettings?.mcpToolsGeminiModel, remoteSettings?.mcpToolsChatgptWebModel]);
 
   // Get current model value based on provider
   const getCurrentModelValue = () => {
     if (!remoteSettings) return '';
-    const provider = remoteSettings.mcpToolsProviderId;
-    if (provider === 'openai') return remoteSettings.mcpToolsOpenaiModel || '';
-    if (provider === 'groq') return remoteSettings.mcpToolsGroqModel || '';
-    if (provider === 'gemini') return remoteSettings.mcpToolsGeminiModel || '';
-    return remoteSettings.mcpToolsChatgptWebModel || '';
+    const provider = getAgentProvider();
+    if (provider === 'openai') return remoteSettings.agentOpenaiModel || remoteSettings.mcpToolsOpenaiModel || '';
+    if (provider === 'groq') return remoteSettings.agentGroqModel || remoteSettings.mcpToolsGroqModel || '';
+    if (provider === 'gemini') return remoteSettings.agentGeminiModel || remoteSettings.mcpToolsGeminiModel || '';
+    return remoteSettings.agentChatgptWebModel || remoteSettings.mcpToolsChatgptWebModel || '';
   };
 
   // Get placeholder based on provider
   const getModelPlaceholder = () => {
     if (!remoteSettings) return '';
-    const provider = remoteSettings.mcpToolsProviderId;
+    const provider = getAgentProvider();
     if (provider === 'openai') return 'gpt-4.1-mini';
     if (provider === 'groq') return 'openai/gpt-oss-120b';
     if (provider === 'gemini') return 'gemini-2.5-flash';
@@ -1148,22 +1150,16 @@ export default function SettingsScreen({ navigation }: any) {
             .filter(Boolean);
         }
 
-        const modelKey = remoteSettings.mcpToolsProviderId === 'openai'
-          ? 'mcpToolsOpenaiModel'
-          : remoteSettings.mcpToolsProviderId === 'groq'
-            ? 'mcpToolsGroqModel'
-            : remoteSettings.mcpToolsProviderId === 'gemini'
-              ? 'mcpToolsGeminiModel'
-              : 'mcpToolsChatgptWebModel';
+        const modelKey = getAgentModelKey(getAgentProvider());
         if (pendingKeys.has(modelKey)) {
-          if (modelKey === 'mcpToolsOpenaiModel') {
-            updates.mcpToolsOpenaiModel = customModelDraft;
-          } else if (modelKey === 'mcpToolsGroqModel') {
-            updates.mcpToolsGroqModel = customModelDraft;
-          } else if (modelKey === 'mcpToolsGeminiModel') {
-            updates.mcpToolsGeminiModel = customModelDraft;
+          if (modelKey === 'agentOpenaiModel') {
+            updates.agentOpenaiModel = customModelDraft;
+          } else if (modelKey === 'agentGroqModel') {
+            updates.agentGroqModel = customModelDraft;
+          } else if (modelKey === 'agentGeminiModel') {
+            updates.agentGeminiModel = customModelDraft;
           } else {
-            updates.mcpToolsChatgptWebModel = customModelDraft;
+            updates.agentChatgptWebModel = customModelDraft;
           }
         }
 
@@ -1619,13 +1615,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.mcpToolsProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        getAgentProvider() === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleProviderChange(provider.value as 'openai' | 'groq' | 'gemini' | 'chatgpt-web')}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.mcpToolsProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        getAgentProvider() === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -1718,13 +1714,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider}
                       style={[
                         styles.providerOption,
-                        remoteSettings.mcpToolsProviderId === provider && styles.providerOptionActive,
+                        getAgentProvider() === provider && styles.providerOptionActive,
                       ]}
                       onPress={() => handleProviderChange(provider)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.mcpToolsProviderId === provider && styles.providerOptionTextActive,
+                        getAgentProvider() === provider && styles.providerOptionTextActive,
                       ]}>
                         {provider === 'chatgpt-web' ? 'OpenAI Codex' : provider.charAt(0).toUpperCase() + provider.slice(1)}
                       </Text>
@@ -1732,7 +1728,7 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
 
-                {remoteSettings.mcpToolsProviderId === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
+                {getAgentProvider() === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
                   <>
                     <Text style={styles.label}>OpenAI Compatible Endpoint</Text>
                     <TouchableOpacity
@@ -1765,7 +1761,7 @@ export default function SettingsScreen({ navigation }: any) {
                     {!useCustomModel && (
                       <TouchableOpacity
                         style={[styles.modelActionButton, isLoadingModels && styles.modelActionButtonDisabled]}
-                        onPress={() => remoteSettings?.mcpToolsProviderId && fetchModels(remoteSettings.mcpToolsProviderId)}
+                        onPress={() => remoteSettings && fetchModels(getAgentProvider())}
                         disabled={isLoadingModels}
                         accessibilityRole="button"
                         accessibilityLabel="Refresh available models"

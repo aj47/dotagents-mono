@@ -87,8 +87,8 @@ export async function executeSampling(
 
     // Determine which provider to use
     // Use modelPreferences hints if provided, otherwise use configured defaults
-    let providerId = config.mcpToolsProviderId || "openai"
-    let model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
+    let providerId = config.agentProviderId || config.mcpToolsProviderId || "openai"
+    let model = config.agentOpenaiModel || config.mcpToolsOpenaiModel || "gpt-4.1-mini"
 
     if (request.modelPreferences?.hints) {
       const hint = request.modelPreferences.hints[0]
@@ -96,11 +96,11 @@ export async function executeSampling(
         model = hint.name
       }
     } else if (providerId === "groq") {
-      model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
+      model = config.agentGroqModel || config.mcpToolsGroqModel || "openai/gpt-oss-120b"
     } else if (providerId === "gemini") {
-      model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
+      model = config.agentGeminiModel || config.mcpToolsGeminiModel || "gemini-2.5-flash"
     } else if (providerId === "chatgpt-web") {
-      model = config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+      model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
     }
 
     // Execute the LLM call

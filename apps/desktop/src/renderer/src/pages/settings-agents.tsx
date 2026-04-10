@@ -153,8 +153,9 @@ function emptyAgent(): EditingAgent {
 function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number): string[] {
   const items: string[] = [agent.connection.type]
 
-  if (agent.modelConfig?.mcpToolsProviderId) {
-    items.push(agent.modelConfig.mcpToolsProviderId)
+  const agentProviderId = agent.modelConfig?.agentProviderId || agent.modelConfig?.mcpToolsProviderId
+  if (agentProviderId) {
+    items.push(agentProviderId)
   }
 
   const enabledServerCount = agent.toolConfig?.enabledServers?.length ?? 0
@@ -912,12 +913,12 @@ export function SettingsAgents() {
                 <div className="space-y-2">
                   <Label>LLM Provider</Label>
                   <Select
-                    value={editing.modelConfig?.mcpToolsProviderId ?? "__global__"}
+                    value={editing.modelConfig?.agentProviderId ?? editing.modelConfig?.mcpToolsProviderId ?? "__global__"}
                     onValueChange={v => {
                       if (v === "__global__") {
                         setEditing({ ...editing, modelConfig: undefined })
                       } else {
-                        updateModelConfig({ mcpToolsProviderId: v as "openai" | "groq" | "gemini" | "chatgpt-web" })
+                        updateModelConfig({ agentProviderId: v as "openai" | "groq" | "gemini" | "chatgpt-web" })
                       }
                     }}
                   >
@@ -931,21 +932,21 @@ export function SettingsAgents() {
                     </SelectContent>
                   </Select>
                 </div>
-                {editing.modelConfig?.mcpToolsProviderId && (
+                {(editing.modelConfig?.agentProviderId || editing.modelConfig?.mcpToolsProviderId) && (
                   <ModelSelector
-                    providerId={editing.modelConfig.mcpToolsProviderId}
+                    providerId={editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId}
                     value={
-                      editing.modelConfig.mcpToolsProviderId === "openai" ? editing.modelConfig.mcpToolsOpenaiModel :
-                      editing.modelConfig.mcpToolsProviderId === "groq" ? editing.modelConfig.mcpToolsGroqModel :
-                      editing.modelConfig.mcpToolsProviderId === "gemini" ? editing.modelConfig.mcpToolsGeminiModel :
-                      editing.modelConfig.mcpToolsChatgptWebModel
+                      (editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId) === "openai" ? editing.modelConfig.agentOpenaiModel || editing.modelConfig.mcpToolsOpenaiModel :
+                      (editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId) === "groq" ? editing.modelConfig.agentGroqModel || editing.modelConfig.mcpToolsGroqModel :
+                      (editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId) === "gemini" ? editing.modelConfig.agentGeminiModel || editing.modelConfig.mcpToolsGeminiModel :
+                      editing.modelConfig.agentChatgptWebModel || editing.modelConfig.mcpToolsChatgptWebModel
                     }
                     onValueChange={model => {
-                      const p = editing.modelConfig?.mcpToolsProviderId
-                      if (p === "openai") updateModelConfig({ mcpToolsOpenaiModel: model })
-                      else if (p === "groq") updateModelConfig({ mcpToolsGroqModel: model })
-                      else if (p === "gemini") updateModelConfig({ mcpToolsGeminiModel: model })
-                      else if (p === "chatgpt-web") updateModelConfig({ mcpToolsChatgptWebModel: model })
+                      const p = editing.modelConfig?.agentProviderId || editing.modelConfig?.mcpToolsProviderId
+                      if (p === "openai") updateModelConfig({ agentOpenaiModel: model })
+                      else if (p === "groq") updateModelConfig({ agentGroqModel: model })
+                      else if (p === "gemini") updateModelConfig({ agentGeminiModel: model })
+                      else if (p === "chatgpt-web") updateModelConfig({ agentChatgptWebModel: model })
                     }}
                     label="Agent Model"
                     placeholder="Select model for this agent"

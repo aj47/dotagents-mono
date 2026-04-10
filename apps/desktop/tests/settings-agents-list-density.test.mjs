@@ -12,8 +12,8 @@ const renderAgentListBlock = settingsAgentsSource.match(/function renderAgentLis
 
 test('desktop settings agents summarize low-priority card metadata into one muted line', () => {
   assert.match(settingsAgentsSource, /function getAgentCardSummaryItems\(agent: AgentProfile, availableSkillCount: number\): string\[]/)
-  assert.match(settingsAgentsSource, /const items = \[agent\.connection\.type\]/)
-  assert.match(settingsAgentsSource, /if \(agent\.modelConfig\?\.mcpToolsProviderId\) \{\s*items\.push\(agent\.modelConfig\.mcpToolsProviderId\)/)
+  assert.match(settingsAgentsSource, /const items: string\[] = \[agent\.connection\.type\]/)
+  assert.match(settingsAgentsSource, /const agentProviderId = agent\.modelConfig\?\.agentProviderId \|\| agent\.modelConfig\?\.mcpToolsProviderId/)
   assert.match(settingsAgentsSource, /items\.push\(`\$\{enabledServerCount\} server\$\{enabledServerCount === 1 \? "" : "s"\}`\)/)
   assert.match(settingsAgentsSource, /items\.push\(`\$\{enabledSkillCount\} skill\$\{enabledSkillCount === 1 \? "" : "s"\}`\)/)
   assert.match(settingsAgentsSource, /items\.push\(`\$\{propertyCount\} prop\$\{propertyCount === 1 \? "" : "s"\}`\)/)

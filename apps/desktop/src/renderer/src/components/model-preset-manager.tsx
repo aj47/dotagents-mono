@@ -40,7 +40,7 @@ export function ModelPresetManager({
     name: "",
     baseUrl: "",
     apiKey: "",
-    mcpToolsModel: "",
+    agentModel: "",
     transcriptProcessingModel: "",
     summarizationModel: "",
   })
@@ -56,7 +56,7 @@ export function ModelPresetManager({
     const mergedBuiltIn = builtIn.map(preset => {
       const saved = custom.find(c => c.id === preset.id)
       if (saved) {
-        // Merge all saved properties (apiKey, mcpToolsModel, transcriptProcessingModel, etc.)
+        // Merge all saved properties (apiKey, agentModel, transcriptProcessingModel, etc.)
         const merged = { ...preset, ...saved }
         // For builtin-openai, fallback to legacy openaiApiKey if saved preset has empty apiKey
         // This handles the case where saveModelWithPreset persisted a preset with apiKey: ''
@@ -89,8 +89,8 @@ export function ModelPresetManager({
   // Save model selection to the current preset (called when user changes model)
   // Save model selection to both global config AND the current preset in a single save
   const saveModelWithPreset = useCallback((
-    modelType: 'mcpToolsModel' | 'transcriptProcessingModel' | 'summarizationModel',
-    globalConfigKey: 'mcpToolsOpenaiModel' | 'transcriptPostProcessingOpenaiModel' | 'dualModelWeakModelName',
+    modelType: 'agentModel' | 'transcriptProcessingModel' | 'summarizationModel',
+    globalConfigKey: 'agentOpenaiModel' | 'transcriptPostProcessingOpenaiModel' | 'dualModelWeakModelName',
     modelId: string
   ) => {
     if (!currentPresetId || !config) return
@@ -146,8 +146,9 @@ export function ModelPresetManager({
         openaiApiKey: preset.apiKey,
       }
       // Apply model preferences if they are set on the preset
-      if (preset.mcpToolsModel) {
-        updates.mcpToolsOpenaiModel = preset.mcpToolsModel
+      const agentModel = preset.agentModel || preset.mcpToolsModel
+      if (agentModel) {
+        updates.agentOpenaiModel = agentModel
       }
       if (preset.transcriptProcessingModel) {
         updates.transcriptPostProcessingOpenaiModel = preset.transcriptProcessingModel
@@ -180,7 +181,7 @@ export function ModelPresetManager({
       isBuiltIn: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      mcpToolsModel: newPreset.mcpToolsModel || "",
+      agentModel: newPreset.agentModel || newPreset.mcpToolsModel || "",
       transcriptProcessingModel: newPreset.transcriptProcessingModel || "",
       summarizationModel: newPreset.summarizationModel || "",
     }
@@ -191,7 +192,7 @@ export function ModelPresetManager({
     })
 
     setIsCreateDialogOpen(false)
-    setNewPreset({ name: "", baseUrl: "", apiKey: "", mcpToolsModel: "", transcriptProcessingModel: "", summarizationModel: "" })
+    setNewPreset({ name: "", baseUrl: "", apiKey: "", agentModel: "", transcriptProcessingModel: "", summarizationModel: "" })
     toast.success("Preset created successfully")
   }
 
@@ -316,9 +317,9 @@ export function ModelPresetManager({
                 presetId={currentPreset.id}
                 baseUrl={currentPreset.baseUrl}
                 apiKey={currentPreset.apiKey}
-                value={config?.mcpToolsOpenaiModel || ""}
+                value={config?.agentOpenaiModel || config?.mcpToolsOpenaiModel || ""}
                 onValueChange={(value) => {
-                  saveModelWithPreset('mcpToolsModel', 'mcpToolsOpenaiModel', value)
+                  saveModelWithPreset('agentModel', 'agentOpenaiModel', value)
                 }}
                 label="Agent Model"
                 placeholder="Select model"
@@ -408,9 +409,9 @@ export function ModelPresetManager({
                     presetId="new-preset"
                     baseUrl={newPreset.baseUrl || ""}
                     apiKey={newPreset.apiKey || ""}
-                    value={newPreset.mcpToolsModel || ""}
+                    value={newPreset.agentModel || newPreset.mcpToolsModel || ""}
                     onValueChange={(value) =>
-                      setNewPreset({ ...newPreset, mcpToolsModel: value })
+                      setNewPreset({ ...newPreset, agentModel: value })
                     }
                     label="Agent Model"
                     placeholder="Select model for agent mode"
@@ -520,9 +521,9 @@ export function ModelPresetManager({
                     presetId={editingPreset.id}
                     baseUrl={editingPreset.baseUrl}
                     apiKey={editingPreset.apiKey}
-                    value={editingPreset.mcpToolsModel || ""}
+                    value={editingPreset.agentModel || editingPreset.mcpToolsModel || ""}
                     onValueChange={(value) =>
-                      setEditingPreset({ ...editingPreset, mcpToolsModel: value })
+                      setEditingPreset({ ...editingPreset, agentModel: value })
                     }
                     label="Agent Model"
                     placeholder="Select model for agent mode"

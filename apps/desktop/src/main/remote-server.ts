@@ -781,11 +781,11 @@ function getConnectableBaseUrlForMobilePairing(
 }
 
 function resolveActiveModelId(cfg: any): string {
-  const provider = cfg.mcpToolsProviderId || "openai"
-  if (provider === "openai") return cfg.mcpToolsOpenaiModel || "openai"
-  if (provider === "groq") return cfg.mcpToolsGroqModel || "groq"
-  if (provider === "gemini") return cfg.mcpToolsGeminiModel || "gemini"
-  if (provider === "chatgpt-web") return cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+  const provider = cfg.agentProviderId || cfg.mcpToolsProviderId || "openai"
+  if (provider === "openai") return cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel || "openai"
+  if (provider === "groq") return cfg.agentGroqModel || cfg.mcpToolsGroqModel || "groq"
+  if (provider === "gemini") return cfg.agentGeminiModel || cfg.mcpToolsGeminiModel || "gemini"
+  if (provider === "chatgpt-web") return cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
   return String(provider)
 }
 

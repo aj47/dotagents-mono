@@ -767,7 +767,7 @@ export function Component() {
     const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acpx"
     const stt = configQuery.data.sttProviderId || "openai"
     const transcript = configQuery.data.transcriptPostProcessingProviderId || "openai"
-    const mcp = configQuery.data.mcpToolsProviderId || "openai"
+    const mcp = configQuery.data.agentProviderId || configQuery.data.mcpToolsProviderId || "openai"
     const tts = configQuery.data.ttsProviderId || "openai"
 
     return {

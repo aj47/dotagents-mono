@@ -890,9 +890,9 @@ export function Component() {
           <Control label={<ControlLabel label="Agent Mode" tooltip="Choose how to activate agent mode for skills, tools, and delegation" />} className="px-3">
             <div className="space-y-2">
               <Select
-                value={configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"}
+                value={configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"}
                 onValueChange={(value: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom") => {
-                  saveConfig({ mcpToolsShortcut: value })
+                  saveConfig({ agentShortcut: value })
                 }}
               >
                 <SelectTrigger>
@@ -906,11 +906,11 @@ export function Component() {
                 </SelectContent>
               </Select>
 
-              {configQuery.data?.mcpToolsShortcut === "custom" && (
+              {(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut) === "custom" && (
                 <KeyRecorder
-                  value={configQuery.data?.customMcpToolsShortcut || ""}
+                  value={configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut || ""}
                   onChange={(keyCombo) => {
-                    saveConfig({ customMcpToolsShortcut: keyCombo })
+                    saveConfig({ customAgentShortcut: keyCombo })
                   }}
                   placeholder="Click to record custom agent mode shortcut"
                 />

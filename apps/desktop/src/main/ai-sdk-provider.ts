@@ -140,7 +140,7 @@ function getProviderConfig(
         model: sanitizeChatModelSelection(
           "openai",
           modelContext === "mcp"
-            ? config.mcpToolsOpenaiModel || DEFAULT_CHAT_MODELS.openai.mcp
+            ? config.agentOpenaiModel || config.mcpToolsOpenaiModel || DEFAULT_CHAT_MODELS.openai.mcp
             : config.transcriptPostProcessingOpenaiModel || DEFAULT_CHAT_MODELS.openai.transcript,
           modelContext,
         ),
@@ -153,7 +153,7 @@ function getProviderConfig(
         model: sanitizeChatModelSelection(
           "groq",
           modelContext === "mcp"
-            ? config.mcpToolsGroqModel || DEFAULT_CHAT_MODELS.groq.mcp
+            ? config.agentGroqModel || config.mcpToolsGroqModel || DEFAULT_CHAT_MODELS.groq.mcp
             : config.transcriptPostProcessingGroqModel || DEFAULT_CHAT_MODELS.groq.transcript,
           modelContext,
         ),
@@ -165,7 +165,7 @@ function getProviderConfig(
         baseURL: config.geminiBaseUrl || undefined,
         model:
           modelContext === "mcp"
-            ? config.mcpToolsGeminiModel || DEFAULT_CHAT_MODELS.gemini.mcp
+            ? config.agentGeminiModel || config.mcpToolsGeminiModel || DEFAULT_CHAT_MODELS.gemini.mcp
             : config.transcriptPostProcessingGeminiModel || DEFAULT_CHAT_MODELS.gemini.transcript,
       }
 
@@ -175,7 +175,7 @@ function getProviderConfig(
         baseURL: config.chatgptWebBaseUrl || "https://chatgpt.com",
         model:
           modelContext === "mcp"
-            ? config.mcpToolsChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].mcp
+            ? config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].mcp
             : config.transcriptPostProcessingChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].transcript,
       }
 
@@ -193,7 +193,7 @@ export function createLanguageModel(
 ): LanguageModel {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+    providerId || (config.agentProviderId as ProviderType) || (config.mcpToolsProviderId as ProviderType) || "openai",
   )
 
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
@@ -240,11 +240,11 @@ export function createLanguageModel(
 }
 
 /**
- * Get the current provider ID from config (for MCP tools)
+ * Get the current agent provider ID from config.
  */
 export function getCurrentProviderId(): ProviderType {
   const config = configStore.get()
-  return normalizeProviderType((config.mcpToolsProviderId as ProviderType) || "openai")
+  return normalizeProviderType((config.agentProviderId as ProviderType) || (config.mcpToolsProviderId as ProviderType) || "openai")
 }
 
 /**
@@ -264,7 +264,7 @@ export function getCurrentModelName(
 ): string {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+    providerId || (config.agentProviderId as ProviderType) || (config.mcpToolsProviderId as ProviderType) || "openai",
   )
 
   return getProviderConfig(effectiveProviderId, modelContext).model
@@ -294,7 +294,7 @@ export function getPromptCachingConfig(
 ): PromptCachingConfig | undefined {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+    providerId || (config.agentProviderId as ProviderType) || (config.mcpToolsProviderId as ProviderType) || "openai",
   )
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
   const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
@@ -380,7 +380,7 @@ export function getReasoningEffortProviderOptions(
 ): Record<string, any> | undefined {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
-    providerId || (config.mcpToolsProviderId as ProviderType) || "openai",
+    providerId || (config.agentProviderId as ProviderType) || (config.mcpToolsProviderId as ProviderType) || "openai",
   )
 
   // Only OpenAI-compatible Chat Completions path supports this option.

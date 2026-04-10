@@ -3674,20 +3674,20 @@ export const router = {
         mcpCurrentProfileId: profile.id,
         // Apply model config if it exists
         // Agent model settings
-        ...(profile.modelConfig?.mcpToolsProviderId && {
-          mcpToolsProviderId: profile.modelConfig.mcpToolsProviderId,
+        ...((profile.modelConfig?.agentProviderId || profile.modelConfig?.mcpToolsProviderId) && {
+          agentProviderId: profile.modelConfig.agentProviderId || profile.modelConfig.mcpToolsProviderId,
         }),
-        ...(profile.modelConfig?.mcpToolsOpenaiModel && {
-          mcpToolsOpenaiModel: profile.modelConfig.mcpToolsOpenaiModel,
+        ...((profile.modelConfig?.agentOpenaiModel || profile.modelConfig?.mcpToolsOpenaiModel) && {
+          agentOpenaiModel: profile.modelConfig.agentOpenaiModel || profile.modelConfig.mcpToolsOpenaiModel,
         }),
-        ...(profile.modelConfig?.mcpToolsGroqModel && {
-          mcpToolsGroqModel: profile.modelConfig.mcpToolsGroqModel,
+        ...((profile.modelConfig?.agentGroqModel || profile.modelConfig?.mcpToolsGroqModel) && {
+          agentGroqModel: profile.modelConfig.agentGroqModel || profile.modelConfig.mcpToolsGroqModel,
         }),
-        ...(profile.modelConfig?.mcpToolsGeminiModel && {
-          mcpToolsGeminiModel: profile.modelConfig.mcpToolsGeminiModel,
+        ...((profile.modelConfig?.agentGeminiModel || profile.modelConfig?.mcpToolsGeminiModel) && {
+          agentGeminiModel: profile.modelConfig.agentGeminiModel || profile.modelConfig.mcpToolsGeminiModel,
         }),
-        ...(profile.modelConfig?.mcpToolsChatgptWebModel && {
-          mcpToolsChatgptWebModel: profile.modelConfig.mcpToolsChatgptWebModel,
+        ...((profile.modelConfig?.agentChatgptWebModel || profile.modelConfig?.mcpToolsChatgptWebModel) && {
+          agentChatgptWebModel: profile.modelConfig.agentChatgptWebModel || profile.modelConfig.mcpToolsChatgptWebModel,
         }),
         ...(profile.modelConfig?.currentModelPresetId && {
           currentModelPresetId: profile.modelConfig.currentModelPresetId,
@@ -3794,11 +3794,11 @@ export const router = {
         const config = configStore.get()
       return agentProfileService.saveCurrentModelStateToProfile(input.profileId, {
         // Agent model settings
-        mcpToolsProviderId: config.mcpToolsProviderId,
-        mcpToolsOpenaiModel: config.mcpToolsOpenaiModel,
-        mcpToolsGroqModel: config.mcpToolsGroqModel,
-        mcpToolsGeminiModel: config.mcpToolsGeminiModel,
-        mcpToolsChatgptWebModel: config.mcpToolsChatgptWebModel,
+        agentProviderId: config.agentProviderId || config.mcpToolsProviderId,
+        agentOpenaiModel: config.agentOpenaiModel || config.mcpToolsOpenaiModel,
+        agentGroqModel: config.agentGroqModel || config.mcpToolsGroqModel,
+        agentGeminiModel: config.agentGeminiModel || config.mcpToolsGeminiModel,
+        agentChatgptWebModel: config.agentChatgptWebModel || config.mcpToolsChatgptWebModel,
         currentModelPresetId: config.currentModelPresetId,
         // STT Provider settings
         sttProviderId: config.sttProviderId,
@@ -3820,6 +3820,11 @@ export const router = {
     .input<{
       profileId: string
       // Agent model settings
+      agentProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+      agentOpenaiModel?: string
+      agentGroqModel?: string
+      agentGeminiModel?: string
+      agentChatgptWebModel?: string
       mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
       mcpToolsOpenaiModel?: string
       mcpToolsGroqModel?: string
@@ -3842,11 +3847,11 @@ export const router = {
     .action(async ({ input }) => {
         return agentProfileService.updateProfileModelConfig(input.profileId, {
         // Agent model settings
-        mcpToolsProviderId: input.mcpToolsProviderId,
-        mcpToolsOpenaiModel: input.mcpToolsOpenaiModel,
-        mcpToolsGroqModel: input.mcpToolsGroqModel,
-        mcpToolsGeminiModel: input.mcpToolsGeminiModel,
-        mcpToolsChatgptWebModel: input.mcpToolsChatgptWebModel,
+        agentProviderId: input.agentProviderId ?? input.mcpToolsProviderId,
+        agentOpenaiModel: input.agentOpenaiModel ?? input.mcpToolsOpenaiModel,
+        agentGroqModel: input.agentGroqModel ?? input.mcpToolsGroqModel,
+        agentGeminiModel: input.agentGeminiModel ?? input.mcpToolsGeminiModel,
+        agentChatgptWebModel: input.agentChatgptWebModel ?? input.mcpToolsChatgptWebModel,
         currentModelPresetId: input.currentModelPresetId,
         // STT Provider settings
         sttProviderId: input.sttProviderId,

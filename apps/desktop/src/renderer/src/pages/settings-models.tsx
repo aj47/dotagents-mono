@@ -152,7 +152,7 @@ export function Component() {
   const sttProviderId = config.sttProviderId || "openai"
   const transcriptProcessingProviderId = config.transcriptPostProcessingProviderId || "openai"
   const ttsProviderId = config.ttsProviderId || "openai"
-  const agentProviderId = config.mcpToolsProviderId || "openai"
+  const agentProviderId = config.agentProviderId || config.mcpToolsProviderId || "openai"
   const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
   const usesOpenAiCompatiblePreset =
     agentProviderId === "openai" ||
@@ -208,18 +208,18 @@ export function Component() {
                 providerId={agentProviderId}
                 mcpModel={
                   agentProviderId === "groq"
-                    ? config.mcpToolsGroqModel
+                    ? config.agentGroqModel || config.mcpToolsGroqModel
                     : agentProviderId === "gemini"
-                      ? config.mcpToolsGeminiModel
-                      : config.mcpToolsChatgptWebModel
+                      ? config.agentGeminiModel || config.mcpToolsGeminiModel
+                      : config.agentChatgptWebModel || config.mcpToolsChatgptWebModel
                 }
                 onMcpModelChange={(value) =>
                   saveConfig(
                     agentProviderId === "groq"
-                      ? { mcpToolsGroqModel: value }
+                      ? { agentGroqModel: value }
                       : agentProviderId === "gemini"
-                        ? { mcpToolsGeminiModel: value }
-                        : { mcpToolsChatgptWebModel: value },
+                        ? { agentGeminiModel: value }
+                        : { agentChatgptWebModel: value },
                   )
                 }
                 showMcpModel={true}
@@ -259,7 +259,7 @@ export function Component() {
             label="Agent"
             tooltip="Choose which provider powers the main agent model for reasoning, skills, and tools."
             value={agentProviderId}
-            onChange={(value) => saveConfig({ mcpToolsProviderId: value as CHAT_PROVIDER_ID })}
+            onChange={(value) => saveConfig({ agentProviderId: value as CHAT_PROVIDER_ID })}
             providers={CHAT_PROVIDERS}
             icon={Bot}
           />

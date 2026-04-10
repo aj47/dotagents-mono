@@ -791,16 +791,16 @@ export function clearIterativeSummary(sessionId: string): void {
 
 function getProviderAndModel(): { providerId: string; model: string } {
   const config = configStore.get()
-  const providerId = config.mcpToolsProviderId || "openai"
+  const providerId = config.agentProviderId || config.mcpToolsProviderId || "openai"
   let model = "gpt-4.1-mini"
   if (providerId === "openai") {
-    model = config.mcpToolsOpenaiModel || "gpt-4.1-mini"
+    model = config.agentOpenaiModel || config.mcpToolsOpenaiModel || "gpt-4.1-mini"
   } else if (providerId === "groq") {
-    model = config.mcpToolsGroqModel || "openai/gpt-oss-120b"
+    model = config.agentGroqModel || config.mcpToolsGroqModel || "openai/gpt-oss-120b"
   } else if (providerId === "gemini") {
-    model = config.mcpToolsGeminiModel || "gemini-2.5-flash"
+    model = config.agentGeminiModel || config.mcpToolsGeminiModel || "gemini-2.5-flash"
   } else if (providerId === "chatgpt-web") {
-    model = config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+    model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
   }
   return { providerId, model }
 }

@@ -128,8 +128,8 @@ export function Component() {
       groqApiKey: apiKey.trim(),
       sttProviderId: "groq",
       transcriptPostProcessingProviderId: "groq",
-      mcpToolsProviderId: "groq",
-      mcpToolsGroqModel: "openai/gpt-oss-120b",
+      agentProviderId: "groq",
+      agentGroqModel: "openai/gpt-oss-120b",
       ttsProviderId: "groq",
     })
 
@@ -525,7 +525,7 @@ function AgentStep({
     setExaInstalled("exa" in mcpServers)
   }, [config?.mcpConfig?.mcpServers])
 
-  const mcpToolsShortcut = config?.mcpToolsShortcut || "hold-ctrl-alt"
+  const agentShortcut = config?.agentShortcut || config?.mcpToolsShortcut || "hold-ctrl-alt"
 
   const handleInstallExa = async () => {
     setIsInstallingExa(true)
@@ -565,7 +565,7 @@ function AgentStep({
     if (!agentPrompt.trim()) return
 
     // Check if API key is configured for the selected provider
-    const providerId = config?.mcpToolsProviderId || "openai"
+    const providerId = config?.agentProviderId || config?.mcpToolsProviderId || "openai"
     const hasApiKey = providerId === "groq"
       ? !!config?.groqApiKey
       : providerId === "gemini"
@@ -632,10 +632,10 @@ function AgentStep({
         </div>
         <div className="space-y-3">
           <Select
-            value={mcpToolsShortcut}
+            value={agentShortcut}
             onValueChange={(value) => {
               onSaveConfig({
-                mcpToolsShortcut: value as Config["mcpToolsShortcut"],
+                agentShortcut: value as Config["agentShortcut"],
               })
             }}
           >
@@ -650,12 +650,12 @@ function AgentStep({
             </SelectContent>
           </Select>
 
-          {mcpToolsShortcut === "custom" && (
+          {agentShortcut === "custom" && (
             <KeyRecorder
-              value={config?.customMcpToolsShortcut || ""}
+              value={config?.customAgentShortcut || config?.customMcpToolsShortcut || ""}
               onChange={(keyCombo) => {
                 onSaveConfig({
-                  customMcpToolsShortcut: keyCombo,
+                  customAgentShortcut: keyCombo,
                 })
               }}
               placeholder="Click to record custom agent mode shortcut"
@@ -725,7 +725,7 @@ function AgentStep({
         <div className="flex items-center gap-2 mb-3 p-2 rounded bg-primary/10 border border-primary/20">
           <span className="i-mingcute-keyboard-fill text-primary"></span>
           <span className="text-sm">
-            <strong>{getMcpToolsShortcutDisplay(mcpToolsShortcut, config?.customMcpToolsShortcut)}</strong> to speak to your agent from anywhere
+            <strong>{getMcpToolsShortcutDisplay(agentShortcut, config?.customAgentShortcut || config?.customMcpToolsShortcut)}</strong> to speak to your agent from anywhere
           </span>
         </div>
 

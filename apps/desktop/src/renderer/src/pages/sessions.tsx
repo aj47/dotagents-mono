@@ -340,7 +340,7 @@ export function Component() {
   // Get config for shortcut displays
   const configQuery = useConfigQuery()
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
-  const voiceInputShortcut = getMcpToolsShortcutDisplay(configQuery.data?.mcpToolsShortcut, configQuery.data?.customMcpToolsShortcut)
+  const voiceInputShortcut = getMcpToolsShortcutDisplay(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut, configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut)
   const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
 
   const { data: sessionData, refetch: refetchSessionData } = useQuery<SessionListResponse>({

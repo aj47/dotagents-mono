@@ -352,7 +352,8 @@ export function listenToKeyboardEvents() {
 
   const tryStartMcpHoldIfEligible = () => {
     const config = configStore.get()
-    if (config.mcpToolsShortcut !== "hold-ctrl-alt") {
+    const agentShortcut = config.agentShortcut || config.mcpToolsShortcut
+    if (agentShortcut !== "hold-ctrl-alt") {
       return
     }
 
@@ -386,7 +387,8 @@ export function listenToKeyboardEvents() {
 
   const tryToggleMcpIfEligible = () => {
     const config = configStore.get()
-    if (config.mcpToolsShortcut !== "toggle-ctrl-alt") {
+    const agentShortcut = config.agentShortcut || config.mcpToolsShortcut
+    if (agentShortcut !== "toggle-ctrl-alt") {
       return
     }
 
@@ -476,7 +478,7 @@ export function listenToKeyboardEvents() {
           agentKillSwitchHotkey: config.agentKillSwitchHotkey,
           textInputEnabled: config.textInputEnabled,
           textInputShortcut: config.textInputShortcut,
-          mcpToolsShortcut: config.mcpToolsShortcut,
+          agentShortcut: config.agentShortcut || config.mcpToolsShortcut,
           shortcut: config.shortcut,
         })
 
@@ -488,7 +490,7 @@ export function listenToKeyboardEvents() {
             agentKillSwitchHotkey: config.agentKillSwitchHotkey,
             textInputEnabled: config.textInputEnabled,
             textInputShortcut: config.textInputShortcut,
-            mcpToolsShortcut: config.mcpToolsShortcut,
+            agentShortcut: config.agentShortcut || config.mcpToolsShortcut,
             shortcut: config.shortcut,
           })
         }
@@ -837,11 +839,12 @@ export function listenToKeyboardEvents() {
 
       // Handle agent mode shortcuts
       const effectiveMcpToolsShortcut = getEffectiveShortcut(
-        config.mcpToolsShortcut,
-        config.customMcpToolsShortcut,
+        config.agentShortcut || config.mcpToolsShortcut,
+        config.customAgentShortcut || config.customMcpToolsShortcut,
       )
+      const agentShortcut = config.agentShortcut || config.mcpToolsShortcut
 
-      if (config.mcpToolsShortcut === "ctrl-alt-slash") {
+      if (agentShortcut === "ctrl-alt-slash") {
         if (e.data.key === "Slash" && isPressedCtrlKey && isPressedAltKey) {
           // Shift+Ctrl+Alt+/ = continue last conversation
           if (isPressedShiftKey) {
@@ -859,8 +862,8 @@ export function listenToKeyboardEvents() {
         }
       }
 
-      // Handle custom MCP tools shortcut
-      if (config.mcpToolsShortcut === "custom" && effectiveMcpToolsShortcut) {
+      // Handle custom agent shortcut
+      if (agentShortcut === "custom" && effectiveMcpToolsShortcut) {
         const matches = matchesKeyCombo(
           e.data,
           {
@@ -872,7 +875,7 @@ export function listenToKeyboardEvents() {
           effectiveMcpToolsShortcut,
         )
         if (matches) {
-          const customMode = config.customMcpToolsShortcutMode || "hold"
+          const customMode = config.customAgentShortcutMode || config.customMcpToolsShortcutMode || "hold"
 
           if (customMode === "toggle") {
             // Toggle mode: press once to start, press again to stop
@@ -1124,7 +1127,7 @@ export function listenToKeyboardEvents() {
         } else if (
           (e.data.key === "Alt" || e.data.key === "AltLeft" || e.data.key === "AltRight") &&
           isPressedCtrlKey &&
-          config.mcpToolsShortcut === "hold-ctrl-alt"
+          (config.agentShortcut || config.mcpToolsShortcut) === "hold-ctrl-alt"
         ) {
           // Legacy path kept for clarity; unified by tryStartMcpHoldIfEligible()
           tryStartMcpHoldIfEligible()
@@ -1265,13 +1268,13 @@ export function listenToKeyboardEvents() {
         cancelCustomRecordingTimer()
       }
 
-      // Handle custom MCP shortcut key releases for hold mode
-      if (currentConfig.mcpToolsShortcut === "custom") {
-        const customMode = currentConfig.customMcpToolsShortcutMode || "hold"
+      // Handle custom agent shortcut key releases for hold mode
+      if ((currentConfig.agentShortcut || currentConfig.mcpToolsShortcut) === "custom") {
+        const customMode = currentConfig.customAgentShortcutMode || currentConfig.customMcpToolsShortcutMode || "hold"
         if (customMode === "hold" && isHoldingCustomMcpKey) {
           const effectiveMcpToolsShortcut = getEffectiveShortcut(
-            currentConfig.mcpToolsShortcut,
-            currentConfig.customMcpToolsShortcut,
+            currentConfig.agentShortcut || currentConfig.mcpToolsShortcut,
+            currentConfig.customAgentShortcut || currentConfig.customMcpToolsShortcut,
           )
           if (effectiveMcpToolsShortcut) {
             // Check if the released key is part of the custom shortcut
