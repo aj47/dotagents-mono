@@ -720,7 +720,7 @@ class ACPXService extends EventEmitter {
       responseText = sessionOutput.contentBlocks
         .filter(block => block.type === 'text' && typeof block.text === 'string')
         .map(block => block.text)
-        .join('\n')
+        .join('')
         .trim()
     }
 
