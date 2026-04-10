@@ -1079,9 +1079,10 @@ rl.on('line', (line) => {
     for (const s of steps) {
       if (!s || !s.id || seenStepIds.has(s.id)) continue;
       seenStepIds.add(s.id);
-      ensureNewline();
       const icon = stepIcons[s.type] || '•';
       const title = s.title || s.type || 'step';
+      if (title === 'Agent response') continue;
+      ensureNewline();
       const desc = s.description ? ' — ' + s.description : '';
       process.stdout.write(dim + icon + ' ' + title + desc + reset + '\n');
     }

@@ -628,6 +628,7 @@ export async function processTranscriptWithACPAgent(
   try {
     // Get or create acpx-managed session
     const existingSession = forceNewSession ? undefined : getSessionForConversation(conversationId)
+    const shouldEmitSetupProgress = !existingSession || existingSession.agentName !== agentName
     const preferredSessionName = existingSession?.agentName === agentName
       ? (existingSession.sessionName ?? getMainAcpxSessionName(conversationId))
       : getMainAcpxSessionName(conversationId)
@@ -637,7 +638,7 @@ export async function processTranscriptWithACPAgent(
       undefined,
       { appSessionId: sessionId },
       preferredSessionName,
-      emitSetupProgress,
+      shouldEmitSetupProgress ? emitSetupProgress : undefined,
     )
 
     setSessionForConversation(conversationId, acpSessionId, agentName, preferredSessionName)
