@@ -133,7 +133,7 @@ DotAgents supports both **dark** and **light** themes with consistent design tok
 | Hold `Ctrl` | Voice recording (macOS/Linux) |
 | Hold `Ctrl+/` | Voice recording (Windows) |
 | `Fn` | Toggle dictation on/off |
-| Hold `Ctrl+Alt` | MCP agent mode (with tools) |
+| Hold `Ctrl+Alt` | Agent mode (with skills and tools) |
 | `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input |
 | `Ctrl+Shift+Escape` | Emergency stop (kill all agents) |
 

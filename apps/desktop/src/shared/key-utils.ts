@@ -187,7 +187,7 @@ export function getEffectiveShortcut(
 }
 
 /**
- * Get the display string for the agent mode (MCP tools) shortcut.
+ * Get the display string for the agent mode shortcut.
  * This provides a centralized mapping to ensure consistency across UI components
  * that display the currently active shortcut (e.g., sessions page hints, onboarding).
  * Note: Settings dropdown labels use hardcoded strings since they show all available options.

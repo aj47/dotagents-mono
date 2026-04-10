@@ -301,7 +301,7 @@ export function listenToKeyboardEvents() {
   let isPressedAltKey = false
   let isPressedMetaKey = false
 
-  // MCP tool calling state
+  // Agent tool calling state
   let isHoldingCtrlAltKey = false
   let startMcpRecordingTimer: ReturnType<typeof setTimeout> | undefined
   let isPressedCtrlAltKey = false
@@ -835,7 +835,7 @@ export function listenToKeyboardEvents() {
         }
       }
 
-      // Handle MCP tool calling shortcuts
+      // Handle agent mode shortcuts
       const effectiveMcpToolsShortcut = getEffectiveShortcut(
         config.mcpToolsShortcut,
         config.customMcpToolsShortcut,
@@ -1108,7 +1108,7 @@ export function listenToKeyboardEvents() {
             if (!isPressedCtrlKey || isPressedAltKey) {
               return
             }
-            // Shift+Ctrl = continue last conversation in MCP agent mode
+            // Shift+Ctrl = continue last conversation in agent mode
             if (isPressedShiftKey) {
               // Use isHoldingCtrlAltKey so the Ctrl release handler sends
               // finishMcpRecording (not finishRecording) for this MCP path.
@@ -1136,7 +1136,7 @@ export function listenToKeyboardEvents() {
             return
           }
 
-          // Cancel the regular recording timer since we're starting MCP mode
+          // Cancel the regular recording timer since we're starting agent mode
           cancelRecordingTimer()
 
           startMcpRecordingTimer = setTimeout(async () => {
@@ -1316,7 +1316,7 @@ export function listenToKeyboardEvents() {
       }
 
       // Skip built-in hold mode handling for toggle mode shortcuts
-      // (only applies to regular recording, not MCP agent mode which is handled above)
+      // (only applies to regular recording, not agent mode which is handled above)
       if (
         (currentConfig.shortcut === "ctrl-slash") ||
         (currentConfig.shortcut === "custom" && currentConfig.customShortcutMode === "toggle")
@@ -1337,7 +1337,7 @@ export function listenToKeyboardEvents() {
         isHoldingCtrlKey = false
       }
 
-      // Close panel on Alt release if not in text input mode (and not in MCP mode, which is handled above)
+      // Close panel on Alt release if not in text input mode (and not in agent mode, which is handled above)
       if (e.data.key === "Alt" || e.data.key === "AltLeft" || e.data.key === "AltRight") {
         if (!state.isTextInputActive && !state.isRecordingMcpMode) {
           // Only close panel if we're not in text input mode and not in MCP recording mode

@@ -105,11 +105,11 @@ Manual downloads:
 2. **Release** to stop recording and transcribe
 3. Text is automatically inserted into your active application
 
-**MCP Agent Mode:**
+**Agent Mode:**
 
 1. **Hold `Ctrl+Alt`** to start recording for agent mode
-2. **Release `Ctrl+Alt`** to process with MCP tools
-3. Watch real-time progress as the agent executes tools
+2. **Release `Ctrl+Alt`** to process with the selected agent
+3. Watch real-time progress as the agent uses skills, tools, and delegation
 4. Results are automatically inserted or displayed
 
 **Text Input:**
@@ -154,7 +154,7 @@ Manual downloads:
 |----------|--------|
 | Hold `Ctrl` / `Ctrl+/` (Win) | Voice recording |
 | `Fn` | Toggle dictation on/off |
-| Hold `Ctrl+Alt` | MCP agent mode (macOS) |
+| Hold `Ctrl+Alt` | Agent mode (macOS) |
 | `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input |
 | `Ctrl+Shift+Escape` | Kill switch |
 

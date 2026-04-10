@@ -10,7 +10,7 @@ test('desktop provider model selector uses shorter labels and text-first actions
   assert.match(modelSelectorSource, /className="h-6 whitespace-nowrap px-2 text-\[11px\] font-medium"/)
   assert.match(modelSelectorSource, /\{useCustomInput \? "List" : "Custom"\}/)
   assert.match(modelSelectorSource, /\{isLoading \? "Loading\.\.\." : "Refresh"\}/)
-  assert.match(modelSelectorSource, /label="Agent\/MCP model"/)
+  assert.match(modelSelectorSource, /label="Agent model"/)
   assert.match(modelSelectorSource, /label="Transcript Processing model"/)
   assert.doesNotMatch(modelSelectorSource, /title=\{useCustomInput \? "Switch to model list" : "Use custom model name"\}/)
   assert.doesNotMatch(modelSelectorSource, /<Edit3 className="h-3 w-3" \/>/)
@@ -19,7 +19,7 @@ test('desktop provider model selector uses shorter labels and text-first actions
 
 test('desktop provider model selector keeps STT-only models out of chat model pickers', () => {
   assert.match(modelSelectorSource, /allModels\.filter\(\(model\) => !model\.supportsTranscription\)/)
-  assert.match(modelSelectorSource, /label="Agent\/MCP model"[\s\S]*?excludeTranscriptionOnlyModels=\{true\}/)
+  assert.match(modelSelectorSource, /label="Agent model"[\s\S]*?excludeTranscriptionOnlyModels=\{true\}/)
   assert.match(modelSelectorSource, /label="Transcript Processing model"[\s\S]*?excludeTranscriptionOnlyModels=\{true\}/)
 })
 

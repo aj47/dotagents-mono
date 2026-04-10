@@ -24,15 +24,15 @@ The default mode for quick voice input:
 
 This is pure dictation — the AI transcribes your speech and types it wherever your cursor is.
 
-### MCP Agent Mode
+### Agent Mode
 
-Voice input that triggers full agent execution with tools:
+Voice input that triggers full agent execution with skills, tools, and delegation:
 
 1. **Hold `Ctrl+Alt`** to start recording
 2. **Speak** your request (e.g., "Search GitHub for recent issues in my repo")
 3. **Release `Ctrl+Alt`** to process
-4. The agent **reasons** about your request, **executes** MCP tools, and **responds**
-5. Watch real-time progress as each tool is called
+4. The agent **reasons** about your request, loads relevant **skills**, executes **tools**, delegates when useful, and **responds**
+5. Watch real-time progress as each capability is used
 
 ### Toggle Dictation (Fn)
 
@@ -145,7 +145,7 @@ Agent responses can be spoken aloud with multiple TTS providers:
          │                       │
     ┌────▼─────┐          ┌──────▼───────┐
     │ Dictation│          │ Agent Mode   │
-    │ Mode     │          │ (MCP Tools)  │
+    │ Mode     │          │ Capabilities │
     └────┬─────┘          └──────┬───────┘
          │                       │
     ┌────▼─────┐          ┌──────▼───────┐

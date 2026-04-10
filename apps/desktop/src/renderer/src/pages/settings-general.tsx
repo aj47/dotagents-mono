@@ -887,7 +887,7 @@ export function Component() {
             </div>
           </Control>
 
-          <Control label={<ControlLabel label="Agent Mode" tooltip="Choose how to activate agent mode for MCP tool calling" />} className="px-3">
+          <Control label={<ControlLabel label="Agent Mode" tooltip="Choose how to activate agent mode for skills, tools, and delegation" />} className="px-3">
             <div className="space-y-2">
               <Select
                 value={configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"}

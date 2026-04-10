@@ -192,7 +192,7 @@ export function Component() {
               <div className="pb-3">
                 <span className="text-sm font-medium">OpenAI-Compatible Preset</span>
                 <p className="text-xs text-muted-foreground">
-                  Use this when Agent/MCP Tools or Transcript Processing is set to OpenAI-compatible.
+                  Use this when Agent or Transcript Processing is set to OpenAI-compatible.
                 </p>
               </div>
               <ModelPresetManager
@@ -230,7 +230,7 @@ export function Component() {
 
           {!usesOpenAiCompatiblePreset && agentProviderId === "openai" && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
-              OpenAI-compatible preset controls appear here when Agent/MCP Tools or Transcript Processing uses that provider.
+              OpenAI-compatible preset controls appear here when Agent or Transcript Processing uses that provider.
             </p>
           )}
         </ControlGroup>
@@ -256,8 +256,8 @@ export function Component() {
           />
 
           <RoleProviderSelector
-            label="Agent/MCP Tools"
-            tooltip="Choose which provider powers the main agent model for tool calling and reasoning."
+            label="Agent"
+            tooltip="Choose which provider powers the main agent model for reasoning, skills, and tools."
             value={agentProviderId}
             onChange={(value) => saveConfig({ mcpToolsProviderId: value as CHAT_PROVIDER_ID })}
             providers={CHAT_PROVIDERS}

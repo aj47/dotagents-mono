@@ -441,8 +441,8 @@ export function ProviderModelSelector({
           providerId={providerId}
           value={mcpModel}
           onValueChange={onMcpModelChange}
-          label="Agent/MCP model"
-          placeholder="Select model for tool calling"
+          label="Agent model"
+          placeholder="Select model for agent reasoning"
           disabled={disabled}
           excludeTranscriptionOnlyModels={true}
         />

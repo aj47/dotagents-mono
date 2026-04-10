@@ -32,7 +32,7 @@ const STT_PROVIDERS = [
   { label: 'Parakeet (Local)', value: 'parakeet' },
 ] as const;
 
-// Chat/Agent Provider Options (for Agent/MCP Tools and Transcript Processing)
+// Chat/Agent Provider Options (for Agent and Transcript Processing)
 const CHAT_PROVIDERS = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Groq', value: 'groq' },
@@ -1611,8 +1611,8 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
 
-                {/* Agent/MCP Tools Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>Agent/MCP Tools</Text>
+                {/* Agent Provider */}
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Agent</Text>
                 <View style={styles.providerSelector}>
                   {CHAT_PROVIDERS.map((provider) => (
                     <Pressable

@@ -17,7 +17,7 @@ Every hotkey and shortcut available in DotAgents.
 | Hold `Ctrl+/` | Windows | Start voice recording (dictation) |
 | Release `Ctrl` / `Ctrl+/` | All | Stop recording and transcribe |
 | `Fn` | macOS | Toggle dictation on/off |
-| Hold `Ctrl+Alt` | macOS | Start recording in MCP agent mode |
+| Hold `Ctrl+Alt` | macOS | Start recording in agent mode |
 | Release `Ctrl+Alt` | macOS | Stop recording, process with tools |
 
 ## Input

@@ -487,7 +487,7 @@ export function Component() {
         })
       }
 
-      // Reset MCP mode and button click state after recording
+      // Reset agent mode and button click state after recording
       setMcpMode(false)
       mcpModeRef.current = false
       setFromButtonClick(false)
@@ -821,7 +821,7 @@ export function Component() {
         setRecording(false)
         recordingRef.current = false
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-        // Also clear MCP context to avoid leaving the panel stuck in MCP mode
+        // Also clear agent context to avoid leaving the panel stuck in agent mode
         // with no active recording.
         setMcpMode(false)
         mcpModeRef.current = false
@@ -876,7 +876,7 @@ export function Component() {
           setRecording(false)
           recordingRef.current = false
           setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-          // Also clear MCP context to avoid leaving the panel stuck in MCP mode
+          // Also clear agent context to avoid leaving the panel stuck in agent mode
           // with no active recording (similar to aborted/empty/too-short early returns).
           setMcpMode(false)
           mcpModeRef.current = false

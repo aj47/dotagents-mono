@@ -320,7 +320,7 @@ export function ModelPresetManager({
                 onValueChange={(value) => {
                   saveModelWithPreset('mcpToolsModel', 'mcpToolsOpenaiModel', value)
                 }}
-                label="Agent/MCP Tools Model"
+                label="Agent Model"
                 placeholder="Select model"
               />
             )}
@@ -412,7 +412,7 @@ export function ModelPresetManager({
                     onValueChange={(value) =>
                       setNewPreset({ ...newPreset, mcpToolsModel: value })
                     }
-                    label="Agent/MCP Tools Model"
+                    label="Agent Model"
                     placeholder="Select model for agent mode"
                   />
 
@@ -524,7 +524,7 @@ export function ModelPresetManager({
                     onValueChange={(value) =>
                       setEditingPreset({ ...editingPreset, mcpToolsModel: value })
                     }
-                    label="Agent/MCP Tools Model"
+                    label="Agent Model"
                     placeholder="Select model for agent mode"
                   />
 

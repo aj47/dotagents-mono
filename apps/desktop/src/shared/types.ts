@@ -242,7 +242,7 @@ export type ProfileMcpServerConfig = {
 }
 
 export type ProfileModelConfig = {
-  // Agent/MCP Tools settings
+  // Agent model settings
   mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
   mcpToolsOpenaiModel?: string
   mcpToolsGroqModel?: string

@@ -2744,7 +2744,7 @@ export const router = {
     .action(async ({ input }) => {
       if (input.type === "start") {
         state.isRecording = true
-        // Track MCP mode state so main process knows if we're in MCP toggle mode
+        // Track agent mode state so main process knows if we're in agent toggle mode
         if (input.mcpMode !== undefined) {
           state.isRecordingMcpMode = input.mcpMode
         }
@@ -3673,7 +3673,7 @@ export const router = {
         ...config,
         mcpCurrentProfileId: profile.id,
         // Apply model config if it exists
-        // Agent/MCP Tools settings
+        // Agent model settings
         ...(profile.modelConfig?.mcpToolsProviderId && {
           mcpToolsProviderId: profile.modelConfig.mcpToolsProviderId,
         }),
@@ -3793,7 +3793,7 @@ export const router = {
     .action(async ({ input }) => {
         const config = configStore.get()
       return agentProfileService.saveCurrentModelStateToProfile(input.profileId, {
-        // Agent/MCP Tools settings
+        // Agent model settings
         mcpToolsProviderId: config.mcpToolsProviderId,
         mcpToolsOpenaiModel: config.mcpToolsOpenaiModel,
         mcpToolsGroqModel: config.mcpToolsGroqModel,
@@ -3819,7 +3819,7 @@ export const router = {
   updateProfileModelConfig: t.procedure
     .input<{
       profileId: string
-      // Agent/MCP Tools settings
+      // Agent model settings
       mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
       mcpToolsOpenaiModel?: string
       mcpToolsGroqModel?: string
@@ -3841,7 +3841,7 @@ export const router = {
     }>()
     .action(async ({ input }) => {
         return agentProfileService.updateProfileModelConfig(input.profileId, {
-        // Agent/MCP Tools settings
+        // Agent model settings
         mcpToolsProviderId: input.mcpToolsProviderId,
         mcpToolsOpenaiModel: input.mcpToolsOpenaiModel,
         mcpToolsGroqModel: input.mcpToolsGroqModel,
