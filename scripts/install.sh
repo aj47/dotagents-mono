@@ -12,7 +12,6 @@
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
 #   DOTAGENTS_AUTH_MODE=codex  Headless onboarding auth mode: provider, codex, or skip
-#   DOTAGENTS_CODEX_API_KEY=... Advanced: use API-key auth for codex mode instead of OAuth
 #   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex auth mode
 #   DOTAGENTS_INSTALL_CODEX=0 Skip installing Codex CLI when using codex auth mode
 #   DOTAGENTS_CODEX_LOGIN=0   Skip Codex ChatGPT OAuth login during onboarding
@@ -621,7 +620,7 @@ run_headless_onboarding() {
   printf "  2) Codex auth via acpx\n"
   printf "  3) Skip for now\n\n"
 
-  local auth_mode api_key base_url model codex_api_key discord_token remote_api_key port
+  local auth_mode api_key base_url model discord_token remote_api_key port
   auth_mode="${AUTH_MODE:-$(ask "Choose auth mode [provider/codex/skip]: " DOTAGENTS_AUTH_MODE "provider")}"
   auth_mode="$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')"
   case "$auth_mode" in
@@ -634,7 +633,6 @@ run_headless_onboarding() {
   api_key=""
   base_url=""
   model="${DOTAGENTS_MODEL:-gpt-4.1-mini}"
-  codex_api_key=""
 
   if [ "$auth_mode" = "provider" ]; then
     api_key="$(ask "OpenAI-compatible API key: " DOTAGENTS_API_KEY "")"
@@ -644,7 +642,6 @@ run_headless_onboarding() {
     ensure_acpx_for_codex
     ensure_codex_cli_for_codex_auth
     run_codex_chatgpt_login
-    codex_api_key="${DOTAGENTS_CODEX_API_KEY:-}"
   else
     info "Skipping provider/Codex auth. Run the CLI setup again later to configure it."
   fi
@@ -657,7 +654,6 @@ run_headless_onboarding() {
   DOTAGENTS_ONBOARD_API_KEY="$api_key" \
   DOTAGENTS_ONBOARD_BASE_URL="$base_url" \
   DOTAGENTS_ONBOARD_MODEL="$model" \
-  DOTAGENTS_ONBOARD_CODEX_API_KEY="$codex_api_key" \
   DOTAGENTS_ONBOARD_DISCORD_TOKEN="$discord_token" \
   DOTAGENTS_ONBOARD_REMOTE_API_KEY="$remote_api_key" \
   DOTAGENTS_ONBOARD_PORT="$port" \
@@ -671,7 +667,6 @@ const authMode = process.env.DOTAGENTS_ONBOARD_AUTH_MODE || 'provider'
 const apiKey = process.env.DOTAGENTS_ONBOARD_API_KEY || ''
 const baseUrl = process.env.DOTAGENTS_ONBOARD_BASE_URL || ''
 const model = process.env.DOTAGENTS_ONBOARD_MODEL || 'gpt-4.1-mini'
-const codexApiKey = process.env.DOTAGENTS_ONBOARD_CODEX_API_KEY || ''
 const discordToken = process.env.DOTAGENTS_ONBOARD_DISCORD_TOKEN || ''
 const remoteApiKey = process.env.DOTAGENTS_ONBOARD_REMOTE_API_KEY || ''
 const port = Number.parseInt(process.env.DOTAGENTS_ONBOARD_PORT || '3210', 10) || 3210
@@ -742,9 +737,6 @@ if (authMode === 'provider') {
     '',
   ].join('\n'))
   const connection = { type: 'acpx', agent: 'codex' }
-  if (codexApiKey) {
-    connection.env = { CODEX_API_KEY: codexApiKey, OPENAI_API_KEY: codexApiKey }
-  }
   fs.writeFileSync(path.join(agentDir, 'config.json'), JSON.stringify({ connection }, null, 2))
 }
 
