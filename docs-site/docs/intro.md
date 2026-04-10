@@ -12,6 +12,20 @@ Welcome to the DotAgents documentation. DotAgents is a voice-first AI agent orch
 
 Built on the `.agents` open standard, your skills and notes work across Claude Code, Cursor, Codex, and every tool adopting the protocol.
 
+## Install in one line
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash
+```
+
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex
+```
+
+Prefer the full guide? See [Installation](getting-started/installation).
+
 ---
 
 ## Quick Navigation
