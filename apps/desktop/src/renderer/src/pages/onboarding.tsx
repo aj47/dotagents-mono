@@ -17,7 +17,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { Recorder } from "@renderer/lib/recorder"
 import { useMutation } from "@tanstack/react-query"
 import { KeyRecorder } from "@renderer/components/key-recorder"
-import { getMcpToolsShortcutDisplay } from "@shared/key-utils"
+import { getAgentShortcutDisplay } from "@shared/key-utils"
 
 type OnboardingStep = "welcome" | "api-key" | "dictation" | "agent" | "complete"
 
@@ -725,7 +725,7 @@ function AgentStep({
         <div className="flex items-center gap-2 mb-3 p-2 rounded bg-primary/10 border border-primary/20">
           <span className="i-mingcute-keyboard-fill text-primary"></span>
           <span className="text-sm">
-            <strong>{getMcpToolsShortcutDisplay(agentShortcut, config?.customAgentShortcut || config?.customMcpToolsShortcut)}</strong> to speak to your agent from anywhere
+            <strong>{getAgentShortcutDisplay(agentShortcut, config?.customAgentShortcut || config?.customMcpToolsShortcut)}</strong> to speak to your agent from anywhere
           </span>
         </div>
 

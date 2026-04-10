@@ -16,7 +16,7 @@ import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-m
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
-import { getMcpToolsShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
+import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
@@ -340,7 +340,7 @@ export function Component() {
   // Get config for shortcut displays
   const configQuery = useConfigQuery()
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
-  const voiceInputShortcut = getMcpToolsShortcutDisplay(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut, configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut)
+  const voiceInputShortcut = getAgentShortcutDisplay(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut, configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut)
   const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
 
   const { data: sessionData, refetch: refetchSessionData } = useQuery<SessionListResponse>({

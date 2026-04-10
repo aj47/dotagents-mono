@@ -192,7 +192,7 @@ export function getEffectiveShortcut(
  * that display the currently active shortcut (e.g., sessions page hints, onboarding).
  * Note: Settings dropdown labels use hardcoded strings since they show all available options.
  */
-export function getMcpToolsShortcutDisplay(
+export function getAgentShortcutDisplay(
   shortcut: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom" | undefined,
   customShortcut?: string,
 ): string {
@@ -212,6 +212,9 @@ export function getMcpToolsShortcutDisplay(
       return "Hold Ctrl+Alt"
   }
 }
+
+/** @deprecated Use getAgentShortcutDisplay instead. */
+export const getMcpToolsShortcutDisplay = getAgentShortcutDisplay
 
 /**
  * Get the display string for the text input shortcut.
