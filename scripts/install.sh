@@ -8,6 +8,8 @@
 #   DOTAGENTS_FROM_SOURCE=1   Build from source instead of downloading a release
 #   DOTAGENTS_DIR=~/mydir     Custom install directory (default: ~/.dotagents)
 #   DOTAGENTS_RELEASE_TAG=v1  Install a specific GitHub release tag
+#   DOTAGENTS_NODE_MAJOR=24    Node.js major to install for Linux source installs
+#   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 
 set -euo pipefail
 
@@ -27,6 +29,29 @@ ensure_cmd() {
   has "$command" || die "Required command '$command' not found. $help_text"
 }
 
+run_as_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  else
+    ensure_cmd sudo "Install sudo or run this installer as root."
+    sudo "$@"
+  fi
+}
+
+version_ge() {
+  local version="$1" minimum="$2"
+  local major minor patch min_major min_minor min_patch
+
+  IFS=. read -r major minor patch <<< "$version"
+  IFS=. read -r min_major min_minor min_patch <<< "$minimum"
+  minor="${minor:-0}"; patch="${patch:-0}"
+  min_minor="${min_minor:-0}"; min_patch="${min_patch:-0}"
+
+  [ "$major" -gt "$min_major" ] || \
+    { [ "$major" -eq "$min_major" ] && [ "$minor" -gt "$min_minor" ]; } || \
+    { [ "$major" -eq "$min_major" ] && [ "$minor" -eq "$min_minor" ] && [ "$patch" -ge "$min_patch" ]; }
+}
+
 INSTALL_DIR="${DOTAGENTS_DIR:-$HOME/.dotagents}"
 REPO="aj47/dotagents-mono"
 REPO_URL="https://github.com/$REPO"
@@ -36,6 +61,9 @@ RELEASE_TAG="${DOTAGENTS_RELEASE_TAG:-latest}"
 TAG=""
 ASSET_URLS=""
 PNPM_CMD=()
+MIN_NODE_VERSION="20.19.4"
+SOURCE_NODE_MAJOR="${DOTAGENTS_NODE_MAJOR:-24}"
+INSTALL_RUST="${DOTAGENTS_INSTALL_RUST:-1}"
 
 detect_platform() {
   local os arch
@@ -245,6 +273,115 @@ install_release() {
   esac
 }
 
+install_linux_source_system_deps() {
+  info "Installing Linux source dependencies..."
+
+  if has apt-get; then
+    export DEBIAN_FRONTEND=noninteractive
+    run_as_root apt-get update -qq
+    run_as_root apt-get install -y -qq \
+      git curl ca-certificates build-essential pkg-config \
+      libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
+      xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
+      libasound2t64 libgbm1 xvfb || \
+    run_as_root apt-get install -y -qq \
+      git curl ca-certificates build-essential pkg-config \
+      libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
+      xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
+      libasound2 libgbm1 xvfb
+    ok "Linux source dependencies installed"
+    return 0
+  fi
+
+  if has dnf; then
+    run_as_root dnf install -y -q \
+      git curl ca-certificates gcc gcc-c++ make pkg-config \
+      gtk3 libnotify nss libXScrnSaver libXtst \
+      at-spi2-core libuuid libsecret alsa-lib mesa-libgbm \
+      xorg-x11-server-Xvfb
+    ok "Linux source dependencies installed"
+    return 0
+  fi
+
+  warn "Automatic source dependency install currently supports apt-get and dnf only."
+}
+
+ensure_node() {
+  local node_version=""
+  if has node; then
+    node_version="$(node -p "process.versions.node" 2>/dev/null || true)"
+    if [ -n "$node_version" ] && version_ge "$node_version" "$MIN_NODE_VERSION"; then
+      ok "Node.js $node_version found"
+      return 0
+    fi
+    warn "Node.js ${node_version:-unknown} is too old; $MIN_NODE_VERSION+ is required."
+  fi
+
+  if [ "$PLATFORM" = "linux" ]; then
+    install_linux_node
+    node_version="$(node -p "process.versions.node" 2>/dev/null || true)"
+    [ -n "$node_version" ] || die "Failed to determine the installed Node.js version."
+    version_ge "$node_version" "$MIN_NODE_VERSION" || die "Node.js $MIN_NODE_VERSION+ is required for source installs."
+    ok "Node.js $node_version installed"
+    return 0
+  fi
+
+  die "Node.js $MIN_NODE_VERSION+ is required for source installs."
+}
+
+install_linux_node() {
+  ensure_cmd curl "Install curl first."
+
+  if has apt-get; then
+    info "Installing Node.js ${SOURCE_NODE_MAJOR}.x from NodeSource..."
+    curl -fsSL "https://deb.nodesource.com/setup_${SOURCE_NODE_MAJOR}.x" | run_as_root bash -
+    run_as_root apt-get install -y -qq nodejs
+    return 0
+  fi
+
+  if has dnf; then
+    info "Installing Node.js ${SOURCE_NODE_MAJOR}.x from NodeSource..."
+    curl -fsSL "https://rpm.nodesource.com/setup_${SOURCE_NODE_MAJOR}.x" | run_as_root bash -
+    run_as_root dnf install -y -q nodejs
+    return 0
+  fi
+
+  die "Node.js $MIN_NODE_VERSION+ is required, and automatic Node install supports apt-get and dnf only."
+}
+
+install_linux_rust() {
+  if has cargo; then
+    ok "Rust $(rustc --version 2>/dev/null | awk '{print $2}') found"
+    return 0
+  fi
+
+  if [ "$INSTALL_RUST" = "0" ]; then
+    info "Skipping Rust auto-install because DOTAGENTS_INSTALL_RUST=0."
+    return 0
+  fi
+
+  ensure_cmd curl "Install curl first."
+  info "Installing Rust toolchain with rustup..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --quiet
+  # shellcheck source=/dev/null
+  source "$HOME/.cargo/env" 2>/dev/null || true
+  has cargo || die "Rust install finished, but cargo was not found on PATH."
+  ok "Rust $(rustc --version 2>/dev/null | awk '{print $2}') installed"
+}
+
+ensure_source_requirements() {
+  if [ "$PLATFORM" = "linux" ]; then
+    install_linux_source_system_deps
+  fi
+
+  ensure_cmd git "Install Git first."
+  ensure_node
+
+  if [ "$PLATFORM" = "linux" ]; then
+    install_linux_rust
+  fi
+}
+
 resolve_pnpm() {
   if has pnpm; then
     PNPM_CMD=(pnpm)
@@ -262,7 +399,7 @@ resolve_pnpm() {
 
   if has npm; then
     info "Installing pnpm with npm..."
-    npm install -g pnpm >/dev/null
+    npm install -g pnpm@9 >/dev/null 2>&1 || run_as_root npm install -g pnpm@9 >/dev/null
     PNPM_CMD=(pnpm)
     return 0
   fi
@@ -280,14 +417,7 @@ run_pnpm() {
 
 install_from_source() {
   info "Installing DotAgents from source..."
-  ensure_cmd git "Install Git first."
-  ensure_cmd node "Install Node.js 20.19.4+ first."
-
-  local node_major
-  node_major="$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || true)"
-  [ -n "$node_major" ] || die "Failed to determine the installed Node.js version."
-  [ "$node_major" -ge 20 ] || die "Node.js 20.19.4+ is required for source installs."
-
+  ensure_source_requirements
   resolve_pnpm
 
   mkdir -p "$INSTALL_DIR"
