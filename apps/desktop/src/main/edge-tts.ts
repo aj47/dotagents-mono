@@ -16,6 +16,8 @@ const WSS_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 }
 const WINDOWS_EPOCH_OFFSET_SECONDS = 11_644_473_600
+const DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
+const NO_AUDIO_ERROR_MESSAGE = "Edge TTS connection closed before audio was received"
 
 export type TTSGenerationResult = {
   audio: ArrayBuffer
@@ -53,7 +55,7 @@ type WebSocketNodeLike = WebSocketLike & {
 export type WebSocketLikeConstructor = new (url: string, options?: WebSocketOptions) => WebSocketNodeLike
 
 export function resolveWebSocketConstructor(
-  globalWebSocket: WebSocketLikeConstructor | null | undefined = globalThis.WebSocket as WebSocketLikeConstructor | undefined,
+  globalWebSocket: WebSocketLikeConstructor | null | undefined = globalThis.WebSocket as unknown as WebSocketLikeConstructor | undefined,
   loadWebSocketModule: () => unknown = () => localRequire("ws"),
 ): WebSocketLikeConstructor {
   if (typeof process !== "undefined" && process.versions?.node) {
@@ -95,11 +97,28 @@ export async function generateEdgeTTS(
   // Model is kept for consistency with other providers/settings UI.
   // The underlying edge-tts package currently uses one cloud backend.
   const _model = input.model || config.edgeTtsModel || "edge-tts"
-  const voice = input.voice || config.edgeTtsVoice || "en-US-AriaNeural"
+  const voice = input.voice || config.edgeTtsVoice || DEFAULT_EDGE_TTS_VOICE
   const speed = input.speed || config.edgeTtsRate || 1.0
   const clampedSpeed = Math.min(2.0, Math.max(0.5, speed))
   const ratePercent = Math.round((clampedSpeed - 1) * 100)
   const rate = `${ratePercent >= 0 ? "+" : ""}${ratePercent}%`
+
+  try {
+    return await synthesizeEdgeTTS(text, voice, rate, WebSocketCtor)
+  } catch (error) {
+    if (voice !== DEFAULT_EDGE_TTS_VOICE && isNoAudioError(error)) {
+      return synthesizeEdgeTTS(text, DEFAULT_EDGE_TTS_VOICE, rate, WebSocketCtor)
+    }
+    throw error
+  }
+}
+
+async function synthesizeEdgeTTS(
+  text: string,
+  voice: string,
+  rate: string,
+  WebSocketCtor: WebSocketLikeConstructor,
+): Promise<TTSGenerationResult> {
   const connectionId = randomUUID().replace(/-/g, "")
   const requestId = randomUUID().replace(/-/g, "")
   const timestamp = dateToString()
@@ -229,7 +248,7 @@ export async function generateEdgeTTS(
       finish(() => {
         cleanup()
         if (audioChunks.length === 0) {
-          reject(new Error("Edge TTS connection closed before audio was received"))
+          reject(new Error(NO_AUDIO_ERROR_MESSAGE))
           return
         }
         resolve()
@@ -249,6 +268,10 @@ export async function generateEdgeTTS(
     audio: merged.buffer,
     mimeType: "audio/mpeg",
   }
+}
+
+function isNoAudioError(error: unknown): boolean {
+  return error instanceof Error && error.message === NO_AUDIO_ERROR_MESSAGE
 }
 
 async function normalizeMessageData(data: EdgeTTSMessageData): Promise<string | Uint8Array> {

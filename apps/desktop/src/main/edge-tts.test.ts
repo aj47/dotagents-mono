@@ -82,4 +82,48 @@ describe("edge-tts", () => {
     expect(Array.from(new Uint8Array(result.audio))).toEqual([1, 2, 3, 4])
     expect(result.mimeType).toBe("audio/mpeg")
   })
+
+  it("retries with the default voice when a selected voice closes before audio", async () => {
+    class FakeWebSocket implements WebSocketLike {
+      static instances: FakeWebSocket[] = []
+
+      onopen: (() => void) | null = null
+      onmessage: ((event: { data: string | Uint8Array | ArrayBuffer | Blob | Uint8Array[] }) => void) | null = null
+      onerror: ((event?: unknown) => void) | null = null
+      onclose: (() => void) | null = null
+      sent: string[] = []
+
+      constructor() {
+        FakeWebSocket.instances.push(this)
+        queueMicrotask(() => this.onopen?.())
+      }
+
+      send(data: string) {
+        this.sent.push(data)
+        if (this.sent.length !== 2) return
+
+        if (FakeWebSocket.instances.length === 1) {
+          queueMicrotask(() => this.onclose?.())
+          return
+        }
+
+        queueMicrotask(() => this.onmessage?.({ data: buildAudioFrame([5, 6]) }))
+        queueMicrotask(() => this.onmessage?.({ data: buildTurnEndFrame() }))
+      }
+
+      close() {}
+    }
+
+    const result = await generateEdgeTTS(
+      "Hello",
+      { voice: "en-US-DavisNeural" },
+      {},
+      FakeWebSocket as unknown as WebSocketLikeConstructor,
+    )
+
+    expect(FakeWebSocket.instances).toHaveLength(2)
+    expect(FakeWebSocket.instances[0].sent[1]).toContain("<voice name='en-US-DavisNeural'>")
+    expect(FakeWebSocket.instances[1].sent[1]).toContain("<voice name='en-US-AriaNeural'>")
+    expect(Array.from(new Uint8Array(result.audio))).toEqual([5, 6])
+  })
 })
