@@ -88,6 +88,63 @@ See the [Linux Support Matrix](https://github.com/aj47/dotagents-mono/blob/main/
 
 ---
 
+## Uninstall
+
+### Linux one-line install
+
+If you installed with the one-line installer, remove the app files and launcher:
+
+```bash
+rm -rf ~/.dotagents
+rm -f ~/.local/bin/dotagents
+```
+
+If you used the Linux source/headless flow or VPS installer and created a systemd service, stop and remove it first:
+
+```bash
+sudo systemctl stop dotagents 2>/dev/null || true
+sudo systemctl disable dotagents 2>/dev/null || true
+sudo rm -f /etc/systemd/system/dotagents.service
+sudo systemctl daemon-reload
+sudo rm -f /usr/local/bin/dotagents
+rm -rf ~/dotagents ~/.dotagents
+rm -f ~/.local/bin/dotagents
+```
+
+If you installed the `.deb` package manually, uninstall the package instead:
+
+```bash
+sudo apt remove dotagents
+```
+
+### macOS
+
+Remove the app bundle:
+
+```bash
+rm -rf /Applications/DotAgents.app ~/Applications/DotAgents.app ~/.dotagents
+```
+
+### Windows
+
+Use **Settings → Apps → Installed apps → DotAgents → Uninstall**.
+
+### Remove local configuration and app data
+
+The uninstall steps above keep your DotAgents settings, local conversations, and app data where the operating system stores application data. To fully reset DotAgents, remove the data directory for your platform:
+
+```bash
+# Linux
+rm -rf ~/.config/app.dotagents
+
+# macOS
+rm -rf "$HOME/Library/Application Support/app.dotagents"
+```
+
+On Windows, remove `%APPDATA%\app.dotagents` from File Explorer or PowerShell if you want to delete local settings and data.
+
+---
+
 ## Mobile App
 
 The DotAgents mobile app connects to your desktop instance or any OpenAI-compatible API endpoint.
