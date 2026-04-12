@@ -20,7 +20,10 @@ vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))
 vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.fn() }))
 vi.mock("./conversation-service", () => ({ conversationService: { loadConversation: mockLoadConversation } }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
-vi.mock("./acp-session-state", () => ({ getAppSessionForAcpSession: vi.fn(() => undefined) }))
+vi.mock("./acp-session-state", () => ({
+  getAppSessionForAcpSession: vi.fn(() => undefined),
+  setAcpSessionTitleOverride: vi.fn(),
+}))
 vi.mock("./skills-service", () => ({
   skillsService: {
     getSkill: mockGetSkill,

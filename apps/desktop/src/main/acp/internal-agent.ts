@@ -542,7 +542,7 @@ export async function runInternalSubSession(
       const taggedUpdate: AgentProgressUpdate = {
         ...update,
         sessionId: subSessionId,
-        // Could add metadata about parent session here
+        parentSessionId,
       };
 
       // Forward to caller's progress callback

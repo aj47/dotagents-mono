@@ -19,6 +19,7 @@ import {
 } from "@renderer/lib/query-client"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
+import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
 import {
   Clock,
@@ -82,6 +83,9 @@ export const Component = () => {
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const agentResponseReadAtBySessionId = useAgentStore(
+    (s) => s.agentResponseReadAtBySessionId,
+  )
 
   const { data: sessionData, refetch: refetchSessionData } =
     useQuery<SessionListResponse>({
@@ -641,12 +645,19 @@ export const Component = () => {
                     !!sessionProgress?.pendingToolApproval
                   const isSnoozed =
                     sessionProgress?.isSnoozed ?? false
+                  const hasUnreadResponse = hasUnreadAgentResponse(
+                    sessionProgress,
+                    agentResponseReadAtBySessionId.get(session.id),
+                    isFocused,
+                  )
                   const isVisiblyActive = isFocused || !isSnoozed
                   const statusDotColor = hasPendingApproval
                     ? "bg-amber-500"
-                    : !isVisiblyActive
-                      ? "bg-muted-foreground"
-                      : "bg-blue-500"
+                    : hasUnreadResponse
+                      ? "bg-blue-500"
+                      : !isVisiblyActive
+                        ? "bg-muted-foreground"
+                        : "bg-green-500"
                   const title =
                     session.conversationTitle?.trim() || "Untitled conversation"
                   const initial = title.charAt(0).toUpperCase()
@@ -670,7 +681,9 @@ export const Component = () => {
                         className={cn(
                           "border-background absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border",
                           statusDotColor,
-                          isVisiblyActive && !hasPendingApproval && "animate-pulse",
+                          (isVisiblyActive || hasUnreadResponse) &&
+                            !hasPendingApproval &&
+                            "animate-pulse",
                         )}
                       />
                     </button>

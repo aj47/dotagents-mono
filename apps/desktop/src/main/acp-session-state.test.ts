@@ -30,6 +30,18 @@ describe("acp-session-state", () => {
     expect(sessionState.getAppRunIdForAcpSession("acp-token-only")).toBeUndefined()
   })
 
+  it("tracks transient ACP session title overrides and clears them with the session mapping", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping("delegated-session-1", "app-session-1")
+    sessionState.setAcpSessionTitleOverride("delegated-session-1", "  Delegated research  ")
+
+    expect(sessionState.getAcpSessionTitleOverride("delegated-session-1")).toBe("Delegated research")
+
+    sessionState.clearAcpToAppSessionMapping("delegated-session-1")
+    expect(sessionState.getAcpSessionTitleOverride("delegated-session-1")).toBeUndefined()
+  })
+
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
     const sessionState = await import("./acp-session-state")
 

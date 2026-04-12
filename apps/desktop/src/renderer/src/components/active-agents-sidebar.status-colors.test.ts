@@ -26,4 +26,10 @@ describe("active agents sidebar status colors", () => {
     expect(sidebarSource).toContain('session.status === "error"')
     expect(sidebarSource).toContain(': "bg-muted-foreground"')
   })
+
+  it("shows unread agent responses as a blue active-session status", () => {
+    expect(sidebarSource).toContain("const hasUnreadResponse = hasUnreadAgentResponse(")
+    expect(sidebarSource).toContain(': hasUnreadResponse\n                  ? "bg-blue-500"')
+    expect(sidebarSource).toContain("const shouldPulseStatus =")
+  })
 })

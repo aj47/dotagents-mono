@@ -17,6 +17,7 @@ describe('agent-store delegation merge', () => {
   beforeEach(() => {
     useAgentStore.setState({
       agentProgressById: new Map(),
+      agentResponseReadAtBySessionId: new Map(),
       focusedSessionId: null,
       expandedSessionId: null,
       scrollToSessionId: null,
@@ -26,6 +27,7 @@ describe('agent-store delegation merge', () => {
       filter: 'all',
       sortBy: 'recent',
       pinnedSessionIds: new Set(),
+      archivedSessionIds: new Set(),
     })
   })
 
@@ -155,5 +157,92 @@ describe('agent-store delegation merge', () => {
     useAgentStore.getState().clearAllProgress()
 
     expect(useAgentStore.getState().expandedSessionId).toBeNull()
+  })
+
+  it('marks the latest agent response read when a viewed session receives progress', () => {
+    useAgentStore.setState({
+      agentResponseReadAtBySessionId: new Map(),
+      focusedSessionId: 'session-1',
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      responseEvents: [
+        { id: 'response-1', sessionId: 'session-1', ordinal: 1, text: 'Done', timestamp: 123 },
+      ],
+    })
+
+    expect(useAgentStore.getState().agentResponseReadAtBySessionId.get('session-1')).toBe(123)
+  })
+
+  it('does not mark background agent responses read until the session is opened', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      isSnoozed: true,
+      responseEvents: [
+        { id: 'response-2', sessionId: 'session-1', ordinal: 1, text: 'Background answer', timestamp: 456 },
+      ],
+    })
+
+    expect(useAgentStore.getState().agentResponseReadAtBySessionId.has('session-1')).toBe(false)
+
+    useAgentStore.getState().setFocusedSessionId('session-1')
+
+    expect(useAgentStore.getState().agentResponseReadAtBySessionId.get('session-1')).toBe(456)
+  })
+
+  it('does not steal focus for a newly delegated subagent session', () => {
+    useAgentStore.setState({
+      agentProgressById: new Map([
+        ['current-session', { ...createBaseUpdate(), sessionId: 'current-session', isComplete: true }],
+      ]),
+      focusedSessionId: 'current-session',
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      sessionId: 'subsession-1',
+      parentSessionId: 'parent-session',
+      conversationId: 'subagent-conversation',
+      steps: [
+        { id: 'thinking-1', type: 'thinking', title: 'Thinking', status: 'in_progress', timestamp: 1 },
+      ],
+    })
+
+    expect(useAgentStore.getState().focusedSessionId).toBe('current-session')
+  })
+
+  it('does not steal focus for delegation-only parent progress updates', () => {
+    useAgentStore.setState({
+      agentProgressById: new Map([
+        ['current-session', { ...createBaseUpdate(), sessionId: 'current-session', isComplete: true }],
+      ]),
+      focusedSessionId: 'current-session',
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      sessionId: 'parent-session',
+      conversationId: 'parent-conversation',
+      steps: [
+        {
+          id: 'delegation-1',
+          type: 'completion',
+          title: 'Delegation',
+          status: 'in_progress',
+          timestamp: 1,
+          delegation: {
+            runId: 'delegated-run-1',
+            agentName: 'internal',
+            task: 'Do delegated work',
+            status: 'running',
+            startTime: 1,
+            subSessionId: 'subsession-1',
+          },
+        },
+      ],
+    })
+
+    expect(useAgentStore.getState().focusedSessionId).toBe('current-session')
   })
 })

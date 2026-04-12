@@ -27,7 +27,10 @@ vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))
 vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: mockAppendSessionUserResponse }))
 vi.mock("./conversation-service", () => ({ conversationService: {} }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
-vi.mock("./acp-session-state", () => ({ getAppSessionForAcpSession: mockGetAppSessionForAcpSession }))
+vi.mock("./acp-session-state", () => ({
+  getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
+  setAcpSessionTitleOverride: vi.fn(),
+}))
 
 describe("runtime-tools respond_to_user", () => {
   beforeEach(() => {

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   filterPastSessionsAgainstActiveSessions,
+  getLatestAgentResponseTimestamp,
+  hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
   orderActiveSessionsByPinnedFirst,
 } from "./sidebar-sessions"
@@ -99,5 +101,43 @@ describe("isSidebarSessionCurrentlyViewed", () => {
         viewedConversationId: "conversation-1",
       }),
     ).toBe(false)
+  })
+})
+
+describe("agent response unread helpers", () => {
+  it("uses response events and assistant history as unread response timestamps", () => {
+    const latestTimestamp = getLatestAgentResponseTimestamp({
+      sessionId: "session-1",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: false,
+      responseEvents: [
+        { id: "response-1", sessionId: "session-1", ordinal: 1, text: "First", timestamp: 100 },
+      ],
+      conversationHistory: [
+        { role: "user", content: "Hello", timestamp: 200 },
+        { role: "assistant", content: "Second", timestamp: 300 },
+      ],
+    })
+
+    expect(latestTimestamp).toBe(300)
+  })
+
+  it("marks a newer unseen agent response as unread", () => {
+    const progress = {
+      sessionId: "session-2",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: false,
+      responseEvents: [
+        { id: "response-2", sessionId: "session-2", ordinal: 1, text: "Look at this", timestamp: 250 },
+      ],
+    }
+
+    expect(hasUnreadAgentResponse(progress, 100, false)).toBe(true)
+    expect(hasUnreadAgentResponse(progress, 250, false)).toBe(false)
+    expect(hasUnreadAgentResponse(progress, 100, true)).toBe(false)
   })
 })

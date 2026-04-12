@@ -5,6 +5,7 @@ import {
   sanitizeAgentProgressUpdateForDisplay,
 } from '@dotagents/shared/message-display-utils'
 import { logUI } from '@renderer/lib/debug'
+import { getLatestAgentResponseTimestamp } from '@renderer/lib/sidebar-sessions'
 
 const getProgressActivityTimestamp = (progress: AgentProgressUpdate): number => {
   const historyTs =
@@ -18,12 +19,45 @@ const getProgressActivityTimestamp = (progress: AgentProgressUpdate): number => 
   return Math.max(historyTs, stepTs, 0)
 }
 
+const markLatestAgentResponseReadInMap = (
+  readTimestamps: Map<string, number>,
+  sessionId: string,
+  progress: AgentProgressUpdate | undefined,
+): Map<string, number> => {
+  const latestResponseTimestamp = getLatestAgentResponseTimestamp(progress)
+  if (latestResponseTimestamp === null) return readTimestamps
+
+  const currentReadTimestamp = readTimestamps.get(sessionId) ?? 0
+  if (currentReadTimestamp >= latestResponseTimestamp) return readTimestamps
+
+  const nextReadTimestamps = new Map(readTimestamps)
+  nextReadTimestamps.set(sessionId, latestResponseTimestamp)
+  return nextReadTimestamps
+}
+
+const isDelegatedSubagentProgress = (progress: AgentProgressUpdate): boolean => (
+  typeof progress.parentSessionId === 'string' && progress.parentSessionId.trim().length > 0
+)
+
+const isDelegationOnlyProgressUpdate = (progress: AgentProgressUpdate): boolean => (
+  progress.steps.length > 0 &&
+  progress.steps.every((step) => !!step.delegation) &&
+  !progress.userResponse &&
+  (!progress.responseEvents || progress.responseEvents.length === 0) &&
+  (!progress.userResponseHistory || progress.userResponseHistory.length === 0) &&
+  !progress.finalContent &&
+  !progress.streamingContent?.text &&
+  !progress.pendingToolApproval &&
+  (!progress.conversationHistory || progress.conversationHistory.length === 0)
+)
+
 export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
 export type SessionSortBy = 'recent' | 'oldest' | 'status'
 
 interface AgentState {
   agentProgressById: Map<string, AgentProgressUpdate>
+  agentResponseReadAtBySessionId: Map<string, number>
   focusedSessionId: string | null
   expandedSessionId: string | null
   viewedConversationId: string | null
@@ -69,6 +103,7 @@ interface AgentState {
 
 export const useAgentStore = create<AgentState>((set, get) => ({
   agentProgressById: new Map(),
+  agentResponseReadAtBySessionId: new Map(),
   focusedSessionId: null,
   expandedSessionId: null,
   viewedConversationId: null,
@@ -261,13 +296,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         }
       }
 
-      newMap.set(sessionId, mergedUpdate)
-
       // Auto-focus new active sessions.
       // Also steal focus from a completed session so the panel doesn't
       // re-show an old finished session when a new one starts.
       let newFocusedSessionId = state.focusedSessionId
-      if (isNewSession && !mergedUpdate.isSnoozed && !mergedUpdate.isComplete) {
+      const shouldSuppressAutoFocusForDelegation =
+        isDelegatedSubagentProgress(mergedUpdate) || isDelegationOnlyProgressUpdate(update)
+      if (
+        isNewSession &&
+        !shouldSuppressAutoFocusForDelegation &&
+        !mergedUpdate.isSnoozed &&
+        !mergedUpdate.isComplete
+      ) {
         const currentFocusedProgress = state.focusedSessionId
           ? newMap.get(state.focusedSessionId)
           : undefined
@@ -276,8 +316,25 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         }
       }
 
+      newMap.set(sessionId, mergedUpdate)
+
+      let nextReadTimestamps = state.agentResponseReadAtBySessionId
+      const isViewedSession =
+        newFocusedSessionId === sessionId ||
+        state.expandedSessionId === sessionId ||
+        (!!mergedUpdate.conversationId &&
+          state.viewedConversationId === mergedUpdate.conversationId)
+      if (isViewedSession) {
+        nextReadTimestamps = markLatestAgentResponseReadInMap(
+          nextReadTimestamps,
+          sessionId,
+          mergedUpdate,
+        )
+      }
+
       return {
         agentProgressById: newMap,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
         focusedSessionId: newFocusedSessionId,
       }
     })
@@ -291,6 +348,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
     set({
       agentProgressById: new Map(),
+      agentResponseReadAtBySessionId: new Map(),
       focusedSessionId: null,
       expandedSessionId: null,
     })
@@ -301,7 +359,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     clearSessionTTSTracking(sessionId)
     set((state) => {
       const newMap = new Map(state.agentProgressById)
+      const nextReadTimestamps = new Map(state.agentResponseReadAtBySessionId)
       newMap.delete(sessionId)
+      nextReadTimestamps.delete(sessionId)
 
       // If the cleared session was focused, move focus to next active session
       let newFocusedSessionId = state.focusedSessionId
@@ -325,6 +385,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
       return {
         agentProgressById: newMap,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
         focusedSessionId: newFocusedSessionId,
         expandedSessionId: newExpandedSessionId,
       }
@@ -341,11 +402,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
     set((state) => {
       const newMap = new Map<string, AgentProgressUpdate>()
+      const nextReadTimestamps = new Map<string, number>()
 
       // Keep only active (not complete) sessions
       for (const [sessionId, progress] of state.agentProgressById.entries()) {
         if (!progress.isComplete) {
           newMap.set(sessionId, progress)
+          const readTimestamp = state.agentResponseReadAtBySessionId.get(sessionId)
+          if (readTimestamp !== undefined) {
+            nextReadTimestamps.set(sessionId, readTimestamp)
+          }
         }
       }
 
@@ -370,6 +436,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
       return {
         agentProgressById: newMap,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
         focusedSessionId: newFocusedSessionId,
         expandedSessionId: newExpandedSessionId,
       }
@@ -377,15 +444,50 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   setFocusedSessionId: (sessionId: string | null) => {
-    set({ focusedSessionId: sessionId })
+    set((state) => ({
+      focusedSessionId: sessionId,
+      agentResponseReadAtBySessionId: sessionId
+        ? markLatestAgentResponseReadInMap(
+          state.agentResponseReadAtBySessionId,
+          sessionId,
+          state.agentProgressById.get(sessionId),
+        )
+        : state.agentResponseReadAtBySessionId,
+    }))
   },
 
   setExpandedSessionId: (sessionId: string | null) => {
-    set({ expandedSessionId: sessionId })
+    set((state) => ({
+      expandedSessionId: sessionId,
+      agentResponseReadAtBySessionId: sessionId
+        ? markLatestAgentResponseReadInMap(
+          state.agentResponseReadAtBySessionId,
+          sessionId,
+          state.agentProgressById.get(sessionId),
+        )
+        : state.agentResponseReadAtBySessionId,
+    }))
   },
 
   setViewedConversationId: (conversationId: string | null) => {
-    set({ viewedConversationId: conversationId })
+    set((state) => {
+      let nextReadTimestamps = state.agentResponseReadAtBySessionId
+      if (conversationId) {
+        for (const [sessionId, progress] of state.agentProgressById.entries()) {
+          if (progress.conversationId !== conversationId) continue
+          nextReadTimestamps = markLatestAgentResponseReadInMap(
+            nextReadTimestamps,
+            sessionId,
+            progress,
+          )
+        }
+      }
+
+      return {
+        viewedConversationId: conversationId,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
+      }
+    })
   },
 
   setScrollToSessionId: (sessionId: string | null) => {

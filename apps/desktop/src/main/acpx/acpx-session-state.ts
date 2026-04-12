@@ -29,6 +29,7 @@ const acpxToAppSession = new Map<string, string>()
 const acpxToRunId = new Map<string, string | number>()
 const acpxToClientSessionToken = new Map<string, string>()
 const pendingClientSessionTokenToAppSession = new Map<string, string>()
+const acpxSessionTitleOverrides = new Map<string, string>()
 
 function ensureStateDir(): void {
   if (!fs.existsSync(STATE_DIR)) {
@@ -186,10 +187,25 @@ export function getAppSessionForAcpSession(acpxSessionId: string): string | unde
   return acpxToAppSession.get(acpxSessionId)
 }
 
+export function setAcpSessionTitleOverride(acpxSessionId: string, title: string): void {
+  const normalizedTitle = title.trim()
+  if (!normalizedTitle) {
+    acpxSessionTitleOverrides.delete(acpxSessionId)
+    return
+  }
+
+  acpxSessionTitleOverrides.set(acpxSessionId, normalizedTitle)
+}
+
+export function getAcpSessionTitleOverride(acpxSessionId: string): string | undefined {
+  return acpxSessionTitleOverrides.get(acpxSessionId)
+}
+
 export function clearAcpToAppSessionMapping(acpxSessionId: string): void {
   acpxToAppSession.delete(acpxSessionId)
   acpxToRunId.delete(acpxSessionId)
   acpxToClientSessionToken.delete(acpxSessionId)
+  acpxSessionTitleOverrides.delete(acpxSessionId)
   saveState()
 }
 
@@ -261,4 +277,5 @@ export function __resetAcpxSessionStateForTests(): void {
   acpxToRunId.clear()
   acpxToClientSessionToken.clear()
   pendingClientSessionTokenToAppSession.clear()
+  acpxSessionTitleOverrides.clear()
 }

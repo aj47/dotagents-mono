@@ -1,3 +1,5 @@
+import type { AgentProgressUpdate } from "@shared/types"
+
 type SessionLike = {
   id: string
   conversationId?: string
@@ -83,4 +85,43 @@ export function isSidebarSessionCurrentlyViewed(
   }
 
   return session.id === focusedSessionId || session.id === expandedSessionId
+}
+
+export function getLatestAgentResponseTimestamp(
+  progress?: AgentProgressUpdate | null,
+): number | null {
+  if (!progress) return null
+
+  let latestTimestamp: number | null = null
+  const recordTimestamp = (timestamp?: number) => {
+    if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) return
+    latestTimestamp = Math.max(latestTimestamp ?? 0, timestamp)
+  }
+
+  for (const event of progress.responseEvents ?? []) {
+    if (event.text.trim()) {
+      recordTimestamp(event.timestamp)
+    }
+  }
+
+  for (const message of progress.conversationHistory ?? []) {
+    if (message.role === "assistant" && message.content.trim()) {
+      recordTimestamp(message.timestamp)
+    }
+  }
+
+  return latestTimestamp
+}
+
+export function hasUnreadAgentResponse(
+  progress: AgentProgressUpdate | null | undefined,
+  lastReadTimestamp: number | undefined,
+  isCurrentlyViewed: boolean,
+): boolean {
+  if (isCurrentlyViewed) return false
+
+  const latestResponseTimestamp = getLatestAgentResponseTimestamp(progress)
+  if (latestResponseTimestamp === null) return false
+
+  return latestResponseTimestamp > (lastReadTimestamp ?? 0)
 }

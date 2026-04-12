@@ -5,9 +5,11 @@ type StopCallbackRegistration = {
   audio?: HTMLAudioElement
 }
 
-class TTSManager {
+export class TTSManager {
   private audioElements: Set<HTMLAudioElement> = new Set()
   private stopCallbacks: Set<StopCallbackRegistration> = new Set()
+  private playbackRequestId = 0
+  private latestPlaybackAudio: HTMLAudioElement | null = null
 
   registerAudio(audio: HTMLAudioElement): () => void {
     this.audioElements.add(audio)
@@ -79,6 +81,8 @@ class TTSManager {
     audio: HTMLAudioElement,
     context: { source: string; autoPlay: boolean; textPreview?: string },
   ): Promise<void> {
+    const requestId = ++this.playbackRequestId
+    this.latestPlaybackAudio = audio
     this.stopAllExcept(audio, `play-request:${context.source}`)
 
     logUI("[TTS Manager] Starting exclusive playback", {
@@ -89,9 +93,16 @@ class TTSManager {
     })
 
     await audio.play()
+
+    if (this.playbackRequestId !== requestId && this.latestPlaybackAudio !== audio) {
+      this.stopAudio(audio, `stale-play-request:${context.source}`)
+    }
   }
 
   stopAll(reason: string = "manual-stop"): void {
+    this.playbackRequestId += 1
+    this.latestPlaybackAudio = null
+
     logUI("[TTS Manager] Stopping all TTS audio", {
       reason,
       trackedAudioCount: this.audioElements.size,

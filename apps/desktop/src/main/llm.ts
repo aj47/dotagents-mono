@@ -16,6 +16,7 @@ import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
+import { getAcpSessionTitleOverride } from "./acp-session-state"
 import { getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
@@ -621,7 +622,8 @@ export async function processTranscriptWithAgentMode(
   ) => {
     const isSnoozed = agentSessionTracker.isSessionSnoozed(currentSessionId)
     const session = agentSessionTracker.getSession(currentSessionId)
-    const conversationTitle = session?.conversationTitle
+    const conversationTitle =
+      session?.conversationTitle ?? getAcpSessionTitleOverride(currentSessionId)
     const profileName = session?.profileSnapshot?.profileName
     const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
     const storedUserResponse = getSessionUserResponse(currentSessionId, effectiveRunId)

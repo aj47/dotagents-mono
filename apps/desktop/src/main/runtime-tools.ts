@@ -17,7 +17,7 @@ import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
-import { getAppSessionForAcpSession } from "./acp-session-state"
+import { getAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -705,7 +705,8 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const trackedSessionId = getAppSessionForAcpSession(context.sessionId) ?? context.sessionId
+    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
+    const trackedSessionId = mappedAppSessionId ?? context.sessionId
 
     // Guard: don't store the response if the session was already stopped/cancelled.
     // This prevents zombie sessions from reappearing after the user stops them.
@@ -758,7 +759,8 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const trackedSessionId = getAppSessionForAcpSession(context.sessionId) ?? context.sessionId
+    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
+    const trackedSessionId = mappedAppSessionId ?? context.sessionId
     const session = agentSessionTracker.getSession(trackedSessionId)
     if (!session?.conversationId) {
       return {
@@ -782,6 +784,10 @@ const toolHandlers: Record<string, ToolHandler> = {
     agentSessionTracker.updateSession(trackedSessionId, {
       conversationTitle: updatedConversation.title,
     })
+
+    if (mappedAppSessionId) {
+      setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
+    }
 
     return {
       content: [{ type: "text", text: JSON.stringify({ success: true, title: updatedConversation.title }, null, 2) }],

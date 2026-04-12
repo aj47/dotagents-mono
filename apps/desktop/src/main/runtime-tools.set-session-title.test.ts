@@ -4,6 +4,7 @@ const mockRenameConversationTitle = vi.fn()
 const mockGetSession = vi.fn()
 const mockUpdateSession = vi.fn()
 const mockGetAppSessionForAcpSession = vi.fn()
+const mockSetAcpSessionTitleOverride = vi.fn()
 
 vi.mock("./mcp-service", () => ({
   mcpService: { getAvailableTools: vi.fn(() => []) },
@@ -28,7 +29,10 @@ vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))
 vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.fn() }))
 vi.mock("./conversation-service", () => ({ conversationService: { renameConversationTitle: mockRenameConversationTitle } }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
-vi.mock("./acp-session-state", () => ({ getAppSessionForAcpSession: mockGetAppSessionForAcpSession }))
+vi.mock("./acp-session-state", () => ({
+  getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
+  setAcpSessionTitleOverride: mockSetAcpSessionTitleOverride,
+}))
 
 describe("runtime-tools set_session_title", () => {
   beforeEach(() => {
@@ -53,6 +57,7 @@ describe("runtime-tools set_session_title", () => {
     expect(mockGetAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
     expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
+    expect(mockSetAcpSessionTitleOverride).toHaveBeenCalledWith("delegated-session-1", "Delegated title")
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
       isError: false,

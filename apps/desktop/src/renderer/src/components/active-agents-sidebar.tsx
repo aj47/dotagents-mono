@@ -25,6 +25,7 @@ import {
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import {
   filterPastSessionsAgainstActiveSessions,
+  hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
   orderActiveSessionsByPinnedFirst,
 } from "@renderer/lib/sidebar-sessions"
@@ -205,6 +206,9 @@ export function ActiveAgentsSidebar({
   const viewedConversationId = useAgentStore((s) => s.viewedConversationId)
   const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const agentResponseReadAtBySessionId = useAgentStore(
+    (s) => s.agentResponseReadAtBySessionId,
+  )
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const togglePinSession = useAgentStore((s) => s.togglePinSession)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
@@ -829,6 +833,11 @@ export function ActiveAgentsSidebar({
               viewedConversationId: isSessionsRoute ? viewedConversationId : null,
             })
             const sessionProgress = agentProgressById.get(session.id)
+            const hasUnreadResponse = hasUnreadAgentResponse(
+              sessionProgress,
+              agentResponseReadAtBySessionId.get(session.id),
+              isCurrentView,
+            )
             const conversationTimestamp =
               sessionProgress?.conversationHistory &&
               sessionProgress.conversationHistory.length > 0
@@ -961,9 +970,13 @@ export function ActiveAgentsSidebar({
               ? "bg-amber-500"
               : conversationState === "blocked"
                 ? "bg-red-500"
-                : isVisiblyActive
-                  ? "bg-green-500"
-                  : "bg-muted-foreground"
+                : hasUnreadResponse
+                  ? "bg-blue-500"
+                  : isVisiblyActive
+                    ? "bg-green-500"
+                    : "bg-muted-foreground"
+            const shouldPulseStatus =
+              (isVisiblyActive || hasUnreadResponse) && !hasPendingApproval
 
             const isActivePinned = session.conversationId
               ? pinnedSessionIds.has(session.conversationId)
@@ -995,10 +1008,12 @@ export function ActiveAgentsSidebar({
                         ? "text-amber-500"
                         : conversationState === "blocked"
                           ? "text-red-500"
-                          : isVisiblyActive
-                            ? "text-green-500"
-                            : "text-muted-foreground",
-                      isVisiblyActive && !hasPendingApproval && "animate-pulse",
+                          : hasUnreadResponse
+                            ? "text-blue-500"
+                            : isVisiblyActive
+                              ? "text-green-500"
+                              : "text-muted-foreground",
+                      shouldPulseStatus && "animate-pulse",
                     )}
                   />
                 ) : (
@@ -1006,7 +1021,7 @@ export function ActiveAgentsSidebar({
                     className={cn(
                       "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
                       statusRailColor,
-                      isVisiblyActive && !hasPendingApproval && "animate-pulse",
+                      shouldPulseStatus && "animate-pulse",
                     )}
                   />
                 )}
@@ -1024,9 +1039,11 @@ export function ActiveAgentsSidebar({
                         "flex-1 text-[12px] font-medium leading-4",
                         hasPendingApproval
                           ? "text-amber-700 dark:text-amber-300"
-                          : !isVisiblyActive
-                            ? "text-muted-foreground"
-                            : "text-foreground",
+                          : hasUnreadResponse
+                            ? "text-foreground"
+                            : !isVisiblyActive
+                              ? "text-muted-foreground"
+                              : "text-foreground",
                       ),
                       hasPendingApproval ? "⚠ " : undefined,
                     )}

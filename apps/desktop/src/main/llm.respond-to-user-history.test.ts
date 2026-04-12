@@ -17,11 +17,12 @@ const mocks = vi.hoisted(() => ({
   updateIterationCount: vi.fn(),
   cleanupSession: vi.fn(),
   isSessionSnoozed: vi.fn(() => false),
-  getSession: vi.fn((id: string) => ({ id, conversationTitle: "Test conversation" })),
+  getSession: vi.fn((id: string): { id: string; conversationTitle: string } | undefined => ({ id, conversationTitle: "Test conversation" })),
   updateSession: vi.fn(),
   getCurrentProfile: vi.fn(() => undefined),
   getSkills: vi.fn(() => []),
   getEnabledSkillsInstructionsForProfile: vi.fn(() => ""),
+  getAcpSessionTitleOverride: vi.fn((_: string): string | undefined => undefined),
 }))
 
 vi.mock("./config", () => ({
@@ -47,6 +48,7 @@ vi.mock("./context-budget", () => ({
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mocks.emitAgentProgress }))
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: mocks }))
 vi.mock("./conversation-service", () => ({ conversationService: { addMessageToConversation: mocks.addMessageToConversation, maybeAutoGenerateConversationTitle: mocks.maybeAutoGenerateConversationTitle } }))
+vi.mock("./acp-session-state", () => ({ getAcpSessionTitleOverride: mocks.getAcpSessionTitleOverride }))
 vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createAgentTrace: vi.fn(), endAgentTrace: vi.fn(), flushLangfuse: vi.fn(async () => undefined) }))
 vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => false), shouldSummarizeStep: vi.fn(() => false), summarizeAgentStep: vi.fn(), summarizationService: { getSummaries: vi.fn(() => []), getLatestSummary: vi.fn(() => undefined), addSummary: vi.fn() } }))
 vi.mock("./knowledge-notes-service", () => ({ knowledgeNotesService: { createNoteFromSummary: vi.fn(), saveNote: vi.fn() } }))
@@ -496,5 +498,42 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).toBe("Visible answer")
     expect(result.conversationHistory.filter((message) => message.role === "assistant" && message.content === "Visible answer")).toHaveLength(1)
     expect(result.conversationHistory.filter((message) => message.role === "assistant" && message.content === "   ")).toHaveLength(0)
+  })
+
+  it("uses the ACP title override when delegated session progress has no tracked session title", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.getSession.mockImplementation((id: string) =>
+      id === "delegated-title-session"
+        ? undefined
+        : { id, conversationTitle: "Test conversation" },
+    )
+    mocks.getAcpSessionTitleOverride.mockImplementation((id: string) =>
+      id === "delegated-title-session" ? "Delegated research" : undefined,
+    )
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
+      { name: "respond_to_user", arguments: { text: "Done" } },
+      { name: "mark_work_complete", arguments: { summary: "Done" } },
+    ] })
+
+    await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("delegated-title-session", 10),
+      3,
+      [],
+      "conv-delegated-title",
+      "delegated-title-session",
+      undefined,
+      undefined,
+      10,
+    )
+
+    expect(mocks.emitAgentProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "delegated-title-session",
+        conversationTitle: "Delegated research",
+      }),
+    )
   })
 })

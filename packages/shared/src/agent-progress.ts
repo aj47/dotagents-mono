@@ -219,6 +219,8 @@ export interface AgentUserResponseEvent {
  */
 export interface AgentProgressUpdate {
   sessionId: string
+  /** Parent session ID when this update belongs to a delegated sub-agent/sub-session. */
+  parentSessionId?: string
   conversationId?: string
   currentIteration: number
   maxIterations: number
