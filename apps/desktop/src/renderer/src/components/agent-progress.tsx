@@ -4863,10 +4863,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
             {/* Footer with status info — only show when active, omit when complete to save space */}
             {!isComplete && (
-              <div className={cn(
-                "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
-                "px-3 py-1.5 text-xs",
-              )}>
+              <div
+                className={cn(
+                  "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
+                  "px-3 py-1.5 text-xs",
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-center gap-x-2">
                     {profileName && (
