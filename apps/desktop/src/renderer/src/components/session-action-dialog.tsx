@@ -276,7 +276,7 @@ export function SessionActionDialog({
       <DialogContent
         className={cn(
           "flex max-h-[calc(100vh-48px)] flex-col sm:max-w-2xl",
-          mode === "text" && "min-h-[560px]",
+          mode === "text" && "h-[560px]",
           mode === "voice" && "sm:max-w-xl",
         )}
       >
