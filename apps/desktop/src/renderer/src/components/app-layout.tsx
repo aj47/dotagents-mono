@@ -72,6 +72,7 @@ export const Component = () => {
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [savedConversationsDialogOpen, setSavedConversationsDialogOpen] = useState(false)
+  const [savedConversationsHotkeyOpen, setSavedConversationsHotkeyOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const [sessionActionDialog, setSessionActionDialog] = useState<SessionActionDialogState | null>(null)
   const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
@@ -197,16 +198,47 @@ export const Component = () => {
     [],
   )
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName?.toLowerCase()
+      const isEditable =
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+
+      if (isEditable) return
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return
+      if (event.key.toLowerCase() !== "k") return
+
+      event.preventDefault()
+      event.stopPropagation()
+      setSavedConversationsHotkeyOpen(true)
+      setSavedConversationsDialogOpen(true)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   const handleStartTextSession = useCallback(async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
     openSessionActionDialog({ mode: "text" })
   }, [applySelectedAgentToNextSession, openSessionActionDialog])
 
-  const handleStartVoiceSession = useCallback(async () => {
+  const handleStartVoiceSession = useCallback(async (options?: {
+    conversationId?: string
+    continueConversationTitle?: string
+  }) => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    openSessionActionDialog({ mode: "voice" })
+    openSessionActionDialog({
+      mode: "voice",
+      conversationId: options?.conversationId,
+      continueConversationTitle: options?.continueConversationTitle,
+    })
   }, [applySelectedAgentToNextSession, openSessionActionDialog])
 
   const handleStartPromptSession = useCallback(
@@ -419,7 +451,14 @@ export const Component = () => {
     <>
       <SavedConversationsDialog
         open={savedConversationsDialogOpen}
-        onOpenChange={setSavedConversationsDialogOpen}
+        autoFocusSearch={savedConversationsHotkeyOpen}
+        onAutoFocusSearchHandled={() => setSavedConversationsHotkeyOpen(false)}
+        onOpenChange={(open) => {
+          setSavedConversationsDialogOpen(open)
+          if (!open) {
+            setSavedConversationsHotkeyOpen(false)
+          }
+        }}
       />
 
       <div className="flex h-dvh">
@@ -651,10 +690,14 @@ export const Component = () => {
                     isFocused,
                   )
                   const isVisiblyActive = isFocused || !isSnoozed
+                  const isInProgress =
+                    session.status === "active" && !(sessionProgress?.isComplete ?? false)
                   const statusDotColor = hasPendingApproval
                     ? "bg-amber-500"
                     : hasUnreadResponse
                       ? "bg-blue-500"
+                      : isInProgress
+                        ? "bg-sky-500"
                       : !isVisiblyActive
                         ? "bg-muted-foreground"
                         : "bg-green-500"
@@ -681,7 +724,7 @@ export const Component = () => {
                         className={cn(
                           "border-background absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border",
                           statusDotColor,
-                          (isVisiblyActive || hasUnreadResponse) &&
+                          (isInProgress || isVisiblyActive || hasUnreadResponse) &&
                             !hasPendingApproval &&
                             "animate-pulse",
                         )}

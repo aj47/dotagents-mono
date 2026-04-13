@@ -52,8 +52,12 @@ describe("saved conversations dialog layout", () => {
 
   it("includes a keyboard-accessible pin action and pinned-first sort for saved conversations", () => {
     expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst")
-    expect(pastSessionsDialogSource).toContain("return orderConversationHistoryByPinnedFirst(filteredConversations, pinnedSessionIds)")
+    expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst(")
+    expect(pastSessionsDialogSource).toContain("KEYBOARD_SHORTCUT_HINT")
+    expect(pastSessionsDialogSource).toContain("PIN_SHORTCUT_HINT")
+    expect(pastSessionsDialogSource).toContain("VOICE_SHORTCUT_HINT")
     expect(pastSessionsDialogSource).toContain('aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}')
     expect(pastSessionsDialogSource).toContain('onKeyDown={stopConversationRowKeyPropagation}')
+    expect(pastSessionsDialogSource).toContain('data-highlighted={highlightedConversationId === session.id ? "true" : undefined}')
   })
 })

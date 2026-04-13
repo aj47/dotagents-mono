@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import dayjs from "dayjs"
 import { AlertTriangle, Archive, CheckCircle2, Clock, Loader2, Pin, Search, Trash2 } from "lucide-react"
@@ -23,6 +23,28 @@ import { toast } from "sonner"
 import { useAgentStore } from "@renderer/stores"
 
 const INITIAL_SAVED_CONVERSATIONS = 20
+const SEARCH_RESULT_LIMIT = 50
+const DEFAULT_FUZZY_THRESHOLD = 0.33
+const TITLE_MATCH_WEIGHT = 0.6
+const PREVIEW_MATCH_WEIGHT = 0.25
+const LAST_MESSAGE_MATCH_WEIGHT = 0.15
+const KEYBOARD_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl+K"
+const PIN_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘P" : "Ctrl+P"
+const VOICE_SHORTCUT_HINT = "V"
+
+
+type SearchableConversationField = "title" | "preview" | "lastMessage"
+
+type SearchableConversation = {
+  title: string
+  preview: string
+  lastMessage: string
+}
+
+type ConversationSearchResult = {
+  field: SearchableConversationField
+  score: number
+}
 
 function formatTimestamp(timestamp: number): string {
   const now = dayjs()
@@ -42,12 +64,100 @@ function formatTimestamp(timestamp: number): string {
   return date.format("MMM D")
 }
 
+function getFieldWeight(field: SearchableConversationField): number {
+  switch (field) {
+    case "title":
+      return TITLE_MATCH_WEIGHT
+    case "preview":
+      return PREVIEW_MATCH_WEIGHT
+    case "lastMessage":
+      return LAST_MESSAGE_MATCH_WEIGHT
+    default:
+      return 0
+  }
+}
+
+function normalizeSearchText(value: string | undefined): string {
+  return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim()
+}
+
+function scoreSearchField(fieldValue: string, query: string): number {
+  const normalizedField = normalizeSearchText(fieldValue)
+  const normalizedQuery = normalizeSearchText(query)
+
+  if (!normalizedField || !normalizedQuery) {
+    return 0
+  }
+
+  if (normalizedField.includes(normalizedQuery)) {
+    const position = normalizedField.indexOf(normalizedQuery)
+    const positionBonus = position === 0 ? 0.15 : Math.max(0, 0.08 - position * 0.002)
+    const lengthPenalty = Math.min(0.15, normalizedField.length / 500)
+    return Math.min(1, 0.85 + positionBonus - lengthPenalty)
+  }
+
+  let score = 0
+  let lastMatchedIndex = -1
+  for (const character of normalizedQuery) {
+    const nextIndex = normalizedField.indexOf(character, lastMatchedIndex + 1)
+    if (nextIndex === -1) {
+      return 0
+    }
+
+    score += 1
+    if (nextIndex === lastMatchedIndex + 1) {
+      score += 0.35
+    }
+    if (nextIndex === 0 || normalizedField[nextIndex - 1] === " ") {
+      score += 0.2
+    }
+    lastMatchedIndex = nextIndex
+  }
+
+  return Math.min(1, score / (normalizedQuery.length * 1.55))
+}
+
+function getConversationSearchResult(
+  conversation: SearchableConversation,
+  query: string,
+): ConversationSearchResult | null {
+  const normalizedQuery = normalizeSearchText(query)
+  if (!normalizedQuery) {
+    return { field: "title", score: 1 }
+  }
+
+  const orderedFields: SearchableConversationField[] = ["title", "preview", "lastMessage"]
+  let bestResult: ConversationSearchResult | null = null
+
+  for (const field of orderedFields) {
+    const rawScore = scoreSearchField(conversation[field], normalizedQuery)
+    if (rawScore <= 0) continue
+
+    const weightedScore = rawScore * getFieldWeight(field)
+    if (!bestResult || weightedScore > bestResult.score) {
+      bestResult = { field, score: weightedScore }
+    }
+  }
+
+  if (!bestResult || bestResult.score < DEFAULT_FUZZY_THRESHOLD) {
+    return null
+  }
+
+  return bestResult
+}
+
 export function SavedConversationsDialog({
   open,
   onOpenChange,
+  autoFocusSearch = false,
+  onAutoFocusSearchHandled,
+  onStartVoiceConversation,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  autoFocusSearch?: boolean
+  onAutoFocusSearchHandled?: () => void
+  onStartVoiceConversation?: (conversation: { id: string; title: string }) => void
 }) {
   const navigate = useNavigate()
   const savedConversationsQuery = useSavedConversationsQuery(open)
@@ -63,12 +173,15 @@ export function SavedConversationsDialog({
     INITIAL_SAVED_CONVERSATIONS,
   )
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
+  const [highlightedConversationId, setHighlightedConversationId] = useState<string | null>(null)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (!open) {
       setSearchQuery("")
       setSavedConversationCount(INITIAL_SAVED_CONVERSATIONS)
       setShowDeleteAllConfirm(false)
+      setHighlightedConversationId(null)
       return
     }
 
@@ -76,18 +189,111 @@ export function SavedConversationsDialog({
     setSavedConversationCount(INITIAL_SAVED_CONVERSATIONS)
   }, [open, searchQuery])
 
+  useEffect(() => {
+    if (!open) return undefined
+
+    const focusSearchInput = () => {
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+    }
+
+    focusSearchInput()
+    const timeoutId = window.setTimeout(focusSearchInput, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat) return
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      if (event.key.toLowerCase() !== "k") return
+
+      const activeElement = document.activeElement as HTMLElement | null
+      const isEditable =
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        activeElement?.isContentEditable
+
+      if (isEditable && activeElement !== searchInputRef.current) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [open])
+
+
+  useEffect(() => {
+    if (!open || !autoFocusSearch) return undefined
+
+    const focusSearch = () => {
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+      onAutoFocusSearchHandled?.()
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      window.setTimeout(focusSearch, 0)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [open, autoFocusSearch, onAutoFocusSearchHandled])
+
   const filteredSavedConversations = useMemo(() => {
     const all = savedConversationsQuery.data ?? []
-    const q = searchQuery.trim().toLowerCase()
-    const filteredConversations = !q
-      ? all
-      : all.filter(
-        (conversation) =>
-          conversation.title.toLowerCase().includes(q) ||
-          conversation.preview.toLowerCase().includes(q),
-      )
+    const normalizedQuery = searchQuery.trim()
 
-    return orderConversationHistoryByPinnedFirst(filteredConversations, pinnedSessionIds)
+    if (!normalizedQuery) {
+      return orderConversationHistoryByPinnedFirst(all, pinnedSessionIds).slice(
+        0,
+        SEARCH_RESULT_LIMIT,
+      )
+    }
+
+    const rankedConversations = all
+      .map((conversation) => {
+        const result = getConversationSearchResult(
+          {
+            title: conversation.title,
+            preview: conversation.preview,
+            lastMessage: conversation.lastMessage,
+          },
+          normalizedQuery,
+        )
+
+        if (!result) return null
+
+        return {
+          conversation,
+          rank: result.score,
+          fieldPriority:
+            result.field === "title" ? 0 : result.field === "preview" ? 1 : 2,
+        }
+      })
+      .filter((entry): entry is {
+        conversation: (typeof all)[number]
+        rank: number
+        fieldPriority: number
+      } => entry !== null)
+      .sort((a, b) => {
+        if (b.rank !== a.rank) return b.rank - a.rank
+        if (a.fieldPriority !== b.fieldPriority) return a.fieldPriority - b.fieldPriority
+        return b.conversation.updatedAt - a.conversation.updatedAt
+      })
+      .map((entry) => entry.conversation)
+
+    return orderConversationHistoryByPinnedFirst(rankedConversations, pinnedSessionIds).slice(
+      0,
+      SEARCH_RESULT_LIMIT,
+    )
   }, [savedConversationsQuery.data, searchQuery, pinnedSessionIds])
 
   const visibleSavedConversations = useMemo(
@@ -95,7 +301,45 @@ export function SavedConversationsDialog({
     [filteredSavedConversations, savedConversationCount],
   )
 
+  useEffect(() => {
+    if (!open) return
+
+    setHighlightedConversationId((current) => {
+      if (visibleSavedConversations.length === 0) {
+        return null
+      }
+
+      if (current && visibleSavedConversations.some((conversation) => conversation.id === current)) {
+        return current
+      }
+
+      return visibleSavedConversations[0]?.id ?? null
+    })
+  }, [open, visibleSavedConversations])
+
   const hasMoreSavedConversations = filteredSavedConversations.length > savedConversationCount
+
+  const moveHighlight = useCallback((direction: 1 | -1) => {
+    if (visibleSavedConversations.length === 0) return
+
+    setHighlightedConversationId((current) => {
+      const currentIndex = visibleSavedConversations.findIndex((conversation) => conversation.id === current)
+      const fallbackIndex = direction > 0 ? 0 : visibleSavedConversations.length - 1
+      const baseIndex = currentIndex === -1 ? fallbackIndex : currentIndex
+      const nextIndex = Math.max(0, Math.min(visibleSavedConversations.length - 1, baseIndex + direction))
+      return visibleSavedConversations[nextIndex]?.id ?? current
+    })
+  }, [visibleSavedConversations])
+
+  const highlightedConversation = useMemo(
+    () => visibleSavedConversations.find((conversation) => conversation.id === highlightedConversationId) ?? null,
+    [visibleSavedConversations, highlightedConversationId],
+  )
+
+  const handleVoiceConversation = useCallback((conversationId: string, title: string) => {
+    onStartVoiceConversation?.({ id: conversationId, title })
+    onOpenChange(false)
+  }, [onOpenChange, onStartVoiceConversation])
 
   const handleOpenSavedConversation = (conversationId: string) => {
     navigate(`/${conversationId}`)
@@ -140,7 +384,7 @@ export function SavedConversationsDialog({
             Saved Conversations
           </DialogTitle>
           <DialogDescription className="line-clamp-2">
-            Open or manage saved conversations.
+            Open or manage saved conversations. Use ↑↓ to move, Enter to open, {PIN_SHORTCUT_HINT} to pin, and {VOICE_SHORTCUT_HINT} for voice.
           </DialogDescription>
         </DialogHeader>
 
@@ -149,11 +393,16 @@ export function SavedConversationsDialog({
             <div className="relative min-w-0 flex-1">
               <Search className="text-muted-foreground absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" />
               <Input
+                ref={searchInputRef}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search saved conversations..."
-                className="pl-7 text-xs w-full"
+                placeholder="Search saved conversations by title, response, or message..."
+                aria-label="Search saved conversations"
+                className="pl-7 pr-12 text-xs w-full"
               />
+              <span className="text-muted-foreground pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border/60 px-1.5 py-0.5 text-[10px] font-medium">
+                {KEYBOARD_SHORTCUT_HINT}
+              </span>
             </div>
             <Button
               variant="outline"
@@ -231,10 +480,14 @@ export function SavedConversationsDialog({
                           handleOpenSavedConversation(session.id)
                         }
                       }}
+                      onFocus={() => setHighlightedConversationId(session.id)}
                       className={cn(
                         "group flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
                         "hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        highlightedConversationId === session.id && "bg-accent/50 ring-1 ring-ring/40",
                       )}
+                      onMouseEnter={() => setHighlightedConversationId(session.id)}
+                      data-highlighted={highlightedConversationId === session.id ? "true" : undefined}
                       title={`${session.preview}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`}
                     >
                       <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
