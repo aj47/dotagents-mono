@@ -3,12 +3,14 @@ import { pathToFileURL } from "url"
 import { describe, expect, it, vi, afterEach } from "vitest"
 
 import {
+  buildDevEnvironment,
   getDevCommand,
   getSharedWatchCommand,
   getSignalExitCode,
   isDirectExecution,
   terminateChildProcessTree,
 } from "../../scripts/dev-with-sherpa"
+import { shouldRecoverFromChildClose } from "./dev-self-recovery/git-recovery"
 
 describe("dev-with-sherpa launcher helpers", () => {
   afterEach(() => {
@@ -35,6 +37,28 @@ describe("dev-with-sherpa launcher helpers", () => {
     expect(result.command === "pnpm" || result.command === "pnpm.cmd").toBe(true)
     expect(result.args).toEqual(["--filter", "@dotagents/shared", "dev"])
     expect(result.cwd).toContain("dotagents-mono")
+  })
+
+  it("builds the always-on dev self-recovery environment", () => {
+    const env = buildDevEnvironment({ PATH: "/usr/bin" }, [])
+
+    expect(env.PATH).toBe("/usr/bin")
+    expect(env.DOTAGENTS_DEV_SELF_RECOVERY).toBe("1")
+    expect(env.DOTAGENTS_DEV_SELF_RECOVERY_REPO_ROOT).toContain("dotagents-mono")
+  })
+
+  it("preserves existing env while adding debug launch args", () => {
+    const env = buildDevEnvironment({ ELECTRON_EXTRA_LAUNCH_ARGS: "--foo" }, ["--debug-app"])
+
+    expect(env.REMOTE_DEBUGGING_PORT).toBe("9333")
+    expect(env.ELECTRON_EXTRA_LAUNCH_ARGS).toBe("--foo --inspect=9339")
+  })
+
+  it("only recovers from nonzero child exits without shutdown or signal-only exits", () => {
+    expect(shouldRecoverFromChildClose({ code: 1, signal: null, shutdownSignal: null })).toBe(true)
+    expect(shouldRecoverFromChildClose({ code: 0, signal: null, shutdownSignal: null })).toBe(false)
+    expect(shouldRecoverFromChildClose({ code: null, signal: "SIGTERM", shutdownSignal: null })).toBe(false)
+    expect(shouldRecoverFromChildClose({ code: 1, signal: null, shutdownSignal: "SIGINT" })).toBe(false)
   })
 
   it("detects direct execution when argv[1] is a relative script path", () => {
