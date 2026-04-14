@@ -14,4 +14,11 @@ describe("audio player autoplay recovery", () => {
     expect(audioPlayerSource).toContain('setIsAutoplayBlocked(false)')
     expect(audioPlayerSource).toContain('if (source !== "manual" && isAutoplayPolicyBlockedError(playError))')
   })
+
+  it("scopes cross-instance autoplay suppression by a caller-supplied key in addition to the normalized text", () => {
+    expect(audioPlayerSource).toContain("autoPlaySuppressionKey?: string")
+    expect(audioPlayerSource).toContain("autoPlaySuppressionKey,")
+    expect(audioPlayerSource).toContain("const attemptKey = autoPlaySuppressionKey")
+    expect(audioPlayerSource).toContain("`${autoPlaySuppressionKey}::${normalizedText}`")
+  })
 })

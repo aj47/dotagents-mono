@@ -22,6 +22,13 @@ interface AudioPlayerProps {
   onPlayStateChange?: (playing: boolean) => void
   /** Audio output device ID (from navigator.mediaDevices.enumerateDevices) */
   audioOutputDeviceId?: string
+  /**
+   * Optional discriminator used to scope the cross-instance auto-play
+   * suppression window. Callers should pass a per-response identifier
+   * (e.g. `${sessionId}-${responseEventId}`) so that two distinct
+   * responses with identical wording aren't suppressed against each other.
+   */
+  autoPlaySuppressionKey?: string
 }
 
 function isAutoplayPolicyBlockedError(error: unknown): boolean {
@@ -49,6 +56,7 @@ export function AudioPlayer({
   autoPlay = false,
   onPlayStateChange,
   audioOutputDeviceId,
+  autoPlaySuppressionKey,
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -221,7 +229,10 @@ export function AudioPlayer({
 
   useEffect(() => {
     if (autoPlay && hasAudio && audioRef.current && !isPlaying && !hasAutoPlayed && !wasStopped) {
-      const attemptKey = text.replace(/\s+/g, " ").trim().toLowerCase()
+      const normalizedText = text.replace(/\s+/g, " ").trim().toLowerCase()
+      const attemptKey = autoPlaySuppressionKey
+        ? `${autoPlaySuppressionKey}::${normalizedText}`
+        : normalizedText
       const now = Date.now()
       const lastAttemptAt = recentAutoPlayAttemptByKey.get(attemptKey) ?? 0
       if (now - lastAttemptAt < AUTO_PLAY_ATTEMPT_SUPPRESSION_MS) return
@@ -238,7 +249,7 @@ export function AudioPlayer({
       setHasAutoPlayed(true)
       void playAudio("auto")
     }
-  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, playAudio])
+  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, playAudio, autoPlaySuppressionKey, text])
 
   useEffect(() => {
     if (!isAutoplayBlocked || !hasAudio) return undefined
