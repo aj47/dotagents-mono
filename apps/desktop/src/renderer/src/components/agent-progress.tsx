@@ -158,6 +158,14 @@ function messageStableId(message: { timestamp: number; role: string }): string {
   return `${message.timestamp}-${message.role}`
 }
 
+function normalizeAssistantResponseForDedupe(content: string | undefined): string {
+  return (content ?? "").replace(/\s+/g, " ").trim()
+}
+
+function shouldAutoPlayTTSForVariant(variant: "default" | "overlay" | "tile", isSnoozed: boolean, isFocused: boolean = false): boolean {
+  return variant === "tile" ? isFocused : !isSnoozed
+}
+
 function getActionErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim()
   if (typeof error === "string" && error.trim()) return error.trim()
@@ -222,8 +230,10 @@ type CompactMessageProps = {
   wasStopped?: boolean
   isExpanded: boolean
   onToggleExpand: () => void
-  /** Variant controls TTS auto-play - only 'overlay' variant auto-plays TTS to prevent double playback */
+  /** Variant controls TTS auto-play; tile variants only auto-play when focused. */
   variant?: "default" | "overlay" | "tile"
+  /** Focused session tiles are the primary conversation surface and may auto-play TTS. */
+  isFocused?: boolean
   /** Session ID for tracking TTS playback across remounts */
   sessionId?: string
   /** Snoozed/background sessions must never auto-play overlay TTS */
@@ -235,7 +245,7 @@ type CompactMessageProps = {
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId, isSnoozed = false, conversationId, branchMessageIndex }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, conversationId, branchMessageIndex }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -402,27 +412,30 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     configQuery.data?.ttsEnabled &&
     !!ttsSource &&
     (isComplete || !!message.responseEvent)
-  // Auto-play the final assistant message and any assistant message representing
-  // a respond_to_user response event.
-  const shouldAutoPlayTTS = shouldShowTTSButton && (isLast || !!message.responseEvent)
+  // Auto-play only the latest assistant message. Older response-linked messages
+  // remain manually replayable but should not all auto-play after reload/remount.
+  const shouldAutoPlayTTS = shouldShowTTSButton && isLast
+  const shouldAutoPlayLoadedAudio =
+    shouldAutoPlayTTS &&
+    shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) &&
+    (configQuery.data?.ttsAutoPlay ?? true) &&
+    lastAutoPlayedSourceRef.current === ttsSource
 
   // Auto-play TTS when assistant message completes (but NOT if agent was stopped by kill switch)
   //
-  // TTS AUTO-PLAY STRATEGY (fixes #557 - double TTS playback):
-  // - Only auto-play in "overlay" variant (panel window) to prevent double playback
-  // - The panel window is the primary interaction point for agent sessions
-  // - When a non-snoozed session is active, the panel window is automatically shown
-  // - Snoozed sessions don't show the panel, and intentionally don't auto-play TTS
+  // TTS AUTO-PLAY STRATEGY:
+  // - Auto-play in the primary full conversation and overlay surfaces.
+  // - Never auto-play tile previews/expansion content.
+  // - Snoozed sessions intentionally don't auto-play TTS
   //   (they run silently in background - user can unsnooze to see/hear them)
-  // - The "default" variant (main window ConversationDisplay) and "tile" variant (session tiles)
-  //   never auto-play TTS - they are for viewing/managing, not primary interaction
   // - Additionally, we track which sessions have already played TTS in a module-level set
   //   to prevent double playback when AgentProgress remounts (e.g., when switching between
   //   single-session and multi-session views in the panel)
   useEffect(() => {
-    // Only auto-generate and play TTS in overlay variant to prevent double playback
-    const shouldAutoPlay = variant === "overlay" && !isSnoozed
-    if (!shouldAutoPlay || !shouldAutoPlayTTS || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || wasStopped) {
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused)
+    const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? true
+
+    if (!shouldAutoPlay || !shouldAutoPlayTTS || !ttsAutoPlayEnabled || audioData || isGeneratingAudio || ttsError || wasStopped) {
       return
     }
 
@@ -475,7 +488,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         }
         // Error is already handled in generateAudio function
       })
-  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
+  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
 
   const getRoleStyle = () => {
     switch (message.role) {
@@ -638,12 +651,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 isGenerating={isGeneratingAudio}
                 error={ttsError}
                 compact={true}
-                autoPlay={
-                  variant === "overlay" &&
-                  (isLast || !!message.responseEvent) &&
-                  (configQuery.data?.ttsAutoPlay ?? true) &&
-                  !isSnoozed
-                }
+                autoPlay={shouldAutoPlayLoadedAudio}
                 onPlayStateChange={setIsTTSPlaying}
                 audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
               />
@@ -3011,6 +3019,7 @@ const MidTurnUserResponseBubble: React.FC<{
   sessionId?: string
   agentLabel?: string
   variant?: "default" | "overlay" | "tile"
+  isFocused?: boolean
   isSnoozed?: boolean
   isComplete: boolean
   isExpanded: boolean
@@ -3022,6 +3031,7 @@ const MidTurnUserResponseBubble: React.FC<{
   sessionId,
   agentLabel = "Agent",
   variant = "default",
+  isFocused = false,
   isSnoozed = false,
   isComplete,
   isExpanded,
@@ -3049,6 +3059,13 @@ const MidTurnUserResponseBubble: React.FC<{
   const ttsSource = sanitizeMessageContentForSpeech(userResponse)
   const latestTtsSourceRef = useRef(ttsSource)
   latestTtsSourceRef.current = ttsSource
+  const finalResponseTTSKeys = useMemo(
+    () => [
+      buildResponseEventTTSKey(sessionId, currentResponse.id, "final"),
+      buildContentTTSKey(sessionId, ttsSource, "final"),
+    ].filter((key, index, arr): key is string => Boolean(key) && arr.indexOf(key) === index),
+    [currentResponse.id, sessionId, ttsSource],
+  )
 
   // TTS generation function
   const generateAudio = async (): Promise<ArrayBuffer> => {
@@ -3113,20 +3130,24 @@ const MidTurnUserResponseBubble: React.FC<{
     setAudioMimeType(null)
   }, [currentResponse.id, ttsSource])
 
-  // Auto-play TTS for mid-turn userResponse (only in overlay variant to prevent double-play)
+  const handleAudioPlayStateChange = useCallback((playing: boolean) => {
+    setIsTTSPlaying(playing)
+    if (!playing) return
+
+    // Claim the matching final-response keys only after the mid-turn audio
+    // actually starts. If generation/autoplay never succeeds, the final card
+    // remains eligible to speak the response.
+    finalResponseTTSKeys.forEach((key) => markTTSPlayed(key))
+  }, [finalResponseTTSKeys])
+
+  // Auto-play TTS for mid-turn userResponse in primary conversation surfaces.
   useEffect(() => {
-    const shouldAutoPlay = variant === "overlay" && !isSnoozed
-    if (!shouldAutoPlay || !ttsSource || !configQuery.data?.ttsEnabled || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || isComplete) {
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused)
+    if (!shouldAutoPlay || !ttsSource || !configQuery.data?.ttsEnabled || !(configQuery.data?.ttsAutoPlay ?? true) || audioData || isGeneratingAudio || ttsError || isComplete) {
       return
     }
 
     const ttsKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "mid-turn")
-    const eventCompletionKey = buildResponseEventTTSKey(sessionId, currentResponse.id, "final")
-    const contentCompletionKey = buildContentTTSKey(sessionId, ttsSource, "final")
-    const completionKeys = [eventCompletionKey, contentCompletionKey].filter(
-      (key): key is string => Boolean(key),
-    )
-
     if (ttsKey && hasTTSPlayed(ttsKey)) {
       return
     }
@@ -3134,9 +3155,7 @@ const MidTurnUserResponseBubble: React.FC<{
     // Mark as playing before starting generation
     if (ttsKey) {
       markTTSPlayed(ttsKey)
-      completionKeys.forEach((key) => markTTSPlayed(key))
       inFlightTtsKeyRef.current = ttsKey
-      inFlightCompletionTTSKeysRef.current = completionKeys
     }
 
     generateAudio()
@@ -3147,12 +3166,11 @@ const MidTurnUserResponseBubble: React.FC<{
       .catch(() => {
         if (ttsKey && inFlightTtsKeyRef.current === ttsKey) {
           removeTTSKey(ttsKey)
-          completionKeys.forEach((key) => removeTTSKey(key))
           inFlightTtsKeyRef.current = null
           inFlightCompletionTTSKeysRef.current = []
         }
       })
-  }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isSnoozed, ttsError, variant, sessionId, isComplete])
+  }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, variant, sessionId, isComplete])
 
   // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
   // See CompactMessage cleanup comment for rationale — removing keys on unmount
@@ -3186,7 +3204,7 @@ const MidTurnUserResponseBubble: React.FC<{
 
   const shouldKeepAudioPlayerMounted =
     shouldShowTTSButton &&
-    (isExpanded || (variant === "overlay" && (configQuery.data?.ttsAutoPlay ?? true)))
+    (isExpanded || (shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) && (configQuery.data?.ttsAutoPlay ?? true)))
   const isCurrentSequentialResponseHighlighted = activeSequentialKey === `current-${currentResponse.id}`
 
   const handleHeaderClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -3446,8 +3464,8 @@ const MidTurnUserResponseBubble: React.FC<{
             isGenerating={isGeneratingAudio}
             error={ttsError}
             compact={true}
-            autoPlay={variant === "overlay" && !isSnoozed && (configQuery.data?.ttsAutoPlay ?? true)}
-            onPlayStateChange={setIsTTSPlaying}
+            autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) && (configQuery.data?.ttsAutoPlay ?? true)}
+            onPlayStateChange={handleAudioPlayStateChange}
           />
           {isExpanded && ttsError && (
             <div className="mt-1 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
@@ -3960,9 +3978,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           }
         })
 
-      if (finalContent && finalContent.trim().length > 0) {
+      const normalizedFinalContent = normalizeAssistantResponseForDedupe(finalContent)
+      if (normalizedFinalContent.length > 0) {
+        const finalContentAlreadyInHistory = nextMessages.some((message) => (
+          message.role === "assistant" &&
+          !message.toolCalls?.length &&
+          !message.toolResults?.length &&
+          normalizeAssistantResponseForDedupe(message.content) === normalizedFinalContent
+        ))
         const lastMessage = nextMessages[nextMessages.length - 1]
-        if (!lastMessage || lastMessage.content !== finalContent) {
+        if (!finalContentAlreadyInHistory) {
           nextMessages.push({
             role: "assistant",
             content: finalContent,
@@ -4038,10 +4063,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const displayEvents: AgentUserResponseEvent[] = []
 
     for (const event of effectiveResponseEvents) {
-      const trimmedEventText = event.text.trim()
+      const normalizedEventText = normalizeAssistantResponseForDedupe(event.text)
       const exactContentMatches = assistantMessages.filter(({ message, index }) => (
         !matchedAssistantMessageIndexes.has(index)
-        && message.content.trim() === trimmedEventText
+        && normalizeAssistantResponseForDedupe(message.content) === normalizedEventText
       ))
       const assistantMatch = exactContentMatches.find(({ message }) => message.timestamp >= event.timestamp)
         ?? (progress.isComplete ? exactContentMatches[exactContentMatches.length - 1] : undefined)
@@ -4725,6 +4750,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isExpanded={isExpanded}
                             onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
                             variant="tile"
+                            isFocused={isFocused}
                             sessionId={progress.sessionId}
                             isSnoozed={progress.isSnoozed}
                             conversationId={progress.conversationId}
@@ -4763,6 +4789,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             sessionId={progress.sessionId}
                             agentLabel={primaryAgentLabel}
                             variant="tile"
+                            isFocused={isFocused}
                             isSnoozed={progress.isSnoozed}
                             isComplete={isComplete}
                             isExpanded={expandedItems[itemKey] ?? false}
@@ -5145,6 +5172,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       isExpanded={isExpanded}
                       onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
                       variant={variant}
+                      isFocused={isFocused}
                       sessionId={progress.sessionId}
                       isSnoozed={progress.isSnoozed}
                       conversationId={progress.conversationId}
@@ -5193,6 +5221,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       sessionId={progress.sessionId}
                       agentLabel={primaryAgentLabel}
                       variant="overlay"
+                      isFocused={isFocused}
                       isSnoozed={progress.isSnoozed}
                       isComplete={isComplete}
                       isExpanded={expandedItems[itemKey] ?? false}

@@ -5,6 +5,9 @@ import { Play, Pause, Volume2, VolumeX, Loader2 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { ttsManager } from "@renderer/lib/tts-manager"
 
+const AUTO_PLAY_ATTEMPT_SUPPRESSION_MS = 5_000
+const recentAutoPlayAttemptByKey = new Map<string, number>()
+
 interface AudioPlayerProps {
   audioData?: ArrayBuffer
   audioMimeType?: string
@@ -59,6 +62,7 @@ export function AudioPlayer({
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
   const playbackAttemptIdRef = useRef(0)
+  const autoPlayAttemptKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (audioData) {
@@ -70,6 +74,7 @@ export function AudioPlayer({
       audioUrlRef.current = URL.createObjectURL(blob)
       setHasAudio(true)
       setHasAutoPlayed(false)
+      autoPlayAttemptKeyRef.current = null
       setWasStopped(false)
       setIsAutoplayBlocked(false)
 
@@ -216,6 +221,20 @@ export function AudioPlayer({
 
   useEffect(() => {
     if (autoPlay && hasAudio && audioRef.current && !isPlaying && !hasAutoPlayed && !wasStopped) {
+      const attemptKey = text.replace(/\s+/g, " ").trim().toLowerCase()
+      const now = Date.now()
+      const lastAttemptAt = recentAutoPlayAttemptByKey.get(attemptKey) ?? 0
+      if (now - lastAttemptAt < AUTO_PLAY_ATTEMPT_SUPPRESSION_MS) return
+      recentAutoPlayAttemptByKey.set(attemptKey, now)
+
+      for (const [key, attemptedAt] of recentAutoPlayAttemptByKey) {
+        if (now - attemptedAt > AUTO_PLAY_ATTEMPT_SUPPRESSION_MS) {
+          recentAutoPlayAttemptByKey.delete(key)
+        }
+      }
+
+      if (autoPlayAttemptKeyRef.current === attemptKey) return
+      autoPlayAttemptKeyRef.current = attemptKey
       setHasAutoPlayed(true)
       void playAudio("auto")
     }

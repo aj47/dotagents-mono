@@ -100,6 +100,7 @@ const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
 const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
+const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -114,6 +115,8 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
 };
 
 const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
+
+const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
 
 const getApproxBase64Bytes = (base64: string) => {
   const normalized = base64.replace(/\s+/g, '');
@@ -908,6 +911,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
   const queuedResponseEventsRef = useRef<AgentUserResponseEvent[]>([]);
   const activeAutoSpeechEventIdRef = useRef<string | null>(null);
+  const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
@@ -1042,6 +1046,20 @@ export default function ChatScreen({ route, navigation }: any) {
 				onSettled?.();
 			return false;
 		}
+
+      const ttsTextKey = normalizeAutoTtsTextKey(processedText);
+      const now = Date.now();
+      const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
+      if (now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
+        onSettled?.();
+        return false;
+      }
+      recentAutoSpeechByTextRef.current.set(ttsTextKey, now);
+      for (const [key, spokenAt] of recentAutoSpeechByTextRef.current) {
+        if (now - spokenAt > AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
+          recentAutoSpeechByTextRef.current.delete(key);
+        }
+      }
 
 		let settled = false;
 		const settle = () => {

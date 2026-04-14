@@ -94,6 +94,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /<View style=\{m\.role === 'assistant' \? styles\.assistantMessageRow : undefined\}>[\s\S]*?speakMessage\(i, visibleMessageContent\)/);
 });
 
+test('suppresses duplicate auto TTS starts for the same mobile response text', () => {
+  assert.match(screenSource, /const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;/);
+  assert.match(screenSource, /const normalizeAutoTtsTextKey = \(value: string\) => value\.replace\(\/\\s\+\/g, ' '\)\.trim\(\)\.toLowerCase\(\);/);
+  assert.match(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
+});
+
 test('replaces the empty mobile chat home state with quick-start launchers', () => {
   assert.match(screenSource, /!sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
   assert.match(screenSource, /<Text style=\{styles\.chatHomeEyebrow\}>Quick start<\/Text>/);

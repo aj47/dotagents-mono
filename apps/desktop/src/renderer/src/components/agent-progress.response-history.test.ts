@@ -283,6 +283,7 @@ async function loadAgentProgress(
   vi.doMock("../lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard: vi.fn() }))
+  vi.doMock("react-router-dom", () => ({ useNavigate: () => vi.fn() }))
   vi.doMock("../stores", () => storesMock)
   vi.doMock("@renderer/stores", () => storesMock)
   vi.doMock("@renderer/components/audio-player", () => ({ AudioPlayer: (props: any) => ({ type: "AudioPlayer", props }) }))
@@ -560,6 +561,37 @@ describe("agent progress response history", () => {
       ],
       conversationHistory: [
         { role: "assistant", content: "Final answer", timestamp: 200 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(countTextOccurrences(text, "Final answer")).toBe(1)
+  })
+
+  it("does not synthesize a duplicate final response when only whitespace differs", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-final-dedupe-whitespace",
+      conversationId: "conversation-final-dedupe-whitespace",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "Final answer",
+      responseEvents: [
+        {
+          id: "resp-final-whitespace",
+          sessionId: "session-final-dedupe-whitespace",
+          ordinal: 1,
+          text: "Final answer",
+          timestamp: 200,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Final\n\nanswer ", timestamp: 200 },
       ],
     }
 

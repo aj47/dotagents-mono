@@ -12,8 +12,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "format": "pnpm -r format",
-    "check:untracked-assets": "node scripts/check-untracked-assets.mjs"
+    "format": "pnpm -r format"
   },
   "engines": {
     "node": ">=20.19.4",
