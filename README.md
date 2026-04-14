@@ -168,6 +168,8 @@ pnpm install && pnpm --filter @dotagents/desktop build-rs && pnpm dev
 
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
 
+See **[docs/content-assets.md](docs/content-assets.md)** before cleanup/removal work involving untracked scripts, voiceovers, media, or other project assets.
+
 For the static marketing site, run:
 
 ```bash

@@ -497,6 +497,15 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       return
     }
 
+    const target = event.target
+    if (
+      target &&
+      typeof (target as HTMLElement).closest === "function" &&
+      (target as HTMLElement).closest("button, a, input, textarea, select, [role='button']")
+    ) {
+      return
+    }
+
     onToggleExpand()
   }
 
@@ -505,16 +514,17 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     onToggleExpand()
   }
 
+  const shouldToggleFromContentClick = shouldCollapse && !isExpanded
+
   return (
     <div className={cn(
       "rounded-md text-xs transition-all duration-200",
       getRoleStyle(),
-      !isExpanded && shouldCollapse && "hover:brightness-95 dark:hover:brightness-110",
-      shouldCollapse && "cursor-pointer"
+      shouldToggleFromContentClick && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer"
     )}>
       <div
         className="flex items-start px-2.5 py-1.5 text-left"
-        onClick={handleToggleExpand}
+        onClick={shouldToggleFromContentClick ? handleToggleExpand : undefined}
       >
         <div className="flex-1 min-w-0">
           <div className={cn(
