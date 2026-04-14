@@ -477,6 +477,37 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
   })
 
+  it("does not auto-complete on the first communication-only respond_to_user when verify is disabled", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Working on it..." } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Final answer after more work" } },
+        { name: "mark_work_complete", arguments: { summary: "Finished" } },
+      ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Do the work",
+      availableTools as any,
+      makeExecuteToolCall("session-comm-only-verify", 1),
+      4,
+      [],
+      "conv-comm-only-verify",
+      "session-comm-only-verify",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Final answer after more work")
+    expect(mocks.makeLLMCallWithStreamingAndTools.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(mocks.verifyCompletionWithFetch).not.toHaveBeenCalled()
+  })
+
   it("ignores blank response events when resolving the final visible answer", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
     const { appendSessionUserResponse } = await import("./session-user-response-store")

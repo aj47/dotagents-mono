@@ -2875,7 +2875,11 @@ export async function processTranscriptWithAgentMode(
         break
       }
 
-      if (hasCommunicationOnlyResponse && !config.mcpVerifyCompletionEnabled) {
+      if (
+        noOpCount >= 2
+        && hasCommunicationOnlyResponse
+        && !config.mcpVerifyCompletionEnabled
+      ) {
         finalContent = latestCommunicationOnlyResponse
         const completionStep = createProgressStep(
           "completion",
