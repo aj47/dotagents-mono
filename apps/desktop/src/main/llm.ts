@@ -2805,14 +2805,12 @@ export async function processTranscriptWithAgentMode(
       const latestCommunicationOnlyResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
         storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
         responseEvents: getSessionRunUserResponseEvents(currentSessionId, effectiveRunId),
-        conversationHistory: conversationHistory as any,
-        sinceIndex: currentPromptIndex,
       })
 
+      const hasCommunicationOnlyResponse = !!latestCommunicationOnlyResponse?.trim().length
       const shouldVerifyCommunicationOnlyResponse =
-        noOpCount >= 2
-        && config.mcpVerifyCompletionEnabled
-        && !!latestCommunicationOnlyResponse?.trim().length
+        config.mcpVerifyCompletionEnabled
+        && hasCommunicationOnlyResponse
 
       if (shouldVerifyCommunicationOnlyResponse) {
         finalContent = latestCommunicationOnlyResponse
@@ -2871,6 +2869,32 @@ export async function processTranscriptWithAgentMode(
           steps: progressSteps.slice(-3),
           isComplete: true,
           conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
+      }
+
+      if (
+        noOpCount >= 2
+        && hasCommunicationOnlyResponse
+        && !config.mcpVerifyCompletionEnabled
+      ) {
+        finalContent = latestCommunicationOnlyResponse
+        const completionStep = createProgressStep(
+          "completion",
+          "Task completed",
+          "Completed with the latest user-facing response",
+          "completed",
+        )
+        progressSteps.push(completionStep)
+
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          conversationState: "complete",
           finalContent,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })

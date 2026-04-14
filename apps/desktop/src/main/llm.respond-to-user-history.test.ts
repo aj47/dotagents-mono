@@ -92,6 +92,9 @@ async function clearResponses(...sessionIds: string[]) {
 describe("processTranscriptWithAgentMode respond_to_user history", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.makeLLMCallWithFetch.mockReset()
+    mocks.makeLLMCallWithStreamingAndTools.mockReset()
+    mocks.verifyCompletionWithFetch.mockReset()
     vi.resetModules()
     currentConfig = {
       mcpToolsProviderId: "openai",
@@ -397,6 +400,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
   })
 
   it("does not replay same-run materialized respond_to_user text into the next iteration prompt", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")
 
     mocks.makeLLMCallWithStreamingAndTools
@@ -407,6 +411,13 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
         { name: "respond_to_user", arguments: { text: "Final answer" } },
         { name: "mark_work_complete", arguments: { summary: "Done" } },
       ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValueOnce({
+      isComplete: false,
+      conversationState: "running",
+      confidence: 0.4,
+      missingItems: ["Needs final answer"],
+    })
 
     const result = await processTranscriptWithAgentMode(
       "Answer the user",
@@ -433,17 +444,13 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt.split("First interim answer").length - 1).toBe(0)
   })
 
-  it("verifies repeated communication-only respond_to_user turns instead of looping forever", async () => {
+  it("verifies the first communication-only respond_to_user turn instead of making a second agent call", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")
 
-    mocks.makeLLMCallWithStreamingAndTools
-      .mockResolvedValueOnce({ content: "", toolCalls: [
-        { name: "respond_to_user", arguments: { text: "First next-steps answer" } },
-      ] })
-      .mockResolvedValueOnce({ content: "", toolCalls: [
-        { name: "respond_to_user", arguments: { text: "Second next-steps answer" } },
-      ] })
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
+      { name: "respond_to_user", arguments: { text: "First next-steps answer" } },
+    ] })
 
     mocks.verifyCompletionWithFetch.mockResolvedValue({
       isComplete: true,
@@ -465,9 +472,40 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       1,
     )
 
-    expect(result.content).toBe("Second next-steps answer")
-    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(result.content).toBe("First next-steps answer")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not auto-complete on the first communication-only respond_to_user when verify is disabled", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Working on it..." } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Final answer after more work" } },
+        { name: "mark_work_complete", arguments: { summary: "Finished" } },
+      ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Do the work",
+      availableTools as any,
+      makeExecuteToolCall("session-comm-only-verify", 1),
+      4,
+      [],
+      "conv-comm-only-verify",
+      "session-comm-only-verify",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Final answer after more work")
+    expect(mocks.makeLLMCallWithStreamingAndTools.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(mocks.verifyCompletionWithFetch).not.toHaveBeenCalled()
   })
 
   it("ignores blank response events when resolving the final visible answer", async () => {
