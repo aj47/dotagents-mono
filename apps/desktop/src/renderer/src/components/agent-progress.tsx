@@ -654,6 +654,11 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                 autoPlay={shouldAutoPlayLoadedAudio}
                 onPlayStateChange={setIsTTSPlaying}
                 audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
+                autoPlaySuppressionKey={
+                  message.responseEvent?.id
+                    ? `compact:${sessionId ?? "no-session"}:${message.responseEvent.id}`
+                    : `compact:${sessionId ?? "no-session"}:${message.timestamp}`
+                }
               />
               {ttsError && (
                 <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
@@ -3466,6 +3471,7 @@ const MidTurnUserResponseBubble: React.FC<{
             compact={true}
             autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) && (configQuery.data?.ttsAutoPlay ?? true)}
             onPlayStateChange={handleAudioPlayStateChange}
+            autoPlaySuppressionKey={`response-group:${sessionId ?? "no-session"}:${currentResponse.id}`}
           />
           {isExpanded && ttsError && (
             <div className="mt-1 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
@@ -3980,12 +3986,21 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       const normalizedFinalContent = normalizeAssistantResponseForDedupe(finalContent)
       if (normalizedFinalContent.length > 0) {
-        const finalContentAlreadyInHistory = nextMessages.some((message) => (
-          message.role === "assistant" &&
-          !message.toolCalls?.length &&
-          !message.toolResults?.length &&
-          normalizeAssistantResponseForDedupe(message.content) === normalizedFinalContent
-        ))
+        let lastEligibleAssistantMessage: (typeof nextMessages)[number] | undefined
+        for (let i = nextMessages.length - 1; i >= 0; i--) {
+          const candidate = nextMessages[i]
+          if (
+            candidate.role === "assistant" &&
+            !candidate.toolCalls?.length &&
+            !candidate.toolResults?.length
+          ) {
+            lastEligibleAssistantMessage = candidate
+            break
+          }
+        }
+        const finalContentAlreadyInHistory =
+          !!lastEligibleAssistantMessage &&
+          normalizeAssistantResponseForDedupe(lastEligibleAssistantMessage.content) === normalizedFinalContent
         const lastMessage = nextMessages[nextMessages.length - 1]
         if (!finalContentAlreadyInHistory) {
           nextMessages.push({

@@ -570,6 +570,32 @@ describe("agent progress response history", () => {
     expect(countTextOccurrences(text, "Final answer")).toBe(1)
   })
 
+  it("renders a repeated final answer when the duplicate appears earlier in history but not as the latest assistant message", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-final-repeat",
+      conversationId: "conversation-final-repeat",
+      currentIteration: 2,
+      maxIterations: 2,
+      steps: [],
+      isComplete: true,
+      finalContent: "Done",
+      conversationHistory: [
+        { role: "user", content: "First request", timestamp: 90 },
+        { role: "assistant", content: "Done", timestamp: 100 },
+        { role: "user", content: "Do it again", timestamp: 200 },
+        { role: "assistant", content: "On it", timestamp: 210 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(countTextOccurrences(text, "Done")).toBe(1)
+    expect(text).toContain("On it")
+  })
+
   it("does not synthesize a duplicate final response when only whitespace differs", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
