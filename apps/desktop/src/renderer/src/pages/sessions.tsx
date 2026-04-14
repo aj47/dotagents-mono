@@ -126,7 +126,9 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
 }: ActiveSessionTileProps) {
   const storeProgress = useAgentSessionProgress(sessionId)
   const progress = storeProgress ?? fallbackProgress
+  const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
   const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
+  const isFocused = focusedSessionId === sessionId
   const queryClient = useQueryClient()
 
   const handleFocusSession = useCallback(async () => {
@@ -161,7 +163,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       progress={progress}
       variant="tile"
       className="h-full"
-      isFocused={true}
+      isFocused={isFocused}
       onFocus={handleFocusSession}
       onDismiss={handleDismissSession}
       onVoiceContinue={onVoiceContinue}
@@ -886,7 +888,7 @@ export function Component() {
                 progress={pendingResumeProgress}
                 variant="tile"
                 className="h-full"
-                isFocused={true}
+                isFocused={focusedSessionId === pendingResumeSessionId}
                 onFocus={() => {}}
                 onDismiss={handleDismissPendingResume}
                 onFollowUpSent={handlePendingContinuationStarted}

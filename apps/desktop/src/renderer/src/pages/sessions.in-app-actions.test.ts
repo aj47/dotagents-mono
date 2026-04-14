@@ -149,4 +149,11 @@ describe("sessions in-app actions", () => {
     expect(recordingBlock).toContain("if (input.fromTile === true) {")
     expect(recordingBlock).toContain("suppressPanelAutoShow(2000)")
   })
+
+  it("derives the active session tile's isFocused from the focusedSessionId store rather than hardcoding true", () => {
+    expect(sessionsSource).toContain("const focusedSessionId = useAgentStore((state) => state.focusedSessionId)")
+    expect(sessionsSource).toContain("const isFocused = focusedSessionId === sessionId")
+    expect(sessionsSource).toContain("isFocused={isFocused}")
+    expect(sessionsSource).not.toContain("isFocused={true}")
+  })
 })
