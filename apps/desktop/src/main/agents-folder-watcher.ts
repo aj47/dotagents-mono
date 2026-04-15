@@ -107,15 +107,40 @@ function flushPendingReloads(): void {
   }
 }
 
-function handleWatcherEvent(eventType: string, filename: string | null): void {
-  classifyChange(filename)
+/**
+ * Resolve a raw watcher filename (which `fs.watch` reports relative to the
+ * directory the watcher was attached to) into a path relative to `.agents`
+ * root so `classifyChange` can match it. Returns `null` when the filename
+ * falls outside `agentsRoot` (should not happen in practice).
+ */
+function resolveRelativeToAgentsRoot(
+  agentsRoot: string,
+  watchDir: string,
+  filename: string,
+): string | null {
+  const absolute = path.resolve(watchDir, filename)
+  const rel = path.relative(agentsRoot, absolute)
+  if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return null
+  return rel.replace(/\\/g, "/")
+}
+
+function handleWatcherEvent(
+  agentsRoot: string,
+  watchDir: string,
+  eventType: string,
+  filename: string | null,
+): void {
+  const relative = filename
+    ? resolveRelativeToAgentsRoot(agentsRoot, watchDir, filename)
+    : null
+  classifyChange(relative)
 
   if (!pendingReloads.config && !pendingReloads.prompts && !pendingReloads.profiles) {
     return
   }
 
   logApp(
-    `[AgentsFolderWatcher] Change detected: ${eventType} ${filename ?? "(unknown)"}`,
+    `[AgentsFolderWatcher] Change detected: ${eventType} ${relative ?? filename ?? "(unknown)"}`,
   )
 
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -125,21 +150,25 @@ function handleWatcherEvent(eventType: string, filename: string | null): void {
   }, DEBOUNCE_MS)
 }
 
-function setupWatcher(dirPath: string, recursive: boolean): fs.FSWatcher | null {
+function setupWatcher(
+  agentsRoot: string,
+  watchDir: string,
+  recursive: boolean,
+): fs.FSWatcher | null {
   try {
     const watcher = fs.watch(
-      dirPath,
+      watchDir,
       recursive ? { recursive: true } : undefined,
       (eventType, filename) => {
-        handleWatcherEvent(eventType, filename)
+        handleWatcherEvent(agentsRoot, watchDir, eventType, filename)
       },
     )
     watcher.on("error", (error) => {
-      logApp(`[AgentsFolderWatcher] Watcher error for ${dirPath}:`, error)
+      logApp(`[AgentsFolderWatcher] Watcher error for ${watchDir}:`, error)
     })
     return watcher
   } catch (error) {
-    logApp(`[AgentsFolderWatcher] Failed to watch ${dirPath}:`, error)
+    logApp(`[AgentsFolderWatcher] Failed to watch ${watchDir}:`, error)
     return null
   }
 }
@@ -160,23 +189,26 @@ export function startAgentsFolderWatcher(): void {
     if (process.platform === "linux") {
       // `fs.watch` recursive mode is unreliable on Linux; add targeted watchers
       // for the top-level dir, the `layouts/` dir, and each `agents/<id>/` dir.
-      const rootWatcher = setupWatcher(dir, false)
+      // Each watcher still resolves filenames relative to `dir` (the `.agents`
+      // root) so `classifyChange` can match them regardless of which subdir
+      // the event was reported against.
+      const rootWatcher = setupWatcher(dir, dir, false)
       if (rootWatcher) watchers.push(rootWatcher)
 
       const layoutsDir = path.join(dir, "layouts")
       if (fs.existsSync(layoutsDir)) {
-        const w = setupWatcher(layoutsDir, false)
+        const w = setupWatcher(dir, layoutsDir, false)
         if (w) watchers.push(w)
       }
 
       const agentsSubdir = path.join(dir, "agents")
       if (fs.existsSync(agentsSubdir)) {
-        const w = setupWatcher(agentsSubdir, false)
+        const w = setupWatcher(dir, agentsSubdir, false)
         if (w) watchers.push(w)
         try {
           for (const entry of fs.readdirSync(agentsSubdir, { withFileTypes: true })) {
             if (!entry.isDirectory()) continue
-            const sub = setupWatcher(path.join(agentsSubdir, entry.name), false)
+            const sub = setupWatcher(dir, path.join(agentsSubdir, entry.name), false)
             if (sub) watchers.push(sub)
           }
         } catch {
@@ -184,7 +216,7 @@ export function startAgentsFolderWatcher(): void {
         }
       }
     } else {
-      const watcher = setupWatcher(dir, true)
+      const watcher = setupWatcher(dir, dir, true)
       if (watcher) watchers.push(watcher)
     }
 
@@ -208,4 +240,7 @@ export function stopAgentsFolderWatcher(): void {
     clearTimeout(debounceTimer)
     debounceTimer = null
   }
+  // Reset any classified-but-not-yet-flushed reload flags so a later
+  // restart doesn't fire a stale reload on its first event.
+  pendingReloads = { config: false, prompts: false, profiles: false }
 }
