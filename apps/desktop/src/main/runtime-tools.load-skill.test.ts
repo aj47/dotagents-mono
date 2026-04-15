@@ -80,13 +80,27 @@ describe("runtime-tools load_skill_instructions", () => {
     await executeRuntimeTool("load_skill_instructions", { skillId: "video-editing" }, "session-2")
     const reloaded = await executeRuntimeTool(
       "load_skill_instructions",
-      { skillId: "video-editing", forceReload: true },
+      { skillId: "video-editing", forceReload: true, reason: "Need the full rules again after scope changed" },
       "session-2",
     )
 
     expect(reloaded?.isError).toBe(false)
     expect(String(reloaded?.content?.[0]?.text)).toContain("## Video Editing")
     expect(String(reloaded?.content?.[0]?.text)).not.toContain("Skill already loaded in this session")
+  })
+
+  it("requires a reason before force reloading an already loaded skill", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+
+    await executeRuntimeTool("load_skill_instructions", { skillId: "video-editing" }, "session-5")
+    const blockedReload = await executeRuntimeTool(
+      "load_skill_instructions",
+      { skillId: "video-editing", forceReload: true },
+      "session-5",
+    )
+
+    expect(blockedReload?.isError).toBe(false)
+    expect(String(blockedReload?.content?.[0]?.text)).toContain("pass both {\"forceReload\": true} and a short {\"reason\": \"...\"}")
   })
 
   it("keeps skill load state isolated per session", async () => {
@@ -100,4 +114,3 @@ describe("runtime-tools load_skill_instructions", () => {
     expect(String(otherSessionLoad?.content?.[0]?.text)).not.toContain("Skill already loaded in this session")
   })
 })
-

@@ -182,6 +182,7 @@ describe("constructSystemPrompt", () => {
     ] as any, undefined, true)
 
     expect(prompt).toContain("Load each needed skill once per session")
+    expect(prompt).toContain("pass forceReload with a short reason")
     expect(prompt).toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
   })
 

@@ -548,7 +548,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
       .map((message: any) => message.content)
       .join("\n")
-    expect(secondPrompt).toContain("[respond_to_user]")
+    expect(secondPrompt).toContain("Completion criteria not met.")
     expect(secondPrompt.split("First interim answer").length - 1).toBe(0)
   })
 

@@ -210,6 +210,10 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
           type: "boolean",
           description: "Reload full instructions even if this skill was already loaded in the current session.",
         },
+        reason: {
+          type: "string",
+          description: "Short explanation of why a reload is necessary after the skill was already loaded in this session.",
+        },
       },
       required: ["skillId"],
     },

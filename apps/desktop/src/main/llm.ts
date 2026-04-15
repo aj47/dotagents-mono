@@ -67,6 +67,8 @@ import {
 } from "./llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
+import { ConvergenceController, assessToolBatch } from "./convergence-controller"
+import { buildModelReplayMessages } from "./model-replay"
 import {
   normalizeAgentConversationState,
   type AgentConversationState,
@@ -1310,26 +1312,9 @@ export async function processTranscriptWithAgentMode(
   const mapConversationToMessages = (
     addSummaryPrompt: boolean = false
   ): Array<{ role: "user" | "assistant"; content: string }> => {
-    const mapped = conversationHistory
-      .map((entry) => {
-        const rawContent = typeof entry.content === "string" ? entry.content : ""
-        const content = sanitizeMessageContentForDisplay(rawContent).trim()
-        if (!content) return null
-
-        if (entry.role === "tool") {
-          // Tool results already contain tool name prefix (format: [toolName] content...)
-          // Just pass through without adding generic "Tool execution results:" wrapper
-          return { role: "user" as const, content }
-        }
-
-        return { role: entry.role as "user" | "assistant", content }
-      })
-      .filter(Boolean) as Array<{ role: "user" | "assistant"; content: string }>
+    const mapped = buildModelReplayMessages(conversationHistory, { addSummaryPrompt })
 
     // Add summary prompt if last message is from assistant (ensures LLM has something to respond to)
-    if (addSummaryPrompt && mapped.length > 0 && mapped[mapped.length - 1].role === "assistant") {
-      mapped.push({ role: "user", content: "Please provide a brief summary of what was accomplished." })
-    }
     return mapped
   }
 
@@ -1635,6 +1620,7 @@ export async function processTranscriptWithAgentMode(
   const MAX_TOOL_FAILURES = 3 // Max consecutive failures of a tool before excluding it
   let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
   let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
+  const convergenceController = new ConvergenceController()
 
   while (iteration < maxIterations) {
     iteration++
@@ -1724,40 +1710,7 @@ export async function processTranscriptWithAgentMode(
     // Build messages for LLM call
     const messages = [
       { role: "system", content: currentSystemPrompt },
-      ...conversationHistory
-        .map((entry) => {
-          const rawContent = typeof entry.content === "string" ? entry.content : ""
-          const sanitizedContent = sanitizeMessageContentForDisplay(rawContent)
-
-          if (entry.role === "tool") {
-            const text = sanitizedContent.trim()
-            if (!text) return null
-            // Tool results already contain tool name prefix (format: [toolName] content...)
-            // Pass through directly without adding redundant wrapper
-            return {
-              role: "user" as const,
-              content: text,
-            }
-          }
-          // Skip empty assistant tool-call placeholders entirely when replaying history.
-          // Re-injecting synthetic text like "[Calling tools: ...]" into the prompt can
-          // cause the model to parrot that placeholder back as garbled tool-call text and
-          // answer our internal recovery nudges instead of the user's actual request.
-          if (entry.role === "assistant" && !sanitizedContent.trim()) {
-            return null
-          }
-
-          if (entry.role === "assistant" && entry.skipModelReplay) {
-            return null
-          }
-
-          const content = sanitizedContent
-          return {
-            role: entry.role as "user" | "assistant",
-            content,
-          }
-        })
-        .filter(Boolean as any),
+      ...buildModelReplayMessages(conversationHistory),
     ]
 
     // Apply context budget management before the agent LLM call
@@ -2040,6 +1993,7 @@ export async function processTranscriptWithAgentMode(
     // Don't treat mark_work_complete as confirmed completion yet.
     // We defer completion until after tool execution confirms the whole batch succeeded.
     const hasToolCalls = toolCallsArray.length > 0
+    const toolBatchAssessment = hasToolCalls ? assessToolBatch(toolCallsArray) : undefined
     let onlyCommunicationTools = false
 
     // Handle no-op iterations (no tool calls).
@@ -2371,21 +2325,53 @@ export async function processTranscriptWithAgentMode(
         break
       }
     } else {
-      // Check if the only tools called are communication-only (respond_to_user).
-      // These don't represent real work progress — they're just the agent talking to the user.
-      // If respond_to_user is called without mark_work_complete, don't reset the completion
-      // counters; otherwise the agent can loop indefinitely: text → nudge → respond_to_user
-      // (resets counters) → text → nudge → respond_to_user → … (#respond-to-user-spam)
-      const COMMUNICATION_ONLY_TOOLS = new Set([RESPOND_TO_USER_TOOL])
-      onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
+      // Communication-only batches are not substantive task progress.
+      onlyCommunicationTools = toolBatchAssessment?.communicationOnly ?? false
+      const toolCallResponseText = llmResponse.content || ""
+      const trimmedToolCallResponseText = toolCallResponseText.trim()
 
       if (onlyCommunicationTools) {
         // Communication-only batches are explicit user-facing updates, not proof of
         // task completion. Keep the no-op counters moving so the runtime can nudge
         // the model to either continue working or explicitly mark the task complete.
         noOpCount++
+      } else if (toolBatchAssessment?.researchOnly) {
+        const researchDecision = convergenceController.evaluateResearchBatch(toolCallsArray)
+        if (!researchDecision.allowExecution) {
+          if (trimmedToolCallResponseText.length > 0) {
+            addMessage("assistant", toolCallResponseText)
+          }
+          addEphemeralMessage(
+            "user",
+            researchDecision.nudge || "Use the information already gathered to act or answer. Do not gather more context right now.",
+          )
+          noOpCount++
+          if (researchDecision.shouldForceStop) {
+            finalContent = buildIncompleteTaskFallback(toolCallResponseText, {
+              reason: "Research budget exhausted before the agent converged on an implementation or final answer.",
+            })
+            addMessage("assistant", finalContent)
+            emit({
+              currentIteration: iteration,
+              maxIterations,
+              steps: progressSteps.slice(-3),
+              isComplete: true,
+              conversationState: "blocked",
+              finalContent,
+              conversationHistory: formatConversationForProgress(conversationHistory),
+            })
+            break
+          }
+          continue
+        }
+
+        // Limited research batches are allowed, but they should not reset the
+        // stuck/nudge counters — otherwise endless read-only inspection looks
+        // like meaningful progress and the loop never converges.
+        noOpCount++
       } else {
         // Real work tools: full counter reset
+        convergenceController.resetResearchBudget()
         noOpCount = 0
         // Reset nudge count when tools are actually being used - this allows
         // nudging to work per "stuck segment" rather than globally across the run.
@@ -2742,6 +2728,11 @@ export async function processTranscriptWithAgentMode(
     // said "still more work to do" several times before the agent finished.
     if (allToolsSuccessful) {
       verificationFailCount = 0
+      if (toolBatchAssessment) {
+        convergenceController.recordSuccessfulToolBatch(toolCallsArray)
+      }
+    } else if (toolBatchAssessment) {
+      convergenceController.recordFailedToolBatch(toolCallsArray)
     }
 
     // Deferred completion signal: only treat mark_work_complete as a completion signal

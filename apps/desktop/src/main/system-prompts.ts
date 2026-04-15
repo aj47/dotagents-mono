@@ -104,6 +104,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
     sections.push(`SKILLS:
 - Skills are optional instruction modules listed below.
 - Load each needed skill once per session with load_skill_instructions(skillId). Reuse previously loaded skill context unless details changed.
+- If you absolutely need to reload a skill after it was already loaded, pass forceReload with a short reason. Prefer reading the referenced source files directly over repeatedly reloading the same skill.
 - Do not guess a skill's contents from its name/description.`)
   }
 

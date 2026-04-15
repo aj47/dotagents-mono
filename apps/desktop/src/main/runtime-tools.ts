@@ -342,6 +342,7 @@ const getUtf8ByteLength = (value: string): number =>
 
 interface SessionSkillLoadState {
   loadedSkillIds: Set<string>
+  forceReloadCountBySkillId: Map<string, number>
   lastTouched: number
 }
 
@@ -372,6 +373,7 @@ function getOrCreateLoadedSkillState(sessionId: string): SessionSkillLoadState {
 
   const created: SessionSkillLoadState = {
     loadedSkillIds: new Set<string>(),
+    forceReloadCountBySkillId: new Map<string, number>(),
     lastTouched: now,
   }
   loadedSkillStateBySession.set(sessionId, created)
@@ -1269,6 +1271,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const skillId = args.skillId.trim()
     const forceReload = args.forceReload === true
+    const reloadReason = typeof args.reason === "string" ? args.reason.trim() : ""
     const { skillsService } = await import("./skills-service")
     const skillById = skillsService.getSkill(skillId)
     const allSkills = skillById ? null : skillsService.getSkills()
@@ -1292,6 +1295,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     if (loadedState) {
       const alreadyLoaded = loadedState.loadedSkillIds.has(skill.id)
+      const priorForceReloads = loadedState.forceReloadCountBySkillId.get(skill.id) ?? 0
       if (alreadyLoaded && !forceReload) {
         return {
           content: [{
@@ -1300,6 +1304,19 @@ const toolHandlers: Record<string, ToolHandler> = {
           }],
           isError: false,
         }
+      }
+      if (alreadyLoaded && forceReload) {
+        const canForceReload = reloadReason.length > 0 && priorForceReloads < 1
+        if (!canForceReload) {
+          return {
+            content: [{
+              type: "text",
+              text: `# ${skill.name}\n\n[Skill already loaded in this session: ${skill.id}. Reuse earlier instructions unless the scope changed materially. To force one reload, pass both {\"forceReload\": true} and a short {\"reason\": \"...\"}. Prefer reading the referenced source files directly instead of repeatedly reloading the skill.]`,
+            }],
+            isError: false,
+          }
+        }
+        loadedState.forceReloadCountBySkillId.set(skill.id, priorForceReloads + 1)
       }
       loadedState.loadedSkillIds.add(skill.id)
       loadedState.lastTouched = Date.now()
