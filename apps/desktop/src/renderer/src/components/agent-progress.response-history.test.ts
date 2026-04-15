@@ -721,6 +721,64 @@ describe("agent progress response history", () => {
     expect(getTextContent(tree)).not.toContain("respond_to_user")
   })
 
+  it("matches split tool-result messages to a single assistant tool-call batch", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-split-tool-results",
+      conversationId: "conversation-split-tool-results",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 90,
+          toolCalls: [
+            { name: "respond_to_user", arguments: { message: "Working on it" } },
+            { name: "visible_first_tool", arguments: { id: "first" } },
+            { name: "visible_second_tool", arguments: { id: "second" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 91,
+          toolResults: [
+            { success: true, content: "meta ok" },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 92,
+          toolResults: [
+            { success: true, content: "first ok" },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 93,
+          toolResults: [
+            { success: true, content: "second ok" },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const firstRow = findToolRow(tree, "visible_first_tool")
+    const secondRow = findToolRow(tree, "visible_second_tool")
+
+    expect(firstRow.props.className).toContain("text-green-600")
+    expect(secondRow.props.className).toContain("text-green-600")
+    expect(getTextContent(tree)).not.toContain("respond_to_user")
+  })
+
   it("keeps reloaded completed sessions from showing completion-tool rows or duplicate final output", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

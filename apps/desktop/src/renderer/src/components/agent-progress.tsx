@@ -4168,10 +4168,36 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i]
       if (message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0) {
-        const next = messages[i + 1]
-        const results = next && next.role === "tool" && next.toolResults ? next.toolResults : []
+        const collectedResults: Array<{ success: boolean; content: string; error?: string } | undefined> = []
+        let lastToolTimestamp = message.timestamp
+        let consumedToolMessages = 0
+        let resultMessageIndex = i + 1
+
+        while (
+          resultMessageIndex < messages.length &&
+          messages[resultMessageIndex].role === "tool" &&
+          collectedResults.length < message.toolCalls.length
+        ) {
+          const toolMessage = messages[resultMessageIndex]
+          const toolResults = toolMessage.toolResults ?? []
+
+          if (toolResults.length > 0) {
+            collectedResults.push(...toolResults)
+          } else {
+            collectedResults.push(undefined)
+          }
+
+          lastToolTimestamp = toolMessage.timestamp ?? lastToolTimestamp
+          consumedToolMessages += 1
+          resultMessageIndex += 1
+        }
+
+        const results = collectedResults.slice(0, message.toolCalls.length)
+        while (results.length < message.toolCalls.length) {
+          results.push(undefined)
+        }
         const assistantIndex = ++roleCounters.assistant
-        const execTimestamp = next?.timestamp ?? message.timestamp
+        const execTimestamp = lastToolTimestamp
         const toolExecId = generateToolExecutionId(message.toolCalls, execTimestamp)
         const toolCallNames = message.toolCalls.map((call) => call.name)
         const visibleToolCalls = message.toolCalls
@@ -4218,8 +4244,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           })
         }
 
-        if (next && next.role === "tool" && next.toolResults) {
-          i++
+        if (consumedToolMessages > 0) {
+          i += consumedToolMessages
         }
       } else if (
         message.role === "tool" &&
