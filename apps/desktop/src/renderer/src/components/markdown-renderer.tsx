@@ -95,6 +95,55 @@ const markdownLinkComponent = ({
   return <>{children}</>
 }
 
+// Eager chat-image renderer.
+// We deliberately drop loading="lazy" because chat images are the focus of
+// attention the moment they arrive — lazy-loading adds a perceptible delay
+// while Chromium decides the element is "near the viewport." We also call
+// img.decode() proactively so the bitmap is ready before the first paint and
+// fade the element in to mask the data-URL swap, eliminating the "pop-in"
+// flash users see when a fresh respond_to_user image arrives.
+const ChatImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [ready, setReady] = useState(false)
+  const imgRef = useRef<HTMLImageElement | null>(null)
+
+  // Reset readiness whenever the src changes so the fade replays on swap.
+  React.useEffect(() => {
+    setReady(false)
+    let cancelled = false
+    const img = imgRef.current
+    if (!img) return
+    // decode() resolves once the bitmap is rasterized; flipping ready after
+    // gives Chromium a chance to compose the painted image atomically.
+    img.decode?.().then(
+      () => { if (!cancelled) setReady(true) },
+      () => { if (!cancelled) setReady(true) },
+    )
+    return () => { cancelled = true }
+  }, [src])
+
+  return (
+    <img
+      ref={imgRef}
+      src={src}
+      alt={alt}
+      decoding="async"
+      fetchPriority="high"
+      onLoad={() => setReady(true)}
+      onError={() => {
+        logUI("[MarkdownRenderer] image failed to render", {
+          alt,
+          srcPreview: src.slice(0, 64),
+        })
+        setReady(true)
+      }}
+      className={cn(
+        "mb-3 max-h-[28rem] w-full min-h-[3rem] rounded-md border border-border bg-muted/20 object-contain transition-opacity duration-150",
+        ready ? "opacity-100" : "opacity-0",
+      )}
+    />
+  )
+}
+
 const markdownImageComponent = ({
   src,
   alt,
@@ -103,22 +152,7 @@ const markdownImageComponent = ({
   alt?: string
 }) => {
   if (!src || !isAllowedMarkdownImageUrl(src)) return null
-
-  return (
-    <img
-      src={src}
-      alt={alt || "Image"}
-      loading="lazy"
-      decoding="async"
-      onError={() => {
-        logUI("[MarkdownRenderer] image failed to render", {
-          alt: alt || "Image",
-          srcPreview: src.slice(0, 64),
-        })
-      }}
-      className="mb-3 max-h-[28rem] w-full rounded-md border border-border bg-muted/20 object-contain"
-    />
-  )
+  return <ChatImage src={src} alt={alt || "Image"} />
 }
 
 /** Extract the text content from a React element tree (for copy-to-clipboard). */
