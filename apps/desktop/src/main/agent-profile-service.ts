@@ -822,6 +822,17 @@ class AgentProfileService {
     this.loadConversations()
   }
 
+  /**
+   * Reload just the main-agent's system prompt + guidelines from
+   * `~/.agents/system-prompt.md` and `~/.agents/agents.md`. Used by the
+   * `.agents` folder watcher to pick up external edits without touching the
+   * rest of the profile data on disk.
+   */
+  reloadPromptsFromLayer(): void {
+    if (!this.profilesData) return
+    this.syncPromptsFromLayer(this.profilesData)
+  }
+
   // ============================================================================
   // Legacy ACP integration shim
   // ============================================================================

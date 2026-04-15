@@ -6,6 +6,12 @@ export type SafeWriteOptions = {
   encoding?: BufferEncoding
   backupDir?: string
   maxBackups?: number
+  /**
+   * When true, skip the write entirely if the on-disk content already equals
+   * `data`. Avoids unnecessary backups, mtime churn, and clobbering files that
+   * the user may have edited to the same value we were about to write.
+   */
+  skipIfUnchanged?: boolean
 }
 
 export function readTextFileIfExistsSync(filePath: string, encoding: BufferEncoding = "utf8"): string | null {
@@ -89,6 +95,20 @@ export function safeWriteFileSync(targetPath: string, data: string | Buffer, opt
   const encoding = options.encoding ?? (typeof data === "string" ? "utf8" : undefined)
   const backupDir = options.backupDir
   const maxBackups = options.maxBackups ?? 10
+
+  if (options.skipIfUnchanged && fs.existsSync(targetPath)) {
+    try {
+      if (typeof data === "string") {
+        const existing = fs.readFileSync(targetPath, { encoding: encoding ?? "utf8" })
+        if (existing === data) return
+      } else {
+        const existing = fs.readFileSync(targetPath)
+        if (existing.length === data.length && existing.equals(data)) return
+      }
+    } catch {
+      // Fall through and write normally if the compare failed.
+    }
+  }
 
   ensureDirSync(path.dirname(targetPath))
 

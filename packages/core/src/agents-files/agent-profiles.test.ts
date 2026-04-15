@@ -2,12 +2,14 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { AgentProfileConnectionType, AgentProfileRole } from "../types"
+import type { AgentProfile, AgentProfileConnectionType, AgentProfileRole } from "../types"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./modular-config"
 import {
   AGENTS_PROFILE_CANONICAL_FILENAME,
+  agentProfileIdToFilePath,
   getAgentProfilesDir,
   loadAgentProfilesLayer,
+  writeAgentsProfileFiles,
 } from "./agent-profiles"
 
 function mkTempLayer(prefix: string): AgentsLayerPaths {
@@ -104,5 +106,35 @@ describe("agent-profiles role inference", () => {
     expect(profiles).toHaveLength(1)
     expect(profiles[0].role).toBe("chat-agent")
     expect(profiles[0].isAgentTarget).toBeUndefined()
+  })
+})
+
+describe("agent-profiles write behaviour", () => {
+  it("does not rewrite agent.md when the in-memory profile is unchanged", () => {
+    const layer = mkTempLayer("dotagents-agent-profiles-skip-")
+    const profile: AgentProfile = {
+      id: "main-agent",
+      name: "main-agent",
+      displayName: "Main Agent",
+      systemPrompt: "You are helpful",
+      guidelines: "",
+      connection: { type: "internal" },
+      enabled: true,
+      isBuiltIn: true,
+      isDefault: true,
+      createdAt: 1,
+      updatedAt: 1,
+    }
+
+    writeAgentsProfileFiles(layer, profile, { maxBackups: 5 })
+    const mdPath = agentProfileIdToFilePath(layer, profile.id)
+    const mtimeBefore = fs.statSync(mdPath).mtimeMs
+
+    const waitUntil = Date.now() + 20
+    while (Date.now() < waitUntil) { /* spin */ }
+
+    writeAgentsProfileFiles(layer, profile, { maxBackups: 5 })
+
+    expect(fs.statSync(mdPath).mtimeMs).toBe(mtimeBefore)
   })
 })

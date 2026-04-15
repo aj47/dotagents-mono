@@ -236,6 +236,10 @@ export function writeAgentsPrompts(
       backupDir: layer.backupsDir,
       maxBackups,
       encoding: "utf8",
+      // These files are user-editable via the in-app "Open file" button.
+      // Skip the write (and its backup rotation) when nothing actually changed
+      // so external edits aren't clobbered and mtimes stay stable.
+      skipIfUnchanged: true,
     })
   }
 
@@ -244,6 +248,7 @@ export function writeAgentsPrompts(
       backupDir: layer.backupsDir,
       maxBackups,
       encoding: "utf8",
+      skipIfUnchanged: true,
     })
   }
 }
@@ -267,6 +272,12 @@ export function writeAgentsLayerFromConfig(
       backupDir: layer.backupsDir,
       maxBackups,
       pretty: true,
+      // Any `configStore.save()` triggers this writer for all four files.
+      // Without this guard, files like `layouts/ui.json` get rewritten on
+      // every save even when nothing in the split actually changed, which
+      // rotates backups and clobbers external edits against a stale in-memory
+      // snapshot. Skipping a no-op write is always safe.
+      skipIfUnchanged: true,
     })
   }
 
