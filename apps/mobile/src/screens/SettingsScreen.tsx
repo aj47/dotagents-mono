@@ -799,6 +799,23 @@ export default function SettingsScreen({ navigation }: any) {
     });
   };
 
+  const handleKnowledgeNotePromote = useCallback(async (note: KnowledgeNote) => {
+    if (!settingsClient || note.context === 'auto') return;
+    try {
+      await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
+      setKnowledgeNotes(prev =>
+        prev.map(existing =>
+          existing.id === note.id
+            ? { ...existing, context: 'auto', updatedAt: Date.now() }
+            : existing
+        )
+      );
+    } catch (error: any) {
+      console.error('[Settings] Failed to promote knowledge note to auto context:', error);
+      Alert.alert('Error', 'Failed to promote note to auto context');
+    }
+  }, [settingsClient]);
+
   // Navigate to knowledge note edit screen
   const handleKnowledgeNoteEdit = useCallback((note?: KnowledgeNote) => {
     navigation.navigate('KnowledgeNoteEdit', {
@@ -2568,14 +2585,26 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                         </View>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.noteDeleteButton}
-                        onPress={() => handleKnowledgeNoteDelete(note.id)}
-                        accessibilityLabel={`Delete note ${note.title}`}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.noteDeleteButtonText}>Delete</Text>
-                      </TouchableOpacity>
+                      <View style={styles.noteActions}>
+                        {note.context === 'search-only' && (
+                          <TouchableOpacity
+                            style={styles.notePromoteButton}
+                            onPress={() => handleKnowledgeNotePromote(note)}
+                            accessibilityLabel={`Promote note ${note.title} to auto context`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={styles.noteDeleteButton}
+                          onPress={() => handleKnowledgeNoteDelete(note.id)}
+                          accessibilityLabel={`Delete note ${note.title}`}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={styles.noteDeleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ))
                 )}
@@ -2586,7 +2615,7 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.createAgentButtonText}>+ Create Note</Text>
                 </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references.
+                  Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references. Use auto context sparingly for high-signal notes.
                 </Text>
               </CollapsibleSection>
             )}
@@ -3610,6 +3639,27 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
         horizontalMargin: 0,
       }),
       alignSelf: 'flex-start',
+    },
+    noteActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
+    },
+    notePromoteButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      alignSelf: 'flex-start',
+    },
+    notePromoteButtonText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '500',
     },
     noteDeleteButtonText: {
       color: theme.colors.destructive,

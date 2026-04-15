@@ -199,8 +199,8 @@ function KnowledgeNoteCard({
 
           <p className="text-xs text-muted-foreground">
             {note.context === "auto"
-              ? "This note is always included in model context. Keep auto notes to a small, high-signal set."
-              : "Search-only notes are only used when retrieved. Promote to auto only when this note should always be in context."}
+              ? "This note is prioritized for automatic context selection, but not every auto note is included in every run. Keep auto notes to a small, high-signal set."
+              : "Search-only notes are only used when retrieved. Promote to auto only when this note should be prioritized for automatic context selection."}
           </p>
 
           {note.summary ? (
@@ -305,6 +305,9 @@ export function Component() {
     }) => tipcClient.updateKnowledgeNote({ id, updates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      if (searchQuery.trim()) {
+        searchMutation.mutate(searchQuery)
+      }
       toast.success("Note updated")
       setEditingNote(null)
       setEditForm(null)
@@ -326,6 +329,9 @@ export function Component() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      if (searchQuery.trim()) {
+        searchMutation.mutate(searchQuery)
+      }
       toast.success("Note promoted to auto context")
     },
     onError: (error: Error) => {
@@ -524,8 +530,8 @@ export function Component() {
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              Use <span className="font-medium">auto</span> sparingly for high-signal notes that should always be
-              in context.
+              Use <span className="font-medium">auto</span> sparingly for high-signal notes that should be
+              prioritized for automatic context selection.
             </p>
           </div>
         ) : null}
