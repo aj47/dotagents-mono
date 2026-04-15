@@ -4920,6 +4920,22 @@ export const router = {
     return knowledgeNotesService.getAllNotes()
   }),
 
+  getKnowledgeNotesOverview: t.procedure
+    .input<{ context?: import("../shared/types").KnowledgeNoteContext }>()
+    .action(async ({ input }) => {
+      return knowledgeNotesService.getOverview({ context: input?.context })
+    }),
+
+  getKnowledgeNotesByGroup: t.procedure
+    .input<{
+      groupKey: string
+      seriesKey?: string
+      context?: import("../shared/types").KnowledgeNoteContext
+    }>()
+    .action(async ({ input }) => {
+      return knowledgeNotesService.getNotesByGroup(input)
+    }),
+
   getKnowledgeNote: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {

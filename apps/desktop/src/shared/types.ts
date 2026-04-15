@@ -12,6 +12,27 @@ export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage,
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '../../../../packages/core/src/types'
 
+export type KnowledgeNoteSeriesSummary = {
+  key: string
+  label: string
+  count: number
+}
+
+export type KnowledgeNoteGroupSummary = {
+  key: string
+  label: string
+  totalCount: number
+  directCount: number
+  seriesSummaries: KnowledgeNoteSeriesSummary[]
+}
+
+export type KnowledgeNotesOverview = {
+  total: number
+  autoCount: number
+  searchOnlyCount: number
+  groups: KnowledgeNoteGroupSummary[]
+}
+
 export type RecordingHistoryItem = {
   id: string
   createdAt: number

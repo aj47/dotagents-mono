@@ -14,7 +14,12 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Label } from "@renderer/components/ui/label"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { KnowledgeNote, KnowledgeNoteContext } from "@shared/types"
+import type {
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteGroupSummary,
+  KnowledgeNotesOverview,
+} from "@shared/types"
 import { toast } from "sonner"
 import {
   AlertCircle,
@@ -252,6 +257,205 @@ function KnowledgeNoteCard({
   )
 }
 
+function GroupPanel({
+  group,
+  contextFilter,
+  isCollapsed,
+  onToggleCollapse,
+  collapsedSeriesKeys,
+  onToggleSeriesCollapse,
+  onNotesLoaded,
+  selectedIds,
+  onToggleSelect,
+  onDelete,
+  onEdit,
+  onPromoteToAuto,
+  promotingNoteId,
+  isPromoteToAutoPending,
+}: {
+  group: KnowledgeNoteGroupSummary
+  contextFilter: KnowledgeNoteContext | undefined
+  isCollapsed: boolean
+  onToggleCollapse: () => void
+  collapsedSeriesKeys: Set<string>
+  onToggleSeriesCollapse: (key: string) => void
+  onNotesLoaded: (notes: KnowledgeNote[]) => void
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+  onDelete: (id: string) => void
+  onEdit: (note: KnowledgeNote) => void
+  onPromoteToAuto: (id: string) => void
+  promotingNoteId: string | null
+  isPromoteToAutoPending: boolean
+}) {
+  // Only fetch the group's notes once it's expanded. React Query caches across expand/collapse.
+  const notesQuery = useQuery({
+    queryKey: ["knowledgeNotesByGroup", group.key, contextFilter ?? "all"],
+    queryFn: async () =>
+      tipcClient.getKnowledgeNotesByGroup({
+        groupKey: group.key,
+        context: contextFilter,
+      }),
+    enabled: !isCollapsed,
+  })
+
+  useEffect(() => {
+    if (notesQuery.data) onNotesLoaded(notesQuery.data)
+  }, [notesQuery.data])
+
+  const directNotes = notesQuery.data ?? []
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-medium text-foreground hover:bg-accent/40"
+        onClick={onToggleCollapse}
+      >
+        {isCollapsed ? (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+        <FolderOpen className="h-4 w-4 text-muted-foreground" />
+        <span>{group.label}</span>
+        <Badge variant="secondary" className="text-[10px]">
+          {group.totalCount}
+        </Badge>
+      </button>
+
+      {isCollapsed ? null : notesQuery.isLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {directNotes.map((note) => (
+              <KnowledgeNoteCard
+                key={note.id}
+                note={note}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                onPromoteToAuto={onPromoteToAuto}
+                isPromotingToAuto={promotingNoteId === note.id && isPromoteToAutoPending}
+                isSelected={selectedIds.has(note.id)}
+                onToggleSelect={onToggleSelect}
+              />
+            ))}
+          </div>
+
+          {group.seriesSummaries.map((series) => (
+            <SeriesPanel
+              key={series.key}
+              groupKey={group.key}
+              series={series}
+              contextFilter={contextFilter}
+              isCollapsed={collapsedSeriesKeys.has(series.key)}
+              onToggleCollapse={() => onToggleSeriesCollapse(series.key)}
+              onNotesLoaded={onNotesLoaded}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              onPromoteToAuto={onPromoteToAuto}
+              promotingNoteId={promotingNoteId}
+              isPromoteToAutoPending={isPromoteToAutoPending}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function SeriesPanel({
+  groupKey,
+  series,
+  contextFilter,
+  isCollapsed,
+  onToggleCollapse,
+  onNotesLoaded,
+  selectedIds,
+  onToggleSelect,
+  onDelete,
+  onEdit,
+  onPromoteToAuto,
+  promotingNoteId,
+  isPromoteToAutoPending,
+}: {
+  groupKey: string
+  series: { key: string; label: string; count: number }
+  contextFilter: KnowledgeNoteContext | undefined
+  isCollapsed: boolean
+  onToggleCollapse: () => void
+  onNotesLoaded: (notes: KnowledgeNote[]) => void
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+  onDelete: (id: string) => void
+  onEdit: (note: KnowledgeNote) => void
+  onPromoteToAuto: (id: string) => void
+  promotingNoteId: string | null
+  isPromoteToAutoPending: boolean
+}) {
+  const notesQuery = useQuery({
+    queryKey: ["knowledgeNotesByGroup", groupKey, series.key, contextFilter ?? "all"],
+    queryFn: async () =>
+      tipcClient.getKnowledgeNotesByGroup({
+        groupKey,
+        seriesKey: series.key,
+        context: contextFilter,
+      }),
+    enabled: !isCollapsed,
+  })
+
+  useEffect(() => {
+    if (notesQuery.data) onNotesLoaded(notesQuery.data)
+  }, [notesQuery.data])
+
+  return (
+    <div className="space-y-2 rounded-lg border border-dashed bg-muted/10 p-2">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        onClick={onToggleCollapse}
+      >
+        {isCollapsed ? (
+          <ChevronRight className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" />
+        )}
+        <FolderUp className="h-3.5 w-3.5" />
+        <span>{series.label}</span>
+        <Badge variant="secondary" className="text-[10px]">
+          {series.count}
+        </Badge>
+      </button>
+
+      {isCollapsed ? null : notesQuery.isLoading ? (
+        <div className="flex items-center justify-center py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {(notesQuery.data ?? []).map((note) => (
+            <KnowledgeNoteCard
+              key={note.id}
+              note={note}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              onPromoteToAuto={onPromoteToAuto}
+              isPromotingToAuto={promotingNoteId === note.id && isPromoteToAutoPending}
+              isSelected={selectedIds.has(note.id)}
+              onToggleSelect={onToggleSelect}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Component() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
@@ -270,10 +474,18 @@ export function Component() {
     setSelectedIds(new Set())
   }, [searchQuery, contextFilter])
 
-  const knowledgeNotesQuery = useQuery({
-    queryKey: ["knowledgeNotes"],
-    queryFn: async () => tipcClient.getAllKnowledgeNotes(),
+  const overviewQuery = useQuery({
+    queryKey: ["knowledgeNotesOverview", contextFilter],
+    queryFn: async () =>
+      tipcClient.getKnowledgeNotesOverview({
+        context: contextFilter === "all" ? undefined : contextFilter,
+      }),
   })
+
+  const invalidateKnowledgeQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["knowledgeNotesOverview"] })
+    queryClient.invalidateQueries({ queryKey: ["knowledgeNotesByGroup"] })
+  }
 
   const agentsFoldersQuery = useQuery({
     queryKey: ["agentsFolders"],
@@ -288,7 +500,7 @@ export function Component() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => tipcClient.deleteKnowledgeNote({ id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      invalidateKnowledgeQueries()
       toast.success("Note deleted")
       setDeleteConfirmId(null)
     },
@@ -304,7 +516,7 @@ export function Component() {
       updates: Partial<Omit<KnowledgeNote, "id" | "createdAt">>
     }) => tipcClient.updateKnowledgeNote({ id, updates }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      invalidateKnowledgeQueries()
       if (searchQuery.trim()) {
         searchMutation.mutate(searchQuery)
       }
@@ -328,7 +540,7 @@ export function Component() {
       setPromotingNoteId(id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      invalidateKnowledgeQueries()
       if (searchQuery.trim()) {
         searchMutation.mutate(searchQuery)
       }
@@ -345,7 +557,7 @@ export function Component() {
   const deleteMultipleMutation = useMutation({
     mutationFn: async (ids: string[]) => tipcClient.deleteMultipleKnowledgeNotes({ ids }),
     onSuccess: (deletedCount) => {
-      queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      invalidateKnowledgeQueries()
       toast.success(`Deleted ${deletedCount} notes`)
       setSelectedIds(new Set())
       setBulkDeleteConfirm(false)
@@ -356,7 +568,7 @@ export function Component() {
   const deleteAllMutation = useMutation({
     mutationFn: async () => tipcClient.deleteAllKnowledgeNotes(),
     onSuccess: (deletedCount) => {
-      queryClient.invalidateQueries({ queryKey: ["knowledgeNotes"] })
+      invalidateKnowledgeQueries()
       toast.success(`Deleted ${deletedCount} notes`)
       setSelectedIds(new Set())
       setDeleteAllConfirm(false)
@@ -380,26 +592,68 @@ export function Component() {
     onError: (error: Error) => toast.error(`Failed to open workspace notes folder: ${error.message}`),
   })
 
-  const knowledgeNotes = knowledgeNotesQuery.data || []
-  const displayKnowledgeNotes = searchMutation.data ?? knowledgeNotes
-  const filteredKnowledgeNotes =
-    contextFilter === "all"
-      ? displayKnowledgeNotes
-      : displayKnowledgeNotes.filter((note) => note.context === contextFilter)
+  const overview: KnowledgeNotesOverview | undefined = overviewQuery.data
+  const overviewGroups: KnowledgeNoteGroupSummary[] = overview?.groups ?? []
+  const totalCount = overview?.total ?? 0
+  const autoCount = overview?.autoCount ?? 0
+  const searchOnlyCount = overview?.searchOnlyCount ?? 0
 
-  const groupedKnowledgeNotes = useMemo(
-    () => buildKnowledgeNoteSections(filteredKnowledgeNotes),
-    [filteredKnowledgeNotes],
+  const isSearching = !!searchQuery.trim()
+  const searchResults = searchMutation.data ?? []
+  const searchFilteredResults = useMemo(
+    () =>
+      contextFilter === "all"
+        ? searchResults
+        : searchResults.filter((note) => note.context === contextFilter),
+    [searchResults, contextFilter],
+  )
+  const groupedSearchResults = useMemo(
+    () => buildKnowledgeNoteSections(searchFilteredResults),
+    [searchFilteredResults],
   )
 
+  // Notes loaded into memory via expanded group panels — keyed by note id.
+  // Used for selection, promote, and bulk operations.
+  const [loadedNotesById, setLoadedNotesById] = useState<Map<string, KnowledgeNote>>(new Map())
+
+  const registerLoadedNotes = (notes: KnowledgeNote[]) => {
+    setLoadedNotesById((prev) => {
+      const next = new Map(prev)
+      for (const note of notes) next.set(note.id, note)
+      return next
+    })
+  }
+
+  // Seed all groups as collapsed on first load of the overview (or when groups change).
   useEffect(() => {
-    const validGroupKeys = new Set(groupedKnowledgeNotes.map((group) => group.key))
-    const validSeriesKeys = new Set(
-      groupedKnowledgeNotes.flatMap((group) => group.seriesSections.map((section) => section.key)),
+    if (!overview) return
+    const allGroupKeys = new Set(overviewGroups.map((group) => group.key))
+    const allSeriesKeys = new Set(
+      overviewGroups.flatMap((group) => group.seriesSummaries.map((series) => series.key)),
     )
-    setCollapsedGroupKeys((prev) => new Set([...prev].filter((key) => validGroupKeys.has(key))))
-    setCollapsedSeriesKeys((prev) => new Set([...prev].filter((key) => validSeriesKeys.has(key))))
-  }, [groupedKnowledgeNotes])
+    setCollapsedGroupKeys((prev) => {
+      // Preserve user-expanded state for existing groups; new groups start collapsed.
+      const next = new Set<string>()
+      for (const key of allGroupKeys) {
+        if (prev.size === 0) {
+          next.add(key)
+        } else if (prev.has(key)) {
+          next.add(key)
+        }
+      }
+      // Any fully new groups not in prev: default collapsed
+      for (const key of allGroupKeys) if (!prev.has(key)) next.add(key)
+      return next
+    })
+    setCollapsedSeriesKeys((prev) => {
+      const next = new Set<string>()
+      for (const key of allSeriesKeys) {
+        if (prev.size === 0 || !prev.has(key)) next.add(key)
+        else next.add(key)
+      }
+      return next
+    })
+  }, [overview])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -437,7 +691,7 @@ export function Component() {
   }
 
   const handlePromoteToAuto = (id: string) => {
-    const note = knowledgeNotes.find((entry) => entry.id === id)
+    const note = loadedNotesById.get(id) ?? searchResults.find((entry) => entry.id === id)
     if (!note || note.context === "auto") return
     promoteToAutoMutation.mutate({ id })
   }
@@ -463,23 +717,23 @@ export function Component() {
       return next
     })
 
-  const filteredIds = new Set(filteredKnowledgeNotes.map((note) => note.id))
-  const visibleSelectedCount = [...selectedIds].filter((id) => filteredIds.has(id)).length
+  // Visible notes depend on whether we're searching or browsing groups.
+  // When browsing, only loaded (expanded) notes are selectable.
+  const visibleNotes = isSearching ? searchFilteredResults : Array.from(loadedNotesById.values())
+  const visibleIds = new Set(visibleNotes.map((note) => note.id))
+  const visibleSelectedCount = [...selectedIds].filter((id) => visibleIds.has(id)).length
 
   const handleSelectAll = () =>
-    visibleSelectedCount === filteredKnowledgeNotes.length && filteredKnowledgeNotes.length > 0
+    visibleSelectedCount === visibleNotes.length && visibleNotes.length > 0
       ? setSelectedIds((prev) => {
           const next = new Set(prev)
-          filteredKnowledgeNotes.forEach((note) => next.delete(note.id))
+          visibleNotes.forEach((note) => next.delete(note.id))
           return next
         })
-      : setSelectedIds((prev) => new Set([...prev, ...filteredKnowledgeNotes.map((note) => note.id)]))
+      : setSelectedIds((prev) => new Set([...prev, ...visibleNotes.map((note) => note.id)]))
 
-  const autoCount = knowledgeNotes.filter((note) => note.context === "auto").length
-  const searchOnlyCount = knowledgeNotes.filter((note) => note.context === "search-only").length
-  const allSelected =
-    filteredKnowledgeNotes.length > 0 && visibleSelectedCount === filteredKnowledgeNotes.length
-  const someSelected = visibleSelectedCount > 0 && visibleSelectedCount < filteredKnowledgeNotes.length
+  const allSelected = visibleNotes.length > 0 && visibleSelectedCount === visibleNotes.length
+  const someSelected = visibleSelectedCount > 0 && visibleSelectedCount < visibleNotes.length
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-5 py-4">
@@ -518,10 +772,10 @@ export function Component() {
           </div>
         </div>
 
-        {knowledgeNotes.length ? (
+        {totalCount ? (
           <div className="space-y-1">
             <div className="flex items-center gap-4 text-sm">
-              <span className="text-muted-foreground">{knowledgeNotes.length} notes</span>
+              <span className="text-muted-foreground">{totalCount} notes</span>
               <Badge className={cn("text-xs", contextBadgeClasses["search-only"])}>
                 {searchOnlyCount} search-only
               </Badge>
@@ -570,20 +824,32 @@ export function Component() {
           </div>
         </div>
 
-        {filteredKnowledgeNotes.length ? (
+        {visibleNotes.length || totalCount ? (
           <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2">
-            <button className="text-muted-foreground hover:text-foreground" onClick={handleSelectAll}>
-              {allSelected ? (
-                <CheckSquare className="h-4 w-4 text-primary" />
-              ) : someSelected ? (
-                <MinusSquare className="h-4 w-4 text-primary" />
-              ) : (
-                <Square className="h-4 w-4" />
-              )}
-            </button>
-            <span className="text-sm text-muted-foreground">
-              {selectedIds.size ? `${selectedIds.size} selected` : "Select all"}
-            </span>
+            {visibleNotes.length ? (
+              <>
+                <button className="text-muted-foreground hover:text-foreground" onClick={handleSelectAll}>
+                  {allSelected ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : someSelected ? (
+                    <MinusSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  {selectedIds.size
+                    ? `${selectedIds.size} selected`
+                    : isSearching
+                      ? "Select all results"
+                      : "Select all loaded"}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                Expand a group to load notes
+              </span>
+            )}
             <div className="flex-1" />
             {selectedIds.size ? (
               <Button
@@ -601,7 +867,7 @@ export function Component() {
                 Delete Selected ({selectedIds.size})
               </Button>
             ) : null}
-            {knowledgeNotes.length ? (
+            {totalCount ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -615,50 +881,60 @@ export function Component() {
           </div>
         ) : null}
 
-        {knowledgeNotesQuery.isLoading ? (
+        {overviewQuery.isLoading ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredKnowledgeNotes.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center sm:px-6">
-            <h3 className="text-base font-medium">No notes yet</h3>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              {searchQuery
-                ? "No notes match your search. Try a different query."
-                : "Save notes from agent sessions to build your knowledge workspace."}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {groupedKnowledgeNotes.map((group) => {
-              const isGroupCollapsed = collapsedGroupKeys.has(group.key)
-              const totalNotes =
-                group.notes.length +
-                group.seriesSections.reduce((sum, section) => sum + section.notes.length, 0)
-
-              return (
+        ) : isSearching ? (
+          searchFilteredResults.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center sm:px-6">
+              <h3 className="text-base font-medium">No matching notes</h3>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                No notes match your search. Try a different query.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {groupedSearchResults.map((group) => (
                 <div key={group.key} className="space-y-2">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-medium text-foreground hover:bg-accent/40"
-                    onClick={() => toggleGroupCollapsed(group.key)}
-                  >
-                    {isGroupCollapsed ? (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    )}
+                  <div className="flex items-center gap-2 px-1 text-sm font-medium text-foreground">
                     <FolderOpen className="h-4 w-4 text-muted-foreground" />
                     <span>{group.label}</span>
                     <Badge variant="secondary" className="text-[10px]">
-                      {totalNotes}
+                      {group.notes.length +
+                        group.seriesSections.reduce((sum, section) => sum + section.notes.length, 0)}
                     </Badge>
-                  </button>
-
-                  {isGroupCollapsed ? null : (
-                    <>
+                  </div>
+                  <div className="space-y-2">
+                    {group.notes.map((note) => (
+                      <KnowledgeNoteCard
+                        key={note.id}
+                        note={note}
+                        onDelete={(id) => setDeleteConfirmId(id)}
+                        onEdit={handleEdit}
+                        onPromoteToAuto={handlePromoteToAuto}
+                        isPromotingToAuto={
+                          promotingNoteId === note.id && promoteToAutoMutation.isPending
+                        }
+                        isSelected={selectedIds.has(note.id)}
+                        onToggleSelect={handleToggleSelect}
+                      />
+                    ))}
+                  </div>
+                  {group.seriesSections.map((section) => (
+                    <div
+                      key={section.key}
+                      className="space-y-2 rounded-lg border border-dashed bg-muted/10 p-2"
+                    >
+                      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <FolderUp className="h-3.5 w-3.5" />
+                        <span>{section.label}</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {section.notes.length}
+                        </Badge>
+                      </div>
                       <div className="space-y-2">
-                        {group.notes.map((note) => (
+                        {section.notes.map((note) => (
                           <KnowledgeNoteCard
                             key={note.id}
                             note={note}
@@ -673,57 +949,40 @@ export function Component() {
                           />
                         ))}
                       </div>
-
-                      {group.seriesSections.map((section) => {
-                        const isSeriesCollapsed = collapsedSeriesKeys.has(section.key)
-                        return (
-                          <div
-                            key={section.key}
-                            className="space-y-2 rounded-lg border border-dashed bg-muted/10 p-2"
-                          >
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                              onClick={() => toggleSeriesCollapsed(section.key)}
-                            >
-                              {isSeriesCollapsed ? (
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              ) : (
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              )}
-                              <FolderUp className="h-3.5 w-3.5" />
-                              <span>{section.label}</span>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {section.notes.length}
-                              </Badge>
-                            </button>
-
-                            {isSeriesCollapsed ? null : (
-                              <div className="space-y-2">
-                                {section.notes.map((note) => (
-                                  <KnowledgeNoteCard
-                                    key={note.id}
-                                    note={note}
-                                    onDelete={(id) => setDeleteConfirmId(id)}
-                                    onEdit={handleEdit}
-                                    onPromoteToAuto={handlePromoteToAuto}
-                                    isPromotingToAuto={
-                                      promotingNoteId === note.id && promoteToAutoMutation.isPending
-                                    }
-                                    isSelected={selectedIds.has(note.id)}
-                                    onToggleSelect={handleToggleSelect}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </>
-                  )}
+                    </div>
+                  ))}
                 </div>
-              )
-            })}
+              ))}
+            </div>
+          )
+        ) : overviewGroups.length === 0 ? (
+          <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center sm:px-6">
+            <h3 className="text-base font-medium">No notes yet</h3>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              Save notes from agent sessions to build your knowledge workspace.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {overviewGroups.map((group) => (
+              <GroupPanel
+                key={group.key}
+                group={group}
+                contextFilter={contextFilter === "all" ? undefined : contextFilter}
+                isCollapsed={collapsedGroupKeys.has(group.key)}
+                onToggleCollapse={() => toggleGroupCollapsed(group.key)}
+                collapsedSeriesKeys={collapsedSeriesKeys}
+                onToggleSeriesCollapse={toggleSeriesCollapsed}
+                onNotesLoaded={registerLoadedNotes}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onDelete={(id) => setDeleteConfirmId(id)}
+                onEdit={handleEdit}
+                onPromoteToAuto={handlePromoteToAuto}
+                promotingNoteId={promotingNoteId}
+                isPromoteToAutoPending={promoteToAutoMutation.isPending}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -886,7 +1145,7 @@ export function Component() {
             <Button
               variant="destructive"
               className="gap-2"
-              onClick={() => deleteMultipleMutation.mutate([...selectedIds].filter((id) => filteredIds.has(id)))}
+              onClick={() => deleteMultipleMutation.mutate([...selectedIds].filter((id) => visibleIds.has(id)))}
               disabled={deleteMultipleMutation.isPending}
             >
               {deleteMultipleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -904,7 +1163,7 @@ export function Component() {
               Delete All Notes
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete ALL {knowledgeNotes.length} notes? This action cannot be undone.
+              Are you sure you want to delete ALL {totalCount} notes? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
