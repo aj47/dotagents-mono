@@ -159,6 +159,7 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     Control: (props: any) => ({ type: "Control", props }),
     ControlGroup: (props: any) => props.children,
     ControlLabel: (props: any) => props.label,
+    SettingsSearchContext: { Provider: PassThrough },
   }
   const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
   const switchMock = { Switch: (props: any) => ({ type: "Switch", props }) }
@@ -169,7 +170,24 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   const ttsManagerMock = { ttsManager: { stopAll: vi.fn() } }
   const tipcClientMock = { tipcClient: { getAgentsFolders: vi.fn(async () => ({})), getExternalAgents: vi.fn(async () => []) } }
 
-  vi.doMock("react", () => runtime.reactMock)
+  vi.doMock("react", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("react")>()
+    const fallbackForwardRef = <P,>(renderFn: (props: P, ref: unknown) => any) => (props: P) => renderFn(props, null)
+    const fallbackUseContext = (context: { _currentValue?: unknown; _currentValue2?: unknown }) =>
+      context?._currentValue ?? context?._currentValue2 ?? null
+    const fallbackUseMemo = <T,>(factory: () => T) => factory()
+    const fallbackUseCallback = <T extends (...args: any[]) => any>(callback: T) => callback
+    const merged = {
+      ...actual,
+      ...runtime.reactMock,
+      forwardRef: runtime.reactMock.forwardRef ?? fallbackForwardRef,
+      useContext: runtime.reactMock.useContext ?? fallbackUseContext,
+      useMemo: runtime.reactMock.useMemo ?? fallbackUseMemo,
+      useCallback: runtime.reactMock.useCallback ?? fallbackUseCallback,
+    } as any
+    merged.default = merged
+    return merged
+  })
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react-router-dom", () => ({ useNavigate: () => vi.fn() }))
@@ -195,7 +213,7 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)
   vi.doMock("../lib/tipc-client", () => tipcClientMock)
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-  vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null }))
+  vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null, Search: Null }))
   vi.doMock("@dotagents/shared", () => ({ __esModule: true, STT_PROVIDER_ID: {}, SUPPORTED_LANGUAGES: [] }))
   vi.doMock("@shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
   vi.doMock("../shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))

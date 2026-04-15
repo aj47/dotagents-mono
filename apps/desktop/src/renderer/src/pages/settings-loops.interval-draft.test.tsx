@@ -13,12 +13,15 @@ function createHookRuntime() {
       states[idx] = typeof update === "function" ? (update as (prev: T) => T)(states[idx]) : update
     }) as StateSetter<T>] as const
   }
+  const forwardRef = <P,>(renderFn: (props: P, ref: unknown) => any) => (props: P) => renderFn(props, null)
 
   const reactMock: any = {
     __esModule: true,
     default: {} as any,
     useState,
     useCallback: (fn: any) => fn,
+    forwardRef,
+    useEffect: () => undefined,
   }
   reactMock.default = reactMock
 
@@ -93,20 +96,34 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("@renderer/components/ui/label", () => ({ Label: (props: any) => ({ type: "Label", props }) }))
-  vi.doMock("@renderer/components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
-  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
-  vi.doMock("@renderer/components/ui/card", () => ({
+  const buttonMock = { Button: (props: any) => ({ type: "Button", props }) }
+  const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
+  const labelMock = { Label: (props: any) => ({ type: "Label", props }) }
+  const switchMock = { Switch: (props: any) => ({ type: "Switch", props }) }
+  const textareaMock = { Textarea: (props: any) => ({ type: "Textarea", props }) }
+  const cardMock = {
     Card: (props: any) => ({ type: "Card", props }),
     CardContent: (props: any) => ({ type: "CardContent", props }),
     CardDescription: (props: any) => ({ type: "CardDescription", props }),
     CardHeader: (props: any) => ({ type: "CardHeader", props }),
     CardTitle: (props: any) => ({ type: "CardTitle", props }),
-  }))
-  vi.doMock("@renderer/components/ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
-  vi.doMock("@renderer/lib/tipc-client", () => ({
+  }
+  const badgeMock = { Badge: (props: any) => ({ type: "Badge", props }) }
+  vi.doMock("@renderer/components/ui/button", () => buttonMock)
+  vi.doMock("../components/ui/button", () => buttonMock)
+  vi.doMock("@renderer/components/ui/input", () => inputMock)
+  vi.doMock("../components/ui/input", () => inputMock)
+  vi.doMock("@renderer/components/ui/label", () => labelMock)
+  vi.doMock("../components/ui/label", () => labelMock)
+  vi.doMock("@renderer/components/ui/switch", () => switchMock)
+  vi.doMock("../components/ui/switch", () => switchMock)
+  vi.doMock("@renderer/components/ui/textarea", () => textareaMock)
+  vi.doMock("../components/ui/textarea", () => textareaMock)
+  vi.doMock("@renderer/components/ui/card", () => cardMock)
+  vi.doMock("../components/ui/card", () => cardMock)
+  vi.doMock("@renderer/components/ui/badge", () => badgeMock)
+  vi.doMock("../components/ui/badge", () => badgeMock)
+  const tipcClientModule = {
     tipcClient: {
       getLoops: vi.fn(async () => []),
       getLoopStatuses: vi.fn(async () => []),
@@ -117,12 +134,16 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
       triggerLoop: vi.fn(async () => ({ success: true })),
       openLoopTaskFile: vi.fn(async () => ({ success: true })),
     },
-  }))
+  }
+  vi.doMock("@renderer/lib/tipc-client", () => tipcClientModule)
+  vi.doMock("../lib/tipc-client", () => tipcClientModule)
   vi.doMock("@tanstack/react-query", () => ({
     useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? [] : [] }),
     useQueryClient: () => ({ invalidateQueries }),
   }))
-  vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
+  const utilsMock = { cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }
+  vi.doMock("@renderer/lib/utils", () => utilsMock)
+  vi.doMock("../lib/utils", () => utilsMock)
   vi.doMock("lucide-react", () => ({ Trash2: Null, Plus: Null, Edit2: Null, Save: Null, X: Null, Play: Null, Clock: Null, FileText: Null }))
   vi.doMock("sonner", () => ({ toast: { success, error } }))
 
@@ -168,7 +189,9 @@ describe("desktop repeat-task interval editing", () => {
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "" } })
 
     tree = runtime.render(Component, {} as any)
@@ -187,7 +210,9 @@ describe("desktop repeat-task interval editing", () => {
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "60" } })
 
     tree = runtime.render(Component, {} as any)

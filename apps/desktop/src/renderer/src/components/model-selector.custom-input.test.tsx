@@ -57,7 +57,24 @@ async function loadModelSelector(runtime: ReturnType<typeof createHookRuntime>, 
     useConfigQuery: () => ({ data: { currentModelPresetId: "default" } }),
   }
   const debugMock = { logUI: vi.fn(), logFocus: vi.fn(), logStateChange: vi.fn(), logRender: vi.fn() }
-  vi.doMock("react", () => runtime.reactMock)
+  vi.doMock("react", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("react")>()
+    const fallbackForwardRef = <P,>(renderFn: (props: P, ref: unknown) => any) => (props: P) => renderFn(props, null)
+    const fallbackUseContext = (context: { _currentValue?: unknown; _currentValue2?: unknown }) =>
+      context?._currentValue ?? context?._currentValue2 ?? null
+    const fallbackUseMemo = <T,>(factory: () => T) => factory()
+    const fallbackUseCallback = <T extends (...args: any[]) => any>(callback: T) => callback
+    const merged = {
+      ...actual,
+      ...runtime.reactMock,
+      forwardRef: runtime.reactMock.forwardRef ?? fallbackForwardRef,
+      useContext: runtime.reactMock.useContext ?? fallbackUseContext,
+      useMemo: runtime.reactMock.useMemo ?? fallbackUseMemo,
+      useCallback: runtime.reactMock.useCallback ?? fallbackUseCallback,
+    } as any
+    merged.default = merged
+    return merged
+  })
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("@renderer/components/ui/select", () => selectMock)

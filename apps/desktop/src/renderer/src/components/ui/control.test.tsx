@@ -1,7 +1,21 @@
 import React from "react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { Control, ControlLabel } from "./control"
+
+vi.mock("react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react")>()
+  const useContext = () => ""
+  const merged = {
+    ...actual,
+    useContext,
+  } as any
+  merged.default = {
+    ...(actual as any).default,
+    ...merged,
+  }
+  return merged
+})
 
 function renderFunctionComponent<Props>(element: React.ReactElement<Props>) {
   if (typeof element.type !== "function") {
