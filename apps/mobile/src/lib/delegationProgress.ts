@@ -182,13 +182,16 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
   }
 
   const toolCalls: NonNullable<ChatMessage['toolCalls']> = entries.map((entry) => entry.toolCall);
-  const toolResults: NonNullable<ChatMessage['toolResults']> = entries
-    .map((entry) => entry.result)
-    .filter((result): result is NonNullable<ChatMessage['toolResults']>[number] => !!result);
+  const alignedToolResults = entries.map((entry) => entry.result);
+  // Preserve positional alignment with toolCalls so renderers using toolResults[index]
+  // do not mis-associate later results when earlier calls are still pending.
+  const toolResults = alignedToolResults.some((result) => !!result)
+    ? alignedToolResults as unknown as NonNullable<ChatMessage['toolResults']>
+    : undefined;
 
   return {
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-    toolResults: toolResults.length > 0 ? toolResults : undefined,
+    toolResults,
   };
 };
 

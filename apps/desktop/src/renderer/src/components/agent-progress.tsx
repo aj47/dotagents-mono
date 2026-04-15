@@ -1754,6 +1754,10 @@ function parseDelegatedToolInput(rawInput?: string): unknown {
 function parseDelegatedToolUseMessage(
   message: ACPSubAgentMessage,
 ): { toolName?: string; toolInput?: unknown } | null {
+  if (message.role !== "tool") {
+    return null
+  }
+
   const content = (message.content ?? "").trim()
   if (!/^using tool:/i.test(content)) {
     return null
@@ -1773,7 +1777,7 @@ function isDelegatedToolUseMessage(message: ACPSubAgentMessage): boolean {
 }
 
 function isDelegatedToolResultMessage(message: ACPSubAgentMessage): boolean {
-  return /^tool result:/i.test((message.content ?? "").trim())
+  return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())
 }
 
 function toCompactToolResult(result: { success: boolean; content: string; error?: string }): CompactToolExecutionResult {
@@ -1875,10 +1879,20 @@ function buildSubAgentConversationItems(
 ): SubAgentConversationRenderItem[] {
   const items: SubAgentConversationRenderItem[] = []
 
+  const hasRenderableStructuredMessageContent = (message: ACPSubAgentMessage): boolean => {
+    const content = (message.content ?? "").trim()
+    if (!content) return false
+    if (message.role !== "tool") return true
+    return !/^using tool:/i.test(content) && !/^tool result:/i.test(content)
+  }
+
   for (let index = 0; index < conversation.length; index += 1) {
     const message = conversation[index]
     const structuredExecution = buildStructuredSubAgentToolExecution(message)
     if (structuredExecution) {
+      if (hasRenderableStructuredMessageContent(message)) {
+        items.push({ kind: "message", key: `msg-structured-${index}`, message })
+      }
       items.push({
         kind: "tool_execution",
         key: `tool-structured-${index}`,

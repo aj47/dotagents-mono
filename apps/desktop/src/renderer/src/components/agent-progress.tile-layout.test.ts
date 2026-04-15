@@ -121,6 +121,10 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('const isPending = isToolUseMessage && !resultMessage && isDelegationActive')
     expect(agentProgressSource).toContain('error: "Delegation failed before a tool result was captured."')
     expect(agentProgressSource).toContain('error: "Delegation was cancelled before a tool result was captured."')
+    expect(agentProgressSource).toContain('if (message.role !== "tool") {')
+    expect(agentProgressSource).toContain('return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())')
+    expect(agentProgressSource).toContain('if (hasRenderableStructuredMessageContent(message)) {')
+    expect(agentProgressSource).toContain('items.push({ kind: "message", key: `msg-structured-${index}`, message })')
     expect(agentProgressSource).toContain('() => buildSubAgentConversationItems(conversation, delegationStatus)')
   })
 

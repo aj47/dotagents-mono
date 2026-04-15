@@ -3193,14 +3193,13 @@ export default function ChatScreen({ route, navigation }: any) {
               ? fallbackToolEntries
               : displayToolEntries;
             const displayToolCallCount = renderedToolEntries.length;
-            const toolResultCount = toolResults.length;
             const hasToolResults = renderedToolEntries.some(entry => !!entry.result);
             const allSuccess =
               hasToolResults && renderedToolEntries.every(entry => entry.result?.success === true);
             const hasErrors = renderedToolEntries.some(entry => entry.result?.success === false);
             // isPending is true when any displayed tool call has not received its result yet.
             const isPending =
-              renderedToolEntries.some(entry => !entry.result && entry.origIdx >= toolResultCount);
+              renderedToolEntries.some(entry => !entry.result);
 
             // Skip empty messages: no visible content AND no tool calls to display
             // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
@@ -3348,7 +3347,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             ]}
                           >
                             {renderedToolEntries.map(({ toolCall, origIdx, result: tcResult }, tcIdx) => {
-                              const tcPending = !tcResult && origIdx >= toolResultCount;
+                              const tcPending = !tcResult;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
                               const argPreview = formatArgumentsPreview(toolCall.arguments);
@@ -3408,7 +3407,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             hasErrors && styles.toolExecutionError,
                           ]}>
                             {renderedToolEntries.map(({ toolCall, origIdx, result }, idx) => {
-                              const isResultPending = !result && origIdx >= toolResultCount;
+                              const isResultPending = !result;
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
                               const stableMessageKey = m.id ?? String(i);

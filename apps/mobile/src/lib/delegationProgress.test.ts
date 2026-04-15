@@ -129,18 +129,21 @@ describe('createDelegationProgressMessages', () => {
             {
               role: 'assistant',
               content: '',
-              toolCalls: [{ name: 'rg', arguments: { pattern: 'subagent' } }],
+              toolCalls: [
+                { name: 'rg', arguments: { pattern: 'subagent' } },
+                { name: 'read_file', arguments: { path: 'README.md' } },
+              ],
               toolResults: [{ success: true, content: '1 hit' }],
               timestamp: 501,
             },
             {
               role: 'tool',
-              content: 'Using tool: read_file\nInput: {"path":"README.md"}',
+              content: 'Using tool: ls\nInput: {"path":"."}',
               timestamp: 502,
             },
             {
               role: 'tool',
-              content: 'Tool result: {"ok":true}',
+              content: 'Tool result: {"files":["README.md"]}',
               timestamp: 503,
             },
           ],
@@ -153,10 +156,12 @@ describe('createDelegationProgressMessages', () => {
     expect(messages[0].toolCalls).toEqual([
       { name: 'rg', arguments: { pattern: 'subagent' } },
       { name: 'read_file', arguments: { path: 'README.md' } },
+      { name: 'ls', arguments: { path: '.' } },
     ]);
     expect(messages[0].toolResults).toEqual([
       { success: true, content: '1 hit' },
-      { success: true, content: '{"ok":true}' },
+      undefined,
+      { success: true, content: '{"files":["README.md"]}' },
     ]);
   });
 });
