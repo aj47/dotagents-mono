@@ -968,15 +968,20 @@ export interface AgentSkillsData {
   skills: AgentSkill[]
 }
 
+export type LoopSchedule =
+  | { type: "daily"; times: string[] }
+  | { type: "weekly"; times: string[]; daysOfWeek: number[] }
+
 export interface LoopConfig {
   id: string               // unique identifier (uuid)
   name: string             // display name
   prompt: string           // the prompt text sent to the agent
-  intervalMinutes: number  // how often to run (in minutes)
+  intervalMinutes: number  // fallback fixed interval when `schedule` is not set
   enabled: boolean         // whether this loop is active
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
+  schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }
 
 export type Config = {

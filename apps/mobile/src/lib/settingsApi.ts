@@ -29,6 +29,7 @@ export type {
   AgentProfileUpdateRequest,
   Loop,
   LoopsResponse,
+  LoopSchedule,
   OperatorRemoteServerStatus,
   OperatorTunnelStatus,
   OperatorHealthCheck,
@@ -207,6 +208,7 @@ export interface LoopCreateRequest {
   intervalMinutes: number;
   enabled: boolean;
   profileId?: string;
+  schedule?: LoopSchedule | null;
 }
 
 export interface LoopUpdateRequest {
@@ -215,6 +217,7 @@ export interface LoopUpdateRequest {
   intervalMinutes?: number;
   enabled?: boolean;
   profileId?: string;
+  schedule?: LoopSchedule | null;
 }
 
 export interface EmergencyStopResponse {

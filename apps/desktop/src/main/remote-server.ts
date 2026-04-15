@@ -4676,6 +4676,59 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   }
 
+  const LOOP_TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+  type ParseScheduleResult = {
+    ok: boolean
+    schedule?: LoopConfig["schedule"] | null
+    error?: string
+  }
+
+  /**
+   * Parse/validate a `schedule` field from a request body. Returns:
+   *   - ok: true with schedule undefined   → omit schedule
+   *   - ok: true with schedule null        → explicitly clear an existing schedule
+   *   - ok: true with a concrete schedule
+   *   - ok: false with error               → send 400
+   */
+  function parseScheduleInput(raw: unknown): ParseScheduleResult {
+    if (raw === undefined) return { ok: true, schedule: undefined }
+    if (raw === null) return { ok: true, schedule: null }
+    if (typeof raw !== "object") return { ok: false, error: "schedule must be an object, null, or omitted" }
+    const obj = raw as Record<string, unknown>
+    if (obj.type !== "daily" && obj.type !== "weekly") {
+      return { ok: false, error: "schedule.type must be 'daily' or 'weekly'" }
+    }
+    if (!Array.isArray(obj.times) || obj.times.length === 0) {
+      return { ok: false, error: "schedule.times must be a non-empty array" }
+    }
+    const times: string[] = []
+    for (const t of obj.times) {
+      if (typeof t !== "string" || !LOOP_TIME_RE.test(t.trim())) {
+        return { ok: false, error: "schedule.times must all be HH:MM (24h) strings" }
+      }
+      const trimmed = t.trim()
+      if (!times.includes(trimmed)) times.push(trimmed)
+    }
+    times.sort()
+    if (obj.type === "daily") {
+      return { ok: true, schedule: { type: "daily", times } }
+    }
+    if (!Array.isArray(obj.daysOfWeek) || obj.daysOfWeek.length === 0) {
+      return { ok: false, error: "schedule.daysOfWeek must be a non-empty array for weekly schedules" }
+    }
+    const daysOfWeek: number[] = []
+    for (const d of obj.daysOfWeek) {
+      const n = typeof d === "number" ? d : Number(d)
+      if (!Number.isInteger(n) || n < 0 || n > 6) {
+        return { ok: false, error: "schedule.daysOfWeek values must be integers 0..6 (Sun..Sat)" }
+      }
+      if (!daysOfWeek.includes(n)) daysOfWeek.push(n)
+    }
+    daysOfWeek.sort((a, b) => a - b)
+    return { ok: true, schedule: { type: "weekly", times, daysOfWeek } }
+  }
+
   const formatLoopResponse = async (loop: LoopConfig) => {
     const status = (await loadLoopService())?.getLoopStatus(loop.id)
 
@@ -4691,6 +4744,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
+      schedule: loop.schedule,
     }
   }
 
@@ -4718,6 +4772,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
+            schedule: l.schedule,
           }
         }),
       })
@@ -4946,6 +5001,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        schedule?: unknown
       }
 
       const name = typeof body.name === "string" ? body.name.trim() : ""
@@ -4972,18 +5028,25 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
+      const scheduleResult = parseScheduleInput(body.schedule)
+      if (!scheduleResult.ok) {
+        return reply.code(400).send({ error: scheduleResult.error })
+      }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
-      const newLoop = {
+      const newLoop: LoopConfig = {
         id,
         name,
         prompt,
         intervalMinutes,
         enabled,
         profileId: profileId || undefined,
+        ...(scheduleResult.schedule && scheduleResult.schedule !== null
+          ? { schedule: scheduleResult.schedule }
+          : {}),
       }
 
       const loopService = await loadLoopService()
@@ -5019,6 +5082,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        schedule?: unknown
       }
 
       const loopService = await loadLoopService()
@@ -5063,6 +5127,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
+      const scheduleResult = parseScheduleInput(body.schedule)
+      if (!scheduleResult.ok) {
+        return reply.code(400).send({ error: scheduleResult.error })
+      }
 
       const name = typeof body.name === "string" ? body.name.trim() : undefined
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : undefined
@@ -5072,13 +5140,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
-      const updated = {
+      const updated: LoopConfig = {
         ...existing,
         ...(name !== undefined && { name }),
         ...(prompt !== undefined && { prompt }),
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
+      }
+      if (scheduleResult.schedule === null) {
+        delete updated.schedule
+      } else if (scheduleResult.schedule !== undefined) {
+        updated.schedule = scheduleResult.schedule
       }
 
       if (loopService) {

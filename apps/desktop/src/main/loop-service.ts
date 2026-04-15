@@ -34,6 +34,7 @@ export interface LoopStatus {
   lastRunAt?: number
   nextRunAt?: number
   intervalMinutes: number
+  schedule?: LoopConfig["schedule"]
 }
 
 class LoopService {
@@ -231,7 +232,7 @@ class LoopService {
 
     this.clearScheduledTimer(loopId)
 
-    logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), interval: ${loop.intervalMinutes}m`)
+    logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), ${describeLoopSchedule(loop)}`)
 
     if (loop.runOnStartup) {
       logApp(`[LoopService] Loop "${loop.name}" has runOnStartup=true, triggering immediately`)
@@ -239,7 +240,7 @@ class LoopService {
         void this.executeLoop(loopId, { rescheduleAfterRun: true })
       })
     } else {
-      this.scheduleNextRun(loopId, this.getIntervalMs(loop))
+      this.scheduleNextRun(loopId, this.getNextDelayMs(loop))
     }
 
     return true
@@ -286,6 +287,7 @@ class LoopService {
       lastRunAt: loop.lastRunAt,
       nextRunAt: this.loopNextRunAt.get(loop.id),
       intervalMinutes: loop.intervalMinutes,
+      schedule: loop.schedule,
     }))
   }
 
@@ -303,6 +305,7 @@ class LoopService {
       lastRunAt: loop.lastRunAt,
       nextRunAt: this.loopNextRunAt.get(loop.id),
       intervalMinutes: loop.intervalMinutes,
+      schedule: loop.schedule,
     }
   }
 
@@ -359,7 +362,7 @@ class LoopService {
       if (options.rescheduleAfterRun && !this.isStopping) {
         const latestLoop = this.getLoop(loopId)
         if (latestLoop?.enabled) {
-          this.scheduleNextRun(loopId, this.getIntervalMs(latestLoop))
+          this.scheduleNextRun(loopId, this.getNextDelayMs(latestLoop))
         }
       }
     }
@@ -387,6 +390,17 @@ class LoopService {
     this.loopNextRunAt.delete(loopId)
   }
 
+  private getNextDelayMs(loop: LoopConfig, now: number = Date.now()): number {
+    if (loop.schedule) {
+      const nextRun = computeNextScheduledRun(loop.schedule, now)
+      if (nextRun !== null) {
+        return Math.max(1000, nextRun - now)
+      }
+      logApp(`[LoopService] Loop ${loop.id} has invalid schedule; falling back to interval`)
+    }
+    return this.getIntervalMs(loop)
+  }
+
   private getIntervalMs(loop: LoopConfig): number {
     const safeMinutes = Number.isFinite(loop.intervalMinutes) && loop.intervalMinutes >= 1
       ? Math.floor(loop.intervalMinutes)
@@ -401,6 +415,62 @@ class LoopService {
 }
 
 export const loopService = LoopService.getInstance()
+
+// ============================================================================
+// Schedule helpers
+// ============================================================================
+
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+function parseTimeToHM(time: string): { h: number; m: number } | null {
+  if (!TIME_RE.test(time)) return null
+  const [h, m] = time.split(":").map(Number)
+  return { h, m }
+}
+
+/**
+ * Compute the next scheduled run timestamp (ms since epoch) strictly after `now`,
+ * interpreting all times in the machine's local timezone. Returns null if the
+ * schedule is malformed (no valid times, or weekly with no valid days).
+ */
+export function computeNextScheduledRun(
+  schedule: NonNullable<LoopConfig["schedule"]>,
+  now: number,
+): number | null {
+  const hmList: Array<{ h: number; m: number }> = []
+  for (const t of schedule.times) {
+    const hm = parseTimeToHM(t)
+    if (hm) hmList.push(hm)
+  }
+  if (hmList.length === 0) return null
+
+  const allowedDays = schedule.type === "weekly"
+    ? new Set(schedule.daysOfWeek.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))
+    : null
+  if (allowedDays && allowedDays.size === 0) return null
+
+  // Scan up to 8 days ahead (covers a full week plus today).
+  const base = new Date(now)
+  for (let offset = 0; offset < 8; offset++) {
+    const day = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset)
+    if (allowedDays && !allowedDays.has(day.getDay())) continue
+    for (const { h, m } of hmList) {
+      const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0, 0).getTime()
+      if (candidate > now) return candidate
+    }
+  }
+  return null
+}
+
+function describeLoopSchedule(loop: LoopConfig): string {
+  if (!loop.schedule) return `interval: ${loop.intervalMinutes}m`
+  const s = loop.schedule
+  const times = s.times.join(", ")
+  if (s.type === "daily") return `schedule: daily at ${times}`
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const days = s.daysOfWeek.map((d) => dayNames[d] ?? String(d)).join(",")
+  return `schedule: weekly ${days} at ${times}`
+}
 
 function notifyLoopsFolderChanged(): void {
   const windows = [WINDOWS.get("main"), WINDOWS.get("panel")]

@@ -11,8 +11,10 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig } from "@shared/types"
+import { LoopConfig, LoopSchedule } from "@shared/types"
 import { toast } from "sonner"
+
+type ScheduleMode = "interval" | "daily" | "weekly"
 
 interface EditingLoop {
   id?: string
@@ -21,7 +23,12 @@ interface EditingLoop {
   intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
+  scheduleMode: ScheduleMode
+  scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
+  scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
 }
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 interface LoopRuntimeStatus {
   id: string
@@ -36,6 +43,27 @@ const emptyLoop: EditingLoop = {
   intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
+  scheduleMode: "interval",
+  scheduleTimes: ["09:00"],
+  scheduleDaysOfWeek: [1, 2, 3, 4, 5],
+}
+
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+function sanitizeScheduleTimes(times: string[]): string[] {
+  const out: string[] = []
+  for (const t of times) {
+    const trimmed = t.trim()
+    if (TIME_RE.test(trimmed) && !out.includes(trimmed)) out.push(trimmed)
+  }
+  return out.sort()
+}
+
+function describeSchedule(schedule: LoopSchedule): string {
+  const times = schedule.times.join(", ")
+  if (schedule.type === "daily") return `Daily at ${times}`
+  const days = schedule.daysOfWeek.map((d) => DAY_LABELS[d] ?? String(d)).join(", ")
+  return `${days} at ${times}`
 }
 
 const INTERVAL_PRESETS = [
@@ -129,6 +157,11 @@ export function SettingsLoops() {
 
   const handleEdit = (loop: LoopConfig) => {
     setIsCreating(false)
+    const scheduleMode: ScheduleMode = loop.schedule?.type ?? "interval"
+    const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ["09:00"]
+    const scheduleDaysOfWeek = loop.schedule?.type === "weekly"
+      ? [...loop.schedule.daysOfWeek]
+      : [1, 2, 3, 4, 5]
     setEditing({
       id: loop.id,
       name: loop.name,
@@ -136,6 +169,9 @@ export function SettingsLoops() {
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
+      scheduleMode,
+      scheduleTimes,
+      scheduleDaysOfWeek,
     })
   }
 
@@ -163,6 +199,24 @@ export function SettingsLoops() {
       return
     }
 
+    let schedule: LoopSchedule | undefined
+    if (editing.scheduleMode !== "interval") {
+      const times = sanitizeScheduleTimes(editing.scheduleTimes)
+      if (times.length === 0) {
+        toast.error("Add at least one time (HH:MM)")
+        return
+      }
+      if (editing.scheduleMode === "weekly") {
+        if (editing.scheduleDaysOfWeek.length === 0) {
+          toast.error("Select at least one day of the week")
+          return
+        }
+        schedule = { type: "weekly", times, daysOfWeek: [...editing.scheduleDaysOfWeek].sort() }
+      } else {
+        schedule = { type: "daily", times }
+      }
+    }
+
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
@@ -171,6 +225,7 @@ export function SettingsLoops() {
       intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
+      ...(schedule ? { schedule } : {}),
     }
 
     try {
@@ -312,7 +367,7 @@ export function SettingsLoops() {
             <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
-                Every {formatInterval(loop.intervalMinutes)}
+                {loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
               {typeof nextRunAt === "number" && (
@@ -345,7 +400,7 @@ export function SettingsLoops() {
       <Card className="max-w-3xl">
         <CardHeader className="space-y-1 pb-2">
           <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
-          <CardDescription>Set the prompt, interval, and startup behavior.</CardDescription>
+          <CardDescription>Set the prompt, schedule, and startup behavior.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -368,32 +423,124 @@ export function SettingsLoops() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="interval">Interval</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                id="interval"
-                type="number"
-                min={1}
-                value={editing.intervalMinutesDraft}
-                onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
-                className="h-8 w-20"
-              />
-              <span className="self-center text-xs text-muted-foreground">minutes</span>
-            </div>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {INTERVAL_PRESETS.map((preset) => (
+            <Label>Schedule</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { mode: "interval", label: "Interval" },
+                { mode: "daily", label: "Daily" },
+                { mode: "weekly", label: "Weekly" },
+              ] as const).map(({ mode, label }) => (
                 <Button
-                  key={preset.value}
-                  variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                  key={mode}
+                  variant={editing.scheduleMode === mode ? "secondary" : "ghost"}
                   size="sm"
                   className="h-7 px-2 text-xs"
-                  onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                  onClick={() => setEditing({ ...editing, scheduleMode: mode })}
                 >
-                  {preset.label}
+                  {label}
                 </Button>
               ))}
             </div>
           </div>
+          {editing.scheduleMode === "interval" && (
+            <div className="space-y-2">
+              <Label htmlFor="interval">Every</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="interval"
+                  type="number"
+                  min={1}
+                  value={editing.intervalMinutesDraft}
+                  onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
+                  className="h-8 w-20"
+                />
+                <span className="self-center text-xs text-muted-foreground">minutes</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {INTERVAL_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {editing.scheduleMode !== "interval" && (
+            <div className="space-y-2">
+              <Label>Time(s)</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {editing.scheduleTimes.map((time, idx) => (
+                  <div key={idx} className="flex items-center gap-1">
+                    <Input
+                      type="time"
+                      value={time}
+                      onChange={(e) => {
+                        const next = [...editing.scheduleTimes]
+                        next[idx] = e.target.value
+                        setEditing({ ...editing, scheduleTimes: next })
+                      }}
+                      className="h-8 w-28"
+                    />
+                    {editing.scheduleTimes.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Remove time"
+                        onClick={() => {
+                          const next = editing.scheduleTimes.filter((_, i) => i !== idx)
+                          setEditing({ ...editing, scheduleTimes: next })
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
+                  onClick={() => setEditing({ ...editing, scheduleTimes: [...editing.scheduleTimes, "09:00"] })}
+                >
+                  <Plus className="h-3.5 w-3.5" />Add time
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Local time, 24-hour format.</p>
+            </div>
+          )}
+          {editing.scheduleMode === "weekly" && (
+            <div className="space-y-2">
+              <Label>Days of week</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {DAY_LABELS.map((label, dayIdx) => {
+                  const active = editing.scheduleDaysOfWeek.includes(dayIdx)
+                  return (
+                    <Button
+                      key={dayIdx}
+                      variant={active ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const next = active
+                          ? editing.scheduleDaysOfWeek.filter((d) => d !== dayIdx)
+                          : [...editing.scheduleDaysOfWeek, dayIdx].sort()
+                        setEditing({ ...editing, scheduleDaysOfWeek: next })
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center space-x-2">
               <Switch

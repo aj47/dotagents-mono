@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import type { LoopConfig } from "../types"
+import type { LoopConfig, LoopSchedule } from "../types"
 import type { AgentsLayerPaths } from "./modular-config"
 import { AGENTS_TASKS_DIR } from "./modular-config"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
@@ -40,6 +40,61 @@ function parseNumber(raw: string | undefined, defaultValue: number): number {
   return Number.isFinite(n) ? n : defaultValue
 }
 
+// ---- Schedule (de)serialization ---------------------------------------------
+
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+function normalizeTimes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const v of raw) {
+    if (typeof v === "string" && TIME_RE.test(v.trim())) {
+      out.push(v.trim())
+    }
+  }
+  return out
+}
+
+function normalizeDays(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return []
+  const out: number[] = []
+  for (const v of raw) {
+    const n = typeof v === "number" ? v : Number(v)
+    if (Number.isInteger(n) && n >= 0 && n <= 6 && !out.includes(n)) {
+      out.push(n)
+    }
+  }
+  return out.sort((a, b) => a - b)
+}
+
+function parseSchedule(raw: string | undefined): LoopSchedule | undefined {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    return undefined
+  }
+  if (!parsed || typeof parsed !== "object") return undefined
+  const obj = parsed as Record<string, unknown>
+  const times = normalizeTimes(obj.times)
+  if (times.length === 0) return undefined
+  if (obj.type === "daily") {
+    return { type: "daily", times }
+  }
+  if (obj.type === "weekly") {
+    const daysOfWeek = normalizeDays(obj.daysOfWeek)
+    if (daysOfWeek.length === 0) return undefined
+    return { type: "weekly", times, daysOfWeek }
+  }
+  return undefined
+}
+
+function stringifySchedule(schedule: LoopSchedule): string {
+  return JSON.stringify(schedule)
+}
+
 // ============================================================================
 // Path helpers
 // ============================================================================
@@ -76,6 +131,7 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
   if (task.profileId) frontmatter.profileId = task.profileId
   if (task.runOnStartup) frontmatter.runOnStartup = "true"
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
+  if (task.schedule) frontmatter.schedule = stringifySchedule(task.schedule)
 
   return stringifyFrontmatterDocument({ frontmatter, body: task.prompt || "" })
 }
@@ -97,6 +153,8 @@ export function parseTaskMarkdown(
   const name = (fm.name ?? "").trim() || id
   const intervalMinutes = parseNumber(fm.intervalMinutes, 60)
 
+  const schedule = parseSchedule(fm.schedule)
+
   return {
     id,
     name,
@@ -106,6 +164,7 @@ export function parseTaskMarkdown(
     profileId: (fm.profileId ?? "").trim() || undefined,
     runOnStartup: parseBoolean(fm.runOnStartup, false) || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
+    schedule,
   }
 }
 

@@ -714,6 +714,10 @@ export interface AgentProfileUpdateRequest {
 }
 
 // Agent Loops Types
+export type LoopSchedule =
+  | { type: "daily"; times: string[] }
+  | { type: "weekly"; times: string[]; daysOfWeek: number[] };
+
 export interface Loop {
   id: string;
   name: string;
@@ -726,6 +730,7 @@ export interface Loop {
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;
+  schedule?: LoopSchedule;
 }
 
 export interface LoopsResponse {

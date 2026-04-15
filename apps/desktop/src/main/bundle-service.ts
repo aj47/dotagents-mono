@@ -109,6 +109,7 @@ export interface BundleRepeatTask {
   intervalMinutes: number
   enabled: boolean
   runOnStartup?: boolean
+  schedule?: LoopConfig["schedule"]
   // profileId omitted — the profile may not exist in the target environment
 }
 
@@ -668,6 +669,7 @@ function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemS
       intervalMinutes: task.intervalMinutes,
       enabled: task.enabled,
       runOnStartup: task.runOnStartup,
+      schedule: task.schedule,
       // profileId intentionally omitted — may not exist in target environment
     }))
 }
@@ -1123,6 +1125,21 @@ function isBundleSkill(value: unknown): value is BundleSkill {
   return isOptionalString(value.instructions)
 }
 
+function isBundleRepeatTaskSchedule(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!isRecordObject(value)) return false
+  if (value.type !== "daily" && value.type !== "weekly") return false
+  if (!Array.isArray(value.times) || value.times.length === 0) return false
+  if (!value.times.every((t) => typeof t === "string")) return false
+  if (value.type === "weekly") {
+    if (!Array.isArray(value.daysOfWeek) || value.daysOfWeek.length === 0) return false
+    if (!value.daysOfWeek.every((d) => typeof d === "number" && Number.isInteger(d) && d >= 0 && d <= 6)) {
+      return false
+    }
+  }
+  return true
+}
+
 function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (!isRecordObject(value)) return false
   if (!isNonEmptyString(value.id)) return false
@@ -1130,7 +1147,8 @@ function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (typeof value.prompt !== "string") return false
   if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
   if (typeof value.enabled !== "boolean") return false
-  return value.runOnStartup === undefined || typeof value.runOnStartup === "boolean"
+  if (value.runOnStartup !== undefined && typeof value.runOnStartup !== "boolean") return false
+  return isBundleRepeatTaskSchedule(value.schedule)
 }
 
 function isBundleKnowledgeNote(value: unknown): value is BundleKnowledgeNote {
@@ -1626,6 +1644,7 @@ export async function importBundle(
           intervalMinutes: bundleTask.intervalMinutes,
           enabled: bundleTask.enabled,
           runOnStartup: bundleTask.runOnStartup,
+          ...(bundleTask.schedule ? { schedule: bundleTask.schedule } : {}),
           // profileId intentionally not imported — may not exist in target
         }
 
