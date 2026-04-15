@@ -1070,11 +1070,19 @@ const toolHandlers: Record<string, ToolHandler> = {
           tail
       }
 
-      // Detect shell escaping issues and add guidance
+      // Detect shell-command construction issues and add guidance
+      const hasPrintfLeadingDashIssue = /printf:\s+--:\s+invalid option/i.test(stderr + errorMessage)
       const hasShellEscapingIssue = /unexpected (EOF|end of file)|unterminated (string|quote)|syntax error near/i.test(stderr + errorMessage);
-      const hint = hasShellEscapingIssue
-        ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
-        : '';
+      const hint = hasPrintfLeadingDashIssue
+        ? "\n\nHINT: In bash, bare printf strings that start with '-' are parsed like options. Use echo '--- LABEL ---', printf -- '--- LABEL ---\\n', or printf '%s\\n' '--- LABEL ---' instead."
+        : hasShellEscapingIssue
+          ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
+          : '';
+      const retrySuggestion = hasPrintfLeadingDashIssue
+        ? "Retry with echo '--- LABEL ---', printf -- '--- LABEL ---\\n', or printf '%s\\n' '--- LABEL ---'."
+        : hasShellEscapingIssue
+          ? "Retry by writing the content to a file first, or simplify the shell quoting."
+          : undefined;
 
       return {
         content: [
@@ -1092,6 +1100,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               exitCode,
               stdout,
               stderr,
+              ...(retrySuggestion ? { retrySuggestion } : {}),
             }, null, 2),
           },
         ],

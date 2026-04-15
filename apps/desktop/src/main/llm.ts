@@ -223,6 +223,36 @@ function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, res
     || (errorText.includes("skill not found") && errorText.includes("omit skillid"))
 }
 
+function isExecuteCommandPrintfOptionFailure(toolName: string | undefined, result: MCPToolResult): boolean {
+  if (toolName !== "execute_command" || !result.isError) return false
+
+  const errorText = result.content
+    .map((content) => content.text)
+    .join(" ")
+    .toLowerCase()
+
+  return errorText.includes("printf: --: invalid option")
+}
+
+function getExecuteCommandFailureSignature(toolCall: MCPToolCall | undefined): string | undefined {
+  if (!toolCall || toolCall.name !== "execute_command") return undefined
+
+  const args = toolCall.arguments
+  if (!args || typeof args !== "object" || Array.isArray(args)) return undefined
+
+  const command = (args as Record<string, unknown>).command
+  if (typeof command !== "string") return undefined
+
+  const normalized = command.trim().replace(/\s+/g, " ")
+  return normalized ? normalized.slice(0, 240) : undefined
+}
+
+function getToolFailureKey(toolCall: MCPToolCall | undefined): string {
+  const toolName = toolCall?.name || "unknown"
+  const executeCommandSignature = getExecuteCommandFailureSignature(toolCall)
+  return executeCommandSignature ? `${toolName}::${executeCommandSignature}` : toolName
+}
+
 export async function postProcessTranscript(transcript: string) {
   const config = configStore.get()
 
@@ -1598,11 +1628,9 @@ export async function processTranscriptWithAgentMode(
   // research run with many legitimate "not done yet" verifier verdicts safe,
   // because every successful tool call breaks the failure streak.
   let verificationFailCount = 0
-  // Track *consecutive* failures per tool name. The counter resets to 0 the
-  // next time that specific tool succeeds, so a tool that fails twice while the
-  // agent iterates on its arguments and then succeeds is fully reinstated. This
-  // is critical for experiment-style flows where the agent legitimately needs
-  // to retry the same tool with progressively refined inputs.
+  // Track *consecutive* failures per tool. For execute_command we scope the
+  // counter to the command signature so unrelated shell mistakes do not all
+  // look like repeated retries of the same failing command.
   const toolFailureCount = new Map<string, number>()
   const MAX_TOOL_FAILURES = 3 // Max consecutive failures of a tool before excluding it
   let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
@@ -1615,6 +1643,7 @@ export async function processTranscriptWithAgentMode(
     // Filter out tools that have failed too many times - compute at start of iteration
     // so the same filtered list is used consistently throughout (LLM call + heuristics)
     const activeTools = baseAvailableTools.filter((tool) => {
+      if (tool.name === "execute_command") return true
       const failures = toolFailureCount.get(tool.name) || 0
       return failures < MAX_TOOL_FAILURES
     })
@@ -2368,7 +2397,7 @@ export async function processTranscriptWithAgentMode(
 
     // Execute tool calls with enhanced error handling
     const toolResults: MCPToolResult[] = []
-    const failedTools: string[] = []
+    const failedTools: Array<{ toolCall: MCPToolCall; result: MCPToolResult }> = []
 
     // Add assistant response with tool calls to conversation history BEFORE executing tools
     // This ensures the tool call request is visible immediately in the UI
@@ -2495,11 +2524,11 @@ export async function processTranscriptWithAgentMode(
         toolsExecutedInSession = true
         garbledToolCallCount = 0 // Reset on successful tool execution
         if (execResult.result.isError) {
-          failedTools.push(execResult.toolCall.name)
+          failedTools.push({ toolCall: execResult.toolCall, result: execResult.result })
         } else {
           // Reset the consecutive-failure counter for this specific tool on
           // success so the agent gets a fresh budget after recovering.
-          toolFailureCount.delete(execResult.toolCall.name)
+          toolFailureCount.delete(getToolFailureKey(execResult.toolCall))
         }
       }
 
@@ -2597,7 +2626,9 @@ export async function processTranscriptWithAgentMode(
 
         // Track failed tools for better error reporting
         if (execResult.result.isError) {
-          failedTools.push(toolCall.name)
+          failedTools.push({ toolCall, result: execResult.result })
+        } else {
+          toolFailureCount.delete(getToolFailureKey(toolCall))
         }
 
         // Update tool call step with result
@@ -2731,18 +2762,29 @@ export async function processTranscriptWithAgentMode(
           "For execute_command, omit skillId unless you are using an exact skill id from Available Skills. Do not use repo names, file paths, URLs, or GitHub slugs as skillId. Retry the same command without skillId unless you explicitly need a skill directory."
         )
       }
+      const hasExecuteCommandPrintfOptionError = toolResults.some((result, index) =>
+        isExecuteCommandPrintfOptionFailure(toolCallsArray[index]?.name, result)
+      )
+      if (hasExecuteCommandPrintfOptionError) {
+        addEphemeralMessage(
+          "user",
+          "For execute_command under bash, do not use bare printf strings that start with '-'. Use echo '--- LABEL ---', printf -- '--- LABEL ---\\n', or printf '%s\\n' '--- LABEL ---' instead."
+        )
+      }
 
       // Track per-tool failures
       for (let i = 0; i < toolResults.length; i++) {
         const result = toolResults[i]
         if (result.isError) {
           // Get the tool name from toolCallsArray by index
-          const toolName = toolCallsArray[i]?.name || "unknown"
-          const currentCount = toolFailureCount.get(toolName) || 0
-          toolFailureCount.set(toolName, currentCount + 1)
+          const toolCall = toolCallsArray[i]
+          const toolName = toolCall?.name || "unknown"
+          const failureKey = getToolFailureKey(toolCall)
+          const currentCount = toolFailureCount.get(failureKey) || 0
+          toolFailureCount.set(failureKey, currentCount + 1)
 
           if (currentCount + 1 >= MAX_TOOL_FAILURES) {
-            logLLM(`⚠️ Tool "${toolName}" has failed ${MAX_TOOL_FAILURES} times - will be excluded`)
+            logLLM(`⚠️ Tool "${toolName}" has failed ${MAX_TOOL_FAILURES} times for the current failure signature`)
           }
         }
       }
@@ -2782,11 +2824,11 @@ export async function processTranscriptWithAgentMode(
 
       // Add clean error summary to conversation history for LLM context
       const errorSummary = failedTools
-        .map((toolName, idx) => {
-          const failedResult = toolResults.filter((r) => r.isError)[idx]
-          const rawError = failedResult?.content.map((c) => c.text).join(" ") || "Unknown error"
+        .map(({ toolCall, result }) => {
+          const toolName = toolCall.name
+          const rawError = result.content.map((c) => c.text).join(" ") || "Unknown error"
           const cleanedError = cleanErrorMessage(rawError)
-          const failureCount = toolFailureCount.get(toolName) || 1
+          const failureCount = toolFailureCount.get(getToolFailureKey(toolCall)) || 1
           return `TOOL FAILED: ${toolName} (attempt ${failureCount}/${MAX_TOOL_FAILURES})\nError: ${cleanedError}`
         })
         .join("\n\n")

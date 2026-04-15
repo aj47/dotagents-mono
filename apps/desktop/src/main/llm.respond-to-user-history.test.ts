@@ -118,6 +118,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-resume",
       "session-resume-followup",
       "session-command",
+      "session-printf-failure",
       "session-tool-error",
       "session-blank-response",
       "session-review-loop",
@@ -402,6 +403,68 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
     expect(secondPrompt).toContain("Retry the same command without skillId")
     expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
+  })
+
+  it("keeps execute_command failure attempts scoped to the command signature", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          { name: "execute_command", arguments: { command: "printf '--- ROOT ---\\n'" } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          { name: "execute_command", arguments: { command: "printf '--- PACKAGE ---\\n'" } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          { name: "respond_to_user", arguments: { text: "Switched to safer shell labels." } },
+          { name: "mark_work_complete", arguments: { summary: "Recovered from shell label errors" } },
+        ],
+      })
+
+    await processTranscriptWithAgentMode(
+      "Inspect the repo",
+      availableTools as any,
+      makeExecuteToolCall("session-printf-failure", 1, {
+        execute_command: (toolCall: any) => ({
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: false,
+              command: toolCall.arguments.command,
+              error: "printf: --: invalid option",
+              retrySuggestion: "Retry with echo '--- LABEL ---', printf -- '--- LABEL ---\\n', or printf '%s\\n' '--- LABEL ---'.",
+            }, null, 2),
+          }],
+          isError: true,
+        }),
+      }),
+      5,
+      [],
+      "conv-printf-failure",
+      "session-printf-failure",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain("bare printf strings that start with '-'")
+
+    const thirdPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(thirdPrompt).toContain("TOOL FAILED: execute_command (attempt 1/3)")
+    expect(thirdPrompt).not.toContain("TOOL FAILED: execute_command (attempt 2/3)")
   })
 
   it("routes failed communication-only tool batches through error recovery before retrying", async () => {

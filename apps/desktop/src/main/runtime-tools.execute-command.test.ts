@@ -185,5 +185,18 @@ describe("runtime-tools execute_command", () => {
     }))
     expect(payload.error).toContain("planning/context question")
   })
-})
 
+  it("adds a targeted hint for bash printf labels that start with dashes", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("execute_command", {
+      command: "printf '--- ROOT ---\\n'",
+    })
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload.error).toContain("printf: --: invalid option")
+    expect(payload.error).toContain("Use echo '--- LABEL ---'")
+    expect(payload.retrySuggestion).toContain("printf -- '--- LABEL ---\\n'")
+    expect(payload.retrySuggestion).toContain("printf '%s\\n' '--- LABEL ---'")
+  })
+})
