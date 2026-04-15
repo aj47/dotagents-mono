@@ -101,13 +101,61 @@ describe('createDelegationProgressMessages', () => {
 
     const messages = createDelegationProgressMessages(steps);
     expect(messages).toHaveLength(1);
-    expect(messages[0].content).toBe('Delegated to Worker · Running');
+    expect(messages[0].content).toContain('Delegated to Worker · Running');
+    expect(messages[0].content).toContain('Tool result: {"ok":true}');
     expect(messages[0].toolCalls).toEqual([
       { name: 'read_file', arguments: { path: 'README.md' } },
-      { name: 'read_file', arguments: {} },
     ]);
     expect(messages[0].toolResults).toEqual([
-      { success: true, content: 'Using tool: read_file\nInput: {"path":"README.md"}' },
+      { success: true, content: '{"ok":true}' },
+    ]);
+  });
+
+  it('normalizes structured and legacy delegated tool metadata into one renderable stream', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-mixed',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 500,
+        delegation: {
+          runId: 'run-mixed',
+          agentName: 'Worker',
+          task: 'Investigate issue',
+          status: 'running',
+          startTime: 500,
+          conversation: [
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [{ name: 'rg', arguments: { pattern: 'subagent' } }],
+              toolResults: [{ success: true, content: '1 hit' }],
+              timestamp: 501,
+            },
+            {
+              role: 'tool',
+              content: 'Using tool: read_file\nInput: {"path":"README.md"}',
+              timestamp: 502,
+            },
+            {
+              role: 'tool',
+              content: 'Tool result: {"ok":true}',
+              timestamp: 503,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].toolCalls).toEqual([
+      { name: 'rg', arguments: { pattern: 'subagent' } },
+      { name: 'read_file', arguments: { path: 'README.md' } },
+    ]);
+    expect(messages[0].toolResults).toEqual([
+      { success: true, content: '1 hit' },
       { success: true, content: '{"ok":true}' },
     ]);
   });

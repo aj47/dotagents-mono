@@ -1740,12 +1740,87 @@ function normalizeSubAgentToolArguments(toolInput: unknown): Record<string, unkn
   return { input: toolInput }
 }
 
+function parseDelegatedToolInput(rawInput?: string): unknown {
+  if (!rawInput) return undefined
+  const trimmed = rawInput.trim()
+  if (!trimmed) return undefined
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return trimmed
+  }
+}
+
+function parseDelegatedToolUseMessage(
+  message: ACPSubAgentMessage,
+): { toolName?: string; toolInput?: unknown } | null {
+  const content = (message.content ?? "").trim()
+  if (!/^using tool:/i.test(content)) {
+    return null
+  }
+
+  const nameMatch = content.match(/^using tool:\s*([^\n]+)/i)
+  const inputMatch = content.match(/\ninput:\s*([\s\S]*)$/i)
+
+  return {
+    toolName: message.toolName || nameMatch?.[1]?.trim() || undefined,
+    toolInput: message.toolInput ?? parseDelegatedToolInput(inputMatch?.[1]),
+  }
+}
+
 function isDelegatedToolUseMessage(message: ACPSubAgentMessage): boolean {
-  return message.role === "tool" && !!message.toolName && /^using tool:/i.test((message.content ?? "").trim())
+  return parseDelegatedToolUseMessage(message) !== null
 }
 
 function isDelegatedToolResultMessage(message: ACPSubAgentMessage): boolean {
-  return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())
+  return /^tool result:/i.test((message.content ?? "").trim())
+}
+
+function toCompactToolResult(result: { success: boolean; content: string; error?: string }): CompactToolExecutionResult {
+  return {
+    success: result.success,
+    content: result.content,
+    error: result.error,
+  }
+}
+
+function buildStructuredSubAgentToolExecution(message: ACPSubAgentMessage): SubAgentToolExecutionData | null {
+  const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+  const toolResults = Array.isArray(message.toolResults) ? message.toolResults : []
+  if (toolCalls.length === 0 && toolResults.length === 0) {
+    return null
+  }
+
+  const maxEntries = Math.max(toolCalls.length, toolResults.length)
+  const calls: CompactToolExecutionCall[] = []
+  const results: CompactToolExecutionResult[] = []
+
+  for (let index = 0; index < maxEntries; index += 1) {
+    const call = toolCalls[index]
+    const result = toolResults[index]
+
+    calls.push({
+      name: call?.name?.trim() || "tool_call",
+      arguments: normalizeSubAgentToolArguments(call?.arguments),
+    })
+
+    if (!result) {
+      results.push(undefined)
+      continue
+    }
+
+    results.push(toCompactToolResult({
+      success: result.success !== false,
+      content: result.content || "Tool completed",
+      error: result.error,
+    }))
+  }
+
+  return {
+    timestamp: message.timestamp,
+    calls,
+    results,
+  }
 }
 
 function buildDelegatedToolExecution(
@@ -1753,33 +1828,35 @@ function buildDelegatedToolExecution(
   delegationStatus: ACPDelegationProgress["status"],
   resultMessage?: ACPSubAgentMessage,
 ): SubAgentToolExecutionData {
+  const parsedUseMessage = parseDelegatedToolUseMessage(message)
   const parsedMessage = extractSubAgentToolDisplayContent(message.content ?? "")
   const parsedResult = resultMessage ? extractSubAgentToolDisplayContent(resultMessage.content ?? "") : null
-  const toolName = message.toolName || parsedMessage.toolName || parsedResult?.toolName || "Tool"
-  const isToolUseMessage = isDelegatedToolUseMessage(message)
+  const toolName = parsedUseMessage?.toolName || parsedMessage.toolName || parsedResult?.toolName || "Tool"
+  const toolInput = parsedUseMessage?.toolInput ?? message.toolInput
+  const isToolUseMessage = !!parsedUseMessage
   const isDelegationActive = isDelegationActiveStatus(delegationStatus)
   const isPending = isToolUseMessage && !resultMessage && isDelegationActive
 
   let result: CompactToolExecutionResult
   if (resultMessage) {
-    result = { success: true, content: parsedResult?.summary || "Tool completed" }
+    result = toCompactToolResult({ success: true, content: parsedResult?.summary || "Tool completed" })
   } else if (!isToolUseMessage) {
-    result = { success: true, content: parsedMessage.summary || "Tool completed" }
+    result = toCompactToolResult({ success: true, content: parsedMessage.summary || "Tool completed" })
   } else if (!isDelegationActive) {
     if (delegationStatus === "failed") {
-      result = {
+      result = toCompactToolResult({
         success: false,
         content: "",
         error: "Delegation failed before a tool result was captured.",
-      }
+      })
     } else if (delegationStatus === "cancelled") {
-      result = {
+      result = toCompactToolResult({
         success: false,
         content: "",
         error: "Delegation was cancelled before a tool result was captured.",
-      }
+      })
     } else {
-      result = { success: true, content: "Tool completed" }
+      result = toCompactToolResult({ success: true, content: "Tool completed" })
     }
   } else {
     result = undefined
@@ -1787,7 +1864,7 @@ function buildDelegatedToolExecution(
 
   return {
     timestamp: resultMessage?.timestamp ?? message.timestamp,
-    calls: [{ name: toolName, arguments: normalizeSubAgentToolArguments(message.toolInput) }],
+    calls: [{ name: toolName, arguments: normalizeSubAgentToolArguments(toolInput) }],
     results: [isPending ? undefined : result],
   }
 }
@@ -1800,8 +1877,13 @@ function buildSubAgentConversationItems(
 
   for (let index = 0; index < conversation.length; index += 1) {
     const message = conversation[index]
-    if (message.role !== "tool") {
-      items.push({ kind: "message", key: `msg-${index}`, message })
+    const structuredExecution = buildStructuredSubAgentToolExecution(message)
+    if (structuredExecution) {
+      items.push({
+        kind: "tool_execution",
+        key: `tool-structured-${index}`,
+        execution: structuredExecution,
+      })
       continue
     }
 
@@ -1825,7 +1907,7 @@ function buildSubAgentConversationItems(
       continue
     }
 
-    if (message.toolName || isDelegatedToolResultMessage(message)) {
+    if (message.role === "tool" || isDelegatedToolResultMessage(message)) {
       items.push({
         kind: "tool_execution",
         key: `tool-${index}`,

@@ -32,32 +32,159 @@ const summarizeDelegation = (delegation: ACPDelegationProgress): string => {
   return delegation.progressMessage || conversationSnippet || delegation.task;
 };
 
+const TOOL_USE_PREFIX = /^using tool:\s*/i;
 const TOOL_RESULT_PREFIX = /^tool result:\s*/i;
 
+type DelegationToolEntry = {
+  toolCall: NonNullable<ChatMessage['toolCalls']>[number];
+  result?: NonNullable<ChatMessage['toolResults']>[number];
+};
+
+const normalizeToolArguments = (input: unknown): Record<string, unknown> => {
+  if (input && typeof input === 'object' && !Array.isArray(input)) {
+    return input as Record<string, unknown>;
+  }
+  if (input === undefined) {
+    return {};
+  }
+  return { input };
+};
+
+const parseToolUsePayload = (content?: string): { name?: string; input?: unknown } | null => {
+  const trimmedContent = (content ?? '').trim();
+  if (!TOOL_USE_PREFIX.test(trimmedContent)) {
+    return null;
+  }
+
+  const nameMatch = trimmedContent.match(/^using tool:\s*([^\n]+)/i);
+  const inputMatch = trimmedContent.match(/\ninput:\s*([\s\S]*)$/i);
+  const rawInput = inputMatch?.[1]?.trim();
+
+  let parsedInput: unknown = undefined;
+  if (rawInput) {
+    try {
+      parsedInput = JSON.parse(rawInput);
+    } catch {
+      parsedInput = rawInput;
+    }
+  }
+
+  return {
+    name: nameMatch?.[1]?.trim() || undefined,
+    input: parsedInput,
+  };
+};
+
+const normalizeToolResultContent = (content?: string): string => {
+  const normalized = (content ?? '').replace(TOOL_RESULT_PREFIX, '').trim();
+  return normalized || 'Tool completed';
+};
+
+const normalizeToolResult = (
+  result: Partial<NonNullable<ChatMessage['toolResults']>[number]>,
+): NonNullable<ChatMessage['toolResults']>[number] => ({
+  success: result.success !== false,
+  content: result.content || 'Tool completed',
+  error: result.error,
+});
+
+const attachResultToLatestPendingEntry = (
+  entries: DelegationToolEntry[],
+  result: NonNullable<ChatMessage['toolResults']>[number],
+) => {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (!entries[index].result) {
+      entries[index].result = result;
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<ChatMessage, 'toolCalls' | 'toolResults'> => {
-  const toolCalls: NonNullable<ChatMessage['toolCalls']> = [];
-  const toolResults: NonNullable<ChatMessage['toolResults']> = [];
+  const entries: DelegationToolEntry[] = [];
 
   for (const message of delegation.conversation ?? []) {
-    if (message.role !== 'tool' || !message.toolName) {
+    const structuredCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
+    const structuredResults = Array.isArray(message.toolResults) ? message.toolResults : [];
+    if (structuredCalls.length > 0 || structuredResults.length > 0) {
+      const maxEntries = Math.max(structuredCalls.length, structuredResults.length);
+      for (let index = 0; index < maxEntries; index += 1) {
+        const call = structuredCalls[index];
+        const result = structuredResults[index];
+
+        entries.push({
+          toolCall: {
+            name: call?.name?.trim() || 'tool_call',
+            arguments: normalizeToolArguments(call?.arguments),
+          },
+          result: result
+            ? normalizeToolResult(result)
+            : undefined,
+        });
+      }
       continue;
     }
 
-    toolCalls.push({
-      name: message.toolName,
-      arguments: (message.toolInput && typeof message.toolInput === 'object')
-        ? message.toolInput as Record<string, unknown>
-        : {},
-    });
+    if (message.role !== 'tool') {
+      continue;
+    }
 
-    const normalizedContent = (message.content ?? '').replace(TOOL_RESULT_PREFIX, '').trim();
-    if (normalizedContent.length > 0) {
-      toolResults.push({
-        success: true,
-        content: normalizedContent,
+    const parsedToolUse = parseToolUsePayload(message.content);
+    if (parsedToolUse) {
+      entries.push({
+        toolCall: {
+          name: message.toolName || parsedToolUse.name || 'tool_call',
+          arguments: normalizeToolArguments(message.toolInput ?? parsedToolUse.input),
+        },
       });
+      continue;
+    }
+
+    const normalizedMessageContent = (message.content ?? '').trim();
+    if (TOOL_RESULT_PREFIX.test(normalizedMessageContent)) {
+      const attached = attachResultToLatestPendingEntry(
+        entries,
+        normalizeToolResult({
+          success: true,
+          content: normalizeToolResultContent(message.content),
+        }),
+      );
+      if (!attached) {
+        entries.push({
+          toolCall: {
+            name: message.toolName || 'tool_call',
+            arguments: normalizeToolArguments(message.toolInput),
+          },
+          result: normalizeToolResult({
+            success: true,
+            content: normalizeToolResultContent(message.content),
+          }),
+        });
+      }
+      continue;
+    }
+
+    if (message.toolName || message.toolInput !== undefined) {
+      entries.push({
+        toolCall: {
+          name: message.toolName || 'tool_call',
+          arguments: normalizeToolArguments(message.toolInput),
+        },
+        result: normalizeToolResult({
+          success: true,
+          content: normalizeToolResultContent(message.content),
+        }),
+      });
+      continue;
     }
   }
+
+  const toolCalls: NonNullable<ChatMessage['toolCalls']> = entries.map((entry) => entry.toolCall);
+  const toolResults: NonNullable<ChatMessage['toolResults']> = entries
+    .map((entry) => entry.result)
+    .filter((result): result is NonNullable<ChatMessage['toolResults']>[number] => !!result);
 
   return {
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
@@ -92,10 +219,7 @@ export const createDelegationProgressMessages = (steps?: AgentProgressStep[]): C
     .sort((a, b) => a.timestamp - b.timestamp)
     .map(({ delegation, timestamp }) => {
       const summary = summarizeDelegation(delegation);
-      const hasConversation = (delegation.conversation?.length ?? 0) > 0;
-      const fallbackContent = hasConversation
-        ? `Delegated to ${delegation.agentName} · ${formatStatus(delegation.status)}`
-        : `Delegated to ${delegation.agentName} · ${formatStatus(delegation.status)}\n${summary}`;
+      const fallbackContent = `Delegated to ${delegation.agentName} · ${formatStatus(delegation.status)}${summary ? `\n${summary}` : ''}`;
 
       return {
         id: `delegation-${delegation.runId}`,
