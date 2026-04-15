@@ -186,17 +186,27 @@ describe("runtime-tools execute_command", () => {
     expect(payload.error).toContain("planning/context question")
   })
 
-  it("adds a targeted hint for bash printf labels that start with dashes", async () => {
+  it("rewrites bash printf labels that start with dashes into a safe form", async () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("execute_command", {
-      command: "printf '--- ROOT ---\\n'",
+      command: "printf '--- ROOT ---\\n' && printf '\\n--- FILES ---\\n'",
     })
 
-    expect(result?.isError).toBe(true)
+    expect(result?.isError).toBe(false)
     const payload = JSON.parse(String(result?.content[0]?.text))
-    expect(payload.error).toContain("printf: --: invalid option")
-    expect(payload.error).toContain("Use echo '--- LABEL ---'")
-    expect(payload.retrySuggestion).toContain("printf -- '--- LABEL ---\\n'")
-    expect(payload.retrySuggestion).toContain("printf '%s\\n' '--- LABEL ---'")
+    expect(payload.command).toContain("printf '%s\\n' '--- ROOT ---'")
+    expect(payload.command).toContain("printf '\\n%s\\n' '--- FILES ---'")
+    expect(payload.normalizedPrintfLabels).toEqual([
+      {
+        from: "printf '--- ROOT ---\\n'",
+        to: "printf '%s\\n' '--- ROOT ---'",
+      },
+      {
+        from: "printf '\\n--- FILES ---\\n'",
+        to: "printf '\\n%s\\n' '--- FILES ---'",
+      },
+    ])
+    expect(String(payload.stdout)).toContain("--- ROOT ---")
+    expect(String(payload.stdout)).toContain("--- FILES ---")
   })
 })

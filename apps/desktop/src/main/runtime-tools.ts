@@ -281,6 +281,31 @@ async function normalizeExecuteCommandWorkspacePaths(
     : { command: rawCommand }
 }
 
+function normalizeUnsafePrintfLabelCommands(
+  rawCommand: string,
+): { command: string; normalizedPrintfLabels?: Array<{ from: string; to: string }> } {
+  const rewrites: Array<{ from: string; to: string }> = []
+
+  // Bash printf treats a leading "-" in the format string like an option.
+  // These two forms are common model-generated label separators that should
+  // be rewritten into option-safe equivalents before shell execution.
+  const rewrite = (pattern: RegExp, replacementBuilder: (label: string) => string) => {
+    rawCommand = rawCommand.replace(pattern, (_match, label: string) => {
+      const from = _match
+      const to = replacementBuilder(label)
+      rewrites.push({ from, to })
+      return to
+    })
+  }
+
+  rewrite(/printf\s+'---\s*([^']*?)\s*---\\n'/g, (label) => `printf '%s\\n' '--- ${label.trim()} ---'`)
+  rewrite(/printf\s+'\\n---\s*([^']*?)\s*---\\n'/g, (label) => `printf '\\n%s\\n' '--- ${label.trim()} ---'`)
+
+  return rewrites.length > 0
+    ? { command: rawCommand, normalizedPrintfLabels: rewrites }
+    : { command: rawCommand }
+}
+
 const MAX_RESPOND_TO_USER_IMAGES = 4
 const MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES = 8 * 1024 * 1024
 const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024
@@ -949,7 +974,8 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const effectiveCwd = cwd || process.cwd()
     const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd)
-    const effectiveCommand = normalizedCommandResult.command
+    const printfNormalizedCommandResult = normalizeUnsafePrintfLabelCommands(normalizedCommandResult.command)
+    const effectiveCommand = printfNormalizedCommandResult.command
     const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd)
     const packageManagerMismatch = detectPackageManagerMismatch(effectiveCommand, preferredPackageManager)
 
@@ -966,6 +992,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               skillName,
               ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
+              ...(printfNormalizedCommandResult.normalizedPrintfLabels ? { normalizedPrintfLabels: printfNormalizedCommandResult.normalizedPrintfLabels } : {}),
               ...packageManagerMismatch,
             }, null, 2),
           },
@@ -990,6 +1017,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               skillName,
               ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
+              ...(printfNormalizedCommandResult.normalizedPrintfLabels ? { normalizedPrintfLabels: printfNormalizedCommandResult.normalizedPrintfLabels } : {}),
               ...contextGatheringCommandBlock,
             }, null, 2),
           },
@@ -1045,6 +1073,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               skillName,
               ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
+              ...(printfNormalizedCommandResult.normalizedPrintfLabels ? { normalizedPrintfLabels: printfNormalizedCommandResult.normalizedPrintfLabels } : {}),
               stdout: truncatedStdout,
               stderr: stderr || "",
               ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
@@ -1098,6 +1127,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               skillName,
               ...(ignoredInvalidSkillIdWarning ?? {}),
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
+              ...(printfNormalizedCommandResult.normalizedPrintfLabels ? { normalizedPrintfLabels: printfNormalizedCommandResult.normalizedPrintfLabels } : {}),
               error: errorMessage + hint,
               exitCode,
               stdout,
