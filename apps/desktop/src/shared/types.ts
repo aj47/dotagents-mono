@@ -1093,6 +1093,7 @@ export type Config = {
 
   // Audio Device Selection
   audioInputDeviceId?: string   // Microphone device ID (from enumerateDevices)
+  audioInputDeviceLabel?: string // Last resolved microphone label (used to remap rotated IDs)
   audioOutputDeviceId?: string  // Speaker device ID (from enumerateDevices / setSinkId)
 
   // Text Input Configuration

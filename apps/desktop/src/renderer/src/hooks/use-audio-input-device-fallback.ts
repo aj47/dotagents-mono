@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { enumerateAudioDevices, type AudioDeviceInfo } from "./use-audio-devices"
-import { getValidatedAudioInputDeviceId } from "./audio-input-device-utils"
+import {
+  getValidatedAudioInputDeviceId,
+  hasResolvedAudioInputDeviceLabel,
+} from "./audio-input-device-utils"
 
 /**
  * The enumeration is only authoritative once the browser has resolved
@@ -11,15 +14,7 @@ import { getValidatedAudioInputDeviceId } from "./audio-input-device-utils"
  * and overwrite the persisted selection. See issue #303.
  */
 function hasResolvedLabels(devices: AudioDeviceInfo[]): boolean {
-  return devices.some((device) => {
-    const label = device.label?.trim() ?? ""
-    if (!label) return false
-    // `useAudioDevices` synthesizes placeholder labels like
-    // "Microphone (abcd1234)" when the real label is empty — those must
-    // not count as resolved.
-    if (label.startsWith("Microphone (") && label.endsWith(")")) return false
-    return true
-  })
+  return devices.some((device) => hasResolvedAudioInputDeviceLabel(device.label))
 }
 
 export function useAudioInputDeviceFallback() {
@@ -30,6 +25,7 @@ export function useAudioInputDeviceFallback() {
   useEffect(() => {
     const config = configQuery.data
     const savedDeviceId = config?.audioInputDeviceId
+    const savedDeviceLabel = config?.audioInputDeviceLabel
 
     if (!config || !savedDeviceId) {
       lastRepairedDeviceIdRef.current = null
@@ -49,8 +45,21 @@ export function useAudioInputDeviceFallback() {
         const { inputDevices } = await enumerateAudioDevices({ requestLabels: false })
         if (cancelled || inputDevices.length === 0) return
 
-        const validatedDeviceId = getValidatedAudioInputDeviceId(savedDeviceId, inputDevices)
+        const validatedDeviceId = getValidatedAudioInputDeviceId(savedDeviceId, inputDevices, savedDeviceLabel)
         if (validatedDeviceId) {
+          if (validatedDeviceId !== savedDeviceId) {
+            const matchedDevice = inputDevices.find((device) => device.deviceId === validatedDeviceId)
+            lastRepairedDeviceIdRef.current = savedDeviceId
+            saveConfigMutation.mutate({
+              config: {
+                ...config,
+                audioInputDeviceId: validatedDeviceId,
+                audioInputDeviceLabel: matchedDevice?.label,
+              },
+            })
+            return
+          }
+
           lastRepairedDeviceIdRef.current = null
           return
         }
@@ -63,11 +72,19 @@ export function useAudioInputDeviceFallback() {
           return
         }
 
+        // Legacy configs may only have device IDs. Those IDs can rotate between
+        // restarts on some systems, so avoid clearing to default when we have no
+        // stable label to confidently remap against.
+        if (!hasResolvedAudioInputDeviceLabel(savedDeviceLabel)) {
+          return
+        }
+
         lastRepairedDeviceIdRef.current = savedDeviceId
         saveConfigMutation.mutate({
           config: {
             ...config,
             audioInputDeviceId: undefined,
+            audioInputDeviceLabel: undefined,
           },
         })
       } catch {

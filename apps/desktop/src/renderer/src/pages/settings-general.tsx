@@ -31,6 +31,7 @@ import {
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
+import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-device-utils"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const MCP_MAX_ITERATIONS_MIN = 1
@@ -924,8 +925,14 @@ export function Component() {
             <Select
               value={configQuery.data.audioInputDeviceId || "default"}
               onValueChange={(value) => {
+                const selectedInputDevice = audioInputDevices.find((device) => device.deviceId === value)
+                const selectedInputDeviceLabel = hasResolvedAudioInputDeviceLabel(selectedInputDevice?.label)
+                  ? selectedInputDevice?.label
+                  : undefined
+
                 saveConfig({
                   audioInputDeviceId: value === "default" ? undefined : value,
+                  audioInputDeviceLabel: value === "default" ? undefined : selectedInputDeviceLabel,
                 })
               }}
             >
