@@ -3278,7 +3278,13 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       try {
-        return await generateTTS(input, configStore.get())
+        const config = configStore.get()
+        // Desktop-local TTS respects the user's global toggle. Remote clients
+        // (mobile via /v1/tts/speak) intentionally bypass this gate.
+        if (!config.ttsEnabled) {
+          throw new Error("Text-to-Speech is not enabled")
+        }
+        return await generateTTS(input, config)
       } catch (error) {
         diagnosticsService.logError("tts", "TTS generation failed", error)
         throw error

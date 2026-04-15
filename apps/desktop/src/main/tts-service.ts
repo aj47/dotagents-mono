@@ -25,12 +25,13 @@ export type { TTSGenerationResult }
  * and the remote-server `POST /v1/tts/speak` route. Runs the same
  * preprocessing, validation, and provider dispatch so desktop-initiated and
  * remote-initiated TTS stay behaviorally identical.
+ *
+ * Note: the `config.ttsEnabled` toggle gates *desktop-local* TTS usage and is
+ * enforced by callers (see tipc `generateSpeech`). It is intentionally not
+ * enforced here so remote clients (e.g. the paired mobile app) can request
+ * synthesis regardless of the desktop user's local auto-play preference.
  */
 export async function generateTTS(input: TTSInput, config: Config): Promise<TTSOutput> {
-  if (!config.ttsEnabled) {
-    throw new Error("Text-to-Speech is not enabled")
-  }
-
   const providerId = input.providerId || config.ttsProviderId || "openai"
 
   let processedText = input.text
