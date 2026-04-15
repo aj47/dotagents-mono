@@ -51,7 +51,6 @@ describe("constructSystemPrompt", () => {
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts")
 
     expect(DEFAULT_SYSTEM_PROMPT).toContain("check relevant knowledge notes and prior conversations first")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("user-specific facts are still missing after checking relevant notes/conversations")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("~/.agents/knowledge/")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("./.agents/knowledge/")
     expect(DEFAULT_SYSTEM_PROMPT).toContain(".agents/knowledge/<slug>/<slug>.md")
@@ -93,7 +92,7 @@ describe("constructSystemPrompt", () => {
     const prompt = constructMinimalSystemPrompt([], true)
 
     expect(prompt).toContain("check relevant knowledge notes and prior conversations first")
-    expect(prompt).toContain("generic checklist")
+    expect(prompt).toContain("minimum high-signal follow-ups")
     expect(prompt).toContain("~/.agents/knowledge/")
     expect(prompt).toContain(".agents/knowledge/<slug>/<slug>.md")
     expect(prompt).toContain("context: search-only")
@@ -182,6 +181,7 @@ describe("constructSystemPrompt", () => {
       { name: "load_skill_instructions", description: "Load a skill", inputSchema: { type: "object", properties: {} } },
     ] as any, undefined, true)
 
+    expect(prompt).toContain("Load each needed skill once per session")
     expect(prompt).toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
   })
 

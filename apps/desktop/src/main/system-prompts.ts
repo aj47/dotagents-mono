@@ -103,7 +103,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   if (hasLoadSkillInstructions) {
     sections.push(`SKILLS:
 - Skills are optional instruction modules listed below.
-- Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.`)
+- Load each needed skill once per session with load_skill_instructions(skillId). Reuse previously loaded skill context unless details changed.
+- Do not guess a skill's contents from its name/description.`)
   }
 
   if (hasRespondToUser && hasMarkWorkComplete) {

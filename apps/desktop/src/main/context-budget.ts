@@ -931,8 +931,12 @@ interface SummaryBatch {
 const TOOL_TRUNCATE_MARKER = "[Large tool result truncated for context management. If more detail is needed, re-run the tool with narrower input or inspect the source directly.]"
 const PAYLOAD_TRUNCATE_MARKER = "[Large payload truncated for context management. Keep only the most relevant leading content here and fetch narrower details if needed.]"
 const EXTERNAL_TOOL_TRUNCATE_MARKERS = ["[OUTPUT TRUNCATED:", "[truncated]"]
+const DEFAULT_CONTEXT_TARGET_TOKEN_CAP = 16_000
+const MIN_CONTEXT_TARGET_TOKENS = 512
 const AGGRESSIVE_TRUNCATE_THRESHOLD = 5000
 const AGGRESSIVE_TRUNCATE_KEEP_CHARS = 4000
+const PROTECTED_MESSAGE_RETRUNCATE_THRESHOLD = 12_000
+const PROTECTED_MESSAGE_RETRUNCATE_KEEP_CHARS = 3_000
 const TOOL_RESULT_TRUNCATE_THRESHOLD = 4000
 const TOOL_RESULT_KEEP_CHARS = 2400
 const TOOL_RESULT_TRUNCATE_TRIGGER_TOKEN_RATIO = 0.8
@@ -1423,7 +1427,18 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     return { messages: opts.messages, appliedStrategies: [], estTokensBefore: est, estTokensAfter: est, maxTokens }
   }
   const maxTokens = await getMaxContextTokens(providerId, model)
-  const targetTokens = Math.floor(maxTokens * targetRatio)
+  const configuredAbsoluteTargetCap = config.mcpContextAbsoluteTokenCap
+  const absoluteTargetCap = typeof configuredAbsoluteTargetCap === "number" && Number.isFinite(configuredAbsoluteTargetCap) && configuredAbsoluteTargetCap > 0
+    ? Math.floor(configuredAbsoluteTargetCap)
+    : DEFAULT_CONTEXT_TARGET_TOKEN_CAP
+  const ratioTargetTokens = Math.floor(maxTokens * targetRatio)
+  const targetTokens = Math.max(
+    1,
+    Math.min(
+      maxTokens,
+      Math.max(MIN_CONTEXT_TARGET_TOKENS, Math.min(ratioTargetTokens, absoluteTargetCap)),
+    ),
+  )
 
   let messages = [...opts.messages]
   const estimatedTokensBefore = estimateTokensFromMessages(messages)
@@ -1499,7 +1514,10 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
     if (msg.role === "system" || !msg.content) continue
-    if (isTruncationProtectedMessage(msg)) continue
+    const isProtected = isTruncationProtectedMessage(msg)
+    const shouldRetruncateProtectedMessage = isProtected
+      && msg.content.length > PROTECTED_MESSAGE_RETRUNCATE_THRESHOLD
+    if (isProtected && !shouldRetruncateProtectedMessage) continue
 
     const isPayloadLike = isLikelyPayloadLikeMessage(msg)
 
@@ -1508,13 +1526,21 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
     const shouldTruncateToolResult = isToolResultLike
       && msg.content.length > TOOL_RESULT_TRUNCATE_THRESHOLD
-      && tokens > Math.floor(targetTokens * TOOL_RESULT_TRUNCATE_TRIGGER_TOKEN_RATIO)
+      && (
+        tokens > Math.floor(targetTokens * TOOL_RESULT_TRUNCATE_TRIGGER_TOKEN_RATIO)
+        || shouldRetruncateProtectedMessage
+      )
     const shouldAggressivelyTruncatePayload = isPayloadLike && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD
+    const shouldRetruncateProtectedPayload = shouldRetruncateProtectedMessage && !isToolResultLike
 
-    if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload) continue
+    if (!shouldTruncateToolResult && !shouldAggressivelyTruncatePayload && !shouldRetruncateProtectedPayload) continue
 
     const marker = isToolResultLike ? TOOL_TRUNCATE_MARKER : PAYLOAD_TRUNCATE_MARKER
-    const keepChars = isToolResultLike ? TOOL_RESULT_KEEP_CHARS : AGGRESSIVE_TRUNCATE_KEEP_CHARS
+    const keepChars = isToolResultLike
+      ? TOOL_RESULT_KEEP_CHARS
+      : shouldRetruncateProtectedMessage
+        ? PROTECTED_MESSAGE_RETRUNCATE_KEEP_CHARS
+        : AGGRESSIVE_TRUNCATE_KEEP_CHARS
     const { toolName } = parseToolNameFromContent(msg.content)
     const contextRef = registerContextRef(opts.sessionId, {
       kind: isToolResultLike ? "truncated_tool" : "truncated_payload",

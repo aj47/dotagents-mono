@@ -9,6 +9,7 @@ const {
   mockConfig: {
     mcpContextReductionEnabled: true,
     mcpContextTargetRatio: 0.5,
+    mcpContextAbsoluteTokenCap: 16000,
     mcpContextLastNMessages: 3,
     mcpContextSummarizeCharThreshold: 2000,
     mcpMaxContextTokensOverride: 1200,
@@ -84,6 +85,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-actual-scale')
     clearArchiveFrontier('session-bracket-log')
     clearArchiveFrontier('session-no-microcompact')
+    clearArchiveFrontier('session-absolute-cap')
+    clearArchiveFrontier('session-protected-retruncate')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
@@ -92,6 +95,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearContextRefs('session-actual-scale')
     clearContextRefs('session-bracket-log')
     clearContextRefs('session-no-microcompact')
+    clearContextRefs('session-absolute-cap')
+    clearContextRefs('session-protected-retruncate')
     clearActualTokenUsage('session-truncate')
     clearActualTokenUsage('session-batch')
     clearActualTokenUsage('session-archive')
@@ -100,6 +105,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearActualTokenUsage('session-actual-scale')
     clearActualTokenUsage('session-bracket-log')
     clearActualTokenUsage('session-no-microcompact')
+    clearActualTokenUsage('session-absolute-cap')
+    clearActualTokenUsage('session-protected-retruncate')
     clearIterativeSummary('session-archive')
     clearIterativeSummary('session-live-tail')
     clearIterativeSummary('session-protected-tail')
@@ -107,6 +114,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
+      mcpContextAbsoluteTokenCap: 16000,
       mcpContextLastNMessages: 3,
       mcpContextSummarizeCharThreshold: 2000,
       mcpMaxContextTokensOverride: 1200,
@@ -250,6 +258,58 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.appliedStrategies).not.toContain('aggressive_truncate')
     expect(result.messages.find((msg) => msg.content.includes('[OUTPUT TRUNCATED:'))?.content).toContain('456-TAIL')
     expect(makeTextCompletionWithFetchMock).not.toHaveBeenCalled()
+  })
+
+  it('re-truncates very large already-truncated runtime tool output', async () => {
+    const runtimeTruncatedHuge = [
+      '[server:shell] {',
+      '  "stdout": "HEAD-' + 'a'.repeat(7000),
+      '... [OUTPUT TRUNCATED: 25000 bytes, ~500 lines total. Showing first 5000 + last 5000 chars.] ...',
+      'TAIL-' + 'b'.repeat(7000) + '",',
+      '  "outputTruncated": true',
+      '}',
+    ].join('\n')
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-protected-retruncate',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'user', content: runtimeTruncatedHuge },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    const retruncatedMessage = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    expect(retruncatedMessage).toBeTruthy()
+    expect(retruncatedMessage?.content).toContain('HEAD-')
+    expect(retruncatedMessage?.content).toContain('"outputTruncated": true')
+    expect(makeTextCompletionWithFetchMock).not.toHaveBeenCalled()
+  })
+
+  it('honors the absolute context target token cap on large-context models', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('compressed')
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.9,
+      mcpContextAbsoluteTokenCap: 4000,
+      mcpMaxContextTokensOverride: undefined,
+      mcpToolsProviderId: 'openai',
+      mcpToolsOpenaiModel: 'gpt-5.4',
+    })
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-absolute-cap',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'Original task request' },
+        { role: 'assistant', content: 'a'.repeat(12000) },
+        { role: 'assistant', content: 'b'.repeat(12000) },
+        { role: 'user', content: 'latest follow up' },
+      ],
+    })
+
+    expect(result.appliedStrategies.length).toBeGreaterThan(0)
+    expect(result.estTokensAfter).toBeLessThanOrEqual(4000)
   })
 
   it('keeps actual-token scaling after aggressive truncation and preserves the original budget baseline', async () => {

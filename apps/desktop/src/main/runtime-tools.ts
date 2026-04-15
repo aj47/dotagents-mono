@@ -340,6 +340,56 @@ const getDataImageBytesFromUrl = (url: string): number | null => {
 const getUtf8ByteLength = (value: string): number =>
   Buffer.byteLength(value, "utf8")
 
+interface SessionSkillLoadState {
+  loadedSkillIds: Set<string>
+  lastTouched: number
+}
+
+const loadedSkillStateBySession = new Map<string, SessionSkillLoadState>()
+const SKILL_LOAD_STATE_MAX_SESSIONS = 256
+const SKILL_LOAD_STATE_TTL_MS = 6 * 60 * 60 * 1000
+
+function pruneLoadedSkillState(now: number = Date.now()): void {
+  for (const [sessionId, state] of loadedSkillStateBySession.entries()) {
+    if (now - state.lastTouched > SKILL_LOAD_STATE_TTL_MS) {
+      loadedSkillStateBySession.delete(sessionId)
+    }
+  }
+}
+
+function getOrCreateLoadedSkillState(sessionId: string): SessionSkillLoadState {
+  const now = Date.now()
+  pruneLoadedSkillState(now)
+
+  const existing = loadedSkillStateBySession.get(sessionId)
+  if (existing) {
+    existing.lastTouched = now
+    // Touch as most-recently-used for deterministic eviction.
+    loadedSkillStateBySession.delete(sessionId)
+    loadedSkillStateBySession.set(sessionId, existing)
+    return existing
+  }
+
+  const created: SessionSkillLoadState = {
+    loadedSkillIds: new Set<string>(),
+    lastTouched: now,
+  }
+  loadedSkillStateBySession.set(sessionId, created)
+
+  while (loadedSkillStateBySession.size > SKILL_LOAD_STATE_MAX_SESSIONS) {
+    const oldestSessionId = loadedSkillStateBySession.keys().next().value as string | undefined
+    if (!oldestSessionId) break
+    loadedSkillStateBySession.delete(oldestSessionId)
+  }
+
+  return created
+}
+
+function resolveSkillLoadSessionId(sessionId?: string): string | undefined {
+  if (!sessionId) return undefined
+  return getAppSessionForAcpSession(sessionId) ?? sessionId
+}
+
 async function imagePathToDataUrl(rawPath: string): Promise<string> {
   const resolvedPath = path.isAbsolute(rawPath)
     ? rawPath
@@ -1199,7 +1249,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  load_skill_instructions: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  load_skill_instructions: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     // Validate skillId parameter
     if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
       return {
@@ -1209,24 +1259,16 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const skillId = args.skillId.trim()
+    const forceReload = args.forceReload === true
     const { skillsService } = await import("./skills-service")
-    const skill = skillsService.getSkill(skillId)
+    const skillById = skillsService.getSkill(skillId)
+    const allSkills = skillById ? null : skillsService.getSkills()
+    const skill = skillById
+      ?? allSkills?.find((candidate) => candidate.name.toLowerCase() === skillId.toLowerCase())
+    const sessionId = resolveSkillLoadSessionId(context.sessionId)
+    const loadedState = sessionId ? getOrCreateLoadedSkillState(sessionId) : undefined
 
     if (!skill) {
-      // Try to find by name as fallback
-      const allSkills = skillsService.getSkills()
-      const skillByName = allSkills.find(s => s.name.toLowerCase() === skillId.toLowerCase())
-
-      if (skillByName) {
-        return {
-          content: [{
-            type: "text",
-            text: `# ${skillByName.name}\n\n${skillByName.instructions}`,
-          }],
-          isError: false,
-        }
-      }
-
       return {
         content: [{
           type: "text",
@@ -1237,6 +1279,21 @@ const toolHandlers: Record<string, ToolHandler> = {
         }],
         isError: true,
       }
+    }
+
+    if (loadedState) {
+      const alreadyLoaded = loadedState.loadedSkillIds.has(skill.id)
+      if (alreadyLoaded && !forceReload) {
+        return {
+          content: [{
+            type: "text",
+            text: `# ${skill.name}\n\n[Skill already loaded in this session: ${skill.id}. Reuse earlier instructions unless details changed. Pass {\"forceReload\": true} to reload full instructions.]`,
+          }],
+          isError: false,
+        }
+      }
+      loadedState.loadedSkillIds.add(skill.id)
+      loadedState.lastTouched = Date.now()
     }
 
     return {

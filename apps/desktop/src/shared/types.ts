@@ -1227,6 +1227,9 @@ export type Config = {
   // Context Reduction Configuration
   mcpContextReductionEnabled?: boolean
   mcpContextTargetRatio?: number
+  // Absolute upper bound for context-target tokens after ratio is applied.
+  // Helps keep prompts bounded on very large-context models.
+  mcpContextAbsoluteTokenCap?: number
   mcpContextLastNMessages?: number
   mcpContextSummarizeCharThreshold?: number
   mcpMaxContextTokensOverride?: number

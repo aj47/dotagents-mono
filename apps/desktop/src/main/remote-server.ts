@@ -3025,6 +3025,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? true,
         // Tool Execution
         mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
+        mcpContextAbsoluteTokenCap: cfg.mcpContextAbsoluteTokenCap ?? 16000,
         mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? true,
         mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
         // Remote Server
@@ -3248,6 +3249,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Tool Execution
       if (typeof body.mcpContextReductionEnabled === "boolean") {
         updates.mcpContextReductionEnabled = body.mcpContextReductionEnabled
+      }
+      if (typeof body.mcpContextAbsoluteTokenCap === "number" && Number.isFinite(body.mcpContextAbsoluteTokenCap) && body.mcpContextAbsoluteTokenCap > 0) {
+        updates.mcpContextAbsoluteTokenCap = Math.floor(body.mcpContextAbsoluteTokenCap)
       }
       if (typeof body.mcpToolResponseProcessingEnabled === "boolean") {
         updates.mcpToolResponseProcessingEnabled = body.mcpToolResponseProcessingEnabled

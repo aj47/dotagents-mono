@@ -2663,18 +2663,15 @@ export async function processTranscriptWithAgentMode(
         return result
       })
 
-      // Format tool results with tool name prefix for better context preservation
-      // Format: [toolName] content... or [toolName] ERROR: content...
-      const toolResultsText = resultsWithPlaceholders
-        .map((result, i) => {
-          const toolName = toolCallsArray[i]?.name || 'unknown'
-          const content = result.content.map((c) => c.text).join("\n")
-          const prefix = result.isError ? `[${toolName}] ERROR: ` : `[${toolName}] `
-          return `${prefix}${content}`
-        })
-        .join("\n\n")
-
-      addMessage("tool", toolResultsText, undefined, resultsWithPlaceholders)
+      // Preserve one tool result per message so context budgeting can compact each
+      // payload independently (instead of carrying one giant concatenated blob).
+      for (let i = 0; i < resultsWithPlaceholders.length; i++) {
+        const result = resultsWithPlaceholders[i]
+        const toolName = toolCallsArray[i]?.name || "unknown"
+        const content = result.content.map((c) => c.text).join("\n")
+        const prefix = result.isError ? `[${toolName}] ERROR: ` : `[${toolName}] `
+        addMessage("tool", `${prefix}${content}`, undefined, [result])
+      }
     }
 
     latestMaterializedUserResponse = materializePendingUserResponses()

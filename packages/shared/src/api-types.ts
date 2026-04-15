@@ -312,6 +312,7 @@ export interface Settings {
 
   // Context Reduction & Tool Response Processing
   mcpContextReductionEnabled?: boolean;
+  mcpContextAbsoluteTokenCap?: number;
   mcpToolResponseProcessingEnabled?: boolean;
   mcpParallelToolExecution?: boolean;
   mcpMessageQueueEnabled?: boolean;
@@ -440,6 +441,7 @@ export interface SettingsUpdate {
 
   // Context Reduction & Tool Response Processing
   mcpContextReductionEnabled?: boolean;
+  mcpContextAbsoluteTokenCap?: number;
   mcpToolResponseProcessingEnabled?: boolean;
   mcpParallelToolExecution?: boolean;
   mcpMessageQueueEnabled?: boolean;

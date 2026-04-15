@@ -257,6 +257,51 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(mocks.makeLLMCallWithFetch).toHaveBeenCalledTimes(1)
   })
 
+  it("stores one tool transcript entry per tool call instead of one giant merged blob", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          { name: "execute_command", arguments: { command: "pwd" } },
+          { name: "execute_command", arguments: { command: "ls" } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{ name: "mark_work_complete", arguments: { summary: "Captured tool output" } }],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "Inspect the workspace",
+      availableTools as any,
+      makeExecuteToolCall("session-command", 1, {
+        execute_command: (toolCall: any) => ({
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({ success: true, command: toolCall.arguments.command }),
+          }],
+          isError: false,
+        }),
+      }),
+      3,
+      [],
+      "conv-command",
+      "session-command",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const executeToolMessages = result.conversationHistory.filter((message) =>
+      message.role === "tool" && message.content.includes("[execute_command]")
+    )
+    expect(executeToolMessages).toHaveLength(2)
+    expect(executeToolMessages[0]?.content).toContain("\"command\":\"pwd\"")
+    expect(executeToolMessages[1]?.content).toContain("\"command\":\"ls\"")
+  })
+
   it("keeps the internal completion nudge ephemeral across resumed runs", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
 

@@ -206,6 +206,10 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
           type: "string",
           description: "Exact skill id from the Available Skills list, e.g. \"api-testing\".",
         },
+        forceReload: {
+          type: "boolean",
+          description: "Reload full instructions even if this skill was already loaded in the current session.",
+        },
       },
       required: ["skillId"],
     },
