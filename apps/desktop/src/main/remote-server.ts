@@ -45,6 +45,7 @@ import { knowledgeNotesService } from "./knowledge-notes-service"
 import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { generateTTS } from "./tts-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -3585,6 +3586,57 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to fetch conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to fetch conversation" })
+    }
+  })
+
+  // ============================================
+  // Text-to-Speech Endpoints (for mobile app)
+  // ============================================
+
+  // POST /v1/tts/speak - Synthesize speech via the desktop's TTS providers.
+  // Accepts { text, providerId?, voice?, model?, speed? } and returns raw
+  // audio bytes with the appropriate Content-Type. Exists so the mobile
+  // web/native clients can play Edge/OpenAI/Groq/etc. TTS without having to
+  // embed provider keys or work around browser WebSocket header restrictions.
+  fastify.post("/v1/tts/speak", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as {
+        text?: unknown
+        providerId?: unknown
+        voice?: unknown
+        model?: unknown
+        speed?: unknown
+      }
+
+      if (typeof body.text !== "string" || !body.text.trim()) {
+        return reply.code(400).send({ error: "Missing or invalid 'text'" })
+      }
+      if (Buffer.byteLength(body.text, "utf8") > 32 * 1024) {
+        return reply.code(413).send({ error: "Text too large (max 32 KB)" })
+      }
+
+      const result = await generateTTS(
+        {
+          text: body.text,
+          providerId: typeof body.providerId === "string" ? body.providerId : undefined,
+          voice: typeof body.voice === "string" ? body.voice : undefined,
+          model: typeof body.model === "string" ? body.model : undefined,
+          speed: typeof body.speed === "number" ? body.speed : undefined,
+        },
+        configStore.get(),
+      )
+
+      return reply
+        .code(200)
+        .header("Content-Type", result.mimeType)
+        .header("X-TTS-Provider", result.provider)
+        .send(Buffer.from(result.audio))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "TTS request failed", error)
+      const message = error?.message || "TTS generation failed"
+      // 400 for known user-facing validation errors, 502 for upstream/provider errors.
+      const code = /not enabled|validation failed|Unsupported TTS provider|API key is required/i.test(message) ? 400 : 502
+      return reply.code(code).send({ error: message })
     }
   })
 

@@ -1512,6 +1512,8 @@ export default function SettingsScreen({ navigation }: any) {
               pitch={draft.ttsPitch ?? 1.0}
               ttsProvider={draft.ttsProvider ?? 'native'}
               edgeTtsVoice={draft.edgeTtsVoice}
+              remoteBaseUrl={draft.baseUrl}
+              remoteApiKey={draft.apiKey}
               onVoiceChange={(v) => updateLocalConfig({ ttsVoiceId: v })}
               onRateChange={(r) => updateLocalConfig({ ttsRate: r })}
               onPitchChange={(p) => updateLocalConfig({ ttsPitch: p })}
@@ -1519,7 +1521,7 @@ export default function SettingsScreen({ navigation }: any) {
               onEdgeTtsVoiceChange={(v) => updateLocalConfig({ edgeTtsVoice: v })}
             />
             <Text style={styles.helperText}>
-              Edge TTS voices play on web only. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
+              Edge TTS voices route through your paired desktop. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
             </Text>
           </>
         )}

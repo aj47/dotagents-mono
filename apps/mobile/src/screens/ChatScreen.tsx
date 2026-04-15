@@ -33,7 +33,7 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
 import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
-import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
+import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
@@ -549,7 +549,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      handsFreeController.reset();
       void stopRecognitionOnly?.();
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
       setDebugInfo('Handsfree mode turned off.');
     } else {
       setDebugInfo('Handsfree mode turned on. Say the wake phrase to begin.');
@@ -1077,9 +1077,12 @@ export default function ChatScreen({ route, navigation }: any) {
 			voiceLog('tts-started', `Assistant speech started (${reason}).`);
 		}
 
-		if (effectiveTtsProvider === 'edge') {
-			// Edge TTS runs on web + native (expo-audio).
-			void speakEdgeTts(processedText, {
+		if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
+			// Edge TTS routes through the paired desktop's /v1/tts/speak.
+			void speakRemoteTts(processedText, {
+				baseUrl: config.baseUrl,
+				apiKey: config.apiKey,
+				providerId: 'edge',
 				voice: effectiveEdgeTtsVoice,
 				rate: effectiveEdgeTtsRate,
 				onDone: settle,
@@ -1102,7 +1105,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
+		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -1215,7 +1218,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Stop any current speech first
     intendedSpeakingIndexRef.current = index;
     Speech.stop();
-    stopEdgeTts();
+    stopRemoteTts();
     const processedText = preprocessTextForTTS(content);
     if (!processedText) {
       intendedSpeakingIndexRef.current = null;
@@ -1226,9 +1229,12 @@ export default function ChatScreen({ route, navigation }: any) {
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
     setSpeakingMessageIndex(index);
-    if (effectiveTtsProvider === 'edge') {
-      // Edge TTS runs on web + native (expo-audio).
-      void speakEdgeTts(processedText, {
+    if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
+      // Edge TTS routes through the paired desktop's /v1/tts/speak.
+      void speakRemoteTts(processedText, {
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        providerId: 'edge',
         voice: effectiveEdgeTtsVoice,
         rate: effectiveEdgeTtsRate,
         onDone: () => {
@@ -1298,6 +1304,8 @@ export default function ChatScreen({ route, navigation }: any) {
     Speech.speak(processedText, speechOptions);
 	  }, [
 		speakingMessageIndex,
+		config.apiKey,
+		config.baseUrl,
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
@@ -1325,7 +1333,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => {
     return () => {
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
     };
   }, []);
 
@@ -3567,6 +3575,8 @@ export default function ChatScreen({ route, navigation }: any) {
             ttsRate={config.ttsRate ?? 1.0}
             ttsPitch={config.ttsPitch ?? 1.0}
             ttsVoiceId={config.ttsVoiceId}
+            remoteBaseUrl={config.baseUrl}
+            remoteApiKey={config.apiKey}
           />
         )}
         {/* Scroll to bottom button - appears when user scrolls up */}

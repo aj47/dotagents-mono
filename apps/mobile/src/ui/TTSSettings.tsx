@@ -5,7 +5,7 @@ import * as Speech from 'expo-speech';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
 import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
-import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
+import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 
 export type Voice = {
   identifier: string;
@@ -38,6 +38,11 @@ type TTSSettingsProps = {
   pitch: number;
   ttsProvider?: 'native' | 'edge';
   edgeTtsVoice?: string;
+  // Paired-desktop remote-server credentials. Edge TTS now goes through
+  // /v1/tts/speak on the paired desktop, so without these the option is
+  // disabled and the picker falls back to native voices.
+  remoteBaseUrl?: string;
+  remoteApiKey?: string;
   onVoiceChange: (voiceId: string | undefined) => void;
   onRateChange: (rate: number) => void;
   onPitchChange: (pitch: number) => void;
@@ -51,12 +56,15 @@ export function TTSSettings({
   pitch,
   ttsProvider = 'native',
   edgeTtsVoice,
+  remoteBaseUrl,
+  remoteApiKey,
   onVoiceChange,
   onRateChange,
   onPitchChange,
   onTtsProviderChange,
   onEdgeTtsVoiceChange,
 }: TTSSettingsProps) {
+  const edgeTtsAvailable = Boolean(remoteBaseUrl && remoteApiKey);
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [nativeVoices, setNativeVoices] = useState<Voice[]>([]);
@@ -152,27 +160,27 @@ export function TTSSettings({
   const testVoice = () => {
     // Stop any in-flight playback before testing
     Speech.stop();
-    stopEdgeTts();
+    stopRemoteTts();
 
     if (selectedVoice?.provider === 'edge') {
-      void speakEdgeTts('Hello! This is a test of the text to speech voice.', {
+      if (!edgeTtsAvailable || !remoteBaseUrl || !remoteApiKey) {
+        Alert.alert(
+          'Edge TTS unavailable',
+          'Edge voices now play through your paired desktop. Pair a desktop with Remote Access enabled to use Edge TTS.',
+        );
+        return;
+      }
+      void speakRemoteTts('Hello! This is a test of the text to speech voice.', {
+        baseUrl: remoteBaseUrl,
+        apiKey: remoteApiKey,
+        providerId: 'edge',
         voice: selectedVoice.identifier,
         rate,
-        // Surface Edge TTS failures so users don't think the button did nothing.
-        // speakEdgeTts already logs the detailed error to console; this just
-        // pops a human-readable Alert so it's visible without opening devtools.
         onError: () => {
-          if (Platform.OS === 'web') {
-            Alert.alert(
-              'Edge TTS failed',
-              'Could not reach the Edge TTS service. On Expo Web this usually means the dev-server proxy is down — restart `pnpm --filter @dotagents/mobile web` and try again. Check the browser console for [edge-tts] details.',
-            );
-          } else {
-            Alert.alert(
-              'Edge TTS failed',
-              'Could not synthesize speech with the selected Edge voice. Check the device logs for [edge-tts] details.',
-            );
-          }
+          Alert.alert(
+            'Edge TTS failed',
+            'Could not reach the paired desktop to synthesize speech. Make sure the desktop app is running and reachable, then try again.',
+          );
         },
       });
       return;
@@ -290,8 +298,8 @@ export function TTSSettings({
                 </Text>
               </TouchableOpacity>
 
-              {/* Edge TTS voices — free cloud neural voices (web + native) */}
-              {edgeVoices.length > 0 && (
+              {/* Edge TTS voices — route through the paired desktop's /v1/tts/speak */}
+              {edgeVoices.length > 0 && edgeTtsAvailable && (
                 <>
                   <Text style={styles.voiceGroupHeader}>Edge TTS (Free)</Text>
                   {edgeVoices.map((voice) => {
