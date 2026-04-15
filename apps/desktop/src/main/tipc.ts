@@ -541,10 +541,10 @@ async function processWithAgentMode(
       }],
       isComplete: true,
       finalContent: `Error: ${errorMessage}`,
-      conversationHistory: [
-        { role: "user", content: text, timestamp: Date.now() },
-        { role: "assistant", content: `Error: ${errorMessage}`, timestamp: Date.now() }
-      ],
+      // Intentionally omit conversationHistory: the renderer agent-store
+      // preserves existingProgress.conversationHistory when this field is
+      // missing, so the user's prior transcript remains visible in the UI.
+      // Emitting a 2-item synthetic history here would clobber it.
     })
 
     throw error
