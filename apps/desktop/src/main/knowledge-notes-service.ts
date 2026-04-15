@@ -1,6 +1,14 @@
 import fs from "fs"
 import path from "path"
-import type { AgentStepSummary, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from "@shared/types"
+import type {
+  AgentStepSummary,
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteEntryType,
+  KnowledgeNoteGroupSummary,
+  KnowledgeNoteSeriesSummary,
+  KnowledgeNotesOverview,
+} from "@shared/types"
 import { logLLM, isDebugLLM } from "./debug"
 import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
@@ -34,6 +42,19 @@ function slugify(value: string): string {
 function buildReadableId(...candidates: Array<string | undefined>): string {
   const base = candidates.map((value) => slugify(value ?? "")).find(Boolean) || "note"
   return `${base}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function titleizePath(value: string): string {
+  return value
+    .split("/")
+    .map((segment) =>
+      segment
+        .split(/[-_]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+    )
+    .join(" / ")
 }
 
 const DURABLE_NOTE_CANDIDATE_TYPES = new Set(["preference", "constraint", "decision", "fact", "insight"])
@@ -300,6 +321,106 @@ export class KnowledgeNotesService {
   async getAllNotes(): Promise<KnowledgeNote[]> {
     await this.initialize()
     return [...this.notes].sort((a, b) => b.updatedAt - a.updatedAt).map(toPublicNote)
+  }
+
+  async getOverview(filter: { context?: KnowledgeNoteContext } = {}): Promise<KnowledgeNotesOverview> {
+    await this.reload()
+    const all = this.notes.map(toPublicNote)
+    const scoped = filter.context ? all.filter((note) => note.context === filter.context) : all
+
+    let autoCount = 0
+    let searchOnlyCount = 0
+    for (const note of all) {
+      if (note.context === "auto") autoCount += 1
+      else if (note.context === "search-only") searchOnlyCount += 1
+    }
+
+    const groupMap = new Map<
+      string,
+      {
+        key: string
+        label: string
+        directCount: number
+        series: Map<string, KnowledgeNoteSeriesSummary>
+      }
+    >()
+
+    for (const note of scoped) {
+      const grouping = inferKnowledgeNoteGrouping(note)
+      const groupKey = grouping.group ?? "__ungrouped__"
+      const groupLabel = grouping.group ? titleizePath(grouping.group) : "Ungrouped"
+      const group = groupMap.get(groupKey) ?? {
+        key: groupKey,
+        label: groupLabel,
+        directCount: 0,
+        series: new Map<string, KnowledgeNoteSeriesSummary>(),
+      }
+
+      if (grouping.series) {
+        const seriesKey = `${groupKey}:${grouping.series}`
+        const existing = group.series.get(seriesKey) ?? {
+          key: seriesKey,
+          label: titleizePath(grouping.series),
+          count: 0,
+        }
+        existing.count += 1
+        group.series.set(seriesKey, existing)
+      } else {
+        group.directCount += 1
+      }
+
+      groupMap.set(groupKey, group)
+    }
+
+    const groups: KnowledgeNoteGroupSummary[] = Array.from(groupMap.values()).map((group) => {
+      const seriesSummaries = Array.from(group.series.values()).sort((a, b) => a.label.localeCompare(b.label))
+      const totalCount = group.directCount + seriesSummaries.reduce((sum, s) => sum + s.count, 0)
+      return {
+        key: group.key,
+        label: group.label,
+        directCount: group.directCount,
+        totalCount,
+        seriesSummaries,
+      }
+    })
+
+    groups.sort((a, b) => {
+      if (a.key === "__ungrouped__") return 1
+      if (b.key === "__ungrouped__") return -1
+      return a.label.localeCompare(b.label)
+    })
+
+    return {
+      total: scoped.length,
+      autoCount,
+      searchOnlyCount,
+      groups,
+    }
+  }
+
+  async getNotesByGroup(filter: {
+    groupKey: string
+    seriesKey?: string
+    context?: KnowledgeNoteContext
+  }): Promise<KnowledgeNote[]> {
+    await this.initialize()
+    const notes = this.notes.map(toPublicNote)
+    const matches = notes.filter((note) => {
+      if (filter.context && note.context !== filter.context) return false
+      const grouping = inferKnowledgeNoteGrouping(note)
+      const noteGroupKey = grouping.group ?? "__ungrouped__"
+      if (noteGroupKey !== filter.groupKey) return false
+      if (filter.seriesKey) {
+        if (!grouping.series) return false
+        if (`${noteGroupKey}:${grouping.series}` !== filter.seriesKey) return false
+      } else if (grouping.series) {
+        // When no series filter, include only notes that are direct children of the group
+        return false
+      }
+      return true
+    })
+    matches.sort((a, b) => b.updatedAt - a.updatedAt)
+    return matches
   }
 
   async searchNotes(query: string): Promise<KnowledgeNote[]> {
