@@ -3894,6 +3894,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       historyForSession
         .forEach((entry, localIndex) => {
           if (entry.role === "user" && isCompletionNudge(entry.content)) return
+          // Skip ephemeral assistant entries (in-flight ACP-streamed prose that
+          // exists only to drive the streaming bubble). The persisted answer
+          // arrives via respond_to_user / finalContent and is rendered below.
+          if (entry.ephemeral) return
           nextMessages.push({
             role: entry.role,
             content: entry.content,

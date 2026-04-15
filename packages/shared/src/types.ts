@@ -43,6 +43,12 @@ export interface ConversationHistoryMessage extends BaseChatMessage {
    * action (like branching) needs to target this displayed message.
    */
   branchMessageIndex?: number;
+  /**
+   * When true, this entry is in-flight UI scaffolding (for example, ACP-streamed
+   * assistant prose emitted before a respond_to_user call) and is not part of the
+   * persisted transcript. Consumers (renderers, history exporters) should skip it.
+   */
+  ephemeral?: boolean;
 }
 
 /**

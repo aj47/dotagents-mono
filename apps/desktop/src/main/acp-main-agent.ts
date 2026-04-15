@@ -414,6 +414,13 @@ export async function processTranscriptWithACPAgent(
     }
   }
 
+  // Streamed assistant prose from ACP is marked ephemeral. The runtime contract
+  // for ACP (see ACP_RUNTIME_TOOL_PROMPT_CONTEXT) is that respond_to_user is the
+  // user-facing channel; streamed text is internal/working output. Keeping it in
+  // the in-memory history lets the streaming bubble read accumulated text, but
+  // the ephemeral flag stops the renderer from treating it as a final answer
+  // (which previously caused duplicate messages alongside respond_to_user output,
+  // most visibly on turns that included images).
   const appendAssistantText = (text: string, timestamp: number) => {
     if (!text) return
     sawAssistantTextBlock = true
@@ -436,8 +443,34 @@ export async function processTranscriptWithACPAgent(
       role: "assistant",
       content: text,
       timestamp,
+      ephemeral: true,
     })
     lastAssistantTextMessageIndex = conversationHistory.length - 1
+  }
+
+  // Resolve the in-flight ephemeral assistant prose at the end of a turn.
+  // - If respond_to_user produced a user-facing response, drop the ephemeral
+  //   entries so the persisted respond_to_user message is the sole final answer.
+  // - Otherwise, promote them to non-ephemeral so the streamed text remains the
+  //   visible response (covers agents that ignore respond_to_user or runs where
+  //   the tool failed).
+  const finalizeEphemeralAssistantText = (hasUserResponse: boolean) => {
+    if (hasUserResponse) {
+      for (let index = conversationHistory.length - 1; index >= currentTurnStartIndex; index -= 1) {
+        if (conversationHistory[index]?.ephemeral) {
+          conversationHistory.splice(index, 1)
+        }
+      }
+      lastAssistantTextMessageIndex = undefined
+      return
+    }
+
+    for (let index = currentTurnStartIndex; index < conversationHistory.length; index += 1) {
+      const entry = conversationHistory[index]
+      if (entry?.ephemeral) {
+        delete entry.ephemeral
+      }
+    }
   }
 
   const appendConversationEntry = (entry: ConversationHistoryMessage) => {
@@ -459,6 +492,10 @@ export async function processTranscriptWithACPAgent(
     ) {
       lastEntry.toolCalls = [toolCall]
       lastEntry.timestamp = timestamp
+      // The entry is no longer plain streamed prose; it now carries a structured
+      // tool call. Drop the ephemeral flag so the renderer treats the prose +
+      // tool-call pair like any other assistant message.
+      delete lastEntry.ephemeral
       lastAssistantTextMessageIndex = undefined
       return conversationHistory.length - 1
     }
@@ -841,6 +878,8 @@ export async function processTranscriptWithACPAgent(
         accumulatedText = finalResponse
       }
 
+      finalizeEphemeralAssistantText(!!userResponse)
+
       // Emit completion with final accumulated text
       await emitProgress([
         {
@@ -877,8 +916,10 @@ export async function processTranscriptWithACPAgent(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    const { finalResponse } = deriveFinalAssistantResponse()
+    const { userResponse, finalResponse } = deriveFinalAssistantResponse()
     logApp(`[ACP Main] Error: ${errorMessage}`)
+
+    finalizeEphemeralAssistantText(!!userResponse)
 
     await emitProgress([
       {
