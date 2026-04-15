@@ -1873,7 +1873,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   const bind = bindAddressOverride || cfg.remoteServerBindAddress || "127.0.0.1"
   const port = cfg.remoteServerPort || 3210
 
-  const fastify = Fastify({ logger: { level: logLevel } })
+  // Fastify defaults the body limit to 1MB, which is too small for chat requests that
+  // include long conversation histories. Raise it to 50MB to accommodate large payloads
+  // (mobile clients send the full message history on each /v1/chat/completions call).
+  const fastify = Fastify({ logger: { level: logLevel }, bodyLimit: 50 * 1024 * 1024 })
 
   // Configure CORS
   const corsOrigins = cfg.remoteServerCorsOrigins || ["*"]
