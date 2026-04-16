@@ -86,6 +86,18 @@ function isEssentialRuntimeTool(toolName: string): boolean {
 }
 
 /**
+ * Detects a trailing `[truncated]\nContext ref: ctx_xxxxxxxx` suffix emitted by
+ * filterToolResponse and returns the ref plus the text with that suffix removed.
+ * Used so downstream summarization preserves the original pre-truncation ref
+ * instead of minting a new one that only points at the truncated prefix.
+ */
+function extractExistingContextRef(text: string): { ref: string; strippedText: string } | undefined {
+  const match = text.match(/\n\n\[truncated\]\nContext ref: (ctx_[a-z0-9]+)\s*$/)
+  if (!match) return undefined
+  return { ref: match[1], strippedText: text.slice(0, match.index) }
+}
+
+/**
  * Get paths for the internal WhatsApp MCP server
  * Returns both the script path and node_modules path needed to run the server
  */
@@ -1264,6 +1276,8 @@ export class MCPService {
 
     // Any item that hits the large threshold registers the pre-summary content
     // under a Context ref so the agent can recover it via read_more_context.
+    // If the item was already truncated upstream (filterToolResponse), reuse
+    // that ref so it keeps pointing at the full pre-truncation original.
     const needsRef = sessionId && content.some((item) => item.text.length >= LARGE_RESPONSE_THRESHOLD)
     const registerContextRef = needsRef
       ? (await import('./context-budget')).registerContextRef
@@ -1277,12 +1291,16 @@ export class MCPService {
         return item
       }
 
-      const contextRef = registerContextRef?.(sessionId, {
-        kind: "truncated_tool",
-        role: "tool",
-        content: item.text,
-        toolName: `${serverName}:${toolName}`,
-      })
+      const existing = extractExistingContextRef(item.text)
+      const sourceText = existing ? existing.strippedText : item.text
+      const contextRef = existing
+        ? existing.ref
+        : registerContextRef?.(sessionId, {
+            kind: "truncated_tool",
+            role: "tool",
+            content: item.text,
+            toolName: `${serverName}:${toolName}`,
+          })
       const refNote = contextRef ? `\nContext ref: ${contextRef}` : ""
 
       // Large responses - apply intelligent summarization
@@ -1294,7 +1312,7 @@ export class MCPService {
 
         // For very large responses, use aggressive summarization
         const summarized = await this.summarizeLargeResponse(
-          item.text,
+          sourceText,
           serverName,
           toolName,
           'aggressive',
@@ -1312,7 +1330,7 @@ export class MCPService {
 
         // For moderately large responses, use gentle summarization
         const summarized = await this.summarizeLargeResponse(
-          item.text,
+          sourceText,
           serverName,
           toolName,
           'gentle',
