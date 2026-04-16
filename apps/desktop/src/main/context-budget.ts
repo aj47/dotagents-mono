@@ -1020,6 +1020,30 @@ function isTruncationProtectedMessage(message: LLMMessage): boolean {
     || EXTERNAL_TOOL_TRUNCATE_MARKERS.some((marker) => content.includes(marker))
 }
 
+/**
+ * When we rewrite a tool message's textual `content` during shrinking
+ * (microcompact, aggressive_truncate, etc.) the structural `toolResults`
+ * sidecar must be kept in sync so the LLM fetch layer doesn't bypass
+ * truncation and replay the original large payload via AI SDK tool-result
+ * parts. We collapse every tool-result entry to a single text part holding
+ * the rewritten content; `toolCallId` and `isError` are preserved so pairing
+ * and error signaling still work. For multi-result messages all results
+ * share the same truncated text — the primary goal is bounding context
+ * size, and the truncation marker / context-ref already communicates that
+ * detail was elided.
+ */
+function mirrorRewrittenContentIntoToolResults(message: LLMMessage, rewrittenContent: string): LLMMessage {
+  if (!message.toolResults || message.toolResults.length === 0) return message
+  return {
+    ...message,
+    toolResults: message.toolResults.map((tr) => ({
+      toolCallId: tr.toolCallId,
+      isError: tr.isError,
+      content: [{ type: "text" as const, text: rewrittenContent }],
+    })),
+  }
+}
+
 function collectTruncationProtectedIndices(messages: LLMMessage[]): Set<number> {
   const protectedIndices = new Set<number>()
   messages.forEach((message, index) => {
@@ -1500,12 +1524,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       const original = messages[idx]
       // Extract tool name if present for a more informative marker
       const { toolName } = parseToolNameFromContent(original.content || "")
-      messages[idx] = {
-        ...original,
-        content: toolName !== "unknown"
-          ? `[${toolName}] ${MICROCOMPACT_CLEARED_MARKER}`
-          : MICROCOMPACT_CLEARED_MARKER,
-      }
+      const rewrittenContent = toolName !== "unknown"
+        ? `[${toolName}] ${MICROCOMPACT_CLEARED_MARKER}`
+        : MICROCOMPACT_CLEARED_MARKER
+      messages[idx] = mirrorRewrittenContentIntoToolResults(
+        { ...original, content: rewrittenContent },
+        rewrittenContent,
+      )
     }
     applied.push("microcompact")
     tokens = scaleTokensWithActual(estimateTokensFromMessages(messages))
@@ -1545,10 +1570,10 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     )
 
     if (truncatedContent !== msg.content) {
-      messages[i] = {
-        ...msg,
-        content: truncatedContent,
-      }
+      messages[i] = mirrorRewrittenContentIntoToolResults(
+        { ...msg, content: truncatedContent },
+        truncatedContent,
+      )
       if (!applied.includes("aggressive_truncate")) {
         applied.push("aggressive_truncate")
       }

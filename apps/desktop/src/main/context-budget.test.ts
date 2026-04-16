@@ -588,4 +588,92 @@ describe('shrinkMessagesForLLM replacement policy', () => {
 
     expect(result.messages.some((msg) => msg.content.includes('condensed remaining conversation'))).toBe(true)
   })
+
+  it('mirrors aggressive_truncate of tool content into the toolResults sidecar', async () => {
+    // Regression test: the LLM fetch layer emits structural tool-result parts
+    // whose text is derived from msg.toolResults[].content. If shrinking only
+    // rewrites msg.content without syncing the sidecar, the truncated text
+    // gets used for token estimation but the full original payload is still
+    // sent to the provider on replay, defeating truncation.
+    const toolPayload = `[server:search] ${'x'.repeat(4500)}`
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-sidecar-mirror',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        {
+          role: 'tool',
+          content: toolPayload,
+          toolResults: [
+            {
+              toolCallId: 'call_1',
+              content: [{ type: 'text', text: 'x'.repeat(4500) }],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    const truncated = result.messages.find((msg) => msg.role === 'tool')
+    expect(truncated).toBeTruthy()
+    expect(truncated!.content).toContain('Large tool result truncated for context management')
+
+    // The toolResults sidecar must have been rewritten to match the truncated
+    // content; otherwise structural replay would send the full 4500-char blob.
+    expect(truncated!.toolResults).toHaveLength(1)
+    const sidecar = truncated!.toolResults![0]
+    expect(sidecar.toolCallId).toBe('call_1')
+    expect(sidecar.content).toHaveLength(1)
+    const sidecarText = sidecar.content[0].text
+    expect(sidecarText).toBe(truncated!.content)
+    expect(sidecarText.length).toBeLessThan(4500)
+  })
+
+  it('mirrors microcompact clearing into the toolResults sidecar', async () => {
+    // Microcompact replaces old tool results with a short marker. The
+    // sidecar must be cleared to match so structural replay doesn't keep
+    // sending the original payload.
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.5,
+      mcpMaxContextTokensOverride: 2000,
+    })
+
+    const oldToolMessages = Array.from({ length: 8 }, (_, index) => ({
+      role: 'tool',
+      content: `[search-${index}] ${'y'.repeat(600)}`,
+      toolResults: [
+        {
+          toolCallId: `call_${index}`,
+          content: [{ type: 'text', text: 'y'.repeat(600) }],
+        },
+      ],
+    }))
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-microcompact-mirror',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'task request' },
+        ...oldToolMessages,
+        { role: 'user', content: 'continue' },
+      ],
+    })
+
+    // Find cleared tool messages (those whose content now contains the marker)
+    const clearedToolMessages = result.messages.filter(
+      (msg) => msg.role === 'tool' && msg.content.includes('[Tool result cleared for context management]'),
+    )
+    expect(clearedToolMessages.length).toBeGreaterThan(0)
+
+    for (const cleared of clearedToolMessages) {
+      // toolResults sidecar must also be cleared to match
+      expect(cleared.toolResults).toBeTruthy()
+      expect(cleared.toolResults).toHaveLength(1)
+      expect(cleared.toolResults![0].content[0].text).toBe(cleared.content)
+      // Original id must be preserved so pairing still works on replay
+      expect(cleared.toolResults![0].toolCallId).toMatch(/^call_\d+$/)
+    }
+  })
 })
