@@ -66,6 +66,7 @@ import {
   clearIterativeSummary,
   readMoreContext,
   recordActualTokenUsage,
+  registerContextRef,
   shrinkMessagesForLLM,
 } from './context-budget'
 
@@ -587,5 +588,44 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(batchSummaryPrompts.some((prompt) => prompt.includes('Payload truncated for context management'))).toBe(false)
 
     expect(result.messages.some((msg) => msg.content.includes('condensed remaining conversation'))).toBe(true)
+  })
+})
+
+describe('registerContextRef export for MCP tool summarization', () => {
+  beforeEach(() => {
+    clearContextRefs('session-mcp-ref')
+  })
+
+  it('registers a ref that read_more_context can resolve', () => {
+    const original = `full tool output ${'z'.repeat(1000)} END`
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: original,
+      toolName: 'exa:web_search_advanced_exa',
+    })
+
+    expect(ref).toMatch(/^ctx_[a-z0-9]+$/)
+
+    const overview = readMoreContext('session-mcp-ref', ref!)
+    expect(overview).toEqual(expect.objectContaining({
+      success: true,
+      contextRef: ref,
+      kind: 'truncated_tool',
+      toolName: 'exa:web_search_advanced_exa',
+      totalChars: original.length,
+    }))
+
+    const search = readMoreContext('session-mcp-ref', ref!, { mode: 'search', query: 'END' })
+    expect(search).toEqual(expect.objectContaining({ success: true, matchCount: 1 }))
+  })
+
+  it('returns undefined when sessionId is missing', () => {
+    const ref = registerContextRef(undefined, {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: 'anything',
+    })
+    expect(ref).toBeUndefined()
   })
 })
