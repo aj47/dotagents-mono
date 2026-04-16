@@ -8,6 +8,11 @@
  * Tool call data - represents a call to an MCP tool
  */
 export interface ToolCall {
+  /**
+   * Optional stable id used to pair this call with its ToolResult when
+   * replaying history to the LLM. Older persisted conversations may omit it.
+   */
+  id?: string;
   name: string;
   arguments: Record<string, unknown>;
 }
@@ -16,6 +21,11 @@ export interface ToolCall {
  * Tool result data - represents the result of an MCP tool execution
  */
 export interface ToolResult {
+  /**
+   * Id of the ToolCall this result corresponds to. Older persisted
+   * conversations may omit it; synthesized on load when missing.
+   */
+  toolCallId?: string;
   success: boolean;
   content: string;
   error?: string;

@@ -7,7 +7,24 @@ import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
 
-export type LLMMessage = { role: string; content: string }
+/**
+ * In-flight message shape used throughout the agent loop and context-budget
+ * logic. `content` always holds a plain-text representation (for display,
+ * summarization, and token counting). `toolCalls` and `toolResults` are
+ * optional structural sidecars that the LLM fetch layer uses to emit
+ * correctly-paired AI SDK tool-call / tool-result parts to the provider.
+ * When absent, callers fall back to the textual `content` as before.
+ */
+export type LLMMessage = {
+  role: string
+  content: string
+  toolCalls?: Array<{ id?: string; name: string; arguments: any }>
+  toolResults?: Array<{
+    toolCallId?: string
+    isError?: boolean
+    content: Array<{ type: "text"; text: string }>
+  }>
+}
 
 type ContextRefKind = "truncated_tool" | "truncated_payload" | "batch_summary" | "dropped_messages" | "archived_history"
 

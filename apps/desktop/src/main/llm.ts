@@ -180,6 +180,15 @@ const NON_AGENT_WORKING_NOTES_LIMIT = 3
 const AGENT_WORKING_NOTES_LIMIT = 4
 
 /**
+ * Generate a stable id for pairing MCPToolCall with its MCPToolResult
+ * when replaying conversation history to the LLM. Kept short to keep
+ * persisted payloads small.
+ */
+function generateToolCallId(): string {
+  return `call_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+/**
  * Analyze tool errors and categorize them
  */
 function analyzeToolErrors(toolResults: MCPToolResult[]): {
@@ -1692,7 +1701,14 @@ export async function processTranscriptWithAgentMode(
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
 
-    // Build messages for LLM call
+    // Build messages for LLM call.
+    //
+    // Each entry is emitted with a plain-text `content` (used for
+    // display, token estimation, and context shrinking) plus optional
+    // structural `toolCalls` / `toolResults` sidecars. The LLM fetch
+    // layer uses the sidecars to emit correctly-paired AI SDK
+    // tool-call / tool-result parts so the model sees continuity across
+    // iterations (see bug: duplicate chrome-devtools new_page calls).
     const messages = [
       { role: "system", content: currentSystemPrompt },
       ...conversationHistory
@@ -1702,30 +1718,47 @@ export async function processTranscriptWithAgentMode(
 
           if (entry.role === "tool") {
             const text = sanitizedContent.trim()
-            if (!text) return null
-            // Tool results already contain tool name prefix (format: [toolName] content...)
-            // Pass through directly without adding redundant wrapper
+            const hasStructuredResults = Array.isArray(entry.toolResults) && entry.toolResults.length > 0
+            if (!text && !hasStructuredResults) return null
+            // Keep role="tool" so the fetch layer can emit tool-result parts
+            // paired by toolCallId. Older conversations without structured
+            // results still replay as plain text via the content field.
             return {
-              role: "user" as const,
+              role: "tool" as const,
               content: text,
+              toolResults: hasStructuredResults ? entry.toolResults : undefined,
             }
-          }
-          // Skip empty assistant tool-call placeholders entirely when replaying history.
-          // Re-injecting synthetic text like "[Calling tools: ...]" into the prompt can
-          // cause the model to parrot that placeholder back as garbled tool-call text and
-          // answer our internal recovery nudges instead of the user's actual request.
-          if (entry.role === "assistant" && !sanitizedContent.trim()) {
-            return null
           }
 
           if (entry.role === "assistant" && entry.skipModelReplay) {
             return null
           }
 
-          const content = sanitizedContent
+          const hasStructuredToolCalls = entry.role === "assistant"
+            && Array.isArray(entry.toolCalls)
+            && entry.toolCalls.length > 0
+
+          // Previously we dropped empty-content assistant turns to avoid the
+          // model parroting synthetic "[Calling tools: ...]" text. Now that
+          // we replay as real AI SDK tool-call parts, we must keep these
+          // turns so the model sees its own prior tool calls. Give them a
+          // short textual representation for display and token estimation.
+          if (entry.role === "assistant" && !sanitizedContent.trim()) {
+            if (!hasStructuredToolCalls) {
+              return null
+            }
+            const names = entry.toolCalls!.map((tc) => tc.name).join(", ")
+            return {
+              role: "assistant" as const,
+              content: `(called tools: ${names})`,
+              toolCalls: entry.toolCalls,
+            }
+          }
+
           return {
             role: entry.role as "user" | "assistant",
-            content,
+            content: sanitizedContent,
+            toolCalls: hasStructuredToolCalls ? entry.toolCalls : undefined,
           }
         })
         .filter(Boolean as any),
@@ -1989,12 +2022,18 @@ export async function processTranscriptWithAgentMode(
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
 
-    // Check for explicit completion signal
-    const toolCallsArray: MCPToolCall[] = Array.isArray(
+    // Check for explicit completion signal.
+    // Ensure each tool call has a stable id so its tool-result can be
+    // paired with it when replayed to the LLM as AI SDK ModelMessage parts.
+    const rawToolCalls: MCPToolCall[] = Array.isArray(
       (llmResponse as any).toolCalls,
     )
       ? (llmResponse as any).toolCalls
       : []
+    const toolCallsArray: MCPToolCall[] = rawToolCalls.map((tc) => ({
+      ...tc,
+      id: tc.id || generateToolCallId(),
+    }))
     if (isDebugTools()) {
       if (
         (llmResponse as any).toolCalls &&
@@ -2491,7 +2530,9 @@ export async function processTranscriptWithAgentMode(
 
       // Collect results in order
       for (const execResult of executionResults) {
-        toolResults.push(execResult.result)
+        // Stamp the matching tool-call id so the result can be paired
+        // with the assistant's tool-call part when replayed to the LLM.
+        toolResults.push({ ...execResult.result, toolCallId: execResult.toolCall.id })
         toolsExecutedInSession = true
         garbledToolCallCount = 0 // Reset on successful tool execution
         if (execResult.result.isError) {
@@ -2592,7 +2633,9 @@ export async function processTranscriptWithAgentMode(
           break
         }
 
-        toolResults.push(execResult.result)
+        // Stamp the matching tool-call id so the result can be paired
+        // with the assistant's tool-call part when replayed to the LLM.
+        toolResults.push({ ...execResult.result, toolCallId: toolCall.id })
         toolsExecutedInSession = true
 
         // Track failed tools for better error reporting

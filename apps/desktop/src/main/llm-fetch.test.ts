@@ -101,6 +101,7 @@ vi.mock('./chatgpt-web-provider', () => ({
   isChatGptWebProvider: vi.fn((providerId: string) => providerId === 'chatgpt-web'),
   makeChatGptWebCompletion: makeChatGptWebCompletionMock,
   makeChatGptWebResponse: makeChatGptWebResponseMock,
+  getCurrentChatGptWebModelName: vi.fn(() => 'chatgpt-web-model'),
 }))
 
 // Mock the context-budget module (imported for recordActualTokenUsage)
@@ -1044,5 +1045,234 @@ describe('LLM Fetch with AI SDK', () => {
       [{ role: 'user', content: 'hello' }],
       expect.objectContaining({ modelContext: 'mcp', tools: undefined }),
     )
+  })
+
+  describe('tool-call / tool-result replay', () => {
+    it('emits structural tool-call and tool-result parts when ids are paired', async () => {
+      const { generateText } = await import('ai')
+      const generateTextMock = vi.mocked(generateText)
+
+      generateTextMock.mockResolvedValue({
+        text: 'done',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+
+      const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+      await makeLLMCallWithFetch(
+        [
+          { role: 'user', content: 'open example.com' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              { id: 'call_abc', name: 'chrome-devtools:new_page', arguments: { url: 'https://example.com' } },
+            ],
+          },
+          {
+            role: 'tool',
+            content: '[chrome-devtools:new_page] Page 1 opened',
+            toolResults: [
+              {
+                toolCallId: 'call_abc',
+                content: [{ type: 'text', text: 'Page 1 opened' }],
+              },
+            ],
+          },
+          { role: 'user', content: 'now what?' },
+        ],
+        'openai',
+        undefined,
+        undefined,
+        [
+          {
+            name: 'chrome-devtools:new_page',
+            description: 'Open a new page',
+            inputSchema: { type: 'object', properties: { url: { type: 'string' } } },
+          },
+        ],
+      )
+
+      const callArgs = generateTextMock.mock.calls[0]?.[0] as any
+      const sentMessages = callArgs?.messages
+
+      // The assistant turn should be sent as structural parts, not dropped or collapsed to text
+      const assistantMsg = sentMessages.find((m: any) => m.role === 'assistant')
+      expect(assistantMsg).toBeDefined()
+      expect(Array.isArray(assistantMsg.content)).toBe(true)
+      const assistantToolCall = assistantMsg.content.find((p: any) => p.type === 'tool-call')
+      expect(assistantToolCall).toBeDefined()
+      expect(assistantToolCall.toolCallId).toBe('call_abc')
+      // Tool name should be sanitized (colon -> __COLON__) to match tool definitions
+      expect(assistantToolCall.toolName).toBe('chrome-devtools__COLON__new_page')
+      expect(assistantToolCall.input).toEqual({ url: 'https://example.com' })
+
+      // The tool turn should be a ToolModelMessage with tool-result parts, NOT a user message
+      const toolMsg = sentMessages.find((m: any) => m.role === 'tool')
+      expect(toolMsg).toBeDefined()
+      expect(Array.isArray(toolMsg.content)).toBe(true)
+      const toolResultPart = toolMsg.content[0]
+      expect(toolResultPart.type).toBe('tool-result')
+      expect(toolResultPart.toolCallId).toBe('call_abc')
+      expect(toolResultPart.toolName).toBe('chrome-devtools__COLON__new_page')
+      expect(toolResultPart.output).toEqual({ type: 'text', value: 'Page 1 opened' })
+    })
+
+    it('falls back to plain-text when tool ids are missing (legacy conversations)', async () => {
+      const { generateText } = await import('ai')
+      const generateTextMock = vi.mocked(generateText)
+
+      generateTextMock.mockResolvedValue({
+        text: 'ok',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+
+      const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+      await makeLLMCallWithFetch(
+        [
+          { role: 'user', content: 'old question' },
+          {
+            role: 'assistant',
+            content: '(called tools: legacy_tool)',
+            // No ids on toolCalls - legacy persisted conversation
+            toolCalls: [{ name: 'legacy_tool', arguments: {} }] as any,
+          },
+          {
+            role: 'tool',
+            content: '[legacy_tool] legacy result',
+            // No toolCallId - legacy persisted conversation
+            toolResults: [{ content: [{ type: 'text', text: 'legacy result' }] }] as any,
+          },
+          { role: 'user', content: 'follow up' },
+        ],
+        'openai',
+      )
+
+      const callArgs = generateTextMock.mock.calls[0]?.[0] as any
+      const sentMessages = callArgs?.messages
+
+      // Both assistant and tool turns should be present, but as plain-text
+      // (tool role demoted to user, assistant still assistant but content is string)
+      const assistantMsg = sentMessages.find((m: any) => m.role === 'assistant')
+      expect(assistantMsg).toBeDefined()
+      expect(typeof assistantMsg.content).toBe('string')
+      expect(assistantMsg.content).toContain('legacy_tool')
+
+      // The tool message should have fallen through to user-role text, not be dropped
+      const allContents = sentMessages.map((m: any) => typeof m.content === 'string' ? m.content : '').join(' ')
+      expect(allContents).toContain('legacy result')
+
+      // No structural tool-call/tool-result parts should be emitted
+      const hasStructuralToolCall = sentMessages.some(
+        (m: any) => Array.isArray(m.content) && m.content.some((p: any) => p.type === 'tool-call'),
+      )
+      expect(hasStructuralToolCall).toBe(false)
+    })
+
+    it('falls back to plain-text when ids exist on only one side (mismatched pairing)', async () => {
+      const { generateText } = await import('ai')
+      const generateTextMock = vi.mocked(generateText)
+
+      generateTextMock.mockResolvedValue({
+        text: 'ok',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+
+      const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+      await makeLLMCallWithFetch(
+        [
+          { role: 'user', content: 'ask' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [{ id: 'call_xyz', name: 'some_tool', arguments: {} }],
+          },
+          {
+            role: 'tool',
+            content: '[some_tool] result',
+            // tool side has no toolCallId — mismatched
+            toolResults: [{ content: [{ type: 'text', text: 'result' }] }] as any,
+          },
+          { role: 'user', content: 'follow up' },
+        ],
+        'openai',
+      )
+
+      const callArgs = generateTextMock.mock.calls[0]?.[0] as any
+      const sentMessages = callArgs?.messages
+
+      // No structural parts should be emitted when pairing is incomplete
+      const hasStructuralToolCall = sentMessages.some(
+        (m: any) => Array.isArray(m.content) && m.content.some((p: any) => p.type === 'tool-call'),
+      )
+      const hasStructuralToolResult = sentMessages.some(
+        (m: any) => Array.isArray(m.content) && m.content.some((p: any) => p.type === 'tool-result'),
+      )
+      expect(hasStructuralToolCall).toBe(false)
+      expect(hasStructuralToolResult).toBe(false)
+    })
+
+    it('preserves an empty-content assistant tool-call turn instead of dropping it', async () => {
+      const { generateText } = await import('ai')
+      const generateTextMock = vi.mocked(generateText)
+
+      generateTextMock.mockResolvedValue({
+        text: 'ok',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+
+      const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+      await makeLLMCallWithFetch(
+        [
+          { role: 'user', content: 'first ask' },
+          {
+            role: 'assistant',
+            content: '', // empty content — previously this entire turn was dropped
+            toolCalls: [{ id: 'call_1', name: 'my_tool', arguments: { a: 1 } }],
+          },
+          {
+            role: 'tool',
+            content: '[my_tool] result',
+            toolResults: [
+              { toolCallId: 'call_1', content: [{ type: 'text', text: 'result' }] },
+            ],
+          },
+          { role: 'user', content: 'second ask' },
+        ],
+        'openai',
+        undefined,
+        undefined,
+        [
+          {
+            name: 'my_tool',
+            description: 'test',
+            inputSchema: { type: 'object', properties: { a: { type: 'number' } } },
+          },
+        ],
+      )
+
+      const callArgs = generateTextMock.mock.calls[0]?.[0] as any
+      const sentMessages = callArgs?.messages
+
+      // The assistant message must survive and contain the tool-call part
+      const assistantMsg = sentMessages.find((m: any) => m.role === 'assistant')
+      expect(assistantMsg).toBeDefined()
+      expect(Array.isArray(assistantMsg.content)).toBe(true)
+      const toolCallPart = assistantMsg.content.find((p: any) => p.type === 'tool-call')
+      expect(toolCallPart).toBeDefined()
+      expect(toolCallPart.toolCallId).toBe('call_1')
+
+      // And the tool-result part with matching id must be in the tool message
+      const toolMsg = sentMessages.find((m: any) => m.role === 'tool')
+      expect(toolMsg).toBeDefined()
+      expect(toolMsg.content[0].toolCallId).toBe('call_1')
+    })
   })
 })

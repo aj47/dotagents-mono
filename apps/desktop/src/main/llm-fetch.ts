@@ -632,38 +632,159 @@ async function withRetry<T>(
 }
 
 /**
+ * Message shape accepted by the fetch layer. Plain-text `content` is used
+ * for providers that don't support native tool messages (e.g. chatgpt-web)
+ * and for token/budget calculations. Optional `toolCalls` / `toolResults`
+ * sidecars carry the structural information needed to emit AI SDK
+ * tool-call / tool-result parts with matching `toolCallId`s.
+ */
+export type FetchMessage = {
+  role: string
+  content: string
+  toolCalls?: Array<{ id?: string; name: string; arguments: any }>
+  toolResults?: Array<{
+    toolCallId?: string
+    isError?: boolean
+    content: Array<{ type: "text"; text: string }>
+  }>
+}
+
+/**
+ * Flatten FetchMessage[] to simple `{role, content: string}` form for
+ * providers that don't speak AI SDK's structural tool messages (e.g. the
+ * chatgpt-web bridge). Sidecar structural fields are discarded; the
+ * textual representation written by the agent loop is preserved.
+ */
+function flattenMessagesForTextProvider(
+  messages: FetchMessage[],
+): Array<{ role: string; content: string }> {
+  return messages.map((m) => ({ role: m.role, content: m.content }))
+}
+
+/**
  * Convert messages to AI SDK format, extracting system messages separately
  * This is needed for compatibility with Anthropic/Claude APIs which expect
- * system prompts as a separate parameter, not in the messages array
+ * system prompts as a separate parameter, not in the messages array.
+ *
+ * When a message carries `toolCalls` / `toolResults` sidecars, emit proper
+ * AI SDK multi-part `ModelMessage`s so assistant tool-call turns are paired
+ * with their tool results via `toolCallId`. Without this the model loses
+ * continuity across iterations and can re-issue the same tool call
+ * repeatedly (see duplicate chrome-devtools new_page regression).
  *
  * Also ensures the conversation never ends with an assistant message.
  * OpenAI-compatible APIs (including OpenRouter) do not support "assistant
  * message prefill" and require the conversation to end with a user message.
  * See: https://github.com/aj47/dotagents-mono/issues/1035
+ *
+ * Tool-name sanitization (via `toolNameMap` collected from
+ * `convertMCPToolsToAISDKTools`) must match on replay so the provider can
+ * resolve tool-call / tool-result references consistently across turns.
  */
-function convertMessages(messages: Array<{ role: string; content: string }>): {
+function convertMessages(
+  messages: FetchMessage[],
+  toolNameMap?: Map<string, string>,
+): {
   system: string | undefined
-  messages: Array<{ role: "user" | "assistant"; content: string }>
+  messages: any[]
 } {
   const systemMessages: string[] = []
-  const otherMessages: Array<{ role: "user" | "assistant"; content: string }> =
-    []
+  const otherMessages: any[] = []
 
-  for (const msg of messages) {
+  // Build reverse map (original name -> sanitized name) once, if provided.
+  const sanitizedNameByOriginal = toolNameMap
+    ? new Map(Array.from(toolNameMap.entries()).map(([sanitized, original]) => [original, sanitized]))
+    : undefined
+
+  const sanitize = (originalName: string): string =>
+    sanitizedNameByOriginal?.get(originalName) ?? originalName
+
+  // First pass: decide which indices can be emitted as structural AI SDK
+  // tool-call / tool-result parts. An assistant-with-toolCalls and its
+  // immediately-following tool message must BOTH carry ids that line up,
+  // otherwise we fall back to plain-text for both to avoid orphan tool
+  // calls that providers reject. This keeps legacy conversations (saved
+  // before toolCallId plumbing) replayable.
+  const emitStructural = new Array<boolean>(messages.length).fill(false)
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i]
+    if (m.role !== "assistant" || !m.toolCalls || m.toolCalls.length === 0) continue
+    const next = messages[i + 1]
+    if (!next || next.role !== "tool" || !next.toolResults || next.toolResults.length === 0) continue
+    const assistantIds = m.toolCalls.map((tc) => tc.id).filter((id): id is string => !!id)
+    const resultIds = next.toolResults.map((tr) => tr.toolCallId).filter((id): id is string => !!id)
+    if (assistantIds.length !== m.toolCalls.length) continue
+    if (resultIds.length !== next.toolResults.length) continue
+    // Every tool call must have a matching tool result by id.
+    const resultIdSet = new Set(resultIds)
+    const allPaired = assistantIds.every((id) => resultIdSet.has(id))
+    if (!allPaired) continue
+    emitStructural[i] = true
+    emitStructural[i + 1] = true
+  }
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]
     if (msg.role === "system") {
       systemMessages.push(msg.content)
-    } else {
-      otherMessages.push({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })
+      continue
     }
+
+    if (emitStructural[i] && msg.role === "assistant" && msg.toolCalls) {
+      const parts: any[] = []
+      const textContent = (msg.content || "").trim()
+      // Some providers reject tool-call-only assistant turns; preserve any
+      // non-empty text the model produced alongside its tool calls.
+      if (textContent && !textContent.startsWith("(called tools:")) {
+        parts.push({ type: "text", text: msg.content })
+      }
+      for (const tc of msg.toolCalls) {
+        parts.push({
+          type: "tool-call",
+          toolCallId: tc.id!,
+          toolName: sanitize(tc.name),
+          input: tc.arguments ?? {},
+        })
+      }
+      otherMessages.push({ role: "assistant", content: parts })
+      continue
+    }
+
+    if (emitStructural[i] && msg.role === "tool" && msg.toolResults) {
+      const parts = msg.toolResults.map((tr) => {
+        const text = tr.content.map((c) => c.text).join("\n")
+        // Recover tool name from the textual prefix "[toolName] ..." that
+        // the agent loop writes when persisting tool messages. Falls back
+        // to an empty string; providers primarily match by toolCallId.
+        const match = /^\[([^\]]+)\]\s?(ERROR:\s?)?/.exec(msg.content || "")
+        const toolName = match?.[1] ?? ""
+        return {
+          type: "tool-result" as const,
+          toolCallId: tr.toolCallId!,
+          toolName: sanitize(toolName),
+          output: tr.isError
+            ? { type: "error-text" as const, value: text }
+            : { type: "text" as const, value: text },
+        }
+      })
+      otherMessages.push({ role: "tool", content: parts })
+      continue
+    }
+
+    // Plain-text path: legacy persisted messages without structural
+    // sidecars, and non-tool user/assistant messages. Demote role="tool"
+    // to user-role text so the model at least sees the output, preserving
+    // backwards compatibility with conversations saved before toolCallId
+    // plumbing was introduced.
+    const role: "user" | "assistant" = msg.role === "assistant" ? "assistant" : "user"
+    otherMessages.push({ role, content: msg.content })
   }
 
   // Ensure the conversation doesn't end with an assistant message.
   // Some providers (e.g., OpenRouter proxying to Claude models) don't support
   // assistant message prefill and require the last message to be from the user.
-  if (otherMessages.length > 0 && otherMessages[otherMessages.length - 1].role === "assistant") {
+  const last = otherMessages[otherMessages.length - 1]
+  if (last && last.role === "assistant") {
     otherMessages.push({
       role: "user",
       content: "Continue from your most recent step using the existing context. Do not restart.",
@@ -732,7 +853,7 @@ function extractJsonObject(str: string): any | null {
  * Now supports native AI SDK tool calling when tools are provided
  */
 export async function makeLLMCallWithFetch(
-  messages: Array<{ role: string; content: string }>,
+  messages: FetchMessage[],
   providerId?: string,
   onRetryProgress?: RetryProgressCallback,
   sessionId?: string,
@@ -772,7 +893,7 @@ export async function makeLLMCallWithFetch(
 
           let result
           try {
-            result = await makeChatGptWebResponse(messages, {
+            result = await makeChatGptWebResponse(flattenMessagesForTextProvider(messages), {
               modelContext: "mcp",
               signal: abortController.signal,
               tools,
@@ -835,18 +956,19 @@ export async function makeLLMCallWithFetch(
         }
 
         const model = createLanguageModel(effectiveProviderId)
-        const { system, messages: convertedMessages } = convertMessages(messages)
+        // Convert MCP tools to AI SDK format first so convertMessages can
+        // apply the same sanitized tool names to replayed tool-call and
+        // tool-result parts.
+        const convertedTools = tools && tools.length > 0
+          ? convertMCPToolsToAISDKTools(tools)
+          : undefined
+        const { system, messages: convertedMessages } = convertMessages(messages, convertedTools?.nameMap)
         const promptCaching = getPromptCachingConfig(effectiveProviderId)
         const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
         const mergedProviderOptions = mergeProviderOptions(
           promptCaching?.providerOptions,
           reasoningOptions,
         )
-
-        // Convert MCP tools to AI SDK format if provided
-        const convertedTools = tools && tools.length > 0
-          ? convertMCPToolsToAISDKTools(tools)
-          : undefined
 
         const modelName = getCurrentModelName(effectiveProviderId)
 
@@ -1034,7 +1156,7 @@ export async function makeLLMCallWithFetch(
  * streaming and what actually executes.
  */
 export async function makeLLMCallWithStreamingAndTools(
-  messages: Array<{ role: string; content: string }>,
+  messages: FetchMessage[],
   onChunk: StreamingCallback,
   providerId?: string,
   onRetryProgress?: RetryProgressCallback,
@@ -1077,7 +1199,7 @@ export async function makeLLMCallWithStreamingAndTools(
             abortController.abort()
           }
 
-          const result = await makeChatGptWebResponse(messages, {
+          const result = await makeChatGptWebResponse(flattenMessagesForTextProvider(messages), {
             modelContext: "mcp",
             signal: abortController.signal,
             onTextChunk: onChunk,
@@ -1122,7 +1244,7 @@ export async function makeLLMCallWithStreamingAndTools(
       }
 
       const model = createLanguageModel(effectiveProviderId)
-      const { system, messages: convertedMessages } = convertMessages(messages)
+      const { system, messages: convertedMessages } = convertMessages(messages, convertedTools?.nameMap)
       const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
       const mergedProviderOptions = mergeProviderOptions(
@@ -1373,7 +1495,7 @@ export async function makeTextCompletionWithFetch(
  * Includes automatic retry with exponential backoff for transient failures.
  */
 export async function verifyCompletionWithFetch(
-  messages: Array<{ role: string; content: string }>,
+  messages: FetchMessage[],
   providerId?: string,
   sessionId?: string,
   onRetryProgress?: RetryProgressCallback
@@ -1436,7 +1558,7 @@ export async function verifyCompletionWithFetch(
         let usage: ExtendedUsage | undefined
         try {
           if (isChatGptWebProvider(effectiveProviderId)) {
-            text = (await makeChatGptWebCompletion(messages, {
+            text = (await makeChatGptWebCompletion(flattenMessagesForTextProvider(messages), {
               modelContext: "mcp",
               signal: abortController.signal,
             })).trim()
