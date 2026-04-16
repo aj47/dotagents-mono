@@ -1274,5 +1274,72 @@ describe('LLM Fetch with AI SDK', () => {
       expect(toolMsg).toBeDefined()
       expect(toolMsg.content[0].toolCallId).toBe('call_1')
     })
+
+    it('assigns per-result toolName by toolCallId in multi-tool batches', async () => {
+      // Regression test for the "all tool-result parts get the first [toolName]"
+      // bug: when the agent runs multiple tools in parallel, a single tool
+      // message holds concatenated "[toolA] ...\n\n[toolB] ..." text plus a
+      // toolResults array with one entry per call. Per-result toolName must
+      // be looked up by toolCallId against the preceding assistant's toolCalls,
+      // not parsed from the shared content string.
+      const { generateText } = await import('ai')
+      const generateTextMock = vi.mocked(generateText)
+
+      generateTextMock.mockResolvedValue({
+        text: 'done',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+
+      const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+      await makeLLMCallWithFetch(
+        [
+          { role: 'user', content: 'run both tools' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              { id: 'call_a', name: 'tool_alpha', arguments: { a: 1 } },
+              { id: 'call_b', name: 'tool_beta', arguments: { b: 2 } },
+            ],
+          },
+          {
+            role: 'tool',
+            content: '[tool_alpha] alpha result\n\n[tool_beta] beta result',
+            toolResults: [
+              { toolCallId: 'call_a', content: [{ type: 'text', text: 'alpha result' }] },
+              { toolCallId: 'call_b', content: [{ type: 'text', text: 'beta result' }] },
+            ],
+          },
+          { role: 'user', content: 'continue' },
+        ],
+        'openai',
+        undefined,
+        undefined,
+        [
+          { name: 'tool_alpha', description: 'a', inputSchema: { type: 'object', properties: { a: { type: 'number' } } } },
+          { name: 'tool_beta', description: 'b', inputSchema: { type: 'object', properties: { b: { type: 'number' } } } },
+        ],
+      )
+
+      const callArgs = generateTextMock.mock.calls[0]?.[0] as any
+      const sentMessages = callArgs?.messages
+
+      const toolMsg = sentMessages.find((m: any) => m.role === 'tool')
+      expect(toolMsg).toBeDefined()
+      expect(toolMsg.content).toHaveLength(2)
+
+      // Each part must carry its OWN tool name, not the first one
+      const partA = toolMsg.content.find((p: any) => p.toolCallId === 'call_a')
+      const partB = toolMsg.content.find((p: any) => p.toolCallId === 'call_b')
+      expect(partA).toBeDefined()
+      expect(partB).toBeDefined()
+      expect(partA.toolName).toBe('tool_alpha')
+      expect(partB.toolName).toBe('tool_beta')
+      // And the outputs must be per-result too
+      expect(partA.output).toEqual({ type: 'text', value: 'alpha result' })
+      expect(partB.output).toEqual({ type: 'text', value: 'beta result' })
+    })
   })
 })

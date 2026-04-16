@@ -751,13 +751,24 @@ function convertMessages(
     }
 
     if (emitStructural[i] && msg.role === "tool" && msg.toolResults) {
+      // Look up per-result tool names from the paired preceding assistant
+      // message. emitStructural[i] guarantees messages[i-1] is an assistant
+      // turn whose toolCalls carry ids matching this message's toolCallIds,
+      // so we can map toolCallId -> toolName precisely for each result.
+      // This is critical for multi-tool batches where a single tool message
+      // carries several results under concatenated "[toolA] ...\n\n[toolB] ..."
+      // text; a single regex over msg.content would incorrectly assign the
+      // first tool's name to every emitted tool-result part.
+      const prevAssistant = messages[i - 1]
+      const nameByCallId = new Map<string, string>()
+      if (prevAssistant?.toolCalls) {
+        for (const tc of prevAssistant.toolCalls) {
+          if (tc.id) nameByCallId.set(tc.id, tc.name)
+        }
+      }
       const parts = msg.toolResults.map((tr) => {
         const text = tr.content.map((c) => c.text).join("\n")
-        // Recover tool name from the textual prefix "[toolName] ..." that
-        // the agent loop writes when persisting tool messages. Falls back
-        // to an empty string; providers primarily match by toolCallId.
-        const match = /^\[([^\]]+)\]\s?(ERROR:\s?)?/.exec(msg.content || "")
-        const toolName = match?.[1] ?? ""
+        const toolName = nameByCallId.get(tr.toolCallId!) ?? ""
         return {
           type: "tool-result" as const,
           toolCallId: tr.toolCallId!,
