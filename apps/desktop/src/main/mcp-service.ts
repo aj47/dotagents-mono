@@ -1209,17 +1209,32 @@ export class MCPService {
    * Filter tool responses to reduce context size
    * Uses a 50KB threshold - MCP servers handle their own pagination
    */
-  private filterToolResponse(
-    _serverName: string,
-    _toolName: string,
-    content: Array<{ type: string; text: string }>
-  ): Array<{ type: string; text: string }> {
+  private async filterToolResponse(
+    serverName: string,
+    toolName: string,
+    content: Array<{ type: string; text: string }>,
+    sessionId?: string
+  ): Promise<Array<{ type: string; text: string }>> {
     const TRUNCATION_LIMIT = 50000
+    // Any truncation registers the raw original under a Context ref so the
+    // agent can recover it via read_more_context.
+    const needsRef = sessionId && content.some((item) => item.text.length > TRUNCATION_LIMIT)
+    const registerContextRef = needsRef
+      ? (await import('./context-budget')).registerContextRef
+      : undefined
+
     return content.map((item) => {
       if (item.text.length > TRUNCATION_LIMIT) {
+        const contextRef = registerContextRef?.(sessionId, {
+          kind: "truncated_tool",
+          role: "tool",
+          content: item.text,
+          toolName: `${serverName}:${toolName}`,
+        })
+        const refNote = contextRef ? `\nContext ref: ${contextRef}` : ""
         return {
           type: item.type,
-          text: item.text.substring(0, TRUNCATION_LIMIT) + '\n\n[truncated]'
+          text: item.text.substring(0, TRUNCATION_LIMIT) + `\n\n[truncated]${refNote}`
         }
       }
       return item
@@ -1233,7 +1248,8 @@ export class MCPService {
     serverName: string,
     toolName: string,
     content: Array<{ type: string; text: string }>,
-    onProgress?: (message: string) => void
+    onProgress?: (message: string) => void,
+    sessionId?: string
   ): Promise<Array<{ type: string; text: string }>> {
     const config = configStore.get()
 
@@ -1246,6 +1262,13 @@ export class MCPService {
       return content // Return unprocessed if disabled
     }
 
+    // Any item that hits the large threshold registers the pre-summary content
+    // under a Context ref so the agent can recover it via read_more_context.
+    const needsRef = sessionId && content.some((item) => item.text.length >= LARGE_RESPONSE_THRESHOLD)
+    const registerContextRef = needsRef
+      ? (await import('./context-budget')).registerContextRef
+      : undefined
+
     return Promise.all(content.map(async (item) => {
       const responseSize = item.text.length
 
@@ -1253,6 +1276,14 @@ export class MCPService {
       if (responseSize < LARGE_RESPONSE_THRESHOLD) {
         return item
       }
+
+      const contextRef = registerContextRef?.(sessionId, {
+        kind: "truncated_tool",
+        role: "tool",
+        content: item.text,
+        toolName: `${serverName}:${toolName}`,
+      })
+      const refNote = contextRef ? `\nContext ref: ${contextRef}` : ""
 
       // Large responses - apply intelligent summarization
       if (responseSize >= CRITICAL_RESPONSE_THRESHOLD) {
@@ -1271,7 +1302,7 @@ export class MCPService {
         )
         return {
           type: item.type,
-          text: `[summarized]\n${summarized}`
+          text: `[summarized]\n${summarized}${refNote}`
         }
       } else {
         // Notify user of processing if enabled
@@ -1289,7 +1320,7 @@ export class MCPService {
         )
         return {
           type: item.type,
-          text: summarized
+          text: `${summarized}${refNote}`
         }
       }
     }))
@@ -1403,7 +1434,8 @@ export class MCPService {
     serverName: string,
     toolName: string,
     arguments_: any,
-    onProgress?: (message: string) => void
+    onProgress?: (message: string) => void,
+    sessionId?: string
   ): Promise<MCPToolResult> {
     const client = this.clients.get(serverName)
     if (!client) {
@@ -1540,14 +1572,15 @@ export class MCPService {
           ]
 
       // Apply response filtering to reduce context size
-      const filteredContent = this.filterToolResponse(serverName, toolName, content)
+      const filteredContent = await this.filterToolResponse(serverName, toolName, content, sessionId)
 
       // Check if response needs further processing for context management
       const processedContent = await this.processLargeToolResponse(
         serverName,
         toolName,
         filteredContent,
-        onProgress
+        onProgress,
+        sessionId
       )
 
       const finalResult: MCPToolResult = {
@@ -2718,7 +2751,8 @@ export class MCPService {
           serverName,
           toolName,
           toolCall.arguments,
-          onProgress
+          onProgress,
+          sessionId
         )
 
         // Track resource information from tool results
@@ -2791,7 +2825,8 @@ export class MCPService {
           serverName,
           toolName,
           toolCall.arguments,
-          onProgress
+          onProgress,
+          sessionId
         )
 
         // Track resource information from tool results

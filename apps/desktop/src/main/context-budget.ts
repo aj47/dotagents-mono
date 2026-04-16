@@ -536,7 +536,7 @@ function makeContextRef(): string {
   return `ctx_${Math.random().toString(36).slice(2, 10)}`
 }
 
-function registerContextRef(
+export function registerContextRef(
   sessionId: string | undefined,
   input: {
     kind: ContextRefKind
