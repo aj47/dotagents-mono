@@ -4232,6 +4232,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           id: `exec-standalone-${toolIndex}`,
           data: { timestamp: message.timestamp, calls: [], results: message.toolResults },
         })
+      } else if (
+        message.role === "tool" &&
+        !message.toolResults?.length &&
+        !message.toolCalls?.length
+      ) {
+        // Synthetic tool-role summaries (e.g. "TOOL FAILED: ..." added for LLM
+        // context when tool calls error) should not render as a standalone
+        // bubble — the actual failures are already shown inside the tool call
+        // stack via toolResults on the preceding tool message.
+        continue
       } else {
 
         const roleIndex = ++roleCounters[message.role]

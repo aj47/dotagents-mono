@@ -1851,8 +1851,19 @@ export default function ChatScreen({ route, navigation }: any) {
                 // Skip adding this as a separate message only when we merged results
                 continue;
               }
-              // If tool message has content but no toolResults, fall through to add it as a message
             }
+          }
+
+          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
+          // carry no toolResults/toolCalls — the underlying failures are
+          // already visible inside the tool call stack via toolResults on the
+          // preceding tool message.
+          if (
+            historyMsg.role === 'tool' &&
+            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
+            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
+          ) {
+            continue;
           }
 
           messages.push({
@@ -2263,8 +2274,19 @@ export default function ChatScreen({ route, navigation }: any) {
                 // Skip adding this as a separate message only when we merged results
                 continue;
               }
-              // If tool message has content but no toolResults, fall through to add it as a message
             }
+          }
+
+          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
+          // carry no toolResults/toolCalls — the underlying failures are
+          // already visible inside the tool call stack via toolResults on the
+          // preceding tool message.
+          if (
+            historyMsg.role === 'tool' &&
+            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
+            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
+          ) {
+            continue;
           }
 
           newMessages.push({
@@ -2652,6 +2674,17 @@ export default function ChatScreen({ route, navigation }: any) {
         for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
           const historyMsg = response.conversationHistory[i];
           if (historyMsg.role === 'user') continue;
+          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
+          // carry no toolResults/toolCalls — the underlying failures are
+          // already visible inside the tool call stack via toolResults on the
+          // preceding tool message.
+          if (
+            historyMsg.role === 'tool' &&
+            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
+            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
+          ) {
+            continue;
+          }
           newMessages.push({
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
