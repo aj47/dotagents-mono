@@ -38,7 +38,6 @@ const mocks = vi.hoisted(() => {
     ]),
     configReload: vi.fn(),
     profileReload: vi.fn(),
-    promptsReload: vi.fn(),
     closeSpy,
   }
 })
@@ -70,7 +69,6 @@ vi.mock("./config", () => ({
 vi.mock("./agent-profile-service", () => ({
   agentProfileService: {
     reload: mocks.profileReload,
-    reloadPromptsFromLayer: mocks.promptsReload,
   },
 }))
 
@@ -98,7 +96,6 @@ describe("AgentsFolderWatcher (Linux per-subdir filename resolution)", () => {
     mocks.readdirSync.mockClear()
     mocks.configReload.mockClear()
     mocks.profileReload.mockClear()
-    mocks.promptsReload.mockClear()
     mocks.closeSpy.mockClear()
     setPlatform("linux")
   })
@@ -130,14 +127,15 @@ describe("AgentsFolderWatcher (Linux per-subdir filename resolution)", () => {
     expect(mocks.profileReload).toHaveBeenCalledTimes(1)
   })
 
-  it("still reloads prompts when `system-prompt.md` fires on the root watcher", async () => {
+  it("ignores top-level `system-prompt.md` and `agents.md` changes (ecosystem-shared overrides)", async () => {
     const mod = await import("./agents-folder-watcher")
     mod.startAgentsFolderWatcher()
 
     findCallback("/mock/.agents")("change", "system-prompt.md")
+    findCallback("/mock/.agents")("change", "agents.md")
     await vi.advanceTimersByTimeAsync(300)
 
-    expect(mocks.promptsReload).toHaveBeenCalledTimes(1)
+    expect(mocks.configReload).not.toHaveBeenCalled()
     expect(mocks.profileReload).not.toHaveBeenCalled()
   })
 

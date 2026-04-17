@@ -3,16 +3,18 @@
  *
  * Watches the user-editable files in `~/.agents/` (and the optional workspace
  * overlay) and syncs external edits back into the in-memory stores. Without
- * this, a user editing `system-prompt.md`, `agents.md`, `layouts/ui.json`, or
- * `agents/<id>/agent.md` directly on disk would have their changes silently
- * overwritten the next time any unrelated code path called `configStore.save()`
- * or `agentProfileService.saveProfiles()`, because those writers serialize
- * from in-memory values that haven't seen the external edit.
+ * this, a user editing `layouts/ui.json` or `agents/<id>/agent.md` directly on
+ * disk would have their changes silently overwritten the next time any
+ * unrelated code path called `configStore.save()` or
+ * `agentProfileService.saveProfiles()`, because those writers serialize from
+ * in-memory values that haven't seen the external edit.
  *
  * Watcher scope is intentionally narrow — it only triggers reloads for the
  * files that are round-tripped through the save paths guarded by
  * `skipIfUnchanged` in `safe-file.ts`. Other `.agents/` subtrees (skills,
- * tasks, memories) already have their own watchers.
+ * tasks, memories) already have their own watchers. The top-level
+ * `system-prompt.md` and `agents.md` are ecosystem-shared overrides that
+ * DotAgents never writes, so they have no in-memory state to keep in sync.
  */
 
 import fs from "fs"
@@ -27,7 +29,6 @@ let watchers: fs.FSWatcher[] = []
 let debounceTimer: NodeJS.Timeout | null = null
 let pendingReloads = {
   config: false,
-  prompts: false,
   profiles: false,
 }
 
@@ -44,7 +45,6 @@ function classifyChange(filename: string | null): void {
   if (!filename) {
     // Unknown change — be safe and reload everything watched.
     pendingReloads.config = true
-    pendingReloads.prompts = true
     pendingReloads.profiles = true
     return
   }
@@ -62,11 +62,6 @@ function classifyChange(filename: string | null): void {
     return
   }
 
-  if (normalized === "system-prompt.md" || normalized === "agents.md") {
-    pendingReloads.prompts = true
-    return
-  }
-
   if (normalized.startsWith("agents/") && normalized.endsWith(".md")) {
     pendingReloads.profiles = true
     return
@@ -80,7 +75,7 @@ function classifyChange(filename: string | null): void {
 
 function flushPendingReloads(): void {
   const snapshot = { ...pendingReloads }
-  pendingReloads = { config: false, prompts: false, profiles: false }
+  pendingReloads = { config: false, profiles: false }
 
   if (snapshot.config) {
     try {
@@ -91,18 +86,10 @@ function flushPendingReloads(): void {
   }
 
   if (snapshot.profiles) {
-    // A full profiles reload also re-runs `syncPromptsFromLayer`, so this
-    // covers the prompts case too.
     try {
       agentProfileService.reload()
     } catch (error) {
       logApp("[AgentsFolderWatcher] Failed to reload agent profiles:", error)
-    }
-  } else if (snapshot.prompts) {
-    try {
-      agentProfileService.reloadPromptsFromLayer()
-    } catch (error) {
-      logApp("[AgentsFolderWatcher] Failed to reload prompts:", error)
     }
   }
 }
@@ -135,7 +122,7 @@ function handleWatcherEvent(
     : null
   classifyChange(relative)
 
-  if (!pendingReloads.config && !pendingReloads.prompts && !pendingReloads.profiles) {
+  if (!pendingReloads.config && !pendingReloads.profiles) {
     return
   }
 
@@ -242,5 +229,5 @@ export function stopAgentsFolderWatcher(): void {
   }
   // Reset any classified-but-not-yet-flushed reload flags so a later
   // restart doesn't fire a stale reload on its first event.
-  pendingReloads = { config: false, prompts: false, profiles: false }
+  pendingReloads = { config: false, profiles: false }
 }
