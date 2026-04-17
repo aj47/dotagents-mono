@@ -1193,6 +1193,10 @@ export async function processTranscriptWithAgentMode(
     saveMessageIncremental("user", transcript).catch(err => {
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
     })
+  }
+  // Emit onUserMessage for any real user submission — including retries of the
+  // same content — but skip internal resume transcripts which aren't user input.
+  if (shouldPersistInitialUserMessage) {
     const userMsgSession = agentSessionTracker.getSession(currentSessionId)
     taskEventBus.emit("onUserMessage", {
       sessionId: currentSessionId,

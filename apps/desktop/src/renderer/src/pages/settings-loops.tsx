@@ -11,7 +11,7 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig, LoopSchedule, LoopTriggerEvent } from "@shared/types"
+import { LoopConfig, LoopSchedule, LoopTriggerConfig, LoopTriggerEvent } from "@shared/types"
 import { toast } from "sonner"
 
 type ScheduleMode = "interval" | "daily" | "weekly"
@@ -28,6 +28,11 @@ interface EditingLoop {
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
   triggers: LoopTriggerEvent[]  // event triggers (onSessionEnd, etc.)
   triggerToolName: string       // onToolCall: fire only when tool name matches (blank = any)
+  /** Original triggerConfig fields not surfaced in the UI (profileId,
+   *  minIntervalMs, maxRunsPerSession, maxTriggerDepth, excludeTriggered).
+   *  Preserved so round-tripping through the form doesn't drop frontmatter
+   *  config. `toolName` is ignored here — it is driven by triggerToolName. */
+  triggerConfigExtras: Omit<LoopTriggerConfig, "toolName">
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -57,6 +62,7 @@ const emptyLoop: EditingLoop = {
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
   triggers: [],
   triggerToolName: "",
+  triggerConfigExtras: {},
 }
 
 const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
@@ -185,6 +191,13 @@ export function SettingsLoops() {
       scheduleDaysOfWeek,
       triggers: loop.triggers ? [...loop.triggers] : [],
       triggerToolName: loop.triggerConfig?.toolName ?? "",
+      // Snapshot everything except toolName (the form owns that field).
+      triggerConfigExtras: (() => {
+        if (!loop.triggerConfig) return {}
+        const { toolName: _toolName, ...rest } = loop.triggerConfig
+        void _toolName
+        return rest
+      })(),
     })
   }
 
@@ -232,9 +245,15 @@ export function SettingsLoops() {
 
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const trimmedToolName = editing.triggerToolName.trim()
-    const triggerConfig = editing.triggers.includes("onToolCall") && trimmedToolName
-      ? { toolName: trimmedToolName }
-      : undefined
+    // Merge preserved non-UI fields with the UI-owned toolName. Leave
+    // triggerConfig undefined only if nothing at all would be stored.
+    const mergedTriggerConfig: LoopTriggerConfig = {
+      ...editing.triggerConfigExtras,
+      ...(editing.triggers.includes("onToolCall") && trimmedToolName
+        ? { toolName: trimmedToolName }
+        : {}),
+    }
+    const triggerConfig = Object.keys(mergedTriggerConfig).length > 0 ? mergedTriggerConfig : undefined
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),

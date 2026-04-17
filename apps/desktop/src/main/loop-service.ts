@@ -46,6 +46,8 @@ class LoopService {
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
+  /** Loop IDs currently registered with TaskEventBus, so rebuild can unsubscribe removed ones. */
+  private subscribedLoopIds: Set<string> = new Set()
 
   static getInstance(): LoopService {
     if (!LoopService.instance) {
@@ -394,7 +396,9 @@ class LoopService {
    * Called after loadFromDisk / reload so disk edits take effect.
    */
   rebuildEventSubscriptions(): void {
+    const currentIds = new Set<string>()
     for (const loop of this.loops) {
+      currentIds.add(loop.id)
       const handlers: TaskEventHandler[] = []
       if (loop.enabled && loop.triggers && loop.triggers.length > 0) {
         for (const event of loop.triggers) {
@@ -417,6 +421,14 @@ class LoopService {
       }
       taskEventBus.setHandlersForLoop(loop.id, handlers)
     }
+    // Unsubscribe handlers for loops that were previously registered but are
+    // no longer present in memory (e.g., task files deleted off disk).
+    for (const prevId of this.subscribedLoopIds) {
+      if (!currentIds.has(prevId)) {
+        taskEventBus.setHandlersForLoop(prevId, [])
+      }
+    }
+    this.subscribedLoopIds = currentIds
   }
 
   private scheduleNextRun(loopId: string, delayMs: number): void {

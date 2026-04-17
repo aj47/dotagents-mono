@@ -41,6 +41,28 @@ describe("TaskEventBus limits", () => {
     expect(fire).toHaveBeenCalledTimes(1)
   })
 
+  it("debounce is per-event, not cross-event within the same loop", async () => {
+    const fireUser = vi.fn()
+    const fireTool = vi.fn()
+    taskEventBus.setHandlersForLoop("loopA", [
+      handler("loopA", "onUserMessage", { minIntervalMs: 5000, excludeTriggered: false }, fireUser),
+      handler("loopA", "onToolCall", { minIntervalMs: 5000, excludeTriggered: false }, fireTool),
+    ])
+    taskEventBus.emit("onUserMessage", {
+      sessionId: "s1",
+      timestamp: Date.now(),
+      content: "hi",
+    })
+    taskEventBus.emit("onToolCall", {
+      sessionId: "s1",
+      timestamp: Date.now(),
+      toolName: "t",
+    })
+    await new Promise((r) => setImmediate(r))
+    expect(fireUser).toHaveBeenCalledTimes(1)
+    expect(fireTool).toHaveBeenCalledTimes(1)
+  })
+
   it("enforces maxRunsPerSession", async () => {
     const fire = vi.fn()
     taskEventBus.setHandlersForLoop("loopA", [

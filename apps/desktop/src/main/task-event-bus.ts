@@ -145,7 +145,7 @@ function matchesFilters<E extends LoopTriggerEvent>(
 class TaskEventBus {
   private static instance: TaskEventBus | null = null
   private handlers: Map<LoopTriggerEvent, TaskEventHandler[]> = new Map()
-  /** Last-fire timestamp per loopId for debounce. */
+  /** Last-fire timestamp per `${loopId}::${event}` for per-handler debounce. */
   private lastFiredByLoop: Map<string, number> = new Map()
   /** Per-(loopId, sessionId) run counter. */
   private runsByLoopSession: Map<string, number> = new Map()
@@ -226,12 +226,21 @@ class TaskEventBus {
       return
     }
 
-    // Debounce.
+    // Debounce — keyed by (loopId, event) so two different events subscribed
+    // by the same loop don't suppress each other within minIntervalMs.
     const now = Date.now()
-    const last = this.lastFiredByLoop.get(loopId) ?? 0
+    const debounceKey = `${loopId}::${event}`
+    const last = this.lastFiredByLoop.get(debounceKey) ?? 0
     const minInterval = getMinIntervalMs(config)
     if (now - last < minInterval) {
       logApp(`[TaskEventBus] Skip loop ${loopId} on ${event}: debounce (${now - last}ms < ${minInterval}ms)`)
+      return
+    }
+
+    // Global pending ceiling: refuse BEFORE consuming per-session quota so a
+    // dropped-under-load fire doesn't permanently eat budget.
+    if (this.pendingCount >= GLOBAL_PENDING_CEILING) {
+      logApp(`[TaskEventBus] Drop loop ${loopId} on ${event}: global pending ceiling ${this.pendingCount}/${GLOBAL_PENDING_CEILING}`)
       return
     }
 
@@ -248,14 +257,7 @@ class TaskEventBus {
       this.runsByLoopSession.set(key, runs + 1)
     }
 
-
-    // Global pending ceiling: refuse if too many task runs are already in flight.
-    if (this.pendingCount >= GLOBAL_PENDING_CEILING) {
-      logApp(`[TaskEventBus] Drop loop ${loopId} on ${event}: global pending ceiling ${this.pendingCount}/${GLOBAL_PENDING_CEILING}`)
-      return
-    }
-
-    this.lastFiredByLoop.set(loopId, now)
+    this.lastFiredByLoop.set(debounceKey, now)
     this.pendingCount++
 
     try {

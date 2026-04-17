@@ -244,7 +244,9 @@ class AgentSessionTracker {
       isSnoozed: startSnoozed, // Start snoozed by default - no floating panel auto-show
       profileSnapshot, // Capture profile settings at session creation for isolation
       triggeringLoopId: triggerMeta?.triggeringLoopId,
-      triggerDepth: triggerMeta?.triggerDepth,
+      // Always a number so downstream spawn-depth math (sourceDepth + 1) stays
+      // correct even for user-initiated (untriggered) sessions at depth 0.
+      triggerDepth: triggerMeta?.triggerDepth ?? 0,
     }
 
     this.sessions.set(sessionId, session)
