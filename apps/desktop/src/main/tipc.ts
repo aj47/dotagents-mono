@@ -556,9 +556,10 @@ async function processWithAgentMode(
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
-  existingSessionId: string
+  existingSessionId: string,
+  startSnoozed: boolean = true,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true)
+  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -1139,6 +1140,36 @@ export const router = {
       recentSessions: recentCompletedSessions,
     }
   }),
+
+  // List active + recent completed sessions for UI pickers (e.g. repeat-task
+  // "continue from session" selector). Returns the shape the picker needs,
+  // tolerant of an optional limit for completed sessions.
+  listAgentSessionCandidates: t.procedure
+    .input<{ limit?: number } | undefined>()
+    .action(async ({ input }) => {
+      // Guard against NaN / non-finite inputs; fall back to the default of 20.
+      const rawLimit = input?.limit
+      const limit = typeof rawLimit === "number" && Number.isFinite(rawLimit)
+        ? Math.max(1, Math.min(100, Math.floor(rawLimit)))
+        : 20
+      const active = agentSessionTracker.getActiveSessions().map(s => ({
+        id: s.id,
+        conversationId: s.conversationId,
+        conversationTitle: s.conversationTitle,
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      const completed = agentSessionTracker.getRecentSessions(limit).map(s => ({
+        id: s.id,
+        conversationId: s.conversationId,
+        conversationTitle: s.conversationTitle,
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      return { activeSessions: active, completedSessions: completed }
+    }),
 
   // Get the profile snapshot for a specific session
   // This allows the UI to display which profile a session is using

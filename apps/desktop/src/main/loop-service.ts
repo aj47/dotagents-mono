@@ -340,20 +340,78 @@ class LoopService {
         }
       }
 
-      const conversation = await conversationService.createConversation(loop.prompt, "user")
       const conversationTitle = `[Repeat] ${loop.name}`
-      const sessionId = agentSessionTracker.startSession(
-        conversation.id,
-        conversationTitle,
-        true,
-        profileSnapshot
-      )
+      // Start the session un-snoozed when `speakOnTrigger` is set so the
+      // renderer's TTS auto-play gate (which skips snoozed sessions) runs.
+      const startSnoozed = !loop.speakOnTrigger
 
-      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
+      let conversationId: string | undefined
+      let sessionId: string | undefined
+
+      // Try to resume a prior session if `continueInSession` is enabled and
+      // we have a `lastSessionId` (either auto-tracked from the previous run
+      // or user-pinned via the settings UI).
+      //
+      // Order of operations matters: we must confirm the prior conversation
+      // is loadable and the session is revivable BEFORE mutating the
+      // conversation — otherwise a stale/evicted session would leave an
+      // orphaned user prompt in the old conversation while this iteration
+      // falls back to a brand-new session.
+      if (loop.continueInSession && loop.lastSessionId) {
+        const priorSessionId = loop.lastSessionId
+        const priorConversationId = agentSessionTracker.getConversationIdForSession(priorSessionId)
+        if (priorConversationId) {
+          // Read-only existence check first; no mutation yet.
+          const priorConversation = await conversationService.loadConversation(priorConversationId)
+          if (priorConversation && agentSessionTracker.reviveSession(priorSessionId, startSnoozed)) {
+            // Both the conversation and the session are intact; now it's safe
+            // to append the new prompt.
+            const appended = await conversationService.addMessageToConversation(
+              priorConversationId,
+              loop.prompt,
+              "user",
+            )
+            if (appended) {
+              conversationId = priorConversationId
+              sessionId = priorSessionId
+              logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+            } else {
+              // Append failed after we'd already revived the session; put it
+              // back into the completed set so we don't leak an "active"
+              // session with no run/completion update attached to it.
+              agentSessionTracker.completeSession(priorSessionId)
+              logApp(`[LoopService] Append failed after revive for loop "${loop.name}"; re-completed session ${priorSessionId}`)
+            }
+          }
+        }
+        // On any failure above we fall through to the fresh-session branch;
+        // the final `saveLoop` below overwrites `lastSessionId` with the new
+        // one, so no separate "clear stale pointer" write is needed.
+      }
+
+      // Otherwise (or on fallback) create a fresh conversation + session.
+      if (!sessionId || !conversationId) {
+        const conversation = await conversationService.createConversation(loop.prompt, "user")
+        conversationId = conversation.id
+        sessionId = agentSessionTracker.startSession(
+          conversationId,
+          conversationTitle,
+          startSnoozed,
+          profileSnapshot,
+        )
+        logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+      }
+
+      if (loop.continueInSession) {
+        const latest = this.getLoop(loopId)
+        if (latest && latest.lastSessionId !== sessionId) {
+          this.saveLoop({ ...latest, lastSessionId: sessionId })
+        }
+      }
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed)
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
     } finally {

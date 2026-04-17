@@ -109,8 +109,11 @@ export interface BundleRepeatTask {
   intervalMinutes: number
   enabled: boolean
   runOnStartup?: boolean
+  speakOnTrigger?: boolean
+  continueInSession?: boolean
   schedule?: LoopConfig["schedule"]
   // profileId omitted — the profile may not exist in the target environment
+  // lastSessionId omitted — installation-local, not meaningful across bundles
 }
 
 export interface BundleKnowledgeNote {
@@ -669,6 +672,8 @@ function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemS
       intervalMinutes: task.intervalMinutes,
       enabled: task.enabled,
       runOnStartup: task.runOnStartup,
+      speakOnTrigger: task.speakOnTrigger,
+      continueInSession: task.continueInSession,
       schedule: task.schedule,
       // profileId intentionally omitted — may not exist in target environment
     }))
@@ -1148,6 +1153,8 @@ function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
   if (typeof value.enabled !== "boolean") return false
   if (value.runOnStartup !== undefined && typeof value.runOnStartup !== "boolean") return false
+  if (value.speakOnTrigger !== undefined && typeof value.speakOnTrigger !== "boolean") return false
+  if (value.continueInSession !== undefined && typeof value.continueInSession !== "boolean") return false
   return isBundleRepeatTaskSchedule(value.schedule)
 }
 
@@ -1644,6 +1651,8 @@ export async function importBundle(
           intervalMinutes: bundleTask.intervalMinutes,
           enabled: bundleTask.enabled,
           runOnStartup: bundleTask.runOnStartup,
+          speakOnTrigger: bundleTask.speakOnTrigger,
+          continueInSession: bundleTask.continueInSession,
           ...(bundleTask.schedule ? { schedule: bundleTask.schedule } : {}),
           // profileId intentionally not imported — may not exist in target
         }

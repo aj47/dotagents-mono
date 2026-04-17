@@ -77,6 +77,28 @@ export interface LoopConfig {
   profileId?: string
   lastRunAt?: number
   runOnStartup?: boolean
+  /**
+   * If true, the session spawned by this task starts un-snoozed so the
+   * renderer auto-plays TTS for the assistant response. Snoozed sessions
+   * intentionally suppress TTS auto-play.
+   */
+  speakOnTrigger?: boolean
+  /**
+   * If true, consecutive iterations of this task reuse the most recent
+   * session/conversation (revived from completed sessions) so the agent
+   * retains prior context. If the prior session can't be revived, a new
+   * one is created. Requires `lastSessionId` to be tracked between runs.
+   */
+  continueInSession?: boolean
+  /**
+   * When `continueInSession` is enabled, the id of the session to resume on
+   * the next run. Auto-populated after each run; may also be set explicitly
+   * by the user to pin a specific past session. If the referenced
+   * session/conversation can no longer be revived, this field is replaced
+   * on the next run with the id of the newly-created fallback session
+   * (rather than cleared).
+   */
+  lastSessionId?: string
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }

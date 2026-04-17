@@ -4,6 +4,13 @@ import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@renderer/components/ui/select"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
@@ -23,6 +30,9 @@ interface EditingLoop {
   intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
+  speakOnTrigger: boolean
+  continueInSession: boolean
+  lastSessionId?: string
   scheduleMode: ScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
@@ -43,6 +53,8 @@ const emptyLoop: EditingLoop = {
   intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
+  speakOnTrigger: false,
+  continueInSession: false,
   scheduleMode: "interval",
   scheduleTimes: ["09:00"],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
@@ -117,6 +129,87 @@ function parseLoopIntervalDraft(draft: string): number | null {
   return parsed
 }
 
+// Sentinel used by the session picker to represent "no pinned session";
+// Radix Select does not accept an empty string as an item value.
+const AUTO_SESSION_VALUE = "__auto__"
+
+type SessionCandidate = {
+  id: string
+  conversationId?: string
+  conversationTitle?: string
+  status: string
+  startTime: number
+  endTime?: number
+}
+
+type SessionCandidatesData = {
+  activeSessions: SessionCandidate[]
+  completedSessions: SessionCandidate[]
+} | undefined
+
+function formatSessionLabel(s: SessionCandidate): string {
+  const title = s.conversationTitle?.trim() || s.id
+  const when = new Date(s.endTime ?? s.startTime).toLocaleString()
+  return `${title} — ${when}`
+}
+
+function SessionPicker({
+  value,
+  onChange,
+  candidates,
+}: {
+  value: string | undefined
+  onChange: (value: string | undefined) => void
+  candidates: SessionCandidatesData
+}) {
+  const active = candidates?.activeSessions ?? []
+  const completed = candidates?.completedSessions ?? []
+  // Merge and de-dupe by id, active first (most likely to be useful).
+  const seen = new Set<string>()
+  const merged: SessionCandidate[] = []
+  for (const s of [...active, ...completed]) {
+    if (seen.has(s.id)) continue
+    seen.add(s.id)
+    merged.push(s)
+  }
+
+  const pinned = value && !seen.has(value)
+    ? { id: value, conversationTitle: undefined, status: "unknown", startTime: 0 } as SessionCandidate
+    : undefined
+
+  const selectValue = value ?? AUTO_SESSION_VALUE
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="lastSessionId">Continue from session</Label>
+      <Select
+        value={selectValue}
+        onValueChange={(v) => onChange(v === AUTO_SESSION_VALUE ? undefined : v)}
+      >
+        <SelectTrigger id="lastSessionId" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={AUTO_SESSION_VALUE}>Auto — most recent run of this task</SelectItem>
+          {pinned && (
+            <SelectItem value={pinned.id}>
+              {pinned.id} (no longer available)
+            </SelectItem>
+          )}
+          {merged.map((s) => (
+            <SelectItem key={s.id} value={s.id}>
+              {formatSessionLabel(s)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">
+        When left on Auto, this task appends to whichever session it last created. Pick a specific session to resume it on the next run. If the selected session can no longer be revived (e.g. its conversation was deleted), this task falls back to a new session and tracks that one instead.
+      </p>
+    </div>
+  )
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
@@ -131,6 +224,12 @@ export function SettingsLoops() {
     queryKey: ["loop-statuses"],
     queryFn: async () => tipcClient.getLoopStatuses() as Promise<LoopRuntimeStatus[]>,
     refetchInterval: 5000,
+  })
+
+  const sessionCandidatesQuery = useQuery({
+    queryKey: ["loop-session-candidates"],
+    queryFn: async () => tipcClient.listAgentSessionCandidates({ limit: 20 }),
+    refetchOnWindowFocus: true,
   })
 
   useEffect(() => {
@@ -169,6 +268,9 @@ export function SettingsLoops() {
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
+      speakOnTrigger: loop.speakOnTrigger ?? false,
+      continueInSession: loop.continueInSession ?? false,
+      lastSessionId: loop.lastSessionId,
       scheduleMode,
       scheduleTimes,
       scheduleDaysOfWeek,
@@ -225,6 +327,11 @@ export function SettingsLoops() {
       intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
+      speakOnTrigger: editing.speakOnTrigger,
+      continueInSession: editing.continueInSession,
+      ...(editing.continueInSession && editing.lastSessionId
+        ? { lastSessionId: editing.lastSessionId }
+        : {}),
       ...(schedule ? { schedule } : {}),
     }
 
@@ -370,6 +477,8 @@ export function SettingsLoops() {
                 {loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
+              {loop.speakOnTrigger && <div>Speaks on trigger</div>}
+              {loop.continueInSession && <div>Continues in same session</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
@@ -558,7 +667,30 @@ export function SettingsLoops() {
               />
               <Label htmlFor="runOnStartup">Run on Startup</Label>
             </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="speakOnTrigger"
+                checked={editing.speakOnTrigger}
+                onCheckedChange={(v) => setEditing({ ...editing, speakOnTrigger: v })}
+              />
+              <Label htmlFor="speakOnTrigger">Speak on Trigger</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="continueInSession"
+                checked={editing.continueInSession}
+                onCheckedChange={(v) => setEditing({ ...editing, continueInSession: v })}
+              />
+              <Label htmlFor="continueInSession">Continue in Same Session</Label>
+            </div>
           </div>
+          {editing.continueInSession && (
+            <SessionPicker
+              value={editing.lastSessionId}
+              onChange={(v) => setEditing({ ...editing, lastSessionId: v })}
+              candidates={sessionCandidatesQuery.data}
+            />
+          )}
           <div className="flex justify-end gap-2 pt-3">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCancel}>
               <X className="h-4 w-4" />Cancel
