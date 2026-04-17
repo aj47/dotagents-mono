@@ -246,9 +246,10 @@ function broadcastPanelVisibility(visible: boolean) {
   }
 }
 
-// Stop TTS playing in the floating panel renderer only. Called from ESC-driven
-// panel-hide paths so that dismissing the panel silences its TTS without
-// affecting TTS playing in the main window.
+// Stop TTS playing in the floating panel renderer only. Invoked from the
+// panel's `hide` handler so every hide path (ESC, hideFloatingPanelWindow,
+// main-window focus auto-hide, etc.) silences panel TTS without affecting
+// TTS playing in the main window.
 function stopPanelRendererTts() {
   const panel = WINDOWS.get("panel")
   if (!panel) return
@@ -1020,6 +1021,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
       snapshot: getWindowFocusDebugSnapshot(),
     })
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
+    stopPanelRendererTts()
     broadcastPanelVisibility(false)
   })
 
@@ -1238,7 +1240,6 @@ export const stopRecordingAndHidePanelWindow = () => {
     state.isRecordingMcpMode = false
 
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
-    stopPanelRendererTts()
 
     if (win.isVisible()) {
       // Clear the "opened with main" flag since panel is being hidden
@@ -1260,7 +1261,6 @@ export const stopTextInputAndHidePanelWindow = () => {
     markIntentionalTextInputPanelHide("stopTextInputAndHidePanelWindow")
     state.isTextInputActive = false
     getRendererHandlers<RendererHandlers>(win.webContents).hideTextInput.send()
-    stopPanelRendererTts()
 
     if (win.isVisible()) {
       // Clear the "opened with main" flag since panel is being hidden
@@ -1303,7 +1303,6 @@ export const minimizeAgentModeAndHidePanelWindow = () => {
     state.agentIterationCount = 0
 
     clearPanelHiddenByMainFocus()
-    stopPanelRendererTts()
 
     if (win.isVisible()) {
       clearPanelOpenedWithMain()
