@@ -556,9 +556,10 @@ async function processWithAgentMode(
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
-  existingSessionId: string
+  existingSessionId: string,
+  startSnoozed: boolean = true,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true)
+  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"

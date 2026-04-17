@@ -727,6 +727,7 @@ export interface Loop {
   profileId?: string;
   profileName?: string;
   runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;

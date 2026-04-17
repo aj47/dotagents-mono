@@ -45,6 +45,11 @@ class LoopService {
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
+  /**
+   * In-memory record of the last session/conversation created for each
+   * `continueInSession` loop. Does not persist across app restarts.
+   */
+  private loopLastSession: Map<string, { sessionId: string; conversationId: string }> = new Map()
 
   static getInstance(): LoopService {
     if (!LoopService.instance) {
@@ -175,6 +180,7 @@ class LoopService {
     if (idx === -1) return false
     this.loops.splice(idx, 1)
     this.stopLoop(loopId)
+    this.loopLastSession.delete(loopId)
     this.removeTaskFiles(loopId)
     return true
   }
@@ -340,20 +346,57 @@ class LoopService {
         }
       }
 
-      const conversation = await conversationService.createConversation(loop.prompt, "user")
       const conversationTitle = `[Repeat] ${loop.name}`
-      const sessionId = agentSessionTracker.startSession(
-        conversation.id,
-        conversationTitle,
-        true,
-        profileSnapshot
-      )
+      // Start the session un-snoozed when `speakOnTrigger` is set so the
+      // renderer's TTS auto-play gate (which skips snoozed sessions) runs.
+      const startSnoozed = !loop.speakOnTrigger
 
-      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
+      let conversationId: string | undefined
+      let sessionId: string | undefined
+
+      // Try to resume the prior session if `continueInSession` is enabled.
+      if (loop.continueInSession) {
+        const prior = this.loopLastSession.get(loopId)
+        if (prior) {
+          const priorConversationId = agentSessionTracker.getConversationIdForSession(prior.sessionId)
+          if (priorConversationId) {
+            const appended = await conversationService.addMessageToConversation(
+              priorConversationId,
+              loop.prompt,
+              "user",
+            )
+            if (appended && agentSessionTracker.reviveSession(prior.sessionId, startSnoozed)) {
+              conversationId = priorConversationId
+              sessionId = prior.sessionId
+              logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+            }
+          }
+          if (!sessionId) {
+            this.loopLastSession.delete(loopId)
+          }
+        }
+      }
+
+      // Otherwise (or on fallback) create a fresh conversation + session.
+      if (!sessionId || !conversationId) {
+        const conversation = await conversationService.createConversation(loop.prompt, "user")
+        conversationId = conversation.id
+        sessionId = agentSessionTracker.startSession(
+          conversationId,
+          conversationTitle,
+          startSnoozed,
+          profileSnapshot,
+        )
+        logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+      }
+
+      if (loop.continueInSession) {
+        this.loopLastSession.set(loopId, { sessionId, conversationId })
+      }
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed)
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
     } finally {

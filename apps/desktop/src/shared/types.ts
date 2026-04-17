@@ -1002,6 +1002,8 @@ export interface LoopConfig {
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
+  speakOnTrigger?: boolean // if true, spawned session starts un-snoozed so TTS auto-plays
+  continueInSession?: boolean // if true, reuses the prior session across iterations (in-memory, per process)
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }
 

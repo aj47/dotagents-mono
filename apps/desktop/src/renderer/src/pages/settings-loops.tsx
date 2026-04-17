@@ -23,6 +23,8 @@ interface EditingLoop {
   intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
+  speakOnTrigger: boolean
+  continueInSession: boolean
   scheduleMode: ScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
@@ -43,6 +45,8 @@ const emptyLoop: EditingLoop = {
   intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
+  speakOnTrigger: false,
+  continueInSession: false,
   scheduleMode: "interval",
   scheduleTimes: ["09:00"],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
@@ -169,6 +173,8 @@ export function SettingsLoops() {
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
+      speakOnTrigger: loop.speakOnTrigger ?? false,
+      continueInSession: loop.continueInSession ?? false,
       scheduleMode,
       scheduleTimes,
       scheduleDaysOfWeek,
@@ -225,6 +231,8 @@ export function SettingsLoops() {
       intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
+      speakOnTrigger: editing.speakOnTrigger,
+      continueInSession: editing.continueInSession,
       ...(schedule ? { schedule } : {}),
     }
 
@@ -370,6 +378,8 @@ export function SettingsLoops() {
                 {loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
+              {loop.speakOnTrigger && <div>Speaks on trigger</div>}
+              {loop.continueInSession && <div>Continues in same session</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
@@ -557,6 +567,22 @@ export function SettingsLoops() {
                 onCheckedChange={(v) => setEditing({ ...editing, runOnStartup: v })}
               />
               <Label htmlFor="runOnStartup">Run on Startup</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="speakOnTrigger"
+                checked={editing.speakOnTrigger}
+                onCheckedChange={(v) => setEditing({ ...editing, speakOnTrigger: v })}
+              />
+              <Label htmlFor="speakOnTrigger">Speak on Trigger</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="continueInSession"
+                checked={editing.continueInSession}
+                onCheckedChange={(v) => setEditing({ ...editing, continueInSession: v })}
+              />
+              <Label htmlFor="continueInSession">Continue in Same Session</Label>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-3">
