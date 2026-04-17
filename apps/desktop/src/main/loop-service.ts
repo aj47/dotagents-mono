@@ -351,28 +351,36 @@ class LoopService {
       // Try to resume a prior session if `continueInSession` is enabled and
       // we have a `lastSessionId` (either auto-tracked from the previous run
       // or user-pinned via the settings UI).
+      //
+      // Order of operations matters: we must confirm the prior conversation
+      // is loadable and the session is revivable BEFORE mutating the
+      // conversation — otherwise a stale/evicted session would leave an
+      // orphaned user prompt in the old conversation while this iteration
+      // falls back to a brand-new session.
       if (loop.continueInSession && loop.lastSessionId) {
         const priorSessionId = loop.lastSessionId
         const priorConversationId = agentSessionTracker.getConversationIdForSession(priorSessionId)
         if (priorConversationId) {
-          const appended = await conversationService.addMessageToConversation(
-            priorConversationId,
-            loop.prompt,
-            "user",
-          )
-          if (appended && agentSessionTracker.reviveSession(priorSessionId, startSnoozed)) {
-            conversationId = priorConversationId
-            sessionId = priorSessionId
-            logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+          // Read-only existence check first; no mutation yet.
+          const priorConversation = await conversationService.loadConversation(priorConversationId)
+          if (priorConversation && agentSessionTracker.reviveSession(priorSessionId, startSnoozed)) {
+            // Both the conversation and the session are intact; now it's safe
+            // to append the new prompt.
+            const appended = await conversationService.addMessageToConversation(
+              priorConversationId,
+              loop.prompt,
+              "user",
+            )
+            if (appended) {
+              conversationId = priorConversationId
+              sessionId = priorSessionId
+              logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+            }
           }
         }
-        if (!sessionId) {
-          // Referenced session is no longer revivable; clear the stale pointer.
-          const stale = this.getLoop(loopId)
-          if (stale && stale.lastSessionId === priorSessionId) {
-            this.saveLoop({ ...stale, lastSessionId: undefined })
-          }
-        }
+        // On any failure above we fall through to the fresh-session branch;
+        // the final `saveLoop` below overwrites `lastSessionId` with the new
+        // one, so no separate "clear stale pointer" write is needed.
       }
 
       // Otherwise (or on fallback) create a fresh conversation + session.
