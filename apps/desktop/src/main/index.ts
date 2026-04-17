@@ -579,8 +579,8 @@ if (!gotSingleInstanceLock) {
     }
 
     // Start watching the rest of `.agents/` so external edits to
-    // system-prompt.md, agents.md, layouts/ui.json, and agents/<id>/agent.md
-    // are picked up before the next save overwrites them.
+    // layouts/ui.json and agents/<id>/agent.md are picked up before the next
+    // save overwrites them.
     try {
       startAgentsFolderWatcher()
     } catch (error) {
