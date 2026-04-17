@@ -87,10 +87,16 @@ export interface LoopConfig {
    * If true, consecutive iterations of this task reuse the most recent
    * session/conversation (revived from completed sessions) so the agent
    * retains prior context. If the prior session can't be revived, a new
-   * one is created. State is kept in-memory and does not persist across
-   * app restarts.
+   * one is created. Requires `lastSessionId` to be tracked between runs.
    */
   continueInSession?: boolean
+  /**
+   * When `continueInSession` is enabled, the id of the session to resume on
+   * the next run. Auto-populated after each run; may also be set explicitly
+   * by the user to pin a specific past session. Cleared if the referenced
+   * session/conversation can no longer be revived.
+   */
+  lastSessionId?: string
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }

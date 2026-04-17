@@ -1141,6 +1141,32 @@ export const router = {
     }
   }),
 
+  // List active + recent completed sessions for UI pickers (e.g. repeat-task
+  // "continue from session" selector). Returns the shape the picker needs,
+  // tolerant of an optional limit for completed sessions.
+  listAgentSessionCandidates: t.procedure
+    .input<{ limit?: number } | undefined>()
+    .action(async ({ input }) => {
+      const limit = Math.max(1, Math.min(100, input?.limit ?? 20))
+      const active = agentSessionTracker.getActiveSessions().map(s => ({
+        id: s.id,
+        conversationId: s.conversationId,
+        conversationTitle: s.conversationTitle,
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      const completed = agentSessionTracker.getRecentSessions(limit).map(s => ({
+        id: s.id,
+        conversationId: s.conversationId,
+        conversationTitle: s.conversationTitle,
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      return { activeSessions: active, completedSessions: completed }
+    }),
+
   // Get the profile snapshot for a specific session
   // This allows the UI to display which profile a session is using
   getSessionProfileSnapshot: t.procedure

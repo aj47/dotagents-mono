@@ -45,11 +45,6 @@ class LoopService {
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
-  /**
-   * In-memory record of the last session/conversation created for each
-   * `continueInSession` loop. Does not persist across app restarts.
-   */
-  private loopLastSession: Map<string, { sessionId: string; conversationId: string }> = new Map()
 
   static getInstance(): LoopService {
     if (!LoopService.instance) {
@@ -180,7 +175,6 @@ class LoopService {
     if (idx === -1) return false
     this.loops.splice(idx, 1)
     this.stopLoop(loopId)
-    this.loopLastSession.delete(loopId)
     this.removeTaskFiles(loopId)
     return true
   }
@@ -354,25 +348,29 @@ class LoopService {
       let conversationId: string | undefined
       let sessionId: string | undefined
 
-      // Try to resume the prior session if `continueInSession` is enabled.
-      if (loop.continueInSession) {
-        const prior = this.loopLastSession.get(loopId)
-        if (prior) {
-          const priorConversationId = agentSessionTracker.getConversationIdForSession(prior.sessionId)
-          if (priorConversationId) {
-            const appended = await conversationService.addMessageToConversation(
-              priorConversationId,
-              loop.prompt,
-              "user",
-            )
-            if (appended && agentSessionTracker.reviveSession(prior.sessionId, startSnoozed)) {
-              conversationId = priorConversationId
-              sessionId = prior.sessionId
-              logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
-            }
+      // Try to resume a prior session if `continueInSession` is enabled and
+      // we have a `lastSessionId` (either auto-tracked from the previous run
+      // or user-pinned via the settings UI).
+      if (loop.continueInSession && loop.lastSessionId) {
+        const priorSessionId = loop.lastSessionId
+        const priorConversationId = agentSessionTracker.getConversationIdForSession(priorSessionId)
+        if (priorConversationId) {
+          const appended = await conversationService.addMessageToConversation(
+            priorConversationId,
+            loop.prompt,
+            "user",
+          )
+          if (appended && agentSessionTracker.reviveSession(priorSessionId, startSnoozed)) {
+            conversationId = priorConversationId
+            sessionId = priorSessionId
+            logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
           }
-          if (!sessionId) {
-            this.loopLastSession.delete(loopId)
+        }
+        if (!sessionId) {
+          // Referenced session is no longer revivable; clear the stale pointer.
+          const stale = this.getLoop(loopId)
+          if (stale && stale.lastSessionId === priorSessionId) {
+            this.saveLoop({ ...stale, lastSessionId: undefined })
           }
         }
       }
@@ -391,7 +389,10 @@ class LoopService {
       }
 
       if (loop.continueInSession) {
-        this.loopLastSession.set(loopId, { sessionId, conversationId })
+        const latest = this.getLoop(loopId)
+        if (latest && latest.lastSessionId !== sessionId) {
+          this.saveLoop({ ...latest, lastSessionId: sessionId })
+        }
       }
 
       // Reuse the main agent execution flow.

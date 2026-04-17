@@ -728,6 +728,8 @@ export interface Loop {
   profileName?: string;
   runOnStartup?: boolean;
   speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string;
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;

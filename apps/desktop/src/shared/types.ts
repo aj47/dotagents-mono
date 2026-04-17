@@ -1003,7 +1003,8 @@ export interface LoopConfig {
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
   speakOnTrigger?: boolean // if true, spawned session starts un-snoozed so TTS auto-plays
-  continueInSession?: boolean // if true, reuses the prior session across iterations (in-memory, per process)
+  continueInSession?: boolean // if true, reuses the prior session across iterations
+  lastSessionId?: string   // session id to resume on next run when continueInSession is on
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }
 
