@@ -923,6 +923,10 @@ export const router = {
     hideFloatingPanelWindow()
   }),
 
+  getFloatingPanelVisibility: t.procedure.action(async () => {
+    return { visible: WINDOWS.get("panel")?.isVisible?.() ?? false }
+  }),
+
   snoozeAgentSessionsAndHidePanelWindow: t.procedure
     .input<{ sessionIds?: string[] }>()
     .action(async ({ input }) => {

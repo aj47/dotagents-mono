@@ -279,7 +279,7 @@ describe("agent progress tile layout", () => {
 
   it("does not auto-play TTS for tile expansion/collapse interactions", () => {
     expect(agentProgressSource).toContain('function shouldAutoPlayTTSForVariant')
-    expect(agentProgressSource).toContain('return variant === "tile" ? isFocused : !isSnoozed')
+    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
   })
 
   it("uses shared conversation-state normalization across agent progress surfaces", () => {

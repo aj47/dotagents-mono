@@ -28,6 +28,7 @@ export function useStoreSync() {
   const setPinnedSessionIds = useAgentStore((s) => s.setPinnedSessionIds)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const setArchivedSessionIds = useAgentStore((s) => s.setArchivedSessionIds)
+  const setFloatingPanelVisible = useAgentStore((s) => s.setFloatingPanelVisible)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
   const initialPinnedSessionIdsRef = useRef(Array.from(pinnedSessionIds))
   const pinnedSessionIdsHydratedRef = useRef(false)
@@ -95,6 +96,27 @@ export function useStoreSync() {
     })
     return unlisten
   }, [])
+
+  // Track floating panel visibility so the main window can suppress duplicate
+  // TTS auto-play when the panel is already speaking the same session.
+  useEffect(() => {
+    const unlisten = rendererHandlers.panelVisibilityChanged.listen(
+      ({ visible }: { visible: boolean }) => {
+        setFloatingPanelVisible(visible)
+      }
+    )
+    return unlisten
+  }, [setFloatingPanelVisible])
+
+  // Hydrate initial floating panel visibility on mount in case the panel is
+  // already visible before this renderer started listening.
+  useEffect(() => {
+    tipcClient.getFloatingPanelVisibility().then((result: { visible: boolean }) => {
+      setFloatingPanelVisible(result.visible)
+    }).catch(() => {
+      // Best-effort hydration; default remains false.
+    })
+  }, [setFloatingPanelVisible])
 
   useEffect(() => {
     const unlisten = rendererHandlers.focusAgentSession.listen(

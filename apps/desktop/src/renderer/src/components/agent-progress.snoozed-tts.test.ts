@@ -6,17 +6,19 @@ const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.
 describe("agent progress TTS guardrails", () => {
   it("disables overlay auto-play generation when the session is snoozed", () => {
     expect(agentProgressSource).toContain('function shouldAutoPlayTTSForVariant')
-    expect(agentProgressSource).toContain('return variant === "tile" ? isFocused : !isSnoozed')
+    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
+    expect(agentProgressSource).toContain('return !isSnoozed')
   })
 
   it("threads snoozed state through overlay and tile TTS players", () => {
     expect(agentProgressSource).toContain('isSnoozed={progress.isSnoozed}')
-    expect(agentProgressSource).toContain('autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) && (configQuery.data?.ttsAutoPlay ?? true)}')
+    expect(agentProgressSource).toContain('autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible) && (configQuery.data?.ttsAutoPlay ?? true)}')
   })
 
-  it("allows focused session tiles to auto-play even when they are snoozed for floating-panel purposes", () => {
-    expect(agentProgressSource).toContain('return variant === "tile" ? isFocused : !isSnoozed')
-    expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused)')
+  it("suppresses tile auto-play while the floating panel is visible so the same session is not spoken twice", () => {
+    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
+    expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible)')
+    expect(agentProgressSource).toContain('const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)')
   })
 
   it("keeps response-linked assistant messages replayable but only auto-plays the latest assistant message", () => {

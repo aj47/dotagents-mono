@@ -26,6 +26,9 @@ export type RendererHandlers = {
   // Stop all in-progress TTS playback in this renderer window
   stopAllTts: () => void
 
+  // Floating panel visibility changed (broadcast to all windows)
+  panelVisibilityChanged: (data: { visible: boolean }) => void
+
   agentSessionsUpdated: (data: {
     activeSessions: AgentSession[]
     recentCompletedSessions: AgentSession[]
