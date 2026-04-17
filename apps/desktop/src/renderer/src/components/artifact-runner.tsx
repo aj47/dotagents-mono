@@ -9,6 +9,10 @@ interface ArtifactRunnerProps {
   files: ArtifactFiles
   className?: string
   onFormSubmit?: (payload: Record<string, unknown>) => void
+  /** Upper bound for the auto-sized iframe height, in px. Defaults to 4000. */
+  maxHeight?: number
+  /** When true, fills the parent height instead of auto-sizing to content. */
+  fill?: boolean
 }
 
 /**
@@ -84,7 +88,7 @@ ${body}
 </html>`
 }
 
-export function ArtifactRunner({ files, className, onFormSubmit }: ArtifactRunnerProps) {
+export function ArtifactRunner({ files, className, onFormSubmit, maxHeight = 4000, fill = false }: ArtifactRunnerProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const [height, setHeight] = useState<number>(400)
   const srcDoc = useMemo(() => buildSrcDoc(files), [files])
@@ -95,14 +99,14 @@ export function ArtifactRunner({ files, className, onFormSubmit }: ArtifactRunne
       if (!isArtifactBridgeMessage(event.data)) return
       const msg = event.data
       if (msg.type === "resize") {
-        setHeight(Math.min(Math.max(msg.height, 120), 4000))
+        setHeight(Math.min(Math.max(msg.height, 120), maxHeight))
       } else if (msg.type === "form-submit") {
         onFormSubmit?.(msg.payload)
       }
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [onFormSubmit])
+  }, [onFormSubmit, maxHeight])
 
   return (
     <iframe
@@ -110,8 +114,12 @@ export function ArtifactRunner({ files, className, onFormSubmit }: ArtifactRunne
       title="Artifact"
       sandbox="allow-scripts"
       srcDoc={srcDoc}
-      className={cn("w-full rounded-md border border-border bg-background", className)}
-      style={{ height }}
+      className={cn(
+        "w-full rounded-md border border-border bg-background",
+        fill && "h-full",
+        className,
+      )}
+      style={fill ? undefined : { height }}
     />
   )
 }

@@ -32,6 +32,7 @@ import {
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
+import { ArtifactPreview } from "./artifact-preview"
 import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
@@ -1007,6 +1008,36 @@ const ToolExecutionBubble: React.FC<{
   )
 }
 
+const ARTIFACT_TOOL_NAMES = new Set(["create_artifact", "update_artifact", "open_artifact"])
+
+/**
+ * Extract inline artifact ids from the list of (call, result) entries.
+ * A tool call is considered an artifact-producing call when its name is
+ * one of the artifact runtime tools and its result JSON parses with an id.
+ * Duplicates are de-duplicated while preserving order.
+ */
+function collectArtifactIds(
+  entries: Array<{ call: { name: string; arguments: any }; result?: { success: boolean; content: string; error?: string } }>,
+): string[] {
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const { call, result } of entries) {
+    if (!ARTIFACT_TOOL_NAMES.has(call.name)) continue
+    if (!result?.success) continue
+    try {
+      const parsed = JSON.parse(result.content ?? "{}")
+      const id = typeof parsed?.id === "string" ? parsed.id : null
+      if (id && !seen.has(id)) {
+        seen.add(id)
+        ids.push(id)
+      }
+    } catch {
+      // ignore non-JSON tool result content
+    }
+  }
+  return ids
+}
+
 // Unified Assistant + Tool Execution component - combines thought and tool call as one message
 const AssistantWithToolsBubble: React.FC<{
   data: {
@@ -1032,6 +1063,7 @@ const AssistantWithToolsBubble: React.FC<{
   const allSuccess = resolvedResults.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
+  const artifactIds = useMemo(() => collectArtifactIds(toolCallEntries), [toolCallEntries])
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
@@ -1099,6 +1131,13 @@ const AssistantWithToolsBubble: React.FC<{
               detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
               executionStats={data.executionStats}
             />
+            {artifactIds.length > 0 && (
+              <div onClick={(e) => e.stopPropagation()}>
+                {artifactIds.map((artifactId) => (
+                  <ArtifactPreview key={artifactId} id={artifactId} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
