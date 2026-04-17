@@ -204,7 +204,7 @@ function SessionPicker({
         </SelectContent>
       </Select>
       <p className="text-xs text-muted-foreground">
-        When left on Auto, this task appends to whichever session it last created. Pick a specific session to pin it until you change it.
+        When left on Auto, this task appends to whichever session it last created. Pick a specific session to resume it on the next run. If the selected session can no longer be revived (e.g. its conversation was deleted), this task falls back to a new session and tracks that one instead.
       </p>
     </div>
   )

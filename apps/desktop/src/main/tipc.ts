@@ -1147,7 +1147,11 @@ export const router = {
   listAgentSessionCandidates: t.procedure
     .input<{ limit?: number } | undefined>()
     .action(async ({ input }) => {
-      const limit = Math.max(1, Math.min(100, input?.limit ?? 20))
+      // Guard against NaN / non-finite inputs; fall back to the default of 20.
+      const rawLimit = input?.limit
+      const limit = typeof rawLimit === "number" && Number.isFinite(rawLimit)
+        ? Math.max(1, Math.min(100, Math.floor(rawLimit)))
+        : 20
       const active = agentSessionTracker.getActiveSessions().map(s => ({
         id: s.id,
         conversationId: s.conversationId,

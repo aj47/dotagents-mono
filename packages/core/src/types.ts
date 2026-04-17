@@ -93,8 +93,10 @@ export interface LoopConfig {
   /**
    * When `continueInSession` is enabled, the id of the session to resume on
    * the next run. Auto-populated after each run; may also be set explicitly
-   * by the user to pin a specific past session. Cleared if the referenced
-   * session/conversation can no longer be revived.
+   * by the user to pin a specific past session. If the referenced
+   * session/conversation can no longer be revived, this field is replaced
+   * on the next run with the id of the newly-created fallback session
+   * (rather than cleared).
    */
   lastSessionId?: string
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */

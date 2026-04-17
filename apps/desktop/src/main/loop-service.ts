@@ -375,6 +375,12 @@ class LoopService {
               conversationId = priorConversationId
               sessionId = priorSessionId
               logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+            } else {
+              // Append failed after we'd already revived the session; put it
+              // back into the completed set so we don't leak an "active"
+              // session with no run/completion update attached to it.
+              agentSessionTracker.completeSession(priorSessionId)
+              logApp(`[LoopService] Append failed after revive for loop "${loop.name}"; re-completed session ${priorSessionId}`)
             }
           }
         }
