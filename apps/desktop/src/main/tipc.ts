@@ -5147,6 +5147,35 @@ export const router = {
     loopService.stopAllLoops()
     return { success: true }
   }),
+
+  listArtifacts: t.procedure.action(async () => {
+    const { artifactsService } = await import("./artifacts-service")
+    return artifactsService.list()
+  }),
+
+  getArtifact: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      const { artifactsService } = await import("./artifacts-service")
+      return artifactsService.get(input.id)
+    }),
+
+  deleteArtifact: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      const { artifactsService } = await import("./artifacts-service")
+      const ok = artifactsService.delete(input.id)
+      if (ok) {
+        for (const [, win] of WINDOWS) {
+          try {
+            getRendererHandlers<RendererHandlers>(win.webContents).artifactsChanged.send()
+          } catch (e) {
+            logApp("[tipc] artifactsChanged send failed:", e)
+          }
+        }
+      }
+      return { success: ok }
+    }),
 }
 
 export type Router = typeof router

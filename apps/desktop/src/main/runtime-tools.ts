@@ -18,6 +18,11 @@ import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
 import { getAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
+import { artifactsService } from "./artifacts-service"
+import type { ArtifactFiles } from "@dotagents/shared"
+import { getRendererHandlers } from "@egoist/tipc/main"
+import type { RendererHandlers } from "./renderer-handlers"
+import { WINDOWS, showMainWindow } from "./window"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -1275,6 +1280,117 @@ const toolHandlers: Record<string, ToolHandler> = {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       isError: result.success === false,
     }
+  },
+
+  create_artifact: async (args, context): Promise<MCPToolResult> => {
+    const title = typeof args.title === "string" ? args.title.trim() : ""
+    const files = (args.files && typeof args.files === "object" ? args.files : {}) as ArtifactFiles
+    if (!title) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "title is required" }) }], isError: true }
+    }
+    if (!files["index.html"]) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "files['index.html'] is required" }) }], isError: true }
+    }
+    try {
+      const artifact = artifactsService.create({
+        title,
+        files,
+        note: typeof args.note === "string" ? args.note : undefined,
+        createdBy: { source: "agent", sessionId: context.sessionId },
+      })
+      const shouldOpen = args.open !== false
+      for (const [, win] of WINDOWS) {
+        try {
+          getRendererHandlers<RendererHandlers>(win.webContents).artifactsChanged.send()
+        } catch {}
+      }
+      if (shouldOpen) {
+        try { showMainWindow() } catch {}
+        const main = WINDOWS.get("main")
+        if (main) {
+          try {
+            getRendererHandlers<RendererHandlers>(main.webContents).openArtifact.send({ id: artifact.id })
+          } catch {}
+        }
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: true, id: artifact.id, version: artifact.currentVersion, opened: shouldOpen }) }],
+        isError: false,
+      }
+    } catch (error) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: (error as Error).message }) }], isError: true }
+    }
+  },
+
+  update_artifact: async (args): Promise<MCPToolResult> => {
+    const id = typeof args.id === "string" ? args.id : ""
+    const files = (args.files && typeof args.files === "object" ? args.files : {}) as ArtifactFiles
+    if (!id) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "id is required" }) }], isError: true }
+    }
+    try {
+      const artifact = artifactsService.update({
+        id,
+        files,
+        note: typeof args.note === "string" ? args.note : undefined,
+      })
+      for (const [, win] of WINDOWS) {
+        try {
+          getRendererHandlers<RendererHandlers>(win.webContents).artifactsChanged.send()
+        } catch {}
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: true, id: artifact.id, version: artifact.currentVersion }) }],
+        isError: false,
+      }
+    } catch (error) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: (error as Error).message }) }], isError: true }
+    }
+  },
+
+  read_artifact: async (args): Promise<MCPToolResult> => {
+    const id = typeof args.id === "string" ? args.id : ""
+    if (!id) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "id is required" }) }], isError: true }
+    }
+    const artifact = artifactsService.get(id)
+    if (!artifact) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: `artifact not found: ${id}` }) }], isError: true }
+    }
+    const current = artifact.versions.find((v) => v.version === artifact.currentVersion) ?? artifact.versions[artifact.versions.length - 1]
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        success: true,
+        id: artifact.id,
+        title: artifact.title,
+        currentVersion: artifact.currentVersion,
+        files: current?.files ?? {},
+      }, null, 2) }],
+      isError: false,
+    }
+  },
+
+  list_artifacts: async (): Promise<MCPToolResult> => {
+    const items = artifactsService.list()
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, count: items.length, artifacts: items.map((it) => ({ id: it.id, title: it.title, currentVersion: it.currentVersion, updatedAt: it.updatedAt })) }, null, 2) }],
+      isError: false,
+    }
+  },
+
+  open_artifact: async (args): Promise<MCPToolResult> => {
+    const id = typeof args.id === "string" ? args.id : ""
+    if (!id) {
+      return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "id is required" }) }], isError: true }
+    }
+    try { showMainWindow() } catch {}
+    const main = WINDOWS.get("main")
+    if (main) {
+      try {
+        getRendererHandlers<RendererHandlers>(main.webContents).openArtifact.send({ id })
+      } catch {}
+    }
+    return { content: [{ type: "text", text: JSON.stringify({ success: true, id }) }], isError: false }
   },
 
 }

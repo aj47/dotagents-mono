@@ -65,4 +65,9 @@ export type RendererHandlers = {
 
   // Theme sync across windows
   themeChanged: (themeMode: string) => void
+
+  // Artifacts list changed (created/updated/deleted) — renderer refetches
+  artifactsChanged: () => void
+  // Request renderer to open an artifact (navigate to /artifacts/:id)
+  openArtifact: (data: { id: string }) => void
 }

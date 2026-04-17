@@ -337,6 +337,11 @@ export const Component = () => {
       href: "/knowledge",
       icon: "i-mingcute-book-2-line",
     },
+    {
+      text: "Artifacts",
+      href: "/artifacts",
+      icon: "i-mingcute-layout-grid-line",
+    },
 
     {
       text: "Capabilities",
@@ -445,7 +450,8 @@ export const Component = () => {
       !location.pathname.startsWith("/onboarding") &&
       !location.pathname.startsWith("/setup") &&
       !location.pathname.startsWith("/panel") &&
-      !location.pathname.startsWith("/knowledge"))
+      !location.pathname.startsWith("/knowledge") &&
+      !location.pathname.startsWith("/artifacts"))
 
   return (
     <>
