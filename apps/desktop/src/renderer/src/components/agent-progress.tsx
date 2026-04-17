@@ -448,6 +448,13 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       return
     }
 
+    // Synthetic pending-resume tiles render saved conversation history before a
+    // live session exists (e.g. after branching). The last assistant message is
+    // historical, so auto-playing its TTS would replay an already-heard response.
+    if (sessionId?.startsWith("pending-")) {
+      return
+    }
+
     // Guard against replaying the same content on follow-up user messages.
     // When a user sends a follow-up, the message list re-evaluates and this effect
     // can re-fire even though the agent response hasn't changed. (fixes #72)
@@ -540,7 +547,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
   return (
     <div className={cn(
-      "rounded-md text-xs transition-all duration-200",
+      "relative rounded-md text-xs transition-all duration-200",
       getRoleStyle(),
       shouldToggleFromContentClick && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer"
     )}>
@@ -649,53 +656,28 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             </div>
           )}
 
-          {/* TTS Audio Player - show for completed assistant messages and response-linked assistant messages */}
-          {shouldShowTTSButton && (
-            <div className="mt-2 min-w-0 space-y-1">
-              <AudioPlayer
-                audioData={audioData || undefined}
-                audioMimeType={audioMimeType || undefined}
-                text={ttsSource}
-                onGenerateAudio={generateAudio}
-                isGenerating={isGeneratingAudio}
-                error={ttsError}
-                compact={true}
-                autoPlay={shouldAutoPlayLoadedAudio}
-                onPlayStateChange={setIsTTSPlaying}
-                audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
-                autoPlaySuppressionKey={
-                  message.responseEvent?.id
-                    ? `compact:${sessionId ?? "no-session"}:${message.responseEvent.id}`
-                    : `compact:${sessionId ?? "no-session"}:${message.timestamp}`
-                }
-              />
-              {ttsError && (
-                <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
-                  <span className="font-medium">Audio generation failed:</span>{" "}
-                  {ttsError.includes("terms acceptance") ? (
-                    <>
-                      Groq TTS model requires terms acceptance.{" "}
-                      <a
-                        href="https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:no-underline"
-                      >
-                        Click here to open the Playground
-                      </a>{" "}
-                      and accept the terms when prompted.
-                    </>
-                  ) : (
-                    ttsError
-                  )}
-                </div>
+          {/* TTS error message - kept in flow so errors are readable */}
+          {shouldShowTTSButton && ttsError && (
+            <div className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
+              <span className="font-medium">Audio generation failed:</span>{" "}
+              {ttsError.includes("terms acceptance") ? (
+                <>
+                  Groq TTS model requires terms acceptance.{" "}
+                  <a
+                    href="https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:no-underline"
+                  >
+                    Click here to open the Playground
+                  </a>{" "}
+                  and accept the terms when prompted.
+                </>
+              ) : (
+                ttsError
               )}
             </div>
-
-
           )}
-
-
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* TTS playing indicator — click to pause */}
@@ -759,6 +741,31 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
           )}
         </div>
       </div>
+      {/* TTS Audio Player - absolutely positioned so it doesn't add vertical space to the message */}
+      {shouldShowTTSButton && (
+        <div
+          className="absolute bottom-1 right-1 z-10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AudioPlayer
+            audioData={audioData || undefined}
+            audioMimeType={audioMimeType || undefined}
+            text={ttsSource}
+            onGenerateAudio={generateAudio}
+            isGenerating={isGeneratingAudio}
+            error={ttsError}
+            compact={true}
+            autoPlay={shouldAutoPlayLoadedAudio}
+            onPlayStateChange={setIsTTSPlaying}
+            audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
+            autoPlaySuppressionKey={
+              message.responseEvent?.id
+                ? `compact:${sessionId ?? "no-session"}:${message.responseEvent.id}`
+                : `compact:${sessionId ?? "no-session"}:${message.timestamp}`
+            }
+          />
+        </div>
+      )}
     </div>
   )
 }
