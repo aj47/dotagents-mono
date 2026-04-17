@@ -15,6 +15,7 @@ import { isDebugLLM, logLLM, isDebugTools, logTools } from "./debug"
 import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage, clearIterativeSummary, clearContextRefs, clearArchiveFrontier, clearSummarizationFailureFlags } from "./context-budget"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
+import { taskEventBus } from "./task-event-bus"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
 import { getCurrentPresetName } from "@dotagents/shared"
@@ -903,6 +904,22 @@ export async function processTranscriptWithAgentMode(
     })
   }
 
+  // Emit an onToolCall event after a tool has finished executing (success or error).
+  const emitToolCallEvent = (toolCall: MCPToolCall, isError: boolean) => {
+    const toolSession = agentSessionTracker.getSession(currentSessionId)
+    taskEventBus.emit("onToolCall", {
+      sessionId: currentSessionId,
+      conversationId,
+      profileId: effectiveProfileSnapshot?.profileId,
+      triggerDepth: toolSession?.triggerDepth,
+      triggeringLoopId: toolSession?.triggeringLoopId,
+      timestamp: Date.now(),
+      toolName: toolCall.name,
+      toolArguments: toolCall.arguments,
+      isError,
+    })
+  }
+
   // Helper function to add a message to the in-memory conversation history ONLY (not persisted).
   // Use for internal prompt-engineering nudges that should never appear in saved transcripts.
   const addEphemeralMessage = (
@@ -1175,6 +1192,16 @@ export async function processTranscriptWithAgentMode(
   if (!userMessageAlreadyExists && shouldPersistInitialUserMessage) {
     saveMessageIncremental("user", transcript).catch(err => {
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
+    })
+    const userMsgSession = agentSessionTracker.getSession(currentSessionId)
+    taskEventBus.emit("onUserMessage", {
+      sessionId: currentSessionId,
+      conversationId,
+      profileId: effectiveProfileSnapshot?.profileId,
+      triggerDepth: userMsgSession?.triggerDepth,
+      triggeringLoopId: userMsgSession?.triggeringLoopId,
+      timestamp: Date.now(),
+      content: transcript,
     })
   }
 
@@ -2454,6 +2481,8 @@ export async function processTranscriptWithAgentMode(
           2, // maxRetries
         )
 
+        emitToolCallEvent(toolCall, !!execResult.result.isError)
+
         // Update the progress step with the result
         toolCallStep.status = execResult.result.isError ? "error" : "completed"
         toolCallStep.toolResult = {
@@ -2571,6 +2600,8 @@ export async function processTranscriptWithAgentMode(
           onToolProgress,
           2, // maxRetries
         )
+
+        emitToolCallEvent(toolCall, !!execResult.result.isError)
 
         if (execResult.cancelledByKill) {
           // Mark step and emit final progress, then break out of tool loop

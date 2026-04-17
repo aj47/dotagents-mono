@@ -993,6 +993,21 @@ export type LoopSchedule =
   | { type: "daily"; times: string[] }
   | { type: "weekly"; times: string[]; daysOfWeek: number[] }
 
+export type LoopTriggerEvent =
+  | "onSessionEnd"
+  | "onToolCall"
+  | "onUserMessage"
+  | "onAppStart"
+
+export interface LoopTriggerConfig {
+  profileId?: string
+  toolName?: string
+  excludeTriggered?: boolean
+  minIntervalMs?: number
+  maxRunsPerSession?: number
+  maxTriggerDepth?: number
+}
+
 export interface LoopConfig {
   id: string               // unique identifier (uuid)
   name: string             // display name
@@ -1003,6 +1018,8 @@ export interface LoopConfig {
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
+  triggers?: LoopTriggerEvent[]      // event triggers; task fires on named events
+  triggerConfig?: LoopTriggerConfig  // per-task trigger filters and guards
 }
 
 export type Config = {

@@ -547,6 +547,9 @@ if (!gotSingleInstanceLock) {
       loopService.startAllLoops()
       logApp("Repeat tasks started")
       startTasksFolderWatcher()
+      // Fire onAppStart after loops are loaded so any subscribed handlers exist.
+      const { taskEventBus } = await import("./task-event-bus")
+      taskEventBus.emit("onAppStart", { timestamp: Date.now() })
     } catch (error) {
       logApp("Failed to start repeat tasks:", error)
     }

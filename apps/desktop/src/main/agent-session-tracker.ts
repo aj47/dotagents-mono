@@ -12,6 +12,7 @@ import type { SessionProfileSnapshot } from "../shared/types"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { dataFolder } from "./config"
 import { loadPersistedJson, savePersistedJson } from "./session-persistence"
+import { taskEventBus } from "./task-event-bus"
 
 export interface AgentSession {
   id: string
@@ -30,6 +31,18 @@ export interface AgentSession {
    * This ensures session isolation - changes to the global profile don't affect running sessions.
    */
   profileSnapshot?: SessionProfileSnapshot
+  /**
+   * Loop id that caused this session to start (if any). Set by LoopService when
+   * spawning a session in response to a trigger event; used to prevent a task
+   * from triggering itself via its own spawned session's events.
+   */
+  triggeringLoopId?: string
+  /**
+   * Causality depth. 0 for user-initiated sessions; N+1 for sessions spawned
+   * by a task fired from an event in a session of depth N. TaskEventBus uses
+   * this to enforce maxTriggerDepth and prevent runaway chains.
+   */
+  triggerDepth?: number
 }
 
 type PersistedAgentSessionState = {
@@ -215,7 +228,8 @@ class AgentSessionTracker {
     conversationId?: string,
     conversationTitle?: string,
     startSnoozed: boolean = true,
-    profileSnapshot?: SessionProfileSnapshot
+    profileSnapshot?: SessionProfileSnapshot,
+    triggerMeta?: { triggeringLoopId?: string; triggerDepth?: number }
   ): string {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -229,6 +243,8 @@ class AgentSessionTracker {
       maxIterations: 10,
       isSnoozed: startSnoozed, // Start snoozed by default - no floating panel auto-show
       profileSnapshot, // Capture profile settings at session creation for isolation
+      triggeringLoopId: triggerMeta?.triggeringLoopId,
+      triggerDepth: triggerMeta?.triggerDepth,
     }
 
     this.sessions.set(sessionId, session)
@@ -276,6 +292,17 @@ class AgentSessionTracker {
     logApp(`[AgentSessionTracker] Completing session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
     this.persistState()
 
+    taskEventBus.emit("onSessionEnd", {
+      sessionId,
+      conversationId: session.conversationId,
+      profileId: session.profileSnapshot?.profileId,
+      triggerDepth: session.triggerDepth,
+      triggeringLoopId: session.triggeringLoopId,
+      timestamp: Date.now(),
+      status: "completed",
+      finalActivity,
+    })
+
     // Emit update to UI
     emitSessionUpdate()
   }
@@ -295,6 +322,16 @@ class AgentSessionTracker {
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Stopping session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
     this.persistState()
+
+    taskEventBus.emit("onSessionEnd", {
+      sessionId,
+      conversationId: session.conversationId,
+      profileId: session.profileSnapshot?.profileId,
+      triggerDepth: session.triggerDepth,
+      triggeringLoopId: session.triggeringLoopId,
+      timestamp: Date.now(),
+      status: "stopped",
+    })
 
     // Emit update to UI
     emitSessionUpdate()
@@ -316,6 +353,17 @@ class AgentSessionTracker {
     this.sessions.delete(sessionId)
     logApp(`[AgentSessionTracker] Error in session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
     this.persistState()
+
+    taskEventBus.emit("onSessionEnd", {
+      sessionId,
+      conversationId: session.conversationId,
+      profileId: session.profileSnapshot?.profileId,
+      triggerDepth: session.triggerDepth,
+      triggeringLoopId: session.triggeringLoopId,
+      timestamp: Date.now(),
+      status: "error",
+      errorMessage,
+    })
 
     // Emit update to UI
     emitSessionUpdate()

@@ -1,10 +1,22 @@
 import fs from "fs"
 import path from "path"
-import type { LoopConfig, LoopSchedule } from "../types"
+import type {
+  LoopConfig,
+  LoopSchedule,
+  LoopTriggerConfig,
+  LoopTriggerEvent,
+} from "../types"
 import type { AgentsLayerPaths } from "./modular-config"
 import { AGENTS_TASKS_DIR } from "./modular-config"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "./safe-file"
+
+const VALID_TRIGGER_EVENTS: readonly LoopTriggerEvent[] = [
+  "onSessionEnd",
+  "onToolCall",
+  "onUserMessage",
+  "onAppStart",
+]
 
 export const TASK_CANONICAL_FILENAME = "task.md"
 
@@ -95,6 +107,56 @@ function stringifySchedule(schedule: LoopSchedule): string {
   return JSON.stringify(schedule)
 }
 
+// ---- Triggers (de)serialization ---------------------------------------------
+
+function parseTriggers(raw: string | undefined): LoopTriggerEvent[] | undefined {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return undefined
+  const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean)
+  const out: LoopTriggerEvent[] = []
+  for (const p of parts) {
+    if ((VALID_TRIGGER_EVENTS as readonly string[]).includes(p) && !out.includes(p as LoopTriggerEvent)) {
+      out.push(p as LoopTriggerEvent)
+    }
+  }
+  return out.length > 0 ? out : undefined
+}
+
+function stringifyTriggers(triggers: LoopTriggerEvent[]): string {
+  return triggers.join(", ")
+}
+
+function parseTriggerConfig(raw: string | undefined): LoopTriggerConfig | undefined {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    return undefined
+  }
+  if (!parsed || typeof parsed !== "object") return undefined
+  const obj = parsed as Record<string, unknown>
+  const out: LoopTriggerConfig = {}
+  if (typeof obj.profileId === "string" && obj.profileId.trim()) out.profileId = obj.profileId.trim()
+  if (typeof obj.toolName === "string" && obj.toolName.trim()) out.toolName = obj.toolName.trim()
+  if (typeof obj.excludeTriggered === "boolean") out.excludeTriggered = obj.excludeTriggered
+  if (typeof obj.minIntervalMs === "number" && Number.isFinite(obj.minIntervalMs) && obj.minIntervalMs >= 0) {
+    out.minIntervalMs = Math.floor(obj.minIntervalMs)
+  }
+  if (typeof obj.maxRunsPerSession === "number" && Number.isFinite(obj.maxRunsPerSession) && obj.maxRunsPerSession >= 1) {
+    out.maxRunsPerSession = Math.floor(obj.maxRunsPerSession)
+  }
+  if (typeof obj.maxTriggerDepth === "number" && Number.isFinite(obj.maxTriggerDepth) && obj.maxTriggerDepth >= 0) {
+    out.maxTriggerDepth = Math.floor(obj.maxTriggerDepth)
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
+function stringifyTriggerConfig(cfg: LoopTriggerConfig): string {
+  return JSON.stringify(cfg)
+}
+
 // ============================================================================
 // Path helpers
 // ============================================================================
@@ -132,6 +194,12 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
   if (task.runOnStartup) frontmatter.runOnStartup = "true"
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
   if (task.schedule) frontmatter.schedule = stringifySchedule(task.schedule)
+  if (task.triggers && task.triggers.length > 0) {
+    frontmatter.triggers = stringifyTriggers(task.triggers)
+  }
+  if (task.triggerConfig && Object.keys(task.triggerConfig).length > 0) {
+    frontmatter.triggerConfig = stringifyTriggerConfig(task.triggerConfig)
+  }
 
   return stringifyFrontmatterDocument({ frontmatter, body: task.prompt || "" })
 }
@@ -154,6 +222,8 @@ export function parseTaskMarkdown(
   const intervalMinutes = parseNumber(fm.intervalMinutes, 60)
 
   const schedule = parseSchedule(fm.schedule)
+  const triggers = parseTriggers(fm.triggers)
+  const triggerConfig = parseTriggerConfig(fm.triggerConfig)
 
   return {
     id,
@@ -165,6 +235,8 @@ export function parseTaskMarkdown(
     runOnStartup: parseBoolean(fm.runOnStartup, false) || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
     schedule,
+    triggers,
+    triggerConfig,
   }
 }
 

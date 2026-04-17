@@ -14,7 +14,8 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
-import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import { taskEventBus, type TaskEventHandler, type EventPayloadMap } from "./task-event-bus"
+import type { LoopConfig, LoopTriggerEvent, SessionProfileSnapshot } from "../shared/types"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
@@ -166,6 +167,7 @@ class LoopService {
     }
 
     this.loops = nextLoops
+    this.rebuildEventSubscriptions()
     return true
   }
 
@@ -176,12 +178,14 @@ class LoopService {
     this.loops.splice(idx, 1)
     this.stopLoop(loopId)
     this.removeTaskFiles(loopId)
+    taskEventBus.setHandlersForLoop(loopId, [])
     return true
   }
 
   /** Reload tasks from disk (for external changes). */
   reload(): void {
     this.loadFromDisk()
+    this.rebuildEventSubscriptions()
   }
 
   /** Reload tasks from disk and rebuild scheduling state for external file changes. */
@@ -198,6 +202,10 @@ class LoopService {
 
   startAllLoops(): void {
     logApp(`[LoopService] Starting all loops. Found ${this.loops.length} configured loops.`)
+
+    // Register event-trigger handlers before starting timers so bootup events
+    // (onAppStart, any immediate onUserMessage) reach the correct handlers.
+    this.rebuildEventSubscriptions()
 
     for (const loop of this.loops) {
       if (loop.enabled) {
@@ -309,7 +317,13 @@ class LoopService {
     }
   }
 
-  private async executeLoop(loopId: string, options: { rescheduleAfterRun: boolean }): Promise<void> {
+  private async executeLoop(
+    loopId: string,
+    options: {
+      rescheduleAfterRun: boolean
+      triggerSource?: { sourceTriggerDepth?: number }
+    },
+  ): Promise<void> {
     const loop = this.getLoop(loopId)
 
     if (!loop) {
@@ -342,14 +356,17 @@ class LoopService {
 
       const conversation = await conversationService.createConversation(loop.prompt, "user")
       const conversationTitle = `[Repeat] ${loop.name}`
+      const sourceDepth = options.triggerSource?.sourceTriggerDepth
+      const spawnDepth = typeof sourceDepth === "number" ? sourceDepth + 1 : 0
       const sessionId = agentSessionTracker.startSession(
         conversation.id,
         conversationTitle,
         true,
-        profileSnapshot
+        profileSnapshot,
+        { triggeringLoopId: loopId, triggerDepth: spawnDepth },
       )
 
-      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
+      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (triggerDepth=${spawnDepth})`)
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
@@ -365,6 +382,40 @@ class LoopService {
           this.scheduleNextRun(loopId, this.getNextDelayMs(latestLoop))
         }
       }
+    }
+  }
+
+  // ============================================================================
+  // Event subscriptions (triggers)
+  // ============================================================================
+
+  /**
+   * Rebuild TaskEventBus subscriptions from the current loops in memory.
+   * Called after loadFromDisk / reload so disk edits take effect.
+   */
+  rebuildEventSubscriptions(): void {
+    for (const loop of this.loops) {
+      const handlers: TaskEventHandler[] = []
+      if (loop.enabled && loop.triggers && loop.triggers.length > 0) {
+        for (const event of loop.triggers) {
+          handlers.push({
+            loopId: loop.id,
+            event,
+            config: loop.triggerConfig,
+            fire: async (payload) => {
+              const sourceDepth = (payload as EventPayloadMap[LoopTriggerEvent] & { triggerDepth?: number }).triggerDepth
+              // Re-check enabled at fire time so a just-disabled task doesn't run.
+              const latest = this.getLoop(loop.id)
+              if (!latest?.enabled) return
+              await this.executeLoop(loop.id, {
+                rescheduleAfterRun: false,
+                triggerSource: { sourceTriggerDepth: sourceDepth },
+              })
+            },
+          })
+        }
+      }
+      taskEventBus.setHandlersForLoop(loop.id, handlers)
     }
   }
 

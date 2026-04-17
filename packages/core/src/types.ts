@@ -67,6 +67,47 @@ export type LoopSchedule =
   | { type: "daily"; times: string[] }
   | { type: "weekly"; times: string[]; daysOfWeek: number[] }
 
+/**
+ * Named event triggers for tasks. Emitted by TaskEventBus (desktop main process).
+ * - onSessionEnd: agent session reached a terminal state (complete/stop/error)
+ * - onToolCall: a tool call just finished executing inside a session
+ * - onUserMessage: first user message of a turn was submitted
+ * - onAppStart: app main process finished booting
+ */
+export type LoopTriggerEvent =
+  | "onSessionEnd"
+  | "onToolCall"
+  | "onUserMessage"
+  | "onAppStart"
+
+/**
+ * Per-trigger filters and guards. All fields optional; undefined means "no filter".
+ * Defaults applied by TaskEventBus when absent at fire time.
+ */
+export interface LoopTriggerConfig {
+  /** Only fire when the source session's profileId matches. */
+  profileId?: string
+  /** Only fire when the tool call's name matches (onToolCall only). */
+  toolName?: string
+  /**
+   * When true (default), onSessionEnd skips sessions that were themselves
+   * spawned by a task (prevents chain reactions).
+   */
+  excludeTriggered?: boolean
+  /** Minimum ms between consecutive fires for this task. Default 1000. */
+  minIntervalMs?: number
+  /**
+   * Max times this task can fire within a single source session.
+   * Default: 1 for onSessionEnd, 10 for other events.
+   */
+  maxRunsPerSession?: number
+  /**
+   * Max triggerDepth the source session may have for this task to fire.
+   * Default 1 (user-initiated sessions only; triggered sessions don't re-trigger).
+   */
+  maxTriggerDepth?: number
+}
+
 export interface LoopConfig {
   id: string
   name: string
@@ -79,6 +120,10 @@ export interface LoopConfig {
   runOnStartup?: boolean
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
+  /** Event triggers. When present, task fires in response to named events. */
+  triggers?: LoopTriggerEvent[]
+  /** Per-task trigger configuration (filters and guards). */
+  triggerConfig?: LoopTriggerConfig
 }
 
 // ============================================================================

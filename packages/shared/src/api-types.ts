@@ -718,6 +718,21 @@ export type LoopSchedule =
   | { type: "daily"; times: string[] }
   | { type: "weekly"; times: string[]; daysOfWeek: number[] };
 
+export type LoopTriggerEvent =
+  | "onSessionEnd"
+  | "onToolCall"
+  | "onUserMessage"
+  | "onAppStart";
+
+export interface LoopTriggerConfig {
+  profileId?: string;
+  toolName?: string;
+  excludeTriggered?: boolean;
+  minIntervalMs?: number;
+  maxRunsPerSession?: number;
+  maxTriggerDepth?: number;
+}
+
 export interface Loop {
   id: string;
   name: string;
@@ -731,6 +746,8 @@ export interface Loop {
   isRunning: boolean;
   nextRunAt?: number;
   schedule?: LoopSchedule;
+  triggers?: LoopTriggerEvent[];
+  triggerConfig?: LoopTriggerConfig;
 }
 
 export interface LoopsResponse {

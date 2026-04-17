@@ -11,7 +11,7 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig, LoopSchedule } from "@shared/types"
+import { LoopConfig, LoopSchedule, LoopTriggerEvent } from "@shared/types"
 import { toast } from "sonner"
 
 type ScheduleMode = "interval" | "daily" | "weekly"
@@ -26,9 +26,18 @@ interface EditingLoop {
   scheduleMode: ScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
+  triggers: LoopTriggerEvent[]  // event triggers (onSessionEnd, etc.)
+  triggerToolName: string       // onToolCall: fire only when tool name matches (blank = any)
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+const TRIGGER_EVENTS: { value: LoopTriggerEvent; label: string; description: string }[] = [
+  { value: "onSessionEnd", label: "On session end", description: "After any agent conversation finishes" },
+  { value: "onToolCall", label: "On tool call", description: "After each tool call completes" },
+  { value: "onUserMessage", label: "On user message", description: "Each time the user submits a message" },
+  { value: "onAppStart", label: "On app start", description: "Once when the desktop app starts" },
+]
 
 interface LoopRuntimeStatus {
   id: string
@@ -46,6 +55,8 @@ const emptyLoop: EditingLoop = {
   scheduleMode: "interval",
   scheduleTimes: ["09:00"],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
+  triggers: [],
+  triggerToolName: "",
 }
 
 const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
@@ -172,6 +183,8 @@ export function SettingsLoops() {
       scheduleMode,
       scheduleTimes,
       scheduleDaysOfWeek,
+      triggers: loop.triggers ? [...loop.triggers] : [],
+      triggerToolName: loop.triggerConfig?.toolName ?? "",
     })
   }
 
@@ -218,6 +231,10 @@ export function SettingsLoops() {
     }
 
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
+    const trimmedToolName = editing.triggerToolName.trim()
+    const triggerConfig = editing.triggers.includes("onToolCall") && trimmedToolName
+      ? { toolName: trimmedToolName }
+      : undefined
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
@@ -226,6 +243,8 @@ export function SettingsLoops() {
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
       ...(schedule ? { schedule } : {}),
+      ...(editing.triggers.length > 0 ? { triggers: editing.triggers } : {}),
+      ...(triggerConfig ? { triggerConfig } : {}),
     }
 
     try {
@@ -541,6 +560,50 @@ export function SettingsLoops() {
               </div>
             </div>
           )}
+          <div className="space-y-2">
+            <Label>Event triggers</Label>
+            <p className="text-xs text-muted-foreground">
+              Run this task in addition to its schedule when the selected events occur.
+            </p>
+            <div className="space-y-1.5">
+              {TRIGGER_EVENTS.map((evt) => {
+                const active = editing.triggers.includes(evt.value)
+                return (
+                  <div key={evt.value} className="flex items-start gap-2">
+                    <Switch
+                      id={`trigger-${evt.value}`}
+                      checked={active}
+                      onCheckedChange={(v) => {
+                        const next = v
+                          ? [...editing.triggers, evt.value]
+                          : editing.triggers.filter((t) => t !== evt.value)
+                        setEditing({ ...editing, triggers: next })
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <Label htmlFor={`trigger-${evt.value}`} className="text-xs">
+                        {evt.label}
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">{evt.description}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {editing.triggers.includes("onToolCall") && (
+              <div className="space-y-1 pt-1">
+                <Label htmlFor="triggerToolName" className="text-xs">
+                  Only fire for tool (optional)
+                </Label>
+                <Input
+                  id="triggerToolName"
+                  value={editing.triggerToolName}
+                  onChange={(e) => setEditing({ ...editing, triggerToolName: e.target.value })}
+                  placeholder="e.g. web_search (blank = any tool)"
+                />
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center space-x-2">
               <Switch
