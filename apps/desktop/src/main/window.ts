@@ -235,6 +235,29 @@ export function clearPanelOpenedWithMain() {
   panelOpenedWithMain = false
 }
 
+// Broadcast the floating panel's current visibility to all renderer windows so
+// they can coordinate behavior like TTS auto-play (avoid double playback when
+// the same session renders in both panel and main-window tile).
+function broadcastPanelVisibility(visible: boolean) {
+  for (const win of WINDOWS.values()) {
+    try {
+      getRendererHandlers<RendererHandlers>(win.webContents).panelVisibilityChanged?.send({ visible })
+    } catch {}
+  }
+}
+
+// Stop TTS playing in the floating panel renderer only. Invoked from the
+// panel's `hide` handler so every hide path (ESC, hideFloatingPanelWindow,
+// main-window focus auto-hide, etc.) silences panel TTS without affecting
+// TTS playing in the main window.
+function stopPanelRendererTts() {
+  const panel = WINDOWS.get("panel")
+  if (!panel) return
+  try {
+    getRendererHandlers<RendererHandlers>(panel.webContents).stopAllTts?.send()
+  } catch {}
+}
+
 // One-shot flag for intentional main-window hide paths.
 // If main is hidden without this flag, we treat it as accidental and recover.
 let allowExpectedMainHide = false
@@ -998,6 +1021,8 @@ export function createPanelWindow(): BrowserWindow | undefined {
       snapshot: getWindowFocusDebugSnapshot(),
     })
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
+    stopPanelRendererTts()
+    broadcastPanelVisibility(false)
   })
 
   // Reassert z-order on lifecycle changes and reset stale focus-hide flag
@@ -1006,6 +1031,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
     // Clear the flag when panel becomes visible through any means.
     // This prevents stale state if user manually shows panel while main is focused.
     clearPanelHiddenByMainFocus()
+    broadcastPanelVisibility(true)
   })
   win.on("blur", () => {
     // Skip z-order reassertion in textInput mode.

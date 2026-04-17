@@ -162,8 +162,16 @@ function normalizeAssistantResponseForDedupe(content: string | undefined): strin
   return (content ?? "").replace(/\s+/g, " ").trim()
 }
 
-function shouldAutoPlayTTSForVariant(variant: "default" | "overlay" | "tile", isSnoozed: boolean, isFocused: boolean = false): boolean {
-  return variant === "tile" ? isFocused : !isSnoozed
+function shouldAutoPlayTTSForVariant(
+  variant: "default" | "overlay" | "tile",
+  isSnoozed: boolean,
+  isFocused: boolean = false,
+  isFloatingPanelVisible: boolean = false,
+): boolean {
+  // The floating panel owns TTS auto-play while it is visible. Tile surfaces
+  // in the main window defer so the same session isn't spoken twice.
+  if (variant === "tile") return isFocused && !isFloatingPanelVisible
+  return !isSnoozed
 }
 
 function getActionErrorMessage(error: unknown, fallback: string): string {
@@ -259,6 +267,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
   const configQuery = useConfigQuery()
+  const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)
 
   // Cleanup copy timeout on unmount
   // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
@@ -417,7 +426,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const shouldAutoPlayTTS = shouldShowTTSButton && isLast
   const shouldAutoPlayLoadedAudio =
     shouldAutoPlayTTS &&
-    shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) &&
+    shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible) &&
     (configQuery.data?.ttsAutoPlay ?? true) &&
     lastAutoPlayedSourceRef.current === ttsSource
 
@@ -432,7 +441,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   //   to prevent double playback when AgentProgress remounts (e.g., when switching between
   //   single-session and multi-session views in the panel)
   useEffect(() => {
-    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused)
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible)
     const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? true
 
     if (!shouldAutoPlay || !shouldAutoPlayTTS || !ttsAutoPlayEnabled || audioData || isGeneratingAudio || ttsError || wasStopped) {
@@ -488,7 +497,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         }
         // Error is already handled in generateAudio function
       })
-  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
+  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, isFloatingPanelVisible, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
 
   const getRoleStyle = () => {
     switch (message.role) {
@@ -3060,6 +3069,7 @@ const MidTurnUserResponseBubble: React.FC<{
   const sequenceGenerationIdRef = useRef(0)
   const sequenceIndexRef = useRef(-1)
   const configQuery = useConfigQuery()
+  const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)
   const ttsGenerationIdRef = useRef(0)
   const ttsSource = sanitizeMessageContentForSpeech(userResponse)
   const latestTtsSourceRef = useRef(ttsSource)
@@ -3147,7 +3157,7 @@ const MidTurnUserResponseBubble: React.FC<{
 
   // Auto-play TTS for mid-turn userResponse in primary conversation surfaces.
   useEffect(() => {
-    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused)
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible)
     if (!shouldAutoPlay || !ttsSource || !configQuery.data?.ttsEnabled || !(configQuery.data?.ttsAutoPlay ?? true) || audioData || isGeneratingAudio || ttsError || isComplete) {
       return
     }
@@ -3175,7 +3185,7 @@ const MidTurnUserResponseBubble: React.FC<{
           inFlightCompletionTTSKeysRef.current = []
         }
       })
-  }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, variant, sessionId, isComplete])
+  }, [currentResponse.id, ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, isFloatingPanelVisible, ttsError, variant, sessionId, isComplete])
 
   // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
   // See CompactMessage cleanup comment for rationale — removing keys on unmount
@@ -3209,7 +3219,7 @@ const MidTurnUserResponseBubble: React.FC<{
 
   const shouldKeepAudioPlayerMounted =
     shouldShowTTSButton &&
-    (isExpanded || (shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) && (configQuery.data?.ttsAutoPlay ?? true)))
+    (isExpanded || (shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible) && (configQuery.data?.ttsAutoPlay ?? true)))
   const isCurrentSequentialResponseHighlighted = activeSequentialKey === `current-${currentResponse.id}`
 
   const handleHeaderClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -3469,7 +3479,7 @@ const MidTurnUserResponseBubble: React.FC<{
             isGenerating={isGeneratingAudio}
             error={ttsError}
             compact={true}
-            autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused) && (configQuery.data?.ttsAutoPlay ?? true)}
+            autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible) && (configQuery.data?.ttsAutoPlay ?? true)}
             onPlayStateChange={handleAudioPlayStateChange}
             autoPlaySuppressionKey={`response-group:${sessionId ?? "no-session"}:${currentResponse.id}`}
           />

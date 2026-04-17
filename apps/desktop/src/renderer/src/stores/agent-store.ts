@@ -71,6 +71,11 @@ interface AgentState {
   pinnedSessionIds: Set<string>
   archivedSessionIds: Set<string>
 
+  // Whether the floating panel window is currently visible. Used by the main
+  // window to suppress duplicate TTS auto-play when the panel is playing the
+  // same session's audio.
+  isFloatingPanelVisible: boolean
+
   updateSessionProgress: (update: AgentProgressUpdate) => void
   clearAllProgress: () => void
   clearSessionProgress: (sessionId: string) => void
@@ -99,6 +104,8 @@ interface AgentState {
   setArchivedSessionIds: (sessionIds: Iterable<string>) => void
   toggleArchiveSession: (sessionId: string) => void
   isArchived: (sessionId: string) => boolean
+
+  setFloatingPanelVisible: (visible: boolean) => void
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -116,6 +123,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   sortBy: 'recent' as SessionSortBy,
   pinnedSessionIds: new Set<string>(),
   archivedSessionIds: new Set<string>(),
+
+  isFloatingPanelVisible: false,
 
   updateSessionProgress: (incomingUpdate: AgentProgressUpdate) => {
     const update = sanitizeAgentProgressUpdateForDisplay(incomingUpdate)
@@ -630,6 +639,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   isArchived: (sessionId: string) => {
     return get().archivedSessionIds.has(sessionId)
   },
+
+  setFloatingPanelVisible: (visible: boolean) => {
+    set({ isFloatingPanelVisible: visible })
+  },
 }))
 
 const EMPTY_MESSAGE_QUEUE: QueuedMessage[] = []
@@ -663,4 +676,8 @@ export const useIsQueuePaused = (conversationId: string | undefined) => {
   const pausedQueueConversations = useAgentStore((state) => state.pausedQueueConversations)
   if (!conversationId) return false
   return pausedQueueConversations.has(conversationId)
+}
+
+export const useIsFloatingPanelVisible = () => {
+  return useAgentStore((state) => state.isFloatingPanelVisible)
 }
