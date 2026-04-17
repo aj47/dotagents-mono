@@ -114,7 +114,7 @@ function getSidebarSessionPreview(progress?: AgentProgressUpdate | null): string
   return null
 }
 
-const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
+const MIN_VISIBLE_SIDEBAR_SESSIONS = 8
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"

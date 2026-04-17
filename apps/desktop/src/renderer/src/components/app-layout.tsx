@@ -6,7 +6,6 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
-import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
 import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
 import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
@@ -337,7 +336,11 @@ export const Component = () => {
       href: "/knowledge",
       icon: "i-mingcute-book-2-line",
     },
-
+    {
+      text: "Agents",
+      href: "/settings/agents",
+      icon: "i-mingcute-group-line",
+    },
     {
       text: "Capabilities",
       href: "/settings/capabilities",
@@ -803,9 +806,6 @@ export const Component = () => {
                 onClearInactiveSessions={isSessionsActive ? clearInactiveSessions : undefined}
                 inactiveSessionCount={0}
               />
-
-              {/* Agents Section - capability management */}
-              <AgentCapabilitiesSidebar />
 
               {/* Settings Section - Collapsible, collapsed by default */}
               <div className="px-2">
