@@ -4656,14 +4656,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           WebkitAppRegion: "no-drag"
         } as React.CSSProperties}
       >
-        {/* Tile Header */}
+        {/* Tile Header - draggable region for window dragging on macOS */}
         <div
           className={cn(
-            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0",
+            "flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 app-drag-region",
             canCollapseTile && "cursor-pointer",
             isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2",
           )}
-          onClick={canCollapseTile ? handleToggleCollapse : undefined}
+          onClick={(e) => {
+            // Prevent clicks on the header from bubbling to the tile container's
+            // onFocus handler (which would open the floating panel "hover view").
+            e.stopPropagation()
+            if (canCollapseTile) handleToggleCollapse(e)
+          }}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <div className="shrink-0">
@@ -4673,7 +4678,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {getTitle()}
             </span>
           </div>
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
             {canCollapseTile && (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
                 {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}

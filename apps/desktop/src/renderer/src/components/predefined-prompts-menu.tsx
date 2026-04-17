@@ -20,11 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@renderer/components/ui/dialog"
-import { BookMarked, Plus, Pencil, Trash2, Sparkles } from "lucide-react"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
-import { PredefinedPrompt } from "../../../shared/types"
+import { BookMarked, Plus, Pencil, Trash2, Sparkles, Clock3 } from "lucide-react"
+import { queryClient, useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
+import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
 
 interface PredefinedPromptsMenuProps {
   onSelectPrompt: (content: string) => void
@@ -55,6 +56,12 @@ export function PredefinedPromptsMenu({
     queryFn: () => tipcClient.getSkills(),
   })
   const availableSkills = skillsQuery.data ?? []
+
+  const loopsQuery = useQuery({
+    queryKey: ["loops"],
+    queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>,
+  })
+  const availableTasks = loopsQuery.data ?? []
   const triggerButtonClassName = buttonSize === "default"
     ? "h-9 w-9"
     : buttonSize === "sm"
@@ -69,6 +76,20 @@ export function PredefinedPromptsMenu({
 
   const handleSelectPrompt = (prompt: PredefinedPrompt) => {
     onSelectPrompt(prompt.content)
+  }
+
+  const handleTriggerTask = async (task: LoopConfig) => {
+    try {
+      const result = await tipcClient.triggerLoop?.({ loopId: task.id })
+      if (result && !result.success) {
+        toast.error(`Could not trigger "${task.name}" right now`)
+        return
+      }
+      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+      toast.success(`Running "${task.name}"...`)
+    } catch {
+      toast.error("Failed to trigger task")
+    }
   }
 
   const handleAddNew = () => {
@@ -221,6 +242,29 @@ export function PredefinedPromptsMenu({
                   <div className="truncate font-medium" title={skill.name}>{skill.name}</div>
                   <p className={secondaryTextClassName}>
                     {skill.description || "Use this skill as a reusable prompt."}
+                  </p>
+                </div>
+              </DropdownMenuItem>
+            ))
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className={sectionLabelClassName}>Tasks</DropdownMenuLabel>
+          {availableTasks.length === 0 ? (
+            <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
+              No tasks available
+            </div>
+          ) : (
+            availableTasks.map((task) => (
+              <DropdownMenuItem
+                key={task.id}
+                className={entryClassName}
+                onSelect={() => handleTriggerTask(task)}
+              >
+                <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className={entryTextClassName}>
+                  <div className="truncate font-medium" title={task.name}>{task.name}</div>
+                  <p className={secondaryTextClassName}>
+                    {task.prompt || "Run this task now."}
                   </p>
                 </div>
               </DropdownMenuItem>

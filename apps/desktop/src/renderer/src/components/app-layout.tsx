@@ -4,9 +4,7 @@ import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
-import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
-import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
 import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
 import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
@@ -342,7 +340,11 @@ export const Component = () => {
       href: "/artifacts",
       icon: "i-mingcute-layout-grid-line",
     },
-
+    {
+      text: "Agents",
+      href: "/settings/agents",
+      icon: "i-mingcute-group-line",
+    },
     {
       text: "Capabilities",
       href: "/settings/capabilities",
@@ -483,7 +485,7 @@ export const Component = () => {
               "flex shrink-0 items-center",
               isCollapsed ? "justify-center" : "justify-between",
               // On macOS, add top padding to clear the traffic-light window controls
-              process.env.IS_MAC ? "pb-1 pt-7" : "pb-1 pt-2",
+              process.env.IS_MAC ? "pb-1 pt-7 app-drag-region" : "pb-1 pt-2",
               isCollapsed ? "px-1" : "px-2",
             )}
           >
@@ -494,7 +496,7 @@ export const Component = () => {
                   onClick={handleToggleGlobalTTS}
                   disabled={!configQuery.data || saveConfigMutation.isPending}
                   className={cn(
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors disabled:opacity-50",
+                    "app-no-drag-region text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors disabled:opacity-50",
                   )}
                   title={
                     isGlobalTTSEnabled
@@ -520,7 +522,7 @@ export const Component = () => {
                   type="button"
                   onClick={handleEmergencyStopAll}
                   disabled={isEmergencyStopping}
-                  className="text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
+                  className="app-no-drag-region text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
                   title="Emergency stop all agent sessions"
                   aria-label="Emergency stop all agent sessions"
                 >
@@ -536,7 +538,7 @@ export const Component = () => {
             <button
               onClick={toggleCollapse}
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-md transition-colors",
+                "app-no-drag-region flex h-6 w-6 items-center justify-center rounded-md transition-colors",
                 "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -810,9 +812,6 @@ export const Component = () => {
                 inactiveSessionCount={0}
               />
 
-              {/* Agents Section - capability management */}
-              <AgentCapabilitiesSidebar />
-
               {/* Settings Section - Collapsible, collapsed by default */}
               <div className="px-2">
                 <button
@@ -878,9 +877,6 @@ export const Component = () => {
 
         {/* Main content area */}
         <div className="bg-background flex min-w-0 grow flex-col">
-          {/* Draggable top bar for Mac - allows window dragging while content scrolls */}
-          {process.env.IS_MAC && <SettingsDragBar />}
-
           {/* Scrollable content area */}
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             <Outlet

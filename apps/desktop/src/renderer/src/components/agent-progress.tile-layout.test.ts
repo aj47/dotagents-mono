@@ -9,12 +9,12 @@ const audioPlayerSource = readFileSync(new URL("./audio-player.tsx", import.meta
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
     expect(agentProgressSource).toContain(
-      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0"'
+      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 app-drag-region"'
     )
     expect(agentProgressSource).toContain('canCollapseTile && "cursor-pointer"')
     expect(agentProgressSource).toContain('isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-1.5"')
-    expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
+    expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region"')
   })
 
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {

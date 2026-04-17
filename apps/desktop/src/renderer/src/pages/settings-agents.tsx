@@ -150,7 +150,7 @@ function emptyAgent(): EditingAgent {
   }
 }
 
-function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number): string[] {
+function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number, availableRuntimeToolCount: number): string[] {
   const items: string[] = [agent.connection.type]
 
   const agentProviderId = agent.modelConfig?.agentProviderId || agent.modelConfig?.mcpToolsProviderId
@@ -168,6 +168,14 @@ function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: numb
       ? availableSkillCount
       : (agent.skillsConfig.enabledSkillIds?.length ?? 0)
     items.push(`${enabledSkillCount} skill${enabledSkillCount === 1 ? "" : "s"}`)
+  }
+
+  if (availableRuntimeToolCount > 0) {
+    const runtimeList = agent.toolConfig?.enabledRuntimeTools
+    const enabledRuntimeCount = (!runtimeList || runtimeList.length === 0)
+      ? availableRuntimeToolCount
+      : runtimeList.length
+    items.push(`${enabledRuntimeCount} runtime tool${enabledRuntimeCount === 1 ? "" : "s"}`)
   }
 
   const propertyCount = agent.properties ? Object.keys(agent.properties).length : 0
@@ -205,6 +213,8 @@ export function SettingsAgents() {
 
   useEffect(() => {
     loadAgents()
+    loadSkills()
+    loadAllTools()
     tipcClient.getDefaultSystemPrompt().then(setDefaultSystemPrompt).catch(console.error)
   }, [])
   useEffect(() => { if (editing) { loadServers(); loadSkills(); loadAllTools() } }, [!!editing])
@@ -621,7 +631,7 @@ export function SettingsAgents() {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
         {sortedAgents.map(agent => {
-          const summaryItems = getAgentCardSummaryItems(agent, skills.length)
+          const summaryItems = getAgentCardSummaryItems(agent, skills.length, runtimeTools.length)
 
           return (
             <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>

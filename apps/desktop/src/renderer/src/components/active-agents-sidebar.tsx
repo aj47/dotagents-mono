@@ -114,8 +114,11 @@ function getSidebarSessionPreview(progress?: AgentProgressUpdate | null): string
   return null
 }
 
-const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
+const MIN_VISIBLE_SIDEBAR_SESSIONS = 8
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
+
+const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
+const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 
@@ -823,7 +826,7 @@ export function ActiveAgentsSidebar({
           className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1 scrollbar-none"
           onScroll={handleSidebarSessionsScroll}
         >
-          {sidebarSessions.map(({ session, isSavedConversation, key }) => {
+          {sidebarSessions.map(({ session, isSavedConversation, key }, index) => {
             const isFocused = focusedSessionId === session.id
             const isSessionExpanded = expandedSessionId === session.id
             const isCurrentView = isSidebarSessionCurrentlyViewed(session, {
@@ -1027,7 +1030,7 @@ export function ActiveAgentsSidebar({
                 )}
                 <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-7", isActivePinned && "pl-2.5")}>
                   <div
-                    className="relative z-10 flex min-w-0 items-start"
+                    className="relative z-10 flex min-w-0 items-start gap-1.5"
                     onClick={(event) => {
                       event.stopPropagation()
                       handleActiveSessionSelect(session.id)
@@ -1046,6 +1049,15 @@ export function ActiveAgentsSidebar({
                               : "text-foreground",
                       ),
                       hasPendingApproval ? "⚠ " : undefined,
+                    )}
+                    {index < 9 && (sessionPreview || lastMessageMinutesAgo) && (
+                      <span
+                        className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0"
+                        title={`${IS_MAC ? "⌘" : "Ctrl+"}${index + 1} to focus this session`}
+                        aria-hidden="true"
+                      >
+                        {SHORTCUT_MOD_SYMBOL}{IS_MAC ? "" : "+"}{index + 1}
+                      </span>
                     )}
                   </div>
                   {(sessionPreview || lastMessageMinutesAgo) && (

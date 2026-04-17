@@ -882,7 +882,7 @@ export function Component() {
             onSelectAgent={setSelectedAgentId}
           />
         ) : (
-          <div className="flex h-full min-h-0 flex-col p-3">
+          <div className="flex h-full min-h-0 flex-col">
             {pendingResumeProgress && pendingResumeSessionId ? (
               <AgentProgress
                 progress={pendingResumeProgress}

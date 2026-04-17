@@ -28,7 +28,7 @@ describe("sessions in-app actions", () => {
 
   it("renders a single full-height session view instead of the old card grid", () => {
     expect(sessionsSource).toContain("const selectedSessionId = useMemo(() => {")
-    expect(sessionsSource).toContain('className="flex h-full min-h-0 flex-col p-3"')
+    expect(sessionsSource).toContain('className="flex h-full min-h-0 flex-col"')
     expect(sessionsSource).not.toContain("SessionCompactCard")
     expect(sessionsSource).not.toContain("calculateAdaptiveColumns")
   })
