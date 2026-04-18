@@ -27,6 +27,26 @@ describe('shouldCollapseMessage', () => {
     expect(shouldCollapseMessage(longContent)).toBe(true)
   })
 
+  it('ignores data URL markdown image payload length', () => {
+    const content = `Here is the image:\n\n![diagram](data:image/png;base64,${'a'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('ignores http markdown image payload length', () => {
+    const content = `Looks good\n\n![remote image](https://example.com/${'a'.repeat(500)}.png)`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('ignores conversation asset markdown image payload length', () => {
+    const content = `Screenshot attached\n\n![screenshot](assets://conversation-image/${'a'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('still collapses when non-image text exceeds the threshold', () => {
+    const content = `${'a'.repeat(201)}\n\n![diagram](data:image/png;base64,${'b'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(true)
+  })
+
   it('returns true when tool calls are present', () => {
     expect(shouldCollapseMessage('short', [{ name: 'search', arguments: {} }])).toBe(true)
   })

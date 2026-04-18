@@ -9,6 +9,7 @@ import type { AgentUserResponseEvent } from './agent-progress';
 import { ToolCall, ToolResult } from './types';
 
 const COLLAPSE_THRESHOLD = 200;
+const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
 
 /**
  * Determine if a message should be collapsible based on its content
@@ -23,7 +24,7 @@ export function shouldCollapseMessage(
   toolResults?: ToolResult[]
 ): boolean {
   const hasExtras = (toolCalls?.length ?? 0) > 0 || (toolResults?.length ?? 0) > 0;
-  const contentLength = content?.length ?? 0;
+  const contentLength = content?.replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, '').length ?? 0;
   return contentLength > COLLAPSE_THRESHOLD || hasExtras;
 }
 
