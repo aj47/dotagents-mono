@@ -660,25 +660,35 @@ function loadSkillsForBundle(layer: AgentsLayerPaths, options?: BundleItemSelect
     }))
 }
 
+function normalizeBundleRepeatTask(task: BundleRepeatTask): BundleRepeatTask {
+  const normalized = { ...task }
+  if (normalized.runContinuously === true) {
+    delete normalized.schedule
+  }
+  return normalized
+}
+
 function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleRepeatTask[] {
   const tasksResult = loadTasksLayer(layer)
   const selectedRepeatTaskIds = toSelectionSet(options?.repeatTaskIds)
 
   return tasksResult.tasks
     .filter((task) => !selectedRepeatTaskIds || selectedRepeatTaskIds.has(task.id))
-    .map((task): BundleRepeatTask => ({
-      id: task.id,
-      name: task.name,
-      prompt: task.prompt,
-      intervalMinutes: task.intervalMinutes,
-      enabled: task.enabled,
-      runOnStartup: task.runOnStartup,
-      speakOnTrigger: task.speakOnTrigger,
-      continueInSession: task.continueInSession,
-      runContinuously: task.runContinuously,
-      schedule: task.schedule,
-      // profileId intentionally omitted — may not exist in target environment
-    }))
+    .map((task): BundleRepeatTask =>
+      normalizeBundleRepeatTask({
+        id: task.id,
+        name: task.name,
+        prompt: task.prompt,
+        intervalMinutes: task.intervalMinutes,
+        enabled: task.enabled,
+        runOnStartup: task.runOnStartup,
+        speakOnTrigger: task.speakOnTrigger,
+        continueInSession: task.continueInSession,
+        runContinuously: task.runContinuously,
+        schedule: task.schedule,
+        // profileId intentionally omitted — may not exist in target environment
+      })
+    )
 }
 
 function loadKnowledgeNotesForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleKnowledgeNote[] {
@@ -1212,7 +1222,9 @@ function validateBundle(bundle: unknown): bundle is ParsedDotAgentsBundle {
 }
 
 function normalizeBundle(bundle: ParsedDotAgentsBundle): DotAgentsBundle {
-  const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
+  const repeatTasks = Array.isArray(bundle.repeatTasks)
+    ? bundle.repeatTasks.map(normalizeBundleRepeatTask)
+    : []
   const knowledgeNotes = Array.isArray(bundle.knowledgeNotes) ? bundle.knowledgeNotes : []
   const rawComponents = isRecordObject(bundle.manifest.components)
     ? (bundle.manifest.components as Record<string, unknown>)
@@ -1657,7 +1669,9 @@ export async function importBundle(
           speakOnTrigger: bundleTask.speakOnTrigger,
           continueInSession: bundleTask.continueInSession,
           runContinuously: bundleTask.runContinuously,
-          ...(bundleTask.schedule ? { schedule: bundleTask.schedule } : {}),
+          ...(bundleTask.runContinuously === true || !bundleTask.schedule
+            ? {}
+            : { schedule: bundleTask.schedule }),
           // profileId intentionally not imported — may not exist in target
         }
 
