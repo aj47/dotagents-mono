@@ -5,6 +5,24 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const tempDirs: string[] = []
 
+async function setupConversationImageAssetTest() {
+  const conversationsFolder = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-conv-images-"))
+  tempDirs.push(conversationsFolder)
+  vi.doMock("./config", () => ({
+    appId: "app.dotagents.test",
+    dataFolder: conversationsFolder,
+    recordingsFolder: path.join(conversationsFolder, "recordings"),
+    conversationsFolder,
+    configPath: path.join(conversationsFolder, "config.json"),
+    configStore: { get: vi.fn(), save: vi.fn(), reload: vi.fn(), config: undefined },
+  }))
+  vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn((content: string) => content) }))
+  vi.doMock("./llm-fetch", () => ({ makeTextCompletionWithFetch: vi.fn() }))
+
+  const { ConversationService } = await import("./conversation-service")
+  return { service: ConversationService.getInstance(), conversationsFolder }
+}
+
 afterEach(async () => {
   vi.resetModules()
   vi.clearAllMocks()
@@ -13,21 +31,7 @@ afterEach(async () => {
 
 describe("conversation image assets", () => {
   it("materializes inline data images into lightweight conversation asset URLs", async () => {
-    const conversationsFolder = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-conv-images-"))
-    tempDirs.push(conversationsFolder)
-    vi.doMock("./config", () => ({
-      appId: "app.dotagents.test",
-      dataFolder: conversationsFolder,
-      recordingsFolder: path.join(conversationsFolder, "recordings"),
-      conversationsFolder,
-      configPath: path.join(conversationsFolder, "config.json"),
-      configStore: { get: vi.fn(), save: vi.fn(), reload: vi.fn(), config: undefined },
-    }))
-    vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn((content: string) => content) }))
-    vi.doMock("./llm-fetch", () => ({ makeTextCompletionWithFetch: vi.fn() }))
-
-    const { ConversationService } = await import("./conversation-service")
-    const service = ConversationService.getInstance()
+    const { service, conversationsFolder } = await setupConversationImageAssetTest()
     const base64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64")
 
     const materialized = await service.materializeInlineDataImagesInContent(
@@ -43,5 +47,30 @@ describe("conversation image assets", () => {
     expect(fileName).toBeTruthy()
     const storedImage = await fs.readFile(path.join(conversationsFolder, "_images", "conv_image_test", fileName!))
     expect([...storedImage]).toEqual([0x89, 0x50, 0x4e, 0x47])
+  })
+
+  it("uses independent inline image matching for concurrent materialization calls", async () => {
+    const { service } = await setupConversationImageAssetTest()
+    const pngBase64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64")
+    const gifBase64 = Buffer.from([0x47, 0x49, 0x46, 0x38]).toString("base64")
+
+    const [first, second] = await Promise.all([
+      service.materializeInlineDataImagesInContent(
+        "conv_one",
+        `A ![one](data:image/png;base64,${pngBase64}) B ![two](data:image/gif;base64,${gifBase64}) C`,
+      ),
+      service.materializeInlineDataImagesInContent(
+        "conv_two",
+        `X ![alpha](data:image/gif;base64,${gifBase64}) Y ![beta](data:image/png;base64,${pngBase64}) Z`,
+      ),
+    ])
+
+    expect(first).toContain("A ![one](assets://conversation-image/conv_one/")
+    expect(first).toContain(" B ![two](assets://conversation-image/conv_one/")
+    expect(first).toContain(" C")
+    expect(second).toContain("X ![alpha](assets://conversation-image/conv_two/")
+    expect(second).toContain(" Y ![beta](assets://conversation-image/conv_two/")
+    expect(second).toContain(" Z")
+    expect(`${first}${second}`).not.toContain("data:image")
   })
 })

@@ -37,7 +37,8 @@ const CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS = 50
 const CONVERSATION_REPAIR_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
-const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
+const createInlineDataImageMarkdownRegex = () =>
+  /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
 const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
 const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
   png: "png",
@@ -169,9 +170,9 @@ export class ConversationService {
 
     let nextContent = ""
     let lastIndex = 0
-    INLINE_DATA_IMAGE_MARKDOWN_REGEX.lastIndex = 0
+    const matches = Array.from(content.matchAll(createInlineDataImageMarkdownRegex()))
 
-    for (const match of content.matchAll(INLINE_DATA_IMAGE_MARKDOWN_REGEX)) {
+    for (const match of matches) {
       const matchIndex = match.index ?? 0
       const [fullMatch, altText, dataUrl] = match
       nextContent += content.slice(lastIndex, matchIndex)
