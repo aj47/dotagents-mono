@@ -328,11 +328,15 @@ export function SettingsLoops() {
     }
 
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
+    const existingIntervalMinutes = editing.id
+      ? loops.find((loop) => loop.id === editing.id)?.intervalMinutes
+      : undefined
+    const savedIntervalMinutes = parsedIntervalMinutes ?? existingIntervalMinutes ?? 15
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
-      intervalMinutes: parsedIntervalMinutes ?? 15,
+      intervalMinutes: savedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,
