@@ -36,7 +36,7 @@ import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
-import { sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
+import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
 
 interface AgentProgressProps {
@@ -134,6 +134,16 @@ function isCompletionControlTool(toolName: string): boolean {
   return toolName === RESPOND_TO_USER_TOOL || toolName === MARK_WORK_COMPLETE_TOOL
 }
 
+const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi
+
+function stripMarkdownImagePayloads(content: string): string {
+  return content.replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, "")
+}
+
+function hasMarkdownImagePayload(content: string): boolean {
+  return /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(content)
+}
+
 function extractRespondToUserResponsesFromMessages(
   messages: Array<{
     role: "user" | "assistant" | "tool"
@@ -162,6 +172,10 @@ function shouldAutoPlayTTSForVariant(
   // in the main window defer so the same session isn't spoken twice.
   if (variant === "tile") return isFocused && !isFloatingPanelVisible
   return !isSnoozed
+}
+
+function normalizeProgressVariant(variant: string): "default" | "overlay" | "tile" {
+  return variant === "overlay" || variant === "tile" ? variant : "default"
 }
 
 function getActionErrorMessage(error: unknown, fallback: string): string {
@@ -220,6 +234,7 @@ type CompactMessageProps = {
 
 // Compact message component for space efficiency
 const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, conversationId, branchMessageIndex }) => {
+  const messageVariant = normalizeProgressVariant(variant)
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -300,7 +315,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const hasExtras =
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
-  const shouldCollapse = effectiveContent.length > 100 || hasExtras
+  const effectiveTextContentLength = stripMarkdownImagePayloads(effectiveContent).length
+  const collapseLengthLimit = hasMarkdownImagePayload(effectiveContent) ? 500 : 100
+  const shouldCollapse = effectiveTextContentLength > collapseLengthLimit || hasExtras
 
   // Track the computed ttsSource (ttsText || effectiveContent) since that's what determines the
   // ttsKey and should also gate async state updates.
@@ -396,7 +413,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const shouldAutoPlayTTS = shouldShowTTSButton && isLast
   const shouldAutoPlayLoadedAudio =
     shouldAutoPlayTTS &&
-    shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible) &&
+    shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible) &&
     (configQuery.data?.ttsAutoPlay ?? true) &&
     lastAutoPlayedSourceRef.current === ttsSource
 
@@ -411,7 +428,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   //   to prevent double playback when AgentProgress remounts (e.g., when switching between
   //   single-session and multi-session views in the panel)
   useEffect(() => {
-    const shouldAutoPlay = shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible)
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)
     const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? true
 
     if (!shouldAutoPlay || !shouldAutoPlayTTS || !ttsAutoPlayEnabled || audioData || isGeneratingAudio || ttsError || wasStopped) {
@@ -3110,14 +3127,24 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       attachEvent(event, normalizeAssistantResponseForDedupe(event.text))
     }
 
-    // Pass 2: fuzzy match with image markdown stripped so text+image events
+    // Pass 2: match the renderer-store sanitized history form. Inline data URLs
+    // are replaced in conversationHistory to keep progress state lightweight, but
+    // responseEvents retain the real markdown so the attached message can render
+    // images. Treat those two forms as the same response to avoid duplicate final
+    // bubbles where the second one only shows [Image: ...] placeholders.
+    for (const event of effectiveResponseEvents) {
+      if (usedEventIds.has(event.id)) continue
+      attachEvent(event, normalizeAssistantResponseForDedupe(sanitizeMessageContentForDisplay(event.text)))
+    }
+
+    // Pass 3: fuzzy match with image markdown stripped so text+image events
     // can still bind to the text-only streamed prose that carries the same words.
     for (const event of effectiveResponseEvents) {
       if (usedEventIds.has(event.id)) continue
       attachEvent(event, normalizeAssistantResponseForDedupe(stripImageMarkdown(event.text)))
     }
 
-    // Pass 3: synthesize standalone assistant messages for unmatched events.
+    // Pass 4: synthesize standalone assistant messages for unmatched events.
     for (const event of effectiveResponseEvents) {
       if (usedEventIds.has(event.id)) continue
       copies.push({

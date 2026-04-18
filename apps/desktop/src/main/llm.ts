@@ -627,10 +627,13 @@ export async function processTranscriptWithAgentMode(
     const profileName = session?.profileSnapshot?.profileName
     const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
     const storedUserResponse = getSessionUserResponse(currentSessionId, effectiveRunId)
+    // Live progress should only surface executed respond_to_user output. Falling
+    // back to the current conversationHistory can read the planned tool-call args
+    // before runtime-tools has materialized local image paths into renderable
+    // conversation assets, causing a duplicate non-renderable "Local image" bubble.
     const normalizedStoredUserResponse = resolveLatestUserFacingResponse({
       storedResponse: storedUserResponse,
       responseEvents,
-      conversationHistory: update.conversationHistory as any,
     })
     const isKillSwitchCompletion =
       update.isComplete &&

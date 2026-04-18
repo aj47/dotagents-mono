@@ -34,9 +34,8 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | und
         ? parsedImage.alt.trim()
         : `Image ${index + 1}`
       const url = typeof parsedImage.url === "string" ? parsedImage.url.trim() : ""
-      const path = typeof parsedImage.path === "string" ? parsedImage.path.trim() : ""
       const dataUrl = typeof parsedImage.dataUrl === "string" ? parsedImage.dataUrl.trim() : ""
-      const uri = url || dataUrl || path
+      const uri = url || dataUrl
       if (!uri) return ""
       return `![${alt}](${uri})`
     })

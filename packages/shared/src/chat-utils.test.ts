@@ -27,6 +27,26 @@ describe('shouldCollapseMessage', () => {
     expect(shouldCollapseMessage(longContent)).toBe(true)
   })
 
+  it('ignores data URL markdown image payload length', () => {
+    const content = `Here is the image:\n\n![diagram](data:image/png;base64,${'a'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('ignores http markdown image payload length', () => {
+    const content = `Looks good\n\n![remote image](https://example.com/${'a'.repeat(500)}.png)`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('ignores conversation asset markdown image payload length', () => {
+    const content = `Screenshot attached\n\n![screenshot](assets://conversation-image/${'a'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('still collapses when non-image text exceeds the threshold', () => {
+    const content = `${'a'.repeat(201)}\n\n![diagram](data:image/png;base64,${'b'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(true)
+  })
+
   it('returns true when tool calls are present', () => {
     expect(shouldCollapseMessage('short', [{ name: 'search', arguments: {} }])).toBe(true)
   })
@@ -151,29 +171,29 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(extractRespondToUserContentFromArgs(args)).toBe('![diagram draft v1](https://example.com/img.png)')
   })
 
-  it('renders path-only images as a text placeholder', () => {
+  it('does not synthesize non-renderable path-only images', () => {
     const args = {
       images: [{ alt: 'local diagram', path: '/tmp/diagram.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local diagram): `/tmp/diagram.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBeNull()
   })
 
-  it('preserves text alongside path-only image placeholders', () => {
+  it('preserves text while skipping path-only image placeholders', () => {
     const args = {
       text: 'Saved locally:',
       images: [{ alt: 'desktop capture', path: '/tmp/capture.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:\n\nLocal image (desktop capture): `/tmp/capture.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:')
   })
 
-  it('sanitizes local image placeholder alt text that can break formatting', () => {
+  it('skips path-only images even when they have markdown-sensitive alt text', () => {
     const args = {
       images: [{ altText: 'lo[cal] (draft) `shot`', path: '/tmp/diagram.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local draft shot): `/tmp/diagram.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBeNull()
   })
 
   it('falls back to indexed image labels when sanitizing removes all alt text', () => {

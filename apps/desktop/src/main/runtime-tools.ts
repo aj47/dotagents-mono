@@ -294,7 +294,6 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".gif": "image/gif",
   ".webp": "image/webp",
   ".bmp": "image/bmp",
-  ".svg": "image/svg+xml",
 }
 
 const escapeMarkdownAltText = (value: string) => value.replace(/[\[\]\\]/g, "").trim()
@@ -340,10 +339,14 @@ const getDataImageBytesFromUrl = (url: string): number | null => {
 const getUtf8ByteLength = (value: string): number =>
   Buffer.byteLength(value, "utf8")
 
-async function imagePathToDataUrl(rawPath: string): Promise<string> {
+async function resolveValidImagePath(rawPath: string): Promise<{ resolvedPath: string; fileBytes: number }> {
   const resolvedPath = path.isAbsolute(rawPath)
     ? rawPath
     : path.resolve(process.cwd(), rawPath)
+
+  if (path.extname(resolvedPath).toLowerCase() === ".svg") {
+    throw new Error(`SVG images are not supported for conversation assets; use a raster image path: ${rawPath}`)
+  }
 
   const stat = await fs.stat(resolvedPath)
   if (!stat.isFile()) {
@@ -362,8 +365,7 @@ async function imagePathToDataUrl(rawPath: string): Promise<string> {
     throw new Error(`Unsupported image extension for path: ${rawPath}`)
   }
 
-  const fileBuffer = await fs.readFile(resolvedPath)
-  return `data:${mimeType};base64,${fileBuffer.toString("base64")}`
+  return { resolvedPath, fileBytes: stat.size }
 }
 
 // Tool execution handlers
@@ -584,6 +586,27 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
+    const trackedSessionId = mappedAppSessionId ?? context.sessionId
+
+    // Guard: don't store the response if the session was already stopped/cancelled.
+    // This prevents zombie sessions from reappearing after the user stops them.
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    if (!activeSession) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Session is no longer active (was stopped or completed)" }) }],
+        isError: true,
+      }
+    }
+
+    const conversationId = activeSession.conversationId
+    if (imageInputs.length > 0 && !conversationId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Images require an active conversation" }) }],
+        isError: true,
+      }
+    }
+
     const imageMarkdownBlocks: string[] = []
     let localImageCount = 0
     let embeddedImageBytes = 0
@@ -643,32 +666,49 @@ const toolHandlers: Record<string, ToolHandler> = {
               isError: true,
             }
           }
-          const dataImageUrlBytes = getUtf8ByteLength(url)
-          if (embeddedImageBytes + dataImageUrlBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
+          if (embeddedImageBytes + dataImageBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
             const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
             return {
               content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
               isError: true,
             }
           }
-          embeddedImageBytes += dataImageUrlBytes
+          embeddedImageBytes += dataImageBytes
+          try {
+            const assetUrl = await conversationService.storeDataImageUrlAsConversationAsset(conversationId!, url)
+            imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
+          } catch (error) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  success: false,
+                  error: error instanceof Error
+                    ? `Failed to store images[${index}].url: ${error.message}`
+                    : `Failed to store images[${index}].url`,
+                }),
+              }],
+              isError: true,
+            }
+          }
+          continue
         }
         imageMarkdownBlocks.push(`![${safeAlt}](${url})`)
         continue
       }
 
       try {
-        const dataUrl = await imagePathToDataUrl(imagePath)
-        const dataImageUrlBytes = getUtf8ByteLength(dataUrl)
-        if (embeddedImageBytes + dataImageUrlBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
+        const { resolvedPath, fileBytes } = await resolveValidImagePath(imagePath)
+        if (embeddedImageBytes + fileBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
           const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
           return {
             content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
             isError: true,
           }
         }
-        embeddedImageBytes += dataImageUrlBytes
-        imageMarkdownBlocks.push(`![${safeAlt}](${dataUrl})`)
+        embeddedImageBytes += fileBytes
+        const assetUrl = await conversationService.storeImagePathAsConversationAsset(conversationId!, resolvedPath)
+        imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
         localImageCount++
       } catch (error) {
         return {
@@ -701,19 +741,6 @@ const toolHandlers: Record<string, ToolHandler> = {
       const maxMb = Math.round(MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES / (1024 * 1024))
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: `Response content exceeds the ${maxMb}MB limit` }) }],
-        isError: true,
-      }
-    }
-
-    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
-    const trackedSessionId = mappedAppSessionId ?? context.sessionId
-
-    // Guard: don't store the response if the session was already stopped/cancelled.
-    // This prevents zombie sessions from reappearing after the user stops them.
-    const activeSession = agentSessionTracker.getSession(trackedSessionId)
-    if (!activeSession) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Session is no longer active (was stopped or completed)" }) }],
         isError: true,
       }
     }
