@@ -90,10 +90,18 @@ export function registerServeProtocol() {
     }
 
     if (host === CONVERSATION_IMAGE_ASSET_HOST) {
-      const [conversationId, fileName] = pathname
-        .split("/")
-        .filter(Boolean)
-        .map((segment) => decodeURIComponent(segment))
+      let pathSegments: string[] = []
+
+      try {
+        pathSegments = pathname
+          .split("/")
+          .filter(Boolean)
+          .map((segment) => decodeURIComponent(segment))
+      } catch {
+        return callback({ error: FILE_NOT_FOUND })
+      }
+
+      const [conversationId, fileName] = pathSegments
 
       if (conversationId && fileName) {
         try {
