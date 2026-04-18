@@ -164,40 +164,6 @@ describe("agent progress tile layout", () => {
     )
   })
 
-  it("keeps mid-turn response cards and past-response history readable in narrow tiles", () => {
-    expect(agentProgressSource).toContain(
-      '"min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30"'
-    )
-    expect(agentProgressSource).toContain(
-      '"flex min-w-0 flex-wrap items-center gap-1.5 cursor-pointer bg-green-100/50 px-2.5 py-1.5 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40"'
-    )
-    expect(agentProgressSource).toContain(
-      '<MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />'
-    )
-    expect(agentProgressSource).toContain('className="min-w-0 flex-1 text-left"')
-    expect(agentProgressSource).toContain(
-      '"line-clamp-2 break-words [overflow-wrap:anywhere]"'
-    )
-    expect(agentProgressSource).toContain('className={cn("min-w-0 px-3", isExpanded ? "pb-2" : "hidden")}')
-    expect(agentProgressSource).toContain(
-      'className="mt-1 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
-    )
-    expect(agentProgressSource).toContain('title={isPastResponsesExpanded ? "Collapse past responses" : "Expand past responses"}')
-    expect(agentProgressSource).toContain('aria-expanded={isPastResponsesExpanded}')
-    expect(agentProgressSource).toContain(
-      'className="mb-1 flex w-full items-center gap-1.5 rounded-sm px-0.5 py-0.5 text-left transition-colors hover:bg-green-100/40 dark:hover:bg-green-900/20"'
-    )
-    expect(agentProgressSource).toContain(
-      '"min-w-0 max-w-full overflow-hidden rounded-md border border-green-200/60 dark:border-green-800/40"'
-    )
-    expect(agentProgressSource).toContain(
-      'className="flex min-w-0 items-start gap-2 cursor-pointer px-2.5 py-1.5 transition-colors hover:bg-green-50/50 dark:hover:bg-green-900/20"'
-    )
-    expect(agentProgressSource).toContain(
-      'className="min-w-0 flex-1 text-xs text-green-700/70 dark:text-green-300/60 line-clamp-2 break-words [overflow-wrap:anywhere]"'
-    )
-  })
-
   it("keeps the session-tile scroll-to-bottom affordance scoped inside the chat area", () => {
     expect(agentProgressSource).toContain('title="Scroll to bottom"')
     expect(agentProgressSource).toContain('aria-label="Scroll to bottom"')
@@ -209,7 +175,7 @@ describe("agent progress tile layout", () => {
 
   it("uses a lightweight plain-text path for active streaming bubbles before final markdown rendering", () => {
     expect(agentProgressSource).toContain('const contentNode = streamingContent.isStreaming')
-    expect(agentProgressSource).toContain('className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')
+    expect(agentProgressSource).toContain('className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')
     expect(agentProgressSource).toContain(': <MarkdownRenderer content={streamingContent.text} />')
   })
 
@@ -271,9 +237,8 @@ describe("agent progress tile layout", () => {
     expect(audioPlayerSource).toContain('className="ml-auto flex min-w-0 max-w-full items-center gap-2"')
     expect(audioPlayerSource).toContain('aria-label="Audio position"')
     expect(audioPlayerSource).toContain('aria-label="Audio volume"')
-    expect(agentProgressSource).toContain('className="mt-2 min-w-0 space-y-1"')
     expect(agentProgressSource).toContain(
-      'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
+      'className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
     )
   })
 

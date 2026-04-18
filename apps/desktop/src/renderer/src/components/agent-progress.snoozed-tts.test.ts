@@ -12,7 +12,6 @@ describe("agent progress TTS guardrails", () => {
 
   it("threads snoozed state through overlay and tile TTS players", () => {
     expect(agentProgressSource).toContain('isSnoozed={progress.isSnoozed}')
-    expect(agentProgressSource).toContain('autoPlay={shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible) && (configQuery.data?.ttsAutoPlay ?? true)}')
   })
 
   it("suppresses tile auto-play while the floating panel is visible so the same session is not spoken twice", () => {
@@ -27,12 +26,4 @@ describe("agent progress TTS guardrails", () => {
     expect(agentProgressSource).toContain('isLast &&')
   })
 
-  it("lets mid-turn playback claim final-response keys only after audio starts", () => {
-    expect(agentProgressSource).toContain('const finalResponseTTSKeys = useMemo(')
-    expect(agentProgressSource).toContain('buildContentTTSKey(sessionId, ttsSource, "final")')
-    expect(agentProgressSource).toContain('const handleAudioPlayStateChange = useCallback((playing: boolean) => {')
-    expect(agentProgressSource).toContain('if (!playing) return')
-    expect(agentProgressSource).toContain('finalResponseTTSKeys.forEach((key) => markTTSPlayed(key))')
-    expect(agentProgressSource).toContain('onPlayStateChange={handleAudioPlayStateChange}')
-  })
 })
