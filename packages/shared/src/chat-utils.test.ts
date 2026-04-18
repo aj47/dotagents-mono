@@ -151,29 +151,29 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(extractRespondToUserContentFromArgs(args)).toBe('![diagram draft v1](https://example.com/img.png)')
   })
 
-  it('renders path-only images as a text placeholder', () => {
+  it('does not synthesize non-renderable path-only images', () => {
     const args = {
       images: [{ alt: 'local diagram', path: '/tmp/diagram.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local diagram): `/tmp/diagram.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBeNull()
   })
 
-  it('preserves text alongside path-only image placeholders', () => {
+  it('preserves text while skipping path-only image placeholders', () => {
     const args = {
       text: 'Saved locally:',
       images: [{ alt: 'desktop capture', path: '/tmp/capture.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:\n\nLocal image (desktop capture): `/tmp/capture.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:')
   })
 
-  it('sanitizes local image placeholder alt text that can break formatting', () => {
+  it('skips path-only images even when they have markdown-sensitive alt text', () => {
     const args = {
       images: [{ altText: 'lo[cal] (draft) `shot`', path: '/tmp/diagram.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local draft shot): `/tmp/diagram.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBeNull()
   })
 
   it('falls back to indexed image labels when sanitizing removes all alt text', () => {

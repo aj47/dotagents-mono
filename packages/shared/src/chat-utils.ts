@@ -277,12 +277,6 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
   const sanitizeImageAltText = (alt: string) => alt.replace(/[\[\]\(\)`\\]/g, '').trim();
 
-  const formatLocalImagePlaceholder = (alt: string, imagePath: string) => {
-    const safeAlt = alt.trim() || 'Image';
-    const escapedPath = imagePath.replace(/`/g, '\\`');
-    return `Local image (${safeAlt}): \`${escapedPath}\``;
-  };
-
   const imagesMd = images
     .map((img, index) => {
       if (!img || typeof img !== 'object') return '';
@@ -297,14 +291,12 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
 
       const url = typeof image.url === 'string' ? image.url.trim() : '';
       const dataUrl = typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
-      const path = typeof image.path === 'string' ? image.path.trim() : '';
       const mimeType = typeof image.mimeType === 'string' ? image.mimeType.trim() : '';
       const data = typeof image.data === 'string' ? image.data.trim() : '';
       const legacyDataUrl = mimeType && data ? `data:${mimeType};base64,${data}` : '';
       const uri = url || dataUrl || legacyDataUrl;
 
       if (uri) return `![${safeAlt}](${uri})`;
-      if (path) return formatLocalImagePlaceholder(safeAlt, path);
       return '';
     })
     .filter(Boolean)

@@ -34,6 +34,8 @@ const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
 
 const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
   /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
+const ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX =
+  /^assets:\/\/conversation-image\//
 
 export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
@@ -60,6 +62,7 @@ export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
   return (
     url.startsWith("http://") ||
     url.startsWith("https://") ||
+    ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX.test(url) ||
     ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX.test(url)
   )
 }

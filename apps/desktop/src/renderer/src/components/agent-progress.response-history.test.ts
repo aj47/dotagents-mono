@@ -300,7 +300,10 @@ async function loadAgentProgress(
     buildContentTTSKey: vi.fn(() => null),
   }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
-  vi.doMock("@dotagents/shared/message-display-utils", () => ({ sanitizeMessageContentForSpeech: (text: string) => text }))
+  vi.doMock("@dotagents/shared/message-display-utils", () => ({
+    sanitizeMessageContentForDisplay: (text: string) => text.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/gi, (_match: string, alt: string) => `[Image: ${alt}]`),
+    sanitizeMessageContentForSpeech: (text: string) => text,
+  }))
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
   const mod = await import("./agent-progress")
@@ -514,6 +517,47 @@ describe("agent progress response history", () => {
     expect(text).toContain("Need your approval")
     expect(text).not.toContain("respond_to_user")
     expect(text).not.toContain("mark_work_complete")
+  })
+
+  it("does not collapse short image responses because of embedded data URL size", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const imageResponse = `Rendered a preview frame.\n\n![Preview](data:image/png;base64,${"A".repeat(2000)})`
+    const progress = {
+      sessionId: "session-image-response",
+      conversationId: "conversation-image-response",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-image",
+          sessionId: "session-image-response",
+          ordinal: 1,
+          text: imageResponse,
+          timestamp: 100,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Rendered a preview frame.\n\n[Image: Preview]", timestamp: 110 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const clampedMessageContent = findAll(
+      tree,
+      (value) => value?.type === "div"
+        && typeof value?.props?.className === "string"
+        && value.props.className.includes("leading-relaxed")
+        && value.props.className.includes("line-clamp-2"),
+    )
+
+    expect(getTextContent(tree)).toContain("Rendered a preview frame.")
+    expect(countTextOccurrences(getTextContent(tree), "Rendered a preview frame.")).toBe(1)
+    expect(getTextContent(tree)).not.toContain("[Image: Preview]")
+    expect(clampedMessageContent).toHaveLength(0)
   })
 
   it("keeps visible tool result status aligned after hiding completion-control tools", async () => {
