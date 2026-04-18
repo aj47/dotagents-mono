@@ -240,6 +240,9 @@ export function SettingsLoops() {
   }, [queryClient])
 
   const loops: LoopConfig[] = loopsQuery.data || []
+  const orderedLoops = [...loops].sort(
+    (a, b) => Number(b.enabled) - Number(a.enabled),
+  )
   const statusByLoopId = new Map(
     (loopStatusesQuery.data || []).map((s) => [s.id, s] as const)
   )
@@ -406,7 +409,7 @@ export function SettingsLoops() {
 
   const renderLoopList = () => (
     <div className="space-y-1">
-      {loops.map((loop) => {
+      {orderedLoops.map((loop) => {
         const runtime = statusByLoopId.get(loop.id)
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
@@ -415,29 +418,38 @@ export function SettingsLoops() {
           <div
             key={loop.id}
             className={cn(
-              "rounded-lg border bg-card px-3 py-2",
+              "rounded-md border bg-card px-2.5 py-1.5 transition-colors hover:bg-muted/20",
               !loop.enabled && "opacity-60",
             )}
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{loop.name}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-medium leading-5">{loop.name}</span>
                   {isRunning ? (
-                    <Badge variant="secondary">Running</Badge>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                      Running
+                    </Badge>
                   ) : !loop.enabled ? (
-                    <Badge variant="outline">Disabled</Badge>
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                      Disabled
+                    </Badge>
                   ) : null}
                 </div>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                <p className="line-clamp-1 text-[11px] leading-4 text-muted-foreground">
                   {loop.prompt}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                <Switch
+                  aria-label={`${loop.enabled ? "Disable" : "Enable"} ${loop.name}`}
+                  checked={loop.enabled}
+                  onCheckedChange={() => handleToggleEnabled(loop)}
+                />
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 px-2"
+                  className="h-6 gap-1 px-1.5 text-xs"
                   onClick={() => handleRunNow(loop)}
                 >
                   <Play className="h-3.5 w-3.5" />Run
@@ -445,7 +457,7 @@ export function SettingsLoops() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 px-2"
+                  className="h-6 gap-1 px-1.5 text-xs"
                   onClick={() => handleOpenTaskFile(loop)}
                 >
                   <FileText className="h-3.5 w-3.5" />File
@@ -453,7 +465,7 @@ export function SettingsLoops() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-6 w-6"
                   title="Edit task"
                   onClick={() => handleEdit(loop)}
                 >
@@ -462,7 +474,7 @@ export function SettingsLoops() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-6 w-6"
                   title="Delete task"
                   onClick={() => handleDelete(loop.id)}
                 >
@@ -471,9 +483,9 @@ export function SettingsLoops() {
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
+                <Clock className="h-3 w-3" />
                 {loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
@@ -483,14 +495,6 @@ export function SettingsLoops() {
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
               <div>Last run: {formatLastRun(lastRunAt)}</div>
-            </div>
-
-            <div className="mt-2 flex items-center gap-2">
-              <Switch
-                checked={loop.enabled}
-                onCheckedChange={() => handleToggleEnabled(loop)}
-              />
-              <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
             </div>
           </div>
         )
