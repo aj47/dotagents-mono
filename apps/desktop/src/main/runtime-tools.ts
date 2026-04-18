@@ -294,7 +294,6 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".gif": "image/gif",
   ".webp": "image/webp",
   ".bmp": "image/bmp",
-  ".svg": "image/svg+xml",
 }
 
 const escapeMarkdownAltText = (value: string) => value.replace(/[\[\]\\]/g, "").trim()
@@ -344,6 +343,10 @@ async function resolveValidImagePath(rawPath: string): Promise<{ resolvedPath: s
   const resolvedPath = path.isAbsolute(rawPath)
     ? rawPath
     : path.resolve(process.cwd(), rawPath)
+
+  if (path.extname(resolvedPath).toLowerCase() === ".svg") {
+    throw new Error(`SVG images are not supported for conversation assets; use a raster image path: ${rawPath}`)
+  }
 
   const stat = await fs.stat(resolvedPath)
   if (!stat.isFile()) {

@@ -117,6 +117,27 @@ describe("runtime-tools respond_to_user", () => {
     })
   })
 
+  it("rejects svg image paths before storing conversation assets", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-respond-image-"))
+    const imagePath = path.join(tempDir, "preview.svg")
+    await fs.writeFile(imagePath, "<svg xmlns=\"http://www.w3.org/2000/svg\" />")
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool(
+      "respond_to_user",
+      { text: "Preview ready", images: [{ path: imagePath, alt: "Preview" }] },
+      "app-session-1",
+    )
+
+    expect(mockStoreImagePathAsConversationAsset).not.toHaveBeenCalled()
+    expect(mockAppendSessionUserResponse).not.toHaveBeenCalled()
+    expect(JSON.parse(String(result?.content[0]?.text))).toMatchObject({
+      success: false,
+      error: expect.stringContaining("SVG images are not supported for conversation assets"),
+    })
+    expect(result?.isError).toBe(true)
+  })
+
   it("does not instruct the model to send another final response after mark_work_complete", async () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("mark_work_complete", { summary: "Done", confidence: 0.8 }, "app-session-1")
