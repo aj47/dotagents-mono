@@ -40,11 +40,12 @@ type LoopFormData = {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_INTERVAL_MINUTES = 60;
 
 const defaultFormData: LoopFormData = {
   name: '',
   prompt: '',
-  intervalMinutes: '60',
+  intervalMinutes: String(DEFAULT_INTERVAL_MINUTES),
   enabled: true,
   profileId: '',
   scheduleMode: 'interval',
@@ -91,6 +92,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
   const [formData, setFormData] = useState<LoopFormData>(() =>
     loopFromRoute ? loopToFormData(loopFromRoute) : defaultFormData
+  );
+  const [existingLoopIntervalMinutes, setExistingLoopIntervalMinutes] = useState<number | null>(() =>
+    loopFromRoute?.intervalMinutes ?? null
   );
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
@@ -156,6 +160,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           return;
         }
         setFormData(loopToFormData(loop));
+        setExistingLoopIntervalMinutes(loop.intervalMinutes);
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -192,7 +197,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
       setError('Interval must be a positive whole number of minutes');
       return;
     }
-    const savedIntervalMinutes = hasValidInterval ? intervalMinutes : 60;
+    const savedIntervalMinutes = hasValidInterval
+      ? intervalMinutes
+      : isEditing && existingLoopIntervalMinutes !== null
+        ? existingLoopIntervalMinutes
+        : DEFAULT_INTERVAL_MINUTES;
 
     let schedule: LoopSchedule | null = null;
     if (formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous') {
@@ -244,7 +253,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     } finally {
       setIsSaving(false);
     }
-  }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
+  }, [effectiveLoopId, existingLoopIntervalMinutes, formData, isEditing, navigation, settingsClient]);
 
   const isSaveDisabled = isSaving || !settingsClient;
 
