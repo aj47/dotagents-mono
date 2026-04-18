@@ -49,6 +49,17 @@ const TTS_PROVIDERS = [
   { label: 'Supertonic', value: 'supertonic' },
 ] as const;
 
+const LOOP_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function describeLoopCadence(loop: Loop): string {
+  if (loop.runContinuously) return 'Continuous';
+  if (!loop.schedule) return `Every ${loop.intervalMinutes}min`;
+  const times = loop.schedule.times.join(', ');
+  if (loop.schedule.type === 'daily') return `Daily at ${times}`;
+  const days = loop.schedule.daysOfWeek.map(day => LOOP_DAY_LABELS[day] ?? String(day)).join(', ');
+  return `${days} at ${times}`;
+}
+
 // OpenAI TTS Voice Options
 const OPENAI_TTS_VOICES = [
   { label: 'Alloy', value: 'alloy' },
@@ -2715,7 +2726,7 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                           <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
                           <Text style={styles.serverMeta} numberOfLines={2}>
-                            Every {loop.intervalMinutes}min
+                            {describeLoopCadence(loop)}
                             {loop.profileName && ` • ${loop.profileName}`}
                             {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
                           </Text>

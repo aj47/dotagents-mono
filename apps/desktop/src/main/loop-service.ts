@@ -37,6 +37,10 @@ export interface LoopStatus {
   schedule?: LoopConfig["schedule"]
 }
 
+export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boolean {
+  return loop.runContinuously === true
+}
+
 class LoopService {
   private static instance: LoopService | null = null
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
@@ -234,8 +238,9 @@ class LoopService {
 
     logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), ${describeLoopSchedule(loop)}`)
 
-    if (loop.runOnStartup) {
-      logApp(`[LoopService] Loop "${loop.name}" has runOnStartup=true, triggering immediately`)
+    if (loop.runOnStartup || isContinuousLoop(loop)) {
+      const reason = isContinuousLoop(loop) ? "continuous" : "runOnStartup"
+      logApp(`[LoopService] Loop "${loop.name}" starts immediately (${reason})`)
       setImmediate(() => {
         void this.executeLoop(loopId, { rescheduleAfterRun: true })
       })
@@ -449,6 +454,10 @@ class LoopService {
   }
 
   private getNextDelayMs(loop: LoopConfig, now: number = Date.now()): number {
+    if (isContinuousLoop(loop)) {
+      return 0
+    }
+
     if (loop.schedule) {
       const nextRun = computeNextScheduledRun(loop.schedule, now)
       if (nextRun !== null) {
@@ -521,6 +530,7 @@ export function computeNextScheduledRun(
 }
 
 function describeLoopSchedule(loop: LoopConfig): string {
+  if (isContinuousLoop(loop)) return "continuous"
   if (!loop.schedule) return `interval: ${loop.intervalMinutes}m`
   const s = loop.schedule
   const times = s.times.join(", ")

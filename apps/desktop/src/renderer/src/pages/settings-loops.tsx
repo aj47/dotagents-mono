@@ -21,7 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig, LoopSchedule } from "@shared/types"
 import { toast } from "sonner"
 
-type ScheduleMode = "interval" | "daily" | "weekly"
+type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"
 
 interface EditingLoop {
   id?: string
@@ -76,6 +76,11 @@ function describeSchedule(schedule: LoopSchedule): string {
   if (schedule.type === "daily") return `Daily at ${times}`
   const days = schedule.daysOfWeek.map((d) => DAY_LABELS[d] ?? String(d)).join(", ")
   return `${days} at ${times}`
+}
+
+function describeLoopCadence(loop: LoopConfig): string {
+  if (loop.runContinuously) return "Continuous"
+  return loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`
 }
 
 const INTERVAL_PRESETS = [
@@ -259,7 +264,7 @@ export function SettingsLoops() {
 
   const handleEdit = (loop: LoopConfig) => {
     setIsCreating(false)
-    const scheduleMode: ScheduleMode = loop.schedule?.type ?? "interval"
+    const scheduleMode: ScheduleMode = loop.runContinuously ? "continuous" : (loop.schedule?.type ?? "interval")
     const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ["09:00"]
     const scheduleDaysOfWeek = loop.schedule?.type === "weekly"
       ? [...loop.schedule.daysOfWeek]
@@ -299,13 +304,13 @@ export function SettingsLoops() {
     }
 
     const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)
-    if (parsedIntervalMinutes === null) {
+    if (editing.scheduleMode === "interval" && parsedIntervalMinutes === null) {
       toast.error("Interval must be a positive whole number of minutes")
       return
     }
 
     let schedule: LoopSchedule | undefined
-    if (editing.scheduleMode !== "interval") {
+    if (editing.scheduleMode !== "interval" && editing.scheduleMode !== "continuous") {
       const times = sanitizeScheduleTimes(editing.scheduleTimes)
       if (times.length === 0) {
         toast.error("Add at least one time (HH:MM)")
@@ -327,11 +332,12 @@ export function SettingsLoops() {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
-      intervalMinutes: parsedIntervalMinutes,
+      intervalMinutes: parsedIntervalMinutes ?? 15,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
+      runContinuously: editing.scheduleMode === "continuous",
       ...(editing.continueInSession && editing.lastSessionId
         ? { lastSessionId: editing.lastSessionId }
         : {}),
@@ -486,7 +492,7 @@ export function SettingsLoops() {
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`}
+                {describeLoopCadence(loop)}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
               {loop.speakOnTrigger && <div>Speaks on trigger</div>}
@@ -540,6 +546,7 @@ export function SettingsLoops() {
             <div className="flex flex-wrap gap-1.5">
               {([
                 { mode: "interval", label: "Interval" },
+                { mode: "continuous", label: "Continuous" },
                 { mode: "daily", label: "Daily" },
                 { mode: "weekly", label: "Weekly" },
               ] as const).map(({ mode, label }) => (
@@ -584,7 +591,12 @@ export function SettingsLoops() {
               </div>
             </div>
           )}
-          {editing.scheduleMode !== "interval" && (
+          {editing.scheduleMode === "continuous" && (
+            <p className="text-xs text-muted-foreground">
+              Starts the next run as soon as the previous run finishes. Only one run of this task executes at a time.
+            </p>
+          )}
+          {editing.scheduleMode !== "interval" && editing.scheduleMode !== "continuous" && (
             <div className="space-y-2">
               <Label>Time(s)</Label>
               <div className="flex flex-wrap items-center gap-2">

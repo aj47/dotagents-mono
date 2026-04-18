@@ -1005,6 +1005,7 @@ export interface LoopConfig {
   speakOnTrigger?: boolean // if true, spawned session starts un-snoozed so TTS auto-plays
   continueInSession?: boolean // if true, reuses the prior session across iterations
   lastSessionId?: string   // session id to resume on next run when continueInSession is on
+  runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }
 

@@ -31,4 +31,13 @@ describe("desktop repeat-task list layout", () => {
     expect(listSection).toContain('className="h-6 gap-1 px-1.5 text-xs"')
     expect(listSection).not.toContain('<Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>')
   })
+
+  it("shows continuous repeat tasks as a distinct cadence", () => {
+    const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
+
+    expect(settingsLoopsSource).toContain('type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"')
+    expect(settingsLoopsSource).toContain('if (loop.runContinuously) return "Continuous"')
+    expect(listSection).toContain("{describeLoopCadence(loop)}")
+    expect(settingsLoopsSource).toContain('{ mode: "continuous", label: "Continuous" }')
+  })
 })

@@ -25,7 +25,7 @@ import {
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 
-type ScheduleMode = 'interval' | 'daily' | 'weekly';
+type ScheduleMode = 'continuous' | 'interval' | 'daily' | 'weekly';
 
 type LoopFormData = {
   name: string;
@@ -62,7 +62,7 @@ function sanitizeScheduleTimes(times: string[]): string[] {
 }
 
 function loopToFormData(loop: Loop): LoopFormData {
-  const scheduleMode: ScheduleMode = loop.schedule?.type ?? 'interval';
+  const scheduleMode: ScheduleMode = loop.runContinuously ? 'continuous' : (loop.schedule?.type ?? 'interval');
   const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ['09:00'];
   const scheduleDaysOfWeek = loop.schedule?.type === 'weekly'
     ? [...loop.schedule.daysOfWeek]
@@ -187,13 +187,15 @@ export default function LoopEditScreen({ navigation, route }: any) {
       setError('Name and prompt are required');
       return;
     }
-    if (!/^\d+$/.test(intervalInput) || !Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
+    const hasValidInterval = /^\d+$/.test(intervalInput) && Number.isInteger(intervalMinutes) && intervalMinutes >= 1;
+    if (formData.scheduleMode === 'interval' && !hasValidInterval) {
       setError('Interval must be a positive whole number of minutes');
       return;
     }
+    const savedIntervalMinutes = hasValidInterval ? intervalMinutes : 60;
 
     let schedule: LoopSchedule | null = null;
-    if (formData.scheduleMode !== 'interval') {
+    if (formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous') {
       const times = sanitizeScheduleTimes(formData.scheduleTimes);
       if (times.length === 0) {
         setError('Add at least one time in HH:MM format');
@@ -217,9 +219,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
         const updatePayload: LoopUpdateRequest = {
           name,
           prompt,
-          intervalMinutes,
+          intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runContinuously: formData.scheduleMode === 'continuous',
           schedule,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
@@ -227,9 +230,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
         const createPayload: LoopCreateRequest = {
           name,
           prompt,
-          intervalMinutes,
+          intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runContinuously: formData.scheduleMode === 'continuous',
           schedule,
         };
         await settingsClient.createLoop(createPayload);
@@ -290,7 +294,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
       <Text style={styles.label}>Schedule</Text>
       <View style={styles.modeRow}>
-        {(['interval', 'daily', 'weekly'] as const).map(mode => {
+        {(['interval', 'continuous', 'daily', 'weekly'] as const).map(mode => {
           const active = formData.scheduleMode === mode;
           return (
             <TouchableOpacity
@@ -301,7 +305,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
               accessibilityState={{ selected: active }}
             >
               <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
-                {mode === 'interval' ? 'Interval' : mode === 'daily' ? 'Daily' : 'Weekly'}
+                {mode === 'interval' ? 'Interval' : mode === 'continuous' ? 'Continuous' : mode === 'daily' ? 'Daily' : 'Weekly'}
               </Text>
             </TouchableOpacity>
           );
@@ -322,7 +326,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
         </>
       )}
 
-      {formData.scheduleMode !== 'interval' && (
+      {formData.scheduleMode === 'continuous' && (
+        <Text style={styles.helperText}>
+          Starts the next run as soon as the previous run finishes. Only one run of this task executes at a time.
+        </Text>
+      )}
+
+      {formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous' && (
         <>
           <Text style={styles.label}>Time(s) (HH:MM, local)</Text>
           {formData.scheduleTimes.map((time, idx) => (

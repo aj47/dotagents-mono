@@ -133,6 +133,7 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
   if (task.speakOnTrigger) frontmatter.speakOnTrigger = "true"
   if (task.continueInSession) frontmatter.continueInSession = "true"
   if (task.lastSessionId) frontmatter.lastSessionId = task.lastSessionId
+  if (task.runContinuously) frontmatter.runContinuously = "true"
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
   if (task.schedule) frontmatter.schedule = stringifySchedule(task.schedule)
 
@@ -169,6 +170,7 @@ export function parseTaskMarkdown(
     speakOnTrigger: parseBoolean(fm.speakOnTrigger, false) || undefined,
     continueInSession: parseBoolean(fm.continueInSession, false) || undefined,
     lastSessionId: (fm.lastSessionId ?? "").trim() || undefined,
+    runContinuously: parseBoolean(fm.runContinuously, false) || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
     schedule,
   }

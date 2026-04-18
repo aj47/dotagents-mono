@@ -99,6 +99,8 @@ export interface LoopConfig {
    * (rather than cleared).
    */
   lastSessionId?: string
+  /** Start the next run immediately after the previous run finishes. */
+  runContinuously?: boolean
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }
