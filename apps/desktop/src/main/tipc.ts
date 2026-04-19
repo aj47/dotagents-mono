@@ -868,6 +868,27 @@ type OpenFileResult = {
   path?: string
 }
 
+async function openDirectoryInFileManager(directoryPath: string): Promise<OpenFileResult> {
+  const resolvedPath = path.resolve(directoryPath)
+  fs.mkdirSync(resolvedPath, { recursive: true })
+
+  const openPathError = await shell.openPath(resolvedPath)
+  if (!openPathError) {
+    return { success: true, path: resolvedPath }
+  }
+
+  try {
+    shell.showItemInFolder(resolvedPath)
+    return { success: true, path: resolvedPath }
+  } catch (error) {
+    return {
+      success: false,
+      path: resolvedPath,
+      error: error instanceof Error ? error.message : openPathError,
+    }
+  }
+}
+
 function revealFileInFolder(filePath: string): OpenFileResult {
   if (!fs.existsSync(filePath)) {
     return { success: false, path: filePath, error: "File does not exist" }
@@ -4460,9 +4481,7 @@ export const router = {
     const layer = getAgentsLayerPaths(globalAgentsFolder)
     const skillsDir = getAgentsSkillsDir(layer)
 
-    fs.mkdirSync(skillsDir, { recursive: true })
-    const error = await shell.openPath(skillsDir)
-    return { success: !error, error: error || undefined }
+    return openDirectoryInFileManager(skillsDir)
   }),
 
   openWorkspaceSkillsFolder: t.procedure.action(async () => {
@@ -4476,9 +4495,7 @@ export const router = {
     const layer = getAgentsLayerPaths(workspaceAgentsFolder)
     const skillsDir = getAgentsSkillsDir(layer)
 
-    fs.mkdirSync(skillsDir, { recursive: true })
-    const error = await shell.openPath(skillsDir)
-    return { success: !error, error: error || undefined }
+    return openDirectoryInFileManager(skillsDir)
   }),
 
   openSkillFile: t.procedure
