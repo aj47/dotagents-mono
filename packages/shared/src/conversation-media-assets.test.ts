@@ -16,6 +16,7 @@ describe('conversation video asset utilities', () => {
 
   it('detects renderable video urls', () => {
     expect(isRenderableVideoUrl('assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe(true);
+    expect(isRenderableVideoUrl('assets://recording/recording_1/demo.mp4')).toBe(false);
     expect(isRenderableVideoUrl('https://example.com/demo.webm?download=1')).toBe(true);
     expect(isRenderableVideoUrl('https://example.com/demo.png')).toBe(false);
   });

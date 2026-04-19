@@ -61,6 +61,12 @@ export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   return false
 }
 
+const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
+  if (!rawUrl) return false
+  const url = rawUrl.trim().toLowerCase()
+  return isRenderableVideoUrl(rawUrl) || ALLOWED_RECORDING_ASSET_URL_REGEX.test(url)
+}
+
 const VideoAttachmentCard = ({
   src,
   label,
@@ -134,7 +140,7 @@ const markdownLinkComponent = ({
   children?: React.ReactNode
   href?: string
 }) => {
-  if (href && isRenderableVideoUrl(href)) {
+  if (href && isDesktopRenderableVideoUrl(href)) {
     return <VideoAttachmentCard src={href} label={extractTextContent(children)} />
   }
 

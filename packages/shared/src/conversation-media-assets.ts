@@ -1,7 +1,6 @@
 export const CONVERSATION_VIDEO_ASSET_HOST = 'conversation-video';
 
 const CONVERSATION_VIDEO_ASSET_URL_REGEX = /^assets:\/\/conversation-video\/([^/]+)\/([^/?#]+)(?:[?#].*)?$/i;
-const RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//i;
 const VIDEO_EXTENSION_REGEX = /\.(?:mp4|m4v|webm|mov|ogv)(?:[?#].*)?$/i;
 
 export interface ConversationVideoAssetRef {
@@ -32,7 +31,7 @@ export function isRenderableVideoUrl(rawUrl?: string): boolean {
   const url = rawUrl.trim();
   const lower = url.toLowerCase();
 
-  if (isConversationVideoAssetUrl(url) || RECORDING_ASSET_URL_REGEX.test(lower)) {
+  if (isConversationVideoAssetUrl(url)) {
     return true;
   }
 
