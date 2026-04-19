@@ -32,7 +32,15 @@ export async function captureSelectedScreenRegion(): Promise<ScreenRegionCapture
   try {
     // macOS interactive region capture. The user can drag-select a rectangle;
     // Escape cancels without creating the file.
-    await execFileAsync("screencapture", ["-i", "-x", filePath])
+    try {
+      await execFileAsync("screencapture", ["-i", "-x", filePath])
+    } catch {
+      // screencapture exits non-zero on cancel; if the file wasn't created,
+      // treat it as a user cancellation rather than an error.
+      if (!fs.existsSync(filePath)) {
+        return null
+      }
+    }
 
     if (!fs.existsSync(filePath)) {
       return null
