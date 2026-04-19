@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto"
 import { configStore } from "./config"
+import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
@@ -14,6 +15,7 @@ const CHATGPT_CODEX_REDIRECT_URI = "http://localhost:1455/auth/callback"
 const CHATGPT_CODEX_STORAGE_KEY = `${DEFAULT_CHATGPT_WEB_BASE_URL}/backend-api/codex/responses`
 
 type ChatGptWebModelContext = "mcp" | "transcript"
+type CodexReasoningEffort = "minimal" | "low" | "medium" | "high"
 
 export interface ChatGptWebMessage {
   role: string
@@ -44,6 +46,9 @@ export interface ChatGptWebUsage {
   totalTokens?: number
   inputTokenDetails?: {
     cacheReadTokens?: number
+  }
+  outputTokenDetails?: {
+    reasoningTokens?: number
   }
 }
 
@@ -89,7 +94,41 @@ interface ChatGptWebCompletedEventResponse {
     input_tokens_details?: {
       cached_tokens?: number
     }
+    output_tokens_details?: {
+      reasoning_tokens?: number
+    }
   }
+}
+
+const CODEX_REASONING_MODEL_PATTERNS = ["gpt-5", "gpt-4.1", "o1", "o3", "o4"] as const
+
+function isCodexReasoningModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase()
+  return CODEX_REASONING_MODEL_PATTERNS.some(pattern => normalized.startsWith(pattern))
+}
+
+function normalizeCodexReasoningEffort(effort: unknown): CodexReasoningEffort | undefined {
+  if (effort === "minimal" || effort === "low" || effort === "medium" || effort === "high") return effort
+  if (effort === "xhigh") return "high"
+  return undefined
+}
+
+export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort } | undefined {
+  if (!isCodexReasoningModel(model)) return undefined
+
+  const override = configStore.get().openaiReasoningEffort
+  if (override === "none") return undefined
+
+  const effort = normalizeCodexReasoningEffort(override) || "medium"
+  if (isDebugLLM()) {
+    logLLM("Applying ChatGPT Codex reasoning effort", {
+      model,
+      effort,
+      source: override ? "user-config" : "default",
+    })
+  }
+
+  return { effort }
 }
 
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
@@ -555,6 +594,9 @@ function mapUsage(response: ChatGptWebCompletedEventResponse | undefined): ChatG
     inputTokenDetails: {
       cacheReadTokens: usage.input_tokens_details?.cached_tokens,
     },
+    outputTokenDetails: {
+      reasoningTokens: usage.output_tokens_details?.reasoning_tokens,
+    },
   }
 }
 
@@ -590,6 +632,11 @@ export async function makeChatGptWebResponse(
   if (preparedTools?.tools.length) {
     payload.tools = preparedTools.tools
     payload.tool_choice = "auto"
+  }
+
+  const reasoning = getCodexReasoningOptions(model)
+  if (reasoning) {
+    payload.reasoning = reasoning
   }
 
   const headers: Record<string, string> = {
