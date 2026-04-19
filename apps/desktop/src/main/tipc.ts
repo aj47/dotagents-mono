@@ -2333,7 +2333,7 @@ export const router = {
       }
 
       // Update session with actual conversation ID and title after transcription
-      const conversationTitle = transcript || input.screenshot?.name || "Screen selection"
+      const conversationTitle = transcript?.trim() || input.screenshot?.name || "Screen selection"
       agentSessionTracker.updateSession(sessionId, {
         conversationId,
         conversationTitle,
