@@ -20,6 +20,11 @@ import {
   getConversationImageAssetDir,
   getConversationImageAssetPath,
 } from "./conversation-image-assets"
+import {
+  buildConversationVideoAssetUrl,
+  getConversationVideoAssetDir,
+  getConversationVideoAssetPath,
+} from "./conversation-video-assets"
 
 // Threshold for compacting conversations on load
 // When a conversation exceeds this many messages, older ones are summarized
@@ -59,6 +64,20 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".webp": "image/webp",
   ".bmp": "image/bmp",
   ".avif": "image/avif",
+}
+const VIDEO_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
+  mp4: "mp4",
+  m4v: "m4v",
+  webm: "webm",
+  quicktime: "mov",
+  ogg: "ogv",
+}
+const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".ogv": "video/ogg",
 }
 
 export class ConversationService {
@@ -116,6 +135,15 @@ export class ConversationService {
     return IMAGE_MIME_BY_EXTENSION[path.extname(imagePath).toLowerCase()] ?? null
   }
 
+  private getVideoExtensionForMimeType(mimeType: string): string | null {
+    const normalized = mimeType.toLowerCase().replace(/^video\//u, "")
+    return VIDEO_EXTENSION_BY_MIME_SUBTYPE[normalized] ?? null
+  }
+
+  private getVideoMimeTypeFromPath(videoPath: string): string | null {
+    return VIDEO_MIME_BY_EXTENSION[path.extname(videoPath).toLowerCase()] ?? null
+  }
+
   private async storeConversationImageBuffer(
     conversationId: string,
     buffer: Buffer,
@@ -161,6 +189,42 @@ export class ConversationService {
     const [, subtype, rawBase64] = match
     const buffer = Buffer.from(rawBase64.replace(/\s+/g, ""), "base64")
     return this.storeConversationImageBuffer(conversationId, buffer, `image/${subtype.toLowerCase()}`)
+  }
+
+  private async storeConversationVideoBuffer(
+    conversationId: string,
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<string> {
+    const extension = this.getVideoExtensionForMimeType(mimeType)
+    if (!extension || buffer.length <= 0) {
+      throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
+    }
+
+    const hash = createHash("sha256").update(buffer).digest("hex")
+    const fileName = `${hash}.${extension}`
+    const assetPath = getConversationVideoAssetPath(conversationId, fileName)
+
+    await fsPromises.mkdir(getConversationVideoAssetDir(conversationId), { recursive: true })
+    try {
+      await fsPromises.writeFile(assetPath, buffer, { flag: "wx" })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error
+      }
+    }
+
+    return buildConversationVideoAssetUrl(conversationId, fileName)
+  }
+
+  async storeVideoPathAsConversationAsset(conversationId: string, videoPath: string): Promise<string> {
+    const mimeType = this.getVideoMimeTypeFromPath(videoPath)
+    if (!mimeType) {
+      throw new Error(`Unsupported video extension for path: ${videoPath}`)
+    }
+
+    const buffer = await fsPromises.readFile(videoPath)
+    return this.storeConversationVideoBuffer(conversationId, buffer, mimeType)
   }
 
   async materializeInlineDataImagesInContent(conversationId: string, content: string): Promise<string> {

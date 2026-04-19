@@ -35,6 +35,10 @@ import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
+import {
+  getConversationVideoAssetPath,
+  getConversationVideoMimeTypeFromFileName,
+} from "./conversation-video-assets"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -3589,6 +3593,75 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to fetch conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to fetch conversation" })
+    }
+  })
+
+  // GET /v1/conversations/:id/assets/videos/:fileName - Stream conversation video asset for mobile
+  fastify.get("/v1/conversations/:id/assets/videos/:fileName", async (req, reply) => {
+    try {
+      const params = req.params as { id: string; fileName: string }
+      const conversationId = params.id
+      const fileName = params.fileName
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      let assetPath: string
+      try {
+        assetPath = getConversationVideoAssetPath(conversationId, fileName)
+      } catch (error) {
+        return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid video asset" })
+      }
+
+      const stat = await fs.promises.stat(assetPath)
+      if (!stat.isFile() || stat.size <= 0) {
+        return reply.code(404).send({ error: "Video asset not found" })
+      }
+
+      const contentType = getConversationVideoMimeTypeFromFileName(fileName)
+      const range = req.headers.range
+      reply.header("Accept-Ranges", "bytes")
+      reply.header("Content-Type", contentType)
+
+      if (range) {
+        const match = range.match(/^bytes=(\d*)-(\d*)$/)
+        if (!match) {
+          return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send()
+        }
+
+        if (!match[1] && !match[2]) {
+          return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send()
+        }
+
+        const suffixLength = !match[1] && match[2] ? Number.parseInt(match[2], 10) : null
+        const start = suffixLength !== null
+          ? Math.max(stat.size - suffixLength, 0)
+          : Number.parseInt(match[1], 10)
+        const end = suffixLength !== null
+          ? stat.size - 1
+          : match[2] ? Number.parseInt(match[2], 10) : stat.size - 1
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= stat.size) {
+          return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send()
+        }
+
+        const boundedEnd = Math.min(end, stat.size - 1)
+        const chunkSize = boundedEnd - start + 1
+        reply.code(206)
+        reply.header("Content-Range", `bytes ${start}-${boundedEnd}/${stat.size}`)
+        reply.header("Content-Length", String(chunkSize))
+        return reply.send(fs.createReadStream(assetPath, { start, end: boundedEnd }))
+      }
+
+      reply.header("Content-Length", String(stat.size))
+      return reply.send(fs.createReadStream(assetPath))
+    } catch (error: any) {
+      if (error?.code === "ENOENT") {
+        return reply.code(404).send({ error: "Video asset not found" })
+      }
+      diagnosticsService.logError("remote-server", "Failed to stream conversation video asset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to stream video asset" })
     }
   })
 

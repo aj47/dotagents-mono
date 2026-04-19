@@ -135,13 +135,17 @@ function isCompletionControlTool(toolName: string): boolean {
 }
 
 const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi
+const MARKDOWN_VIDEO_PAYLOAD_REGEX = /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi
 
-function stripMarkdownImagePayloads(content: string): string {
-  return content.replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, "")
+function stripMarkdownMediaPayloads(content: string): string {
+  return content
+    .replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, "")
+    .replace(MARKDOWN_VIDEO_PAYLOAD_REGEX, "$1")
 }
 
-function hasMarkdownImagePayload(content: string): boolean {
-  return /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(content)
+function hasMarkdownMediaPayload(content: string): boolean {
+  return /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(content) ||
+    /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(content)
 }
 
 function extractRespondToUserResponsesFromMessages(
@@ -315,8 +319,8 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const hasExtras =
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
-  const effectiveTextContentLength = stripMarkdownImagePayloads(effectiveContent).length
-  const collapseLengthLimit = hasMarkdownImagePayload(effectiveContent) ? 500 : 100
+  const effectiveTextContentLength = stripMarkdownMediaPayloads(effectiveContent).length
+  const collapseLengthLimit = hasMarkdownMediaPayload(effectiveContent) ? 500 : 100
   const shouldCollapse = effectiveTextContentLength > collapseLengthLimit || hasExtras
 
   // Track the computed ttsSource (ttsText || effectiveContent) since that's what determines the
@@ -3103,8 +3107,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       )
       .map(({ i }) => i)
 
-    const stripImageMarkdown = (text: string) =>
-      text.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    const stripMediaMarkdown = (text: string) =>
+      text
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+        .replace(/(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi, "$1")
 
     const attachEvent = (event: AgentUserResponseEvent, normalizedEventText: string) => {
       if (!normalizedEventText) return false
@@ -3141,7 +3147,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     // can still bind to the text-only streamed prose that carries the same words.
     for (const event of effectiveResponseEvents) {
       if (usedEventIds.has(event.id)) continue
-      attachEvent(event, normalizeAssistantResponseForDedupe(stripImageMarkdown(event.text)))
+      attachEvent(event, normalizeAssistantResponseForDedupe(stripMediaMarkdown(event.text)))
     }
 
     // Pass 4: synthesize standalone assistant messages for unmatched events.

@@ -1,15 +1,47 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { isRenderableVideoUrl } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
+import { VideoAttachmentCard } from './VideoAttachmentCard';
 
 interface MarkdownRendererProps {
   content: string;
+  assetBaseUrl?: string;
+  assetAuthToken?: string;
+}
+
+const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
+
+function splitVideoLinks(content: string) {
+  const parts: Array<{ type: 'markdown' | 'video'; content?: string; label?: string; url?: string }> = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = MARKDOWN_VIDEO_LINK_REGEX.exec(content)) !== null) {
+    const [fullMatch, prefix, label, url] = match;
+    if (!isRenderableVideoUrl(url)) continue;
+
+    const matchStart = (match.index ?? 0) + prefix.length;
+    if (matchStart > lastIndex) {
+      parts.push({ type: 'markdown', content: content.slice(lastIndex, matchStart) });
+    }
+    parts.push({ type: 'video', label, url });
+    lastIndex = (match.index ?? 0) + fullMatch.length;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push({ type: 'markdown', content: content.slice(lastIndex) });
+  }
+
+  return parts.length > 0 ? parts : [{ type: 'markdown' as const, content }];
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
+  assetBaseUrl,
+  assetAuthToken,
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -152,10 +184,31 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     },
   });
 
+  const parts = splitVideoLinks(content);
+
   return (
-    <Markdown style={markdownStyles}>
-      {content}
-    </Markdown>
+    <View>
+      {parts.map((part, index) => {
+        if (part.type === 'video' && part.url) {
+          return (
+            <VideoAttachmentCard
+              key={`video-${index}-${part.url}`}
+              sourceUrl={part.url}
+              label={part.label}
+              assetBaseUrl={assetBaseUrl}
+              authToken={assetAuthToken}
+            />
+          );
+        }
+
+        if (!part.content?.trim()) return null;
+        return (
+          <Markdown key={`markdown-${index}`} style={markdownStyles}>
+            {part.content}
+          </Markdown>
+        );
+      })}
+    </View>
   );
 };
 

@@ -4,6 +4,9 @@ const mocks = vi.hoisted(() => ({
   getConversationImageAssetPath: vi.fn(
     (conversationId: string, fileName: string) => `/images/${conversationId}/${fileName}`,
   ),
+  getConversationVideoAssetPath: vi.fn(
+    (conversationId: string, fileName: string) => `/videos/${conversationId}/${fileName}`,
+  ),
   registerFileProtocol: vi.fn(),
   registerSchemesAsPrivileged: vi.fn(),
 }))
@@ -24,6 +27,11 @@ vi.mock("./conversation-image-assets", () => ({
   getConversationImageAssetPath: mocks.getConversationImageAssetPath,
 }))
 
+vi.mock("./conversation-video-assets", () => ({
+  CONVERSATION_VIDEO_ASSET_HOST: "conversation-video",
+  getConversationVideoAssetPath: mocks.getConversationVideoAssetPath,
+}))
+
 describe("serve protocol", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -40,5 +48,17 @@ describe("serve protocol", () => {
 
     expect(callback).toHaveBeenCalledWith({ error: -6 })
     expect(mocks.getConversationImageAssetPath).not.toHaveBeenCalled()
+  })
+
+  it("resolves conversation video asset paths", async () => {
+    const { registerServeProtocol } = await import("./serve")
+    registerServeProtocol()
+
+    const handler = mocks.registerFileProtocol.mock.calls[0][1]
+    const callback = vi.fn()
+
+    handler({ url: "assets://conversation-video/conv_1/abcdef1234567890.mp4" }, callback)
+
+    expect(callback).toHaveBeenCalledWith({ path: "/videos/conv_1/abcdef1234567890.mp4" })
   })
 })
