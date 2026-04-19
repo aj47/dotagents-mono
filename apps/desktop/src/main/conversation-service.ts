@@ -2,6 +2,8 @@ import fs from "fs"
 import fsPromises from "fs/promises"
 import path from "path"
 import { createHash } from "crypto"
+import { Writable } from "stream"
+import { pipeline } from "stream/promises"
 import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
@@ -191,30 +193,18 @@ export class ConversationService {
     return this.storeConversationImageBuffer(conversationId, buffer, `image/${subtype.toLowerCase()}`)
   }
 
-  private async storeConversationVideoBuffer(
-    conversationId: string,
-    buffer: Buffer,
-    mimeType: string,
-  ): Promise<string> {
-    const extension = this.getVideoExtensionForMimeType(mimeType)
-    if (!extension || buffer.length <= 0) {
-      throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
-    }
-
-    const hash = createHash("sha256").update(buffer).digest("hex")
-    const fileName = `${hash}.${extension}`
-    const assetPath = getConversationVideoAssetPath(conversationId, fileName)
-
-    await fsPromises.mkdir(getConversationVideoAssetDir(conversationId), { recursive: true })
-    try {
-      await fsPromises.writeFile(assetPath, buffer, { flag: "wx" })
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
-        throw error
-      }
-    }
-
-    return buildConversationVideoAssetUrl(conversationId, fileName)
+  private async computeFileSha256(filePath: string): Promise<string> {
+    const hash = createHash("sha256")
+    await pipeline(
+      fs.createReadStream(filePath),
+      new Writable({
+        write(chunk: Buffer, _encoding, callback) {
+          hash.update(chunk)
+          callback()
+        },
+      }),
+    )
+    return hash.digest("hex")
   }
 
   async storeVideoPathAsConversationAsset(conversationId: string, videoPath: string): Promise<string> {
@@ -223,8 +213,31 @@ export class ConversationService {
       throw new Error(`Unsupported video extension for path: ${videoPath}`)
     }
 
-    const buffer = await fsPromises.readFile(videoPath)
-    return this.storeConversationVideoBuffer(conversationId, buffer, mimeType)
+    const extension = this.getVideoExtensionForMimeType(mimeType)
+    const sourceStat = await fsPromises.stat(videoPath)
+    if (!extension || sourceStat.size <= 0) {
+      throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
+    }
+
+    const hash = await this.computeFileSha256(videoPath)
+    const fileName = `${hash}.${extension}`
+    const assetPath = getConversationVideoAssetPath(conversationId, fileName)
+
+    await fsPromises.mkdir(getConversationVideoAssetDir(conversationId), { recursive: true })
+    try {
+      await pipeline(fs.createReadStream(videoPath), fs.createWriteStream(assetPath, { flags: "wx" }))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        try {
+          await fsPromises.unlink(assetPath)
+        } catch {
+          // Best-effort cleanup for partially copied files.
+        }
+        throw error
+      }
+    }
+
+    return buildConversationVideoAssetUrl(conversationId, fileName)
   }
 
   async materializeInlineDataImagesInContent(conversationId: string, content: string): Promise<string> {
