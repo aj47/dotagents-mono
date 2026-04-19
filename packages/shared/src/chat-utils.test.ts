@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   shouldCollapseMessage,
   getToolCallsSummary,
+  getToolCallPreview,
   getToolResultsSummary,
   formatToolArguments,
   formatArgumentsPreview,
@@ -66,12 +67,27 @@ describe('getToolCallsSummary', () => {
     expect(getToolCallsSummary([])).toBe('')
   })
 
-  it('returns formatted tool names', () => {
+  it('returns human-readable previews', () => {
     const calls = [
-      { name: 'search', arguments: {} },
-      { name: 'read_file', arguments: {} },
+      { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      { name: 'read_file', arguments: { path: 'apps/desktop/src/main.ts' } },
     ]
-    expect(getToolCallsSummary(calls)).toBe('🔧 search, read_file')
+    expect(getToolCallsSummary(calls)).toBe('🔧 pnpm test, Read apps/desktop/src/main.ts')
+  })
+})
+
+describe('getToolCallPreview', () => {
+  it('prefers the shell command for execute_command', () => {
+    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('git status --short')
+  })
+
+  it('formats common structured tool arguments', () => {
+    expect(getToolCallPreview({ name: 'write_file', arguments: { path: 'README.md', content: 'hello' } })).toBe('Write README.md')
+    expect(getToolCallPreview({ name: 'web_search', arguments: { query: 'DotAgents skills' } })).toBe('Search “DotAgents skills”')
+  })
+
+  it('falls back to a cleaned-up tool name and compact key arguments', () => {
+    expect(getToolCallPreview({ name: 'custom_tool', arguments: { foo: 'bar', nested: { value: true } } })).toBe('Custom tool — foo: bar, nested: {...}')
   })
 })
 

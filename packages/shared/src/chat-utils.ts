@@ -31,11 +31,81 @@ export function shouldCollapseMessage(
 /**
  * Generate a summary of tool calls for collapsed view
  * @param toolCalls Array of tool calls
- * @returns A formatted string showing tool names
+ * @returns A formatted string showing human-readable tool call previews
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
   if (!toolCalls || toolCalls.length === 0) return '';
-  return `🔧 ${toolCalls.map(tc => tc.name).join(', ')}`;
+  return `🔧 ${toolCalls.map(tc => getToolCallPreview(tc)).join(', ')}`;
+}
+
+/**
+ * Generate a compact preview for a single collapsed tool call.
+ */
+export function getToolCallPreview(toolCall: ToolCall): string {
+  const args = toolCall.arguments || {};
+  const customPreview = getCustomToolCallPreview(toolCall.name, args);
+  if (customPreview) return customPreview;
+
+  const argsPreview = formatArgumentsPreview(args);
+  const toolName = humanizeToolName(toolCall.name);
+  return argsPreview ? `${toolName} — ${argsPreview}` : toolName;
+}
+
+function getCustomToolCallPreview(toolName: string, args: Record<string, unknown>): string {
+  const normalizedName = toolName.toLowerCase();
+
+  if (normalizedName === 'execute_command' || normalizedName === 'shell' || normalizedName === 'terminal') {
+    return truncatePreview(getStringArg(args, ['command', 'cmd']) || '', 90);
+  }
+
+  if (normalizedName === 'read_file' || normalizedName === 'read') {
+    return formatPathAction('Read', args);
+  }
+
+  if (normalizedName === 'write_file' || normalizedName === 'create_file') {
+    return formatPathAction('Write', args);
+  }
+
+  if (normalizedName === 'edit_file' || normalizedName === 'str_replace' || normalizedName === 'patch_file') {
+    return formatPathAction('Edit', args);
+  }
+
+  if (normalizedName === 'list_directory' || normalizedName === 'list_files') {
+    return formatPathAction('List', args);
+  }
+
+  if (normalizedName.includes('search') || normalizedName === 'grep') {
+    const query = getStringArg(args, ['query', 'pattern', 'text']);
+    if (query) return `Search “${truncatePreview(query, 70)}”`;
+  }
+
+  const url = getStringArg(args, ['url', 'uri']);
+  if (url && (normalizedName.includes('fetch') || normalizedName.includes('web') || normalizedName.includes('browser'))) {
+    return truncatePreview(url, 90);
+  }
+
+  return '';
+}
+
+function formatPathAction(action: string, args: Record<string, unknown>): string {
+  const pathValue = getStringArg(args, ['path', 'file', 'filename', 'filePath', 'targetPath']);
+  return pathValue ? `${action} ${truncatePreview(pathValue, 80)}` : '';
+}
+
+function getStringArg(args: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = args[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function humanizeToolName(name: string): string {
+  return name
+    .replace(/[:_.-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, char => char.toUpperCase()) || 'Tool';
 }
 
 /**
