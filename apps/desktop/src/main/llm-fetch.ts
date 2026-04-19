@@ -646,7 +646,7 @@ async function withRetry<T>(
  */
 type MarkdownImageForModel = { image: string | URL; mediaType?: string }
 
-const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+|https?:\/\/[^)\s]+)\)/gi
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   png: "image/png",
@@ -665,6 +665,8 @@ function parseDataImageUrl(imageUrl: string): MarkdownImageForModel | null {
   return { image: match[2], mediaType: match[1] }
 }
 
+const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
+
 function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel | null {
   try {
     const parsed = new URL(imageUrl)
@@ -681,6 +683,12 @@ function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel 
     const extension = fileName.split(".").pop()?.toLowerCase() || "png"
     const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
     const buffer = fs.readFileSync(assetPath)
+    if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
+      if (isDebugLLM()) {
+        logLLM("Conversation image asset exceeds size limit for LLM", { imageUrl, size: buffer.length })
+      }
+      return null
+    }
     return { image: buffer.toString("base64"), mediaType: mimeType }
   } catch (error) {
     if (isDebugLLM()) {
@@ -692,7 +700,6 @@ function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel 
 
 function resolveMarkdownImageForModel(imageUrl: string): MarkdownImageForModel | null {
   if (imageUrl.startsWith("data:image/")) return parseDataImageUrl(imageUrl)
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) return { image: new URL(imageUrl) }
   if (imageUrl.startsWith("assets://")) return resolveAssetsImageUrlForModel(imageUrl)
   return null
 }
@@ -705,7 +712,7 @@ function convertMarkdownImagesToModelContent(content: string): UserContent {
   MARKDOWN_IMAGE_REGEX.lastIndex = 0
   for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
     const before = content.slice(lastIndex, match.index)
-    if (before.trim()) parts.push({ type: "text", text: before })
+    if (before) parts.push({ type: "text", text: before })
 
     const image = resolveMarkdownImageForModel(match[1])
     if (image) {
@@ -718,7 +725,7 @@ function convertMarkdownImagesToModelContent(content: string): UserContent {
   }
 
   const after = content.slice(lastIndex)
-  if (after.trim()) parts.push({ type: "text", text: after })
+  if (after) parts.push({ type: "text", text: after })
 
   return hasResolvedImage && parts.length > 0 ? parts : content
 }
