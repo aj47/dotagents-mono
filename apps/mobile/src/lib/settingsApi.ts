@@ -90,6 +90,7 @@ import type {
   AgentProfileCreateRequest,
   AgentProfileUpdateRequest,
   Loop,
+  LoopSchedule,
   LoopsResponse,
   OperatorRemoteServerStatus,
   OperatorTunnelStatus,
@@ -208,6 +209,7 @@ export interface LoopCreateRequest {
   intervalMinutes: number;
   enabled: boolean;
   profileId?: string;
+  runContinuously?: boolean;
   schedule?: LoopSchedule | null;
 }
 
@@ -217,6 +219,7 @@ export interface LoopUpdateRequest {
   intervalMinutes?: number;
   enabled?: boolean;
   profileId?: string;
+  runContinuously?: boolean;
   schedule?: LoopSchedule | null;
 }
 

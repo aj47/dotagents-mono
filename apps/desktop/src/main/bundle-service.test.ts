@@ -23,7 +23,7 @@ import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile } from "./agents-files/skills"
 import { writeKnowledgeNoteFile } from "./agents-files/knowledge-notes"
-import { writeTaskFile } from "./agents-files/tasks"
+import { loadTasksLayer, writeTaskFile } from "./agents-files/tasks"
 import type { AgentProfile, AgentSkill, KnowledgeNote, LoopConfig } from "@shared/types"
 
 // ============================================================================
@@ -263,6 +263,20 @@ describe("bundle-service", () => {
       expect(bundle.repeatTasks.length).toBe(1)
       expect(bundle.repeatTasks[0].id).toBe("test-task")
       expect((bundle.repeatTasks[0] as any).profileId).toBeUndefined()
+    })
+
+    it("exports continuous repeat tasks without schedules", async () => {
+      const layer = getAgentsLayerPaths(agentsDir)
+      const task = createTestTask("continuous-task", "Continuous Task")
+      task.runContinuously = true
+      task.schedule = { type: "daily", times: ["09:00"] }
+      writeTaskFile(layer, task)
+
+      const bundle = await exportBundle(agentsDir)
+
+      expect(bundle.repeatTasks).toHaveLength(1)
+      expect(bundle.repeatTasks[0].runContinuously).toBe(true)
+      expect(bundle.repeatTasks[0].schedule).toBeUndefined()
     })
 
     it("exports MCP servers from canonical mcpConfig and omits secret-bearing fields", async () => {
@@ -1104,6 +1118,23 @@ describe("bundle-service", () => {
       expect(result.skills[0].action).toBe("imported")
       expect(result.repeatTasks[0].action).toBe("imported")
       expect(result.knowledgeNotes[0].action).toBe("imported")
+    })
+
+    it("imports continuous repeat tasks without schedules", async () => {
+      const bundle = createTestBundle()
+      bundle.repeatTasks[0].runContinuously = true
+      bundle.repeatTasks[0].schedule = { type: "daily", times: ["09:00"] }
+      const bundlePath = path.join(tempDir, "import-continuous-task.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const layer = getAgentsLayerPaths(targetDir)
+      const importedTask = loadTasksLayer(layer).tasks.find((task) => task.id === "import-task")
+
+      expect(result.success).toBe(true)
+      expect(result.repeatTasks[0].action).toBe("imported")
+      expect(importedTask?.runContinuously).toBe(true)
+      expect(importedTask?.schedule).toBeUndefined()
     })
 
     it("imports legacy metadata-only bundle skills with empty instructions", async () => {

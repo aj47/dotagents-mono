@@ -4799,6 +4799,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       speakOnTrigger: loop.speakOnTrigger,
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
+      runContinuously: loop.runContinuously,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
@@ -4830,6 +4831,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             speakOnTrigger: l.speakOnTrigger,
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
+            runContinuously: l.runContinuously,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
@@ -5062,6 +5064,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runContinuously?: unknown
         schedule?: unknown
       }
 
@@ -5089,12 +5092,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
+      if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
+        return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
+      }
       const scheduleResult = parseScheduleInput(body.schedule)
       if (!scheduleResult.ok) {
         return reply.code(400).send({ error: scheduleResult.error })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
+      const runContinuously = body.runContinuously === true
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
@@ -5105,7 +5112,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes,
         enabled,
         profileId: profileId || undefined,
-        ...(scheduleResult.schedule && scheduleResult.schedule !== null
+        runContinuously,
+        ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
           : {}),
       }
@@ -5143,6 +5151,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runContinuously?: unknown
         schedule?: unknown
       }
 
@@ -5188,6 +5197,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
+      if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
+        return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
+      }
       const scheduleResult = parseScheduleInput(body.schedule)
       if (!scheduleResult.ok) {
         return reply.code(400).send({ error: scheduleResult.error })
@@ -5201,6 +5213,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
+      const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
       const updated: LoopConfig = {
         ...existing,
         ...(name !== undefined && { name }),
@@ -5208,11 +5221,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
+        ...(runContinuously !== undefined && { runContinuously }),
       }
-      if (scheduleResult.schedule === null) {
+      if (updated.runContinuously) {
+        delete updated.schedule
+      } else if (scheduleResult.schedule === null) {
         delete updated.schedule
       } else if (scheduleResult.schedule !== undefined) {
         updated.schedule = scheduleResult.schedule
+        updated.runContinuously = false
       }
 
       if (loopService) {
