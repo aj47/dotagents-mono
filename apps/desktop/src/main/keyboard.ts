@@ -18,6 +18,7 @@ import { spawn, ChildProcess } from "child_process"
 import path from "path"
 import { matchesKeyCombo, getEffectiveShortcut } from "../shared/key-utils"
 import { isDebugKeybinds, logKeybinds } from "./debug"
+import { captureSelectedScreenRegion } from "./screenshot-capture"
 
 const rdevPath = path
   .join(
@@ -31,6 +32,7 @@ const KEYBOARD_LISTENER_FORCE_KILL_WAIT_MS = 250
 
 let keyboardListenerChild: ChildProcess | null = null
 let keyboardListenerStopState: { child: ChildProcess; promise: Promise<void> } | null = null
+let isVoiceScreenshotCaptureInProgress = false
 
 type RdevEvent = {
   event_type: "KeyPress" | "KeyRelease"
@@ -347,6 +349,37 @@ export function listenToKeyboardEvents() {
     if (startCustomMcpTimer) {
       clearTimeout(startCustomMcpTimer)
       startCustomMcpTimer = undefined
+    }
+  }
+
+  const startVoiceScreenshotRecording = async () => {
+    if (isVoiceScreenshotCaptureInProgress || state.isRecording) return
+
+    isVoiceScreenshotCaptureInProgress = true
+    cancelRecordingTimer()
+    cancelMcpRecordingTimer()
+    cancelCustomRecordingTimer()
+    cancelCustomMcpTimer()
+
+    try {
+      const screenshot = await captureSelectedScreenRegion()
+      if (!screenshot) return
+
+      await showPanelWindowAndStartMcpRecording(
+        undefined,
+        undefined,
+        undefined,
+        true,
+        undefined,
+        undefined,
+        screenshot,
+      )
+    } catch (error) {
+      if (isDebugKeybinds()) {
+        logKeybinds("Voice screenshot capture failed:", error)
+      }
+    } finally {
+      isVoiceScreenshotCaptureInProgress = false
     }
   }
 
@@ -834,6 +867,32 @@ export function listenToKeyboardEvents() {
             showMainWindow()
             return
           }
+        }
+      }
+
+      if (config.voiceScreenshotShortcutEnabled !== false) {
+        const effectiveVoiceScreenshotShortcut = getEffectiveShortcut(
+          config.voiceScreenshotShortcut || "ctrl-shift-x",
+          config.customVoiceScreenshotShortcut,
+        ) || "ctrl-shift-x"
+
+        const matchesVoiceScreenshotShortcut = matchesKeyCombo(
+          e.data,
+          {
+            ctrl: isPressedCtrlKey,
+            shift: isPressedShiftKey,
+            alt: isPressedAltKey,
+            meta: isPressedMetaKey,
+          },
+          effectiveVoiceScreenshotShortcut,
+        )
+
+        if (matchesVoiceScreenshotShortcut) {
+          if (isDebugKeybinds()) {
+            logKeybinds("Voice screenshot recording triggered:", effectiveVoiceScreenshotShortcut)
+          }
+          void startVoiceScreenshotRecording()
+          return
         }
       }
 

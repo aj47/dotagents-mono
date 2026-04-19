@@ -937,17 +937,18 @@ export class ConversationService {
     const validatedId = this.validateConversationId(conversationId)
     const messageId = this.generateMessageId()
     const now = Date.now()
+    const storedFirstMessage = await this.materializeInlineDataImagesInContent(validatedId, firstMessage)
 
     const message: ConversationMessage = {
       id: messageId,
       role,
-      content: firstMessage,
+      content: storedFirstMessage,
       timestamp: now,
     }
 
     const conversation: Conversation = {
       id: validatedId,
-      title: this.generateConversationTitle(firstMessage),
+      title: this.generateConversationTitle(storedFirstMessage),
       createdAt: now,
       updatedAt: now,
       messages: [message],

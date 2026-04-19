@@ -186,6 +186,9 @@ const getConfig = (): LoadedConfig => {
     // Recording shortcut: On Windows, use Ctrl+/ to avoid conflicts with common shortcuts
     // On macOS, Hold Ctrl is fine since Cmd is used for most shortcuts
     shortcut: isWindows ? "ctrl-slash" : "hold-ctrl",
+    voiceScreenshotShortcutEnabled: true,
+    voiceScreenshotShortcut: "ctrl-shift-x",
+    customVoiceScreenshotShortcut: "",
 
     mcpToolsShortcut: "hold-ctrl-alt",
     // Note: mcpToolsEnabled and mcpAgentModeEnabled are deprecated and always treated as true
