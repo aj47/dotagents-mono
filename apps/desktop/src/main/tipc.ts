@@ -582,9 +582,8 @@ function appendScreenshotToTranscript(transcript: string, screenshot?: Screensho
   if (!screenshot?.dataUrl) return transcript
 
   const alt = escapeMarkdownImageAlt(screenshot.name || "Screen selection") || "Screen selection"
-  const trimmedTranscript = transcript.trim()
   const screenshotMarkdown = `![${alt}](${screenshot.dataUrl})`
-  return trimmedTranscript ? `${trimmedTranscript}\n\n${screenshotMarkdown}` : screenshotMarkdown
+  return transcript ? `${transcript}\n\n${screenshotMarkdown}` : screenshotMarkdown
 }
 
 const getRecordingHistory = () => {
