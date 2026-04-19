@@ -49,3 +49,13 @@ test('desktop skills populated rows keep actions in one compact menu instead of 
   assert.match(skillsPageSource, /<DropdownMenuItem onClick=\{\(\) => exportSkillMutation\.mutate\(skill\.id\)\}>[\s\S]*?Export/)
   assert.match(skillsPageSource, /<DropdownMenuItem[\s\S]*?onClick=\{\(\) => handleDeleteSkill\(skill\)\}[\s\S]*?Delete/)
 })
+
+test('desktop skills page exposes per-agent enablement and sorts enabled skills first', () => {
+  assert.match(skillsPageSource, /queryKey: \["currentProfile"\]/)
+  assert.match(skillsPageSource, /return await tipcClient\.getCurrentProfile\(\)/)
+  assert.match(skillsPageSource, /return await tipcClient\.toggleProfileSkill\(\{ profileId, skillId \}\)/)
+  assert.match(skillsPageSource, /const enabledDiff = Number\(isSkillEnabledForCurrentProfile\(b\.id\)\) - Number\(isSkillEnabledForCurrentProfile\(a\.id\)\)/)
+  assert.match(skillsPageSource, /<Switch[\s\S]*?checked=\{isEnabled\}[\s\S]*?onCheckedChange=\{\(checked\) =>/)
+  assert.match(skillsPageSource, /aria-label=\{`\$\{isEnabled \? "Disable" : "Enable"\} \$\{skill\.name\}`\}/)
+  assert.match(skillsPageSource, /text-\[13px\] font-medium leading-5/)
+})
