@@ -16,6 +16,7 @@ import { state, agentProcessManager, suppressPanelAutoShow, isHeadlessMode } fro
 import { calculatePanelPosition } from "./panel-position"
 import { setupConsoleLogger } from "./console-logger"
 import { emergencyStopAll } from "./emergency-stop"
+import { setupRendererCrashRecovery } from "./dev-self-recovery/renderer-crash-recovery"
 
 type WINDOW_ID = "main" | "panel" | "setup"
 
@@ -140,6 +141,7 @@ function createBaseWindow({
   WINDOWS.set(id, win)
 
   setupConsoleLogger(win, id)
+  setupRendererCrashRecovery(win, id)
 
   const _label = id.toUpperCase()
   win.on("show", () => logUI(`[WINDOW ${_label}] show`))
