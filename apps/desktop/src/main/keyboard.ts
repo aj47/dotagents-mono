@@ -870,7 +870,7 @@ export function listenToKeyboardEvents() {
         }
       }
 
-      if (config.voiceScreenshotShortcutEnabled !== false) {
+      if (process.platform === "darwin" && config.voiceScreenshotShortcutEnabled !== false) {
         const effectiveVoiceScreenshotShortcut = getEffectiveShortcut(
           config.voiceScreenshotShortcut || "ctrl-shift-x",
           config.customVoiceScreenshotShortcut,
