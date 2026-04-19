@@ -24,6 +24,8 @@
 DotAgents gives you a team of AI specialists — each with knowledge, skills, and tools — controlled by your voice. Built on the `.agents` open standard, so your skills work across Claude Code, Cursor, Codex, and every tool adopting the protocol.
 
 ## Preview
+<img width="776" height="1029" alt="image" src="https://github.com/user-attachments/assets/9b102bb6-a3bb-4f0f-9463-0f12114d98c4" />
+
 <img width="951" height="992" alt="image" src="https://github.com/user-attachments/assets/c569bf67-73e6-41d7-ab0b-89dd77d73e2b" />
 
 
