@@ -252,10 +252,6 @@ function parseJsonStringIfPossible(value: unknown): unknown {
   }
 }
 
-function normalizeArgumentsRecord(args: unknown): Record<string, unknown> {
-  return normalizeToolArguments(args) ?? {};
-}
-
 /**
  * Normalize tool arguments into an object suitable for field-by-field rendering.
  * Accepts either an object or a JSON string containing an object.
