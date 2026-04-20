@@ -291,7 +291,7 @@ export function formatArgumentsPreview(args: unknown): string {
   const preview = entries.slice(0, 3).map(([key, value]) => {
     let displayValue: string;
     if (typeof value === 'string') {
-      displayValue = value.length > 30 ? value.slice(0, 30) + '...' : value;
+      displayValue = truncatePreview(value, 30);
     } else if (typeof value === 'object') {
       displayValue = value === null ? 'null' : Array.isArray(value) ? `[${value.length} items]` : '{...}';
     } else {

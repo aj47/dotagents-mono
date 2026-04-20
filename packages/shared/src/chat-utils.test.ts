@@ -174,6 +174,11 @@ describe('formatArgumentsPreview', () => {
     expect(preview).toContain('...')
   })
 
+  it('keeps multiline string values on one preview line', () => {
+    const args = { command: "python3 - <<'PY'\nprint('hello')\nPY" }
+    expect(formatArgumentsPreview(args)).toBe("command: python3 - <<'PY' print('hel...")
+  })
+
   it('shows +N more for many args', () => {
     const args = { a: '1', b: '2', c: '3', d: '4' }
     expect(formatArgumentsPreview(args)).toContain('+1 more')
