@@ -154,11 +154,38 @@ const getPayloadValueType = (value: unknown): string => {
 const StructuredToolPayload: React.FC<{
   payload: unknown
   variant?: "default" | "approval"
+  tone?: "neutral" | "success" | "error"
   maxHeightClassName?: string
-}> = ({ payload, variant = "default", maxHeightClassName = "max-h-48" }) => {
+}> = ({ payload, variant = "default", tone = "neutral", maxHeightClassName = "max-h-48" }) => {
   const entries = getToolArgumentEntries(payload)
   const formattedFallback = entries.length === 0 ? formatToolArguments(payload) : ""
   const isApproval = variant === "approval"
+  const fallbackToneClass = isApproval
+    ? "bg-amber-100/70 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
+    : tone === "success"
+      ? "bg-green-50/50 text-foreground dark:bg-green-950/30"
+      : tone === "error"
+        ? "bg-red-50/50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+        : "bg-muted/40 text-foreground"
+  const entryToneClass = isApproval
+    ? "border-amber-200/70 bg-amber-100/30 dark:border-amber-800/60 dark:bg-amber-900/15"
+    : tone === "success"
+      ? "border-green-200/70 bg-green-50/50 dark:border-green-900/60 dark:bg-green-950/30"
+      : tone === "error"
+        ? "border-red-200/70 bg-red-50/50 dark:border-red-900/60 dark:bg-red-950/30"
+        : "border-border/40 bg-background/40 dark:bg-muted/20"
+  const entryHeaderBorderClass = isApproval
+    ? "border-amber-200/60 dark:border-amber-800/50"
+    : tone === "success"
+      ? "border-green-200/60 dark:border-green-900/50"
+      : tone === "error"
+        ? "border-red-200/60 dark:border-red-900/50"
+        : "border-border/30"
+  const entryTextClass = isApproval
+    ? "text-amber-950 dark:text-amber-100"
+    : tone === "error"
+      ? "text-red-700 dark:text-red-300"
+      : "text-foreground"
 
   if (entries.length === 0) {
     if (!formattedFallback) return null
@@ -166,9 +193,7 @@ const StructuredToolPayload: React.FC<{
       <pre className={cn(
         "max-w-full overflow-x-auto overflow-y-auto rounded p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
         maxHeightClassName,
-        isApproval
-          ? "bg-amber-100/70 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
-          : "bg-muted/40 text-foreground",
+        fallbackToneClass,
       )}>
         {formattedFallback}
       </pre>
@@ -185,14 +210,12 @@ const StructuredToolPayload: React.FC<{
             key={key}
             className={cn(
               "overflow-hidden rounded-md border",
-              isApproval
-                ? "border-amber-200/70 bg-amber-100/30 dark:border-amber-800/60 dark:bg-amber-900/15"
-                : "border-border/40 bg-background/40 dark:bg-muted/20",
+              entryToneClass,
             )}
           >
             <div className={cn(
               "flex items-center justify-between gap-2 border-b px-2 py-1",
-              isApproval ? "border-amber-200/60 dark:border-amber-800/50" : "border-border/30",
+              entryHeaderBorderClass,
             )}>
               <span className="min-w-0 truncate font-mono text-[10px] font-semibold">{key}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{getPayloadValueType(value)}</span>
@@ -201,12 +224,12 @@ const StructuredToolPayload: React.FC<{
               <pre className={cn(
                 "max-w-full overflow-x-auto overflow-y-auto p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
                 maxHeightClassName,
-                isApproval ? "text-amber-950 dark:text-amber-100" : "text-foreground",
+                entryTextClass,
               )}>
                 {text}
               </pre>
             ) : (
-              <div className="px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words text-foreground/90">
+              <div className={cn("px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words", entryTextClass)}>
                 {text}
               </div>
             )}
@@ -977,7 +1000,7 @@ const CompactToolExecutionList: React.FC<{
                       </pre>
                     )}
                     {result.content && (
-                      <StructuredToolPayload payload={result.content} maxHeightClassName="max-h-52" />
+                      <StructuredToolPayload payload={result.content} tone={result.success ? "success" : "error"} maxHeightClassName="max-h-52" />
                     )}
                     {!result.error && !result.content && (
                       <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
