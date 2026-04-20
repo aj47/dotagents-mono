@@ -26,7 +26,7 @@ import {
   formatToolArguments,
   getAgentConversationStateLabel,
   getToolArgumentEntries,
-  getToolCallPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
   normalizeAgentConversationState,
   TOOL_GROUP_PREVIEW_COUNT,
@@ -927,7 +927,7 @@ const CompactToolExecutionList: React.FC<{
         {toolCallEntries.map(({ call, result }, idx) => {
           const callIsPending = !result
           const callSuccess = result?.success
-          const toolPreview = getToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
+          const toolPreview = getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
 
           return (
             <div key={idx}>
@@ -943,7 +943,7 @@ const CompactToolExecutionList: React.FC<{
                 )}
                 onClick={onToggleDetails}
               >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={call.name}>
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={toolPreview}>
                   {toolPreview}
                 </span>
                 <span className="shrink-0 text-[10px] opacity-60">

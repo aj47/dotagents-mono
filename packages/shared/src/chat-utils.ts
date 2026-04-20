@@ -52,6 +52,24 @@ export function getToolCallPreview(toolCall: ToolCall): string {
 }
 
 /**
+ * Generate a collapsed preview for an individual tool row.
+ * Grouped tool previews intentionally stay tool-name-only via getToolCallPreview.
+ */
+export function getIndividualToolCallPreview(toolCall: ToolCall): string {
+  const toolName = toolCall.name?.trim() || '';
+  const normalizedName = toolName.toLowerCase();
+  if (normalizedName === 'execute_command' || normalizedName.endsWith(':execute_command')) {
+    const args = normalizeToolArguments(toolCall.arguments);
+    const command = args?.command;
+    if (typeof command === 'string' && command.trim()) {
+      return command.replace(/\s+/g, ' ').trim();
+    }
+  }
+
+  return getToolCallPreview(toolCall);
+}
+
+/**
  * Generate a summary of tool results for collapsed view
  * @param toolResults Array of tool results
  * @returns A formatted string showing result status and key information

@@ -48,7 +48,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
-  getToolCallPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
@@ -3399,7 +3399,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult && origIdx >= toolResultCount;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const toolPreview = getToolCallPreview(toolCall);
+                              const toolPreview = getIndividualToolCallPreview(toolCall);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[

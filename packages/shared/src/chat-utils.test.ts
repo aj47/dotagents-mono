@@ -3,6 +3,7 @@ import {
   shouldCollapseMessage,
   getToolCallsSummary,
   getToolCallPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
   getToolArgumentEntries,
   formatToolArguments,
@@ -93,6 +94,24 @@ describe('getToolCallPreview', () => {
 
   it('sanitizes whitespace so collapsed labels stay one word', () => {
     expect(getToolCallPreview({ name: 'custom tool\nname', arguments: {} })).toBe('custom_tool_name')
+  })
+})
+
+describe('getIndividualToolCallPreview', () => {
+  it('uses the actual command for individual execute_command rows', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('git status --short')
+  })
+
+  it('keeps multiline execute_command previews on one line', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: { command: "python3 - <<'PY'\nprint('hi')\nPY" } })).toBe("python3 - <<'PY' print('hi') PY")
+  })
+
+  it('still uses tool-name-only previews for non-command tools', () => {
+    expect(getIndividualToolCallPreview({ name: 'read_file', arguments: { path: 'README.md' } })).toBe('read_file')
+  })
+
+  it('supports JSON string command arguments', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: '{"command":"pnpm test"}' as unknown as Record<string, unknown> })).toBe('pnpm test')
   })
 })
 
