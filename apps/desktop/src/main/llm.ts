@@ -1725,7 +1725,10 @@ export async function processTranscriptWithAgentMode(
             return null
           }
 
-          const content = sanitizedContent
+          // Preserve user-provided image markdown for the provider adapter; it
+          // converts data/assets image URLs into multimodal message parts. The
+          // sanitized variant above is still used for tool replay and emptiness checks.
+          const content = rawContent
           return {
             role: entry.role as "user" | "assistant",
             content,

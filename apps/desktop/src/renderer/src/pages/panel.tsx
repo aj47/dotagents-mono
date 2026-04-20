@@ -23,6 +23,8 @@ import { Send, Bot } from "lucide-react"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
 import type { AgentProfile } from "@shared/types"
 
+type PendingScreenshotAttachment = { name?: string; dataUrl: string }
+
 const DEFAULT_VISUALIZER_BAR_COUNT = 70
 const MIN_VISUALIZER_BAR_COUNT = 24
 const MAX_VISUALIZER_BAR_COUNT = 240
@@ -70,6 +72,7 @@ export function Component() {
   const textInputPanelRef = useRef<TextInputPanelRef>(null)
   const mcpConversationIdRef = useRef<string | undefined>(undefined)
   const mcpSessionIdRef = useRef<string | undefined>(undefined)
+  const mcpScreenshotRef = useRef<PendingScreenshotAttachment | undefined>(undefined)
   const fromTileRef = useRef<boolean>(false)
   const [continueConversationTitle, setContinueConversationTitle] = useState<string | null>(null)
   const [fromButtonClick, setFromButtonClick] = useState(false)
@@ -283,11 +286,13 @@ export function Component() {
       // The refs are more reliable for mic button clicks as they avoid timing issues.
       const conversationIdForMcp = mcpConversationIdRef.current ?? currentConversationId
       const sessionIdForMcp = mcpSessionIdRef.current
+      const screenshotForMcp = mcpScreenshotRef.current
       const wasFromTile = fromTileRef.current
 
       // Clear the refs after capturing to avoid reusing stale IDs
       mcpConversationIdRef.current = undefined
       mcpSessionIdRef.current = undefined
+      mcpScreenshotRef.current = undefined
       fromTileRef.current = false
 
       // If recording was from a tile, hide the floating panel immediately
@@ -304,6 +309,7 @@ export function Component() {
         // otherwise undefined to create a fresh conversation/session.
         conversationId: conversationIdForMcp ?? undefined,
         sessionId: sessionIdForMcp,
+        screenshot: screenshotForMcp,
         // Pass fromTile so session starts snoozed when recording was from a tile
         fromTile: wasFromTile,
       })
@@ -432,6 +438,7 @@ export function Component() {
         // Clear context from aborted runs so follow-up recordings start clean.
         mcpConversationIdRef.current = undefined
         mcpSessionIdRef.current = undefined
+        mcpScreenshotRef.current = undefined
         fromTileRef.current = false
         setMcpMode(false)
         mcpModeRef.current = false
@@ -445,6 +452,7 @@ export function Component() {
         console.warn("[Panel] Recording blob is empty, ignoring (likely accidental press)")
         mcpConversationIdRef.current = undefined
         mcpSessionIdRef.current = undefined
+        mcpScreenshotRef.current = undefined
         fromTileRef.current = false
         setMcpMode(false)
         mcpModeRef.current = false
@@ -459,6 +467,7 @@ export function Component() {
         console.warn("[Panel] Recording duration too short:", duration, "ms - ignoring (likely accidental press)")
         mcpConversationIdRef.current = undefined
         mcpSessionIdRef.current = undefined
+        mcpScreenshotRef.current = undefined
         fromTileRef.current = false
         setMcpMode(false)
         mcpModeRef.current = false
@@ -480,6 +489,7 @@ export function Component() {
         // Ensure MCP context does not leak into future MCP submissions.
         mcpConversationIdRef.current = undefined
         mcpSessionIdRef.current = undefined
+        mcpScreenshotRef.current = undefined
         fromTileRef.current = false
         transcribeMutation.mutate({
           blob,
@@ -613,6 +623,7 @@ export function Component() {
       // Ensure we are in normal dictation mode (not MCP/agent)
       setMcpMode(false)
       mcpModeRef.current = false
+      mcpScreenshotRef.current = undefined
       setContinueConversationTitle(null)
       // Track if recording was triggered via UI button click (e.g., tray menu)
       setFromButtonClick(data?.fromButtonClick ?? false)
@@ -665,6 +676,7 @@ export function Component() {
         // Force normal dictation mode - each new recording starts fresh
         setMcpMode(false)
         mcpModeRef.current = false
+        mcpScreenshotRef.current = undefined
         // Track if recording was triggered via UI button click
         setFromButtonClick(data?.fromButtonClick ?? false)
         // Clear any stale "Continuing:" banner from a prior continue session
@@ -782,6 +794,7 @@ export function Component() {
       // Store the conversationId, sessionId, and fromTile flag for use when recording ends
       mcpConversationIdRef.current = data?.conversationId
       mcpSessionIdRef.current = data?.sessionId
+      mcpScreenshotRef.current = data?.screenshot
       fromTileRef.current = data?.fromTile ?? false
       // Track if recording was triggered via UI button click vs keyboard shortcut
       // When true, we show "Enter" as the submit hint instead of "Release keys"
@@ -827,6 +840,7 @@ export function Component() {
         mcpModeRef.current = false
         mcpConversationIdRef.current = undefined
         mcpSessionIdRef.current = undefined
+        mcpScreenshotRef.current = undefined
         fromTileRef.current = false
       })
     })
@@ -854,6 +868,7 @@ export function Component() {
         // Store the conversationId and sessionId for use when recording ends
         mcpConversationIdRef.current = data?.conversationId
         mcpSessionIdRef.current = data?.sessionId
+        mcpScreenshotRef.current = data?.screenshot
         fromTileRef.current = data?.fromTile ?? false
         // Track if recording was triggered via UI button click vs keyboard shortcut
         setFromButtonClick(data?.fromButtonClick ?? false)
@@ -882,6 +897,7 @@ export function Component() {
           mcpModeRef.current = false
           mcpConversationIdRef.current = undefined
           mcpSessionIdRef.current = undefined
+          mcpScreenshotRef.current = undefined
           fromTileRef.current = false
         })
       }

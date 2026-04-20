@@ -99,6 +99,7 @@ vi.mock('./langfuse-service', () => ({
 
 vi.mock('./chatgpt-web-provider', () => ({
   isChatGptWebProvider: vi.fn((providerId: string) => providerId === 'chatgpt-web'),
+  getCurrentChatGptWebModelName: vi.fn(() => 'chatgpt-web-test-model'),
   makeChatGptWebCompletion: makeChatGptWebCompletionMock,
   makeChatGptWebResponse: makeChatGptWebResponseMock,
 }))
@@ -223,6 +224,88 @@ describe('LLM Fetch with AI SDK', () => {
     )
 
     expect(result.content).toBe('Hello, world!')
+  })
+
+  it('converts markdown data-image attachments into multimodal model content', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"I can see it"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'What is this?\n\n![Screen selection](data:image/png;base64,abc123)' }],
+      'openai'
+    )
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'What is this?\n\n' },
+          { type: 'image', image: 'abc123', mediaType: 'image/png' },
+        ],
+      }],
+    }))
+  })
+
+  it('leaves remote https markdown images as plain text to avoid provider-side fetching', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"ok"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'See ![photo](https://example.com/pic.png) here' }],
+      'openai'
+    )
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [{
+        role: 'user',
+        content: 'See ![photo](https://example.com/pic.png) here',
+      }],
+    }))
+  })
+
+  it('preserves whitespace-only text segments around images', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"ok"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'A\n\n![img](data:image/png;base64,abc123)\n\nB' }],
+      'openai'
+    )
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'A\n\n' },
+          { type: 'image', image: 'abc123', mediaType: 'image/png' },
+          { type: 'text', text: '\n\nB' },
+        ],
+      }],
+    }))
   })
 
   it('should return plain text when JSON parsing fails', async () => {

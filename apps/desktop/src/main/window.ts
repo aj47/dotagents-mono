@@ -16,6 +16,7 @@ import { state, agentProcessManager, suppressPanelAutoShow, isHeadlessMode } fro
 import { calculatePanelPosition } from "./panel-position"
 import { setupConsoleLogger } from "./console-logger"
 import { emergencyStopAll } from "./emergency-stop"
+import type { ScreenRegionCapture } from "./screenshot-capture"
 
 type WINDOW_ID = "main" | "panel" | "setup"
 
@@ -1142,7 +1143,7 @@ export async function showPanelWindowAndStartRecording(fromButtonClick?: boolean
   showPanelWindow()
 }
 
-export async function showPanelWindowAndStartMcpRecording(conversationId?: string, sessionId?: string, fromTile?: boolean, fromButtonClick?: boolean, conversationTitle?: string, isStillHeld?: () => boolean) {
+export async function showPanelWindowAndStartMcpRecording(conversationId?: string, sessionId?: string, fromTile?: boolean, fromButtonClick?: boolean, conversationTitle?: string, isStillHeld?: () => boolean, screenshot?: ScreenRegionCapture) {
   // In headless mode, skip all window operations
   if (isHeadlessMode) return
 
@@ -1170,7 +1171,7 @@ export async function showPanelWindowAndStartMcpRecording(conversationId?: strin
   // Pass fromTile and fromButtonClick flags so panel knows how to behave after recording ends
   whenPanelReady(() => {
     if (isStillHeld && !isStillHeld()) return
-    getWindowRendererHandlers("panel")?.startMcpRecording.send({ conversationId, conversationTitle, sessionId, fromTile, fromButtonClick })
+    getWindowRendererHandlers("panel")?.startMcpRecording.send({ conversationId, conversationTitle, sessionId, fromTile, fromButtonClick, screenshot })
   })
   showPanelWindow()
 }

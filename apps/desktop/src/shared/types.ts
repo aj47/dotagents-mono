@@ -1013,6 +1013,9 @@ export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
+  voiceScreenshotShortcutEnabled?: boolean
+  voiceScreenshotShortcut?: "ctrl-shift-x" | "custom"
+  customVoiceScreenshotShortcut?: string
   hideDockIcon?: boolean
   launchAtLogin?: boolean
 

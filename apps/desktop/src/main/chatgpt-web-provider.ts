@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto"
+import fs from "fs"
 import { configStore } from "./config"
 import { oauthStorage } from "./oauth-storage"
+import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
 const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
@@ -19,6 +21,11 @@ export interface ChatGptWebMessage {
   role: string
   content: string
 }
+
+type CodexInputContent = string | Array<
+  | { type: "input_text"; text: string }
+  | { type: "input_image"; image_url: string }
+>
 
 export interface ChatGptWebTool {
   name: string
@@ -57,6 +64,21 @@ interface PreparedCodexTools {
   tools: Array<Record<string, unknown>>
   nameMap: Map<string, string>
 }
+
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
+
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  apng: "image/apng",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  avif: "image/avif",
+}
+
+const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
 
 interface ResolvedChatGptWebAuth {
   accessToken: string
@@ -470,14 +492,75 @@ function buildCodexInstructions(messages: ChatGptWebMessage[]): string {
   return instructions || DEFAULT_CHATGPT_WEB_INSTRUCTIONS
 }
 
-function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
+function resolveConversationAssetImageUrl(imageUrl: string): string | null {
+  try {
+    const parsed = new URL(imageUrl)
+    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) {
+      return null
+    }
+
+    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
+    if (!encodedConversationId || !encodedFileName) return null
+
+    const conversationId = decodeURIComponent(encodedConversationId)
+    const fileName = decodeURIComponent(encodedFileName)
+    const assetPath = getConversationImageAssetPath(conversationId, fileName)
+    const extension = fileName.split(".").pop()?.toLowerCase() || "png"
+    const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
+    const buffer = fs.readFileSync(assetPath)
+    if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
+      return null
+    }
+    return `data:${mimeType};base64,${buffer.toString("base64")}`
+  } catch {
+    return null
+  }
+}
+
+function resolveMarkdownImageUrlForCodex(imageUrl: string): string | null {
+  if (imageUrl.startsWith("data:image/")) return imageUrl
+  if (imageUrl.startsWith("assets://")) return resolveConversationAssetImageUrl(imageUrl)
+  return null
+}
+
+function buildCodexMessageContent(content: string): CodexInputContent {
+  const parts: Exclude<CodexInputContent, string> = []
+  let lastIndex = 0
+  let hasResolvedImage = false
+
+  MARKDOWN_IMAGE_REGEX.lastIndex = 0
+  for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
+    const before = content.slice(lastIndex, match.index)
+    if (before) parts.push({ type: "input_text", text: before })
+
+    const imageUrl = resolveMarkdownImageUrlForCodex(match[1])
+    if (imageUrl) {
+      parts.push({ type: "input_image", image_url: imageUrl })
+      hasResolvedImage = true
+    } else {
+      parts.push({ type: "input_text", text: match[0] })
+    }
+
+    lastIndex = match.index + match[0].length
+  }
+
+  const after = content.slice(lastIndex)
+  if (after) parts.push({ type: "input_text", text: after })
+
+  return hasResolvedImage && parts.length > 0 ? parts : content
+}
+
+export function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
   return messages
     .filter((message) => message.role !== "system")
-    .map((message) => ({
-      type: "message",
-      role: message.role === "assistant" ? "assistant" : "user",
-      content: message.content,
-    }))
+    .map((message) => {
+      const role = message.role === "assistant" ? "assistant" : "user"
+      return {
+        type: "message",
+        role,
+        content: role === "user" ? buildCodexMessageContent(message.content) : message.content,
+      }
+    })
 }
 
 function buildCodexTools(tools: ChatGptWebTool[] | undefined): PreparedCodexTools | undefined {

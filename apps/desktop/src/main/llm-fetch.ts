@@ -11,8 +11,10 @@
  */
 
 import { generateText, streamText, tool as aiTool } from "ai"
+import type { ModelMessage, UserContent } from "ai"
 import { jsonSchema } from "ai"
 import { randomUUID } from "crypto"
+import fs from "fs"
 import {
   createLanguageModel,
   getCurrentProviderId,
@@ -38,6 +40,7 @@ import {
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
+import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -641,21 +644,111 @@ async function withRetry<T>(
  * message prefill" and require the conversation to end with a user message.
  * See: https://github.com/aj47/dotagents-mono/issues/1035
  */
+type MarkdownImageForModel = { image: string | URL; mediaType?: string }
+
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
+
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  apng: "image/apng",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  avif: "image/avif",
+}
+
+function parseDataImageUrl(imageUrl: string): MarkdownImageForModel | null {
+  const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(imageUrl)
+  if (!match) return null
+  return { image: match[2], mediaType: match[1] }
+}
+
+const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
+
+function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel | null {
+  try {
+    const parsed = new URL(imageUrl)
+    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) {
+      return null
+    }
+
+    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
+    if (!encodedConversationId || !encodedFileName) return null
+
+    const conversationId = decodeURIComponent(encodedConversationId)
+    const fileName = decodeURIComponent(encodedFileName)
+    const assetPath = getConversationImageAssetPath(conversationId, fileName)
+    const extension = fileName.split(".").pop()?.toLowerCase() || "png"
+    const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
+    const buffer = fs.readFileSync(assetPath)
+    if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
+      if (isDebugLLM()) {
+        logLLM("Conversation image asset exceeds size limit for LLM", { imageUrl, size: buffer.length })
+      }
+      return null
+    }
+    return { image: buffer.toString("base64"), mediaType: mimeType }
+  } catch (error) {
+    if (isDebugLLM()) {
+      logLLM("Failed to resolve conversation image asset for LLM", { imageUrl, error })
+    }
+    return null
+  }
+}
+
+function resolveMarkdownImageForModel(imageUrl: string): MarkdownImageForModel | null {
+  if (imageUrl.startsWith("data:image/")) return parseDataImageUrl(imageUrl)
+  if (imageUrl.startsWith("assets://")) return resolveAssetsImageUrlForModel(imageUrl)
+  return null
+}
+
+function convertMarkdownImagesToModelContent(content: string): UserContent {
+  const parts: Exclude<UserContent, string> = []
+  let lastIndex = 0
+  let hasResolvedImage = false
+
+  MARKDOWN_IMAGE_REGEX.lastIndex = 0
+  for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
+    const before = content.slice(lastIndex, match.index)
+    if (before) parts.push({ type: "text", text: before })
+
+    const image = resolveMarkdownImageForModel(match[1])
+    if (image) {
+      parts.push({ type: "image", ...image })
+      hasResolvedImage = true
+    } else {
+      parts.push({ type: "text", text: match[0] })
+    }
+    lastIndex = match.index + match[0].length
+  }
+
+  const after = content.slice(lastIndex)
+  if (after) parts.push({ type: "text", text: after })
+
+  return hasResolvedImage && parts.length > 0 ? parts : content
+}
+
 function convertMessages(messages: Array<{ role: string; content: string }>): {
   system: string | undefined
-  messages: Array<{ role: "user" | "assistant"; content: string }>
+  messages: ModelMessage[]
 } {
   const systemMessages: string[] = []
-  const otherMessages: Array<{ role: "user" | "assistant"; content: string }> =
-    []
+  const otherMessages: ModelMessage[] = []
 
   for (const msg of messages) {
     if (msg.role === "system") {
       systemMessages.push(msg.content)
+    } else if (msg.role === "assistant") {
+      otherMessages.push({
+        role: "assistant",
+        content: msg.content,
+      })
     } else {
       otherMessages.push({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
+        role: "user",
+        content: convertMarkdownImagesToModelContent(msg.content),
       })
     }
   }

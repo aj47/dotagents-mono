@@ -226,8 +226,10 @@ export class ConversationService {
   }
 
   private generateConversationTitle(firstMessage: string): string {
-    const cleanedMessage = sanitizeMessageContentForDisplay(firstMessage).trim()
-    const source = cleanedMessage || firstMessage.trim()
+    let cleanedMessage = sanitizeMessageContentForDisplay(firstMessage)
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+      .trim()
+    const source = cleanedMessage || firstMessage.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").trim() || "Image"
     // Generate a title from the first message (first 50 characters)
     const title = source.slice(0, 50)
     return title.length < source.length ? `${title}...` : title
@@ -937,17 +939,18 @@ export class ConversationService {
     const validatedId = this.validateConversationId(conversationId)
     const messageId = this.generateMessageId()
     const now = Date.now()
+    const storedFirstMessage = await this.materializeInlineDataImagesInContent(validatedId, firstMessage)
 
     const message: ConversationMessage = {
       id: messageId,
       role,
-      content: firstMessage,
+      content: storedFirstMessage,
       timestamp: now,
     }
 
     const conversation: Conversation = {
       id: validatedId,
-      title: this.generateConversationTitle(firstMessage),
+      title: this.generateConversationTitle(storedFirstMessage),
       createdAt: now,
       updatedAt: now,
       messages: [message],
