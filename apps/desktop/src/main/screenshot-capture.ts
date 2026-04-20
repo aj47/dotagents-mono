@@ -9,6 +9,8 @@ export type ScreenRegionCapture = {
   dataUrl: string
 }
 
+export const MAX_SCREENSHOT_CAPTURE_SIZE_BYTES = 8 * 1024 * 1024
+
 function execFileAsync(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     execFile(command, args, (error) => {
@@ -49,6 +51,9 @@ export async function captureSelectedScreenRegion(): Promise<ScreenRegionCapture
     const buffer = await fs.promises.readFile(filePath)
     if (buffer.length === 0) {
       return null
+    }
+    if (buffer.length > MAX_SCREENSHOT_CAPTURE_SIZE_BYTES) {
+      throw new Error(`Screen selection is too large (${buffer.length} bytes). Try selecting a smaller area.`)
     }
 
     return {
