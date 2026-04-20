@@ -229,7 +229,7 @@ export class ConversationService {
     let cleanedMessage = sanitizeMessageContentForDisplay(firstMessage)
       .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
       .trim()
-    const source = cleanedMessage || firstMessage.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").trim()
+    const source = cleanedMessage || firstMessage.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").trim() || "Image"
     // Generate a title from the first message (first 50 characters)
     const title = source.slice(0, 50)
     return title.length < source.length ? `${title}...` : title

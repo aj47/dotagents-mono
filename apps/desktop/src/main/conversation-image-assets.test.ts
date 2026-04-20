@@ -65,6 +65,19 @@ describe("conversation image assets", () => {
     expect(conversation.messages[0].content).not.toContain("data:image")
   })
 
+  it("uses a non-empty title for image-only first messages without alt text", async () => {
+    const { service } = await setupConversationImageAssetTest()
+    const base64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64")
+
+    const conversation = await service.createConversationWithId(
+      "conv_empty_alt_image_title_test",
+      `![](data:image/png;base64,${base64})`,
+      "user",
+    )
+
+    expect(conversation.title).toBe("Image")
+  })
+
   it("uses independent inline image matching for concurrent materialization calls", async () => {
     const { service } = await setupConversationImageAssetTest()
     const pngBase64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64")
