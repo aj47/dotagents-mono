@@ -4,6 +4,7 @@ import {
   getToolCallsSummary,
   getToolCallPreview,
   getToolResultsSummary,
+  getToolArgumentEntries,
   formatToolArguments,
   formatArgumentsPreview,
   RESPOND_TO_USER_TOOL,
@@ -67,27 +68,27 @@ describe('getToolCallsSummary', () => {
     expect(getToolCallsSummary([])).toBe('')
   })
 
-  it('returns human-readable previews', () => {
+  it('returns tool-name-only previews', () => {
     const calls = [
       { name: 'execute_command', arguments: { command: 'pnpm test' } },
       { name: 'read_file', arguments: { path: 'apps/desktop/src/main.ts' } },
     ]
-    expect(getToolCallsSummary(calls)).toBe('🔧 pnpm test, Read apps/desktop/src/main.ts')
+    expect(getToolCallsSummary(calls)).toBe('🔧 execute_command, read_file')
   })
 })
 
 describe('getToolCallPreview', () => {
-  it('prefers the shell command for execute_command', () => {
-    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('git status --short')
+  it('returns only the tool name for execute_command', () => {
+    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('execute_command')
   })
 
-  it('formats common structured tool arguments', () => {
-    expect(getToolCallPreview({ name: 'write_file', arguments: { path: 'README.md', content: 'hello' } })).toBe('Write README.md')
-    expect(getToolCallPreview({ name: 'web_search', arguments: { query: 'DotAgents skills' } })).toBe('Search “DotAgents skills”')
+  it('omits common structured tool arguments', () => {
+    expect(getToolCallPreview({ name: 'write_file', arguments: { path: 'README.md', content: 'hello' } })).toBe('write_file')
+    expect(getToolCallPreview({ name: 'web_search', arguments: { query: 'DotAgents skills' } })).toBe('web_search')
   })
 
-  it('falls back to a cleaned-up tool name and compact key arguments', () => {
-    expect(getToolCallPreview({ name: 'custom_tool', arguments: { foo: 'bar', nested: { value: true } } })).toBe('Custom tool — foo: bar, nested: {...}')
+  it('falls back to the raw tool name only', () => {
+    expect(getToolCallPreview({ name: 'custom_tool', arguments: { foo: 'bar', nested: { value: true } } })).toBe('custom_tool')
   })
 })
 
@@ -132,6 +133,24 @@ describe('formatToolArguments', () => {
     const args = { path: '/test' }
     expect(formatToolArguments(args)).toBe('{\n  "path": "/test"\n}')
   })
+
+  it('pretty-prints JSON string arguments', () => {
+    expect(formatToolArguments('{"path":"/test","count":2}')).toBe('{\n  "path": "/test",\n  "count": 2\n}')
+  })
+})
+
+describe('getToolArgumentEntries', () => {
+  it('returns normalized entries for objects', () => {
+    expect(getToolArgumentEntries({ command: 'echo hi' })).toEqual([
+      { key: 'command', value: 'echo hi' },
+    ])
+  })
+
+  it('returns normalized entries for JSON string arguments', () => {
+    expect(getToolArgumentEntries('{"command":"echo hi"}')).toEqual([
+      { key: 'command', value: 'echo hi' },
+    ])
+  })
 })
 
 describe('formatArgumentsPreview', () => {
@@ -143,6 +162,10 @@ describe('formatArgumentsPreview', () => {
   it('returns compact key-value preview', () => {
     const args = { path: '/foo', content: 'Hello' }
     expect(formatArgumentsPreview(args)).toBe('path: /foo, content: Hello')
+  })
+
+  it('returns compact key-value preview for JSON string arguments', () => {
+    expect(formatArgumentsPreview('{"path":"/foo","content":"Hello"}')).toBe('path: /foo, content: Hello')
   })
 
   it('truncates long values', () => {

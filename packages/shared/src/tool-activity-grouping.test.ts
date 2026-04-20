@@ -36,12 +36,12 @@ describe('getToolActivitySummaryLine', () => {
       .toBe('🔧 read_file, write_file')
   })
 
-  it('summarises successful tool results', () => {
-    expect(getToolActivitySummaryLine(toolResultMsg(true))).toBe('✅ 1 result')
+  it('omits successful tool results from collapsed tool-name previews', () => {
+    expect(getToolActivitySummaryLine(toolResultMsg(true))).toBe('')
   })
 
-  it('summarises failed tool results', () => {
-    expect(getToolActivitySummaryLine(toolResultMsg(false))).toBe('⚠️ 1 result')
+  it('omits failed tool results from collapsed tool-name previews', () => {
+    expect(getToolActivitySummaryLine(toolResultMsg(false))).toBe('')
   })
 })
 
@@ -94,7 +94,7 @@ describe('groupToolActivity', () => {
     expect(groups[1].startIndex).toBe(3)
   })
 
-  it('preview shows last N entries for the trailing tool group only', () => {
+  it('preview shows the last N entries for a collapsed tool group', () => {
     const msgs: GroupableMessage[] = [
       toolOnlyAssistant(['step1']),
       toolResultMsg(),
@@ -104,13 +104,10 @@ describe('groupToolActivity', () => {
     ]
     const { groups } = groupToolActivity(msgs)
     expect(groups).toHaveLength(1)
-    expect(groups[0].previewLines).toHaveLength(TOOL_GROUP_PREVIEW_COUNT)
-    // Should be the LAST 3 entries
-    expect(groups[0].previewLines[0]).toContain('step2')
-    expect(groups[0].previewLines[2]).toContain('step3')
+    expect(groups[0].previewLines).toEqual(['🔧 step2', '🔧 step3'])
   })
 
-  it('does not show preview lines once a later assistant response exists', () => {
+  it('keeps preview lines once a later assistant response exists', () => {
     const msgs: GroupableMessage[] = [
       toolOnlyAssistant(['read_file']),
       toolResultMsg(),
@@ -120,10 +117,10 @@ describe('groupToolActivity', () => {
     const { groups } = groupToolActivity(msgs)
 
     expect(groups).toHaveLength(1)
-    expect(groups[0].previewLines).toEqual([])
+    expect(groups[0].previewLines).toEqual(['🔧 read_file'])
   })
 
-  it('only previews the most recent pending tool run when multiple groups exist', () => {
+  it('previews every collapsed tool run when multiple groups exist', () => {
     const msgs: GroupableMessage[] = [
       toolOnlyAssistant(['first']),
       toolResultMsg(),
@@ -136,10 +133,8 @@ describe('groupToolActivity', () => {
     const { groups } = groupToolActivity(msgs)
 
     expect(groups).toHaveLength(2)
-    expect(groups[0].previewLines).toEqual([])
-    expect(groups[1].previewLines).toHaveLength(TOOL_GROUP_PREVIEW_COUNT)
-    expect(groups[1].previewLines[0]).toContain('second-1')
-    expect(groups[1].previewLines[2]).toContain('second-2')
+    expect(groups[0].previewLines).toEqual(['🔧 first'])
+    expect(groups[1].previewLines).toEqual(['🔧 second-1', '🔧 second-2'])
   })
 
   it('does not group assistant messages with real content', () => {

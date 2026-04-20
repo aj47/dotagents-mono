@@ -8,6 +8,11 @@
 import type { AgentUserResponseEvent } from './agent-progress';
 import { ToolCall, ToolResult } from './types';
 
+export type ToolArgumentEntry = {
+  key: string;
+  value: unknown;
+};
+
 const COLLAPSE_THRESHOLD = 200;
 const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
 
@@ -31,7 +36,7 @@ export function shouldCollapseMessage(
 /**
  * Generate a summary of tool calls for collapsed view
  * @param toolCalls Array of tool calls
- * @returns A formatted string showing human-readable tool call previews
+ * @returns A formatted string showing only tool names
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
   if (!toolCalls || toolCalls.length === 0) return '';
@@ -39,73 +44,11 @@ export function getToolCallsSummary(toolCalls: ToolCall[]): string {
 }
 
 /**
- * Generate a compact preview for a single collapsed tool call.
+ * Generate a compact single-token label for a collapsed tool call.
+ * Details belong in expanded tool views, not collapsed rows.
  */
 export function getToolCallPreview(toolCall: ToolCall): string {
-  const args = toolCall.arguments || {};
-  const customPreview = getCustomToolCallPreview(toolCall.name, args);
-  if (customPreview) return customPreview;
-
-  const argsPreview = formatArgumentsPreview(args);
-  const toolName = humanizeToolName(toolCall.name);
-  return argsPreview ? `${toolName} — ${argsPreview}` : toolName;
-}
-
-function getCustomToolCallPreview(toolName: string, args: Record<string, unknown>): string {
-  const normalizedName = toolName.toLowerCase();
-
-  if (normalizedName === 'execute_command' || normalizedName === 'shell' || normalizedName === 'terminal') {
-    return truncatePreview(getStringArg(args, ['command', 'cmd']) || '', 90);
-  }
-
-  if (normalizedName === 'read_file' || normalizedName === 'read') {
-    return formatPathAction('Read', args);
-  }
-
-  if (normalizedName === 'write_file' || normalizedName === 'create_file') {
-    return formatPathAction('Write', args);
-  }
-
-  if (normalizedName === 'edit_file' || normalizedName === 'str_replace' || normalizedName === 'patch_file') {
-    return formatPathAction('Edit', args);
-  }
-
-  if (normalizedName === 'list_directory' || normalizedName === 'list_files') {
-    return formatPathAction('List', args);
-  }
-
-  if (normalizedName.includes('search') || normalizedName === 'grep') {
-    const query = getStringArg(args, ['query', 'pattern', 'text']);
-    if (query) return `Search “${truncatePreview(query, 70)}”`;
-  }
-
-  const url = getStringArg(args, ['url', 'uri']);
-  if (url && (normalizedName.includes('fetch') || normalizedName.includes('web') || normalizedName.includes('browser'))) {
-    return truncatePreview(url, 90);
-  }
-
-  return '';
-}
-
-function formatPathAction(action: string, args: Record<string, unknown>): string {
-  const pathValue = getStringArg(args, ['path', 'file', 'filename', 'filePath', 'targetPath']);
-  return pathValue ? `${action} ${truncatePreview(pathValue, 80)}` : '';
-}
-
-function getStringArg(args: Record<string, unknown>, keys: string[]): string | undefined {
-  for (const key of keys) {
-    const value = args[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return undefined;
-}
-
-function humanizeToolName(name: string): string {
-  return name
-    .replace(/[:_.-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^./, char => char.toUpperCase()) || 'Tool';
+  return toolCall.name?.trim() || 'tool';
 }
 
 /**
@@ -286,12 +229,51 @@ function truncatePreview(text: string, maxLength: number): string {
  * @returns Formatted JSON string with 2-space indentation
  */
 export function formatToolArguments(args: unknown): string {
-  if (!args) return '';
+  if (args === null || args === undefined) return '';
+  const normalizedArgs = parseJsonStringIfPossible(args);
   try {
-    return JSON.stringify(args, null, 2);
+    if (typeof normalizedArgs === 'string') return normalizedArgs;
+    return JSON.stringify(normalizedArgs, null, 2);
   } catch {
     return String(args);
   }
+}
+
+function parseJsonStringIfPossible(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+
+  const trimmed = value.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return value;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeArgumentsRecord(args: unknown): Record<string, unknown> {
+  return normalizeToolArguments(args) ?? {};
+}
+
+/**
+ * Normalize tool arguments into an object suitable for field-by-field rendering.
+ * Accepts either an object or a JSON string containing an object.
+ */
+export function normalizeToolArguments(args: unknown): Record<string, unknown> | null {
+  const normalizedArgs = parseJsonStringIfPossible(args);
+  if (!normalizedArgs || typeof normalizedArgs !== 'object' || Array.isArray(normalizedArgs)) {
+    return null;
+  }
+  return normalizedArgs as Record<string, unknown>;
+}
+
+/**
+ * Return normalized tool argument entries in insertion order for UI renderers.
+ */
+export function getToolArgumentEntries(args: unknown): ToolArgumentEntry[] {
+  const normalizedArgs = normalizeToolArguments(args);
+  return normalizedArgs ? Object.entries(normalizedArgs).map(([key, value]) => ({ key, value })) : [];
 }
 
 /**
@@ -301,8 +283,9 @@ export function formatToolArguments(args: unknown): string {
  * @returns A compact preview string like "path: /foo/bar, content: Hello..."
  */
 export function formatArgumentsPreview(args: unknown): string {
-  if (!args || typeof args !== 'object') return '';
-  const entries = Object.entries(args as Record<string, unknown>);
+  const normalizedArgs = normalizeToolArguments(args);
+  if (!normalizedArgs) return '';
+  const entries = Object.entries(normalizedArgs);
   if (entries.length === 0) return '';
 
   const preview = entries.slice(0, 3).map(([key, value]) => {
@@ -310,7 +293,7 @@ export function formatArgumentsPreview(args: unknown): string {
     if (typeof value === 'string') {
       displayValue = value.length > 30 ? value.slice(0, 30) + '...' : value;
     } else if (typeof value === 'object') {
-      displayValue = Array.isArray(value) ? `[${value.length} items]` : '{...}';
+      displayValue = value === null ? 'null' : Array.isArray(value) ? `[${value.length} items]` : '{...}';
     } else {
       displayValue = String(value);
     }

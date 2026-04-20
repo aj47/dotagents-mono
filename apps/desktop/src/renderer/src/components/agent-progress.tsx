@@ -22,7 +22,11 @@ import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
   type AgentUserResponseEvent,
   extractRespondToUserResponseEvents,
+  formatArgumentsPreview,
+  formatToolArguments,
   getAgentConversationStateLabel,
+  getToolArgumentEntries,
+  getToolCallPreview,
   getToolResultsSummary,
   normalizeAgentConversationState,
   TOOL_GROUP_PREVIEW_COUNT,
@@ -126,9 +130,92 @@ type DisplayItem =
   | { kind: "tool_activity_group"; id: string; data: {
       /** The original DisplayItems that were collapsed into this group. */
       items: DisplayItem[]
-      /** Short single-line preview strings for the trailing pending tool group only. */
+      /** Short single-line preview strings for the collapsed tool group. */
       previewLines: string[]
     } }
+
+const formatStructuredPayloadValue = (value: unknown): string => {
+  if (typeof value === "string") return value
+  if (value === undefined) return "undefined"
+  try {
+    const formatted = JSON.stringify(value, null, 2)
+    return formatted ?? String(value)
+  } catch {
+    return String(value)
+  }
+}
+
+const getPayloadValueType = (value: unknown): string => {
+  if (Array.isArray(value)) return `array · ${value.length}`
+  if (value === null) return "null"
+  return typeof value
+}
+
+const StructuredToolPayload: React.FC<{
+  payload: unknown
+  variant?: "default" | "approval"
+  maxHeightClassName?: string
+}> = ({ payload, variant = "default", maxHeightClassName = "max-h-48" }) => {
+  const entries = getToolArgumentEntries(payload)
+  const formattedFallback = entries.length === 0 ? formatToolArguments(payload) : ""
+  const isApproval = variant === "approval"
+
+  if (entries.length === 0) {
+    if (!formattedFallback) return null
+    return (
+      <pre className={cn(
+        "max-w-full overflow-x-auto overflow-y-auto rounded p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+        maxHeightClassName,
+        isApproval
+          ? "bg-amber-100/70 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
+          : "bg-muted/40 text-foreground",
+      )}>
+        {formattedFallback}
+      </pre>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {entries.map(({ key, value }) => {
+        const text = formatStructuredPayloadValue(value)
+        const isBlock = typeof value === "object" || text.includes("\n") || text.length > 96
+        return (
+          <div
+            key={key}
+            className={cn(
+              "overflow-hidden rounded-md border",
+              isApproval
+                ? "border-amber-200/70 bg-amber-100/30 dark:border-amber-800/60 dark:bg-amber-900/15"
+                : "border-border/40 bg-background/40 dark:bg-muted/20",
+            )}
+          >
+            <div className={cn(
+              "flex items-center justify-between gap-2 border-b px-2 py-1",
+              isApproval ? "border-amber-200/60 dark:border-amber-800/50" : "border-border/30",
+            )}>
+              <span className="min-w-0 truncate font-mono text-[10px] font-semibold">{key}</span>
+              <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{getPayloadValueType(value)}</span>
+            </div>
+            {isBlock ? (
+              <pre className={cn(
+                "max-w-full overflow-x-auto overflow-y-auto p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+                maxHeightClassName,
+                isApproval ? "text-amber-950 dark:text-amber-100" : "text-foreground",
+              )}>
+                {text}
+              </pre>
+            ) : (
+              <div className="px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words text-foreground/90">
+                {text}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function isCompletionControlTool(toolName: string): boolean {
   return toolName === RESPOND_TO_USER_TOOL || toolName === MARK_WORK_COMPLETE_TOOL
@@ -572,9 +659,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                           <div className="mb-1 text-xs font-medium opacity-70">
                             Parameters:
                           </div>
-                          <pre className="rounded bg-muted/50 p-2 overflow-auto text-xs whitespace-pre-wrap max-h-80 scrollbar-thin">
-                            {JSON.stringify(toolCall.arguments, null, 2)}
-                          </pre>
+                          <StructuredToolPayload payload={toolCall.arguments} maxHeightClassName="max-h-80" />
                         </div>
                       )}
                     </div>
@@ -773,38 +858,6 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.branchMessageIndex === next.branchMessageIndex
 ))
 
-// Helper to extract execute_command display info
-function getExecuteCommandDisplay(call: { name: string; arguments: any }, result?: { success: boolean; content: string; error?: string }) {
-  if (call.name !== "execute_command") return null
-
-  const command = typeof call.arguments?.command === "string" ? call.arguments.command : null
-  if (!command) return null
-
-  let outputPreview: string | null = null
-  if (result?.content) {
-    try {
-      const parsed = JSON.parse(result.content)
-      const stdout = parsed.stdout || ""
-      const stderr = parsed.stderr || ""
-      const output = stdout || stderr || parsed.error || ""
-      if (output) {
-        // Take first meaningful line, trim whitespace
-        const firstLine = output.split("\n").map((l: string) => l.trim()).filter(Boolean)[0] || ""
-        outputPreview = firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine
-      }
-    } catch {
-      // not JSON, use raw content
-      const firstLine = result.content.split("\n").map((l: string) => l.trim()).filter(Boolean)[0] || ""
-      outputPreview = firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine
-    }
-  }
-
-  // Truncate command for display
-  const displayCommand = command.length > 60 ? command.slice(0, 57) + "…" : command
-
-  return { displayCommand, outputPreview }
-}
-
 type CompactToolExecutionCall = { name: string; arguments: any }
 type CompactToolExecutionResult = { success: boolean; content: string; error?: string } | undefined
 
@@ -851,8 +904,7 @@ const CompactToolExecutionList: React.FC<{
         {toolCallEntries.map(({ call, result }, idx) => {
           const callIsPending = !result
           const callSuccess = result?.success
-          const callResultSummary = result ? getToolResultsSummary([result]) : null
-          const execCmdDisplay = getExecuteCommandDisplay(call, result)
+          const toolPreview = getToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
 
           return (
             <div key={idx}>
@@ -868,39 +920,18 @@ const CompactToolExecutionList: React.FC<{
                 )}
                 onClick={onToggleDetails}
               >
-                {execCmdDisplay ? (
-                  <>
-                    <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
-                    <span className="shrink-0 text-[10px] opacity-60">
-                      {callIsPending ? (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      ) : callSuccess ? (
-                        <Check className="h-2.5 w-2.5" />
-                      ) : (
-                        <XCircle className="h-2.5 w-2.5" />
-                      )}
-                    </span>
-                    {!detailsExpanded && execCmdDisplay.outputPreview && (
-                      <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
-                    <span className="shrink-0 text-[10px] opacity-60">
-                      {callIsPending ? (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      ) : callSuccess ? (
-                        <Check className="h-2.5 w-2.5" />
-                      ) : (
-                        <XCircle className="h-2.5 w-2.5" />
-                      )}
-                    </span>
-                    {!detailsExpanded && callResultSummary && (
-                      <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
-                    )}
-                  </>
-                )}
+                <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>
+                  {toolPreview}
+                </span>
+                <span className="shrink-0 text-[10px] opacity-60">
+                  {callIsPending ? (
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  ) : callSuccess ? (
+                    <Check className="h-2.5 w-2.5" />
+                  ) : (
+                    <XCircle className="h-2.5 w-2.5" />
+                  )}
+                </span>
                 <ChevronRight className={cn(
                   "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
                   detailsExpanded && "rotate-90"
@@ -915,19 +946,18 @@ const CompactToolExecutionList: React.FC<{
         <div className={detailsClassName}>
           {toolCallEntries.map(({ call, result }, idx) => {
             const callIsPending = !result
+            const formattedArguments = formatToolArguments(call.arguments)
             return (
               <div key={idx} className="text-[10px] space-y-1">
-                {call.arguments && (
+                {formattedArguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="min-w-0 font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
+                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, formattedArguments)}>
                         <Copy className="h-2 w-2 mr-0.5" /> Copy
                       </Button>
                     </div>
-                    <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
-                      {JSON.stringify(call.arguments, null, 2)}
-                    </pre>
+                    <StructuredToolPayload payload={call.arguments} maxHeightClassName="max-h-52" />
                   </>
                 )}
                 {result && (
@@ -947,12 +977,7 @@ const CompactToolExecutionList: React.FC<{
                       </pre>
                     )}
                     {result.content && (
-                      <pre className={cn(
-                        "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
-                        result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
-                      )}>
-                        {result.content}
-                      </pre>
+                      <StructuredToolPayload payload={result.content} maxHeightClassName="max-h-52" />
                     )}
                     {!result.error && !result.content && (
                       <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
@@ -1100,34 +1125,9 @@ const AssistantWithToolsBubble: React.FC<{
   )
 }
 
-// Helper function to format tool arguments for preview
-const formatArgumentsPreview = (args: any): string => {
-  if (!args || typeof args !== 'object') return ''
-  const entries = Object.entries(args)
-  if (entries.length === 0) return ''
-
-  // Take first 3 key parameters
-  const preview = entries.slice(0, 3).map(([key, value]) => {
-    let displayValue: string
-    if (typeof value === 'string') {
-      displayValue = value.length > 30 ? value.slice(0, 30) + '...' : value
-    } else if (typeof value === 'object') {
-      displayValue = Array.isArray(value) ? `[${value.length} items]` : '{...}'
-    } else {
-      displayValue = String(value)
-    }
-    return `${key}: ${displayValue}`
-  }).join(', ')
-
-  if (entries.length > 3) {
-    return preview + ` (+${entries.length - 3} more)`
-  }
-  return preview
-}
-
 // Collapsed group of consecutive tool-call activity.
-// Only the trailing in-flight group shows tool preview lines; historical
-// groups collapse to a count-only header.
+// Each collapsed group shows compact tool preview lines so historical session
+// views still communicate which tools were called without expansion.
 const ToolActivityGroupBubble: React.FC<{
   group: {
     items: DisplayItem[]
@@ -1290,9 +1290,9 @@ const ToolApprovalBubble: React.FC<{
             {showArgs ? "Hide" : "View"} full arguments
           </button>
           {showArgs && (
-            <pre className="mt-1.5 max-h-32 max-w-full overflow-x-auto rounded bg-amber-100/70 p-2 text-xs text-amber-900 whitespace-pre-wrap break-words dark:bg-amber-900/40 dark:text-amber-100">
-              {JSON.stringify(approval.arguments, null, 2)}
-            </pre>
+            <div className="mt-1.5">
+              <StructuredToolPayload payload={approval.arguments} variant="approval" maxHeightClassName="max-h-48" />
+            </div>
           )}
         </div>
 
@@ -3191,7 +3191,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const displayItems = useMemo<DisplayItem[]>(() => {
     const generateToolExecutionId = (calls: Array<{ name: string; arguments: any }>, timestamp: number) => {
       const signature = calls
-        .map((call) => `${call.name}:${call.arguments ? JSON.stringify(call.arguments).substring(0, 50) : ""}`)
+        .map((call) => `${call.name}:${formatToolArguments(call.arguments).substring(0, 50)}`)
         .join("|") + `@${timestamp}`
       let hash = 0
       for (let i = 0; i < signature.length; i++) {
@@ -3390,23 +3390,21 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
       const previewLines: string[] = []
-      const shouldShowPreviewLines = runEnd === sortedItems.length - 1
-
-      if (shouldShowPreviewLines) {
-        const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
-        for (let j = previewStart; j < runItems.length; j++) {
-          const it = runItems[j]
-          if (it.kind === "assistant_with_tools") {
-            previewLines.push(getToolActivitySummaryLine({
-              role: "assistant",
-              toolCalls: it.data.calls,
-            }))
-          } else if (it.kind === "tool_execution") {
-            previewLines.push(getToolActivitySummaryLine({
-              role: "tool",
-              toolResults: it.data.results,
-            }))
-          }
+      const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
+      for (let j = previewStart; j < runItems.length; j++) {
+        const it = runItems[j]
+        if (it.kind === "assistant_with_tools") {
+          const line = getToolActivitySummaryLine({
+            role: "assistant",
+            toolCalls: it.data.calls,
+          })
+          if (line) previewLines.push(line)
+        } else if (it.kind === "tool_execution") {
+          const line = getToolActivitySummaryLine({
+            role: "tool",
+            toolResults: it.data.results,
+          })
+          if (line) previewLines.push(line)
         }
       }
       grouped.push({

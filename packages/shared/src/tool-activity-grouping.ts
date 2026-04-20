@@ -11,9 +11,8 @@
  * - User messages are NEVER grouped.
  * - User-visible final assistant responses (including respond_to_user output)
  *   are NEVER grouped — they stay rendered normally.
- * - Only the trailing tool-activity group (while waiting for a follow-up
- *   response) gets collapsed preview lines. Historical groups collapse to a
- *   count-only header.
+ * - Collapsed tool-activity groups include compact preview lines so users can
+ *   see which tools were called without expanding the group.
  */
 
 import { RESPOND_TO_USER_TOOL, isToolOnlyMessage, getToolCallsSummary } from './chat-utils'
@@ -41,8 +40,8 @@ export interface ToolActivityGroup {
   /**
    * Collapsed preview lines — at most {@link TOOL_GROUP_PREVIEW_COUNT} entries,
    * taken from the *end* of the group (most recent activity).
-   * Present only for the trailing tool-activity group while a follow-up
-   * response has not been received yet.
+   * Present for every collapsed group so historical session views still show
+   * which tools were called without expanding the group.
    */
   previewLines: string[]
 }
@@ -110,10 +109,7 @@ export function getToolActivitySummaryLine(message: GroupableMessage): string {
   }
 
   if (message.toolResults?.length) {
-    const allOk = message.toolResults.every((r) => r.success)
-    return allOk
-      ? `✅ ${message.toolResults.length} result${message.toolResults.length === 1 ? '' : 's'}`
-      : `⚠️ ${message.toolResults.length} result${message.toolResults.length === 1 ? '' : 's'}`
+    return ''
   }
 
   // Fallback: role label
@@ -152,16 +148,10 @@ export function groupToolActivity(messages: GroupableMessage[]): {
       return
     }
     const previewLines: string[] = []
-    const shouldPreviewTrailingRun = runEnd === messages.length - 1
-
-    // Only preview the latest tool run while we're still waiting for whatever
-    // comes after it. Once a later response is present, historical groups stay
-    // collapsed but do not show tool-call preview lines.
-    if (shouldPreviewTrailingRun) {
-      const previewStartIdx = Math.max(runStart, runEnd - TOOL_GROUP_PREVIEW_COUNT + 1)
-      for (let i = previewStartIdx; i <= runEnd; i++) {
-        previewLines.push(getToolActivitySummaryLine(messages[i]))
-      }
+    const previewStartIdx = Math.max(runStart, runEnd - TOOL_GROUP_PREVIEW_COUNT + 1)
+    for (let i = previewStartIdx; i <= runEnd; i++) {
+      const line = getToolActivitySummaryLine(messages[i])
+      if (line) previewLines.push(line)
     }
     const group: ToolActivityGroup = {
       startIndex: runStart,
