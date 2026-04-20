@@ -157,7 +157,7 @@ export function groupToolActivity(messages: GroupableMessage[]): {
       startIndex: runStart,
       endIndex: runEnd,
       count,
-      previewLines,
+      previewLines: previewLines.length > 0 ? [previewLines.join(', ')] : [],
     }
     groups.push(group)
     for (let i = runStart; i <= runEnd; i++) {

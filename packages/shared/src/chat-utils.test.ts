@@ -73,7 +73,7 @@ describe('getToolCallsSummary', () => {
       { name: 'execute_command', arguments: { command: 'pnpm test' } },
       { name: 'read_file', arguments: { path: 'apps/desktop/src/main.ts' } },
     ]
-    expect(getToolCallsSummary(calls)).toBe('🔧 execute_command, read_file')
+    expect(getToolCallsSummary(calls)).toBe('execute_command, read_file')
   })
 })
 
@@ -89,6 +89,10 @@ describe('getToolCallPreview', () => {
 
   it('falls back to the raw tool name only', () => {
     expect(getToolCallPreview({ name: 'custom_tool', arguments: { foo: 'bar', nested: { value: true } } })).toBe('custom_tool')
+  })
+
+  it('sanitizes whitespace so collapsed labels stay one word', () => {
+    expect(getToolCallPreview({ name: 'custom tool\nname', arguments: {} })).toBe('custom_tool_name')
   })
 })
 

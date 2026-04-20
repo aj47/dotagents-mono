@@ -33,7 +33,7 @@ const respondToUserMsg = (): GroupableMessage => ({
 describe('getToolActivitySummaryLine', () => {
   it('summarises tool calls', () => {
     expect(getToolActivitySummaryLine(toolOnlyAssistant(['read_file', 'write_file'])))
-      .toBe('🔧 read_file, write_file')
+      .toBe('read_file, write_file')
   })
 
   it('omits successful tool results from collapsed tool-name previews', () => {
@@ -104,7 +104,7 @@ describe('groupToolActivity', () => {
     ]
     const { groups } = groupToolActivity(msgs)
     expect(groups).toHaveLength(1)
-    expect(groups[0].previewLines).toEqual(['🔧 step2', '🔧 step3'])
+    expect(groups[0].previewLines).toEqual(['step2, step3'])
   })
 
   it('keeps preview lines once a later assistant response exists', () => {
@@ -117,7 +117,7 @@ describe('groupToolActivity', () => {
     const { groups } = groupToolActivity(msgs)
 
     expect(groups).toHaveLength(1)
-    expect(groups[0].previewLines).toEqual(['🔧 read_file'])
+    expect(groups[0].previewLines).toEqual(['read_file'])
   })
 
   it('previews every collapsed tool run when multiple groups exist', () => {
@@ -133,8 +133,8 @@ describe('groupToolActivity', () => {
     const { groups } = groupToolActivity(msgs)
 
     expect(groups).toHaveLength(2)
-    expect(groups[0].previewLines).toEqual(['🔧 first'])
-    expect(groups[1].previewLines).toEqual(['🔧 second-1', '🔧 second-2'])
+    expect(groups[0].previewLines).toEqual(['first'])
+    expect(groups[1].previewLines).toEqual(['second-1, second-2'])
   })
 
   it('does not group assistant messages with real content', () => {

@@ -910,7 +910,7 @@ const CompactToolExecutionList: React.FC<{
             <div key={idx}>
               <div
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5 rounded text-[11px] cursor-pointer hover:bg-muted/30",
+                  "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30",
                   rowClassName,
                   callIsPending
                     ? "text-blue-600 dark:text-blue-400"
@@ -920,7 +920,7 @@ const CompactToolExecutionList: React.FC<{
                 )}
                 onClick={onToggleDetails}
               >
-                <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={call.name}>
                   {toolPreview}
                 </span>
                 <span className="shrink-0 text-[10px] opacity-60">
@@ -1139,6 +1139,7 @@ const ToolActivityGroupBubble: React.FC<{
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
   const totalCount = group.items.length
+  const collapsedPreviewLine = group.previewLines.join(', ')
 
   return (
     <div className={cn(
@@ -1148,16 +1149,21 @@ const ToolActivityGroupBubble: React.FC<{
     )}>
       {/* Collapsed header */}
       <div
-        className="flex items-center gap-1.5 px-2.5 py-1.5"
+        className="flex min-w-0 items-center gap-1.5 px-2.5 py-1.5"
         onClick={() => !isExpanded && onToggleExpand()}
       >
         <Wrench className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-        <span className="text-[11px] font-medium text-muted-foreground">
+        <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
           {totalCount} tool step{totalCount === 1 ? "" : "s"}
         </span>
+        {!isExpanded && collapsedPreviewLine && (
+          <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-muted-foreground/70">
+            {collapsedPreviewLine}
+          </span>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-          className="ml-auto p-0.5 rounded hover:bg-muted/30 transition-colors"
+          className="ml-auto shrink-0 p-0.5 rounded hover:bg-muted/30 transition-colors"
           aria-label={isExpanded ? "Collapse tool group" : "Expand tool group"}
         >
           {isExpanded ? (
@@ -1167,23 +1173,6 @@ const ToolActivityGroupBubble: React.FC<{
           )}
         </button>
       </div>
-
-      {/* Preview lines (collapsed) */}
-      {!isExpanded && group.previewLines.length > 0 && (
-        <div
-          className="px-2.5 pb-1.5 space-y-0.5 cursor-pointer"
-          onClick={onToggleExpand}
-        >
-          {group.previewLines.map((line, idx) => (
-            <div
-              key={idx}
-              className="truncate text-[10px] text-muted-foreground/70 font-mono"
-            >
-              {line}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Expanded: render all child items */}
       {isExpanded && (
@@ -3416,7 +3405,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines },
+        data: { items: runItems, previewLines: previewLines.length > 0 ? [previewLines.join(', ')] : [] },
       })
       runStart = null
     }

@@ -3154,18 +3154,20 @@ export default function ChatScreen({ route, navigation }: any) {
                       pressed && styles.toolActivityGroupPressed,
                     ]}
                   >
-                    <Text style={styles.toolActivityGroupHeader}>
-                      ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
-                    </Text>
-                    {group.previewLines.map((line, lineIdx) => (
-                      <Text
-                        key={lineIdx}
-                        style={styles.toolActivityGroupPreviewLine}
-                        numberOfLines={1}
-                      >
-                        {line}
+                    <View style={styles.toolActivityGroupHeaderRow}>
+                      <Text style={styles.toolActivityGroupHeader}>
+                        ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
                       </Text>
-                    ))}
+                      {group.previewLines.length > 0 && (
+                        <Text
+                          style={styles.toolActivityGroupPreviewLine}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {group.previewLines.join(', ')}
+                        </Text>
+                      )}
+                    </View>
                   </Pressable>
                 );
               }
@@ -3416,6 +3418,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                       tcError && styles.toolCallCompactNameError,
                                     ]}
                                     numberOfLines={1}
+                                    ellipsizeMode="tail"
                                   >
                                     {toolPreview}
                                   </Text>
@@ -4627,6 +4630,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       gap: 4,
       paddingVertical: 1,
+      overflow: 'hidden',
     },
     toolCallCompactPressed: {
       opacity: 0.7,
@@ -4636,6 +4640,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 10,
       fontWeight: '500',
       flexShrink: 1,
+      minWidth: 0,
       color: theme.colors.mutedForeground,
     },
     toolCallCompactNamePending: {
@@ -4671,18 +4676,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     toolActivityGroupPressed: {
       opacity: 0.7,
     },
+    toolActivityGroupHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      overflow: 'hidden',
+    },
     toolActivityGroupHeader: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       fontWeight: '600',
       color: theme.colors.mutedForeground,
-      marginBottom: 2,
+      flexShrink: 0,
     },
     toolActivityGroupPreviewLine: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       color: theme.colors.mutedForeground,
-      paddingLeft: 8,
+      flexShrink: 1,
+      minWidth: 0,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.xs,

@@ -40,7 +40,7 @@ export function shouldCollapseMessage(
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
   if (!toolCalls || toolCalls.length === 0) return '';
-  return `🔧 ${toolCalls.map(tc => getToolCallPreview(tc)).join(', ')}`;
+  return toolCalls.map(tc => getToolCallPreview(tc)).join(', ');
 }
 
 /**
@@ -48,7 +48,7 @@ export function getToolCallsSummary(toolCalls: ToolCall[]): string {
  * Details belong in expanded tool views, not collapsed rows.
  */
 export function getToolCallPreview(toolCall: ToolCall): string {
-  return toolCall.name?.trim() || 'tool';
+  return toolCall.name?.trim().replace(/\s+/g, '_') || 'tool';
 }
 
 /**
