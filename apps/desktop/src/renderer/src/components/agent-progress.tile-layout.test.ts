@@ -20,7 +20,7 @@ describe("agent progress tile layout", () => {
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
-    expect(agentProgressSource).toContain('className="min-w-0 max-w-full truncate text-[10px]"')
+    expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} compact />')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
@@ -148,6 +148,24 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain(
       'overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]'
     )
+  })
+
+  it("keeps structured tool payloads compact and collapses payloads over two lines", () => {
+    expect(agentProgressSource).toContain('const COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD = 2')
+    expect(agentProgressSource).toContain('lineCount > COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD')
+    expect(agentProgressSource).toContain('<details className="group"')
+    expect(agentProgressSource).toContain('const StructuredPayloadTree: React.FC')
+    expect(agentProgressSource).toContain('getStructuredPayloadChildEntries(value.value)')
+    expect(agentProgressSource).toContain('title={value.compactText}>{value.compactText}</span>')
+    expect(agentProgressSource).not.toContain('{value.expandedText}\n        </pre>')
+  })
+
+  it("keeps the session model visible and clickable as a picker", () => {
+    expect(agentProgressSource).toContain('const SessionModelPicker: React.FC')
+    expect(agentProgressSource).toContain('aria-label="Change agent model"')
+    expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config, providerId, modelId)')
+    expect(agentProgressSource).toContain('{modelInfo && (')
+    expect(agentProgressSource).toContain('{(profileName || modelInfo || contextInfo || !isComplete) && (')
   })
 
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {

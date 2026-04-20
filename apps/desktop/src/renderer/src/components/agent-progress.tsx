@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
-import { useConfigQuery, queryClient } from "@renderer/lib/queries"
+import { useAvailableModelsQuery, useConfigQuery, queryClient } from "@renderer/lib/queries"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { logUI, logExpand } from "@renderer/lib/debug"
 import { useNavigate } from "react-router-dom"
@@ -32,6 +33,8 @@ import {
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
   getToolActivitySummaryLine,
+  getBuiltInModelPresets,
+  DEFAULT_MODEL_PRESET_ID,
 } from "@dotagents/shared"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
@@ -134,14 +137,223 @@ type DisplayItem =
       previewLines: string[]
     } }
 
-const formatStructuredPayloadValue = (value: unknown): string => {
+type ChatProviderId = NonNullable<Config["agentProviderId"]>
+
+type SessionModelInfo = NonNullable<AgentProgressUpdate["modelInfo"]>
+
+const AGENT_MODEL_FALLBACKS: Record<ChatProviderId, string> = {
+  openai: "gpt-4.1-mini",
+  groq: "openai/gpt-oss-120b",
+  gemini: "gemini-2.5-flash",
+  "chatgpt-web": "gpt-5.4-mini",
+}
+
+const getAgentProviderId = (config: Config | undefined): ChatProviderId => (
+  config?.agentProviderId || config?.mcpToolsProviderId || "openai"
+)
+
+const getMergedModelPresets = (config: Config | undefined): ModelPreset[] => {
+  const builtIn = getBuiltInModelPresets()
+  const saved = config?.modelPresets || []
+  const mergedBuiltIn = builtIn.map((preset) => {
+    const savedPreset = saved.find((candidate) => candidate.id === preset.id)
+    if (!savedPreset) {
+      if (preset.id === DEFAULT_MODEL_PRESET_ID && config?.openaiApiKey) {
+        return { ...preset, apiKey: config.openaiApiKey }
+      }
+      return preset
+    }
+    const merged = { ...preset, ...savedPreset }
+    if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && config?.openaiApiKey) {
+      merged.apiKey = config.openaiApiKey
+    }
+    return merged
+  })
+  return [...mergedBuiltIn, ...saved.filter((preset) => !preset.isBuiltIn)]
+}
+
+const getActiveModelPreset = (config: Config | undefined): ModelPreset | undefined => {
+  const currentPresetId = config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
+  return getMergedModelPresets(config).find((preset) => preset.id === currentPresetId)
+}
+
+const getConfiguredAgentModel = (config: Config | undefined, providerId: ChatProviderId): string => {
+  if (providerId === "openai") {
+    const activePreset = getActiveModelPreset(config)
+    return config?.agentOpenaiModel || config?.mcpToolsOpenaiModel || activePreset?.agentModel || activePreset?.mcpToolsModel || AGENT_MODEL_FALLBACKS.openai
+  }
+  if (providerId === "groq") return config?.agentGroqModel || config?.mcpToolsGroqModel || AGENT_MODEL_FALLBACKS.groq
+  if (providerId === "gemini") return config?.agentGeminiModel || config?.mcpToolsGeminiModel || AGENT_MODEL_FALLBACKS.gemini
+  return config?.agentChatgptWebModel || config?.mcpToolsChatgptWebModel || AGENT_MODEL_FALLBACKS["chatgpt-web"]
+}
+
+const getModelDisplayName = (model: string): string => model.split("/").pop() || model
+
+const buildAgentModelConfigUpdates = (config: Config, providerId: ChatProviderId, modelId: string): Partial<Config> => {
+  if (providerId === "openai") {
+    const currentPresetId = config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
+    const existingPresets = config.modelPresets || []
+    const existingPreset = existingPresets.find((preset) => preset.id === currentPresetId)
+    const builtInPreset = getBuiltInModelPresets().find((preset) => preset.id === currentPresetId)
+    const presetBase = existingPreset || builtInPreset
+    const updatedPreset: ModelPreset | undefined = presetBase
+      ? {
+          ...presetBase,
+          apiKey: presetBase.apiKey || (currentPresetId === DEFAULT_MODEL_PRESET_ID ? config.openaiApiKey || "" : ""),
+          agentModel: modelId,
+          mcpToolsModel: modelId,
+          updatedAt: Date.now(),
+        }
+      : undefined
+
+    return {
+      agentOpenaiModel: modelId,
+      mcpToolsOpenaiModel: modelId,
+      ...(updatedPreset
+        ? {
+            modelPresets: existingPreset
+              ? existingPresets.map((preset) => preset.id === currentPresetId ? updatedPreset : preset)
+              : [...existingPresets, updatedPreset],
+          }
+        : {}),
+    }
+  }
+
+  if (providerId === "groq") return { agentGroqModel: modelId, mcpToolsGroqModel: modelId }
+  if (providerId === "gemini") return { agentGeminiModel: modelId, mcpToolsGeminiModel: modelId }
+  return { agentChatgptWebModel: modelId, mcpToolsChatgptWebModel: modelId }
+}
+
+const SessionModelPicker: React.FC<{
+  modelInfo?: SessionModelInfo
+  compact?: boolean
+}> = ({ modelInfo, compact = false }) => {
+  const configQuery = useConfigQuery()
+  const config = configQuery.data
+  const providerId = getAgentProviderId(config)
+  const configuredModel = getConfiguredAgentModel(config, providerId)
+  const sessionModel = modelInfo?.model
+  const currentValue = configuredModel || sessionModel || AGENT_MODEL_FALLBACKS[providerId]
+  const providerLabel = modelInfo?.provider || getActiveModelPreset(config)?.name || providerId
+  const modelsQuery = useAvailableModelsQuery(providerId, !!providerId, providerId === "openai" ? config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID : undefined)
+  const modelOptions = useMemo(() => {
+    const options = [...(modelsQuery.data || [])]
+    if (currentValue && !options.some((model) => model.id === currentValue)) {
+      options.unshift({ id: currentValue, name: getModelDisplayName(currentValue) })
+    }
+    return options
+  }, [currentValue, modelsQuery.data])
+
+  const handleModelChange = useCallback(async (modelId: string) => {
+    if (!config || modelId === currentValue) return
+    try {
+      await tipcClient.saveConfig({
+        config: {
+          ...config,
+          ...buildAgentModelConfigUpdates(config, providerId, modelId),
+        },
+      })
+      await queryClient.invalidateQueries({ queryKey: ["config"] })
+      await queryClient.invalidateQueries({ queryKey: ["available-models"] })
+      toast.success("Agent model updated")
+    } catch (error) {
+      console.error("Failed to update agent model:", error)
+      toast.error("Failed to update model")
+    }
+  }, [config, currentValue, providerId])
+
+  if (!currentValue) return null
+
+  return (
+    <Select value={currentValue} onValueChange={handleModelChange} disabled={!config}>
+      <SelectTrigger
+        className={cn(
+          "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
+          compact ? "max-w-[150px] text-[10px]" : "max-w-[170px] text-[10px]",
+        )}
+        title={`Change agent model (${providerLabel}/${currentValue})`}
+        aria-label="Change agent model"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <SelectValue>
+          <span className="block min-w-0 truncate">
+            {providerLabel}/{getModelDisplayName(currentValue)}
+          </span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-[300px] min-w-[260px]" onClick={(event) => event.stopPropagation()}>
+        {modelOptions.map((model) => (
+          <SelectItem key={model.id} value={model.id}>
+            <span className="truncate">{model.name || model.id}</span>
+          </SelectItem>
+        ))}
+        {modelsQuery.isLoading && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            Loading models…
+          </div>
+        )}
+        {modelOptions.length === 0 && (
+          <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+            No models available
+          </div>
+        )}
+      </SelectContent>
+    </Select>
+  )
+}
+
+const COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD = 2
+
+type StructuredPayloadValue = {
+  value: unknown
+  expandedText: string
+  compactText: string
+  lineCount: number
+  isStructured: boolean
+  isBlock: boolean
+  isCollapsible: boolean
+}
+
+const countPayloadLines = (text: string): number => text.split(/\r?\n/).length
+
+const toSingleLinePayloadPreview = (text: string): string => text.replace(/\s+/g, " ").trim()
+
+const parseJsonStringPayload = (value: string): unknown => {
+  const trimmed = value.trim()
+  if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) return value
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return value
+  }
+}
+
+const stringifyStructuredPayload = (value: unknown, space?: number): string => {
   if (typeof value === "string") return value
   if (value === undefined) return "undefined"
   try {
-    const formatted = JSON.stringify(value, null, 2)
+    const formatted = JSON.stringify(value, null, space)
     return formatted ?? String(value)
   } catch {
     return String(value)
+  }
+}
+
+const formatStructuredPayloadValue = (value: unknown, fallbackText?: string): StructuredPayloadValue => {
+  const normalizedValue = typeof value === "string" ? parseJsonStringPayload(value) : value
+  const expandedText = fallbackText ?? stringifyStructuredPayload(normalizedValue, 2)
+  const compactText = toSingleLinePayloadPreview(stringifyStructuredPayload(normalizedValue)) || toSingleLinePayloadPreview(expandedText)
+  const lineCount = countPayloadLines(expandedText)
+  const isStructured = normalizedValue !== null && typeof normalizedValue === "object"
+
+  return {
+    value: normalizedValue,
+    expandedText,
+    compactText,
+    lineCount,
+    isStructured,
+    isBlock: isStructured || expandedText.includes("\n") || expandedText.length > 96,
+    isCollapsible: lineCount > COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD,
   }
 }
 
@@ -151,6 +363,112 @@ const getPayloadValueType = (value: unknown): string => {
   return typeof value
 }
 
+const getStructuredPayloadChildEntries = (value: unknown): Array<{ key: string; label: string; value: unknown }> => {
+  if (Array.isArray(value)) {
+    return value.map((entry, index) => ({ key: String(index), label: `[${index}]`, value: entry }))
+  }
+  if (!value || typeof value !== "object") return []
+  return Object.entries(value as Record<string, unknown>).map(([key, entry]) => ({ key, label: key, value: entry }))
+}
+
+const StructuredPayloadTree: React.FC<{
+  value: StructuredPayloadValue
+  textClassName: string
+  maxHeightClassName: string
+}> = ({ value, textClassName, maxHeightClassName }) => {
+  const childEntries = getStructuredPayloadChildEntries(value.value)
+  if (childEntries.length === 0) {
+    return (
+      <div className={cn("px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words", textClassName)}>
+        {value.compactText}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn("max-w-full overflow-x-auto overflow-y-auto border-t px-2 py-1.5 scrollbar-thin", maxHeightClassName)}>
+      <div className="space-y-1">
+        {childEntries.map((entry) => (
+          <div key={entry.key} className="flex min-w-0 items-start gap-2 rounded border border-border/30 bg-background/30 px-2 py-1">
+            <span className="w-20 shrink-0 truncate font-mono text-[9px] leading-5 opacity-60" title={entry.label}>
+              {entry.label}
+            </span>
+            <div className="min-w-0 flex-1">
+              <StructuredPayloadValueBlock
+                value={formatStructuredPayloadValue(entry.value)}
+                textClassName={textClassName}
+                maxHeightClassName={maxHeightClassName}
+                nested
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const StructuredPayloadValueBlock: React.FC<{
+  value: StructuredPayloadValue
+  textClassName: string
+  maxHeightClassName: string
+  nested?: boolean
+}> = ({ value, textClassName, maxHeightClassName, nested = false }) => {
+  if (value.isCollapsible) {
+    return (
+      <details className="group" onClick={(event) => event.stopPropagation()}>
+        <summary className={cn(
+          "flex cursor-pointer list-none items-center gap-1.5 font-mono text-[10px] leading-relaxed [&::-webkit-details-marker]:hidden",
+          nested ? "py-0.5" : "px-2 py-1.5",
+          textClassName,
+        )}>
+          <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-50 transition-transform group-open:rotate-90" />
+          <span className="min-w-0 flex-1 truncate" title={value.compactText}>{value.compactText}</span>
+          <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{value.lineCount} lines</span>
+        </summary>
+        {value.isStructured ? (
+          <StructuredPayloadTree value={value} maxHeightClassName={maxHeightClassName} textClassName={textClassName} />
+        ) : (
+          <div className={cn(
+            "max-w-full overflow-x-auto overflow-y-auto border-t p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+            maxHeightClassName,
+            textClassName,
+          )}>
+            {value.expandedText}
+          </div>
+        )}
+      </details>
+    )
+  }
+
+  if (value.isStructured) {
+    return (
+      <div className={cn("font-mono text-[10px] leading-relaxed break-words", nested ? "py-0.5" : "px-2 py-1.5", textClassName)}>
+        {value.compactText}
+      </div>
+    )
+  }
+
+  if (value.isBlock) {
+    return (
+      <div className={cn(
+        "max-w-full overflow-x-auto overflow-y-auto font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+        nested ? "py-0.5" : "p-2",
+        maxHeightClassName,
+        textClassName,
+      )}>
+        {value.expandedText}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn("font-mono text-[10px] leading-relaxed break-words", nested ? "py-0.5" : "px-2 py-1.5", textClassName)}>
+      {value.expandedText}
+    </div>
+  )
+}
+
 const StructuredToolPayload: React.FC<{
   payload: unknown
   variant?: "default" | "approval"
@@ -158,7 +476,7 @@ const StructuredToolPayload: React.FC<{
   maxHeightClassName?: string
 }> = ({ payload, variant = "default", tone = "neutral", maxHeightClassName = "max-h-48" }) => {
   const entries = getToolArgumentEntries(payload)
-  const formattedFallback = entries.length === 0 ? formatToolArguments(payload) : ""
+  const formattedFallback = entries.length === 0 ? formatStructuredPayloadValue(payload, formatToolArguments(payload)) : null
   const isApproval = variant === "approval"
   const fallbackToneClass = isApproval
     ? "bg-amber-100/70 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
@@ -188,23 +506,22 @@ const StructuredToolPayload: React.FC<{
       : "text-foreground"
 
   if (entries.length === 0) {
-    if (!formattedFallback) return null
+    if (!formattedFallback?.expandedText) return null
     return (
-      <pre className={cn(
-        "max-w-full overflow-x-auto overflow-y-auto rounded p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
-        maxHeightClassName,
-        fallbackToneClass,
-      )}>
-        {formattedFallback}
-      </pre>
+      <div className={cn("overflow-hidden rounded", fallbackToneClass)} onClick={(event) => event.stopPropagation()}>
+        <StructuredPayloadValueBlock
+          value={formattedFallback}
+          maxHeightClassName={maxHeightClassName}
+          textClassName=""
+        />
+      </div>
     )
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5" onClick={(event) => event.stopPropagation()}>
       {entries.map(({ key, value }) => {
-        const text = formatStructuredPayloadValue(value)
-        const isBlock = typeof value === "object" || text.includes("\n") || text.length > 96
+        const formattedValue = formatStructuredPayloadValue(value)
         return (
           <div
             key={key}
@@ -220,19 +537,11 @@ const StructuredToolPayload: React.FC<{
               <span className="min-w-0 truncate font-mono text-[10px] font-semibold">{key}</span>
               <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{getPayloadValueType(value)}</span>
             </div>
-            {isBlock ? (
-              <pre className={cn(
-                "max-w-full overflow-x-auto overflow-y-auto p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
-                maxHeightClassName,
-                entryTextClass,
-              )}>
-                {text}
-              </pre>
-            ) : (
-              <div className={cn("px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words", entryTextClass)}>
-                {text}
-              </div>
-            )}
+            <StructuredPayloadValueBlock
+              value={formattedValue}
+              maxHeightClassName={maxHeightClassName}
+              textClassName={entryTextClass}
+            />
           </div>
         )
       })}
@@ -4019,8 +4328,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with status info — only show when active, omit when complete to save space */}
-            {!isComplete && (
+            {/* Footer with status/model info — keep model visible even after completion */}
+            {(profileName || modelInfo || contextInfo || !isComplete) && (
               <div
                 className={cn(
                   "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
@@ -4038,12 +4347,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     {modelInfo && (
                       <>
                         {profileName && <span className="text-muted-foreground/50">•</span>}
-                        <span className="min-w-0 max-w-full truncate text-[10px]">
-                          {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
-                        </span>
+                        <SessionModelPicker modelInfo={modelInfo} compact />
                       </>
                     )}
-                    {contextInfo && contextInfo.maxTokens > 0 && (
+                    {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
                       <div className="flex shrink-0 items-center gap-1">
                         <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
                           <div
@@ -4063,7 +4370,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       </div>
                     )}
                   </div>
-                  <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                  {!isComplete && (
+                    <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                  )}
                 </div>
               </div>
             )}
@@ -4149,12 +4458,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             </span>
           )}
           {/* Model and provider info */}
-          {!isComplete && modelInfo && (
+          {modelInfo && (
             <>
               {profileName && <span className="text-muted-foreground/50">•</span>}
-              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[120px]">
-                {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 20)}
-              </span>
+              <SessionModelPicker modelInfo={modelInfo} />
             </>
           )}
           {/* Context fill indicator */}
