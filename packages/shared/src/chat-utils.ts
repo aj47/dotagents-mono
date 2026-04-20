@@ -8,6 +8,11 @@
 import type { AgentUserResponseEvent } from './agent-progress';
 import { ToolCall, ToolResult } from './types';
 
+export type ToolArgumentEntry = {
+  key: string;
+  value: unknown;
+};
+
 const COLLAPSE_THRESHOLD = 200;
 const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
 
@@ -31,11 +36,19 @@ export function shouldCollapseMessage(
 /**
  * Generate a summary of tool calls for collapsed view
  * @param toolCalls Array of tool calls
- * @returns A formatted string showing tool names
+ * @returns A formatted string showing only tool names
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
   if (!toolCalls || toolCalls.length === 0) return '';
-  return `🔧 ${toolCalls.map(tc => tc.name).join(', ')}`;
+  return toolCalls.map(tc => getToolCallPreview(tc)).join(', ');
+}
+
+/**
+ * Generate a compact single-token label for a collapsed tool call.
+ * Details belong in expanded tool views, not collapsed rows.
+ */
+export function getToolCallPreview(toolCall: ToolCall): string {
+  return toolCall.name?.trim().replace(/\s+/g, '_') || 'tool';
 }
 
 /**
@@ -216,12 +229,47 @@ function truncatePreview(text: string, maxLength: number): string {
  * @returns Formatted JSON string with 2-space indentation
  */
 export function formatToolArguments(args: unknown): string {
-  if (!args) return '';
+  if (args === null || args === undefined) return '';
+  const normalizedArgs = parseJsonStringIfPossible(args);
   try {
-    return JSON.stringify(args, null, 2);
+    if (typeof normalizedArgs === 'string') return normalizedArgs;
+    return JSON.stringify(normalizedArgs, null, 2);
   } catch {
     return String(args);
   }
+}
+
+function parseJsonStringIfPossible(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+
+  const trimmed = value.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return value;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Normalize tool arguments into an object suitable for field-by-field rendering.
+ * Accepts either an object or a JSON string containing an object.
+ */
+export function normalizeToolArguments(args: unknown): Record<string, unknown> | null {
+  const normalizedArgs = parseJsonStringIfPossible(args);
+  if (!normalizedArgs || typeof normalizedArgs !== 'object' || Array.isArray(normalizedArgs)) {
+    return null;
+  }
+  return normalizedArgs as Record<string, unknown>;
+}
+
+/**
+ * Return normalized tool argument entries in insertion order for UI renderers.
+ */
+export function getToolArgumentEntries(args: unknown): ToolArgumentEntry[] {
+  const normalizedArgs = normalizeToolArguments(args);
+  return normalizedArgs ? Object.entries(normalizedArgs).map(([key, value]) => ({ key, value })) : [];
 }
 
 /**
@@ -231,16 +279,17 @@ export function formatToolArguments(args: unknown): string {
  * @returns A compact preview string like "path: /foo/bar, content: Hello..."
  */
 export function formatArgumentsPreview(args: unknown): string {
-  if (!args || typeof args !== 'object') return '';
-  const entries = Object.entries(args as Record<string, unknown>);
+  const normalizedArgs = normalizeToolArguments(args);
+  if (!normalizedArgs) return '';
+  const entries = Object.entries(normalizedArgs);
   if (entries.length === 0) return '';
 
   const preview = entries.slice(0, 3).map(([key, value]) => {
     let displayValue: string;
     if (typeof value === 'string') {
-      displayValue = value.length > 30 ? value.slice(0, 30) + '...' : value;
+      displayValue = truncatePreview(value, 30);
     } else if (typeof value === 'object') {
-      displayValue = Array.isArray(value) ? `[${value.length} items]` : '{...}';
+      displayValue = value === null ? 'null' : Array.isArray(value) ? `[${value.length} items]` : '{...}';
     } else {
       displayValue = String(value);
     }

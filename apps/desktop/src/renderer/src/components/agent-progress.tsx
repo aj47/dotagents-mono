@@ -22,7 +22,11 @@ import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
   type AgentUserResponseEvent,
   extractRespondToUserResponseEvents,
+  formatArgumentsPreview,
+  formatToolArguments,
   getAgentConversationStateLabel,
+  getToolArgumentEntries,
+  getToolCallPreview,
   getToolResultsSummary,
   normalizeAgentConversationState,
   TOOL_GROUP_PREVIEW_COUNT,
@@ -126,9 +130,115 @@ type DisplayItem =
   | { kind: "tool_activity_group"; id: string; data: {
       /** The original DisplayItems that were collapsed into this group. */
       items: DisplayItem[]
-      /** Short single-line preview strings for the trailing pending tool group only. */
+      /** Short single-line preview strings for the collapsed tool group. */
       previewLines: string[]
     } }
+
+const formatStructuredPayloadValue = (value: unknown): string => {
+  if (typeof value === "string") return value
+  if (value === undefined) return "undefined"
+  try {
+    const formatted = JSON.stringify(value, null, 2)
+    return formatted ?? String(value)
+  } catch {
+    return String(value)
+  }
+}
+
+const getPayloadValueType = (value: unknown): string => {
+  if (Array.isArray(value)) return `array · ${value.length}`
+  if (value === null) return "null"
+  return typeof value
+}
+
+const StructuredToolPayload: React.FC<{
+  payload: unknown
+  variant?: "default" | "approval"
+  tone?: "neutral" | "success" | "error"
+  maxHeightClassName?: string
+}> = ({ payload, variant = "default", tone = "neutral", maxHeightClassName = "max-h-48" }) => {
+  const entries = getToolArgumentEntries(payload)
+  const formattedFallback = entries.length === 0 ? formatToolArguments(payload) : ""
+  const isApproval = variant === "approval"
+  const fallbackToneClass = isApproval
+    ? "bg-amber-100/70 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
+    : tone === "success"
+      ? "bg-green-50/50 text-foreground dark:bg-green-950/30"
+      : tone === "error"
+        ? "bg-red-50/50 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+        : "bg-muted/40 text-foreground"
+  const entryToneClass = isApproval
+    ? "border-amber-200/70 bg-amber-100/30 dark:border-amber-800/60 dark:bg-amber-900/15"
+    : tone === "success"
+      ? "border-green-200/70 bg-green-50/50 dark:border-green-900/60 dark:bg-green-950/30"
+      : tone === "error"
+        ? "border-red-200/70 bg-red-50/50 dark:border-red-900/60 dark:bg-red-950/30"
+        : "border-border/40 bg-background/40 dark:bg-muted/20"
+  const entryHeaderBorderClass = isApproval
+    ? "border-amber-200/60 dark:border-amber-800/50"
+    : tone === "success"
+      ? "border-green-200/60 dark:border-green-900/50"
+      : tone === "error"
+        ? "border-red-200/60 dark:border-red-900/50"
+        : "border-border/30"
+  const entryTextClass = isApproval
+    ? "text-amber-950 dark:text-amber-100"
+    : tone === "error"
+      ? "text-red-700 dark:text-red-300"
+      : "text-foreground"
+
+  if (entries.length === 0) {
+    if (!formattedFallback) return null
+    return (
+      <pre className={cn(
+        "max-w-full overflow-x-auto overflow-y-auto rounded p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+        maxHeightClassName,
+        fallbackToneClass,
+      )}>
+        {formattedFallback}
+      </pre>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {entries.map(({ key, value }) => {
+        const text = formatStructuredPayloadValue(value)
+        const isBlock = typeof value === "object" || text.includes("\n") || text.length > 96
+        return (
+          <div
+            key={key}
+            className={cn(
+              "overflow-hidden rounded-md border",
+              entryToneClass,
+            )}
+          >
+            <div className={cn(
+              "flex items-center justify-between gap-2 border-b px-2 py-1",
+              entryHeaderBorderClass,
+            )}>
+              <span className="min-w-0 truncate font-mono text-[10px] font-semibold">{key}</span>
+              <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-50">{getPayloadValueType(value)}</span>
+            </div>
+            {isBlock ? (
+              <pre className={cn(
+                "max-w-full overflow-x-auto overflow-y-auto p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-words scrollbar-thin",
+                maxHeightClassName,
+                entryTextClass,
+              )}>
+                {text}
+              </pre>
+            ) : (
+              <div className={cn("px-2 py-1.5 font-mono text-[10px] leading-relaxed break-words", entryTextClass)}>
+                {text}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function isCompletionControlTool(toolName: string): boolean {
   return toolName === RESPOND_TO_USER_TOOL || toolName === MARK_WORK_COMPLETE_TOOL
@@ -572,9 +682,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
                           <div className="mb-1 text-xs font-medium opacity-70">
                             Parameters:
                           </div>
-                          <pre className="rounded bg-muted/50 p-2 overflow-auto text-xs whitespace-pre-wrap max-h-80 scrollbar-thin">
-                            {JSON.stringify(toolCall.arguments, null, 2)}
-                          </pre>
+                          <StructuredToolPayload payload={toolCall.arguments} maxHeightClassName="max-h-80" />
                         </div>
                       )}
                     </div>
@@ -773,38 +881,6 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.branchMessageIndex === next.branchMessageIndex
 ))
 
-// Helper to extract execute_command display info
-function getExecuteCommandDisplay(call: { name: string; arguments: any }, result?: { success: boolean; content: string; error?: string }) {
-  if (call.name !== "execute_command") return null
-
-  const command = typeof call.arguments?.command === "string" ? call.arguments.command : null
-  if (!command) return null
-
-  let outputPreview: string | null = null
-  if (result?.content) {
-    try {
-      const parsed = JSON.parse(result.content)
-      const stdout = parsed.stdout || ""
-      const stderr = parsed.stderr || ""
-      const output = stdout || stderr || parsed.error || ""
-      if (output) {
-        // Take first meaningful line, trim whitespace
-        const firstLine = output.split("\n").map((l: string) => l.trim()).filter(Boolean)[0] || ""
-        outputPreview = firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine
-      }
-    } catch {
-      // not JSON, use raw content
-      const firstLine = result.content.split("\n").map((l: string) => l.trim()).filter(Boolean)[0] || ""
-      outputPreview = firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine
-    }
-  }
-
-  // Truncate command for display
-  const displayCommand = command.length > 60 ? command.slice(0, 57) + "…" : command
-
-  return { displayCommand, outputPreview }
-}
-
 type CompactToolExecutionCall = { name: string; arguments: any }
 type CompactToolExecutionResult = { success: boolean; content: string; error?: string } | undefined
 
@@ -851,14 +927,13 @@ const CompactToolExecutionList: React.FC<{
         {toolCallEntries.map(({ call, result }, idx) => {
           const callIsPending = !result
           const callSuccess = result?.success
-          const callResultSummary = result ? getToolResultsSummary([result]) : null
-          const execCmdDisplay = getExecuteCommandDisplay(call, result)
+          const toolPreview = getToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
 
           return (
             <div key={idx}>
               <div
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5 rounded text-[11px] cursor-pointer hover:bg-muted/30",
+                  "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30",
                   rowClassName,
                   callIsPending
                     ? "text-blue-600 dark:text-blue-400"
@@ -868,39 +943,18 @@ const CompactToolExecutionList: React.FC<{
                 )}
                 onClick={onToggleDetails}
               >
-                {execCmdDisplay ? (
-                  <>
-                    <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
-                    <span className="shrink-0 text-[10px] opacity-60">
-                      {callIsPending ? (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      ) : callSuccess ? (
-                        <Check className="h-2.5 w-2.5" />
-                      ) : (
-                        <XCircle className="h-2.5 w-2.5" />
-                      )}
-                    </span>
-                    {!detailsExpanded && execCmdDisplay.outputPreview && (
-                      <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
-                    <span className="shrink-0 text-[10px] opacity-60">
-                      {callIsPending ? (
-                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      ) : callSuccess ? (
-                        <Check className="h-2.5 w-2.5" />
-                      ) : (
-                        <XCircle className="h-2.5 w-2.5" />
-                      )}
-                    </span>
-                    {!detailsExpanded && callResultSummary && (
-                      <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
-                    )}
-                  </>
-                )}
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={call.name}>
+                  {toolPreview}
+                </span>
+                <span className="shrink-0 text-[10px] opacity-60">
+                  {callIsPending ? (
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  ) : callSuccess ? (
+                    <Check className="h-2.5 w-2.5" />
+                  ) : (
+                    <XCircle className="h-2.5 w-2.5" />
+                  )}
+                </span>
                 <ChevronRight className={cn(
                   "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
                   detailsExpanded && "rotate-90"
@@ -915,19 +969,18 @@ const CompactToolExecutionList: React.FC<{
         <div className={detailsClassName}>
           {toolCallEntries.map(({ call, result }, idx) => {
             const callIsPending = !result
+            const formattedArguments = formatToolArguments(call.arguments)
             return (
               <div key={idx} className="text-[10px] space-y-1">
-                {call.arguments && (
+                {formattedArguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="min-w-0 font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
+                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, formattedArguments)}>
                         <Copy className="h-2 w-2 mr-0.5" /> Copy
                       </Button>
                     </div>
-                    <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
-                      {JSON.stringify(call.arguments, null, 2)}
-                    </pre>
+                    <StructuredToolPayload payload={call.arguments} maxHeightClassName="max-h-52" />
                   </>
                 )}
                 {result && (
@@ -947,12 +1000,7 @@ const CompactToolExecutionList: React.FC<{
                       </pre>
                     )}
                     {result.content && (
-                      <pre className={cn(
-                        "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
-                        result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
-                      )}>
-                        {result.content}
-                      </pre>
+                      <StructuredToolPayload payload={result.content} tone={result.success ? "success" : "error"} maxHeightClassName="max-h-52" />
                     )}
                     {!result.error && !result.content && (
                       <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
@@ -1100,34 +1148,9 @@ const AssistantWithToolsBubble: React.FC<{
   )
 }
 
-// Helper function to format tool arguments for preview
-const formatArgumentsPreview = (args: any): string => {
-  if (!args || typeof args !== 'object') return ''
-  const entries = Object.entries(args)
-  if (entries.length === 0) return ''
-
-  // Take first 3 key parameters
-  const preview = entries.slice(0, 3).map(([key, value]) => {
-    let displayValue: string
-    if (typeof value === 'string') {
-      displayValue = value.length > 30 ? value.slice(0, 30) + '...' : value
-    } else if (typeof value === 'object') {
-      displayValue = Array.isArray(value) ? `[${value.length} items]` : '{...}'
-    } else {
-      displayValue = String(value)
-    }
-    return `${key}: ${displayValue}`
-  }).join(', ')
-
-  if (entries.length > 3) {
-    return preview + ` (+${entries.length - 3} more)`
-  }
-  return preview
-}
-
 // Collapsed group of consecutive tool-call activity.
-// Only the trailing in-flight group shows tool preview lines; historical
-// groups collapse to a count-only header.
+// Each collapsed group shows compact tool preview lines so historical session
+// views still communicate which tools were called without expansion.
 const ToolActivityGroupBubble: React.FC<{
   group: {
     items: DisplayItem[]
@@ -1139,6 +1162,7 @@ const ToolActivityGroupBubble: React.FC<{
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
   const totalCount = group.items.length
+  const collapsedPreviewLine = group.previewLines.join(', ')
 
   return (
     <div className={cn(
@@ -1148,16 +1172,21 @@ const ToolActivityGroupBubble: React.FC<{
     )}>
       {/* Collapsed header */}
       <div
-        className="flex items-center gap-1.5 px-2.5 py-1.5"
+        className="flex min-w-0 items-center gap-1.5 px-2.5 py-1.5"
         onClick={() => !isExpanded && onToggleExpand()}
       >
         <Wrench className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-        <span className="text-[11px] font-medium text-muted-foreground">
+        <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
           {totalCount} tool step{totalCount === 1 ? "" : "s"}
         </span>
+        {!isExpanded && collapsedPreviewLine && (
+          <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-muted-foreground/70">
+            {collapsedPreviewLine}
+          </span>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-          className="ml-auto p-0.5 rounded hover:bg-muted/30 transition-colors"
+          className="ml-auto shrink-0 p-0.5 rounded hover:bg-muted/30 transition-colors"
           aria-label={isExpanded ? "Collapse tool group" : "Expand tool group"}
         >
           {isExpanded ? (
@@ -1167,23 +1196,6 @@ const ToolActivityGroupBubble: React.FC<{
           )}
         </button>
       </div>
-
-      {/* Preview lines (collapsed) */}
-      {!isExpanded && group.previewLines.length > 0 && (
-        <div
-          className="px-2.5 pb-1.5 space-y-0.5 cursor-pointer"
-          onClick={onToggleExpand}
-        >
-          {group.previewLines.map((line, idx) => (
-            <div
-              key={idx}
-              className="truncate text-[10px] text-muted-foreground/70 font-mono"
-            >
-              {line}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Expanded: render all child items */}
       {isExpanded && (
@@ -1290,9 +1302,9 @@ const ToolApprovalBubble: React.FC<{
             {showArgs ? "Hide" : "View"} full arguments
           </button>
           {showArgs && (
-            <pre className="mt-1.5 max-h-32 max-w-full overflow-x-auto rounded bg-amber-100/70 p-2 text-xs text-amber-900 whitespace-pre-wrap break-words dark:bg-amber-900/40 dark:text-amber-100">
-              {JSON.stringify(approval.arguments, null, 2)}
-            </pre>
+            <div className="mt-1.5">
+              <StructuredToolPayload payload={approval.arguments} variant="approval" maxHeightClassName="max-h-48" />
+            </div>
           )}
         </div>
 
@@ -3191,7 +3203,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const displayItems = useMemo<DisplayItem[]>(() => {
     const generateToolExecutionId = (calls: Array<{ name: string; arguments: any }>, timestamp: number) => {
       const signature = calls
-        .map((call) => `${call.name}:${call.arguments ? JSON.stringify(call.arguments).substring(0, 50) : ""}`)
+        .map((call) => `${call.name}:${formatToolArguments(call.arguments).substring(0, 50)}`)
         .join("|") + `@${timestamp}`
       let hash = 0
       for (let i = 0; i < signature.length; i++) {
@@ -3227,8 +3239,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         const next = enrichedMessages[i + 1]
         const results = next && next.role === "tool" && next.toolResults ? next.toolResults : []
         const assistantIndex = ++roleCounters.assistant
-        const execTimestamp = next?.timestamp ?? message.timestamp
-        const toolExecId = generateToolExecutionId(message.toolCalls, execTimestamp)
+        // Keep the display item ID tied to the assistant tool-call message, not
+        // the eventual result timestamp. Otherwise an expanded pending tool row
+        // collapses when its result arrives because the key changes.
+        const toolExecId = generateToolExecutionId(message.toolCalls, message.timestamp)
         const toolCallNames = message.toolCalls.map((call) => call.name)
         const visibleToolCalls = message.toolCalls
           .map((call, index) => ({ call, result: results[index] }))
@@ -3390,29 +3404,30 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
       const previewLines: string[] = []
-      const shouldShowPreviewLines = runEnd === sortedItems.length - 1
-
-      if (shouldShowPreviewLines) {
-        const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
-        for (let j = previewStart; j < runItems.length; j++) {
-          const it = runItems[j]
-          if (it.kind === "assistant_with_tools") {
-            previewLines.push(getToolActivitySummaryLine({
-              role: "assistant",
-              toolCalls: it.data.calls,
-            }))
-          } else if (it.kind === "tool_execution") {
-            previewLines.push(getToolActivitySummaryLine({
-              role: "tool",
-              toolResults: it.data.results,
-            }))
-          }
+      const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
+      for (let j = previewStart; j < runItems.length; j++) {
+        const it = runItems[j]
+        if (it.kind === "assistant_with_tools") {
+          const line = getToolActivitySummaryLine({
+            role: "assistant",
+            toolCalls: it.data.calls,
+          })
+          if (line) previewLines.push(line)
+        } else if (it.kind === "tool_execution") {
+          const line = getToolActivitySummaryLine({
+            role: "tool",
+            toolResults: it.data.results,
+          })
+          if (line) previewLines.push(line)
         }
       }
+      // Prefix the first child ID so the group stays stable as the run grows
+      // without sharing expansion state with any child row.
+      const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`
       grouped.push({
         kind: "tool_activity_group",
-        id: `tool-group-${runStart}-${runEnd}`,
-        data: { items: runItems, previewLines },
+        id: groupId,
+        data: { items: runItems, previewLines: previewLines.length > 0 ? [previewLines.join(', ')] : [] },
       })
       runStart = null
     }
@@ -3431,6 +3446,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+
+  const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
+    const firstChildId = item.data.items[0]?.id
+    return !!firstChildId && expandedItems[firstChildId] === true
+  }, [expandedItems])
+
+  useEffect(() => {
+    setExpandedItems(prev => {
+      let next = prev
+      for (const item of displayItems) {
+        if (item.kind !== "tool_activity_group" || item.id in prev) continue
+        const firstChildId = item.data.items[0]?.id
+        if (!firstChildId || prev[firstChildId] !== true) continue
+        if (next === prev) next = { ...prev }
+        next[item.id] = true
+      }
+      return next
+    })
+  }, [displayItems])
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
@@ -3892,12 +3926,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           />
                         )
                       } else if (item.kind === "tool_activity_group") {
+                        const groupExpanded = itemKey in expandedItems
+                          ? expandedItems[itemKey]
+                          : getToolActivityGroupDefaultExpanded(item)
                         return (
                           <ToolActivityGroupBubble
                             key={itemKey}
                             group={item.data}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                            isExpanded={groupExpanded}
+                            onToggleExpand={() => toggleItemExpansion(itemKey, groupExpanded)}
                             renderItem={(child, childIdx) => {
                               const childKey = child.id || `group-child-${childIdx}`
                               const childExpanded = expandedItems[childKey] ?? false
@@ -4308,12 +4345,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "tool_activity_group") {
+                  const groupExpanded = itemKey in expandedItems
+                    ? expandedItems[itemKey]
+                    : getToolActivityGroupDefaultExpanded(item)
                   return (
                     <ToolActivityGroupBubble
                       key={itemKey}
                       group={item.data}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                      isExpanded={groupExpanded}
+                      onToggleExpand={() => toggleItemExpansion(itemKey, groupExpanded)}
                       renderItem={(child, childIdx) => {
                         const childKey = child.id || `group-child-${childIdx}`
                         const childExpanded = expandedItems[childKey] ?? false

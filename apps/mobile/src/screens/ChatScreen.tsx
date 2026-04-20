@@ -48,7 +48,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
-  formatArgumentsPreview,
+  getToolCallPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
@@ -923,7 +923,8 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
-  // Track which tool-activity groups are expanded (keyed by "startIndex-endIndex")
+  // Track which tool-activity groups are expanded (keyed by startIndex so the
+  // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
@@ -1728,11 +1729,13 @@ export default function ChatScreen({ route, navigation }: any) {
   // Compute tool-activity groups for consecutive connected tool-call messages
   const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
 
-  // Toggle expansion of a tool-activity group (keyed by "startIndex-endIndex")
+  const getToolActivityGroupKey = useCallback((group: ToolActivityGroup) => `${group.startIndex}`, []);
+
+  // Toggle expansion of a tool-activity group using a stable key for the run.
   const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
-    const key = `${group.startIndex}-${group.endIndex}`;
+    const key = getToolActivityGroupKey(group);
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  }, [getToolActivityGroupKey]);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
   // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
@@ -3128,8 +3131,8 @@ export default function ChatScreen({ route, navigation }: any) {
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             if (group) {
-              const groupKey = `${group.startIndex}-${group.endIndex}`;
-              const isGroupExpanded = expandedGroups[groupKey] ?? false;
+              const groupKey = getToolActivityGroupKey(group);
+              const isGroupExpanded = expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false;
 
               // Non-first message in a collapsed group: skip rendering
               if (i !== group.startIndex && !isGroupExpanded) {
@@ -3151,18 +3154,20 @@ export default function ChatScreen({ route, navigation }: any) {
                       pressed && styles.toolActivityGroupPressed,
                     ]}
                   >
-                    <Text style={styles.toolActivityGroupHeader}>
-                      ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
-                    </Text>
-                    {group.previewLines.map((line, lineIdx) => (
-                      <Text
-                        key={lineIdx}
-                        style={styles.toolActivityGroupPreviewLine}
-                        numberOfLines={1}
-                      >
-                        {line}
+                    <View style={styles.toolActivityGroupHeaderRow}>
+                      <Text style={styles.toolActivityGroupHeader}>
+                        ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
                       </Text>
-                    ))}
+                      {group.previewLines.length > 0 && (
+                        <Text
+                          style={styles.toolActivityGroupPreviewLine}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {group.previewLines.join(', ')}
+                        </Text>
+                      )}
+                    </View>
                   </Pressable>
                 );
               }
@@ -3250,8 +3255,10 @@ export default function ChatScreen({ route, navigation }: any) {
             }
 
             // Determine if this message needs group expand/collapse chrome
-            const isFirstInExpandedGroup = group && i === group.startIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
-            const isLastInExpandedGroup = group && i === group.endIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
+            const groupKey = group ? getToolActivityGroupKey(group) : '';
+            const isExpandedGroup = group ? (expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false) : false;
+            const isFirstInExpandedGroup = group && i === group.startIndex && isExpandedGroup;
+            const isLastInExpandedGroup = group && i === group.endIndex && isExpandedGroup;
 
             return (
               <View key={i}>
@@ -3392,7 +3399,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult && origIdx >= toolResultCount;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const argPreview = formatArgumentsPreview(toolCall.arguments);
+                              const toolPreview = getToolCallPreview(toolCall);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
@@ -3411,8 +3418,9 @@ export default function ChatScreen({ route, navigation }: any) {
                                       tcError && styles.toolCallCompactNameError,
                                     ]}
                                     numberOfLines={1}
+                                    ellipsizeMode="tail"
                                   >
-                                    {toolCall.name}{argPreview ? ` · ${argPreview}` : ''}
+                                    {toolPreview}
                                   </Text>
                                 </View>
                               );
@@ -4622,6 +4630,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       gap: 4,
       paddingVertical: 1,
+      overflow: 'hidden',
     },
     toolCallCompactPressed: {
       opacity: 0.7,
@@ -4631,6 +4640,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 10,
       fontWeight: '500',
       flexShrink: 1,
+      minWidth: 0,
       color: theme.colors.mutedForeground,
     },
     toolCallCompactNamePending: {
@@ -4666,18 +4676,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     toolActivityGroupPressed: {
       opacity: 0.7,
     },
+    toolActivityGroupHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      overflow: 'hidden',
+    },
     toolActivityGroupHeader: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       fontWeight: '600',
       color: theme.colors.mutedForeground,
-      marginBottom: 2,
+      flexShrink: 0,
     },
     toolActivityGroupPreviewLine: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       color: theme.colors.mutedForeground,
-      paddingLeft: 8,
+      flexShrink: 1,
+      minWidth: 0,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.xs,

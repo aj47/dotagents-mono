@@ -96,14 +96,13 @@ describe("agent progress tile layout", () => {
 
   it("keeps tile message-stream tool execution rows readable at narrow widths and zoom", () => {
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 items-center gap-1.5 rounded text-[11px] cursor-pointer hover:bg-muted/30"'
+      '"flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30"'
     )
     expect(agentProgressSource).toContain(
       'rowClassName = "px-1.5 py-0.5"'
     )
     expect(agentProgressSource).toContain('rowClassName="px-1 py-0.5"')
-    expect(agentProgressSource).toContain('className="min-w-0 shrink truncate font-mono font-medium"')
-    expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50"')
+    expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium"')
     expect(agentProgressSource).toContain('className="mb-1 flex flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="ml-auto flex shrink-0 flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
@@ -111,9 +110,16 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('<ToolExecutionBubble')
   })
 
-  it("only shows collapsed tool previews for the latest pending tool run", () => {
-    expect(agentProgressSource).toContain('const shouldShowPreviewLines = runEnd === sortedItems.length - 1')
-    expect(agentProgressSource).toContain('!isExpanded && group.previewLines.length > 0')
+  it("renders collapsed tool previews inline with the group title", () => {
+    expect(agentProgressSource).toContain('const collapsedPreviewLine = group.previewLines.join')
+    expect(agentProgressSource).toContain('!isExpanded && collapsedPreviewLine')
+    expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
+  })
+
+  it("keeps tool group expansion state separate from child rows", () => {
+    expect(agentProgressSource).toContain('const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`')
+    expect(agentProgressSource).toContain('getToolActivityGroupDefaultExpanded')
+    expect(agentProgressSource).toContain('next[item.id] = true')
   })
 
   it("stops delegated tool rows from showing a loading spinner after terminal completion", () => {
