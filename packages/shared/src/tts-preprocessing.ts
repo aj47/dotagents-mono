@@ -100,12 +100,12 @@ function removeUrls(text: string): string {
 /** Converts markdown formatting to speech-friendly equivalents */
 function convertMarkdownToSpeech(text: string): string {
   text = text.replace(/^#{1,6}\s+(.+)$/gm, "Heading: $1.")
+  text = text.replace(/^\s*[-*+]\s+(.+)$/gm, "$1.")
+  text = text.replace(/^\s*\d+\.\s+(.+)$/gm, "$1.")
   text = text.replace(/\*\*([^*]+)\*\*/g, "$1")
   text = text.replace(/__([^_]+)__/g, "$1")
   text = text.replace(/\*([^*]+)\*/g, "$1")
   text = text.replace(/_([^_]+)_/g, "$1")
-  text = text.replace(/^\s*[-*+]\s+(.+)$/gm, "Item: $1.")
-  text = text.replace(/^\s*\d+\.\s+(.+)$/gm, "Item: $1.")
   text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
   text = text.replace(/[*_`~]/g, "")
   return text
