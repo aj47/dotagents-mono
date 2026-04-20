@@ -78,6 +78,8 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   avif: "image/avif",
 }
 
+const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
+
 interface ResolvedChatGptWebAuth {
   accessToken: string
   accountId?: string
@@ -506,6 +508,9 @@ function resolveConversationAssetImageUrl(imageUrl: string): string | null {
     const extension = fileName.split(".").pop()?.toLowerCase() || "png"
     const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
     const buffer = fs.readFileSync(assetPath)
+    if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
+      return null
+    }
     return `data:${mimeType};base64,${buffer.toString("base64")}`
   } catch {
     return null

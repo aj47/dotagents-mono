@@ -91,4 +91,21 @@ describe("chatgpt-web provider image input", () => {
       },
     ])
   })
+
+  it("leaves oversized conversation image assets as text instead of inlining them", async () => {
+    const { tempDir } = await setupChatGptWebProviderTest()
+    await fs.writeFile(path.join(tempDir, "large.png"), Buffer.alloc(8 * 1024 * 1024 + 1))
+    const { buildCodexInput } = await import("./chatgpt-web-provider")
+
+    const content = "Read this\n\n![Screen selection](assets://conversation-image/conv_123/large.png)"
+    const input = buildCodexInput([{ role: "user", content }])
+
+    expect(input).toEqual([
+      {
+        type: "message",
+        role: "user",
+        content,
+      },
+    ])
+  })
 })
