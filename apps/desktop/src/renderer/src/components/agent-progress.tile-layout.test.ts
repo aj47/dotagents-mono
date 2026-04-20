@@ -116,6 +116,12 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
   })
 
+  it("keeps tool group expansion state separate from child rows", () => {
+    expect(agentProgressSource).toContain('const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`')
+    expect(agentProgressSource).toContain('getToolActivityGroupDefaultExpanded')
+    expect(agentProgressSource).toContain('next[item.id] = true')
+  })
+
   it("stops delegated tool rows from showing a loading spinner after terminal completion", () => {
     expect(agentProgressSource).toContain('function isDelegationActiveStatus(status: ACPDelegationProgress["status"]): boolean {')
     expect(agentProgressSource).toContain('const isPending = isToolUseMessage && !resultMessage && isDelegationActive')

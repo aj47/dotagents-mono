@@ -3421,10 +3421,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (line) previewLines.push(line)
         }
       }
-      // Use the first child item's ID as the group expansion key. That stays
-      // stable as more tools/skills append to the same run, and also preserves
-      // expansion if a single expanded tool row grows into a grouped run.
-      const groupId = runItems[0]?.id ?? `tool-group-${runStart}`
+      // Prefix the first child ID so the group stays stable as the run grows
+      // without sharing expansion state with any child row.
+      const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
@@ -3447,6 +3446,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+
+  const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
+    const firstChildId = item.data.items[0]?.id
+    return !!firstChildId && expandedItems[firstChildId] === true
+  }, [expandedItems])
+
+  useEffect(() => {
+    setExpandedItems(prev => {
+      let next = prev
+      for (const item of displayItems) {
+        if (item.kind !== "tool_activity_group" || item.id in prev) continue
+        const firstChildId = item.data.items[0]?.id
+        if (!firstChildId || prev[firstChildId] !== true) continue
+        if (next === prev) next = { ...prev }
+        next[item.id] = true
+      }
+      return next
+    })
+  }, [displayItems])
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
@@ -3908,12 +3926,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           />
                         )
                       } else if (item.kind === "tool_activity_group") {
+                        const groupExpanded = itemKey in expandedItems
+                          ? expandedItems[itemKey]
+                          : getToolActivityGroupDefaultExpanded(item)
                         return (
                           <ToolActivityGroupBubble
                             key={itemKey}
                             group={item.data}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                            isExpanded={groupExpanded}
+                            onToggleExpand={() => toggleItemExpansion(itemKey, groupExpanded)}
                             renderItem={(child, childIdx) => {
                               const childKey = child.id || `group-child-${childIdx}`
                               const childExpanded = expandedItems[childKey] ?? false
@@ -4324,12 +4345,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "tool_activity_group") {
+                  const groupExpanded = itemKey in expandedItems
+                    ? expandedItems[itemKey]
+                    : getToolActivityGroupDefaultExpanded(item)
                   return (
                     <ToolActivityGroupBubble
                       key={itemKey}
                       group={item.data}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                      isExpanded={groupExpanded}
+                      onToggleExpand={() => toggleItemExpansion(itemKey, groupExpanded)}
                       renderItem={(child, childIdx) => {
                         const childKey = child.id || `group-child-${childIdx}`
                         const childExpanded = expandedItems[childKey] ?? false
