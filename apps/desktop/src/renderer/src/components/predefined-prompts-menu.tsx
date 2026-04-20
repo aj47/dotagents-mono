@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@renderer/components/ui/dialog"
-import { BookMarked, Plus, Pencil, Trash2, Sparkles, Clock3 } from "lucide-react"
+import { BookMarked, Plus, Pencil, Trash2, Sparkles, Clock3, Search } from "lucide-react"
 import { queryClient, useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
 import { useQuery } from "@tanstack/react-query"
@@ -48,6 +48,7 @@ export function PredefinedPromptsMenu({
   const [editingPrompt, setEditingPrompt] = useState<PredefinedPrompt | null>(null)
   const [promptName, setPromptName] = useState("")
   const [promptContent, setPromptContent] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const prompts = configQuery.data?.predefinedPrompts || []
 
@@ -73,6 +74,18 @@ export function PredefinedPromptsMenu({
   const entryClassName = "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer"
   const entryTextClassName = "min-w-0 flex-1 space-y-0.5"
   const secondaryTextClassName = "line-clamp-2 text-xs leading-4 text-muted-foreground [overflow-wrap:anywhere]"
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const matchesSearch = (...values: Array<string | undefined | null>) => {
+    if (!normalizedSearchQuery) return true
+    return values.some((value) => value?.toLowerCase().includes(normalizedSearchQuery))
+  }
+  const filteredPrompts = prompts.filter((prompt) => matchesSearch(prompt.name, prompt.content))
+  const filteredSkills = availableSkills.filter((skill) => matchesSearch(
+    skill.name,
+    skill.description,
+    skill.instructions,
+  ))
+  const filteredTasks = availableTasks.filter((task) => matchesSearch(task.name, task.prompt))
 
   const handleSelectPrompt = (prompt: PredefinedPrompt) => {
     onSelectPrompt(prompt.content)
@@ -156,7 +169,7 @@ export function PredefinedPromptsMenu({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={(open) => { if (!open) setSearchQuery("") }}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
@@ -171,14 +184,32 @@ export function PredefinedPromptsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className={menuContentClassName}>
+          <div
+            className="sticky top-0 z-10 border-b bg-popover p-2"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key !== "Escape") e.stopPropagation()
+            }}
+          >
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search prompts, skills, tasks..."
+              aria-label="Search prompts, skills, and tasks"
+              wrapperClassName="h-8"
+              className="text-xs"
+              endContent={<Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+            />
+          </div>
           <DropdownMenuLabel className={sectionLabelClassName}>Predefined Prompts</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {prompts.length === 0 ? (
+          {filteredPrompts.length === 0 ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              No saved prompts yet
+              {prompts.length === 0 ? "No saved prompts yet" : "No matching prompts"}
             </div>
           ) : (
-            prompts.map((prompt) => (
+            filteredPrompts.map((prompt) => (
               <DropdownMenuItem
                 key={prompt.id}
                 className={entryClassName}
@@ -226,12 +257,12 @@ export function PredefinedPromptsMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className={sectionLabelClassName}>Skills</DropdownMenuLabel>
-          {availableSkills.length === 0 ? (
+          {filteredSkills.length === 0 ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              No skills available
+              {availableSkills.length === 0 ? "No skills available" : "No matching skills"}
             </div>
           ) : (
-            availableSkills.map((skill) => (
+            filteredSkills.map((skill) => (
               <DropdownMenuItem
                 key={skill.id}
                 className={entryClassName}
@@ -249,12 +280,12 @@ export function PredefinedPromptsMenu({
           )}
           <DropdownMenuSeparator />
           <DropdownMenuLabel className={sectionLabelClassName}>Tasks</DropdownMenuLabel>
-          {availableTasks.length === 0 ? (
+          {filteredTasks.length === 0 ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              No tasks available
+              {availableTasks.length === 0 ? "No tasks available" : "No matching tasks"}
             </div>
           ) : (
-            availableTasks.map((task) => (
+            filteredTasks.map((task) => (
               <DropdownMenuItem
                 key={task.id}
                 className={entryClassName}
