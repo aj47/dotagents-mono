@@ -3227,8 +3227,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         const next = enrichedMessages[i + 1]
         const results = next && next.role === "tool" && next.toolResults ? next.toolResults : []
         const assistantIndex = ++roleCounters.assistant
-        const execTimestamp = next?.timestamp ?? message.timestamp
-        const toolExecId = generateToolExecutionId(message.toolCalls, execTimestamp)
+        // Keep the display item ID tied to the assistant tool-call message, not
+        // the eventual result timestamp. Otherwise an expanded pending tool row
+        // collapses when its result arrives because the key changes.
+        const toolExecId = generateToolExecutionId(message.toolCalls, message.timestamp)
         const toolCallNames = message.toolCalls.map((call) => call.name)
         const visibleToolCalls = message.toolCalls
           .map((call, index) => ({ call, result: results[index] }))
@@ -3407,9 +3409,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (line) previewLines.push(line)
         }
       }
+      // Use the first child item's ID as the group expansion key. That stays
+      // stable as more tools/skills append to the same run, and also preserves
+      // expansion if a single expanded tool row grows into a grouped run.
+      const groupId = runItems[0]?.id ?? `tool-group-${runStart}`
       grouped.push({
         kind: "tool_activity_group",
-        id: `tool-group-${runStart}-${runEnd}`,
+        id: groupId,
         data: { items: runItems, previewLines },
       })
       runStart = null

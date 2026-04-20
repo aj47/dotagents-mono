@@ -923,7 +923,8 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
-  // Track which tool-activity groups are expanded (keyed by "startIndex-endIndex")
+  // Track which tool-activity groups are expanded (keyed by startIndex so the
+  // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
@@ -1728,11 +1729,13 @@ export default function ChatScreen({ route, navigation }: any) {
   // Compute tool-activity groups for consecutive connected tool-call messages
   const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
 
-  // Toggle expansion of a tool-activity group (keyed by "startIndex-endIndex")
+  const getToolActivityGroupKey = useCallback((group: ToolActivityGroup) => `${group.startIndex}`, []);
+
+  // Toggle expansion of a tool-activity group using a stable key for the run.
   const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
-    const key = `${group.startIndex}-${group.endIndex}`;
+    const key = getToolActivityGroupKey(group);
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  }, [getToolActivityGroupKey]);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
   // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
@@ -3128,8 +3131,8 @@ export default function ChatScreen({ route, navigation }: any) {
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             if (group) {
-              const groupKey = `${group.startIndex}-${group.endIndex}`;
-              const isGroupExpanded = expandedGroups[groupKey] ?? false;
+              const groupKey = getToolActivityGroupKey(group);
+              const isGroupExpanded = expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false;
 
               // Non-first message in a collapsed group: skip rendering
               if (i !== group.startIndex && !isGroupExpanded) {
@@ -3250,8 +3253,10 @@ export default function ChatScreen({ route, navigation }: any) {
             }
 
             // Determine if this message needs group expand/collapse chrome
-            const isFirstInExpandedGroup = group && i === group.startIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
-            const isLastInExpandedGroup = group && i === group.endIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
+            const groupKey = group ? getToolActivityGroupKey(group) : '';
+            const isExpandedGroup = group ? (expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false) : false;
+            const isFirstInExpandedGroup = group && i === group.startIndex && isExpandedGroup;
+            const isLastInExpandedGroup = group && i === group.endIndex && isExpandedGroup;
 
             return (
               <View key={i}>
