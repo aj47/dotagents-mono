@@ -56,6 +56,7 @@ export interface ChatGptWebResponse {
   text: string
   toolCalls?: ChatGptWebToolCall[]
   usage?: ChatGptWebUsage
+  reasoningSummary?: string
 }
 
 interface PreparedCodexTools {
@@ -86,6 +87,7 @@ interface ChatGptWebCompletedEventResponse {
     arguments?: string
     call_id?: string
     content?: Array<{ type?: string; text?: string; refusal?: string }>
+    summary?: Array<{ type?: string; text?: string }>
   }>
   usage?: {
     input_tokens?: number
@@ -113,7 +115,7 @@ function normalizeCodexReasoningEffort(effort: unknown): CodexReasoningEffort | 
   return undefined
 }
 
-export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort } | undefined {
+export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort; summary: "auto" } | undefined {
   if (!isCodexReasoningModel(model)) return undefined
 
   const override = configStore.get().openaiReasoningEffort
@@ -124,11 +126,12 @@ export function getCodexReasoningOptions(model: string): { effort: CodexReasonin
     logLLM("Applying ChatGPT Codex reasoning effort", {
       model,
       effort,
+      summary: "auto",
       source: override ? "user-config" : "default",
     })
   }
 
-  return { effort }
+  return { effort, summary: "auto" }
 }
 
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
@@ -583,6 +586,17 @@ function extractCompletedMessageText(response: ChatGptWebCompletedEventResponse 
     .trim()
 }
 
+function extractCompletedReasoningSummary(response: ChatGptWebCompletedEventResponse | undefined): string {
+  if (!response?.output?.length) return ""
+
+  return response.output
+    .filter((item) => item.type === "reasoning")
+    .flatMap((item) => item.summary || [])
+    .map((summary) => summary.text || "")
+    .join("\n")
+    .trim()
+}
+
 function mapUsage(response: ChatGptWebCompletedEventResponse | undefined): ChatGptWebUsage | undefined {
   const usage = response?.usage
   if (!usage) return undefined
@@ -671,6 +685,7 @@ export async function makeChatGptWebResponse(
   const decoder = new TextDecoder()
   let buffer = ""
   let accumulatedText = ""
+  let accumulatedReasoningSummary = ""
   let completedResponse: ChatGptWebCompletedEventResponse | undefined
   const pendingToolArguments = new Map<string, string>()
   const completedToolCalls = new Map<string, ChatGptWebToolCall>()
@@ -706,6 +721,11 @@ export async function makeChatGptWebResponse(
         if (delta) {
           accumulatedText += delta
           options.onTextChunk?.(delta, accumulatedText)
+        }
+      } else if (eventType === "response.reasoning_summary_text.delta") {
+        const delta = typeof event.delta === "string" ? event.delta : ""
+        if (delta) {
+          accumulatedReasoningSummary += delta
         }
       } else if (eventType === "response.function_call_arguments.delta") {
         const itemId = typeof event.item_id === "string" ? event.item_id : ""
@@ -761,12 +781,14 @@ export async function makeChatGptWebResponse(
   }
 
   const finalText = accumulatedText.trim() || extractCompletedMessageText(completedResponse)
+  const finalReasoningSummary = accumulatedReasoningSummary.trim() || extractCompletedReasoningSummary(completedResponse)
   const toolCalls = Array.from(completedToolCalls.values())
 
   return {
     text: finalText,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     usage: mapUsage(completedResponse),
+    reasoningSummary: finalReasoningSummary || undefined,
   }
 }
 

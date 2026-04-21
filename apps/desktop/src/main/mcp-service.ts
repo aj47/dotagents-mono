@@ -150,6 +150,7 @@ export interface MCPToolResult {
 export interface LLMToolCallResponse {
   content?: string
   toolCalls?: MCPToolCall[]
+  reasoningSummary?: string
 }
 
 export class MCPService {

@@ -1968,6 +1968,15 @@ export async function processTranscriptWithAgentMode(
     // Reset empty response counter on successful response
     emptyResponseRetryCount = 0
 
+    // Prepend reasoning summary wrapped in <tool_call>think> tags so the existing
+    // ThinkSection UI renders it as a collapsible thinking block.
+    if (llmResponse.reasoningSummary) {
+      const thinkBlock = `<think>\n${llmResponse.reasoningSummary}\n</think>`
+      llmResponse.content = llmResponse.content
+        ? `${thinkBlock}\n\n${llmResponse.content}`
+        : thinkBlock
+    }
+
     // Update thinking step with actual LLM content and mark as completed.
     // Strip any raw tool-marker tokens (e.g. <|tool_call_begin|>) so they
     // don't leak into the progress UI before the marker-recovery branch runs.

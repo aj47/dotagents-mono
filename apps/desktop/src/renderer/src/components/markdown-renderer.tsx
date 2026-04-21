@@ -242,21 +242,39 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
   const uid = useId()
 
   return (
-    <div className="my-4 overflow-hidden rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border transition-colors",
+        collapsed
+          ? "my-1 border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
+          : "my-3 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
+      )}
+    >
       <button
         onClick={handleToggle}
-        className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/30"
+        className={cn(
+          "flex w-full items-center gap-1.5 text-left transition-colors",
+          collapsed
+            ? "px-2 py-0.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
+            : "px-3 py-2 hover:bg-amber-100 dark:hover:bg-amber-900/30",
+        )}
         aria-expanded={!collapsed}
         aria-controls={`think-content-${uid}`}
       >
         {collapsed ? (
-          <ChevronRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <ChevronRight className="h-3 w-3 shrink-0 text-amber-500 dark:text-amber-400" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
         )}
-        <Brain className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
-          {collapsed ? "Show thinking process" : "Hide thinking process"}
+        <Brain className={cn(
+          "shrink-0 text-amber-600 dark:text-amber-400",
+          collapsed ? "h-3 w-3" : "h-3.5 w-3.5",
+        )} />
+        <span className={cn(
+          "truncate text-amber-800 dark:text-amber-200",
+          collapsed ? "text-[11px] font-medium opacity-70" : "text-sm font-medium",
+        )}>
+          {collapsed ? "Thinking" : "Hide thinking"}
         </span>
       </button>
 

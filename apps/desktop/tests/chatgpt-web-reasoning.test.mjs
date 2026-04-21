@@ -15,6 +15,18 @@ test('ChatGPT Codex provider sends reasoning effort in Responses API payload', (
   assert.match(providerSource, /if \(effort === "xhigh"\) return "high"/)
   assert.match(providerSource, /const reasoning = getCodexReasoningOptions\(model\)/)
   assert.match(providerSource, /payload\.reasoning = reasoning/)
+  // summary: "auto" must be included alongside effort
+  assert.match(providerSource, /summary: "auto"/)
+  assert.match(providerSource, /effort,\s*summary: "auto"/)
+})
+
+test('ChatGPT Codex provider handles reasoning summary streaming events', () => {
+  assert.match(providerSource, /response\.reasoning_summary_text\.delta/)
+  assert.match(providerSource, /accumulatedReasoningSummary/)
+  assert.match(providerSource, /reasoningSummary\?: string/)
+  assert.match(providerSource, /extractCompletedReasoningSummary/)
+  assert.match(providerSource, /item\.type === "reasoning"/)
+  assert.match(providerSource, /item\.summary/)
 })
 
 test('ChatGPT Codex provider maps response reasoning token usage', () => {

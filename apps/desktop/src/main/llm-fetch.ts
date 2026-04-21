@@ -803,6 +803,7 @@ export async function makeLLMCallWithFetch(
             const response = {
               content: text || undefined,
               toolCalls: result.toolCalls,
+              reasoningSummary: result.reasoningSummary,
             } satisfies LLMToolCallResponse
 
             if (generationId) {
@@ -826,11 +827,12 @@ export async function makeLLMCallWithFetch(
           }
 
           if (hasToolMarkers) {
-            return { content: text }
+            return { content: text, reasoningSummary: result.reasoningSummary }
           }
 
           return {
             content: cleaned || text,
+            reasoningSummary: result.reasoningSummary,
           }
         }
 
@@ -1102,11 +1104,13 @@ export async function makeLLMCallWithStreamingAndTools(
             return {
               content: text || undefined,
               toolCalls: result.toolCalls,
+              reasoningSummary: result.reasoningSummary,
             }
           }
 
           return {
             content: text.trim(),
+            reasoningSummary: result.reasoningSummary,
           }
         } catch (error: any) {
           if (generationId) {
