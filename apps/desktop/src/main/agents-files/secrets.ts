@@ -3,7 +3,7 @@
 import {
   AGENTS_SECRETS_LOCAL_JSON,
   SECRET_REF_PREFIX,
-} from "../../../../../packages/core/src/agents-files/secrets"
+} from "@dotagents/core"
 
 export {
   AGENTS_SECRETS_LOCAL_JSON,
