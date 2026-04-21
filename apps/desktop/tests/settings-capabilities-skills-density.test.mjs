@@ -22,7 +22,7 @@ test('desktop skills page avoids a redundant Agent Skills hero header above the 
   assert.doesNotMatch(skillsPageSource, /<h2 className="text-lg font-semibold">Agent Skills<\/h2>/)
   assert.match(skillsPageSource, /<div className="flex flex-wrap justify-end gap-2">[\s\S]*?Open Folder[\s\S]*?Scan Folder[\s\S]*?New Skill/)
   assert.doesNotMatch(skillsPageSource, /Skills are specialized instructions that improve AI performance on specific tasks\./)
-  assert.match(skillsPageSource, /<p className="text-xs text-muted-foreground">\s*Enabled skills add their instructions to the system prompt\./)
+  assert.match(skillsPageSource, /<p className="text-xs text-muted-foreground">\s*Enabled skills are available to \{currentAgentDisplayName\}/)
 })
 
 test('desktop skills loading, error, and empty states stay compact and text-first', () => {
@@ -54,6 +54,8 @@ test('desktop skills page exposes per-agent enablement and sorts enabled skills 
   assert.match(skillsPageSource, /queryKey: \["currentProfile"\]/)
   assert.match(skillsPageSource, /return await tipcClient\.getCurrentProfile\(\)/)
   assert.match(skillsPageSource, /return await tipcClient\.toggleProfileSkill\(\{ profileId, skillId \}\)/)
+  assert.match(skillsPageSource, /const isProfileLoading = isEnabled === null/)
+  assert.match(skillsPageSource, /\{skillStatusLabel\}/)
   assert.match(skillsPageSource, /const enabledDiff = Number\(isSkillEnabledForCurrentProfile\(b\.id\)\) - Number\(isSkillEnabledForCurrentProfile\(a\.id\)\)/)
   assert.match(skillsPageSource, /<Switch[\s\S]*?checked=\{isEnabled\}[\s\S]*?onCheckedChange=\{\(checked\) =>/)
   assert.match(skillsPageSource, /aria-label=\{`\$\{isEnabled \? "Disable" : "Enable"\} \$\{skill\.name\}`\}/)

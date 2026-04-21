@@ -69,14 +69,14 @@ export function Component() {
   })
 
   const skills = skillsQuery.data || []
-  const currentProfile = currentProfileQuery.data as AgentProfile | Profile | undefined
+  const currentProfile = currentProfileQuery.data as AgentProfile | Profile | null | undefined
   const currentAgentDisplayName = currentProfile
     ? "displayName" in currentProfile
       ? currentProfile.displayName
       : currentProfile.name
     : "Main Agent"
-  const isSkillEnabledForCurrentProfile = (skillId: string) => {
-    if (!currentProfile) return false
+  const isSkillEnabledForCurrentProfile = (skillId: string): boolean | null => {
+    if (!currentProfile) return null
     if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) return true
     return (currentProfile.skillsConfig.enabledSkillIds ?? []).includes(skillId)
   }
@@ -681,7 +681,10 @@ Write your skill instructions here.
           ) : (
             displaySkills.map((skill) => {
               const isEnabled = isSkillEnabledForCurrentProfile(skill.id)
-              const isToggleDisabled = !currentProfile || currentProfileQuery.isLoading || toggleProfileSkillMutation.isPending
+              const isProfileLoading = isEnabled === null
+              const isToggleDisabled = isProfileLoading || currentProfileQuery.isLoading || toggleProfileSkillMutation.isPending
+              const skillStatusLabel = isProfileLoading ? "Loading" : isEnabled ? "Enabled" : "Disabled"
+              const skillStatusClassName = isEnabled === true ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
 
               return (
                 <div
@@ -712,23 +715,27 @@ Write your skill instructions here.
                   </div>
                   {!isSelectMode && (
                     <div className="ml-3 flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <span className={`text-[11px] font-medium ${isEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                        {isEnabled ? "Enabled" : "Disabled"}
+                      <span className={`text-[11px] font-medium ${skillStatusClassName}`}>
+                        {skillStatusLabel}
                       </span>
-                      <Switch
-                        checked={isEnabled}
-                        disabled={isToggleDisabled}
-                        onCheckedChange={(checked) => {
-                          if (!currentProfile) return
-                          toggleProfileSkillMutation.mutate({
-                            profileId: currentProfile.id,
-                            skillId: skill.id,
-                            skillName: skill.name,
-                            willEnable: checked,
-                          })
-                        }}
-                        aria-label={`${isEnabled ? "Disable" : "Enable"} ${skill.name}`}
-                      />
+                      {isProfileLoading ? (
+                        <div className="h-5 w-9 rounded-full bg-muted/70" aria-hidden="true" />
+                      ) : (
+                        <Switch
+                          checked={isEnabled}
+                          disabled={isToggleDisabled}
+                          onCheckedChange={(checked) => {
+                            if (!currentProfile) return
+                            toggleProfileSkillMutation.mutate({
+                              profileId: currentProfile.id,
+                              skillId: skill.id,
+                              skillName: skill.name,
+                              willEnable: checked,
+                            })
+                          }}
+                          aria-label={`${isEnabled ? "Disable" : "Enable"} ${skill.name}`}
+                        />
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
