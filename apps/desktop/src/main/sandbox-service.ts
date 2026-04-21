@@ -11,6 +11,7 @@
 import fs from "fs"
 import path from "path"
 import { logApp } from "./debug"
+import { AGENTS_SECRETS_LOCAL_JSON } from "./agents-files/secrets"
 
 // ============================================================================
 // Types
@@ -64,7 +65,6 @@ const SANDBOXES_DIR = ".sandboxes"
 const SLOT_MANIFEST_FILE = "slot-manifest.json"
 const ACTIVE_SLOT_FILE = "active-slot.json"
 const DEFAULT_SLOT_NAME = "default"
-const AGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"
 
 // Files/dirs from .agents that belong to a slot snapshot
 const SNAPSHOT_ITEMS = [
@@ -136,7 +136,7 @@ function copyDirRecursiveSync(src: string, dest: string): void {
   if (stats.isDirectory() && EXCLUDED_DIRS.has(entryName)) return
   if (
     stats.isFile() &&
-    EXCLUDED_FILE_PREFIXES.some((prefix) => entryName === prefix || entryName.startsWith(`${prefix}.`))
+    EXCLUDED_FILE_PREFIXES.some((prefix) => entryName.startsWith(prefix))
   ) return
   if (stats.isSymbolicLink()) return // skip symlinks for safety
   if (stats.isFile()) {

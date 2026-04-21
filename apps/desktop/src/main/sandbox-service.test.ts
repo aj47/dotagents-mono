@@ -97,6 +97,7 @@ describe("sandbox-service", () => {
         JSON.stringify({ secrets: { apiKey: "sk-secret" } }),
       )
       fs.writeFileSync(path.join(agentsDir, "secrets.local.json.tmp-123"), "sk-secret")
+      fs.writeFileSync(path.join(agentsDir, "secrets.local.json~"), "sk-secret")
 
       const nestedSkillDir = path.join(agentsDir, "skills", "local-secret-test")
       fs.mkdirSync(nestedSkillDir, { recursive: true })
@@ -108,6 +109,7 @@ describe("sandbox-service", () => {
       const slotDir = path.join(agentsDir, ".sandboxes", "default")
       expect(fs.existsSync(path.join(slotDir, "secrets.local.json"))).toBe(false)
       expect(fs.existsSync(path.join(slotDir, "secrets.local.json.tmp-123"))).toBe(false)
+      expect(fs.existsSync(path.join(slotDir, "secrets.local.json~"))).toBe(false)
       expect(fs.existsSync(path.join(slotDir, "skills", "local-secret-test", "skill.md"))).toBe(true)
       expect(
         fs.existsSync(path.join(slotDir, "skills", "local-secret-test", "secrets.local.json")),

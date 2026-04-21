@@ -11,7 +11,7 @@ import {
   writeAgentsLayerFromConfig,
   writeAgentsPrompts,
 } from "./modular-config"
-import { AGENTS_SECRETS_LOCAL_JSON, SECRET_REF_PREFIX } from "../../../../../packages/core/src/agents-files/secrets"
+import { AGENTS_SECRETS_LOCAL_JSON, SECRET_REF_PREFIX } from "./secrets"
 
 const DEFAULT_PROMPT = "DEFAULT PROMPT\nLine2"
 
