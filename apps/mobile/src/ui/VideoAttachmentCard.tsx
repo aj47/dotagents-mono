@@ -48,9 +48,13 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
 
   const source = useMemo<VideoSource>(() => {
     if (!loaded || !canRender) return null;
-    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    // Only attach auth headers for conversation video asset URLs to avoid
+    // leaking the desktop API key to third-party hosts.
+    const headers = (authToken && isConversationVideoAssetUrl(sourceUrl))
+      ? { Authorization: `Bearer ${authToken}` }
+      : undefined;
     return headers ? { uri: resolvedUri, headers } : { uri: resolvedUri };
-  }, [authToken, canRender, loaded, resolvedUri]);
+  }, [authToken, canRender, loaded, resolvedUri, sourceUrl]);
 
   const player = useVideoPlayer(source, (videoPlayer) => {
     videoPlayer.loop = false;

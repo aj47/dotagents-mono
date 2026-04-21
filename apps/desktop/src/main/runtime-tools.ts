@@ -326,10 +326,18 @@ const isAllowedRespondToUserImageUrl = (url: string): boolean => {
 
 const isAllowedRespondToUserVideoUrl = (url: string): boolean => {
   const normalized = url.trim().toLowerCase()
-  return (
-    normalized.startsWith("https://") ||
-    normalized.startsWith("http://")
-  )
+  if (normalized.startsWith("assets://conversation-video/")) return true
+  if (!normalized.startsWith("https://") && !normalized.startsWith("http://")) return false
+  // Only allow http(s) URLs that actually look like video files so tool output
+  // matches what the UI can render as a video card.
+  try {
+    const ext = normalized.lastIndexOf(".")
+    if (ext < 0) return false
+    const extension = normalized.slice(ext).replace(/[?#].*$/, "")
+    return extension in VIDEO_MIME_BY_EXTENSION
+  } catch {
+    return false
+  }
 }
 
 const getDecodedBase64ByteLength = (rawBase64: string): number => {
@@ -827,7 +835,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       if (url) {
         if (!isAllowedRespondToUserVideoUrl(url)) {
           return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}].url must be http(s)` }) }],
+            content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}].url must be a valid http(s) video URL (recognized extension: mp4, m4v, webm, mov, ogv) or an assets://conversation-video/ URL` }) }],
             isError: true,
           }
         }
