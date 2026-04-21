@@ -12,14 +12,17 @@ interface MarkdownRendererProps {
   assetAuthToken?: string;
 }
 
-const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
-
+// NOTE: Splitting markdown around video links may break contiguous constructs (lists, fenced code blocks)
+// when a video link appears inline. This is an accepted trade-off for now; video links in agent messages
+// rarely appear mid-structure.
 function splitVideoLinks(content: string) {
+  // Create a new regex instance per call to avoid /g lastIndex state leaking between invocations.
+  const videoLinkRegex = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
   const parts: Array<{ type: 'markdown' | 'video'; content?: string; label?: string; url?: string }> = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = MARKDOWN_VIDEO_LINK_REGEX.exec(content)) !== null) {
+  while ((match = videoLinkRegex.exec(content)) !== null) {
     const [fullMatch, prefix, label, url] = match;
     if (!isRenderableVideoUrl(url)) continue;
 
