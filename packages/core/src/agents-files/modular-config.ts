@@ -10,7 +10,6 @@ import {
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
 import {
   getAgentsSecretsLocalPath,
-  migrateJsonFileSecretsToLocalStore,
   prepareConfigForPersistence,
   resolveSecretRefs,
 } from "./secrets"
@@ -282,10 +281,6 @@ export function writeAgentsLayerFromConfig(
 
   const writeJsonIfNeeded = (filePath: string, value: unknown) => {
     if (onlyIfMissing && fileExists(filePath)) return
-    migrateJsonFileSecretsToLocalStore(filePath, secretsFilePath, true, {
-      backupDir: layer.backupsDir,
-      maxBackups,
-    })
     safeWriteJsonFileSync(filePath, value, {
       backupDir: layer.backupsDir,
       maxBackups,

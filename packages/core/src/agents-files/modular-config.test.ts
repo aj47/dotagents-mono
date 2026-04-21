@@ -108,6 +108,23 @@ describe("modular-config", () => {
     expect(loaded.openaiApiKey).toBe("sk-test")
   })
 
+  it("does not re-import stale plaintext secrets from disk while saving current config", () => {
+    const dir = mkTempDir("dotagents-modular-stale-secrets-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    writeJson(layer.modelsJsonPath, { openaiApiKey: "sk-stale" })
+
+    writeAgentsLayerFromConfig(layer, { openaiApiKey: "sk-current" } as Config)
+
+    const loaded = loadAgentsLayerConfig(layer)
+    const secrets = JSON.parse(fs.readFileSync(path.join(agentsDir, AGENTS_SECRETS_LOCAL_JSON), "utf8"))
+
+    expect(loaded.openaiApiKey).toBe("sk-current")
+    expect(Object.values(secrets.secrets)).toContain("sk-current")
+    expect(Object.values(secrets.secrets)).not.toContain("sk-stale")
+  })
+
   it("stores nested MCP and provider credentials as local secret refs", () => {
     const dir = mkTempDir("dotagents-modular-secrets-")
     const agentsDir = path.join(dir, ".agents")

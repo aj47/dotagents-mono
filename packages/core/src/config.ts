@@ -645,12 +645,6 @@ export function persistConfigToDisk(
       config,
       getAgentsSecretsLocalPath(agentsDir),
     )
-    migrateJsonFileSecretsToLocalStore(
-      legacyConfigFilePath,
-      getAgentsSecretsLocalPath(agentsDir),
-      false,
-      { backupDir, maxBackups },
-    )
     safeWriteJsonFileSync(legacyConfigFilePath, configForLegacyDisk, {
       backupDir,
       maxBackups,
