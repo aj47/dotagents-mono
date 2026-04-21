@@ -102,7 +102,7 @@ describe("modular-config", () => {
 
     const secrets = JSON.parse(fs.readFileSync(path.join(agentsDir, AGENTS_SECRETS_LOCAL_JSON), "utf8"))
     expect(Object.values(secrets.secrets)).toContain("sk-test")
-    expect(fs.readFileSync(path.join(agentsDir, ".gitignore"), "utf8")).toContain(`/${AGENTS_SECRETS_LOCAL_JSON}*`)
+    expect(fs.readFileSync(path.join(agentsDir, ".gitignore"), "utf8")).toContain(`**/${AGENTS_SECRETS_LOCAL_JSON}*`)
 
     const loaded = loadAgentsLayerConfig(layer)
     expect(loaded.openaiApiKey).toBe("sk-test")
