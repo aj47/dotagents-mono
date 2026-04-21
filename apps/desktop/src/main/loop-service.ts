@@ -430,10 +430,12 @@ class LoopService {
         // runs, so keys from the previous run would still be in the module-level
         // played-set and cause hasTTSPlayed() to block the new auto-play.
         const { WINDOWS: wins } = await import("./window")
-        for (const win of wins.values()) {
+        for (const [id, win] of wins.entries()) {
           try {
             getRendererHandlers<RendererHandlers>(win.webContents).clearSessionTTSKeys?.send(sessionId)
-          } catch {}
+          } catch (e) {
+            logApp(`[LoopService] clearSessionTTSKeys send to ${id} failed:`, e)
+          }
         }
 
         const { setTrackedAgentSessionSnoozed } = await import("./floating-panel-session-state")
