@@ -4,6 +4,7 @@ import os from "os"
 import path from "path"
 import {
   AGENTS_SECRETS_LOCAL_JSON,
+  ensureAgentsSecretsGitignore,
   extractSecretsForPersistence,
   migrateJsonFileSecretsToLocalStore,
   resolveSecretRefs,
@@ -29,6 +30,19 @@ describe("agents-files secrets", () => {
     expect(dotSegmentRef).not.toBe(nestedRef)
     expect(Object.keys(extracted.secrets)).toHaveLength(2)
     expect(Object.values(extracted.secrets).sort()).toEqual(["sk-dot-segment", "sk-nested"])
+  })
+
+  it("writes a recursive idempotent gitignore pattern for local secret store files", () => {
+    const dir = mkTempDir("dotagents-secret-gitignore-")
+    const agentsDir = path.join(dir, ".agents")
+    const gitignorePath = path.join(agentsDir, ".gitignore")
+
+    ensureAgentsSecretsGitignore(agentsDir)
+    ensureAgentsSecretsGitignore(agentsDir)
+
+    const lines = fs.readFileSync(gitignorePath, "utf8").split(/\r?\n/)
+    const secretIgnoreLines = lines.filter((line) => line.trim() === `**/${AGENTS_SECRETS_LOCAL_JSON}*`)
+    expect(secretIgnoreLines).toHaveLength(1)
   })
 
   it("preserves unresolved secret refs instead of replacing them with empty strings", () => {

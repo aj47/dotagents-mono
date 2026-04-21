@@ -127,7 +127,7 @@ export function mergeSecretsIntoLocalStore(
 
 export function ensureAgentsSecretsGitignore(agentsDir: string): void {
   const gitignorePath = path.join(agentsDir, ".gitignore")
-  const ignoreLine = `/${AGENTS_SECRETS_LOCAL_JSON}*`
+  const ignoreLine = `**/${AGENTS_SECRETS_LOCAL_JSON}*`
   try {
     fs.mkdirSync(agentsDir, { recursive: true })
     const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, "utf8") : ""
