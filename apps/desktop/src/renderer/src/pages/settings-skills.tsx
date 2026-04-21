@@ -21,10 +21,16 @@ import {
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AgentSkill } from "@shared/types"
+import type { AgentProfile, AgentSkill, Profile } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal } from "lucide-react"
+import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal, AlertTriangle } from "lucide-react"
 
+type ToggleProfileSkillVariables = {
+  profileId: string
+  skillId: string
+  skillName: string
+  willEnable: boolean
+}
 
 export function Component() {
   const queryClient = useQueryClient()
@@ -55,7 +61,30 @@ export function Component() {
     staleTime: Infinity,
   })
 
+  const currentProfileQuery = useQuery({
+    queryKey: ["currentProfile"],
+    queryFn: async () => {
+      return await tipcClient.getCurrentProfile()
+    },
+  })
+
   const skills = skillsQuery.data || []
+  const currentProfile = currentProfileQuery.data as AgentProfile | Profile | null | undefined
+  const currentAgentDisplayName = currentProfile
+    ? "displayName" in currentProfile
+      ? currentProfile.displayName
+      : currentProfile.name
+    : "this agent"
+  const isSkillEnabledForCurrentProfile = (skillId: string): boolean | null => {
+    if (!currentProfile) return null
+    if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) return true
+    return (currentProfile.skillsConfig.enabledSkillIds ?? []).includes(skillId)
+  }
+  const displaySkills = [...skills].sort((a, b) => {
+    const enabledDiff = Number(isSkillEnabledForCurrentProfile(b.id)) - Number(isSkillEnabledForCurrentProfile(a.id))
+    if (enabledDiff !== 0) return enabledDiff
+    return a.name.localeCompare(b.name)
+  })
 
   // Listen for skills folder changes from the main process (file watcher)
   useEffect(() => {
@@ -115,6 +144,20 @@ export function Component() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete skill: ${error.message}`)
+    },
+  })
+
+  const toggleProfileSkillMutation = useMutation({
+    mutationFn: async ({ profileId, skillId }: ToggleProfileSkillVariables) => {
+      return await tipcClient.toggleProfileSkill({ profileId, skillId })
+    },
+    onSuccess: (_profile, { willEnable, skillName }) => {
+      queryClient.invalidateQueries({ queryKey: ["currentProfile"] })
+      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+      toast.success(`${skillName} ${willEnable ? "enabled" : "disabled"}`)
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update skill access: ${error.message}`)
     },
   })
 
@@ -585,7 +628,7 @@ Write your skill instructions here.
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Enabled skills add their instructions to the system prompt.
+          Enabled skills are available to {currentAgentDisplayName} and are sorted first. Disabled skills are hidden from the agent and blocked at runtime.
         </p>
 
         <details className="rounded-lg border bg-card">
@@ -636,66 +679,116 @@ Write your skill instructions here.
               <p className="mt-1 text-sm text-muted-foreground">Create your first skill or import one.</p>
             </div>
           ) : (
-            skills.map((skill) => (
-              <div
-                key={skill.id}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg border bg-card ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
-                onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {isSelectMode && (
-                    <button
-                      type="button"
-                      className="shrink-0 flex items-center justify-center"
-                      onClick={(e) => { e.stopPropagation(); toggleSkillSelection(skill.id) }}
-                    >
-                      {selectedSkillIds.has(skill.id) ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  )}
-                  <span className="font-medium truncate">{skill.name}</span>
+            <>
+              {currentProfileQuery.isError && (
+                <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">Failed to load this agent's skill access.</p>
+                    <p className="mt-0.5 text-amber-700/80 dark:text-amber-300/80">
+                      Skills remain visible, but enablement controls are unavailable until the profile loads.
+                    </p>
+                  </div>
                 </div>
-                {!isSelectMode && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-2 h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                        aria-label={`Actions for ${skill.name}`}
-                      >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                        <span>Actions</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditSkill(skill)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openSkillFileMutation.mutate(skill.id)}>
-                        <FileText className="h-3.5 w-3.5" />
-                        Reveal File
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => exportSkillMutation.mutate(skill.id)}>
-                        <Download className="h-3.5 w-3.5" />
-                        Export
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteSkill(skill)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            ))
+              )}
+              {displaySkills.map((skill) => {
+                const isEnabled = isSkillEnabledForCurrentProfile(skill.id)
+                const isProfileUnavailable = currentProfileQuery.isError
+                const isProfileLoading = !isProfileUnavailable && isEnabled === null
+                const isToggleDisabled = isProfileLoading || isProfileUnavailable || currentProfileQuery.isLoading || toggleProfileSkillMutation.isPending
+                const skillStatusLabel = isProfileUnavailable ? "Unavailable" : isProfileLoading ? "Loading" : isEnabled ? "Enabled" : "Disabled"
+                const skillStatusClassName = isEnabled === true ? "text-emerald-600 dark:text-emerald-400" : isProfileUnavailable ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+
+                return (
+                  <div
+                    key={skill.id}
+                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg border bg-card ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
+                    onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {isSelectMode && (
+                        <button
+                          type="button"
+                          className="shrink-0 flex items-center justify-center"
+                          onClick={(e) => { e.stopPropagation(); toggleSkillSelection(skill.id) }}
+                        >
+                          {selectedSkillIds.has(skill.id) ? (
+                            <CheckSquare className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Square className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-medium leading-5">{skill.name}</div>
+                        {skill.description && (
+                          <div className="truncate text-[11px] leading-4 text-muted-foreground">{skill.description}</div>
+                        )}
+                      </div>
+                    </div>
+                    {!isSelectMode && (
+                      <div className="ml-3 flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <span className={`text-[11px] font-medium ${skillStatusClassName}`}>
+                          {skillStatusLabel}
+                        </span>
+                        {isProfileLoading ? (
+                          <div className="h-5 w-9 rounded-full bg-muted/70" aria-hidden="true" />
+                        ) : (
+                          <Switch
+                            checked={isEnabled === true}
+                            disabled={isToggleDisabled}
+                            onCheckedChange={(checked) => {
+                              if (!currentProfile) return
+                              toggleProfileSkillMutation.mutate({
+                                profileId: currentProfile.id,
+                                skillId: skill.id,
+                                skillName: skill.name,
+                                willEnable: checked,
+                              })
+                            }}
+                            aria-label={isProfileUnavailable ? `Skill access unavailable for ${skill.name}` : `${isEnabled ? "Disable" : "Enable"} ${skill.name}`}
+                          />
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 shrink-0 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                              aria-label={`Actions for ${skill.name}`}
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                              <span>Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditSkill(skill)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openSkillFileMutation.mutate(skill.id)}>
+                              <FileText className="h-3.5 w-3.5" />
+                              Reveal File
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => exportSkillMutation.mutate(skill.id)}>
+                              <Download className="h-3.5 w-3.5" />
+                              Export
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteSkill(skill)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </>
           )}
         </div>
 

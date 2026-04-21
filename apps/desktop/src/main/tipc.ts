@@ -572,6 +572,28 @@ import { writeText, writeTextWithFocusRestore } from "./keyboard"
 
 const t = tipc.create()
 
+type ScreenshotAttachmentInput = { name?: string; dataUrl: string }
+
+function escapeMarkdownImageAlt(text: string): string {
+  return text.replace(/[\[\]]/g, "")
+}
+
+function appendScreenshotToTranscript(transcript: string, screenshot?: ScreenshotAttachmentInput): string {
+  if (!screenshot?.dataUrl) return transcript
+
+  const alt = escapeMarkdownImageAlt(screenshot.name || "Screen selection") || "Screen selection"
+  const screenshotMarkdown = `![${alt}](${screenshot.dataUrl})`
+  return transcript ? `${transcript}\n\n${screenshotMarkdown}` : screenshotMarkdown
+}
+
+function getLatestStoredUserMessageContent(conversation: Conversation | null, fallback: string): string {
+  const latestUserMessage = conversation?.messages
+    ?.slice()
+    .reverse()
+    .find((message) => message.role === "user")
+  return latestUserMessage?.content || fallback
+}
+
 const getRecordingHistory = () => {
   try {
     const history = JSON.parse(
@@ -1879,12 +1901,14 @@ export const router = {
 
       // Create or get conversation ID
       let conversationId = input.conversationId
+      let agentInputText = input.text
       if (!conversationId) {
         const conversation = await conversationService.createConversation(
           input.text,
           "user",
         )
         conversationId = conversation.id
+        agentInputText = getLatestStoredUserMessageContent(conversation, input.text)
       } else {
         // Check if message queuing is enabled and there's an active session
         if (queueEnabled) {
@@ -1892,8 +1916,9 @@ export const router = {
           if (activeSessionId) {
             const session = agentSessionTracker.getSession(activeSessionId)
             if (session && session.status === "active") {
+              const queuedText = await conversationService.materializeInlineDataImagesInContent(conversationId, input.text)
               // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, input.text, activeSessionId)
+              const queuedMessage = messageQueueService.enqueue(conversationId, queuedText, activeSessionId)
               logApp("[createMcpTextInput] Queued message for active session", {
                 conversationId,
                 queuedMessageId: queuedMessage.id,
@@ -1919,11 +1944,12 @@ export const router = {
         }
 
         // Add user message to existing conversation
-        await conversationService.addMessageToConversation(
+        const updatedConversation = await conversationService.addMessageToConversation(
           conversationId,
           input.text,
           "user",
         )
+        agentInputText = getLatestStoredUserMessageContent(updatedConversation, input.text)
       }
 
       // Try to find and revive an existing session for this conversation
@@ -1962,7 +1988,7 @@ export const router = {
       // This allows multiple sessions to run concurrently
       // Pass existingSessionId to reuse the session if found
       // When fromTile=true, start snoozed so the floating panel doesn't appear
-      processWithAgentMode(input.text, conversationId, existingSessionId, input.fromTile ?? false)
+      processWithAgentMode(agentInputText, conversationId, existingSessionId, input.fromTile ?? false)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -2017,6 +2043,7 @@ export const router = {
       duration: number
       conversationId?: string
       sessionId?: string
+      screenshot?: ScreenshotAttachmentInput
       fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
     }>()
     .action(async ({ input }) => {
@@ -2111,8 +2138,11 @@ export const router = {
               Buffer.from(input.recording),
             )
 
+            const messageText = appendScreenshotToTranscript(transcript, input.screenshot)
+            const queuedText = await conversationService.materializeInlineDataImagesInContent(input.conversationId, messageText)
+
             // Queue the transcript instead of processing immediately
-            const queuedMessage = messageQueueService.enqueue(input.conversationId, transcript, activeSessionId)
+            const queuedMessage = messageQueueService.enqueue(input.conversationId, queuedText, activeSessionId)
             logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
 
             return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
@@ -2282,6 +2312,9 @@ export const router = {
           transcript = json.text
         }
 
+      const messageText = appendScreenshotToTranscript(transcript, input.screenshot)
+      let agentInputText = messageText
+
       // Create or continue conversation
       let conversationId = input.conversationId
       let conversation: Conversation | null = null
@@ -2289,31 +2322,35 @@ export const router = {
       if (!conversationId) {
         // Create new conversation with the transcript
         conversation = await conversationService.createConversation(
-          transcript,
+          messageText,
           "user",
         )
         conversationId = conversation.id
+        agentInputText = getLatestStoredUserMessageContent(conversation, messageText)
       } else {
         // Load existing conversation and add user message
         conversation =
           await conversationService.loadConversation(conversationId)
         if (conversation) {
-          await conversationService.addMessageToConversation(
+          const updatedConversation = await conversationService.addMessageToConversation(
             conversationId,
-            transcript,
+            messageText,
             "user",
           )
+          conversation = updatedConversation ?? conversation
+          agentInputText = getLatestStoredUserMessageContent(conversation, messageText)
         } else {
           conversation = await conversationService.createConversation(
-            transcript,
+            messageText,
             "user",
           )
           conversationId = conversation.id
+          agentInputText = getLatestStoredUserMessageContent(conversation, messageText)
         }
       }
 
       // Update session with actual conversation ID and title after transcription
-      const conversationTitle = transcript
+      const conversationTitle = transcript?.trim() || input.screenshot?.name || "Screen selection"
       agentSessionTracker.updateSession(sessionId, {
         conversationId,
         conversationTitle,
@@ -2329,7 +2366,7 @@ export const router = {
         // Fire-and-forget: Start agent processing without blocking.
         // Preserve the tile/background snooze state after transcription so
         // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(transcript, conversationId, sessionId, startSnoozed)
+        processWithAgentMode(agentInputText, conversationId, sessionId, startSnoozed)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()

@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   shouldCollapseMessage,
   getToolCallsSummary,
+  getToolCallPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
+  getToolArgumentEntries,
   formatToolArguments,
   formatArgumentsPreview,
   RESPOND_TO_USER_TOOL,
@@ -66,12 +69,49 @@ describe('getToolCallsSummary', () => {
     expect(getToolCallsSummary([])).toBe('')
   })
 
-  it('returns formatted tool names', () => {
+  it('returns tool-name-only previews', () => {
     const calls = [
-      { name: 'search', arguments: {} },
-      { name: 'read_file', arguments: {} },
+      { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      { name: 'read_file', arguments: { path: 'apps/desktop/src/main.ts' } },
     ]
-    expect(getToolCallsSummary(calls)).toBe('🔧 search, read_file')
+    expect(getToolCallsSummary(calls)).toBe('execute_command, read_file')
+  })
+})
+
+describe('getToolCallPreview', () => {
+  it('returns only the tool name for execute_command', () => {
+    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('execute_command')
+  })
+
+  it('omits common structured tool arguments', () => {
+    expect(getToolCallPreview({ name: 'write_file', arguments: { path: 'README.md', content: 'hello' } })).toBe('write_file')
+    expect(getToolCallPreview({ name: 'web_search', arguments: { query: 'DotAgents skills' } })).toBe('web_search')
+  })
+
+  it('falls back to the raw tool name only', () => {
+    expect(getToolCallPreview({ name: 'custom_tool', arguments: { foo: 'bar', nested: { value: true } } })).toBe('custom_tool')
+  })
+
+  it('sanitizes whitespace so collapsed labels stay one word', () => {
+    expect(getToolCallPreview({ name: 'custom tool\nname', arguments: {} })).toBe('custom_tool_name')
+  })
+})
+
+describe('getIndividualToolCallPreview', () => {
+  it('uses the actual command for individual execute_command rows', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('git status --short')
+  })
+
+  it('keeps multiline execute_command previews on one line', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: { command: "python3 - <<'PY'\nprint('hi')\nPY" } })).toBe("python3 - <<'PY' print('hi') PY")
+  })
+
+  it('still uses tool-name-only previews for non-command tools', () => {
+    expect(getIndividualToolCallPreview({ name: 'read_file', arguments: { path: 'README.md' } })).toBe('read_file')
+  })
+
+  it('supports JSON string command arguments', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: '{"command":"pnpm test"}' as unknown as Record<string, unknown> })).toBe('pnpm test')
   })
 })
 
@@ -116,6 +156,24 @@ describe('formatToolArguments', () => {
     const args = { path: '/test' }
     expect(formatToolArguments(args)).toBe('{\n  "path": "/test"\n}')
   })
+
+  it('pretty-prints JSON string arguments', () => {
+    expect(formatToolArguments('{"path":"/test","count":2}')).toBe('{\n  "path": "/test",\n  "count": 2\n}')
+  })
+})
+
+describe('getToolArgumentEntries', () => {
+  it('returns normalized entries for objects', () => {
+    expect(getToolArgumentEntries({ command: 'echo hi' })).toEqual([
+      { key: 'command', value: 'echo hi' },
+    ])
+  })
+
+  it('returns normalized entries for JSON string arguments', () => {
+    expect(getToolArgumentEntries('{"command":"echo hi"}')).toEqual([
+      { key: 'command', value: 'echo hi' },
+    ])
+  })
 })
 
 describe('formatArgumentsPreview', () => {
@@ -129,10 +187,19 @@ describe('formatArgumentsPreview', () => {
     expect(formatArgumentsPreview(args)).toBe('path: /foo, content: Hello')
   })
 
+  it('returns compact key-value preview for JSON string arguments', () => {
+    expect(formatArgumentsPreview('{"path":"/foo","content":"Hello"}')).toBe('path: /foo, content: Hello')
+  })
+
   it('truncates long values', () => {
     const args = { content: 'a'.repeat(50) }
     const preview = formatArgumentsPreview(args)
     expect(preview).toContain('...')
+  })
+
+  it('keeps multiline string values on one preview line', () => {
+    const args = { command: "python3 - <<'PY'\nprint('hello')\nPY" }
+    expect(formatArgumentsPreview(args)).toBe("command: python3 - <<'PY' print('hel...")
   })
 
   it('shows +N more for many args', () => {

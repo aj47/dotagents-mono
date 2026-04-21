@@ -179,38 +179,6 @@ function extractSkillsIndexForMinimalPrompt(skillsInstructions?: string): string
 const NON_AGENT_WORKING_NOTES_LIMIT = 3
 const AGENT_WORKING_NOTES_LIMIT = 4
 
-/**
- * Analyze tool errors and categorize them
- */
-function analyzeToolErrors(toolResults: MCPToolResult[]): {
-  errorTypes: string[]
-} {
-  const errorTypes: string[] = []
-  const errorMessages = toolResults
-    .filter((r) => r.isError)
-    .map((r) => r.content.map((c) => c.text).join(" ").toLowerCase())
-    .join(" ")
-
-  // Categorize error types
-  if (errorMessages.includes("timeout")) {
-    errorTypes.push("timeout")
-  }
-  if (errorMessages.includes("connection") || errorMessages.includes("network")) {
-    errorTypes.push("connectivity")
-  }
-  if (errorMessages.includes("permission") || errorMessages.includes("access") || errorMessages.includes("denied")) {
-    errorTypes.push("permissions")
-  }
-  if (errorMessages.includes("not found") || errorMessages.includes("does not exist") || errorMessages.includes("missing")) {
-    errorTypes.push("not_found")
-  }
-  if (errorMessages.includes("invalid") || errorMessages.includes("expected")) {
-    errorTypes.push("invalid_params")
-  }
-
-  return { errorTypes }
-}
-
 function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
   if (toolName !== "execute_command" || !result.isError) return false
 
@@ -1725,7 +1693,10 @@ export async function processTranscriptWithAgentMode(
             return null
           }
 
-          const content = sanitizedContent
+          // Preserve user-provided image markdown for the provider adapter; it
+          // converts data/assets image URLs into multimodal message parts. The
+          // sanitized variant above is still used for tool replay and emptiness checks.
+          const content = rawContent
           return {
             role: entry.role as "user" | "assistant",
             content,
@@ -2734,9 +2705,6 @@ export async function processTranscriptWithAgentMode(
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
 
     if (hasErrors) {
-      // Enhanced error analysis and recovery suggestions
-      const errorAnalysis = analyzeToolErrors(toolResults)
-
       const hasInvalidExecuteCommandSkillIdError = toolResults.some((result, index) =>
         isInvalidExecuteCommandSkillIdFailure(toolCallsArray[index]?.name, result)
       )
@@ -2759,39 +2727,6 @@ export async function processTranscriptWithAgentMode(
           if (currentCount + 1 >= MAX_TOOL_FAILURES) {
             logLLM(`⚠️ Tool "${toolName}" has failed ${MAX_TOOL_FAILURES} times - will be excluded`)
           }
-        }
-      }
-
-      // Check for unrecoverable errors that should trigger early completion
-      const hasUnrecoverableError = errorAnalysis.errorTypes?.some(
-        type => type === "permissions" || type === "authentication"
-      )
-      if (hasUnrecoverableError) {
-        // Build list of tools that failed with unrecoverable errors in THIS batch only
-        // (not all historical failures from toolFailureCount, which could mislead the model)
-        const currentUnrecoverableTools: string[] = []
-        for (let i = 0; i < toolResults.length; i++) {
-          const result = toolResults[i]
-          if (result.isError) {
-            const errorText = result.content.map((c) => c.text).join(" ").toLowerCase()
-            if (errorText.includes("permission") || errorText.includes("access") ||
-                errorText.includes("denied") || errorText.includes("authentication") ||
-                errorText.includes("unauthorized") || errorText.includes("forbidden")) {
-              const toolName = toolCallsArray[i]?.name || "unknown"
-              currentUnrecoverableTools.push(toolName)
-            }
-          }
-        }
-
-        if (currentUnrecoverableTools.length > 0) {
-          const failedToolNames = currentUnrecoverableTools.join(", ")
-          logLLM(`⚠️ Unrecoverable errors detected for tools: ${failedToolNames}`)
-          // Add note to conversation so LLM knows to wrap up
-          conversationHistory.push({
-            role: "user",
-            content: `Note: Some tools (${failedToolNames}) have unrecoverable errors (permissions/authentication). Please complete what you can or explain what cannot be done.`,
-            timestamp: Date.now()
-          })
         }
       }
 

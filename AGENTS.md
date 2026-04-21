@@ -53,6 +53,7 @@ Concise gotchas for AI coding agents working in this repo.
 
 - **Do not hardcode sanitized MCP tool names.** Internal mapping handles provider-safe renaming.
 - **Built-in tool definition schemas should stay dependency-light** to avoid circular import problems.
+- **Tool-result UI should stay compact.** Render JSON values inline where readable, and make any tool/result payload that would take more than 2 lines collapsible by default.
 
 ## Window / Electron gotchas
 

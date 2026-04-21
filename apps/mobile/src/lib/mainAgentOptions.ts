@@ -14,7 +14,7 @@ export function getAcpxMainAgentOptions(
 
   for (const profile of agentProfiles) {
     if (!profile.enabled) continue;
-    if (profile.connectionType !== 'acpx') continue;
+    if (profile.connectionType !== 'acpx' && profile.connectionType !== 'acp' && profile.connectionType !== 'stdio') continue;
     const key = profile.name.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);

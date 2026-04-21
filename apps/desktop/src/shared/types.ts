@@ -294,12 +294,13 @@ export type ProfileModelConfig = {
   ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
 }
 
-// Per-profile skills configuration
-// Skills are disabled by default for each profile; users opt-in to specific skills
+// Per-agent skills configuration.
+// Missing config or allSkillsDisabledByDefault=false means all skills are enabled.
+// When allSkillsDisabledByDefault=true, only enabledSkillIds are enabled.
 export type ProfileSkillsConfig = {
-  // List of skill IDs that are enabled for this profile
+  // List of skill IDs that are enabled for this agent
   enabledSkillIds?: string[]
-  // When true, newly-added skills are also disabled by default for this profile
+  // When true, newly-added skills are also disabled by default for this agent
   // This ensures strict opt-in behavior
   allSkillsDisabledByDefault?: boolean
 }
@@ -1013,6 +1014,9 @@ export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
+  voiceScreenshotShortcutEnabled?: boolean
+  voiceScreenshotShortcut?: "ctrl-shift-x" | "custom"
+  customVoiceScreenshotShortcut?: string
   hideDockIcon?: boolean
   launchAtLogin?: boolean
 

@@ -146,6 +146,8 @@ export type ProfileModelConfig = {
 }
 
 export type ProfileSkillsConfig = {
+  // Missing config or allSkillsDisabledByDefault=false means all skills are enabled.
+  // When allSkillsDisabledByDefault=true, only enabledSkillIds are enabled.
   enabledSkillIds?: string[]
   allSkillsDisabledByDefault?: boolean
 }

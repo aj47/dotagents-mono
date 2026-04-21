@@ -603,6 +603,7 @@ export interface Skill {
   id: string;
   name: string;
   description: string;
+  instructions?: string;
   enabled: boolean;
   enabledForProfile: boolean;
   source?: 'local' | 'imported';

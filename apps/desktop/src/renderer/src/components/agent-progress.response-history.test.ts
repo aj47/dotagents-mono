@@ -190,7 +190,11 @@ async function loadAgentProgress(
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
   const tipcMock = { tipcClient: new Proxy({ generateSpeech: vi.fn(), setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
-  const queriesMock = { useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }) }
+  const queriesMock = {
+    useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
+    useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
+    queryClient: { invalidateQueries: vi.fn(async () => undefined) },
+  }
   const themeContextMock = { useTheme: () => ({ isDark: false }) }
   const ttsManagerMock = {
     ttsManager: {
@@ -256,6 +260,7 @@ async function loadAgentProgress(
   vi.doMock("./ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("./ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
   vi.doMock("./ui/dialog", () => ({ Dialog: Null, DialogContent: Null, DialogDescription: Null, DialogHeader: Null, DialogTitle: Null }))
+  vi.doMock("./ui/select", () => ({ Select: (props: any) => ({ type: "Select", props }), SelectContent: (props: any) => ({ type: "SelectContent", props }), SelectItem: (props: any) => ({ type: "SelectItem", props }), SelectTrigger: (props: any) => ({ type: "SelectTrigger", props }), SelectValue: (props: any) => ({ type: "SelectValue", props }) }))
   vi.doMock("../lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard: vi.fn() }))
@@ -286,6 +291,8 @@ async function loadAgentProgress(
     getToolResultsSummary: () => "",
     getToolActivitySummaryLine: () => "",
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
+    getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
+    DEFAULT_MODEL_PRESET_ID: "default",
     TOOL_GROUP_PREVIEW_COUNT: 3,
     TOOL_GROUP_MIN_SIZE: 2,
   }))

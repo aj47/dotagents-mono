@@ -118,6 +118,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-resume",
       "session-resume-followup",
       "session-command",
+      "session-permission-error",
       "session-tool-error",
       "session-blank-response",
       "session-review-loop",
@@ -357,6 +358,48 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
     expect(secondPrompt).toContain("Retry the same command without skillId")
     expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
+  })
+
+  it("does not inject unrecoverable permissions notes for failed tools", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "cat /private/file" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "The command failed with access denied." } },
+        { name: "mark_work_complete", arguments: { summary: "Explained command failure" } },
+      ] })
+
+    await processTranscriptWithAgentMode(
+      "Read that file if possible",
+      availableTools as any,
+      makeExecuteToolCall("session-permission-error", 1, {
+        execute_command: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({ success: false, error: "access denied", stderr: "Permission denied" }, null, 2),
+          }],
+          isError: true,
+        },
+      }),
+      4,
+      [],
+      "conv-permission-error",
+      "session-permission-error",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const retryPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(retryPrompt).toContain("TOOL FAILED: execute_command")
+    expect(retryPrompt).toContain("access denied")
+    expect(retryPrompt).not.toContain("Some tools (execute_command) have unrecoverable errors")
+    expect(retryPrompt).not.toContain("Please complete what you can or explain what cannot be done")
   })
 
   it("routes failed communication-only tool batches through error recovery before retrying", async () => {

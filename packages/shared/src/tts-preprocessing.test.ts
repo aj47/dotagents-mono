@@ -61,10 +61,25 @@ describe('preprocessTextForTTS', () => {
     expect(result).toContain('italic')
   })
 
-  it('converts markdown list items', () => {
-    const text = '- First item\n- Second item'
+  it('strips unordered markdown list markers without saying item', () => {
+    const text = '- First point\n- Second point'
     const result = preprocessTextForTTS(text)
-    expect(result).toContain('Item:')
+    expect(result).not.toContain('Item:')
+    expect(result).toBe('First point. Second point.')
+  })
+
+  it('strips alternate markdown list markers before italic cleanup', () => {
+    const text = '* First point\n+ Second point'
+    const result = preprocessTextForTTS(text)
+    expect(result).not.toContain('Item:')
+    expect(result).toBe('First point. Second point.')
+  })
+
+  it('strips ordered markdown list markers without saying item', () => {
+    const text = '1. First point\n2. Second point'
+    const result = preprocessTextForTTS(text)
+    expect(result).not.toContain('Item:')
+    expect(result).toBe('First point. Second point.')
   })
 
   it('converts symbols to words', () => {

@@ -19,4 +19,16 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={prompt.name}')
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={skill.name}')
   })
+
+  it("adds a top search filter for prompts, skills, and tasks", () => {
+    expect(predefinedPromptsMenuSource).toContain('const [searchQuery, setSearchQuery] = useState("")')
+    expect(predefinedPromptsMenuSource).toContain('placeholder="Search prompts, skills, tasks..."')
+    expect(predefinedPromptsMenuSource).toContain('aria-label="Search prompts, skills, and tasks"')
+    expect(predefinedPromptsMenuSource).toContain('const filteredPrompts = prompts.filter')
+    expect(predefinedPromptsMenuSource).toContain('const filteredSkills = availableSkills.filter')
+    expect(predefinedPromptsMenuSource).toContain('const filteredTasks = availableTasks.filter')
+    expect(predefinedPromptsMenuSource).toContain('No matching prompts')
+    expect(predefinedPromptsMenuSource).toContain('No matching skills')
+    expect(predefinedPromptsMenuSource).toContain('No matching tasks')
+  })
 })

@@ -52,6 +52,14 @@ describe("remote-server route registration", () => {
     expect(source).toContain("processTranscriptWithACPAgent")
   })
 
+  it("exposes full skill instructions to the mobile prompt picker", () => {
+    const source = getRemoteServerSource()
+    const skillsSection = getSection(source, 'fastify.get("/v1/skills"', '// POST /v1/skills/:id/toggle-profile')
+
+    expect(skillsSection).toContain("instructions: s.instructions")
+    expect(skillsSection).toContain("enabled: true")
+  })
+
   it("exposes remote server, tunnel, and Discord settings in the remote settings GET/PATCH routes", () => {
     const source = getRemoteServerSource()
     const settingsGetSection = getSection(source, 'fastify.get("/v1/settings"', '// PATCH /v1/settings - Update settings')

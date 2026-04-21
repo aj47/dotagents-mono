@@ -39,7 +39,7 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
-import { SettingsApiClient } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,7 +48,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
-  formatArgumentsPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
@@ -59,7 +59,9 @@ import {
   type AgentConversationState,
   type AgentUserResponseEvent,
   type HandsFreePhase,
+  type Loop,
   type PredefinedPromptSummary,
+  type Skill,
   type ToolActivityGroup,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -217,6 +219,12 @@ const STARTER_PACK_SHORTCUTS: QuickStartShortcut[] = [
 ];
 
 const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
+
+const getSkillPromptContent = (skill: Skill): string => {
+  const instructions = skill.instructions?.trim();
+  if (instructions) return instructions;
+  return `Use the "${skill.name}" skill for this request.${skill.description ? `\n\n${skill.description}` : ''}`;
+};
 
 const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
 
@@ -505,10 +513,16 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!config.baseUrl || !config.apiKey) {
       return null;
     }
-    return new SettingsApiClient(config.baseUrl, config.apiKey);
+    return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
   const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const [isLoadingPromptLibrary, setIsLoadingPromptLibrary] = useState(false);
+  const [promptLibraryVisible, setPromptLibraryVisible] = useState(false);
+  const [promptLibrarySearch, setPromptLibrarySearch] = useState('');
+  const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
   const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
@@ -723,6 +737,30 @@ export default function ChatScreen({ route, navigation }: any) {
     inputRef.current?.focus?.();
   }, []);
 
+  const closePromptLibrary = useCallback(() => {
+    setPromptLibraryVisible(false);
+    setPromptLibrarySearch('');
+  }, []);
+
+  const handleSelectPromptLibraryText = useCallback((content: string) => {
+    handleInsertQuickStartPrompt(content);
+    closePromptLibrary();
+  }, [closePromptLibrary, handleInsertQuickStartPrompt]);
+
+  const handleRunPromptLibraryTask = useCallback(async (task: Loop) => {
+    if (!settingsClient || runningPromptTaskId) return;
+    setRunningPromptTaskId(task.id);
+    try {
+      await settingsClient.runLoop(task.id);
+      closePromptLibrary();
+      Alert.alert('Task started', `Running "${task.name}" on desktop.`);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to run task.');
+    } finally {
+      setRunningPromptTaskId(null);
+    }
+  }, [closePromptLibrary, runningPromptTaskId, settingsClient]);
+
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
     if (!currentSessionId) return;
@@ -923,7 +961,8 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
-  // Track which tool-activity groups are expanded (keyed by "startIndex-endIndex")
+  // Track which tool-activity groups are expanded (keyed by startIndex so the
+  // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
@@ -1436,30 +1475,44 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!settingsClient || !isFocused) {
       if (!settingsClient) {
         setPredefinedPrompts([]);
+        setAvailableSkills([]);
+        setAvailableTasks([]);
         setIsLoadingQuickStartPrompts(false);
+        setIsLoadingPromptLibrary(false);
       }
       return;
     }
 
     let cancelled = false;
     setIsLoadingQuickStartPrompts(true);
+    setIsLoadingPromptLibrary(true);
 
-    settingsClient.getSettings()
-      .then((settings) => {
+    Promise.allSettled([
+      settingsClient.getSettings(),
+      settingsClient.getSkills(),
+      settingsClient.getLoops(),
+    ] as const)
+      .then(([settingsResult, skillsResult, loopsResult]) => {
         if (cancelled) return;
-        const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
-        setPredefinedPrompts(nextPrompts);
-        setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
-        setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
-        setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setPredefinedPrompts([]);
+
+        if (settingsResult.status === 'fulfilled') {
+          const settings = settingsResult.value;
+          const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
+          setPredefinedPrompts(nextPrompts);
+          setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
+          setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
+          setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
+        } else {
+          setPredefinedPrompts([]);
+        }
+
+        setAvailableSkills(skillsResult.status === 'fulfilled' ? skillsResult.value.skills : []);
+        setAvailableTasks(loopsResult.status === 'fulfilled' ? loopsResult.value.loops : []);
       })
       .finally(() => {
         if (cancelled) return;
         setIsLoadingQuickStartPrompts(false);
+        setIsLoadingPromptLibrary(false);
       });
 
     return () => {
@@ -1577,7 +1630,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
         pendingLazyLoadSessionIdRef.current = stubSessionId;
-        const client = settingsClient || new SettingsApiClient(config.baseUrl, config.apiKey);
+        const client = settingsClient || new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
         sessionStore.loadSessionMessages(stubSessionId, client)
           .then((result) => {
             if (!result) return;
@@ -1728,11 +1781,13 @@ export default function ChatScreen({ route, navigation }: any) {
   // Compute tool-activity groups for consecutive connected tool-call messages
   const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
 
-  // Toggle expansion of a tool-activity group (keyed by "startIndex-endIndex")
+  const getToolActivityGroupKey = useCallback((group: ToolActivityGroup) => `${group.startIndex}`, []);
+
+  // Toggle expansion of a tool-activity group using a stable key for the run.
   const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
-    const key = `${group.startIndex}-${group.endIndex}`;
+    const key = getToolActivityGroupKey(group);
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  }, [getToolActivityGroupKey]);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
   // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
@@ -3041,6 +3096,24 @@ export default function ChatScreen({ route, navigation }: any) {
 		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
 		: (listening ? '...' : 'Hold');
 
+  const normalizedPromptLibrarySearch = promptLibrarySearch.trim().toLowerCase();
+  const matchesPromptLibrarySearch = useCallback((...values: Array<string | undefined | null>) => {
+    if (!normalizedPromptLibrarySearch) return true;
+    return values.some((value) => value?.toLowerCase().includes(normalizedPromptLibrarySearch));
+  }, [normalizedPromptLibrarySearch]);
+  const filteredPromptLibraryPrompts = useMemo(
+    () => predefinedPrompts.filter((prompt) => matchesPromptLibrarySearch(prompt.name, prompt.content)),
+    [matchesPromptLibrarySearch, predefinedPrompts]
+  );
+  const filteredPromptLibrarySkills = useMemo(
+    () => availableSkills.filter((skill) => matchesPromptLibrarySearch(skill.name, skill.description, skill.instructions)),
+    [availableSkills, matchesPromptLibrarySearch]
+  );
+  const filteredPromptLibraryTasks = useMemo(
+    () => availableTasks.filter((task) => matchesPromptLibrarySearch(task.name, task.prompt)),
+    [availableTasks, matchesPromptLibrarySearch]
+  );
+
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
   const canLoadOlderMessages = firstVisibleMessageIndex > 0;
@@ -3128,8 +3201,8 @@ export default function ChatScreen({ route, navigation }: any) {
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             if (group) {
-              const groupKey = `${group.startIndex}-${group.endIndex}`;
-              const isGroupExpanded = expandedGroups[groupKey] ?? false;
+              const groupKey = getToolActivityGroupKey(group);
+              const isGroupExpanded = expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false;
 
               // Non-first message in a collapsed group: skip rendering
               if (i !== group.startIndex && !isGroupExpanded) {
@@ -3151,18 +3224,20 @@ export default function ChatScreen({ route, navigation }: any) {
                       pressed && styles.toolActivityGroupPressed,
                     ]}
                   >
-                    <Text style={styles.toolActivityGroupHeader}>
-                      ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
-                    </Text>
-                    {group.previewLines.map((line, lineIdx) => (
-                      <Text
-                        key={lineIdx}
-                        style={styles.toolActivityGroupPreviewLine}
-                        numberOfLines={1}
-                      >
-                        {line}
+                    <View style={styles.toolActivityGroupHeaderRow}>
+                      <Text style={styles.toolActivityGroupHeader}>
+                        ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
                       </Text>
-                    ))}
+                      {group.previewLines.length > 0 && (
+                        <Text
+                          style={styles.toolActivityGroupPreviewLine}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {group.previewLines.join(', ')}
+                        </Text>
+                      )}
+                    </View>
                   </Pressable>
                 );
               }
@@ -3250,8 +3325,10 @@ export default function ChatScreen({ route, navigation }: any) {
             }
 
             // Determine if this message needs group expand/collapse chrome
-            const isFirstInExpandedGroup = group && i === group.startIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
-            const isLastInExpandedGroup = group && i === group.endIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
+            const groupKey = group ? getToolActivityGroupKey(group) : '';
+            const isExpandedGroup = group ? (expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false) : false;
+            const isFirstInExpandedGroup = group && i === group.startIndex && isExpandedGroup;
+            const isLastInExpandedGroup = group && i === group.endIndex && isExpandedGroup;
 
             return (
               <View key={i}>
@@ -3392,7 +3469,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult && origIdx >= toolResultCount;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const argPreview = formatArgumentsPreview(toolCall.arguments);
+                              const toolPreview = getIndividualToolCallPreview(toolCall);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
@@ -3411,8 +3488,9 @@ export default function ChatScreen({ route, navigation }: any) {
                                       tcError && styles.toolCallCompactNameError,
                                     ]}
                                     numberOfLines={1}
+                                    ellipsizeMode="tail"
                                   >
-                                    {toolCall.name}{argPreview ? ` · ${argPreview}` : ''}
+                                    {toolPreview}
                                   </Text>
                                 </View>
                               );
@@ -3890,6 +3968,16 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
+		            <TouchableOpacity
+		              style={[styles.ttsToggle, promptLibraryVisible && styles.ttsToggleOn]}
+		              onPress={() => setPromptLibraryVisible(true)}
+		              activeOpacity={0.7}
+		              accessibilityRole="button"
+		              accessibilityLabel="Open prompts, skills, and tasks"
+		              accessibilityHint="Shows a searchable library of predefined prompts, skills, and tasks from desktop."
+		            >
+		              <Text style={styles.ttsToggleText}>📚</Text>
+		            </TouchableOpacity>
 	            <TouchableOpacity
 	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
 	              onPress={handlePickImages}
@@ -4065,6 +4153,79 @@ export default function ChatScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </Modal>
       )}
+
+      <Modal
+        visible={promptLibraryVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closePromptLibrary}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.promptLibraryOverlay}>
+            <Pressable style={styles.promptLibraryBackdrop} onPress={closePromptLibrary} />
+            <View style={styles.promptLibrarySheet}>
+              <View style={styles.promptLibraryHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Prompts, Skills & Tasks</Text>
+                  <Text style={styles.promptLibrarySubtitle}>From your connected desktop app</Text>
+                </View>
+                <TouchableOpacity onPress={closePromptLibrary} style={styles.promptLibraryCloseButton} accessibilityRole="button" accessibilityLabel="Close prompt library">
+                  <Text style={styles.promptLibraryCloseButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.promptLibrarySearchInput}
+                value={promptLibrarySearch}
+                onChangeText={setPromptLibrarySearch}
+                placeholder="Search prompts, skills, tasks..."
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel="Search prompts, skills, and tasks"
+              />
+              {isLoadingPromptLibrary ? (
+                <View style={styles.promptLibraryLoadingRow}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.promptLibraryMeta}>Loading desktop library…</Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.promptLibraryList} keyboardShouldPersistTaps="handled">
+                  <Text style={styles.promptLibrarySectionTitle}>Predefined Prompts</Text>
+                  {filteredPromptLibraryPrompts.length === 0 ? (
+                    <Text style={styles.promptLibraryEmptyText}>{predefinedPrompts.length === 0 ? 'No saved prompts yet' : 'No matching prompts'}</Text>
+                  ) : filteredPromptLibraryPrompts.map((prompt) => (
+                    <TouchableOpacity key={prompt.id} style={styles.promptLibraryItem} onPress={() => handleSelectPromptLibraryText(prompt.content)} accessibilityRole="button" accessibilityLabel={`Insert prompt ${prompt.name}`}>
+                      <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>📝 {prompt.name}</Text>
+                      <Text style={styles.promptLibraryItemDescription} numberOfLines={2}>{prompt.content}</Text>
+                    </TouchableOpacity>
+                  ))}
+
+                  <Text style={styles.promptLibrarySectionTitle}>Skills</Text>
+                  {filteredPromptLibrarySkills.length === 0 ? (
+                    <Text style={styles.promptLibraryEmptyText}>{availableSkills.length === 0 ? 'No skills available' : 'No matching skills'}</Text>
+                  ) : filteredPromptLibrarySkills.map((skill) => (
+                    <TouchableOpacity key={skill.id} style={styles.promptLibraryItem} onPress={() => handleSelectPromptLibraryText(getSkillPromptContent(skill))} accessibilityRole="button" accessibilityLabel={`Insert skill ${skill.name}`}>
+                      <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>✨ {skill.name}</Text>
+                      <Text style={styles.promptLibraryItemDescription} numberOfLines={2}>{skill.description || 'Use this skill as a reusable prompt.'}</Text>
+                    </TouchableOpacity>
+                  ))}
+
+                  <Text style={styles.promptLibrarySectionTitle}>Tasks</Text>
+                  {filteredPromptLibraryTasks.length === 0 ? (
+                    <Text style={styles.promptLibraryEmptyText}>{availableTasks.length === 0 ? 'No tasks available' : 'No matching tasks'}</Text>
+                  ) : filteredPromptLibraryTasks.map((task) => (
+                    <TouchableOpacity key={task.id} style={[styles.promptLibraryItem, runningPromptTaskId === task.id && styles.promptLibraryItemDisabled]} onPress={() => handleRunPromptLibraryTask(task)} disabled={!!runningPromptTaskId} accessibilityRole="button" accessibilityLabel={`Run task ${task.name}`}>
+                      <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>⏱️ {task.name}</Text>
+                      <Text style={styles.promptLibraryItemDescription} numberOfLines={2}>{task.prompt || 'Run this task now.'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal
         visible={addPromptModalVisible}
@@ -4622,6 +4783,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       gap: 4,
       paddingVertical: 1,
+      overflow: 'hidden',
     },
     toolCallCompactPressed: {
       opacity: 0.7,
@@ -4631,6 +4793,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 10,
       fontWeight: '500',
       flexShrink: 1,
+      minWidth: 0,
       color: theme.colors.mutedForeground,
     },
     toolCallCompactNamePending: {
@@ -4666,18 +4829,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     toolActivityGroupPressed: {
       opacity: 0.7,
     },
+    toolActivityGroupHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      overflow: 'hidden',
+    },
     toolActivityGroupHeader: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       fontWeight: '600',
       color: theme.colors.mutedForeground,
-      marginBottom: 2,
+      flexShrink: 0,
     },
     toolActivityGroupPreviewLine: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       color: theme.colors.mutedForeground,
-      paddingLeft: 8,
+      flexShrink: 1,
+      minWidth: 0,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.xs,
@@ -4882,6 +5052,104 @@ function createStyles(theme: Theme, screenHeight: number) {
     speakButtonTextActive: {
       color: theme.colors.primary,
     } as const,
+    promptLibraryOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    },
+    promptLibraryBackdrop: {
+      flex: 1,
+    },
+    promptLibrarySheet: {
+      maxHeight: '82%',
+      backgroundColor: theme.colors.background,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    promptLibraryHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: spacing.md,
+    },
+    promptLibrarySubtitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: -spacing.sm,
+    },
+    promptLibraryCloseButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+    },
+    promptLibraryCloseButtonText: {
+      color: theme.colors.foreground,
+      fontSize: 24,
+      lineHeight: 28,
+    },
+    promptLibrarySearchInput: {
+      ...theme.input,
+      minHeight: 44,
+      color: theme.colors.foreground,
+    },
+    promptLibraryLoadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.lg,
+    },
+    promptLibraryMeta: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+    },
+    promptLibraryList: {
+      maxHeight: 460,
+    },
+    promptLibrarySectionTitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginTop: spacing.sm,
+      marginBottom: spacing.xs,
+    },
+    promptLibraryItem: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+      marginBottom: spacing.xs,
+    },
+    promptLibraryItemDisabled: {
+      opacity: 0.5,
+    },
+    promptLibraryItemTitle: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
+      fontWeight: '700',
+    },
+    promptLibraryItemDescription: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: 2,
+      lineHeight: 16,
+    },
+    promptLibraryEmptyText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      paddingVertical: spacing.sm,
+      textAlign: 'center',
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
