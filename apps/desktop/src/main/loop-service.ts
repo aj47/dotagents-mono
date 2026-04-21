@@ -425,6 +425,19 @@ class LoopService {
       // assistant response. The session ran silently in the background; this
       // wakes it up only after the result is ready.
       if (loop.speakOnTrigger && sessionId) {
+        // Clear stale TTS tracking keys for this session in all renderer
+        // windows.  For continueInSession loops the sessionId is reused across
+        // runs, so keys from the previous run would still be in the module-level
+        // played-set and cause hasTTSPlayed() to block the new auto-play.
+        const { WINDOWS: wins } = await import("./window")
+        for (const [id, win] of wins.entries()) {
+          try {
+            getRendererHandlers<RendererHandlers>(win.webContents).clearSessionTTSKeys?.send(sessionId)
+          } catch (e) {
+            logApp(`[LoopService] clearSessionTTSKeys send to ${id} failed:`, e)
+          }
+        }
+
         const { setTrackedAgentSessionSnoozed } = await import("./floating-panel-session-state")
         setTrackedAgentSessionSnoozed(sessionId, false)
 

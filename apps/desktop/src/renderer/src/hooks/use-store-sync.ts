@@ -5,6 +5,7 @@ import { useAgentStore, useConversationStore } from '@renderer/stores'
 import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
 import { queryClient } from '@renderer/lib/queries'
 import { ttsManager } from '@renderer/lib/tts-manager'
+import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
 import { logUI } from '@renderer/lib/debug'
 
 const areStringArraysEqual = (left: string[], right: string[]): boolean => {
@@ -136,6 +137,16 @@ export function useStoreSync() {
     )
     return unlisten
   }, [setSessionSnoozed])
+
+  // Clear stale TTS tracking keys for a session (sent before speakOnTrigger unsnooze)
+  useEffect(() => {
+    const unlisten = rendererHandlers.clearSessionTTSKeys.listen(
+      (sessionId: string) => {
+        clearSessionTTSTracking(sessionId)
+      }
+    )
+    return unlisten
+  }, [])
 
   // Listen for message queue updates
   useEffect(() => {

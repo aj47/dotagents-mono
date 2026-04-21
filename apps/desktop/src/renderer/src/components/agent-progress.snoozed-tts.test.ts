@@ -16,7 +16,7 @@ describe("agent progress TTS guardrails", () => {
 
   it("suppresses tile auto-play while the floating panel is visible so the same session is not spoken twice", () => {
     expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
-    expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(variant, isSnoozed, isFocused, isFloatingPanelVisible)')
+    expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)')
     expect(agentProgressSource).toContain('const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)')
   })
 
