@@ -684,16 +684,20 @@ function mapUsage(response: ChatGptWebCompletedEventResponse | undefined): ChatG
   const usage = response?.usage
   if (!usage) return undefined
 
+  const inputTokenDetails = usage.input_tokens_details?.cached_tokens !== undefined
+    ? { cacheReadTokens: usage.input_tokens_details.cached_tokens }
+    : undefined
+
+  const outputTokenDetails = usage.output_tokens_details?.reasoning_tokens !== undefined
+    ? { reasoningTokens: usage.output_tokens_details.reasoning_tokens }
+    : undefined
+
   return {
     inputTokens: usage.input_tokens,
     outputTokens: usage.output_tokens,
     totalTokens: usage.total_tokens,
-    inputTokenDetails: {
-      cacheReadTokens: usage.input_tokens_details?.cached_tokens,
-    },
-    outputTokenDetails: {
-      reasoningTokens: usage.output_tokens_details?.reasoning_tokens,
-    },
+    inputTokenDetails,
+    outputTokenDetails,
   }
 }
 

@@ -31,5 +31,7 @@ test('ChatGPT Codex provider handles reasoning summary streaming events', () => 
 
 test('ChatGPT Codex provider maps response reasoning token usage', () => {
   assert.match(providerSource, /output_tokens_details\?: \{\s*reasoning_tokens\?: number\s*\}/)
-  assert.match(providerSource, /outputTokenDetails: \{\s*reasoningTokens: usage\.output_tokens_details\?\.reasoning_tokens,\s*\}/)
+  assert.match(providerSource, /outputTokenDetails = usage\.output_tokens_details\?\.reasoning_tokens !== undefined/)
+  assert.match(providerSource, /\{ reasoningTokens: usage\.output_tokens_details\.reasoning_tokens \}/)
+  assert.match(providerSource, /: undefined/)
 })
