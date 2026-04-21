@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildConversationVideoAssetHttpUrl,
   getVideoAssetLabel,
+  isConversationVideoAssetUrl,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
 } from './conversation-media-assets';
@@ -26,6 +27,13 @@ describe('conversation video asset utilities', () => {
       'http://localhost:3210/v1/',
       'assets://conversation-video/conv_1/abcdef1234567890.mp4',
     )).toBe('http://localhost:3210/v1/conversations/conv_1/assets/videos/abcdef1234567890.mp4');
+  });
+
+  it('detects conversation video asset urls', () => {
+    expect(isConversationVideoAssetUrl('assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe(true);
+    expect(isConversationVideoAssetUrl('assets://recording/recording_1/demo.mp4')).toBe(false);
+    expect(isConversationVideoAssetUrl('https://example.com/demo.mp4')).toBe(false);
+    expect(isConversationVideoAssetUrl(undefined)).toBe(false);
   });
 
   it('uses link text before filename for labels', () => {
