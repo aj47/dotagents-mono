@@ -145,7 +145,7 @@ function SessionOverflowMenu({
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
-          className="hover:bg-accent focus-visible:ring-ring shrink-0 rounded p-0.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="flex h-5 w-5 items-center justify-center hover:bg-accent focus-visible:ring-ring shrink-0 rounded transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           aria-label={`Session actions for ${sessionTitle}`}
           title="Session actions"
         >
@@ -1114,7 +1114,7 @@ export function ActiveAgentsSidebar({
                   )}
                   <button
                     onClick={(e) => handleStopSession(session.id, e)}
-                    className="hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 transition-all"
+                    className="flex h-5 w-5 items-center justify-center hover:bg-destructive/20 hover:text-destructive shrink-0 rounded transition-all"
                     title="Stop this agent session"
                   >
                     <X className="h-3 w-3" />

@@ -246,13 +246,12 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               <PredefinedPromptsMenu
                 onSelectPrompt={(content) => setText(content)}
                 disabled={isBusy}
-                className="h-6 w-6"
+                buttonSize="sm-icon"
               />
               <Button
                 type="button"
-                size="icon"
+                size="sm-icon"
                 variant="ghost"
-                className="h-6 w-6"
                 disabled={isBusy || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
                 onClick={handleImageButtonClick}
                 title="Attach image"

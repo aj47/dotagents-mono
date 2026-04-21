@@ -200,8 +200,8 @@ function QueuedMessageItem({
                 {isFailed && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-primary hover:bg-primary/10 hover:text-primary"
+                    size="sm-icon"
+                    className="text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={() => retryMutation.mutate()}
                     disabled={retryMutation.isPending}
                     title="Retry message"
@@ -213,8 +213,7 @@ function QueuedMessageItem({
                 {!isAddedToHistory && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                    size="sm-icon"
                     onClick={() => setIsEditing(true)}
                     title="Edit message"
                     aria-label="Edit message"
@@ -224,8 +223,8 @@ function QueuedMessageItem({
                 )}
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  size="sm-icon"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => removeMutation.mutate()}
                   disabled={removeMutation.isPending}
                   title="Remove from queue"
@@ -313,8 +312,8 @@ export function MessageQueuePanel({
           {isPaused ? (
             <Button
               variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
+              size="sm-icon"
+              className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
               title="Resume queue execution"
@@ -324,8 +323,8 @@ export function MessageQueuePanel({
           ) : (
             <Button
               variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              size="sm-icon"
+              className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               onClick={() => pauseMutation.mutate()}
               disabled={pauseMutation.isPending || hasProcessingMessage}
               title="Pause queue"
@@ -335,9 +334,8 @@ export function MessageQueuePanel({
           )}
           <Button
             variant="ghost"
-            size="icon"
+            size="sm-icon"
             className={cn(
-              "h-6 w-6",
               isPaused
                 ? "text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
                 : "text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
@@ -429,9 +427,8 @@ export function MessageQueuePanel({
           )}
           <Button
             variant="ghost"
-            size="icon"
+            size="sm-icon"
             className={cn(
-              "h-6 w-6",
               isPaused
                 ? "text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-200/50 dark:hover:bg-orange-800/50"
                 : "text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-800/50"
@@ -443,9 +440,9 @@ export function MessageQueuePanel({
             title={isListCollapsed ? "Expand queue" : "Collapse queue"}
           >
             {isListCollapsed ? (
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-3.5 w-3.5" />
             ) : (
-              <ChevronUp className="h-3 w-3" />
+              <ChevronUp className="h-3.5 w-3.5" />
             )}
           </Button>
         </div>

@@ -3999,18 +3999,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const getStatusIndicator = () => {
     const isSnoozed = progress.isSnoozed
     if (conversationState === "needs_input") {
-      return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
+      return <Shield className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
     }
     if (conversationState === "running") {
-      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-4 [&_img]:w-4" />
+      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
     }
     if (isSnoozed) {
-      return <Moon className="h-4 w-4 text-muted-foreground" />
+      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
     }
     if (conversationState === "blocked") {
-      return <XCircle className="h-4 w-4 text-red-500" />
+      return <XCircle className="h-3.5 w-3.5 text-red-500" />
     }
-    return <Check className="h-4 w-4 text-green-500" />
+    return <Check className="h-3.5 w-3.5 text-green-500" />
   }
 
   // Get title for tile variant
@@ -4081,7 +4081,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           }}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            <div className="shrink-0">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center">
               {getStatusIndicator()}
             </div>
             <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
@@ -4090,16 +4090,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
             {canCollapseTile && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
-                {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+              <Button variant="ghost" size="sm-icon" className="shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
+                {isCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
               </Button>
             )}
 
             {conversationId && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
+                size="sm-icon"
+                className="shrink-0"
                 onClick={(e) => {
                   e.stopPropagation()
                   togglePinSession(conversationId)
@@ -4108,17 +4108,17 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 aria-label={isPinned ? "Unpin session" : "Pin session"}
                 aria-pressed={isPinned}
               >
-                <Pin className={cn("h-3 w-3", isPinned && "fill-current text-foreground")} />
+                <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current text-foreground")} />
               </Button>
             )}
             {/* Combined close button: stops agent if running, dismisses if complete */}
             {!isComplete ? (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title="Stop agent">
-                <OctagonX className="h-3 w-3" />
+              <Button variant="ghost" size="sm-icon" className="shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title="Stop agent">
+                <OctagonX className="h-3.5 w-3.5" />
               </Button>
             ) : onDismiss ? (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title="Dismiss">
-                <X className="h-3 w-3" />
+              <Button variant="ghost" size="sm-icon" className="shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title="Dismiss">
+                <X className="h-3.5 w-3.5" />
               </Button>
             ) : null}
           </div>
