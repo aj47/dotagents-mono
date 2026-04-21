@@ -12,6 +12,12 @@ import {
   writeAgentsLayerFromConfig,
 } from "./agents-files/modular-config"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
+import {
+  getAgentsSecretsLocalPath,
+  migrateJsonFileSecretsToLocalStore,
+  prepareConfigForPersistence,
+  resolveSecretRefs,
+} from "./agents-files/secrets"
 import { getErrorMessage, normalizeError } from "./error-utils"
 
 const DEFAULT_APP_ID = "app.dotagents"
@@ -164,6 +170,31 @@ function migrateAgentsFolderToHome(dataFolder: string): void {
     path.join(globalAgentsFolder, "layouts", "ui.json"),
   )
 
+}
+
+function migratePlaintextSecretsToLocalStore(): void {
+  const migrateAgentsDir = (agentsDir: string) => {
+    const layer = getAgentsLayerPaths(agentsDir)
+    const secretsFilePath = getAgentsSecretsLocalPath(agentsDir)
+    for (const filePath of [
+      layer.settingsJsonPath,
+      layer.mcpJsonPath,
+      layer.modelsJsonPath,
+      layer.layoutJsonPath,
+    ]) {
+      migrateJsonFileSecretsToLocalStore(filePath, secretsFilePath, true)
+    }
+  }
+
+  migrateAgentsDir(globalAgentsFolder)
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  if (workspaceAgentsFolder) migrateAgentsDir(workspaceAgentsFolder)
+
+  migrateJsonFileSecretsToLocalStore(
+    getConfigPath(),
+    getAgentsSecretsLocalPath(globalAgentsFolder),
+    false,
+  )
 }
 
 type LoadedConfig = {
@@ -377,10 +408,14 @@ const getConfig = (): LoadedConfig => {
   )
 
   // 2) Always load legacy config.json as the base layer (it holds API keys, preferences, etc.)
-  const savedConfig = safeReadJsonFileSync<Partial<Config>>(configFilePath, {
+  const savedConfigRaw = safeReadJsonFileSync<Partial<Config>>(configFilePath, {
     backupDir: legacyBackupsFolder,
     defaultValue: {},
   })
+  const savedConfig = resolveSecretRefs(
+    savedConfigRaw,
+    getAgentsSecretsLocalPath(globalAgentsFolder),
+  )
 
   // Merge order: defaults ← config.json ← .agents (if present)
   // This ensures existing settings (API keys etc.) from config.json are always preserved,
@@ -493,6 +528,7 @@ export class ConfigStore {
     // One-time migration: move files from old app-data/.agents → ~/.agents
     try {
       migrateAgentsFolderToHome(dataFolder)
+      migratePlaintextSecretsToLocalStore()
     } catch {
       // best-effort
     }
@@ -602,7 +638,16 @@ export function persistConfigToDisk(
   }
 
   try {
-    safeWriteJsonFileSync(legacyConfigFilePath, config, {
+    const configForLegacyDisk = prepareConfigForPersistence(
+      config,
+      getAgentsSecretsLocalPath(agentsDir),
+    )
+    migrateJsonFileSecretsToLocalStore(
+      legacyConfigFilePath,
+      getAgentsSecretsLocalPath(agentsDir),
+      false,
+    )
+    safeWriteJsonFileSync(legacyConfigFilePath, configForLegacyDisk, {
       backupDir,
       maxBackups,
       pretty: false,

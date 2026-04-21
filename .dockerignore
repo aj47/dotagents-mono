@@ -38,6 +38,9 @@ docker-compose.yml
 .env.*
 !.env.example
 
+# Local-only DotAgents secret material
+**/.agents/secrets.local.json*
+
 # Logs
 *.log
 npm-debug.log*

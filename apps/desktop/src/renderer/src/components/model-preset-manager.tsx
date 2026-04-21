@@ -391,6 +391,9 @@ export function ModelPresetManager({
                 onChange={(e) => setNewPreset({ ...newPreset, apiKey: e.target.value })}
                 placeholder="sk-..."
               />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Stored in local secret storage; shareable .agents config keeps only a secret reference.
+              </p>
             </div>
 
             {/* Model Preferences Section */}
@@ -504,6 +507,9 @@ export function ModelPresetManager({
                   }
                   placeholder="sk-..."
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Stored in local secret storage; shareable .agents config keeps only a secret reference.
+                </p>
               </div>
 
               {/* Model Preferences Section */}

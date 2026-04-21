@@ -80,6 +80,7 @@ tmp/
 
 # Local .agents backup snapshots
 .agents/.backups/
+**/.agents/secrets.local.json*
 
 # Local factory/agent scaffolding
 .factory/

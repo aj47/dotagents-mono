@@ -840,17 +840,24 @@ export function Component() {
     },
   ) => (
     <Control label={label} className="px-3">
-      <Input
-        type={type}
-        placeholder={placeholder}
-        value={providerDrafts[key]}
-        onChange={(e) => {
-          updateProviderDraft(key, e.currentTarget.value)
-        }}
-        onBlur={(e) => {
-          flushProviderSave(key, e.currentTarget.value)
-        }}
-      />
+      <div className="space-y-1">
+        <Input
+          type={type}
+          placeholder={placeholder}
+          value={providerDrafts[key]}
+          onChange={(e) => {
+            updateProviderDraft(key, e.currentTarget.value)
+          }}
+          onBlur={(e) => {
+            flushProviderSave(key, e.currentTarget.value)
+          }}
+        />
+        {type === "password" && (
+          <p className="text-[11px] text-muted-foreground">
+            Stored in local secret storage; shareable .agents config files keep only a secret reference.
+          </p>
+        )}
+      </div>
     </Control>
   )
 

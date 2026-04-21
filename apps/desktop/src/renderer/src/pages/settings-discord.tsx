@@ -189,7 +189,8 @@ export function Component() {
           </Control>
 
           <div className="px-3 py-1 text-sm text-muted-foreground">
-            Discord needs the bot token plus the Message Content intent enabled in the Discord developer portal.
+            Discord needs the bot token plus the Message Content intent enabled in the Discord developer portal. The token is
+            stored in local secret storage; shareable .agents config keeps only a secret reference.
           </div>
 
           <div className="px-3 pb-3">

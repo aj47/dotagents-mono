@@ -159,6 +159,19 @@ export {
 } from './agents-files/modular-config';
 export type { AgentsLayerPaths, SplitAgentsConfig } from './agents-files/modular-config';
 
+// Agents files — local secrets
+export {
+  AGENTS_SECRETS_LOCAL_JSON,
+  SECRET_REF_PREFIX,
+  getAgentsSecretsLocalPath,
+  isSecretRef,
+  makeSecretRef,
+  extractSecretsForPersistence,
+  prepareConfigForPersistence,
+  migrateJsonFileSecretsToLocalStore,
+  resolveSecretRefs,
+} from './agents-files/secrets';
+
 // Agents files — knowledge notes
 export {
   AGENTS_KNOWLEDGE_DIR,

@@ -64,6 +64,7 @@ const SANDBOXES_DIR = ".sandboxes"
 const SLOT_MANIFEST_FILE = "slot-manifest.json"
 const ACTIVE_SLOT_FILE = "active-slot.json"
 const DEFAULT_SLOT_NAME = "default"
+const AGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"
 
 // Files/dirs from .agents that belong to a slot snapshot
 const SNAPSHOT_ITEMS = [
@@ -81,6 +82,9 @@ const SNAPSHOT_ITEMS = [
 
 // Directories that should not be included in snapshots
 const EXCLUDED_DIRS = new Set([SANDBOXES_DIR, ".backups", ".restore-staging"])
+
+// Local secret store files should never be copied into sandbox snapshots.
+const EXCLUDED_FILE_PREFIXES = [`${AGENTS_SECRETS_LOCAL_JSON}`]
 
 // ============================================================================
 // Helpers
@@ -128,6 +132,12 @@ function copyDirRecursiveSync(src: string, dest: string): void {
   if (!fs.existsSync(src)) return
   // Use lstatSync to avoid following symlinks — prevents traversing outside .agents
   const stats = fs.lstatSync(src)
+  const entryName = path.basename(src)
+  if (stats.isDirectory() && EXCLUDED_DIRS.has(entryName)) return
+  if (
+    stats.isFile() &&
+    EXCLUDED_FILE_PREFIXES.some((prefix) => entryName === prefix || entryName.startsWith(`${prefix}.`))
+  ) return
   if (stats.isSymbolicLink()) return // skip symlinks for safety
   if (stats.isFile()) {
     fs.mkdirSync(path.dirname(dest), { recursive: true })

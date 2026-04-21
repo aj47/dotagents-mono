@@ -11,6 +11,7 @@ import {
   writeAgentsLayerFromConfig,
   writeAgentsPrompts,
 } from "./modular-config"
+import { AGENTS_SECRETS_LOCAL_JSON, SECRET_REF_PREFIX } from "./secrets"
 
 const DEFAULT_PROMPT = "DEFAULT PROMPT\nLine2"
 
@@ -96,8 +97,60 @@ describe("modular-config", () => {
 
     expect(settings.textInputEnabled).toBe(false)
     expect(mcp.mcpMaxIterations).toBe(99)
-    expect(models.openaiApiKey).toBe("sk-test")
+    expect(models.openaiApiKey).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
     expect(layout.themePreference).toBe("dark")
+
+    const secrets = JSON.parse(fs.readFileSync(path.join(agentsDir, AGENTS_SECRETS_LOCAL_JSON), "utf8"))
+    expect(Object.values(secrets.secrets)).toContain("sk-test")
+    expect(fs.readFileSync(path.join(agentsDir, ".gitignore"), "utf8")).toContain(`/${AGENTS_SECRETS_LOCAL_JSON}*`)
+
+    const loaded = loadAgentsLayerConfig(layer)
+    expect(loaded.openaiApiKey).toBe("sk-test")
+  })
+
+  it("stores nested MCP and provider credentials as local secret refs", () => {
+    const dir = mkTempDir("dotagents-modular-secrets-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    const config = {
+      langfusePublicKey: "pk-lf-public",
+      langfuseSecretKey: "sk-lf-secret",
+      modelPresets: [{ id: "openrouter", name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", apiKey: "sk-model" }],
+      mcpConfig: {
+        mcpServers: {
+          github: {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            env: { GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_secret", SAFE_FLAG: "1" },
+            headers: { Authorization: "Bearer server-secret", Accept: "application/json" },
+            oauth: { clientSecret: "oauth-secret", serverMetadata: { token_endpoint: "https://example.com/token" } },
+          },
+        },
+      },
+    } as unknown as Config
+
+    writeAgentsLayerFromConfig(layer, config)
+
+    const settings = JSON.parse(fs.readFileSync(layer.settingsJsonPath, "utf8"))
+    const models = JSON.parse(fs.readFileSync(layer.modelsJsonPath, "utf8"))
+    const mcp = JSON.parse(fs.readFileSync(layer.mcpJsonPath, "utf8"))
+
+    expect(settings.langfusePublicKey).toBe("pk-lf-public")
+    expect(settings.langfuseSecretKey).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(models.modelPresets[0].apiKey).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(mcp.mcpConfig.mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(mcp.mcpConfig.mcpServers.github.headers.Authorization).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(mcp.mcpConfig.mcpServers.github.headers.Accept).toBe("application/json")
+    expect(mcp.mcpConfig.mcpServers.github.oauth.clientSecret).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(mcp.mcpConfig.mcpServers.github.oauth.serverMetadata.token_endpoint).toBe("https://example.com/token")
+
+    const loaded = loadAgentsLayerConfig(layer)
+    expect(loaded.langfuseSecretKey).toBe("sk-lf-secret")
+    expect(loaded.modelPresets[0].apiKey).toBe("sk-model")
+    expect(loaded.mcpConfig.mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN).toBe("ghp_secret")
+    expect(loaded.mcpConfig.mcpServers.github.headers.Authorization).toBe("Bearer server-secret")
+    expect(loaded.mcpConfig.mcpServers.github.oauth.clientSecret).toBe("oauth-secret")
   })
 
   it("does not rewrite layer JSON files when the in-memory value is unchanged", () => {

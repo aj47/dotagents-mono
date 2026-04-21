@@ -308,6 +308,9 @@ export function RemoteServerSettingsGroups({
                     Copy disabled in Streamer Mode
                   </div>
                 )}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Stored in local secret storage; shareable .agents config keeps only a secret reference.
+                </p>
               </Control>
 
               <Control label={<ControlLabel label="Log Level" tooltip="Fastify logger level" />} className="px-3">
