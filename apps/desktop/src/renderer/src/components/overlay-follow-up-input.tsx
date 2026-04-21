@@ -354,9 +354,9 @@ export function OverlayFollowUpInput({
           />
           <Button
             type="button"
-            size="icon"
+            size="md-icon"
             variant="ghost"
-            className="h-7 w-7 flex-shrink-0"
+            className="flex-shrink-0"
             disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
             onMouseDown={handleInputInteraction}
             onClick={handleImageButtonClick}
@@ -366,9 +366,9 @@ export function OverlayFollowUpInput({
           </Button>
           <Button
             type="submit"
-            size="icon"
+            size="md-icon"
             variant="ghost"
-            className="h-7 w-7 flex-shrink-0"
+            className="flex-shrink-0"
             disabled={!hasMessageContent || isDisabled}
             onMouseDown={handleInputInteraction}
             title={isSessionActive && isQueueEnabled ? "Queue message" : "Send message"}
@@ -380,10 +380,10 @@ export function OverlayFollowUpInput({
           </Button>
           <Button
             type="button"
-            size="icon"
+            size="md-icon"
             variant="ghost"
             className={cn(
-              "h-7 w-7 flex-shrink-0",
+              "flex-shrink-0",
               "hover:bg-red-100 dark:hover:bg-red-900/30",
               "hover:text-red-600 dark:hover:text-red-400"
             )}
@@ -398,10 +398,10 @@ export function OverlayFollowUpInput({
           {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
             <Button
               type="button"
-              size="icon"
+              size="md-icon"
               variant="ghost"
               className={cn(
-                "h-7 w-7 flex-shrink-0",
+                "flex-shrink-0",
                 "text-red-500 hover:text-red-600",
                 "hover:bg-red-100 dark:hover:bg-red-950/30"
               )}

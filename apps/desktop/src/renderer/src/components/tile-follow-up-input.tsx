@@ -372,43 +372,43 @@ export function TileFollowUpInput({
         <PredefinedPromptsMenu
           onSelectPrompt={(content) => setText(content)}
           disabled={isDisabled}
-          className="h-6 w-6"
+          buttonSize="sm-icon"
         />
         <Button
           type="button"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
+          className="flex-shrink-0"
           disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
           onClick={() => fileInputRef.current?.click()}
           title="Attach image"
         >
-          <ImagePlus className="h-3 w-3" />
+          <ImagePlus className="h-3.5 w-3.5" />
         </Button>
         <Button
           type="submit"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
+          className="flex-shrink-0"
           disabled={!hasMessageContent || isDisabled}
           title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
           aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
         >
           {isInitializingSession ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
             <Send className={cn(
-              "h-3 w-3",
+              "h-3.5 w-3.5",
               sendMutation.isPending && "animate-pulse"
             )} aria-hidden="true" />
           )}
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
           className={cn(
-            "h-6 w-6 flex-shrink-0",
+            "flex-shrink-0",
             "hover:bg-red-100 dark:hover:bg-red-900/30",
             "hover:text-red-600 dark:hover:text-red-400"
           )}
@@ -416,16 +416,16 @@ export function TileFollowUpInput({
           onClick={handleVoiceClick}
           title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
         >
-          <Mic className="h-3 w-3" />
+          <Mic className="h-3.5 w-3.5" />
         </Button>
         {/* Kill switch - stop agent button (only show when session is active) */}
         {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
         <Button
           type="button"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
           className={cn(
-            "h-6 w-6 flex-shrink-0",
+            "flex-shrink-0",
             "text-red-500 hover:text-red-600",
             "hover:bg-red-100 dark:hover:bg-red-950/30"
           )}
@@ -434,7 +434,7 @@ export function TileFollowUpInput({
           title="Stop agent execution"
         >
           <OctagonX className={cn(
-            "h-3 w-3",
+            "h-3.5 w-3.5",
             isStoppingSession && "animate-pulse"
           )} />
         </Button>

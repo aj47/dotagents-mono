@@ -31,7 +31,7 @@ interface PredefinedPromptsMenuProps {
   onSelectPrompt: (content: string) => void
   className?: string
   disabled?: boolean
-  buttonSize?: "default" | "sm" | "icon"
+  buttonSize?: "default" | "sm" | "icon" | "sm-icon" | "md-icon"
 }
 
 export function PredefinedPromptsMenu({
@@ -40,8 +40,8 @@ export function PredefinedPromptsMenu({
   disabled = false,
   buttonSize = "icon",
 }: PredefinedPromptsMenuProps) {
-  // Map buttonSize prop to actual Button size - always use "icon" variant for icon-only buttons
-  const actualButtonSize = "icon" as const
+  // Map buttonSize prop to actual Button size
+  const actualButtonSize = (buttonSize === "sm-icon" ? "sm-icon" : buttonSize === "md-icon" ? "md-icon" : "icon") as "icon" | "sm-icon" | "md-icon"
   const configQuery = useConfigQuery()
   const saveConfig = useSaveConfigMutation()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -65,10 +65,12 @@ export function PredefinedPromptsMenu({
   const availableTasks = loopsQuery.data ?? []
   const triggerButtonClassName = buttonSize === "default"
     ? "h-9 w-9"
-    : buttonSize === "sm"
+    : buttonSize === "sm" || buttonSize === "md-icon"
       ? "h-7 w-7"
-      : "h-8 w-8"
-  const triggerIconClassName = buttonSize === "sm" ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 shrink-0"
+      : buttonSize === "sm-icon"
+        ? "h-6 w-6"
+        : "h-8 w-8"
+  const triggerIconClassName = (buttonSize === "sm" || buttonSize === "sm-icon" || buttonSize === "md-icon") ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 shrink-0"
   const sectionLabelClassName = "px-2 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
   const menuContentClassName = "w-[min(26rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] max-h-[min(32rem,calc(100vh-2rem))] overflow-y-auto"
   const entryClassName = "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer"
@@ -227,24 +229,23 @@ export function PredefinedPromptsMenu({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="md-icon"
                     onClick={(e) => handleEdit(e, prompt)}
                     title="Edit"
                     aria-label={`Edit predefined prompt ${prompt.name}`}
                   >
-                    <Pencil className="h-3 w-3" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    size="md-icon"
+                    className="text-destructive hover:text-destructive"
                     onClick={(e) => handleDelete(e, prompt)}
                     title="Delete"
                     aria-label={`Delete predefined prompt ${prompt.name}`}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </DropdownMenuItem>
