@@ -104,4 +104,14 @@ describe("conversation image assets", () => {
       "Unsupported video extension",
     )
   })
+
+  it("rejects directory paths passed as video sources", async () => {
+    const { service, conversationsFolder } = await setupConversationImageAssetTest()
+    const dirPath = path.join(conversationsFolder, "videos_dir.mp4")
+    await fs.mkdir(dirPath, { recursive: true })
+
+    await expect(service.storeVideoPathAsConversationAsset("conv_video_test", dirPath)).rejects.toThrow(
+      "Video path is not a regular file",
+    )
+  })
 })

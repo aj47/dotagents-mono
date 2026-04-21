@@ -215,6 +215,9 @@ export class ConversationService {
 
     const extension = this.getVideoExtensionForMimeType(mimeType)
     const sourceStat = await fsPromises.stat(videoPath)
+    if (!sourceStat.isFile()) {
+      throw new Error(`Video path is not a regular file: ${videoPath}`)
+    }
     if (!extension || sourceStat.size <= 0) {
       throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
     }

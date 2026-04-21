@@ -38,9 +38,10 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     // Asset URLs (assets://) can't be played directly on mobile — they must be
     // resolved to an HTTP URL via buildConversationVideoAssetHttpUrl (which
     // requires assetBaseUrl). If the source is an asset URL and it wasn't
-    // resolved, don't show the card.
+    // resolved, don't show the card. Auth is also required since the desktop
+    // remote server rejects unauthenticated /v1/* requests.
     if (isConversationVideoAssetUrl(sourceUrl)) {
-      return resolvedUri !== sourceUrl && isRenderableVideoUrl(resolvedUri);
+      return resolvedUri !== sourceUrl && !!authToken && isRenderableVideoUrl(resolvedUri);
     }
     return isRenderableVideoUrl(sourceUrl) || isRenderableVideoUrl(resolvedUri);
   })();
@@ -100,9 +101,29 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       height: 220,
       backgroundColor: '#000',
     },
+    fallbackLink: {
+      paddingVertical: spacing.xs,
+      marginBottom: spacing.sm,
+    },
+    fallbackLinkText: {
+      color: theme.colors.primary,
+      fontSize: 13,
+      textDecorationLine: 'underline',
+    },
   }), [isDark, theme]);
 
-  if (!canRender) return null;
+  if (!canRender) {
+    return (
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Open video link: ${displayLabel}`}
+        onPress={() => Linking.openURL(sourceUrl)}
+        style={styles.fallbackLink}
+      >
+        <Text style={styles.fallbackLinkText}>🔗 {displayLabel}</Text>
+      </Pressable>
+    );
+  }
 
   return (
     <View style={styles.card}>
