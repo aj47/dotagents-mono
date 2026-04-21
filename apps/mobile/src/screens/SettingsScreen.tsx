@@ -271,6 +271,11 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const displaySkills = useMemo(() => [...skills].sort((a, b) => {
+    const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
+    if (enabledDiff !== 0) return enabledDiff;
+    return a.name.localeCompare(b.name);
+  }), [skills]);
   const availableAcpMainAgents = useMemo(
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -2544,7 +2549,7 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
-                  skills.map((skill) => (
+                  displaySkills.map((skill) => (
                     <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
                       <View style={styles.serverInfo}>
                         <Text style={styles.serverName}>{skill.name}</Text>
@@ -2563,7 +2568,7 @@ export default function SettingsScreen({ navigation }: any) {
                   ))
                 )}
                 <Text style={styles.helperText}>
-                  Toggle skills for the current profile
+                  Toggle skills for the Main Agent
                 </Text>
               </CollapsibleSection>
             )}
