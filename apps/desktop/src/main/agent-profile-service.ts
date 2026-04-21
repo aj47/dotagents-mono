@@ -929,6 +929,17 @@ class AgentProfileService {
       ? currentEnabledSkills.filter(id => id !== skillId)
       : [...currentEnabledSkills, skillId]
 
+    const allAvailableSkillIds = new Set(allSkillIds ?? [])
+    const hasAllAvailableSkillsEnabled = allAvailableSkillIds.size > 0
+      && Array.from(allAvailableSkillIds).every(id => newEnabledSkillIds.includes(id))
+
+    if (hasAllAvailableSkillsEnabled) {
+      return this.updateProfileSkillsConfig(profileId, {
+        enabledSkillIds: [],
+        allSkillsDisabledByDefault: false,
+      })
+    }
+
     return this.updateProfileSkillsConfig(profileId, {
       enabledSkillIds: newEnabledSkillIds,
       allSkillsDisabledByDefault: true,
