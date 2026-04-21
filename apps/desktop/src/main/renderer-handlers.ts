@@ -38,6 +38,10 @@ export type RendererHandlers = {
   focusAgentSession: (sessionId: string) => void
   setAgentSessionSnoozed: (data: { sessionId: string; isSnoozed: boolean }) => void
 
+  // Clear stale TTS tracking keys for a session so auto-play can fire fresh
+  // (e.g. when a continueInSession loop reuses a sessionId across runs)
+  clearSessionTTSKeys: (sessionId: string) => void
+
   // Message Queue handlers
   onMessageQueueUpdate: (data: { conversationId: string; queue: QueuedMessage[]; isPaused: boolean }) => void
 
