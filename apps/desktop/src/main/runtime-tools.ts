@@ -22,6 +22,7 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
+import type { ProfileSkillsConfig } from "../shared/types"
 
 const execAsync = promisify(exec)
 
@@ -48,6 +49,44 @@ function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkil
     guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
     retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
     availableSkillIds,
+  }
+}
+
+function isSkillEnabledByConfig(skillId: string, skillsConfig?: ProfileSkillsConfig): boolean {
+  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
+  return (skillsConfig.enabledSkillIds ?? []).includes(skillId)
+}
+
+async function isSkillEnabledForRuntimeContext(skillId: string, context: BuiltinToolContext): Promise<boolean> {
+  if (!context.sessionId) return true
+
+  const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
+    ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
+    : undefined
+  const trackerSnapshot = typeof agentSessionTracker.getSessionProfileSnapshot === "function"
+    ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
+    : undefined
+  const snapshot = stateSnapshot ?? trackerSnapshot
+  if (snapshot) return isSkillEnabledByConfig(skillId, snapshot.skillsConfig)
+
+  const { agentProfileService } = await import("./agent-profile-service")
+  const profile = agentProfileService.getCurrentProfile()
+  if (!profile) return true
+  return isSkillEnabledByConfig(skillId, profile.skillsConfig)
+}
+
+function disabledSkillToolResult(skillId: string, action: "load" | "execute"): MCPToolResult {
+  const actionText = action === "load" ? "load instructions for" : "run commands inside"
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        success: false,
+        skillId,
+        error: `Skill '${skillId}' is disabled for this agent. Enable it in Settings > Skills before trying to ${actionText} this skill.`,
+      }),
+    }],
+    isError: true,
   }
 }
 
@@ -895,6 +934,10 @@ const toolHandlers: Record<string, ToolHandler> = {
         ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
       } else {
 
+        if (!(await isSkillEnabledForRuntimeContext(skill.id, context))) {
+          return disabledSkillToolResult(skill.id, "execute")
+        }
+
         if (!skill.filePath) {
           return {
             content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill has no file path (not imported from disk): ${skill.name}` }) }],
@@ -1226,7 +1269,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  load_skill_instructions: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  load_skill_instructions: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     // Validate skillId parameter
     if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
       return {
@@ -1245,6 +1288,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       const skillByName = allSkills.find(s => s.name.toLowerCase() === skillId.toLowerCase())
 
       if (skillByName) {
+        if (!(await isSkillEnabledForRuntimeContext(skillByName.id, context))) {
+          return disabledSkillToolResult(skillByName.id, "load")
+        }
+
         return {
           content: [{
             type: "text",
@@ -1264,6 +1311,10 @@ const toolHandlers: Record<string, ToolHandler> = {
         }],
         isError: true,
       }
+    }
+
+    if (!(await isSkillEnabledForRuntimeContext(skill.id, context))) {
+      return disabledSkillToolResult(skill.id, "load")
     }
 
     return {

@@ -25,12 +25,13 @@ describe('buildSelectorProfiles', () => {
       } as any,
       [
         { id: 'acpx-1', name: 'augustus', displayName: 'Augustus', enabled: true, connectionType: 'acpx' },
+        { id: 'stdio-1', name: 'stdio-helper', displayName: 'STDIO Helper', enabled: true, connectionType: 'stdio' },
         { id: 'internal-1', name: 'helper', displayName: 'Helper', enabled: true, connectionType: 'internal' },
       ] as any
     );
 
     expect(result.selectorMode).toBe('acpx');
-    expect(result.profiles.map((profile) => profile.selectionValue)).toEqual(['augustus', 'legacy-agent']);
-    expect(result.profiles.map((profile) => profile.name)).toEqual(['Augustus', 'Legacy Agent']);
+    expect(result.profiles.map((profile) => profile.selectionValue)).toEqual(['augustus', 'stdio-helper', 'legacy-agent']);
+    expect(result.profiles.map((profile) => profile.name)).toEqual(['Augustus', 'STDIO Helper', 'Legacy Agent']);
   });
 });

@@ -2563,7 +2563,7 @@ export default function SettingsScreen({ navigation }: any) {
                   ))
                 )}
                 <Text style={styles.helperText}>
-                  Toggle skills for the current profile
+                  Toggle skills for the Main Agent
                 </Text>
               </CollapsibleSection>
             )}

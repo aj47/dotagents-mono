@@ -70,11 +70,11 @@ export function Component() {
 
   const skills = skillsQuery.data || []
   const currentProfile = currentProfileQuery.data as AgentProfile | Profile | undefined
-  const currentProfileDisplayName = currentProfile
+  const currentAgentDisplayName = currentProfile
     ? "displayName" in currentProfile
       ? currentProfile.displayName
       : currentProfile.name
-    : "the current agent"
+    : "Main Agent"
   const isSkillEnabledForCurrentProfile = (skillId: string) => {
     if (!currentProfile) return false
     if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) return true
@@ -628,7 +628,7 @@ Write your skill instructions here.
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Enabled skills add their instructions to the system prompt. Enabled skills are sorted first for {currentProfileDisplayName}.
+          Enabled skills are available to {currentAgentDisplayName} and are sorted first. Disabled skills are hidden from the agent and blocked at runtime.
         </p>
 
         <details className="rounded-lg border bg-card">
