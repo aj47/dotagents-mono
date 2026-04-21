@@ -76,7 +76,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   {
     name: "respond_to_user",
     description:
-      "Send a response directly to the user. On voice interfaces this will be spoken aloud via TTS; on messaging channels (mobile, WhatsApp, etc.) it will be sent as a message. Regular assistant text is internal and not guaranteed to reach the user; use this tool to explicitly communicate with them. Provide at least one of: non-empty text or one/more images.",
+      "Send a response directly to the user. On voice interfaces this will be spoken aloud via TTS; on messaging channels (mobile, WhatsApp, etc.) it will be sent as a message. Regular assistant text is internal and not guaranteed to reach the user; use this tool to explicitly communicate with them. Provide at least one of: non-empty text, one/more images, or one/more videos.",
     inputSchema: {
       type: "object",
       properties: {
@@ -103,6 +103,29 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
               alt: {
                 type: "string",
                 description: "Optional alt text shown with markdown image syntax.",
+              },
+            },
+            required: [],
+          },
+        },
+        videos: {
+          type: "array",
+          description:
+            "Optional videos to include in the message. Each video can be provided as an HTTP(S) URL or as a local file path that will be stored as a conversation asset and streamed lazily by desktop/mobile.",
+          items: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "HTTP(S) URL for the video.",
+              },
+              path: {
+                type: "string",
+                description: "Local video file path (absolute, or relative to the current working directory). Supported extensions: mp4, m4v, webm, mov, ogv.",
+              },
+              label: {
+                type: "string",
+                description: "Optional label shown on the video card.",
               },
             },
             required: [],

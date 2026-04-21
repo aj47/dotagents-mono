@@ -316,6 +316,7 @@ const mergeVoiceText = (base?: string, live?: string) => {
 const getCollapsedMessagePreview = (content: string) =>
   content
     .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
+    .replace(/(^|[^!])\[[^\]]*\]\((?:assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi, '$1[Video]')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -3398,7 +3399,11 @@ export default function ChatScreen({ route, navigation }: any) {
                     {shouldShowExpandedContent ? (
                       <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
                         <View style={m.role === 'assistant' ? styles.assistantMessageBody : undefined}>
-                          <MarkdownRenderer content={visibleMessageContent} />
+                          <MarkdownRenderer
+                            content={visibleMessageContent}
+                            assetBaseUrl={config.baseUrl}
+                            assetAuthToken={config.apiKey}
+                          />
                         </View>
                         {canSpeakVisibleContent && (
                           <TouchableOpacity

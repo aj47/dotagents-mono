@@ -6,6 +6,10 @@ import {
   CONVERSATION_IMAGE_ASSET_HOST,
   getConversationImageAssetPath,
 } from "./conversation-image-assets"
+import {
+  CONVERSATION_VIDEO_ASSET_HOST,
+  getConversationVideoAssetPath,
+} from "./conversation-video-assets"
 
 const rendererDir = path.join(__dirname, "../renderer")
 
@@ -89,7 +93,7 @@ export function registerServeProtocol() {
       return handleApp(request, callback)
     }
 
-    if (host === CONVERSATION_IMAGE_ASSET_HOST) {
+    if (host === CONVERSATION_IMAGE_ASSET_HOST || host === CONVERSATION_VIDEO_ASSET_HOST) {
       let pathSegments: string[] = []
 
       try {
@@ -105,7 +109,10 @@ export function registerServeProtocol() {
 
       if (conversationId && fileName) {
         try {
-          return callback({ path: getConversationImageAssetPath(conversationId, fileName) })
+          const assetPath = host === CONVERSATION_IMAGE_ASSET_HOST
+            ? getConversationImageAssetPath(conversationId, fileName)
+            : getConversationVideoAssetPath(conversationId, fileName)
+          return callback({ path: assetPath })
         } catch {
           return callback({ error: FILE_NOT_FOUND })
         }

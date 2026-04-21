@@ -6,10 +6,12 @@ import type { ToolCall, ToolResult } from './types';
 import { filterVisibleChatMessages } from './chat-utils';
 
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi;
+const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[[^\]]*\]\((?:assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi;
 
 export function sanitizeSessionText(content: string): string {
   return content
     .replace(MARKDOWN_IMAGE_REGEX, '[Image]')
+    .replace(MARKDOWN_VIDEO_LINK_REGEX, '$1[Video]')
     .replace(/\s+/g, ' ')
     .trim();
 }

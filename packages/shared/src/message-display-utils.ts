@@ -3,6 +3,7 @@ import type { AgentProgressUpdate } from "./agent-progress"
 // Inline data URLs can be megabytes long; replace them in display/budget text.
 const INLINE_DATA_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi
 const MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi
+const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[([^\]]*)\]\((assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi
 
 function hasInlineDataImage(content: string): boolean {
   return !!content && /data:image\//i.test(content)
@@ -26,10 +27,15 @@ export function sanitizeMessageContentForSpeech(content: string): string {
 
   // Strip markdown image payloads (including inline data URLs) before TTS.
   // This keeps speech requests small and avoids reading non-verbal content.
-  return content.replace(MARKDOWN_IMAGE_REGEX, (_match, altText: string) => {
-    const cleanedAlt = altText?.trim()
-    return cleanedAlt ? `Image: ${cleanedAlt}` : "Image"
-  })
+  return content
+    .replace(MARKDOWN_IMAGE_REGEX, (_match, altText: string) => {
+      const cleanedAlt = altText?.trim()
+      return cleanedAlt ? `Image: ${cleanedAlt}` : "Image"
+    })
+    .replace(MARKDOWN_VIDEO_LINK_REGEX, (_match, prefix: string, label: string) => {
+      const cleanedLabel = label?.trim()
+      return `${prefix}${cleanedLabel ? `Video: ${cleanedLabel}` : "Video"}`
+    })
 }
 
 function sanitizeConversationHistoryForDisplay(

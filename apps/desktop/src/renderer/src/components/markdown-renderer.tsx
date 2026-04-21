@@ -2,7 +2,8 @@ import React, { useState, useId, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
-import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck } from "lucide-react"
+import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "lucide-react"
+import { getVideoAssetLabel, isRenderableVideoUrl } from "@dotagents/shared"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import "highlight.js/styles/github.css"
@@ -36,6 +37,9 @@ const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
   /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
 const ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX =
   /^assets:\/\/conversation-image\//
+const ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX =
+  /^assets:\/\/conversation-video\//
+const ALLOWED_RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//
 
 export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
@@ -47,12 +51,66 @@ export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
     url.startsWith("#") ||
     url.startsWith("http://") ||
     url.startsWith("https://") ||
+    ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX.test(url) ||
+    ALLOWED_RECORDING_ASSET_URL_REGEX.test(url) ||
     url.startsWith("mailto:")
   ) {
     return true
   }
 
   return false
+}
+
+const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
+  if (!rawUrl) return false
+  const url = rawUrl.trim().toLowerCase()
+  return isRenderableVideoUrl(rawUrl) || ALLOWED_RECORDING_ASSET_URL_REGEX.test(url)
+}
+
+const VideoAttachmentCard = ({
+  src,
+  label,
+}: {
+  src: string
+  label?: string
+}) => {
+  const [loaded, setLoaded] = useState(false)
+  const displayLabel = getVideoAssetLabel(label, src)
+
+  return (
+    <span className="not-prose my-3 block overflow-hidden rounded-lg border border-border bg-muted/20">
+      {loaded ? (
+        <video
+          src={src}
+          controls
+          playsInline
+          preload="metadata"
+          className="block max-h-[30rem] w-full bg-black"
+          onError={() => {
+            logUI("[MarkdownRenderer] video failed to render", {
+              label: displayLabel,
+              srcPreview: src.slice(0, 64),
+            })
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setLoaded(true)}
+          className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40"
+          aria-label={`Load video ${displayLabel}`}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <PlayCircle className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-foreground">{displayLabel}</span>
+            <span className="block text-xs text-muted-foreground">Loads only when you click play</span>
+          </span>
+        </button>
+      )}
+    </span>
+  )
 }
 
 export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
@@ -82,6 +140,10 @@ const markdownLinkComponent = ({
   children?: React.ReactNode
   href?: string
 }) => {
+  if (href && isDesktopRenderableVideoUrl(href)) {
+    return <VideoAttachmentCard src={href} label={extractTextContent(children)} />
+  }
+
   if (isAllowedMarkdownLinkUrl(href)) {
     return (
       <a

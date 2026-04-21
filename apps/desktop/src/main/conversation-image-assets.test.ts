@@ -102,4 +102,45 @@ describe("conversation image assets", () => {
     expect(second).toContain(" Z")
     expect(`${first}${second}`).not.toContain("data:image")
   })
+
+  it("stores local videos as conversation asset URLs", async () => {
+    const { service, conversationsFolder } = await setupConversationImageAssetTest()
+    const sourcePath = path.join(conversationsFolder, "source.mp4")
+    await fs.writeFile(sourcePath, Buffer.from([0, 1, 2, 3]))
+
+    const readFileSpy = vi.spyOn(fs, "readFile")
+    const assetUrl = await service.storeVideoPathAsConversationAsset("conv_video_test", sourcePath)
+    const duplicateAssetUrl = await service.storeVideoPathAsConversationAsset("conv_video_test", sourcePath)
+
+    expect(assetUrl).toContain("assets://conversation-video/conv_video_test/")
+    expect(duplicateAssetUrl).toBe(assetUrl)
+    expect(readFileSpy).not.toHaveBeenCalled()
+    readFileSpy.mockRestore()
+
+    const fileName = assetUrl.match(/conv_video_test\/([a-f0-9]{64}\.mp4)$/)?.[1]
+    expect(fileName).toBeTruthy()
+
+    const storedVideo = await fs.readFile(path.join(conversationsFolder, "_videos", "conv_video_test", fileName!))
+    expect([...storedVideo]).toEqual([0, 1, 2, 3])
+  })
+
+  it("rejects unsupported local video extensions", async () => {
+    const { service, conversationsFolder } = await setupConversationImageAssetTest()
+    const sourcePath = path.join(conversationsFolder, "source.txt")
+    await fs.writeFile(sourcePath, Buffer.from([0, 1, 2, 3]))
+
+    await expect(service.storeVideoPathAsConversationAsset("conv_video_test", sourcePath)).rejects.toThrow(
+      "Unsupported video extension",
+    )
+  })
+
+  it("rejects directory paths passed as video sources", async () => {
+    const { service, conversationsFolder } = await setupConversationImageAssetTest()
+    const dirPath = path.join(conversationsFolder, "videos_dir.mp4")
+    await fs.mkdir(dirPath, { recursive: true })
+
+    await expect(service.storeVideoPathAsConversationAsset("conv_video_test", dirPath)).rejects.toThrow(
+      "Video path is not a regular file",
+    )
+  })
 })
