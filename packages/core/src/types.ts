@@ -78,9 +78,11 @@ export interface LoopConfig {
   lastRunAt?: number
   runOnStartup?: boolean
   /**
-   * If true, the session spawned by this task starts un-snoozed so the
-   * renderer auto-plays TTS for the assistant response. Snoozed sessions
-   * intentionally suppress TTS auto-play.
+   * If true, the session is automatically unsnoozed when the loop completes
+   * so the renderer auto-plays TTS for the assistant response. The session
+   * still runs snoozed (quietly in the background) during execution — it only
+   * wakes up after the result is ready, showing the panel and triggering TTS.
+   * Snoozed sessions intentionally suppress TTS auto-play until unsnoozed.
    */
   speakOnTrigger?: boolean
   /**
