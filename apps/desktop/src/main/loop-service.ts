@@ -346,9 +346,11 @@ class LoopService {
       }
 
       const conversationTitle = `[Repeat] ${loop.name}`
-      // Start the session un-snoozed when `speakOnTrigger` is set so the
-      // renderer's TTS auto-play gate (which skips snoozed sessions) runs.
-      const startSnoozed = !loop.speakOnTrigger
+      // Always start snoozed so the panel stays hidden during execution.
+      // When `speakOnTrigger` is set, we unsnooze *after* the loop completes
+      // so the renderer's TTS auto-play gate fires on the finished response
+      // without popping the panel open for the entire run.
+      const startSnoozed = true
 
       let conversationId: string | undefined
       let sessionId: string | undefined
@@ -417,6 +419,27 @@ class LoopService {
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
       await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed)
+
+      // When `speakOnTrigger` is set, unsnooze the now-completed session and
+      // show the panel so the renderer's TTS auto-play gate fires for the
+      // assistant response. The session ran silently in the background; this
+      // wakes it up only after the result is ready.
+      if (loop.speakOnTrigger && sessionId) {
+        const { setTrackedAgentSessionSnoozed } = await import("./floating-panel-session-state")
+        setTrackedAgentSessionSnoozed(sessionId, false)
+
+        // Show the panel and focus the completed session so the renderer
+        // renders the CompactMessage with isSnoozed=false, triggering TTS.
+        const { showPanelWindow, resizePanelForAgentMode, getWindowRendererHandlers } = await import("./window")
+        resizePanelForAgentMode()
+        showPanelWindow({ markOpenedWithMain: false })
+        try {
+          getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
+        } catch (e) {
+          logApp(`[LoopService] Failed to focus session ${sessionId} after speakOnTrigger unsnooze:`, e)
+        }
+        logApp(`[LoopService] Unsnoozed session ${sessionId} for loop "${loop.name}" (speakOnTrigger)`)
+      }
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
     } finally {

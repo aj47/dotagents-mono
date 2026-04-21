@@ -1003,7 +1003,7 @@ export interface LoopConfig {
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
-  speakOnTrigger?: boolean // if true, spawned session starts un-snoozed so TTS auto-plays
+  speakOnTrigger?: boolean // if true, unsnoozes session on completion so TTS auto-plays
   continueInSession?: boolean // if true, reuses the prior session across iterations
   lastSessionId?: string   // session id to resume on next run when continueInSession is on
   runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
