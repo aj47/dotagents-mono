@@ -882,7 +882,7 @@ export async function makeLLMCallWithFetch(
 
           const text = result.text.trim()
 
-          if (!text && !result.toolCalls?.length) {
+          if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
             if (generationId) {
               endLLMGeneration(generationId, {
                 level: "ERROR",
@@ -896,6 +896,7 @@ export async function makeLLMCallWithFetch(
             const response = {
               content: text || undefined,
               toolCalls: result.toolCalls,
+              reasoningSummary: result.reasoningSummary,
             } satisfies LLMToolCallResponse
 
             if (generationId) {
@@ -919,11 +920,12 @@ export async function makeLLMCallWithFetch(
           }
 
           if (hasToolMarkers) {
-            return { content: text }
+            return { content: text, reasoningSummary: result.reasoningSummary }
           }
 
           return {
             content: cleaned || text,
+            reasoningSummary: result.reasoningSummary,
           }
         }
 
@@ -1035,7 +1037,7 @@ export async function makeLLMCallWithFetch(
         }
 
         // No tool calls - process as text response
-        if (!text && !result.toolCalls?.length) {
+        if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
           if (generationId) {
             endLLMGeneration(generationId, {
               level: "ERROR",
@@ -1187,7 +1189,7 @@ export async function makeLLMCallWithStreamingAndTools(
             })
           }
 
-          if (!text.trim() && !result.toolCalls?.length) {
+          if (!text.trim() && !result.toolCalls?.length && !result.reasoningSummary) {
             throw new Error("LLM returned empty response")
           }
 
@@ -1195,11 +1197,13 @@ export async function makeLLMCallWithStreamingAndTools(
             return {
               content: text || undefined,
               toolCalls: result.toolCalls,
+              reasoningSummary: result.reasoningSummary,
             }
           }
 
           return {
             content: text.trim(),
+            reasoningSummary: result.reasoningSummary,
           }
         } catch (error: any) {
           if (generationId) {

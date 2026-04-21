@@ -1875,8 +1875,9 @@ export async function processTranscriptWithAgentMode(
 
     const hasValidContent = llmResponse?.content && llmResponse.content.trim().length > 0
     const hasValidToolCalls = llmResponse?.toolCalls && Array.isArray(llmResponse.toolCalls) && llmResponse.toolCalls.length > 0
+    const hasValidReasoningSummary = !!llmResponse?.reasoningSummary?.trim()
 
-    if (!llmResponse || (!hasValidContent && !hasValidToolCalls)) {
+    if (!llmResponse || (!hasValidContent && !hasValidToolCalls && !hasValidReasoningSummary)) {
       emptyResponseRetryCount++
       logLLM(`❌ LLM null/empty response on iteration ${iteration} (retry ${emptyResponseRetryCount}/${MAX_EMPTY_RESPONSE_RETRIES})`)
       logLLM("Response details:", {
@@ -1938,6 +1939,20 @@ export async function processTranscriptWithAgentMode(
 
     // Reset empty response counter on successful response
     emptyResponseRetryCount = 0
+
+    // Prepend reasoning summary wrapped in <tool_call>think> tags so the existing
+    // ThinkSection UI renders it as a collapsible thinking block.
+    if (llmResponse.reasoningSummary) {
+      // Sanitize reasoningSummary to prevent nested think tags from
+      // breaking parseThinkSections()'s regex-based extraction.
+      const sanitized = llmResponse.reasoningSummary
+        .replace(/<\/think>/gi, "")
+        .replace(/<think>/gi, "")
+      const thinkBlock = `<think>\n${sanitized}\n</think>`
+      llmResponse.content = llmResponse.content
+        ? `${thinkBlock}\n\n${llmResponse.content}`
+        : thinkBlock
+    }
 
     // Update thinking step with actual LLM content and mark as completed.
     // Strip any raw tool-marker tokens (e.g. <|tool_call_begin|>) so they

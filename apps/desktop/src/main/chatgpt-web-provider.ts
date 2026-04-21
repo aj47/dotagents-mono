@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto"
 import fs from "fs"
 import { configStore } from "./config"
+import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
 import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 
@@ -16,6 +17,7 @@ const CHATGPT_CODEX_REDIRECT_URI = "http://localhost:1455/auth/callback"
 const CHATGPT_CODEX_STORAGE_KEY = `${DEFAULT_CHATGPT_WEB_BASE_URL}/backend-api/codex/responses`
 
 type ChatGptWebModelContext = "mcp" | "transcript"
+type CodexReasoningEffort = "minimal" | "low" | "medium" | "high"
 
 export interface ChatGptWebMessage {
   role: string
@@ -52,12 +54,16 @@ export interface ChatGptWebUsage {
   inputTokenDetails?: {
     cacheReadTokens?: number
   }
+  outputTokenDetails?: {
+    reasoningTokens?: number
+  }
 }
 
 export interface ChatGptWebResponse {
   text: string
   toolCalls?: ChatGptWebToolCall[]
   usage?: ChatGptWebUsage
+  reasoningSummary?: string
 }
 
 interface PreparedCodexTools {
@@ -103,6 +109,7 @@ interface ChatGptWebCompletedEventResponse {
     arguments?: string
     call_id?: string
     content?: Array<{ type?: string; text?: string; refusal?: string }>
+    summary?: Array<{ type?: string; text?: string }>
   }>
   usage?: {
     input_tokens?: number
@@ -111,7 +118,42 @@ interface ChatGptWebCompletedEventResponse {
     input_tokens_details?: {
       cached_tokens?: number
     }
+    output_tokens_details?: {
+      reasoning_tokens?: number
+    }
   }
+}
+
+const CODEX_REASONING_MODEL_PATTERNS = ["gpt-5", "gpt-4.1", "o1", "o3", "o4"] as const
+
+function isCodexReasoningModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase()
+  return CODEX_REASONING_MODEL_PATTERNS.some(pattern => normalized.startsWith(pattern))
+}
+
+function normalizeCodexReasoningEffort(effort: unknown): CodexReasoningEffort | undefined {
+  if (effort === "minimal" || effort === "low" || effort === "medium" || effort === "high") return effort
+  if (effort === "xhigh") return "high"
+  return undefined
+}
+
+export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort; summary: "auto" } | undefined {
+  if (!isCodexReasoningModel(model)) return undefined
+
+  const override = configStore.get().openaiReasoningEffort
+  if (override === "none") return undefined
+
+  const effort = normalizeCodexReasoningEffort(override) || "medium"
+  if (isDebugLLM()) {
+    logLLM("Applying ChatGPT Codex reasoning effort", {
+      model,
+      effort,
+      summary: "auto",
+      source: override ? "user-config" : "default",
+    })
+  }
+
+  return { effort, summary: "auto" }
 }
 
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
@@ -627,17 +669,35 @@ function extractCompletedMessageText(response: ChatGptWebCompletedEventResponse 
     .trim()
 }
 
+function extractCompletedReasoningSummary(response: ChatGptWebCompletedEventResponse | undefined): string {
+  if (!response?.output?.length) return ""
+
+  return response.output
+    .filter((item) => item.type === "reasoning")
+    .flatMap((item) => item.summary || [])
+    .map((summary) => summary.text || "")
+    .join("\n")
+    .trim()
+}
+
 function mapUsage(response: ChatGptWebCompletedEventResponse | undefined): ChatGptWebUsage | undefined {
   const usage = response?.usage
   if (!usage) return undefined
+
+  const inputTokenDetails = usage.input_tokens_details?.cached_tokens !== undefined
+    ? { cacheReadTokens: usage.input_tokens_details.cached_tokens }
+    : undefined
+
+  const outputTokenDetails = usage.output_tokens_details?.reasoning_tokens !== undefined
+    ? { reasoningTokens: usage.output_tokens_details.reasoning_tokens }
+    : undefined
 
   return {
     inputTokens: usage.input_tokens,
     outputTokens: usage.output_tokens,
     totalTokens: usage.total_tokens,
-    inputTokenDetails: {
-      cacheReadTokens: usage.input_tokens_details?.cached_tokens,
-    },
+    inputTokenDetails,
+    outputTokenDetails,
   }
 }
 
@@ -675,6 +735,11 @@ export async function makeChatGptWebResponse(
     payload.tool_choice = "auto"
   }
 
+  const reasoning = getCodexReasoningOptions(model)
+  if (reasoning) {
+    payload.reasoning = reasoning
+  }
+
   const headers: Record<string, string> = {
     Authorization: `Bearer ${auth.accessToken}`,
     "Content-Type": "application/json",
@@ -707,6 +772,7 @@ export async function makeChatGptWebResponse(
   const decoder = new TextDecoder()
   let buffer = ""
   let accumulatedText = ""
+  let accumulatedReasoningSummary = ""
   let completedResponse: ChatGptWebCompletedEventResponse | undefined
   const pendingToolArguments = new Map<string, string>()
   const completedToolCalls = new Map<string, ChatGptWebToolCall>()
@@ -742,6 +808,11 @@ export async function makeChatGptWebResponse(
         if (delta) {
           accumulatedText += delta
           options.onTextChunk?.(delta, accumulatedText)
+        }
+      } else if (eventType === "response.reasoning_summary_text.delta") {
+        const delta = typeof event.delta === "string" ? event.delta : ""
+        if (delta) {
+          accumulatedReasoningSummary += delta
         }
       } else if (eventType === "response.function_call_arguments.delta") {
         const itemId = typeof event.item_id === "string" ? event.item_id : ""
@@ -797,12 +868,14 @@ export async function makeChatGptWebResponse(
   }
 
   const finalText = accumulatedText.trim() || extractCompletedMessageText(completedResponse)
+  const finalReasoningSummary = accumulatedReasoningSummary.trim() || extractCompletedReasoningSummary(completedResponse)
   const toolCalls = Array.from(completedToolCalls.values())
 
   return {
     text: finalText,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     usage: mapUsage(completedResponse),
+    reasoningSummary: finalReasoningSummary || undefined,
   }
 }
 
