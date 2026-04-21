@@ -54,10 +54,12 @@ function stablePathSegment(index: number, value: unknown): string {
   return `index:${index}`
 }
 
+function encodeSecretIdSegment(segment: string): string {
+  return encodeURIComponent(segment).replace(/\./g, "%2E")
+}
+
 function secretIdForPath(pathSegments: string[]): string {
-  return pathSegments
-    .map((segment) => segment.replace(/[^a-zA-Z0-9._:-]/g, "_"))
-    .join(".")
+  return pathSegments.map(encodeSecretIdSegment).join(".")
 }
 
 export function getAgentsSecretsLocalPath(agentsDir: string): string {

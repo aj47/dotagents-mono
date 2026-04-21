@@ -4,6 +4,7 @@ import os from "os"
 import path from "path"
 import {
   AGENTS_SECRETS_LOCAL_JSON,
+  extractSecretsForPersistence,
   migrateJsonFileSecretsToLocalStore,
   resolveSecretRefs,
   SECRET_REF_PREFIX,
@@ -14,6 +15,22 @@ function mkTempDir(prefix: string): string {
 }
 
 describe("agents-files secrets", () => {
+  it("generates distinct secret refs for paths that only differ by dot placement", () => {
+    const extracted = extractSecretsForPersistence({
+      "service.prod": { apiKey: "sk-dot-segment" },
+      service: { prod: { apiKey: "sk-nested" } },
+    })
+
+    const dotSegmentRef = extracted.value["service.prod"].apiKey
+    const nestedRef = extracted.value.service.prod.apiKey
+
+    expect(dotSegmentRef).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(nestedRef).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
+    expect(dotSegmentRef).not.toBe(nestedRef)
+    expect(Object.keys(extracted.secrets)).toHaveLength(2)
+    expect(Object.values(extracted.secrets).sort()).toEqual(["sk-dot-segment", "sk-nested"])
+  })
+
   it("preserves unresolved secret refs instead of replacing them with empty strings", () => {
     const dir = mkTempDir("dotagents-secret-refs-")
     const secretsFilePath = path.join(dir, AGENTS_SECRETS_LOCAL_JSON)
