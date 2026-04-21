@@ -182,7 +182,9 @@ function migratePlaintextSecretsToLocalStore(): void {
       layer.modelsJsonPath,
       layer.layoutJsonPath,
     ]) {
-      migrateJsonFileSecretsToLocalStore(filePath, secretsFilePath, true)
+      migrateJsonFileSecretsToLocalStore(filePath, secretsFilePath, true, {
+        backupDir: layer.backupsDir,
+      })
     }
   }
 
@@ -194,6 +196,7 @@ function migratePlaintextSecretsToLocalStore(): void {
     getConfigPath(),
     getAgentsSecretsLocalPath(globalAgentsFolder),
     false,
+    { backupDir: path.join(getDataFolder(), ".backups") },
   )
 }
 
@@ -646,6 +649,7 @@ export function persistConfigToDisk(
       legacyConfigFilePath,
       getAgentsSecretsLocalPath(agentsDir),
       false,
+      { backupDir, maxBackups },
     )
     safeWriteJsonFileSync(legacyConfigFilePath, configForLegacyDisk, {
       backupDir,

@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import { safeWriteJsonFileSync } from "./safe-file"
 
 export const AGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"
 export const SECRET_REF_PREFIX = "dotagents-secret://"
@@ -202,6 +203,7 @@ export function migrateJsonFileSecretsToLocalStore(
   filePath: string,
   secretsFilePath: string,
   pretty: boolean,
+  options: { backupDir?: string; maxBackups?: number } = {},
 ): void {
   try {
     if (!fs.existsSync(filePath)) return
@@ -211,11 +213,12 @@ export function migrateJsonFileSecretsToLocalStore(
 
     if (JSON.stringify(parsed) === JSON.stringify(sanitized)) return
 
-    fs.writeFileSync(
-      filePath,
-      `${JSON.stringify(sanitized, null, pretty ? 2 : 0)}\n`,
-      { encoding: "utf8" },
-    )
+    safeWriteJsonFileSync(filePath, sanitized, {
+      backupDir: options.backupDir,
+      maxBackups: options.maxBackups,
+      pretty,
+      skipIfUnchanged: true,
+    })
   } catch {
     // Best effort: never block config writes on local secret migration.
   }
@@ -231,7 +234,7 @@ export function resolveSecretRefs<T>(value: T, secretsFilePath: string): T {
     }
     if (isSecretRef(current)) {
       const id = secretIdFromRef(current)
-      return id ? store.secrets[id] ?? "" : ""
+      return id ? (store.secrets[id] ?? current) : current
     }
     return current
   }
