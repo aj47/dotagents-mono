@@ -58,20 +58,20 @@ function isSkillEnabledByConfig(skillId: string, skillsConfig?: ProfileSkillsCon
 }
 
 async function isSkillEnabledForRuntimeContext(skillId: string, context: BuiltinToolContext): Promise<boolean> {
-  if (!context.sessionId) return true
-
-  const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
-    ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
-    : undefined
-  const trackerSnapshot = typeof agentSessionTracker.getSessionProfileSnapshot === "function"
-    ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
-    : undefined
-  const snapshot = stateSnapshot ?? trackerSnapshot
-  if (snapshot) return isSkillEnabledByConfig(skillId, snapshot.skillsConfig)
+  if (context.sessionId) {
+    const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
+      ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
+      : undefined
+    const trackerSnapshot = typeof agentSessionTracker.getSessionProfileSnapshot === "function"
+      ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
+      : undefined
+    const snapshot = stateSnapshot ?? trackerSnapshot
+    if (snapshot) return isSkillEnabledByConfig(skillId, snapshot.skillsConfig)
+  }
 
   const { agentProfileService } = await import("./agent-profile-service")
   const profile = agentProfileService.getCurrentProfile()
-  if (!profile) return true
+  if (!profile) return false
   return isSkillEnabledByConfig(skillId, profile.skillsConfig)
 }
 

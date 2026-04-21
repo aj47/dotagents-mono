@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockGetSkill = vi.fn()
 const mockGetSkills = vi.fn()
 const mockGetSessionProfileSnapshot = vi.fn()
+const mockGetTrackerSessionProfileSnapshot = vi.fn()
+const mockGetCurrentProfile = vi.fn()
 
 vi.mock("./mcp-service", () => ({
   mcpService: { getAvailableTools: vi.fn(() => []) },
@@ -11,7 +13,7 @@ vi.mock("./agent-session-tracker", () => ({
   agentSessionTracker: {
     getActiveSessions: vi.fn(() => []),
     getSession: vi.fn(() => undefined),
-    getSessionProfileSnapshot: vi.fn(() => undefined),
+    getSessionProfileSnapshot: mockGetTrackerSessionProfileSnapshot,
   },
 }))
 vi.mock("./state", () => ({
@@ -38,6 +40,11 @@ vi.mock("./skills-service", () => ({
     upgradeGitHubSkillToLocal: vi.fn(),
   },
 }))
+vi.mock("./agent-profile-service", () => ({
+  agentProfileService: {
+    getCurrentProfile: mockGetCurrentProfile,
+  },
+}))
 
 describe("runtime-tools skill access", () => {
   beforeEach(() => {
@@ -57,6 +64,12 @@ describe("runtime-tools skill access", () => {
       profileId: "main-agent",
       profileName: "Main Agent",
       guidelines: "",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["allowed-skill"] },
+    })
+    mockGetTrackerSessionProfileSnapshot.mockReturnValue(undefined)
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
       skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["allowed-skill"] },
     })
   })
@@ -92,5 +105,49 @@ describe("runtime-tools skill access", () => {
     expect(result?.isError).toBe(true)
     const payload = JSON.parse(String(result?.content[0]?.text))
     expect(payload).toEqual(expect.objectContaining({ success: false, skillId: "disabled-skill" }))
+  })
+
+  it("falls back to the current profile when loading a skill without a session id", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "disabled-skill" })
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({ success: false, skillId: "disabled-skill" }))
+    expect(mockGetSessionProfileSnapshot).not.toHaveBeenCalled()
+    expect(mockGetTrackerSessionProfileSnapshot).not.toHaveBeenCalled()
+    expect(mockGetCurrentProfile).toHaveBeenCalled()
+  })
+
+  it("falls back to the current profile when session snapshots are missing", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue(undefined)
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "disabled-skill" }, "session-1")
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({ success: false, skillId: "disabled-skill" }))
+    expect(mockGetSessionProfileSnapshot).toHaveBeenCalledWith("session-1")
+    expect(mockGetTrackerSessionProfileSnapshot).toHaveBeenCalledWith("session-1")
+    expect(mockGetCurrentProfile).toHaveBeenCalled()
+  })
+
+  it("fails closed when no current profile can be resolved", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue(undefined)
+    mockGetCurrentProfile.mockReturnValue(undefined)
+    mockGetSkill.mockReturnValue({
+      id: "allowed-skill",
+      name: "Allowed Skill",
+      instructions: "allowed instructions",
+      filePath: "/tmp/allowed-skill/SKILL.md",
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "allowed-skill" })
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({ success: false, skillId: "allowed-skill" }))
   })
 })
