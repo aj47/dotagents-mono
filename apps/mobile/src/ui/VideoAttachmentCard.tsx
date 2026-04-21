@@ -4,6 +4,7 @@ import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
   getVideoAssetLabel,
+  isConversationVideoAssetUrl,
   isRenderableVideoUrl,
 } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
@@ -33,7 +34,16 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   const [loaded, setLoaded] = useState(false);
   const displayLabel = getVideoAssetLabel(label, sourceUrl);
   const resolvedUri = resolveVideoUri(sourceUrl, assetBaseUrl);
-  const canRender = isRenderableVideoUrl(sourceUrl) || isRenderableVideoUrl(resolvedUri);
+  const canRender = (() => {
+    // Asset URLs (assets://) can't be played directly on mobile — they must be
+    // resolved to an HTTP URL via buildConversationVideoAssetHttpUrl (which
+    // requires assetBaseUrl). If the source is an asset URL and it wasn't
+    // resolved, don't show the card.
+    if (isConversationVideoAssetUrl(sourceUrl)) {
+      return resolvedUri !== sourceUrl && isRenderableVideoUrl(resolvedUri);
+    }
+    return isRenderableVideoUrl(sourceUrl) || isRenderableVideoUrl(resolvedUri);
+  })();
   const canOpenExternally = !authToken || resolvedUri === sourceUrl;
 
   const source = useMemo<VideoSource>(() => {
