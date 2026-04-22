@@ -136,7 +136,7 @@ export type ProfileModelConfig = {
   /** @deprecated Use agentChatgptWebModel instead. */
   mcpToolsChatgptWebModel?: string
   currentModelPresetId?: string
-  sttProviderId?: "openai" | "groq" | "parakeet"
+  sttProviderId?: "openai" | "groq" | "chatgpt-web" | "parakeet"
   openaiSttModel?: string
   groqSttModel?: string
   transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"

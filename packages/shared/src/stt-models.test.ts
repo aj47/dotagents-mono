@@ -62,6 +62,10 @@ describe('getDefaultSttModel', () => {
     expect(getDefaultSttModel('parakeet')).toBeUndefined()
   })
 
+  it('returns undefined for Codex because the backend chooses the model', () => {
+    expect(getDefaultSttModel('chatgpt-web')).toBeUndefined()
+  })
+
   it('returns undefined for undefined', () => {
     expect(getDefaultSttModel(undefined)).toBeUndefined()
   })
@@ -90,6 +94,11 @@ describe('getConfiguredSttModel', () => {
 
   it('returns undefined for unknown provider', () => {
     const config = { sttProviderId: 'parakeet' }
+    expect(getConfiguredSttModel(config)).toBeUndefined()
+  })
+
+  it('returns undefined for Codex because it has no configurable STT model', () => {
+    const config = { sttProviderId: 'chatgpt-web' }
     expect(getConfiguredSttModel(config)).toBeUndefined()
   })
 

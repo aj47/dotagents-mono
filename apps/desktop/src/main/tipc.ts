@@ -166,6 +166,58 @@ function getRemoteSttModel(config: Config): string {
   return getConfiguredSttModel(config) || DEFAULT_STT_MODELS.openai
 }
 
+async function transcribeWithConfiguredRemoteStt(
+  config: Config,
+  recording: ArrayBuffer,
+  durationSeconds?: number,
+): Promise<string> {
+  if (config.sttProviderId === "chatgpt-web") {
+    const { transcribeWithChatGptWeb } = await import("./chatgpt-web-provider")
+    return transcribeWithChatGptWeb(recording, {
+      durationMs: typeof durationSeconds === "number" ? durationSeconds * 1000 : undefined,
+    })
+  }
+
+  const form = new FormData()
+  form.append("file", new File([recording], "recording.webm", { type: "audio/webm" }))
+  form.append("model", getRemoteSttModel(config))
+  form.append("response_format", "json")
+
+  const isGroq = config.sttProviderId === "groq"
+  if (isGroq && config.groqSttPrompt?.trim()) {
+    form.append("prompt", config.groqSttPrompt.trim())
+  }
+
+  const languageCode = isGroq
+    ? config.groqSttLanguage || config.sttLanguage
+    : config.openaiSttLanguage || config.sttLanguage
+
+  if (languageCode && languageCode !== "auto") {
+    form.append("language", languageCode)
+  }
+
+  const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
+  const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+  const transcriptResponse = await fetch(
+    isGroq ? `${groqBaseUrl}/audio/transcriptions` : `${openaiBaseUrl}/audio/transcriptions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${isGroq ? config.groqApiKey : config.openaiApiKey}`,
+      },
+      body: form,
+    },
+  )
+
+  if (!transcriptResponse.ok) {
+    const message = `${transcriptResponse.statusText} ${(await transcriptResponse.text()).slice(0, 300)}`
+    throw new Error(message)
+  }
+
+  const json: { text: string } = await transcriptResponse.json()
+  return json.text || ""
+}
+
 async function initializeMcpWithProgress(config: Config, sessionId: string, runId?: number): Promise<void> {
   const shouldStop = () => agentSessionStateManager.shouldStopSession(sessionId)
   const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
@@ -1649,56 +1701,8 @@ export const router = {
         transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
         transcript = await postProcessTranscriptSafely(transcript, "createRecording")
       } else {
-        // Use OpenAI or Groq for transcription
-        const form = new FormData()
-        form.append(
-          "file",
-          new File([input.recording], "recording.webm", { type: "audio/webm" }),
-        )
-        form.append(
-          "model",
-          getRemoteSttModel(config),
-        )
-        form.append("response_format", "json")
-
-        // Add prompt parameter for Groq if provided
-        if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
-          form.append("prompt", config.groqSttPrompt.trim())
-        }
-
-        // Add language parameter if specified
-        const languageCode = config.sttProviderId === "groq"
-          ? config.groqSttLanguage || config.sttLanguage
-          : config.openaiSttLanguage || config.sttLanguage;
-
-        if (languageCode && languageCode !== "auto") {
-          form.append("language", languageCode)
-        }
-
-        const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-        const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-
-        const transcriptResponse = await fetch(
-          config.sttProviderId === "groq"
-            ? `${groqBaseUrl}/audio/transcriptions`
-            : `${openaiBaseUrl}/audio/transcriptions`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.sttProviderId === "groq" ? config.groqApiKey : config.openaiApiKey}`,
-            },
-            body: form,
-          },
-        )
-
-        if (!transcriptResponse.ok) {
-          const message = `${transcriptResponse.statusText} ${(await transcriptResponse.text()).slice(0, 300)}`
-
-          throw new Error(message)
-        }
-
-        const json: { text: string } = await transcriptResponse.json()
-        transcript = await postProcessTranscriptSafely(json.text, "createRecording")
+        transcript = await transcribeWithConfiguredRemoteStt(config, input.recording, input.duration)
+        transcript = await postProcessTranscriptSafely(transcript, "createRecording")
       }
 
       const history = getRecordingHistory()
@@ -1766,55 +1770,12 @@ export const router = {
         }
         transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
       } else {
-        const form = new FormData()
-        form.append(
-          "file",
-          new File([input.recording], "recording.webm", { type: "audio/webm" }),
-        )
-        form.append(
-          "model",
-          getRemoteSttModel(config),
-        )
-        form.append("response_format", "json")
-
-        if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
-          form.append("prompt", config.groqSttPrompt.trim())
-        }
-
-        const languageCode = config.sttProviderId === "groq"
-          ? config.groqSttLanguage || config.sttLanguage
-          : config.openaiSttLanguage || config.sttLanguage;
-
-        if (languageCode && languageCode !== "auto") {
-          form.append("language", languageCode)
-        }
-
-        const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-        const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-
-        const transcriptResponse = await fetch(
-          config.sttProviderId === "groq"
-            ? `${groqBaseUrl}/audio/transcriptions`
-            : `${openaiBaseUrl}/audio/transcriptions`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.sttProviderId === "groq" ? config.groqApiKey : config.openaiApiKey}`,
-            },
-            body: form,
-          },
-        )
-
-        if (!transcriptResponse.ok) {
-          const errBody = await transcriptResponse.text().catch(() => "<unreadable>")
-          console.error(
-            `[transcribeChunk] API error ${transcriptResponse.status} ${transcriptResponse.statusText}: ${errBody}`,
-          )
+        try {
+          transcript = await transcribeWithConfiguredRemoteStt(config, input.recording)
+        } catch (error) {
+          console.error(`[transcribeChunk] API error: ${getErrorMessage(error)}`)
           return { text: "" }
         }
-
-        const json: { text: string } = await transcriptResponse.json()
-        transcript = json.text || ""
       }
 
       return { text: transcript }
@@ -2083,52 +2044,7 @@ export const router = {
               }
               transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
             } else {
-              const form = new FormData()
-              form.append(
-                "file",
-                new File([input.recording], "recording.webm", { type: "audio/webm" }),
-              )
-              form.append(
-                "model",
-                getRemoteSttModel(config),
-              )
-              form.append("response_format", "json")
-
-              if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
-                form.append("prompt", config.groqSttPrompt.trim())
-              }
-
-              const languageCode = config.sttProviderId === "groq"
-                ? config.groqSttLanguage || config.sttLanguage
-                : config.openaiSttLanguage || config.sttLanguage
-
-              if (languageCode && languageCode !== "auto") {
-                form.append("language", languageCode)
-              }
-
-              const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-              const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-
-              const transcriptResponse = await fetch(
-                config.sttProviderId === "groq"
-                  ? `${groqBaseUrl}/audio/transcriptions`
-                  : `${openaiBaseUrl}/audio/transcriptions`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${config.sttProviderId === "groq" ? config.groqApiKey : config.openaiApiKey}`,
-                  },
-                  body: form,
-                },
-              )
-
-              if (!transcriptResponse.ok) {
-                const message = `${transcriptResponse.statusText} ${(await transcriptResponse.text()).slice(0, 300)}`
-                throw new Error(message)
-              }
-
-              const json: { text: string } = await transcriptResponse.json()
-              transcript = json.text
+              transcript = await transcribeWithConfiguredRemoteStt(config, input.recording, input.duration)
             }
 
             // Save the recording file
@@ -2262,54 +2178,7 @@ export const router = {
           }
           transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
         } else {
-          // Use OpenAI or Groq for transcription
-          const form = new FormData()
-          form.append(
-            "file",
-            new File([input.recording], "recording.webm", { type: "audio/webm" }),
-          )
-          form.append(
-            "model",
-            getRemoteSttModel(config),
-          )
-          form.append("response_format", "json")
-
-          if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
-            form.append("prompt", config.groqSttPrompt.trim())
-          }
-
-          // Add language parameter if specified
-          const languageCode = config.sttProviderId === "groq"
-            ? config.groqSttLanguage || config.sttLanguage
-            : config.openaiSttLanguage || config.sttLanguage;
-
-          if (languageCode && languageCode !== "auto") {
-            form.append("language", languageCode)
-          }
-
-          const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-          const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-
-          const transcriptResponse = await fetch(
-            config.sttProviderId === "groq"
-              ? `${groqBaseUrl}/audio/transcriptions`
-              : `${openaiBaseUrl}/audio/transcriptions`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${config.sttProviderId === "groq" ? config.groqApiKey : config.openaiApiKey}`,
-              },
-              body: form,
-            },
-          )
-
-          if (!transcriptResponse.ok) {
-            const message = `${transcriptResponse.statusText} ${(await transcriptResponse.text()).slice(0, 300)}`
-            throw new Error(message)
-          }
-
-          const json: { text: string } = await transcriptResponse.json()
-          transcript = json.text
+          transcript = await transcribeWithConfiguredRemoteStt(config, input.recording, input.duration)
         }
 
       const messageText = appendScreenshotToTranscript(transcript, input.screenshot)
@@ -3822,7 +3691,7 @@ export const router = {
       mcpToolsChatgptWebModel?: string
       currentModelPresetId?: string
       // STT Provider settings
-      sttProviderId?: "openai" | "groq" | "parakeet"
+      sttProviderId?: "openai" | "groq" | "chatgpt-web" | "parakeet"
       openaiSttModel?: string
       groqSttModel?: string
       // Transcript Post-Processing settings

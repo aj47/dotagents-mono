@@ -3,6 +3,9 @@
 DotAgents' ChatGPT/Codex provider calls the ChatGPT backend Responses API through the
 Codex OAuth credentials stored by the desktop app.
 
+For Codex-authenticated speech-to-text support and notes on investigated TTS and
+image-generation paths, see [`codex-auth-media.md`](./codex-auth-media.md).
+
 ## Request behavior
 
 - Reasoning-capable Codex models receive a `reasoning.effort` request option.
