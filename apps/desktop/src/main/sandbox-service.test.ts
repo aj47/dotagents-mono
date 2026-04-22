@@ -90,6 +90,31 @@ describe("sandbox-service", () => {
       const content = JSON.parse(fs.readFileSync(slotSettingsPath, "utf-8"))
       expect(content.theme).toBe("dark")
     })
+
+    it("does not copy local secret store files into sandbox snapshots", () => {
+      fs.writeFileSync(
+        path.join(agentsDir, "secrets.local.json"),
+        JSON.stringify({ secrets: { apiKey: "sk-secret" } }),
+      )
+      fs.writeFileSync(path.join(agentsDir, "secrets.local.json.tmp-123"), "sk-secret")
+      fs.writeFileSync(path.join(agentsDir, "secrets.local.json~"), "sk-secret")
+
+      const nestedSkillDir = path.join(agentsDir, "skills", "local-secret-test")
+      fs.mkdirSync(nestedSkillDir, { recursive: true })
+      fs.writeFileSync(path.join(nestedSkillDir, "skill.md"), "# Test")
+      fs.writeFileSync(path.join(nestedSkillDir, "secrets.local.json"), "sk-nested")
+
+      saveBaseline(agentsDir)
+
+      const slotDir = path.join(agentsDir, ".sandboxes", "default")
+      expect(fs.existsSync(path.join(slotDir, "secrets.local.json"))).toBe(false)
+      expect(fs.existsSync(path.join(slotDir, "secrets.local.json.tmp-123"))).toBe(false)
+      expect(fs.existsSync(path.join(slotDir, "secrets.local.json~"))).toBe(false)
+      expect(fs.existsSync(path.join(slotDir, "skills", "local-secret-test", "skill.md"))).toBe(true)
+      expect(
+        fs.existsSync(path.join(slotDir, "skills", "local-secret-test", "secrets.local.json")),
+      ).toBe(false)
+    })
   })
 
   describe("saveCurrentAsSlot", () => {

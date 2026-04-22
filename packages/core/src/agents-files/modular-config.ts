@@ -8,6 +8,11 @@ import {
   safeWriteJsonFileSync,
 } from "./safe-file"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
+import {
+  getAgentsSecretsLocalPath,
+  prepareConfigForPersistence,
+  resolveSecretRefs,
+} from "./secrets"
 
 export const AGENTS_DIR_NAME = ".agents"
 export const AGENTS_BACKUPS_DIR_NAME = ".backups"
@@ -98,7 +103,10 @@ export function loadAgentsLayerConfig(layer: AgentsLayerPaths): Partial<Config> 
     defaultValue: {},
   })
 
-  return { ...settings, ...models, ...mcp, ...layout }
+  return resolveSecretRefs(
+    { ...settings, ...models, ...mcp, ...layout },
+    getAgentsSecretsLocalPath(layer.agentsDir),
+  )
 }
 
 export function loadAgentsPrompts(layer: AgentsLayerPaths): { systemPrompt: string | null, agentsGuidelines: string | null } {
@@ -264,7 +272,12 @@ export function writeAgentsLayerFromConfig(
   ensureDirSync(layer.agentsDir)
   ensureDirSync(layer.layoutsDir)
 
-  const split = splitConfigIntoAgentsFiles(config)
+  const secretsFilePath = getAgentsSecretsLocalPath(layer.agentsDir)
+  const configForDisk = prepareConfigForPersistence(
+    config,
+    secretsFilePath,
+  )
+  const split = splitConfigIntoAgentsFiles(configForDisk)
 
   const writeJsonIfNeeded = (filePath: string, value: unknown) => {
     if (onlyIfMissing && fileExists(filePath)) return

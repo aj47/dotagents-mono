@@ -11,6 +11,7 @@ import {
   writeAgentsLayerFromConfig,
   writeAgentsPrompts,
 } from "./modular-config"
+import { AGENTS_SECRETS_LOCAL_JSON, SECRET_REF_PREFIX } from "./secrets"
 
 const DEFAULT_PROMPT = "DEFAULT PROMPT\nLine2"
 
@@ -96,8 +97,15 @@ describe("modular-config", () => {
 
     expect(settings.textInputEnabled).toBe(false)
     expect(mcp.mcpMaxIterations).toBe(99)
-    expect(models.openaiApiKey).toBe("sk-test")
+    expect(models.openaiApiKey).toMatch(new RegExp(`^${SECRET_REF_PREFIX}`))
     expect(layout.themePreference).toBe("dark")
+
+    const secrets = JSON.parse(fs.readFileSync(path.join(agentsDir, AGENTS_SECRETS_LOCAL_JSON), "utf8"))
+    expect(Object.values(secrets.secrets)).toContain("sk-test")
+    expect(fs.readFileSync(path.join(agentsDir, ".gitignore"), "utf8")).toContain(`**/${AGENTS_SECRETS_LOCAL_JSON}*`)
+
+    const loaded = loadAgentsLayerConfig(layer)
+    expect(loaded.openaiApiKey).toBe("sk-test")
   })
 
   it("finds .agents directory upward", () => {

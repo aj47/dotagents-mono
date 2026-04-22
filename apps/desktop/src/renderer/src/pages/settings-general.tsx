@@ -1398,6 +1398,9 @@ export function Component() {
                   placeholder="sk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Stored in local secret storage; shareable .agents config keeps only a secret reference.
+                </p>
               </Control>
 
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
