@@ -3389,9 +3389,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.langfuseBaseUrl = body.langfuseBaseUrl
       }
       // STT Provider
-      const validSttProviders = ["openai", "groq", "parakeet"]
+      const validSttProviders = ["openai", "groq", "chatgpt-web", "parakeet"]
       if (typeof body.sttProviderId === "string" && validSttProviders.includes(body.sttProviderId)) {
-        updates.sttProviderId = body.sttProviderId as "openai" | "groq" | "parakeet"
+        updates.sttProviderId = body.sttProviderId as "openai" | "groq" | "chatgpt-web" | "parakeet"
       }
       if (typeof body.openaiSttModel === "string") {
         updates.openaiSttModel = body.openaiSttModel

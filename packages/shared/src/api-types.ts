@@ -317,7 +317,7 @@ export interface Settings {
   mcpMessageQueueEnabled?: boolean;
 
   // Speech-to-Text Configuration
-  sttProviderId?: 'openai' | 'groq' | 'parakeet';
+  sttProviderId?: 'openai' | 'groq' | 'chatgpt-web' | 'parakeet';
   sttLanguage?: string;
   transcriptionPreviewEnabled?: boolean;
 
@@ -445,7 +445,7 @@ export interface SettingsUpdate {
   mcpMessageQueueEnabled?: boolean;
 
   // Speech-to-Text Configuration
-  sttProviderId?: 'openai' | 'groq' | 'parakeet';
+  sttProviderId?: 'openai' | 'groq' | 'chatgpt-web' | 'parakeet';
   sttLanguage?: string;
   transcriptionPreviewEnabled?: boolean;
 
