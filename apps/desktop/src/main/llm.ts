@@ -1717,7 +1717,9 @@ export async function processTranscriptWithAgentMode(
       sessionId: currentSessionId,
       onSummarizationProgress: (current, total, message) => {
         // Update thinking step with summarization progress
-        thinkingStep.description = `Summarizing context (${current}/${total})`
+        thinkingStep.description = current <= 0
+          ? "Updating context summary"
+          : `Summarizing context (${current}/${total})`
         thinkingStep.llmContent = message
         emit({
           currentIteration: iteration,
@@ -1732,6 +1734,20 @@ export async function processTranscriptWithAgentMode(
     contextInfoRef = { estTokens: estTokensAfter, maxTokens: maxContextTokens }
     // Track last context budget for Langfuse trace metadata
     lastContextBudgetInfo = { estTokensAfter, maxTokens: maxContextTokens, appliedStrategies }
+
+    if (thinkingStep.description?.startsWith("Summarizing context") || thinkingStep.description === "Updating context summary") {
+      thinkingStep.description = appliedStrategies.length > 0
+        ? "Generating response with compacted context"
+        : "Generating response"
+      thinkingStep.llmContent = ""
+      emit({
+        currentIteration: iteration,
+        maxIterations,
+        steps: progressSteps.slice(-3),
+        isComplete: false,
+        conversationHistory: formatConversationForProgress(conversationHistory),
+      })
+    }
 
     // If stop was requested during context shrinking, exit now
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
