@@ -789,7 +789,6 @@ export function Component() {
         ...(tts === "gemini" ? [{ label: "TTS", icon: Volume2 }] : []),
       ],
       chatgptWeb: [
-        ...(stt === "chatgpt-web" ? [{ label: "STT", icon: Mic }] : []),
         ...(transcript === "chatgpt-web" ? [{ label: "Cleanup", icon: FileText }] : []),
         ...(mcp === "chatgpt-web" && !isMainAgentAcpMode ? [{ label: "Agent", icon: Bot }] : []),
       ],
@@ -1054,7 +1053,7 @@ export function Component() {
                     <div className="text-xs text-muted-foreground mt-1">
                       {(chatgptWebAuthQuery.data as any)?.planType
                         ? `Plan: ${(chatgptWebAuthQuery.data as any).planType}`
-                        : "Uses your ChatGPT Codex subscription via OAuth for agent, cleanup, and transcription requests."}
+                        : "Uses your ChatGPT Codex subscription via OAuth."}
                     </div>
                     {(chatgptWebAuthQuery.data as any)?.accountId && (
                       <div className="text-xs text-muted-foreground mt-1">
@@ -1087,7 +1086,7 @@ export function Component() {
                 </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Browser sign-in should return to `http://localhost:1455/auth/callback`. STT uses ChatGPT's `/backend-api/transcribe` endpoint with the same Codex OAuth session.
+                  Browser sign-in should return to `http://localhost:1455/auth/callback`. Use Copy Callback URL if you need to inspect or paste the callback target.
                 </p>
               </div>
             )}
@@ -1252,7 +1251,7 @@ export function Component() {
                         : "Not connected"}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      Uses your ChatGPT Codex subscription via OAuth for agent, cleanup, and transcription requests.
+                      Uses your ChatGPT Codex subscription via OAuth.
                     </div>
                   </div>
 
@@ -1280,7 +1279,7 @@ export function Component() {
                 </div>
 
                 <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t">
-                  Browser sign-in should return to `http://localhost:1455/auth/callback`. This provider talks to Codex responses and ChatGPT transcription transports, not the legacy conversation endpoint.
+                  Browser sign-in should return to `http://localhost:1455/auth/callback`. This provider now talks to the Codex responses transport, not the legacy conversation endpoint.
                 </p>
               </div>
             )}

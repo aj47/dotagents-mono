@@ -281,7 +281,7 @@ export type ProfileModelConfig = {
   mcpToolsChatgptWebModel?: string
   currentModelPresetId?: string
   // STT Provider settings
-  sttProviderId?: "openai" | "groq" | "chatgpt-web" | "parakeet"
+  sttProviderId?: "openai" | "groq" | "parakeet"
   openaiSttModel?: string
   groqSttModel?: string
   // Transcript Post-Processing settings

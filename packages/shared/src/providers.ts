@@ -23,7 +23,6 @@ export interface ModelPreset {
 export const STT_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
   { label: "Groq", value: "groq" },
-  { label: "OpenAI Codex", value: "chatgpt-web" },
   { label: "Parakeet (Local)", value: "parakeet" },
 ] as const;
 

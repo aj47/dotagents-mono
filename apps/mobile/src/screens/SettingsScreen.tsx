@@ -29,7 +29,6 @@ import Slider from '@react-native-community/slider';
 const STT_PROVIDERS = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Groq', value: 'groq' },
-  { label: 'OpenAI Codex', value: 'chatgpt-web' },
   { label: 'Parakeet (Local)', value: 'parakeet' },
 ] as const;
 

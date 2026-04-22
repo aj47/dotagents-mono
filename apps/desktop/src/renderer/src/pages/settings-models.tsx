@@ -348,14 +348,6 @@ export function Component() {
                   Parakeet uses its local downloaded model bundle. Manage installation and runtime settings on Providers.
                 </p>
               </Control>
-            ) : sttProviderId === "chatgpt-web" ? (
-              <Control
-                label={<ControlLabel label="Speech-to-Text model" tooltip="OpenAI Codex transcription uses the ChatGPT backend transcription endpoint." />}
-              >
-                <p className="text-sm text-muted-foreground">
-                  OpenAI Codex chooses the transcription model server-side. Connect your Codex account on Providers.
-                </p>
-              </Control>
             ) : (
               <ModelSelector
                 providerId={sttProviderId}

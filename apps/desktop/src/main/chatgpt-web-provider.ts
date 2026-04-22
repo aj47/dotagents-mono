@@ -42,11 +42,6 @@ export interface ChatGptWebCompletionOptions {
   tools?: ChatGptWebTool[]
 }
 
-export interface ChatGptWebTranscriptionOptions {
-  durationMs?: number
-  signal?: AbortSignal
-}
-
 export interface ChatGptWebToolCall {
   name: string
   arguments: Record<string, unknown>
@@ -454,47 +449,6 @@ async function resolveChatGptWebAuth(signal?: AbortSignal): Promise<ResolvedChat
     accountId: configuredAccountId || extractChatGptAccountId(accessToken),
     baseUrl,
   }
-}
-
-export async function transcribeWithChatGptWeb(
-  recording: ArrayBuffer,
-  options: ChatGptWebTranscriptionOptions = {},
-): Promise<string> {
-  const auth = await resolveChatGptWebAuth(options.signal)
-  const form = new FormData()
-  form.append("file", new File([recording], "recording.webm", { type: "audio/webm" }))
-
-  if (typeof options.durationMs === "number" && Number.isFinite(options.durationMs) && options.durationMs > 0) {
-    form.append("duration_ms", String(Math.round(options.durationMs)))
-  }
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${auth.accessToken}`,
-    originator: "dotagents",
-  }
-
-  if (auth.accountId) {
-    headers["chatgpt-account-id"] = auth.accountId
-  }
-
-  const response = await fetch(`${auth.baseUrl}/backend-api/transcribe`, {
-    method: "POST",
-    headers,
-    body: form,
-    signal: options.signal,
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "")
-    throw new Error(`ChatGPT Codex transcription failed (${response.status}): ${errorText || response.statusText}`)
-  }
-
-  const json = await response.json() as { text?: unknown }
-  if (typeof json.text !== "string") {
-    throw new Error("ChatGPT Codex transcription returned no text")
-  }
-
-  return json.text
 }
 
 function getConfiguredChatGptWebModel(modelContext: ChatGptWebModelContext): string {

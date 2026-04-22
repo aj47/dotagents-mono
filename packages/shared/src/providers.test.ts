@@ -25,11 +25,10 @@ import type { ModelPreset } from './providers'
 // ── Provider Constants ───────────────────────────────────────────────────────
 
 describe('STT_PROVIDERS', () => {
-  it('includes openai, groq, OpenAI Codex, and parakeet', () => {
+  it('includes openai, groq, and parakeet', () => {
     const values = STT_PROVIDERS.map(p => p.value)
     expect(values).toContain('openai')
     expect(values).toContain('groq')
-    expect(values).toContain('chatgpt-web')
     expect(values).toContain('parakeet')
   })
 
