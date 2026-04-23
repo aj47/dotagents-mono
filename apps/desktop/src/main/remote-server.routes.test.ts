@@ -208,6 +208,25 @@ describe("remote-server route registration", () => {
     expect(settingsPatchSection).not.toContain("details: { remoteServerApiKey")
   })
 
+  it("resolves remote server secret references only for authenticated pairing surfaces", () => {
+    const source = getRemoteServerSource()
+
+    expect(source).toContain('const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"')
+    expect(source).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
+    expect(source).toContain("function getResolvedRemoteServerApiKey")
+    expect(source).toContain("function hasConfiguredRemoteServerApiKey")
+    expect(source).toContain("const hasConfiguredApiKey = hasConfiguredRemoteServerApiKey(cfg)")
+    expect(source).toContain("!configuredApiKey && !hasConfiguredApiKey")
+    expect(source).toContain("Remote server API key is configured but could not be resolved; preserving configured value")
+    expect(source).toContain("const currentApiKey = getResolvedRemoteServerApiKey(current)")
+    expect(source).toContain("token !== currentApiKey")
+    expect(source).toContain("export function getRemoteServerPairingApiKey")
+    expect(source).toContain("if (cfg.streamerModeEnabled)")
+    expect(source).toContain("return getResolvedRemoteServerApiKey(cfg)")
+    expect(source).toContain("printTerminalQRCode(serverUrl, apiKey)")
+    expect(source).toContain("remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey)")
+  })
+
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
     const listInjectedMcpToolsSection = getSection(source, "const listInjectedMcpTools = async", "const callInjectedMcpTool = async")

@@ -168,54 +168,11 @@ type QuickStartShortcut = {
   id: string;
   title: string;
   content: string;
-  source: 'command' | 'saved-prompt' | 'starter-pack' | 'action';
+  description?: string;
+  source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
   action?: 'add-prompt';
+  task?: Loop;
 };
-
-type QuickStartSection = {
-  id: string;
-  title: string;
-  items: QuickStartShortcut[];
-};
-
-const STARTER_PACK_SHORTCUTS: QuickStartShortcut[] = [
-  {
-    id: 'starter-plan-task',
-    title: 'Plan this task',
-    content: 'Help me plan this task. Give me a concise step-by-step implementation plan, edge cases to watch, and the smallest safe first step.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-debug-issue',
-    title: 'Debug an issue',
-    content: 'Help me debug this issue. Ask for the minimum missing context, identify the likely causes, and suggest the fastest way to verify the fix.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-summarize',
-    title: 'Summarize and next steps',
-    content: 'Summarize this clearly, then give me the next 3 concrete actions to take.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-polish-writing',
-    title: 'Polish this draft',
-    content: 'Rewrite this into a polished version that is clear, concise, and confident. Keep the meaning but improve the structure and wording.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-research-brief',
-    title: 'Research brief',
-    content: 'Create a quick research brief on this topic with key options, tradeoffs, and a practical recommendation.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-daily-review',
-    title: 'Daily review',
-    content: 'Help me review what happened today, extract the key lessons, and decide the highest-leverage next step for tomorrow.',
-    source: 'starter-pack',
-  },
-];
 
 const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
 
@@ -519,9 +476,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
-  const [isLoadingPromptLibrary, setIsLoadingPromptLibrary] = useState(false);
-  const [promptLibraryVisible, setPromptLibraryVisible] = useState(false);
-  const [promptLibrarySearch, setPromptLibrarySearch] = useState('');
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
@@ -736,29 +690,30 @@ export default function ChatScreen({ route, navigation }: any) {
     inputRef.current?.focus?.();
   }, []);
 
-  const closePromptLibrary = useCallback(() => {
-    setPromptLibraryVisible(false);
-    setPromptLibrarySearch('');
-  }, []);
-
-  const handleSelectPromptLibraryText = useCallback((content: string) => {
-    handleInsertQuickStartPrompt(content);
-    closePromptLibrary();
-  }, [closePromptLibrary, handleInsertQuickStartPrompt]);
-
-  const handleRunPromptLibraryTask = useCallback(async (task: Loop) => {
+  const handleRunPromptTask = useCallback(async (task: Loop) => {
     if (!settingsClient || runningPromptTaskId) return;
     setRunningPromptTaskId(task.id);
     try {
       await settingsClient.runLoop(task.id);
-      closePromptLibrary();
       Alert.alert('Task started', `Running "${task.name}" on desktop.`);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to run task.');
     } finally {
       setRunningPromptTaskId(null);
     }
-  }, [closePromptLibrary, runningPromptTaskId, settingsClient]);
+  }, [runningPromptTaskId, settingsClient]);
+
+  const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
+    if (item.action === 'add-prompt') {
+      setAddPromptModalVisible(true);
+      return;
+    }
+    if (item.source === 'task' && item.task) {
+      void handleRunPromptTask(item.task);
+      return;
+    }
+    handleInsertQuickStartPrompt(item.content);
+  }, [handleInsertQuickStartPrompt, handleRunPromptTask]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -1477,14 +1432,12 @@ export default function ChatScreen({ route, navigation }: any) {
         setAvailableSkills([]);
         setAvailableTasks([]);
         setIsLoadingQuickStartPrompts(false);
-        setIsLoadingPromptLibrary(false);
       }
       return;
     }
 
     let cancelled = false;
     setIsLoadingQuickStartPrompts(true);
-    setIsLoadingPromptLibrary(true);
 
     Promise.allSettled([
       settingsClient.getSettings(),
@@ -1511,7 +1464,6 @@ export default function ChatScreen({ route, navigation }: any) {
       .finally(() => {
         if (cancelled) return;
         setIsLoadingQuickStartPrompts(false);
-        setIsLoadingPromptLibrary(false);
       });
 
     return () => {
@@ -1532,13 +1484,13 @@ export default function ChatScreen({ route, navigation }: any) {
         updatedAt: now,
       };
 
-      const updatedPrompts = [...predefinedPrompts, newPrompt];
+      const updatedPrompts = [newPrompt, ...predefinedPrompts];
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
       setPredefinedPrompts(updatedPrompts);
       setAddPromptModalVisible(false);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert('Success', 'Prompt saved to your settings.');
+      Alert.alert('Success', 'Prompt saved to your desktop prompt library.');
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       Alert.alert('Error', error.message || 'Failed to save prompt.');
@@ -2862,75 +2814,52 @@ export default function ChatScreen({ route, navigation }: any) {
 		  sttPreview,
 		});
 
-  const commandQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter(isSlashCommandPrompt)
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        content: prompt.content,
-        source: 'command' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const savedPromptQuickStarts = useMemo(
+  const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => {
-      const prompts: QuickStartShortcut[] = predefinedPrompts
-        .filter((prompt) => !isSlashCommandPrompt(prompt))
-        .slice(0, 3)
+      const promptItems = predefinedPrompts
         .map((prompt) => ({
           id: prompt.id,
           title: prompt.name,
           content: prompt.content,
-          source: 'saved-prompt' as const,
+          description: prompt.content,
+          source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
         }));
 
-      prompts.push({
+      const skillItems = availableSkills.map((skill) => ({
+        id: `skill-${skill.id}`,
+        title: skill.name,
+        content: getSkillPromptContent(skill),
+        description: skill.description || skill.instructions || 'Use this skill as a reusable prompt.',
+        source: 'skill' as const,
+      }));
+
+      const taskItems = availableTasks.map((task) => ({
+        id: `task-${task.id}`,
+        title: task.name,
+        content: task.prompt || '',
+        description: task.prompt || 'Run this desktop task now.',
+        source: 'task' as const,
+        task,
+      }));
+
+      const addPromptItem: QuickStartShortcut[] = settingsClient ? [{
         id: 'action-add-prompt',
         title: '+ Add Prompt',
         content: '',
-        source: 'action',
-        action: 'add-prompt',
-      });
-      return prompts;
+        description: 'Create a predefined prompt and save it back to desktop.',
+        source: 'action' as const,
+        action: 'add-prompt' as const,
+      }] : [];
+
+      return [
+        ...promptItems,
+        ...skillItems,
+        ...taskItems,
+        ...addPromptItem,
+      ];
     },
-    [predefinedPrompts]
+    [availableSkills, availableTasks, predefinedPrompts, settingsClient]
   );
-
-  const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
-  );
-
-  const quickStartSections = useMemo<QuickStartSection[]>(() => {
-    const sections: QuickStartSection[] = [];
-
-    if (commandQuickStarts.length > 0) {
-      sections.push({
-        id: 'commands',
-        title: 'Custom Commands',
-        items: commandQuickStarts,
-      });
-    }
-
-    if (savedPromptQuickStarts.length > 0) {
-      sections.push({
-        id: 'saved-prompts',
-        title: 'Saved Prompts',
-        items: savedPromptQuickStarts,
-      });
-    }
-
-    sections.push({
-      id: 'starter-packs',
-      title: 'Starter Packs',
-      items: starterPackQuickStarts,
-    });
-
-    return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
@@ -3054,11 +2983,53 @@ export default function ChatScreen({ route, navigation }: any) {
     setInput(text);
   }, []);
 
+		const wakeHandsFreeByUser = useCallback(() => {
+			handsFreeController.wakeByUser();
+			if (!listening) {
+				void startRecording();
+			}
+			setDebugInfo('Handsfree awake. Listening for your request.');
+		}, [handsFreeController.wakeByUser, listening, startRecording]);
+
+		const sleepHandsFreeByUser = useCallback(() => {
+			handsFreeController.sleepByUser();
+			setDebugInfo(`Handsfree sleeping. Say “${handsFreeWakePhrase}” or tap Wake to begin.`);
+		}, [handsFreeController.sleepByUser, handsFreeWakePhrase]);
+
+		const resumeHandsFreeByUser = useCallback(() => {
+			handsFreeController.resumeByUser();
+			if (!listening) {
+				void startRecording();
+			}
+			setDebugInfo('Handsfree resumed.');
+		}, [handsFreeController.resumeByUser, listening, startRecording]);
+
+		const pauseHandsFreeByUser = useCallback(() => {
+			handsFreeController.pauseByUser();
+			Speech.stop();
+			void stopRecognitionOnly();
+			setDebugInfo('Handsfree paused.');
+		}, [handsFreeController.pauseByUser, stopRecognitionOnly]);
+
+		const handleHandsFreePrimaryControl = useCallback(() => {
+			if (handsFreeController.state.phase === 'sleeping') {
+				wakeHandsFreeByUser();
+				return;
+			}
+			if (handsFreeController.state.phase === 'paused') {
+				resumeHandsFreeByUser();
+				return;
+			}
+			pauseHandsFreeByUser();
+		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
+
+		const handsFreePauseResumeLabel = handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause';
+
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
 		switch (handsFreeController.state.phase) {
 			case 'sleeping':
-				return `Say “${handsFreeWakePhrase}” to wake the assistant.`;
+					return `Say “${handsFreeWakePhrase}” or tap Wake to wake the assistant.`;
 			case 'waking':
 				return 'Listening for your next request.';
 			case 'listening':
@@ -3092,26 +3063,8 @@ export default function ChatScreen({ route, navigation }: any) {
 		: (listening ? 'Listening…' : 'Type or hold mic');
 
 	const micButtonLabel = handsFree
-		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
+			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
 		: (listening ? '...' : 'Hold');
-
-  const normalizedPromptLibrarySearch = promptLibrarySearch.trim().toLowerCase();
-  const matchesPromptLibrarySearch = useCallback((...values: Array<string | undefined | null>) => {
-    if (!normalizedPromptLibrarySearch) return true;
-    return values.some((value) => value?.toLowerCase().includes(normalizedPromptLibrarySearch));
-  }, [normalizedPromptLibrarySearch]);
-  const filteredPromptLibraryPrompts = useMemo(
-    () => predefinedPrompts.filter((prompt) => matchesPromptLibrarySearch(prompt.name, prompt.content)),
-    [matchesPromptLibrarySearch, predefinedPrompts]
-  );
-  const filteredPromptLibrarySkills = useMemo(
-    () => availableSkills.filter((skill) => matchesPromptLibrarySearch(skill.name, skill.description, skill.instructions)),
-    [availableSkills, matchesPromptLibrarySearch]
-  );
-  const filteredPromptLibraryTasks = useMemo(
-    () => availableTasks.filter((task) => matchesPromptLibrarySearch(task.name, task.prompt)),
-    [availableTasks, matchesPromptLibrarySearch]
-  );
 
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
@@ -3154,38 +3107,38 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           {!sessionStore.isLoadingMessages && messages.length === 0 && (
             <View style={styles.chatHomeCard}>
-              {quickStartSections.map((section) => (
-                <View key={section.id} style={styles.chatHomeSection}>
-                  <Text style={styles.chatHomeSectionTitle}>{section.title}</Text>
-                  <View style={styles.chatHomeShortcutGrid}>
-                    {section.items.map((item) => (
-                      <Pressable
-                        key={item.id}
-                        style={({ pressed }) => [
-                          styles.chatHomeShortcutCard,
-                          item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
-                          pressed && styles.chatHomeShortcutCardPressed,
-                        ]}
-                        onPress={() => {
-                          if (item.action === 'add-prompt') {
-                            setAddPromptModalVisible(true);
-                          } else {
-                            handleInsertQuickStartPrompt(item.content);
-                          }
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : `${section.title}: ${item.title}`)}
-                        accessibilityHint={item.action === 'add-prompt' ? 'Create a new saved prompt.' : 'Inserts this launcher text into the composer.'}
-                      >
-                        <Text style={[
-                          styles.chatHomeShortcutTitle,
-                          item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
-                        ]} numberOfLines={2}>{item.title}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ))}
+	              {promptQuickStarts.length > 0 ? (
+	                <View style={styles.chatHomeShortcutGrid}>
+	                  {promptQuickStarts.map((item) => (
+	                    <Pressable
+	                      key={item.id}
+	                      style={({ pressed }) => [
+	                        styles.chatHomeShortcutCard,
+		                        item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
+		                        item.source === 'task' && runningPromptTaskId === item.task?.id && styles.chatHomeShortcutCardDisabled,
+	                        pressed && styles.chatHomeShortcutCardPressed,
+	                      ]}
+		                      onPress={() => handleQuickStartPress(item)}
+		                      disabled={item.source === 'task' && runningPromptTaskId === item.task?.id}
+	                      accessibilityRole="button"
+		                      accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : item.source === 'task' ? `Run task ${item.title}` : `Insert ${item.source} ${item.title}`)}
+		                      accessibilityHint={item.action === 'add-prompt' ? 'Create a predefined prompt and save it to desktop.' : item.source === 'task' ? 'Runs this desktop task now.' : 'Inserts this desktop library item into the composer.'}
+	                    >
+		                      <Text style={[
+		                        styles.chatHomeShortcutTitle,
+		                        item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
+		                      ]} numberOfLines={2}>{item.title}</Text>
+		                      {item.description ? (
+		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
+		                      ) : null}
+	                    </Pressable>
+	                  ))}
+	                </View>
+	              ) : (
+	                <Text style={styles.chatHomeEmptyText}>
+		                  {isLoadingQuickStartPrompts ? 'Loading desktop library…' : 'No prompts, skills, or tasks available from your connected desktop app.'}
+	                </Text>
+	              )}
             </View>
           )}
           {canLoadOlderMessages && (
@@ -3933,7 +3886,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 {handsFreeController.state.phase === 'sleeping' ? (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.wakeByUser}
+	                    onPress={wakeHandsFreeByUser}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.handsFreeControlButtonText}>Wake</Text>
@@ -3941,7 +3894,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 ) : (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.sleepByUser}
+	                    onPress={sleepHandsFreeByUser}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
@@ -3949,38 +3902,18 @@ export default function ChatScreen({ route, navigation }: any) {
                 )}
                 <TouchableOpacity
                   style={styles.handsFreeControlButton}
-                  onPress={() => {
-                    if (handsFreeController.state.phase === 'paused') {
-                      handsFreeController.resumeByUser();
-                      setDebugInfo('Handsfree resumed.');
-                      return;
-                    }
-                    handsFreeController.pauseByUser();
-                    Speech.stop();
-                    void stopRecognitionOnly();
-                    setDebugInfo('Handsfree paused.');
-                  }}
+	                  onPress={handsFreeController.state.phase === 'paused' ? resumeHandsFreeByUser : pauseHandsFreeByUser}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.handsFreeControlButtonText}>
-                    {handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause'}
+	                    {handsFreePauseResumeLabel}
                   </Text>
                 </TouchableOpacity>
               </View>
             </>
           )}
 	          {/* Top row: TTS toggle, text input, send button */}
-	          <View style={styles.inputRow}>
-		            <TouchableOpacity
-		              style={[styles.ttsToggle, promptLibraryVisible && styles.ttsToggleOn]}
-		              onPress={() => setPromptLibraryVisible(true)}
-		              activeOpacity={0.7}
-		              accessibilityRole="button"
-		              accessibilityLabel="Open prompts, skills, and tasks"
-		              accessibilityHint="Shows a searchable library of predefined prompts, skills, and tasks from desktop."
-		            >
-		              <Text style={styles.ttsToggleText}>📚</Text>
-		            </TouchableOpacity>
+		          <View style={styles.inputRow}>
 	            <TouchableOpacity
 	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
 	              onPress={handlePickImages}
@@ -4091,17 +4024,7 @@ export default function ChatScreen({ route, navigation }: any) {
               aria-busy={listening}
 	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
 	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-              onPress={handsFree ? () => {
-					if (handsFreeController.state.phase === 'paused') {
-						handsFreeController.resumeByUser();
-						setDebugInfo('Handsfree resumed.');
-					} else {
-						handsFreeController.pauseByUser();
-						Speech.stop();
-						void stopRecognitionOnly();
-						setDebugInfo('Handsfree paused.');
-					}
-              } : undefined}
+	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
               <Text style={styles.micText} selectable={false}>
                 {listening ? '🎙️' : '🎤'}
@@ -4117,79 +4040,6 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
       />
-
-      <Modal
-        visible={promptLibraryVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closePromptLibrary}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.promptLibraryOverlay}>
-            <Pressable style={styles.promptLibraryBackdrop} onPress={closePromptLibrary} />
-            <View style={styles.promptLibrarySheet}>
-              <View style={styles.promptLibraryHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>Prompts, Skills & Tasks</Text>
-                  <Text style={styles.promptLibrarySubtitle}>From your connected desktop app</Text>
-                </View>
-                <TouchableOpacity onPress={closePromptLibrary} style={styles.promptLibraryCloseButton} accessibilityRole="button" accessibilityLabel="Close prompt library">
-                  <Text style={styles.promptLibraryCloseButtonText}>×</Text>
-                </TouchableOpacity>
-              </View>
-              <TextInput
-                style={styles.promptLibrarySearchInput}
-                value={promptLibrarySearch}
-                onChangeText={setPromptLibrarySearch}
-                placeholder="Search prompts, skills, tasks..."
-                placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel="Search prompts, skills, and tasks"
-              />
-              {isLoadingPromptLibrary ? (
-                <View style={styles.promptLibraryLoadingRow}>
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                  <Text style={styles.promptLibraryMeta}>Loading desktop library…</Text>
-                </View>
-              ) : (
-                <ScrollView style={styles.promptLibraryList} keyboardShouldPersistTaps="handled">
-                  <Text style={styles.promptLibrarySectionTitle}>Predefined Prompts</Text>
-                  {filteredPromptLibraryPrompts.length === 0 ? (
-                    <Text style={styles.promptLibraryEmptyText}>{predefinedPrompts.length === 0 ? 'No saved prompts yet' : 'No matching prompts'}</Text>
-                  ) : filteredPromptLibraryPrompts.map((prompt) => (
-                    <TouchableOpacity key={prompt.id} style={styles.promptLibraryItem} onPress={() => handleSelectPromptLibraryText(prompt.content)} accessibilityRole="button" accessibilityLabel={`Insert prompt ${prompt.name}`}>
-                      <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>📝 {prompt.name}</Text>
-                      <Text style={styles.promptLibraryItemDescription} numberOfLines={2}>{prompt.content}</Text>
-                    </TouchableOpacity>
-                  ))}
-
-                  <Text style={styles.promptLibrarySectionTitle}>Skills</Text>
-                  {filteredPromptLibrarySkills.length === 0 ? (
-                    <Text style={styles.promptLibraryEmptyText}>{availableSkills.length === 0 ? 'No skills available' : 'No matching skills'}</Text>
-                  ) : filteredPromptLibrarySkills.map((skill) => (
-                    <TouchableOpacity key={skill.id} style={styles.promptLibraryItem} onPress={() => handleSelectPromptLibraryText(getSkillPromptContent(skill))} accessibilityRole="button" accessibilityLabel={`Insert skill ${skill.name}`}>
-                      <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>✨ {skill.name}</Text>
-                      <Text style={styles.promptLibraryItemDescription} numberOfLines={2}>{skill.description || 'Use this skill as a reusable prompt.'}</Text>
-                    </TouchableOpacity>
-                  ))}
-
-                  <Text style={styles.promptLibrarySectionTitle}>Tasks</Text>
-                  {filteredPromptLibraryTasks.length === 0 ? (
-                    <Text style={styles.promptLibraryEmptyText}>{availableTasks.length === 0 ? 'No tasks available' : 'No matching tasks'}</Text>
-                  ) : filteredPromptLibraryTasks.map((task) => (
-                    <TouchableOpacity key={task.id} style={[styles.promptLibraryItem, runningPromptTaskId === task.id && styles.promptLibraryItemDisabled]} onPress={() => handleRunPromptLibraryTask(task)} disabled={!!runningPromptTaskId} accessibilityRole="button" accessibilityLabel={`Run task ${task.name}`}>
-                      <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>⏱️ {task.name}</Text>
-                      <Text style={styles.promptLibraryItemDescription} numberOfLines={2}>{task.prompt || 'Run this task now.'}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       <Modal
         visible={addPromptModalVisible}
@@ -4241,11 +4091,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   onPress={handleSaveNewPrompt}
                   disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
                 >
-                  {isSavingPrompt ? (
-                    <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
-                  ) : (
-                    <Text style={styles.modalSaveButtonText}>Add Prompt</Text>
-                  )}
+                  <Text style={styles.modalSaveButtonText}>{isSavingPrompt ? 'Saving...' : 'Add Prompt'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -4464,13 +4310,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: theme.colors.card,
       gap: spacing.sm,
     },
-    chatHomeSection: {
-      gap: spacing.sm,
-    },
-    chatHomeSectionTitle: {
+	    chatHomeEmptyText: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
-      fontWeight: '600',
+	      textAlign: 'center',
+	      paddingVertical: spacing.md,
     },
     chatHomeShortcutGrid: {
       flexDirection: 'row',
@@ -4478,7 +4322,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: spacing.sm,
     },
     chatHomeShortcutCard: {
-      minHeight: 56,
+      minHeight: 72,
       minWidth: '47%',
       flexGrow: 1,
       flexBasis: '47%',
@@ -4496,6 +4340,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: 'transparent',
       alignItems: 'center',
     },
+    chatHomeShortcutCardDisabled: {
+      opacity: 0.5,
+    },
     chatHomeShortcutCardPressed: {
       opacity: 0.88,
       transform: [{ scale: 0.99 }],
@@ -4507,6 +4354,77 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     chatHomeShortcutTitleAdd: {
       color: theme.colors.primary,
+      textAlign: 'center',
+    },
+    chatHomeShortcutDescription: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: 3,
+      lineHeight: 15,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    modalContent: {
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalTitle: {
+      ...theme.typography.h2,
+      marginBottom: spacing.md,
+      color: theme.colors.foreground,
+    },
+    modalLabel: {
+      ...theme.typography.caption,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+      marginBottom: spacing.xs,
+    },
+    modalInput: {
+      ...theme.input,
+      marginBottom: spacing.md,
+      color: theme.colors.foreground,
+    },
+    modalInputMultiline: {
+      height: 120,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    modalCancelButton: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+    },
+    modalCancelButtonText: {
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    modalSaveButton: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.primary,
+      minWidth: 100,
+      alignItems: 'center',
+    },
+    modalSaveButtonDisabled: {
+      opacity: 0.5,
+    },
+    modalSaveButtonText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     input: {
       ...theme.input,
@@ -5016,167 +4934,5 @@ function createStyles(theme: Theme, screenHeight: number) {
     speakButtonTextActive: {
       color: theme.colors.primary,
     } as const,
-    promptLibraryOverlay: {
-      flex: 1,
-      justifyContent: 'flex-end',
-      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    },
-    promptLibraryBackdrop: {
-      flex: 1,
-    },
-    promptLibrarySheet: {
-      maxHeight: '82%',
-      backgroundColor: theme.colors.background,
-      borderTopLeftRadius: radius.xl,
-      borderTopRightRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      padding: spacing.md,
-      gap: spacing.sm,
-    },
-    promptLibraryHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: spacing.md,
-    },
-    promptLibrarySubtitle: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      marginTop: -spacing.sm,
-    },
-    promptLibraryCloseButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.muted,
-    },
-    promptLibraryCloseButtonText: {
-      color: theme.colors.foreground,
-      fontSize: 24,
-      lineHeight: 28,
-    },
-    promptLibrarySearchInput: {
-      ...theme.input,
-      minHeight: 44,
-      color: theme.colors.foreground,
-    },
-    promptLibraryLoadingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.lg,
-    },
-    promptLibraryMeta: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-    },
-    promptLibraryList: {
-      maxHeight: 460,
-    },
-    promptLibrarySectionTitle: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      marginTop: spacing.sm,
-      marginBottom: spacing.xs,
-    },
-    promptLibraryItem: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: radius.md,
-      backgroundColor: theme.colors.card,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      marginBottom: spacing.xs,
-    },
-    promptLibraryItemDisabled: {
-      opacity: 0.5,
-    },
-    promptLibraryItemTitle: {
-      ...theme.typography.body,
-      color: theme.colors.foreground,
-      fontWeight: '700',
-    },
-    promptLibraryItemDescription: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      marginTop: 2,
-      lineHeight: 16,
-    },
-    promptLibraryEmptyText: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      paddingVertical: spacing.sm,
-      textAlign: 'center',
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      padding: spacing.lg,
-    },
-    modalContent: {
-      backgroundColor: theme.colors.background,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    modalTitle: {
-      ...theme.typography.h2,
-      marginBottom: spacing.md,
-      color: theme.colors.foreground,
-    },
-    modalLabel: {
-      ...theme.typography.caption,
-      fontWeight: '600',
-      color: theme.colors.foreground,
-      marginBottom: spacing.xs,
-    },
-    modalInput: {
-      ...theme.input,
-      marginBottom: spacing.md,
-      color: theme.colors.foreground,
-    },
-    modalInputMultiline: {
-      height: 120,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.sm,
-    },
-    modalActions: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: spacing.sm,
-      marginTop: spacing.sm,
-    },
-    modalCancelButton: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-    },
-    modalCancelButtonText: {
-      color: theme.colors.mutedForeground,
-      fontWeight: '600',
-    },
-    modalSaveButton: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      backgroundColor: theme.colors.primary,
-      minWidth: 100,
-      alignItems: 'center',
-    },
-    modalSaveButtonDisabled: {
-      opacity: 0.5,
-    },
-    modalSaveButtonText: {
-      color: theme.colors.primaryForeground,
-      fontWeight: '600',
-    },
   });
 }

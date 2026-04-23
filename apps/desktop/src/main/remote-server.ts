@@ -9,7 +9,7 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import QRCode from "qrcode"
-import { configStore, recordingsFolder } from "./config"
+import { configStore, globalAgentsFolder, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import {
   DISCORD_SECRET_MASK,
@@ -91,6 +91,8 @@ let server: FastifyInstance | null = null
 let lastError: string | undefined
 
 const REMOTE_SERVER_SECRET_MASK = "••••••••"
+const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"
+const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"
 const OPERATOR_AUDIT_LOG_LIMIT = 200
 const OPERATOR_AUDIT_DEVICE_HEADER_KEYS = ["x-device-id", "x-dotagents-device-id"] as const
 const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
@@ -396,6 +398,62 @@ function redact(value?: string) {
 
 function generateRemoteServerApiKey(): string {
   return crypto.randomBytes(32).toString("hex")
+}
+
+function getSecretReferenceCandidates(secretId: string): string[] {
+  const candidates = new Set<string>([secretId])
+  let current = secretId
+
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      const decoded = decodeURIComponent(current)
+      if (decoded === current) break
+      candidates.add(decoded)
+      current = decoded
+    } catch {
+      break
+    }
+  }
+
+  return [...candidates]
+}
+
+function readDotAgentsSecretReference(value: string): string | undefined {
+  if (!value.startsWith(DOTAGENTS_SECRET_REF_PREFIX)) {
+    return value
+  }
+
+  const secretId = value.slice(DOTAGENTS_SECRET_REF_PREFIX.length)
+  if (!secretId) return undefined
+
+  try {
+    const secretsPath = path.join(globalAgentsFolder, DOTAGENTS_SECRETS_LOCAL_JSON)
+    const parsed = JSON.parse(fs.readFileSync(secretsPath, "utf8")) as { secrets?: Record<string, unknown> }
+    const secrets = parsed && typeof parsed === "object" ? parsed.secrets : undefined
+    if (!secrets || typeof secrets !== "object") return undefined
+
+    for (const candidate of getSecretReferenceCandidates(secretId)) {
+      const secret = secrets[candidate]
+      if (typeof secret === "string" && secret.length > 0) {
+        return secret
+      }
+    }
+  } catch {
+    // Missing or invalid local secret storage should not expose the reference.
+  }
+
+  return undefined
+}
+
+function getResolvedRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): string {
+  const resolved = cfg.remoteServerApiKey
+    ? readDotAgentsSecretReference(cfg.remoteServerApiKey)
+    : undefined
+  return resolved?.trim() || ""
+}
+
+function hasConfiguredRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): boolean {
+  return (cfg.remoteServerApiKey ?? "").trim().length > 0
 }
 
 function sanitizeOperatorAuditText(value: string | undefined, maxLength: number = 160): string | undefined {
@@ -1858,10 +1916,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return { running: false }
   }
 
-  if (!cfg.remoteServerApiKey) {
+  const configuredApiKey = getResolvedRemoteServerApiKey(cfg)
+  const hasConfiguredApiKey = hasConfiguredRemoteServerApiKey(cfg)
+  if (!configuredApiKey && !hasConfiguredApiKey) {
     // Generate API key on first enable
     const key = generateRemoteServerApiKey()
     configStore.save({ ...cfg, remoteServerApiKey: key })
+  } else if (!configuredApiKey) {
+    diagnosticsService.logWarning(
+      "remote-server",
+      "Remote server API key is configured but could not be resolved; preserving configured value",
+    )
   }
 
   if (server) {
@@ -1906,7 +1971,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     const auth = (req.headers["authorization"] || "").toString()
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : ""
     const current = configStore.get()
-    if (!token || token !== current.remoteServerApiKey) {
+    const currentApiKey = getResolvedRemoteServerApiKey(current)
+    if (!token || !currentApiKey || token !== currentApiKey) {
       reply.code(401).send({ error: "Unauthorized" })
       return
     }
@@ -5384,13 +5450,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     // Suppress when streamer mode is enabled to prevent credential leakage
     if (!skipAutoPrintQR) {
       const currentCfg = configStore.get()
-      if (currentCfg.remoteServerApiKey && !currentCfg.streamerModeEnabled) {
+      const currentApiKey = getResolvedRemoteServerApiKey(currentCfg)
+      if (currentApiKey && !currentCfg.streamerModeEnabled) {
         // In headless environments, always print the QR code
         // Otherwise, print if terminal QR is explicitly enabled
         if (isHeadlessEnvironment() || currentCfg.remoteServerTerminalQrEnabled) {
           const serverUrl = getConnectableBaseUrlForMobilePairing(bind, port)
           if (serverUrl) {
-            await printTerminalQRCode(serverUrl, currentCfg.remoteServerApiKey)
+            await printTerminalQRCode(serverUrl, currentApiKey)
           } else {
             console.warn(
               `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`
@@ -5437,6 +5504,15 @@ export function getRemoteServerStatus() {
   return { running, url, connectableUrl, bind, port, lastError }
 }
 
+export function getRemoteServerPairingApiKey(): string {
+  const cfg = configStore.get()
+  if (cfg.streamerModeEnabled) {
+    return ""
+  }
+
+  return getResolvedRemoteServerApiKey(cfg)
+}
+
 /**
  * Prints the QR code to the terminal for mobile app pairing
  * Can be called manually when the user wants to see the QR code
@@ -5445,7 +5521,8 @@ export function getRemoteServerStatus() {
  */
 export async function printQRCodeToTerminal(urlOverride?: string): Promise<boolean> {
   const cfg = configStore.get()
-  if (!server || !cfg.remoteServerApiKey) {
+  const apiKey = getResolvedRemoteServerApiKey(cfg)
+  if (!server || !apiKey) {
     console.log("[Remote Server] Cannot print QR code: server not running or no API key configured")
     return false
   }
@@ -5473,5 +5550,5 @@ export async function printQRCodeToTerminal(urlOverride?: string): Promise<boole
   }
 
   // Return the actual result from printTerminalQRCode to indicate success/failure
-  return await printTerminalQRCode(serverUrl, cfg.remoteServerApiKey)
+  return await printTerminalQRCode(serverUrl, apiKey)
 }
