@@ -18,6 +18,7 @@ import {
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
   useWindowDimensions,
+  Modal,
 } from 'react-native';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -58,7 +59,9 @@ import {
   type AgentConversationState,
   type AgentUserResponseEvent,
   type HandsFreePhase,
+  type Loop,
   type PredefinedPromptSummary,
+  type Skill,
   type ToolActivityGroup,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -165,10 +168,19 @@ type QuickStartShortcut = {
   id: string;
   title: string;
   content: string;
-  source: 'command' | 'saved-prompt';
+  description?: string;
+  source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
+  action?: 'add-prompt';
+  task?: Loop;
 };
 
 const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
+
+const getSkillPromptContent = (skill: Skill): string => {
+  const instructions = skill.instructions?.trim();
+  if (instructions) return instructions;
+  return `Use the "${skill.name}" skill for this request.${skill.description ? `\n\n${skill.description}` : ''}`;
+};
 
 const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
 
@@ -461,7 +473,10 @@ export default function ChatScreen({ route, navigation }: any) {
     return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
   const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
   const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
@@ -475,6 +490,10 @@ export default function ChatScreen({ route, navigation }: any) {
       : remoteEdgeTtsVoice;
   const effectiveEdgeTtsRate =
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
+  const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
+  const [newPromptName, setNewPromptName] = useState('');
+  const [newPromptContent, setNewPromptContent] = useState('');
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
@@ -670,6 +689,31 @@ export default function ChatScreen({ route, navigation }: any) {
     });
     inputRef.current?.focus?.();
   }, []);
+
+  const handleRunPromptTask = useCallback(async (task: Loop) => {
+    if (!settingsClient || runningPromptTaskId) return;
+    setRunningPromptTaskId(task.id);
+    try {
+      await settingsClient.runLoop(task.id);
+      Alert.alert('Task started', `Running "${task.name}" on desktop.`);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to run task.');
+    } finally {
+      setRunningPromptTaskId(null);
+    }
+  }, [runningPromptTaskId, settingsClient]);
+
+  const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
+    if (item.action === 'add-prompt') {
+      setAddPromptModalVisible(true);
+      return;
+    }
+    if (item.source === 'task' && item.task) {
+      void handleRunPromptTask(item.task);
+      return;
+    }
+    handleInsertQuickStartPrompt(item.content);
+  }, [handleInsertQuickStartPrompt, handleRunPromptTask]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -1385,6 +1429,8 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!settingsClient || !isFocused) {
       if (!settingsClient) {
         setPredefinedPrompts([]);
+        setAvailableSkills([]);
+        setAvailableTasks([]);
         setIsLoadingQuickStartPrompts(false);
       }
       return;
@@ -1393,18 +1439,27 @@ export default function ChatScreen({ route, navigation }: any) {
     let cancelled = false;
     setIsLoadingQuickStartPrompts(true);
 
-    settingsClient.getSettings()
-      .then((settings) => {
+    Promise.allSettled([
+      settingsClient.getSettings(),
+      settingsClient.getSkills(),
+      settingsClient.getLoops(),
+    ] as const)
+      .then(([settingsResult, skillsResult, loopsResult]) => {
         if (cancelled) return;
-        const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
-        setPredefinedPrompts(nextPrompts);
-        setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
-        setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
-        setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setPredefinedPrompts([]);
+
+        if (settingsResult.status === 'fulfilled') {
+          const settings = settingsResult.value;
+          const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
+          setPredefinedPrompts(nextPrompts);
+          setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
+          setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
+          setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
+        } else {
+          setPredefinedPrompts([]);
+        }
+
+        setAvailableSkills(skillsResult.status === 'fulfilled' ? skillsResult.value.skills : []);
+        setAvailableTasks(loopsResult.status === 'fulfilled' ? loopsResult.value.loops : []);
       })
       .finally(() => {
         if (cancelled) return;
@@ -1415,6 +1470,34 @@ export default function ChatScreen({ route, navigation }: any) {
       cancelled = true;
     };
   }, [isFocused, settingsClient]);
+
+  const handleSaveNewPrompt = async () => {
+    if (!settingsClient || !newPromptName.trim() || !newPromptContent.trim()) return;
+    setIsSavingPrompt(true);
+    try {
+      const now = Date.now();
+      const newPrompt: PredefinedPromptSummary = {
+        id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
+        name: newPromptName.trim(),
+        content: newPromptContent.trim(),
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const updatedPrompts = [newPrompt, ...predefinedPrompts];
+      await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
+      setPredefinedPrompts(updatedPrompts);
+      setAddPromptModalVisible(false);
+      setNewPromptName('');
+      setNewPromptContent('');
+      Alert.alert('Success', 'Prompt saved to your desktop prompt library.');
+    } catch (error: any) {
+      console.error('[ChatScreen] Error saving prompt:', error);
+      Alert.alert('Error', error.message || 'Failed to save prompt.');
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  };
 
   // Reset auto-scroll when session changes
   useEffect(() => {
@@ -2733,16 +2816,50 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => {
-      return predefinedPrompts
+      const promptItems = predefinedPrompts
         .slice(0, 5)
         .map((prompt) => ({
           id: prompt.id,
           title: prompt.name,
           content: prompt.content,
+          description: prompt.content,
           source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
         }));
+
+      const skillItems = availableSkills.slice(0, 4).map((skill) => ({
+        id: `skill-${skill.id}`,
+        title: skill.name,
+        content: getSkillPromptContent(skill),
+        description: skill.description || skill.instructions || 'Use this skill as a reusable prompt.',
+        source: 'skill' as const,
+      }));
+
+      const taskItems = availableTasks.slice(0, 4).map((task) => ({
+        id: `task-${task.id}`,
+        title: task.name,
+        content: task.prompt || '',
+        description: task.prompt || 'Run this desktop task now.',
+        source: 'task' as const,
+        task,
+      }));
+
+      const addPromptItem: QuickStartShortcut[] = settingsClient ? [{
+        id: 'action-add-prompt',
+        title: '+ Add Prompt',
+        content: '',
+        description: 'Create a predefined prompt and save it back to desktop.',
+        source: 'action' as const,
+        action: 'add-prompt' as const,
+      }] : [];
+
+      return [
+        ...promptItems,
+        ...skillItems,
+        ...taskItems,
+        ...addPromptItem,
+      ];
     },
-    [predefinedPrompts]
+    [availableSkills, availableTasks, predefinedPrompts, settingsClient]
   );
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
@@ -2998,20 +3115,29 @@ export default function ChatScreen({ route, navigation }: any) {
 	                      key={item.id}
 	                      style={({ pressed }) => [
 	                        styles.chatHomeShortcutCard,
+		                        item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
+		                        item.source === 'task' && runningPromptTaskId === item.task?.id && styles.chatHomeShortcutCardDisabled,
 	                        pressed && styles.chatHomeShortcutCardPressed,
 	                      ]}
-	                      onPress={() => handleInsertQuickStartPrompt(item.content)}
+		                      onPress={() => handleQuickStartPress(item)}
+		                      disabled={item.source === 'task' && runningPromptTaskId === item.task?.id}
 	                      accessibilityRole="button"
-	                      accessibilityLabel={createButtonAccessibilityLabel(`Insert prompt ${item.title}`)}
-	                      accessibilityHint="Inserts this predefined prompt into the composer."
+		                      accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : item.source === 'task' ? `Run task ${item.title}` : `Insert ${item.source} ${item.title}`)}
+		                      accessibilityHint={item.action === 'add-prompt' ? 'Create a predefined prompt and save it to desktop.' : item.source === 'task' ? 'Runs this desktop task now.' : 'Inserts this desktop library item into the composer.'}
 	                    >
-	                      <Text style={styles.chatHomeShortcutTitle} numberOfLines={2}>{item.title}</Text>
+		                      <Text style={[
+		                        styles.chatHomeShortcutTitle,
+		                        item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
+		                      ]} numberOfLines={2}>{item.title}</Text>
+		                      {item.description ? (
+		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
+		                      ) : null}
 	                    </Pressable>
 	                  ))}
 	                </View>
 	              ) : (
 	                <Text style={styles.chatHomeEmptyText}>
-	                  {isLoadingQuickStartPrompts ? 'Loading prompts…' : 'No predefined prompts available from your connected desktop app.'}
+		                  {isLoadingQuickStartPrompts ? 'Loading desktop library…' : 'No prompts, skills, or tasks available from your connected desktop app.'}
 	                </Text>
 	              )}
             </View>
@@ -3915,6 +4041,64 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
       />
+
+      <Modal
+        visible={addPromptModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setAddPromptModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Add New Prompt</Text>
+
+              <Text style={styles.modalLabel}>Name</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newPromptName}
+                onChangeText={setNewPromptName}
+                placeholder="e.g., Code Review Request"
+                placeholderTextColor={theme.colors.mutedForeground}
+              />
+
+              <Text style={styles.modalLabel}>Prompt Content</Text>
+              <TextInput
+                style={[styles.modalInput, styles.modalInputMultiline]}
+                value={newPromptContent}
+                onChangeText={setNewPromptContent}
+                placeholder="Enter your prompt text..."
+                placeholderTextColor={theme.colors.mutedForeground}
+                multiline
+                textAlignVertical="top"
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => setAddPromptModalVisible(false)}
+                  disabled={isSavingPrompt}
+                >
+                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modalSaveButton,
+                    (!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt) && styles.modalSaveButtonDisabled
+                  ]}
+                  onPress={handleSaveNewPrompt}
+                  disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
+                >
+                  <Text style={styles.modalSaveButtonText}>{isSavingPrompt ? 'Saving...' : 'Add Prompt'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -4139,7 +4323,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: spacing.sm,
     },
     chatHomeShortcutCard: {
-      minHeight: 56,
+      minHeight: 72,
       minWidth: '47%',
       flexGrow: 1,
       flexBasis: '47%',
@@ -4151,6 +4335,15 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: theme.colors.background,
       justifyContent: 'center',
     },
+    chatHomeShortcutCardAdd: {
+      borderStyle: 'dashed',
+      borderColor: theme.colors.primary,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+    },
+    chatHomeShortcutCardDisabled: {
+      opacity: 0.5,
+    },
     chatHomeShortcutCardPressed: {
       opacity: 0.88,
       transform: [{ scale: 0.99 }],
@@ -4158,6 +4351,80 @@ function createStyles(theme: Theme, screenHeight: number) {
     chatHomeShortcutTitle: {
       ...theme.typography.body,
       color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatHomeShortcutTitleAdd: {
+      color: theme.colors.primary,
+      textAlign: 'center',
+    },
+    chatHomeShortcutDescription: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: 3,
+      lineHeight: 15,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    modalContent: {
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalTitle: {
+      ...theme.typography.h2,
+      marginBottom: spacing.md,
+      color: theme.colors.foreground,
+    },
+    modalLabel: {
+      ...theme.typography.caption,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+      marginBottom: spacing.xs,
+    },
+    modalInput: {
+      ...theme.input,
+      marginBottom: spacing.md,
+      color: theme.colors.foreground,
+    },
+    modalInputMultiline: {
+      height: 120,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    modalCancelButton: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+    },
+    modalCancelButtonText: {
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    modalSaveButton: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.primary,
+      minWidth: 100,
+      alignItems: 'center',
+    },
+    modalSaveButtonDisabled: {
+      opacity: 0.5,
+    },
+    modalSaveButtonText: {
+      color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
     input: {
