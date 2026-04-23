@@ -185,10 +185,10 @@ async function initializeMcpWithProgress(config: Config, sessionId: string, runI
       {
         id: `mcp_init_${Date.now()}`,
         type: "thinking",
-        title: "Initializing MCP tools",
+        title: "Preparing agent tools",
         description: initStatus.progress.currentServer
-          ? `Initializing ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
-          : `Initializing MCP servers (${initStatus.progress.current}/${initStatus.progress.total})`,
+          ? `Connecting ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
+          : `Checking tool connections (${initStatus.progress.current}/${initStatus.progress.total})`,
         status: "in_progress",
         timestamp: Date.now(),
       },
@@ -213,10 +213,10 @@ async function initializeMcpWithProgress(config: Config, sessionId: string, runI
           {
             id: `mcp_init_${Date.now()}`,
             type: "thinking",
-            title: "Initializing MCP tools",
+            title: "Preparing agent tools",
             description: currentStatus.progress.currentServer
-              ? `Initializing ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
-              : `Initializing MCP servers (${currentStatus.progress.current}/${currentStatus.progress.total})`,
+              ? `Connecting ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
+              : `Checking tool connections (${currentStatus.progress.current}/${currentStatus.progress.total})`,
             status: "in_progress",
             timestamp: Date.now(),
           },
@@ -247,8 +247,8 @@ async function initializeMcpWithProgress(config: Config, sessionId: string, runI
       {
         id: `mcp_init_complete_${Date.now()}`,
         type: "thinking",
-        title: "MCP tools initialized",
-        description: `Successfully initialized ${mcpService.getAvailableTools().length} tools`,
+        title: "Agent tools ready",
+        description: `${mcpService.getAvailableTools().length} tools available`,
         status: "completed",
         timestamp: Date.now(),
       },

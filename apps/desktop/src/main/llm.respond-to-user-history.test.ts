@@ -124,6 +124,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-review-loop",
       "session-review-loop-final-answer",
       "session-clean-final",
+      "session-windowed-progress",
     )
   })
 
@@ -172,6 +173,54 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt).toContain("1. Alpha")
     expect(secondPrompt).toContain("Reply with the numbers you want.")
     expect(secondPrompt).not.toContain("[Calling tools: respond_to_user]")
+  })
+
+  it("windows progress history for large follow-ups without trimming the model prompt", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const previousHistory = Array.from({ length: 150 }, (_, index) => ({
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: `historic message ${index}`,
+      timestamp: index + 1,
+    }))
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({
+      content: "Done continuing.",
+      toolCalls: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "continue",
+      availableTools as any,
+      makeExecuteToolCall("session-windowed-progress", 1),
+      2,
+      previousHistory,
+      "conv-windowed-progress",
+      "session-windowed-progress",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(promptText).toContain("historic message 0")
+    expect(promptText).toContain("historic message 149")
+    expect(result.conversationHistory.length).toBeGreaterThan(150)
+
+    const historyUpdates = (mocks.emitAgentProgress.mock.calls as unknown as Array<[any]>)
+      .map(([update]) => update)
+      .filter((update): update is any => Array.isArray(update.conversationHistory) && update.conversationHistory.length > 0)
+
+    expect(historyUpdates.length).toBeGreaterThan(0)
+    for (const update of historyUpdates) {
+      expect(update.conversationHistory.length).toBeLessThanOrEqual(120)
+      expect(update.conversationHistoryTotalCount).toBeGreaterThanOrEqual(151)
+      expect(update.conversationHistoryStartIndex).toBe(
+        update.conversationHistoryTotalCount - update.conversationHistory.length,
+      )
+      expect(update.conversationHistory.some((message: any) => message.content === "historic message 0")).toBe(false)
+    }
   })
 
   it("keeps a verified explicit final response to one assistant message", async () => {

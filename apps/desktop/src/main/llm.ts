@@ -72,6 +72,8 @@ import {
   type AgentConversationState,
 } from "@dotagents/shared"
 
+const AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE = 120
+
 /**
  * Clean error message by removing stack traces and noise
  */
@@ -634,8 +636,21 @@ export async function processTranscriptWithAgentMode(
     // Get history of past respond_to_user calls (excluding current)
     const responseHistory = getSessionUserResponseHistory(currentSessionId, effectiveRunId)
 
+    const windowedConversationHistory = update.conversationHistory
+      ? (() => {
+          const totalCount = update.conversationHistory?.length ?? 0
+          const startIndex = Math.max(0, totalCount - AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE)
+          return {
+            conversationHistory: update.conversationHistory?.slice(startIndex),
+            conversationHistoryStartIndex: startIndex,
+            conversationHistoryTotalCount: totalCount,
+          }
+        })()
+      : {}
+
     const fullUpdate: AgentProgressUpdate = {
       ...update,
+      ...windowedConversationHistory,
       // Only include userResponse when it changed. This avoids re-sending large
       // image payloads on every progress tick while preserving merge behavior.
       ...(shouldEmitUserResponse ? { userResponse: userResponseForUpdate } : {}),
