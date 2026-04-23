@@ -68,6 +68,10 @@ interface AgentProgressProps {
   onExpand?: () => void
   /** For tile variant: whether this tile is in expanded/full view mode */
   isExpanded?: boolean
+  /** Load the next older chunk when this progress contains a partial history window. */
+  onLoadEarlierConversationHistory?: () => void
+  /** Whether an older history chunk is currently being loaded. */
+  isLoadingEarlierConversationHistory?: boolean
   /** For tile variant: open the in-app voice continuation modal */
   onVoiceContinue?: (options: {
     conversationId?: string
@@ -78,6 +82,8 @@ interface AgentProgressProps {
     onSubmitted?: () => void
   }) => void
 }
+
+const CONVERSATION_HISTORY_PAGE_SIZE = 120
 
 // Enhanced conversation message component
 
@@ -2893,6 +2899,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   isFollowUpInputInitializing,
   onExpand,
   isExpanded,
+  onLoadEarlierConversationHistory,
+  isLoadingEarlierConversationHistory = false,
   onVoiceContinue,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -3761,6 +3769,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+  const loadedConversationHistoryCount = conversationHistory?.length ?? 0
+  const conversationHistoryTotalCount = Math.max(
+    progress.conversationHistoryTotalCount ?? loadedConversationHistoryCount,
+    loadedConversationHistoryCount,
+  )
+  const hiddenConversationHistoryCount = Math.max(
+    0,
+    conversationHistoryTotalCount - loadedConversationHistoryCount,
+  )
 
   const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
     const firstChildId = item.data.items[0]?.id
@@ -4176,6 +4193,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         Showing latest {visibleDisplayItems.length} updates
                       </div>
                     )}
+                    {hiddenConversationHistoryCount > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
+                        <span>Showing latest {loadedConversationHistoryCount} of {conversationHistoryTotalCount} messages</span>
+                        {onLoadEarlierConversationHistory && (
+                          <button
+                            type="button"
+                            disabled={isLoadingEarlierConversationHistory}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              onLoadEarlierConversationHistory()
+                            }}
+                            className="rounded px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isLoadingEarlierConversationHistory ? "Loading…" : `Load ${Math.min(hiddenConversationHistoryCount, CONVERSATION_HISTORY_PAGE_SIZE)} earlier`}
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {visibleDisplayItems.map((item, index) => {
                       const itemKey = item.id
                       // Final assistant message should be expanded by default when agent is complete
@@ -4575,6 +4611,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {displayItems.length > visibleDisplayItems.length && (
                 <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
                   Showing latest {visibleDisplayItems.length} updates
+                </div>
+              )}
+              {hiddenConversationHistoryCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
+                  <span>Showing latest {loadedConversationHistoryCount} of {conversationHistoryTotalCount} messages</span>
+                  {onLoadEarlierConversationHistory && (
+                    <button
+                      type="button"
+                      disabled={isLoadingEarlierConversationHistory}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onLoadEarlierConversationHistory()
+                      }}
+                      className="rounded px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isLoadingEarlierConversationHistory ? "Loading…" : `Load ${Math.min(hiddenConversationHistoryCount, CONVERSATION_HISTORY_PAGE_SIZE)} earlier`}
+                    </button>
+                  )}
                 </div>
               )}
               {visibleDisplayItems.map((item, index) => {

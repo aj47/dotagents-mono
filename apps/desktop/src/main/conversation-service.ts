@@ -12,6 +12,7 @@ import {
   ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
+  LoadedConversation,
 } from "../shared/types"
 import { summarizeContent } from "./context-budget"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
@@ -826,6 +827,43 @@ export class ConversationService {
     return summarizedMessageCount + messages.filter((message) => !message.isSummary).length
   }
 
+  private getRepresentedCountForMessages(messages: ConversationMessage[]): number {
+    return messages.reduce((total, message) => {
+      if (message.isSummary) {
+        return total + Math.max(message.summarizedMessageCount ?? 0, 1)
+      }
+      return total + 1
+    }, 0)
+  }
+
+  private applyConversationMessageLimit(
+    conversation: Conversation,
+    messageLimit?: number,
+  ): LoadedConversation {
+    const normalizedLimit = typeof messageLimit === "number" && Number.isFinite(messageLimit)
+      ? Math.max(0, Math.floor(messageLimit ?? 0))
+      : 0
+
+    if (normalizedLimit <= 0) {
+      return conversation
+    }
+
+    const totalMessageCount = conversation.messages.length
+    const messageOffset = Math.max(0, totalMessageCount - normalizedLimit)
+    const branchMessageIndexOffset = this.getRepresentedCountForMessages(
+      conversation.messages.slice(0, messageOffset),
+    )
+    const { rawMessages: _rawMessages, ...conversationWithoutRawMessages } = conversation
+
+    return {
+      ...conversationWithoutRawMessages,
+      messages: conversation.messages.slice(messageOffset),
+      messageOffset,
+      totalMessageCount,
+      branchMessageIndexOffset,
+    }
+  }
+
   private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {
     if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
       return conversation.rawMessages
@@ -904,11 +942,17 @@ export class ConversationService {
     })
   }
 
-  async loadConversation(conversationId: string): Promise<Conversation | null> {
+  async loadConversation(
+    conversationId: string,
+    options?: { messageLimit?: number },
+  ): Promise<LoadedConversation | null> {
     // Enqueue as a mutation so that any repair save inside loadConversationFromDisk()
     // is serialized with other writes, preventing lost-update races.
     return this.enqueueConversationMutation(conversationId, async () => {
-      return this.loadConversationFromDisk(conversationId)
+      const conversation = await this.loadConversationFromDisk(conversationId)
+      return conversation
+        ? this.applyConversationMessageLimit(conversation, options?.messageLimit)
+        : null
     })
   }
 
