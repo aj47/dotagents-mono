@@ -14,6 +14,8 @@ describe("remote server settings secret references", () => {
 
     expect(source).toContain("tipcClient.getRemoteServerPairingApiKey()")
     expect(source).toContain('value={cfg.remoteServerApiKey ? "••••••••" : ""}')
+    expect(source).toContain('const shouldShowPairingSurface = streamerMode ? hasConfiguredRemoteServerApiKey : hasRemoteServerApiKey')
+    expect(source).toContain("baseUrl && shouldShowPairingSurface")
     expect(source).toContain("copyTextToClipboard(remoteServerPairingApiKey)")
     expect(source).toContain("encodeURIComponent(remoteServerPairingApiKey)")
     expect(source).not.toContain("copyTextToClipboard(cfg.remoteServerApiKey)")

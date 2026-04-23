@@ -84,6 +84,7 @@ async function loadUseHandsFreeController(runtime: ReturnType<typeof createHookR
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.resetModules();
   vi.unmock('react');
 });

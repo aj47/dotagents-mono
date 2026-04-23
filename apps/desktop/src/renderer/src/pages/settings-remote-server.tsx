@@ -177,6 +177,8 @@ export function RemoteServerSettingsGroups({
     ? remoteServerPairingApiKeyQuery.data
     : ""
   const hasRemoteServerApiKey = remoteServerPairingApiKey.length > 0
+  const hasConfiguredRemoteServerApiKey = (cfg.remoteServerApiKey ?? "").trim().length > 0
+  const shouldShowPairingSurface = streamerMode ? hasConfiguredRemoteServerApiKey : hasRemoteServerApiKey
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
@@ -396,7 +398,7 @@ export function RemoteServerSettingsGroups({
                     )}
                   </Control>
 
-                  {baseUrl && hasRemoteServerApiKey && (
+                  {baseUrl && shouldShowPairingSurface && (
                     <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect (local network only)" />} className="px-3">
                       <div className="flex flex-col items-start gap-3">
                         {streamerMode ? (
@@ -705,7 +707,7 @@ export function RemoteServerSettingsGroups({
                       </div>
                     </Control>
 
-                    {hasRemoteServerApiKey && (
+                    {shouldShowPairingSurface && (
                       <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect" />} className="px-3">
                         <div className="flex flex-col items-start gap-3">
                           {streamerMode ? (

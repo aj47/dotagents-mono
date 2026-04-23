@@ -452,6 +452,10 @@ function getResolvedRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> =
   return resolved?.trim() || ""
 }
 
+function hasConfiguredRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): boolean {
+  return (cfg.remoteServerApiKey ?? "").trim().length > 0
+}
+
 function sanitizeOperatorAuditText(value: string | undefined, maxLength: number = 160): string | undefined {
   if (!value) {
     return undefined
@@ -1913,10 +1917,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   }
 
   const configuredApiKey = getResolvedRemoteServerApiKey(cfg)
-  if (!configuredApiKey) {
+  const hasConfiguredApiKey = hasConfiguredRemoteServerApiKey(cfg)
+  if (!configuredApiKey && !hasConfiguredApiKey) {
     // Generate API key on first enable
     const key = generateRemoteServerApiKey()
     configStore.save({ ...cfg, remoteServerApiKey: key })
+  } else if (!configuredApiKey) {
+    diagnosticsService.logWarning(
+      "remote-server",
+      "Remote server API key is configured but could not be resolved; preserving configured value",
+    )
   }
 
   if (server) {
