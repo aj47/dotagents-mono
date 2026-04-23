@@ -8,16 +8,21 @@ const screenSource = fs.readFileSync(
   'utf8'
 );
 
-test('unifies saved and slash prompts into one new-chat prompt library section', () => {
-  assert.match(screenSource, /const promptLibraryQuickStarts = useMemo/);
+test('shows configured prompts directly in the new-chat prompt launchers', () => {
+  assert.match(screenSource, /const promptQuickStarts = useMemo/);
   assert.match(screenSource, /source: isSlashCommandPrompt\(prompt\) \? 'command' as const : 'saved-prompt' as const/);
-  assert.match(screenSource, /id: 'prompt-library',[\s\S]*?title: 'Prompt Library',[\s\S]*?items: promptLibraryQuickStarts/);
+  assert.match(screenSource, /promptQuickStarts\.map\(\(item\) =>/);
+  assert.match(screenSource, /Insert prompt \$\{item\.title\}/);
+  assert.match(screenSource, /No predefined prompts available from your connected desktop app\./);
   assert.doesNotMatch(screenSource, /title: 'Custom Commands'/);
   assert.doesNotMatch(screenSource, /title: 'Saved Prompts'/);
+  assert.doesNotMatch(screenSource, /title: 'Prompt Library'/);
+  assert.doesNotMatch(screenSource, /title: 'Starter Packs'/);
+  assert.doesNotMatch(screenSource, /STARTER_PACK_SHORTCUTS/);
 });
 
-test('uses Prompt Library language in the searchable prompt sheet', () => {
-  assert.match(screenSource, /Saved and predefined prompts from your connected desktop app/);
-  assert.match(screenSource, /<Text style=\{styles\.promptLibrarySectionTitle\}>Prompt Library<\/Text>/);
-  assert.match(screenSource, /predefinedPrompts\.length === 0 \? 'No prompts yet' : 'No matching prompts'/);
+test('removes the bottom composer prompt-library button', () => {
+  assert.doesNotMatch(screenSource, /Open prompts, skills, and tasks/);
+  assert.doesNotMatch(screenSource, /promptLibraryVisible/);
+  assert.doesNotMatch(screenSource, /Prompts, Skills & Tasks/);
 });
