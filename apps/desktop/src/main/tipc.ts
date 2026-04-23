@@ -263,9 +263,13 @@ async function processWithAgentMode(
   conversationId?: string,
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
+  maxIterationsOverride?: number,
 ): Promise<string> {
   const config = configStore.get()
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  const maxIterationsFromOverride = typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
+    ? maxIterationsOverride
+    : undefined
+  const effectiveMaxIterations = maxIterationsFromOverride ?? (config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10))
   const allProfiles = agentProfileService.getAll()
   const currentProfile = agentProfileService.getCurrentProfile()
   const existingProfileSnapshot = existingSessionId
@@ -558,8 +562,9 @@ export async function runAgentLoopSession(
   conversationId: string,
   existingSessionId: string,
   startSnoozed: boolean = true,
+  maxIterationsOverride?: number,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed)
+  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"

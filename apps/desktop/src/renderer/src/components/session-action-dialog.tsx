@@ -91,19 +91,19 @@ export function SessionActionDialog({
   const handleTextSubmit = async (text: string) => {
     setIsSubmitting(true)
     try {
-      if (sessionId) {
-        useAgentStore.getState().appendUserMessageToSession(sessionId, text)
-      }
-
       // SessionActionDialog is rendered inside the main app window and its
       // description explicitly promises "without opening the hover panel".
       // Force the session snoozed regardless of the fromTile prop so the
       // floating panel never auto-shows from this dialog's submit path.
-      await tipcClient.createMcpTextInput({
+      const result = await tipcClient.createMcpTextInput({
         text,
         conversationId,
         fromTile: true,
       })
+
+      if (sessionId && !result?.queued) {
+        useAgentStore.getState().appendUserMessageToSession(sessionId, text)
+      }
 
       await invalidateConversationQueries(conversationId)
       onSubmitted?.()

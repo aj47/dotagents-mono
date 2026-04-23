@@ -9,10 +9,10 @@ describe("markdown renderer layout", () => {
       'className="break-words text-primary underline underline-offset-2 hover:text-primary/80 [overflow-wrap:anywhere]"'
     )
     expect(markdownRendererSource).toContain(
-      'className="rounded bg-black/5 px-1.5 py-0.5 font-mono text-[0.8125rem] text-current dark:bg-white/10 [overflow-wrap:anywhere]"'
+      'className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[0.8125rem] text-current dark:bg-white/10 [overflow-wrap:anywhere]"'
     )
     expect(markdownRendererSource).toContain(
-      'className="mb-3 max-w-full overflow-x-auto rounded-lg border border-black/10 bg-black/5 p-3 dark:border-white/10 dark:bg-white/5"'
+      'className="group/codeblock relative mb-3 max-w-full overflow-x-auto rounded-lg border border-border/60 bg-muted/50 p-3 dark:border-white/10 dark:bg-white/5"'
     )
   })
 

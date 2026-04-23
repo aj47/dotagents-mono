@@ -105,10 +105,10 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
 test('replaces the empty mobile chat home state with quick-start launchers', () => {
   assert.match(screenSource, /!sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
   assert.match(screenSource, /<View style=\{styles\.chatHomeCard\}>/);
-  assert.match(screenSource, /quickStartSections\.map\(\(section\) => \(/);
+  assert.match(screenSource, /promptQuickStarts\.map\(\(item\) => \(/);
   assert.match(screenSource, /chatHomeShortcutGrid/);
-  assert.match(screenSource, /<Text style=\{styles\.chatHomeSectionTitle\}>\{section\.title\}<\/Text>/);
-  assert.match(screenSource, /handleInsertQuickStartPrompt\(item\.content\)/);
+  assert.match(screenSource, /handleQuickStartPress\(item\)/);
+  assert.match(screenSource, /No prompts, skills, or tasks available from your connected desktop app\./);
   assert.doesNotMatch(screenSource, /chatHomeScanButtonText/);
 });
 
@@ -118,14 +118,13 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(screenSource, /isSlashCommandPrompt/);
 });
 
-test('adds a searchable mobile picker for predefined prompts, skills, and tasks', () => {
+test('loads predefined prompts, skills, and tasks directly into mobile quick-start launchers', () => {
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);
-  assert.match(screenSource, /placeholder="Search prompts, skills, tasks\.\.\."/);
-  assert.match(screenSource, /accessibilityLabel="Search prompts, skills, and tasks"/);
-  assert.match(screenSource, /filteredPromptLibraryPrompts/);
-  assert.match(screenSource, /filteredPromptLibrarySkills/);
-  assert.match(screenSource, /filteredPromptLibraryTasks/);
-  assert.match(screenSource, /handleSelectPromptLibraryText\(getSkillPromptContent\(skill\)\)/);
-  assert.match(screenSource, /handleRunPromptLibraryTask\(task\)/);
+  assert.match(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
+  assert.match(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
+  assert.match(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
+  assert.match(screenSource, /handleRunPromptTask\(item\.task\)/);
+  assert.doesNotMatch(screenSource, /filteredPromptLibraryPrompts/);
+  assert.doesNotMatch(screenSource, /promptLibraryVisible/);
 });

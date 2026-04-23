@@ -19,9 +19,10 @@ describe("sessions in-app actions", () => {
   it("opens the in-app session action dialog from shared layout handlers instead of the hover panel", () => {
     expect(appLayoutSource).toContain("<SessionActionDialog")
     expect(appLayoutSource).toContain("const handleStartTextSession = useCallback(async () => {")
-    expect(appLayoutSource).toContain("const handleStartVoiceSession = useCallback(async () => {")
+    expect(appLayoutSource).toContain("const handleStartVoiceSession = useCallback(async (options?: {")
     expect(appLayoutSource).toContain("openSessionActionDialog({ mode: \"text\" })")
-    expect(appLayoutSource).toContain("openSessionActionDialog({ mode: \"voice\" })")
+    expect(appLayoutSource).toContain('mode: "voice"')
+    expect(appLayoutSource).toContain("continueConversationTitle: options?.continueConversationTitle")
     expect(appLayoutSource).not.toContain("await tipcClient.showPanelWindowWithTextInput({})")
     expect(appLayoutSource).not.toContain("await tipcClient.triggerMcpRecording({})")
   })
@@ -82,7 +83,7 @@ describe("sessions in-app actions", () => {
   })
 
   it("keeps errored resumed sessions visible and focused so their error state is shown", () => {
-    expect(sessionsSource).toContain('if (recentStatus === "stopped") {')
+    expect(sessionsSource).toContain("Keep errored AND user-stopped sessions visible")
     expect(sessionsSource).not.toContain('recentStatus === "stopped" || recentStatus === "error"')
     expect(sessionsSource).toContain("setExpandedSessionId(realEntry.sessionId)")
   })

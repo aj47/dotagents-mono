@@ -21,6 +21,7 @@ vi.mock("./acp-service", () => ({
 }))
 
 vi.mock("./acp-session-state", () => ({
+  getMainAcpxSessionName: vi.fn((conversationId: string) => `dotagents:main:${conversationId}`),
   getSessionForConversation: vi.fn(() => undefined),
   setSessionForConversation: vi.fn(),
   touchSession: vi.fn(),
@@ -166,7 +167,7 @@ describe("acp-main-agent", () => {
 
     expect(mockSendPrompt).toHaveBeenCalledWith(
       "test-agent",
-      "acp-session-1",
+      "dotagents:main:conversation-1",
       "hello",
       expect.stringContaining("respond_to_user"),
     )
@@ -775,7 +776,7 @@ describe("acp-main-agent", () => {
     )
   })
 
-  it("passes the persisted ACP session id back into getOrCreateSession for restart-safe reuse", async () => {
+  it("passes the stable acpx session name back into getOrCreateSession for restart-safe reuse", async () => {
     const acpSessionState = await import("./acp-session-state")
     vi.mocked(acpSessionState.getSessionForConversation).mockReturnValue({
       sessionId: "persisted-acp-session",
@@ -797,11 +798,11 @@ describe("acp-main-agent", () => {
 
     expect(mockGetOrCreateSession).toHaveBeenCalledWith(
       "test-agent",
-      false,
+      undefined,
       undefined,
       { appSessionId: "ui-session-1" },
-      "persisted-acp-session",
-      expect.any(Function),
+      "dotagents:main:conversation-1",
+      undefined,
     )
   })
 
@@ -829,6 +830,7 @@ describe("acp-main-agent", () => {
       "conversation-1",
       "persisted-acp-session",
       "test-agent",
+      "dotagents:main:conversation-1",
     )
     expect(acpSessionState.touchSession).not.toHaveBeenCalled()
   })
