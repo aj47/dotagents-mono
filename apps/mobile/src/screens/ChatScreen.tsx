@@ -2862,29 +2862,15 @@ export default function ChatScreen({ route, navigation }: any) {
 		  sttPreview,
 		});
 
-  const commandQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter(isSlashCommandPrompt)
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        content: prompt.content,
-        source: 'command' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const savedPromptQuickStarts = useMemo(
+  const promptLibraryQuickStarts = useMemo(
     () => {
       const prompts: QuickStartShortcut[] = predefinedPrompts
-        .filter((prompt) => !isSlashCommandPrompt(prompt))
-        .slice(0, 3)
+        .slice(0, 5)
         .map((prompt) => ({
           id: prompt.id,
           title: prompt.name,
           content: prompt.content,
-          source: 'saved-prompt' as const,
+          source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
         }));
 
       prompts.push({
@@ -2900,28 +2886,18 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 
   const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
+    () => STARTER_PACK_SHORTCUTS.slice(0, promptLibraryQuickStarts.length > 1 ? 4 : 6),
+    [promptLibraryQuickStarts.length]
   );
 
   const quickStartSections = useMemo<QuickStartSection[]>(() => {
     const sections: QuickStartSection[] = [];
 
-    if (commandQuickStarts.length > 0) {
-      sections.push({
-        id: 'commands',
-        title: 'Custom Commands',
-        items: commandQuickStarts,
-      });
-    }
-
-    if (savedPromptQuickStarts.length > 0) {
-      sections.push({
-        id: 'saved-prompts',
-        title: 'Saved Prompts',
-        items: savedPromptQuickStarts,
-      });
-    }
+    sections.push({
+      id: 'prompt-library',
+      title: 'Prompt Library',
+      items: promptLibraryQuickStarts,
+    });
 
     sections.push({
       id: 'starter-packs',
@@ -2930,7 +2906,7 @@ export default function ChatScreen({ route, navigation }: any) {
     });
 
     return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
+  }, [promptLibraryQuickStarts, starterPackQuickStarts]);
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
@@ -3054,11 +3030,53 @@ export default function ChatScreen({ route, navigation }: any) {
     setInput(text);
   }, []);
 
+		const wakeHandsFreeByUser = useCallback(() => {
+			handsFreeController.wakeByUser();
+			if (!listening) {
+				void startRecording();
+			}
+			setDebugInfo('Handsfree awake. Listening for your request.');
+		}, [handsFreeController.wakeByUser, listening, startRecording]);
+
+		const sleepHandsFreeByUser = useCallback(() => {
+			handsFreeController.sleepByUser();
+			setDebugInfo(`Handsfree sleeping. Say “${handsFreeWakePhrase}” or tap Wake to begin.`);
+		}, [handsFreeController.sleepByUser, handsFreeWakePhrase]);
+
+		const resumeHandsFreeByUser = useCallback(() => {
+			handsFreeController.resumeByUser();
+			if (!listening) {
+				void startRecording();
+			}
+			setDebugInfo('Handsfree resumed.');
+		}, [handsFreeController.resumeByUser, listening, startRecording]);
+
+		const pauseHandsFreeByUser = useCallback(() => {
+			handsFreeController.pauseByUser();
+			Speech.stop();
+			void stopRecognitionOnly();
+			setDebugInfo('Handsfree paused.');
+		}, [handsFreeController.pauseByUser, stopRecognitionOnly]);
+
+		const handleHandsFreePrimaryControl = useCallback(() => {
+			if (handsFreeController.state.phase === 'sleeping') {
+				wakeHandsFreeByUser();
+				return;
+			}
+			if (handsFreeController.state.phase === 'paused') {
+				resumeHandsFreeByUser();
+				return;
+			}
+			pauseHandsFreeByUser();
+		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
+
+		const handsFreePauseResumeLabel = handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause';
+
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
 		switch (handsFreeController.state.phase) {
 			case 'sleeping':
-				return `Say “${handsFreeWakePhrase}” to wake the assistant.`;
+					return `Say “${handsFreeWakePhrase}” or tap Wake to wake the assistant.`;
 			case 'waking':
 				return 'Listening for your next request.';
 			case 'listening':
@@ -3092,7 +3110,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		: (listening ? 'Listening…' : 'Type or hold mic');
 
 	const micButtonLabel = handsFree
-		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
+			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
 		: (listening ? '...' : 'Hold');
 
   const normalizedPromptLibrarySearch = promptLibrarySearch.trim().toLowerCase();
@@ -3933,7 +3951,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 {handsFreeController.state.phase === 'sleeping' ? (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.wakeByUser}
+	                    onPress={wakeHandsFreeByUser}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.handsFreeControlButtonText}>Wake</Text>
@@ -3941,7 +3959,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 ) : (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.sleepByUser}
+	                    onPress={sleepHandsFreeByUser}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
@@ -3949,21 +3967,11 @@ export default function ChatScreen({ route, navigation }: any) {
                 )}
                 <TouchableOpacity
                   style={styles.handsFreeControlButton}
-                  onPress={() => {
-                    if (handsFreeController.state.phase === 'paused') {
-                      handsFreeController.resumeByUser();
-                      setDebugInfo('Handsfree resumed.');
-                      return;
-                    }
-                    handsFreeController.pauseByUser();
-                    Speech.stop();
-                    void stopRecognitionOnly();
-                    setDebugInfo('Handsfree paused.');
-                  }}
+	                  onPress={handsFreeController.state.phase === 'paused' ? resumeHandsFreeByUser : pauseHandsFreeByUser}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.handsFreeControlButtonText}>
-                    {handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause'}
+	                    {handsFreePauseResumeLabel}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -4091,17 +4099,7 @@ export default function ChatScreen({ route, navigation }: any) {
               aria-busy={listening}
 	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
 	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-              onPress={handsFree ? () => {
-					if (handsFreeController.state.phase === 'paused') {
-						handsFreeController.resumeByUser();
-						setDebugInfo('Handsfree resumed.');
-					} else {
-						handsFreeController.pauseByUser();
-						Speech.stop();
-						void stopRecognitionOnly();
-						setDebugInfo('Handsfree paused.');
-					}
-              } : undefined}
+	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
               <Text style={styles.micText} selectable={false}>
                 {listening ? '🎙️' : '🎤'}
@@ -4134,7 +4132,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <View style={styles.promptLibraryHeader}>
                 <View>
                   <Text style={styles.modalTitle}>Prompts, Skills & Tasks</Text>
-                  <Text style={styles.promptLibrarySubtitle}>From your connected desktop app</Text>
+	                  <Text style={styles.promptLibrarySubtitle}>Saved and predefined prompts from your connected desktop app</Text>
                 </View>
                 <TouchableOpacity onPress={closePromptLibrary} style={styles.promptLibraryCloseButton} accessibilityRole="button" accessibilityLabel="Close prompt library">
                   <Text style={styles.promptLibraryCloseButtonText}>×</Text>
@@ -4155,9 +4153,9 @@ export default function ChatScreen({ route, navigation }: any) {
                 </View>
               ) : (
                 <ScrollView style={styles.promptLibraryList} keyboardShouldPersistTaps="handled">
-                  <Text style={styles.promptLibrarySectionTitle}>Predefined Prompts</Text>
+	                  <Text style={styles.promptLibrarySectionTitle}>Prompt Library</Text>
                   {filteredPromptLibraryPrompts.length === 0 ? (
-                    <Text style={styles.promptLibraryEmptyText}>{predefinedPrompts.length === 0 ? 'No saved prompts yet' : 'No matching prompts'}</Text>
+	                    <Text style={styles.promptLibraryEmptyText}>{predefinedPrompts.length === 0 ? 'No prompts yet' : 'No matching prompts'}</Text>
                   ) : filteredPromptLibraryPrompts.map((prompt) => (
                     <TouchableOpacity key={prompt.id} style={styles.promptLibraryItem} onPress={() => handleSelectPromptLibraryText(prompt.content)} accessibilityRole="button" accessibilityLabel={`Insert prompt ${prompt.name}`}>
                       <Text style={styles.promptLibraryItemTitle} numberOfLines={1}>📝 {prompt.name}</Text>

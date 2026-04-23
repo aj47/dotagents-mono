@@ -83,6 +83,14 @@ export function RemoteServerSettingsGroups({
     [cfg, saveConfigMutation],
   )
 
+  const saveConfigAsync = useCallback(
+    async (partial: Partial<Config>) => {
+      if (!cfg) return
+      await saveConfigMutation.mutateAsync({ config: { ...cfg, ...partial } })
+    },
+    [cfg, saveConfigMutation],
+  )
+
   // Cloudflare Tunnel queries and mutations
   const cloudflaredInstalledQuery = useQuery({
     queryKey: ["cloudflared-installed"],
@@ -116,6 +124,12 @@ export function RemoteServerSettingsGroups({
     queryFn: () => tipcClient.getRemoteServerStatus(),
     refetchInterval: 2000,
     enabled: cfg?.remoteServerEnabled ?? false,
+  })
+
+  const remoteServerPairingApiKeyQuery = useQuery({
+    queryKey: ["remote-server-pairing-api-key", cfg?.remoteServerApiKey, cfg?.streamerModeEnabled],
+    queryFn: () => tipcClient.getRemoteServerPairingApiKey(),
+    enabled: !!cfg?.remoteServerApiKey && !(cfg?.streamerModeEnabled ?? false),
   })
 
   const startTunnelMutation = useMutation({
@@ -159,6 +173,10 @@ export function RemoteServerSettingsGroups({
 
   const enabled = cfg.remoteServerEnabled ?? false
   const streamerMode = cfg.streamerModeEnabled ?? false
+  const remoteServerPairingApiKey = typeof remoteServerPairingApiKeyQuery.data === "string"
+    ? remoteServerPairingApiKeyQuery.data
+    : ""
+  const hasRemoteServerApiKey = remoteServerPairingApiKey.length > 0
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
@@ -272,15 +290,15 @@ export function RemoteServerSettingsGroups({
 
               <Control label={<ControlLabel label="API Key" tooltip="Bearer token required in Authorization header" />} className="px-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Input type="password" value={cfg.remoteServerApiKey || ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
+                  <Input type="password" value={cfg.remoteServerApiKey ? "••••••••" : ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={streamerMode}
-                    title={streamerMode ? "Disabled in Streamer Mode" : undefined}
+                    disabled={streamerMode || !hasRemoteServerApiKey}
+                    title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
                     onClick={() => {
-                      if (!cfg.remoteServerApiKey || streamerMode) return
-                      void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
+                      if (!remoteServerPairingApiKey || streamerMode) return
+                      void copyTextToClipboard(remoteServerPairingApiKey).catch((err) => {
                         console.error("Failed to copy remote server API key", err)
                       })
                     }}
@@ -295,8 +313,11 @@ export function RemoteServerSettingsGroups({
                       const bytes = new Uint8Array(32)
                       window.crypto.getRandomValues(bytes)
                       const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
-                      saveConfig({ remoteServerApiKey: hex })
-                      await configQuery.refetch()
+                      await saveConfigAsync({ remoteServerApiKey: hex })
+                      await Promise.all([
+                        configQuery.refetch(),
+                        remoteServerPairingApiKeyQuery.refetch(),
+                      ])
                     }}
                   >
                     Regenerate
@@ -375,7 +396,7 @@ export function RemoteServerSettingsGroups({
                     )}
                   </Control>
 
-                  {baseUrl && cfg?.remoteServerApiKey && (
+                  {baseUrl && hasRemoteServerApiKey && (
                     <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect (local network only)" />} className="px-3">
                       <div className="flex flex-col items-start gap-3">
                         {streamerMode ? (
@@ -386,7 +407,7 @@ export function RemoteServerSettingsGroups({
                         ) : (
                           <div className="p-3 bg-white rounded-lg">
                             <QRCodeSVG
-                              value={`dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey)}`}
+                              value={`dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`}
                               size={160}
                               level="M"
                             />
@@ -396,11 +417,11 @@ export function RemoteServerSettingsGroups({
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={streamerMode}
-                            title={streamerMode ? "Disabled in Streamer Mode" : undefined}
+                            disabled={streamerMode || !hasRemoteServerApiKey}
+                            title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
                             onClick={() => {
-                              if (streamerMode) return
-                              const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
+                              if (streamerMode || !remoteServerPairingApiKey) return
+                              const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
                               void copyTextToClipboard(deepLink).catch((err) => {
                                 console.error("Failed to copy deep link", err)
                               })
@@ -684,7 +705,7 @@ export function RemoteServerSettingsGroups({
                       </div>
                     </Control>
 
-                    {cfg?.remoteServerApiKey && (
+                    {hasRemoteServerApiKey && (
                       <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect" />} className="px-3">
                         <div className="flex flex-col items-start gap-3">
                           {streamerMode ? (
@@ -695,7 +716,7 @@ export function RemoteServerSettingsGroups({
                           ) : (
                             <div className="p-3 bg-white rounded-lg">
                               <QRCodeSVG
-                                value={`dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey)}`}
+                                value={`dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`}
                                 size={160}
                                 level="M"
                               />
@@ -705,11 +726,11 @@ export function RemoteServerSettingsGroups({
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={streamerMode}
-                              title={streamerMode ? "Disabled in Streamer Mode" : undefined}
+                              disabled={streamerMode || !hasRemoteServerApiKey}
+                              title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
                               onClick={() => {
-                                if (streamerMode) return
-                                const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
+                                if (streamerMode || !remoteServerPairingApiKey) return
+                                const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
                                 void copyTextToClipboard(deepLink).catch((err) => {
                                   console.error("Failed to copy tunnel deep link", err)
                                 })

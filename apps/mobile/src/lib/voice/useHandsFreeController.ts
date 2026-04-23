@@ -457,6 +457,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
       resumePhase: null,
       awakeSince: Date.now(),
       lastError: null,
+      recognizerErrorCount: 0,
     }));
   }, [updateState]);
 

@@ -74,7 +74,7 @@ import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppr
 import { generateTTS } from "./tts-service"
 
 
-import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
+import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
 import { getDiscordLifecycleAction } from "./discord-config"
 import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
@@ -3956,6 +3956,10 @@ export const router = {
 
   getRemoteServerStatus: t.procedure.action(async () => {
     return getRemoteServerStatus()
+  }),
+
+  getRemoteServerPairingApiKey: t.procedure.action(async () => {
+    return getRemoteServerPairingApiKey()
   }),
 
   // Remote Server QR Code handler
