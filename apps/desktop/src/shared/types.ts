@@ -238,6 +238,15 @@ export interface Conversation {
   branchSource?: ConversationBranchSource
 }
 
+export interface LoadedConversation extends Conversation {
+  /** Start index of `messages` within the persisted conversation when loaded as a window. */
+  messageOffset?: number
+  /** Total number of persisted display messages before windowing. */
+  totalMessageCount?: number
+  /** Raw-history branch index represented before the first loaded display message. */
+  branchMessageIndexOffset?: number
+}
+
 export interface ConversationHistoryItem {
   id: string
   title: string

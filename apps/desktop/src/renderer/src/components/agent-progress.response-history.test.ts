@@ -662,6 +662,39 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("mark_work_complete")
   })
 
+  it("shows a lazy history window control for partial conversation history", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const onLoadEarlierConversationHistory = vi.fn()
+    const progress = {
+      sessionId: "pending-conv-1",
+      conversationId: "conv-1",
+      currentIteration: 0,
+      maxIterations: 2,
+      steps: [],
+      isComplete: true,
+      conversationHistoryTotalCount: 5,
+      conversationHistoryStartIndex: 3,
+      conversationHistory: [
+        { role: "user", content: "Recent question", timestamp: 300 },
+        { role: "assistant", content: "Recent answer", timestamp: 400 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, onLoadEarlierConversationHistory })
+    const text = getTextContent(tree)
+    const loadButton = findAll(
+      tree,
+      (value) => value?.type === "button" && getTextContent(value).includes("Load 3 earlier"),
+    )[0]
+
+    expect(text).toContain("Showing latest 2 of 5 messages")
+    expect(loadButton).toBeTruthy()
+
+    loadButton.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
+    expect(onLoadEarlierConversationHistory).toHaveBeenCalledTimes(1)
+  })
+
   it("smartly auto-speaks response-linked assistant messages and keeps replay available before completion", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress, tipcMock } = await loadAgentProgress(runtime, { ttsEnabled: true, ttsAutoPlay: true })
