@@ -2817,7 +2817,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => {
       const promptItems = predefinedPrompts
-        .slice(0, 5)
         .map((prompt) => ({
           id: prompt.id,
           title: prompt.name,
@@ -2826,7 +2825,7 @@ export default function ChatScreen({ route, navigation }: any) {
           source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
         }));
 
-      const skillItems = availableSkills.slice(0, 4).map((skill) => ({
+      const skillItems = availableSkills.map((skill) => ({
         id: `skill-${skill.id}`,
         title: skill.name,
         content: getSkillPromptContent(skill),
@@ -2834,7 +2833,7 @@ export default function ChatScreen({ route, navigation }: any) {
         source: 'skill' as const,
       }));
 
-      const taskItems = availableTasks.slice(0, 4).map((task) => ({
+      const taskItems = availableTasks.map((task) => ({
         id: `task-${task.id}`,
         title: task.name,
         content: task.prompt || '',

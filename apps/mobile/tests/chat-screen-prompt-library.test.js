@@ -16,6 +16,9 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(screenSource, /source: 'skill' as const/);
   assert.match(screenSource, /source: 'task' as const/);
   assert.match(screenSource, /handleRunPromptTask/);
+  assert.doesNotMatch(screenSource, /predefinedPrompts\s*\.slice/);
+  assert.doesNotMatch(screenSource, /availableSkills\.slice/);
+  assert.doesNotMatch(screenSource, /availableTasks\.slice/);
   assert.match(screenSource, /promptQuickStarts\.map\(\(item\) =>/);
   assert.match(screenSource, /No prompts, skills, or tasks available from your connected desktop app\./);
   assert.doesNotMatch(screenSource, /title: 'Custom Commands'/);
