@@ -469,17 +469,6 @@ export function Component() {
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
   }
 
-  const skillsFileTemplate = `---
-kind: skill
-id: my-skill
-name: My Skill
-description: A short description
-enabled: true
----
-
-Write your skill instructions here.
-`
-
   return (
     <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="min-w-0 space-y-6">
@@ -630,34 +619,6 @@ Write your skill instructions here.
         <p className="text-xs text-muted-foreground">
           Enabled skills are available to {currentAgentDisplayName} and are sorted first. Disabled skills are hidden from the agent and blocked at runtime.
         </p>
-
-        <details className="rounded-lg border bg-card">
-          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium">
-            Modular config (.agents) file template
-          </summary>
-          <div className="px-4 pb-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              You can hand-author skills in <span className="font-mono">.agents/skills/&lt;id&gt;/skill.md</span>. Frontmatter
-              uses simple <span className="font-mono">key: value</span> lines (not YAML). If <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span>
-              points at a workspace, its <span className="font-mono">.agents</span> folder can override the global layer by skill <span className="font-mono">id</span>.
-            </p>
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">
-                Global: <span className="font-mono break-all">{agentsFoldersQuery.data?.global?.skillsDir ?? "~/.agents/skills"}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Workspace:{" "}
-                <span className="font-mono break-all">
-                  {agentsFoldersQuery.data?.workspace?.skillsDir ?? "Not configured"}
-                  {agentsFoldersQuery.data?.workspace?.skillsDir && agentsFoldersQuery.data?.workspaceSource
-                    ? ` (${agentsFoldersQuery.data.workspaceSource})`
-                    : ""}
-                </span>
-              </div>
-            </div>
-            <div className="rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{skillsFileTemplate}</div>
-          </div>
-        </details>
 
         {/* Skills List */}
         <div className="space-y-1">
@@ -976,4 +937,3 @@ Write your skill instructions here.
     </div>
   )
 }
-
