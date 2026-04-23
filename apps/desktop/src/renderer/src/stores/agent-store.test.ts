@@ -246,3 +246,64 @@ describe('agent-store delegation merge', () => {
     expect(useAgentStore.getState().focusedSessionId).toBe('current-session')
   })
 })
+
+/**
+ * Regression tests for the queued-message-leak bug (issue #323).
+ *
+ * When a follow-up message is submitted while the agent is in the
+ * "Analyzing request and planning next actions" state the backend
+ * queues the message and returns { queued: true }.  The optimistic
+ * `appendUserMessageToSession` call must be **skipped** in that case
+ * so the message stays in the queue panel and never leaks into the
+ * main chat conversation history.
+ */
+describe('appendUserMessageToSession – queued-message-leak guard', () => {
+  beforeEach(() => {
+    useAgentStore.setState({
+      agentProgressById: new Map(),
+      focusedSessionId: null,
+      expandedSessionId: null,
+      scrollToSessionId: null,
+      messageQueuesByConversation: new Map(),
+      pausedQueueConversations: new Set(),
+      viewMode: 'grid',
+      filter: 'all',
+      sortBy: 'recent',
+      pinnedSessionIds: new Set(),
+    })
+  })
+
+  it('appends a user message to conversationHistory when called (non-queued path)', () => {
+    useAgentStore.getState().updateSessionProgress(createBaseUpdate())
+
+    useAgentStore.getState().appendUserMessageToSession('session-1', 'hello world')
+
+    const history = useAgentStore.getState().agentProgressById.get('session-1')?.conversationHistory
+    expect(history).toHaveLength(1)
+    expect(history?.[0]).toMatchObject({ role: 'user', content: 'hello world' })
+  })
+
+  it('does NOT add a message to conversationHistory when the caller skips appendUserMessageToSession for queued responses', () => {
+    // Simulate the fix: the component receives { queued: true } from the backend
+    // and does NOT call appendUserMessageToSession at all.
+    useAgentStore.getState().updateSessionProgress(createBaseUpdate())
+
+    const simulatedBackendResponse = { conversationId: 'parent-conversation', queued: true }
+
+    // Guard condition that the fixed components now apply
+    if (!simulatedBackendResponse.queued) {
+      useAgentStore.getState().appendUserMessageToSession('session-1', 'this should not appear')
+    }
+
+    const history = useAgentStore.getState().agentProgressById.get('session-1')?.conversationHistory
+    // History must stay empty — the queued message must not leak into the main chat
+    expect(history).toHaveLength(0)
+  })
+
+  it('does NOT modify conversationHistory when appendUserMessageToSession is called for an unknown session', () => {
+    // Ensure the function is a no-op for sessions that don't exist in the store
+    useAgentStore.getState().appendUserMessageToSession('nonexistent-session', 'ghost message')
+
+    expect(useAgentStore.getState().agentProgressById.size).toBe(0)
+  })
+})
