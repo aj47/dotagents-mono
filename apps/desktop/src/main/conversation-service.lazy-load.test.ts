@@ -31,6 +31,28 @@ afterEach(async () => {
 })
 
 describe("conversation lazy loading", () => {
+  it("keeps saved conversation history index snippets bounded", async () => {
+    const service = await setupConversationServiceTest()
+    const longMessage = "Huge tool output " + "A".repeat(2000)
+
+    await service.saveConversation({
+      id: "conv_history_index_snippet",
+      title: "History index snippet",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: "Start", timestamp: 1 },
+        { id: "m2", role: "tool", content: longMessage, timestamp: 2 },
+      ],
+    }, true)
+
+    const [item] = await service.getConversationHistory()
+
+    expect(item.lastMessage.length).toBeLessThanOrEqual(501)
+    expect(item.lastMessage).toMatch(/^Huge tool output A+/)
+    expect(item.lastMessage).toMatch(/…$/)
+  })
+
   it("returns a tail message window without raw history payloads", async () => {
     const service = await setupConversationServiceTest()
     await service.saveConversation({

@@ -587,7 +587,8 @@ export function Component() {
       })
     },
     enabled: !!pendingResumeConversationId,
-    placeholderData: (previousData: any) => previousData,
+    placeholderData: (previousData: any) =>
+      previousData?.id === pendingResumeConversationId ? previousData : undefined,
   })
 
   const isPendingResumeConversationMissing =

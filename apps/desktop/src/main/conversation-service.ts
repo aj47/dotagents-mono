@@ -45,6 +45,8 @@ const CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS = 50
 const CONVERSATION_REPAIR_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
+const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
+const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
 const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
@@ -394,17 +396,25 @@ export class ConversationService {
     }
 
     let loadedIndex: ConversationHistoryItem[] = []
+    let indexWasNormalized = false
     try {
       const indexPath = this.getConversationIndexPath()
       const data = await fsPromises.readFile(indexPath, "utf8")
       const parsed = JSON.parse(data)
-      loadedIndex = Array.isArray(parsed) ? parsed : []
+      if (Array.isArray(parsed)) {
+        const normalized = this.normalizeConversationHistoryIndex(parsed as ConversationHistoryItem[])
+        loadedIndex = normalized.index
+        indexWasNormalized = normalized.changed
+      }
     } catch {
       // File doesn't exist or is corrupted — start fresh
       loadedIndex = []
     }
 
     this.indexCache = loadedIndex
+    if (indexWasNormalized) {
+      await this.writeIndexToDisk()
+    }
 
     const conversationFileCount = await this.getConversationFileCount()
     if (conversationFileCount > loadedIndex.length) {
@@ -434,9 +444,52 @@ export class ConversationService {
       createdAt: conversation.createdAt,
       updatedAt: conversation.updatedAt,
       messageCount: this.getRepresentedMessageCount(conversation),
-      lastMessage: lastMessage?.content || "",
+      lastMessage: this.toConversationHistorySnippet(
+        lastMessage?.content || "",
+        MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+      ),
       preview: this.generatePreview(visibleMessages),
     }
+  }
+
+  private toConversationHistorySnippet(value: string, maxChars: number): string {
+    const sanitized = sanitizeMessageContentForDisplay(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+
+    return sanitized.length > maxChars
+      ? `${sanitized.slice(0, maxChars).trim()}…`
+      : sanitized
+  }
+
+  private normalizeConversationHistoryIndex(index: ConversationHistoryItem[]): {
+    index: ConversationHistoryItem[]
+    changed: boolean
+  } {
+    let changed = false
+    const normalizedIndex = index.map((item) => {
+      const normalizedLastMessage = this.toConversationHistorySnippet(
+        item.lastMessage || "",
+        MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+      )
+      const normalizedPreview = this.toConversationHistorySnippet(
+        item.preview || "",
+        MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
+      )
+
+      if (normalizedLastMessage !== item.lastMessage || normalizedPreview !== item.preview) {
+        changed = true
+        return {
+          ...item,
+          lastMessage: normalizedLastMessage,
+          preview: normalizedPreview,
+        }
+      }
+
+      return item
+    })
+
+    return { index: normalizedIndex, changed }
   }
 
   private async parseConversationData(
@@ -812,7 +865,9 @@ export class ConversationService {
     const preview = previewMessages
       .map((msg) => `${msg.role}: ${sanitizePreviewText(msg.content || "").slice(0, 100)}`)
       .join(" | ")
-    return preview.length > 200 ? `${preview.slice(0, 200)}...` : preview
+    return preview.length > MAX_CONVERSATION_HISTORY_PREVIEW_CHARS
+      ? `${preview.slice(0, MAX_CONVERSATION_HISTORY_PREVIEW_CHARS)}...`
+      : preview
   }
 
   private hasSummaryMessages(messages: ConversationMessage[]): boolean {
