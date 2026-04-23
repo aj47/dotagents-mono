@@ -94,18 +94,18 @@ export function TileFollowUpInput({
       if (!conversationId) {
         // Start a new conversation if none exists
         // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        await tipcClient.createMcpTextInput({ text: message, fromTile: true })
+        return await tipcClient.createMcpTextInput({ text: message, fromTile: true })
       } else {
         // Continue the existing conversation
         // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        await tipcClient.createMcpTextInput({
+        return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
           fromTile: true,
         })
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       logUI("[TileFollowUpInput] message sent", {
         messageLength: variables.length,
         attachmentCount: imageAttachments.length,
@@ -117,7 +117,7 @@ export function TileFollowUpInput({
       setImageAttachments([])
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the session tile without waiting for agent progress updates
-      if (sessionId) {
+      if (sessionId && !data?.queued) {
         useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
       }
       // Also invalidate React Query caches so other views (e.g., panel) stay in sync

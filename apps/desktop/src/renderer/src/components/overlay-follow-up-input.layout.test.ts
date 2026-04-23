@@ -12,7 +12,10 @@ describe("overlay follow-up input layout", () => {
       'className="flex w-full flex-wrap items-center gap-2"',
     )
     expect(overlayFollowUpInputSource).toContain(
-      '"min-w-0 flex-[1_1_10rem] text-sm bg-transparent border-0 outline-none"',
+      'className="relative min-w-0 flex-[1_1_10rem]"',
+    )
+    expect(overlayFollowUpInputSource).toContain(
+      '"w-full text-sm bg-transparent border-0 outline-none"',
     )
     expect(overlayFollowUpInputSource).toContain(
       'className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-2"',

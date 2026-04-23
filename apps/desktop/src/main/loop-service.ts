@@ -418,7 +418,7 @@ class LoopService {
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed)
+      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
 
       // When `speakOnTrigger` is set, unsnooze the now-completed session and
       // show the panel so the renderer's TTS auto-play gate fires for the

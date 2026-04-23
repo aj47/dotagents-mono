@@ -79,16 +79,16 @@ export function OverlayFollowUpInput({
     mutationFn: async (message: string) => {
       if (!conversationId) {
         // Start a new conversation if none exists
-        await tipcClient.createMcpTextInput({ text: message })
+        return await tipcClient.createMcpTextInput({ text: message })
       } else {
         // Continue the existing conversation
-        await tipcClient.createMcpTextInput({
+        return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
         })
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       logUI("[OverlayFollowUpInput] message sent", {
         messageLength: variables.length,
         attachmentCount: imageAttachments.length,
@@ -100,7 +100,7 @@ export function OverlayFollowUpInput({
       setImageAttachments([])
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the overlay without waiting for agent progress updates
-      if (sessionId) {
+      if (sessionId && !data?.queued) {
         useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
       }
       // Also invalidate React Query caches so other views stay in sync

@@ -1,5 +1,13 @@
 import React from "react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react")>()
+  return {
+    ...actual,
+    useContext: () => "",
+  }
+})
 
 import { Control, ControlLabel } from "./control"
 
