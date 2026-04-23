@@ -86,7 +86,6 @@ import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
-import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 
 interface PendingImageAttachment {
   id: string;
@@ -588,7 +587,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
-  const [micSelectorVisible, setMicSelectorVisible] = useState(false);
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -4112,17 +4110,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {micButtonLabel}
               </Text>
             </Pressable>
-            {/* Compact mic device selector — web only */}
-            {Platform.OS === 'web' && (
-              <TouchableOpacity
-                onPress={() => setMicSelectorVisible(true)}
-                style={{ paddingTop: 4, alignItems: 'center' }}
-                accessibilityRole="button"
-                accessibilityLabel="Change microphone"
-              >
-                <Text style={{ fontSize: 11, color: theme.colors.mutedForeground }}>⚙️ Mic</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </View>
@@ -4130,34 +4117,6 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
       />
-
-      {/* Mic device selector modal (web only) */}
-      {Platform.OS === 'web' && micSelectorVisible && (
-        <Modal
-          visible={micSelectorVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setMicSelectorVisible(false)}
-        >
-          <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
-            activeOpacity={1}
-            onPress={() => setMicSelectorVisible(false)}
-          >
-            <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
-              <MicrophoneSelector
-                selectedDeviceId={config.audioInputDeviceId}
-                onDeviceChange={(deviceId) => {
-                  const updated = { ...config, audioInputDeviceId: deviceId };
-                  setConfig(updated);
-                  void saveConfig(updated);
-                  setMicSelectorVisible(false);
-                }}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
 
       <Modal
         visible={promptLibraryVisible}
