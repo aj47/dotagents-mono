@@ -24,6 +24,8 @@
     "dev": "npx tsx scripts/dev-with-sherpa.ts",
     "dev:no-sherpa": "electron-vite dev --watch --",
     "perf:renderer:record": "npx tsx scripts/renderer-perf-recorder.ts",
+    "perf:session-switch": "npx tsx scripts/session-switch-perf-loop.ts",
+    "perf:session-switch:compare": "npx tsx scripts/session-switch-perf-compare.ts",
     "prebuild": "npx tsx scripts/ensure-build-dirs.ts",
     "build": "pnpm run typecheck && pnpm run test:run && electron-vite build && pnpm run build-rs",
     "postinstall": "node scripts/postinstall.cjs",

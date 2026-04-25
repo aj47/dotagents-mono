@@ -117,6 +117,96 @@ Recommended workflow:
 4. Run a short `--trace-seconds 20` capture during the janky window.
 5. Compare heap, node count, `TaskDuration`, `ScriptDuration`, `LayoutDuration`, and the trace flame chart.
 
+## Session switching autoresearch loop
+
+For repeatable optimization of switching between many large sessions, use the
+synthetic session-switch benchmark. It drives the renderer through CDP and a
+dev-only harness instead of starting real agents, so runs are deterministic and
+safe to repeat.
+
+```bash
+# Terminal 1: run the desktop app with renderer CDP enabled
+REMOTE_DEBUGGING_PORT=9333 pnpm dev -- -dui -dapp
+
+# Terminal 2: run a fixed benchmark scenario
+pnpm --filter @dotagents/desktop perf:session-switch -- --port 9333 --scenario large --switches 30
+
+# Optional: include a Chrome trace for Perfetto/DevTools inspection
+pnpm --filter @dotagents/desktop perf:session-switch -- --port 9333 --scenario huge --switches 20 --trace
+
+# Single large fake session presets for 500/1000-message manual stress tests
+pnpm --filter @dotagents/desktop perf:session-switch -- --port 9333 --scenario single-500 --switches 5
+pnpm --filter @dotagents/desktop perf:session-switch -- --port 9333 --scenario single-1000 --switches 5
+
+# Compare a candidate run against a saved baseline and get keep/discard guidance
+pnpm --filter @dotagents/desktop perf:session-switch:compare -- \
+  --baseline tmp/perf/session-switch/baseline.results.json \
+  --candidate tmp/perf/session-switch/candidate.results.json
+```
+
+Artifacts are written under `apps/desktop/tmp/perf/session-switch/`:
+
+- `*.results.json` → summary metrics and CDP metric deltas
+- `*.events.jsonl` → one row per session switch
+- `*.trace.json` → Chrome trace when `--trace` is passed
+- `results.tsv` → autoresearch-style ledger for baseline/variant comparison
+
+Key metrics to compare before keeping an optimization:
+
+- `switchLatencyP50Ms`, `switchLatencyP95Ms`, `maxSwitchLatencyMs`
+- long-task count and total duration
+- JS heap delta and DOM node count
+- CDP deltas: `TaskDuration`, `ScriptDuration`, `LayoutDuration`, `RecalcStyleDuration`
+
+Recommended feedback loop:
+
+1. Run a baseline and save the generated `*.results.json` path.
+2. Make one targeted optimization hypothesis.
+3. Re-run the exact same scenario.
+4. Run `perf:session-switch:compare` against the baseline and candidate.
+5. Keep the change only if the comparator says `keep`, or if the result is
+   `inconclusive` but the code is simpler and the metrics are neutral.
+6. Discard/rework if the comparator says `discard`.
+
+Default comparator thresholds:
+
+- `keep`: p95 improves by at least 10%.
+- `discard`: p95 regresses by more than 5%.
+- `discard`: heap delta regresses by more than 50 MB.
+- `discard`: DOM node count regresses by more than 10%.
+- otherwise: `inconclusive`.
+
+Comparator artifacts:
+
+- `*.comparison.json` → full baseline/candidate diff and decision
+- `comparisons.tsv` → autoresearch-style keep/discard ledger
+
+The harness is gated behind `localStorage.dotagents.sessionSwitchPerfHarness =
+"true"` and is only initialized in dev/test renderer builds. The benchmark
+script enables that flag automatically over CDP and reloads the renderer target
+if needed.
+
+To manually preseed a fake large session in the app UI, enable both harness keys
+from the renderer DevTools console and reload:
+
+```javascript
+localStorage.setItem("dotagents.sessionSwitchPerfHarness", "true")
+localStorage.setItem("dotagents.sessionSwitchPerfPreseed", "1000") // or "500"
+location.reload()
+```
+
+For custom preseed fixtures, store JSON instead:
+
+```javascript
+localStorage.setItem("dotagents.sessionSwitchPerfPreseed", JSON.stringify({
+  sessionCount: 2,
+  messagesPerSession: 1000,
+  messageChars: 800,
+  stepsPerSession: 120,
+}))
+location.reload()
+```
+
 ---
 
 ## IPC Methods (Testing from DevTools Console)
