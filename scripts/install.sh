@@ -13,6 +13,7 @@
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
 #   DOTAGENTS_AUTH_MODE=codex  Headless auth mode: provider, codex, codex-acpx, or skip
+#   DOTAGENTS_INSTALL_SERVICE=0 Skip Linux systemd daemon startup service install
 #   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex-acpx auth mode
 #   DOTAGENTS_INSTALL_CODEX=0 Skip installing Codex CLI when using codex auth mode
 #   DOTAGENTS_CODEX_LOGIN=0   Skip Codex ChatGPT OAuth login during onboarding
@@ -624,6 +625,154 @@ EOF
   fi
 }
 
+write_linux_headless_daemon_script() {
+  local repo_dir daemon_script
+  repo_dir="$INSTALL_DIR/repo"
+  daemon_script="$repo_dir/run-headless-daemon.sh"
+
+  cat > "$daemon_script" <<EOF || return 1
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$repo_dir/apps/desktop"
+exec xvfb-run --auto-servernum "$repo_dir/start-headless.sh"
+EOF
+  chmod +x "$daemon_script"
+}
+
+enable_linux_user_linger() {
+  has loginctl || return 0
+
+  if [ "$(id -u)" -eq 0 ]; then
+    loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || \
+      warn "Could not enable systemd linger; service will start after user login, but may not start at boot until linger is enabled."
+  elif has sudo && sudo -n true >/dev/null 2>&1; then
+    sudo -n loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || \
+      warn "Could not enable systemd linger; service will start after user login, but may not start at boot until linger is enabled."
+  else
+    warn "Could not enable systemd linger without passwordless sudo. To start at boot, run: sudo loginctl enable-linger $(id -un)"
+  fi
+}
+
+install_linux_user_service() {
+  local repo_dir service_dir service_file daemon_script path_env
+  has systemctl || return 1
+  systemctl --user show-environment >/dev/null 2>&1 || return 1
+
+  repo_dir="$INSTALL_DIR/repo"
+  daemon_script="$repo_dir/run-headless-daemon.sh"
+  service_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+  service_file="$service_dir/dotagents.service"
+  path_env="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+
+  mkdir -p "$service_dir" || return 1
+  cat > "$service_file" <<EOF || return 1
+[Unit]
+Description=DotAgents Headless Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$repo_dir/apps/desktop
+Environment=HOME=$HOME
+Environment=DISPLAY=
+Environment=DOTAGENTS_TERMINAL_MODE=1
+Environment=NODE_ENV=production
+Environment=PATH=$path_env
+ExecStart=$daemon_script
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
+EOF
+
+  systemctl --user daemon-reload || return 1
+  systemctl --user enable dotagents.service || return 1
+  systemctl --user start dotagents.service || \
+    warn "User service was enabled, but did not start yet. It will keep retrying via systemd."
+
+  enable_linux_user_linger
+  ok "User systemd service installed: dotagents.service"
+}
+
+install_linux_system_service() {
+  local repo_dir daemon_script service_tmp user_name path_env
+  has systemctl || return 1
+
+  repo_dir="$INSTALL_DIR/repo"
+  daemon_script="$repo_dir/run-headless-daemon.sh"
+  service_tmp="$(mktemp)" || return 1
+  user_name="$(id -un)"
+  path_env="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+
+  cat > "$service_tmp" <<EOF || { rm -f "$service_tmp"; return 1; }
+[Unit]
+Description=DotAgents Headless Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$user_name
+WorkingDirectory=$repo_dir/apps/desktop
+Environment=HOME=$HOME
+Environment=DISPLAY=
+Environment=DOTAGENTS_TERMINAL_MODE=1
+Environment=NODE_ENV=production
+Environment=PATH=$path_env
+ExecStart=$daemon_script
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  run_as_root cp "$service_tmp" /etc/systemd/system/dotagents.service || { rm -f "$service_tmp"; return 1; }
+  rm -f "$service_tmp"
+  run_as_root systemctl daemon-reload || return 1
+  run_as_root systemctl enable dotagents.service || return 1
+  run_as_root systemctl start dotagents.service || \
+    warn "System service was enabled, but did not start yet. It will keep retrying via systemd."
+
+  ok "System systemd service installed: dotagents.service"
+}
+
+setup_linux_headless_service() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  local install_service="${DOTAGENTS_INSTALL_SERVICE:-1}"
+  case "$(printf '%s' "$install_service" | tr '[:upper:]' '[:lower:]')" in
+    0|false|no|off)
+      info "Skipping daemon startup service because DOTAGENTS_INSTALL_SERVICE=0."
+      return 0
+      ;;
+  esac
+
+  write_linux_headless_daemon_script
+
+  if [ "$(id -u)" -ne 0 ] && install_linux_user_service; then
+    return 0
+  fi
+
+  if install_linux_system_service; then
+    return 0
+  fi
+
+  if install_linux_user_service; then
+    return 0
+  fi
+
+  warn "Could not install a startup service. The dotagents CLI will still self-start the daemon on demand."
+}
+
 ensure_acpx_for_codex() {
   [ "$PLATFORM" = "linux" ] || return 0
 
@@ -916,11 +1065,13 @@ install_from_source() {
     build_linux_headless_app
     setup_linux_headless_cli
     run_headless_onboarding
+    setup_linux_headless_service
   fi
 
   ok "Source checkout is ready at $INSTALL_DIR/repo"
   if [ "$PLATFORM" = "linux" ]; then
     info "Start the headless CLI with: $HOME/.local/bin/dotagents"
+    info "Manage the daemon with: systemctl status dotagents 2>/dev/null || systemctl --user status dotagents"
     info "Start the desktop app with: cd $INSTALL_DIR/repo && $(printf '%s ' "${PNPM_CMD[@]}")dev"
   else
     info "Start the desktop app with:"

@@ -19,7 +19,7 @@ For a Linux source/headless install, run the installer in source mode:
 curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | DOTAGENTS_FROM_SOURCE=1 bash
 ```
 
-The installer builds the headless app, runs onboarding, and installs the CLI at:
+The installer builds the headless app, runs onboarding, installs a self-restarting daemon service when `systemd` is available, and installs the CLI at:
 
 ```bash
 ~/.local/bin/dotagents
@@ -37,7 +37,7 @@ Otherwise run it directly:
 ~/.local/bin/dotagents
 ```
 
-For VPS/systemd installs, use the VPS installer from the repository. It installs `dotagents` globally and manages the daemon with `systemd`.
+On headless Linux hosts, the one-line installer defaults to this source/headless path. To skip service installation, set `DOTAGENTS_INSTALL_SERVICE=0`.
 
 ---
 
@@ -159,6 +159,30 @@ Examples:
 
 ---
 
+## Daemon startup and recovery
+
+On Linux, the installer tries to create a `dotagents.service` unit with `Restart=always` so the daemon starts at boot and recovers after crashes.
+
+Common service commands:
+
+```bash
+systemctl status dotagents
+systemctl restart dotagents
+journalctl -u dotagents -n 80 --no-pager
+```
+
+For user-level services, use the user variants:
+
+```bash
+systemctl --user status dotagents
+systemctl --user restart dotagents
+journalctl --user -u dotagents -n 80 --no-pager
+```
+
+The CLI also self-heals on demand: before running most commands, it checks `/v1/operator/health`, tries to start the installed service if one exists, and falls back to launching the headless daemon directly.
+
+---
+
 ## Discord commands
 
 The CLI can configure and operate the Discord bot integration:
@@ -184,7 +208,7 @@ Safe defaults require an `@mention` in servers. Use `/discord access` before wid
 |---------|-----|
 | `dotagents: command not found` | Run `~/.local/bin/dotagents` directly or add `~/.local/bin` to your `PATH`. |
 | CLI starts setup repeatedly | Re-run `/setup` and confirm the API key was saved to `~/.config/app.dotagents/config.json`. |
-| Service will not start | Check that `xvfb-run` is installed and run `dotagents` again. |
+| Service will not start | Check service logs with `journalctl -u dotagents -n 80 --no-pager` or `journalctl --user -u dotagents -n 80 --no-pager`; then run `dotagents` again to trigger CLI recovery. |
 | Discord is enabled but offline | Run `/discord`, then `/discord token <token>`, `/discord enable`, and `/discord connect`. |
 
 For API-level debugging, see the [Remote API Reference](api) and [Debug & Diagnostics](debug).

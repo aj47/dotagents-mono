@@ -69,27 +69,115 @@ is_running() {
     "http://127.0.0.1:$PORT/v1/operator/health" 2>/dev/null
 }
 
+log_file_path() {
+  echo "${XDG_STATE_HOME:-$HOME/.local/state}/dotagents/headless.log"
+}
+
+user_service_file() {
+  echo "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/dotagents.service"
+}
+
+service_cmd() {
+  if command -v systemctl >/dev/null 2>&1; then
+    if [[ -f "$(user_service_file)" ]] && systemctl --user show-environment >/dev/null 2>&1; then
+      echo "systemctl --user"
+      return 0
+    fi
+    if [[ -f "/etc/systemd/system/dotagents.service" ]]; then
+      if [[ "$(id -u)" -eq 0 ]]; then
+        echo "systemctl"
+        return 0
+      fi
+      if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+        echo "sudo -n systemctl"
+        return 0
+      fi
+    fi
+  fi
+  return 1
+}
+
+service_journal_cmd() {
+  local svc
+  svc="$(service_cmd 2>/dev/null)" || return 1
+  case "$svc" in
+    "systemctl --user") echo "journalctl --user -u dotagents -n 80 --no-pager" ;;
+    "sudo -n systemctl") echo "sudo -n journalctl -u dotagents -n 80 --no-pager" ;;
+    *) echo "journalctl -u dotagents -n 80 --no-pager" ;;
+  esac
+}
+
+wait_for_daemon() {
+  local attempts="${1:-40}" delay="${2:-0.5}" i
+  for ((i=1; i<=attempts; i++)); do
+    sleep "$delay"
+    if is_running; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+print_daemon_logs_hint() {
+  local log_file svc journal
+  log_file="$(log_file_path)"
+  echo -e "${D}  Recent log output from $log_file:${R}" >&2
+  tail -n 40 "$log_file" >&2 2>/dev/null || true
+  if svc="$(service_cmd 2>/dev/null)"; then
+    journal="$(service_journal_cmd 2>/dev/null || true)"
+    echo -e "${D}  Service status: $svc status dotagents${R}" >&2
+    [ -z "$journal" ] || echo -e "${D}  Service logs: $journal${R}" >&2
+  fi
+}
+
+start_service_daemon() {
+  local svc
+  svc="$(service_cmd 2>/dev/null)" || return 1
+  echo -e "${D}Starting DotAgents service with: $svc start dotagents${R}" >&2
+  $svc start dotagents >/dev/null 2>&1 || return 1
+  wait_for_daemon 40 0.5
+}
+
+restart_service_daemon() {
+  local svc
+  svc="$(service_cmd 2>/dev/null)" || return 1
+  echo -e "${D}Restarting DotAgents service with: $svc restart dotagents${R}" >&2
+  $svc restart dotagents >/dev/null 2>&1 || return 1
+  wait_for_daemon 40 0.5
+}
+
 start_headless_daemon() {
-  local log_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotagents/headless.log"
+  local log_file
+  log_file="$(log_file_path)"
   mkdir -p "$(dirname "$log_file")"
+
+  if [[ "$INSTALL_DIR" == "__INSTALL_DIR__" || ! -x "$INSTALL_DIR/start-headless.sh" ]]; then
+    echo -e "${RED}✗ DotAgents launcher is not fully installed.${R}" >&2
+    echo -e "${D}  Expected headless launcher at: $INSTALL_DIR/start-headless.sh${R}" >&2
+    echo -e "${D}  Reinstall with the latest installer, then run dotagents again.${R}" >&2
+    return 1
+  fi
 
   echo -e "${D}Starting DotAgents headless daemon on port $PORT...${R}" >&2
   nohup xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh" \
     >"$log_file" 2>&1 < /dev/null &
 
-  local i
-  for i in {1..40}; do
-    sleep 0.5
-    if is_running; then
-      echo -e "${G}✓ DotAgents daemon started${R}" >&2
-      return 0
-    fi
-  done
+  if wait_for_daemon 40 0.5; then
+    echo -e "${G}✓ DotAgents daemon started${R}" >&2
+    return 0
+  fi
 
   echo -e "${RED}✗ DotAgents daemon did not become healthy on port $PORT.${R}" >&2
-  echo -e "${D}  Recent log output from $log_file:${R}" >&2
-  tail -n 40 "$log_file" >&2 2>/dev/null || true
+  print_daemon_logs_hint
   return 1
+}
+
+recover_daemon() {
+  if start_service_daemon; then
+    echo -e "${G}✓ DotAgents service is healthy${R}" >&2
+    return 0
+  fi
+  start_headless_daemon
 }
 
 if ! is_running; then
@@ -99,7 +187,7 @@ if ! is_running; then
     echo -e "${D}  desktop app first (it exposes the same /v1/operator/* API).${R}" >&2
     exit 1
   fi
-  start_headless_daemon || exit 1
+  recover_daemon || exit 1
 fi
 
 # ── Tab completion ────────────────────────────────────────────
@@ -705,6 +793,16 @@ while true; do
   history -s "$INPUT"
 
   case "$INPUT" in
+    /quit|/exit|/q|/help|/h|/setup) ;;
+    *)
+      if ! is_running; then
+        echo -e "${Y}⚠ DotAgents daemon is not healthy; attempting recovery...${R}"
+        recover_daemon || { echo -e "${RED}✗ Recovery failed. Check logs with: tail -100 $(log_file_path)${R}"; continue; }
+      fi
+      ;;
+  esac
+
+  case "$INPUT" in
     /quit|/exit|/q)
       echo -e "${D}Bye! (service still running)${R}"; break ;;
     /help|/h)
@@ -1031,7 +1129,7 @@ SLASHEOF
       " || echo -e "${RED}Failed${R}" ;;
     /restart)
       echo -e "${Y}Restarting service...${R}"
-      sudo systemctl restart dotagents 2>/dev/null || api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || true
+      restart_service_daemon || api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || recover_daemon || true
       echo -ne "${D}Waiting for service"
       attempts=0
       while [[ $attempts -lt 12 ]]; do
@@ -1048,7 +1146,8 @@ SLASHEOF
       done
       if [[ $attempts -ge 12 ]]; then
         echo ""
-        echo -e "${RED}Service not responding after 24s. Check: sudo journalctl -u dotagents -f${R}"
+        echo -e "${RED}Service not responding after 24s.${R}"
+        print_daemon_logs_hint
       fi ;;
     /*)
       echo -e "${Y}Unknown command.${R} Type ${C}/help${R} for options." ;;
