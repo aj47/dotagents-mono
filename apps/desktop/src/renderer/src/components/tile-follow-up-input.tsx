@@ -11,7 +11,9 @@ import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
   buildMessageWithImages,
+  getClipboardImageFiles,
   MAX_IMAGE_ATTACHMENTS,
+  ImageAttachmentInputFiles,
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
@@ -163,15 +165,19 @@ export function TileFollowUpInput({
     }
   }
 
-  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addImageAttachmentsFromFiles = async (
+    files: ImageAttachmentInputFiles | null,
+    source: "selection" | "paste",
+  ) => {
     try {
-      logUI("[TileFollowUpInput] image selection started", {
+      logUI("[TileFollowUpInput] image attachment started", {
+        source,
         existingCount: imageAttachments.length,
-        selectedCount: e.target.files?.length ?? 0,
+        selectedCount: files?.length ?? 0,
       })
 
       const { attachments, errors } = await readImageAttachments(
-        e.target.files,
+        files,
         imageAttachments
       )
 
@@ -189,9 +195,23 @@ export function TileFollowUpInput({
       }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+    }
+  }
+
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      await addImageAttachmentsFromFiles(e.target.files, "selection")
     } finally {
       e.target.value = ""
     }
+  }
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFiles = getClipboardImageFiles(e.clipboardData)
+    if (imageFiles.length === 0) return
+
+    e.preventDefault()
+    await addImageAttachmentsFromFiles(imageFiles, "paste")
   }
 
   const removeImageAttachment = (attachmentId: string) => {
@@ -343,6 +363,7 @@ export function TileFollowUpInput({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={getPlaceholder()}
             rows={1}
             className={cn(
