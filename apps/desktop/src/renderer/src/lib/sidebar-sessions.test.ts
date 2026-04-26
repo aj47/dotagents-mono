@@ -5,7 +5,10 @@ import {
   getLatestAgentResponseTimestamp,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
+  isTaskSession,
   orderActiveSessionsByPinnedFirst,
+  partitionPinnedAndUnpinnedTaskEntries,
+  partitionTaskAndUserEntries,
 } from "./sidebar-sessions"
 
 const activeSession = (id: string, conversationId?: string) => ({
@@ -101,6 +104,60 @@ describe("isSidebarSessionCurrentlyViewed", () => {
         viewedConversationId: "conversation-1",
       }),
     ).toBe(false)
+  })
+})
+
+describe("isTaskSession", () => {
+  it("flags sessions whose title carries the [Repeat] prefix", () => {
+    expect(isTaskSession({ id: "s", conversationTitle: "[Repeat] Daily standup" })).toBe(true)
+  })
+
+  it("ignores sessions without the prefix", () => {
+    expect(isTaskSession({ id: "s", conversationTitle: "Daily standup" })).toBe(false)
+    expect(isTaskSession({ id: "s" })).toBe(false)
+  })
+})
+
+describe("partitionTaskAndUserEntries", () => {
+  it("splits entries into user and task lists while preserving order", () => {
+    const entries = [
+      { session: { id: "u1", conversationTitle: "Hello" } },
+      { session: { id: "t1", conversationTitle: "[Repeat] Cron" } },
+      { session: { id: "u2", conversationTitle: "Quick question" } },
+      { session: { id: "t2", conversationTitle: "[Repeat] Reports" } },
+    ]
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1", "u2"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+})
+
+describe("partitionPinnedAndUnpinnedTaskEntries", () => {
+  it("returns all entries as unpinned when no pins are set", () => {
+    const entries = [
+      { session: { id: "t1", conversationId: "c1" } },
+      { session: { id: "t2", conversationId: "c2" } },
+    ]
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedTaskEntries(entries, new Set())
+
+    expect(pinnedTaskEntries).toEqual([])
+    expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+
+  it("splits entries by conversation pin state while preserving order", () => {
+    const entries = [
+      { session: { id: "t1", conversationId: "c1" } },
+      { session: { id: "t2", conversationId: "c2" } },
+      { session: { id: "t3", conversationId: "c3" } },
+      { session: { id: "t4" } },
+    ]
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedTaskEntries(entries, new Set(["c1", "c3"]))
+
+    expect(pinnedTaskEntries.map((e) => e.session.id)).toEqual(["t1", "t3"])
+    expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["t2", "t4"])
   })
 })
 

@@ -15,6 +15,7 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import { formatRepeatTaskTitle } from "../shared/repeat-tasks"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
@@ -345,7 +346,7 @@ class LoopService {
         }
       }
 
-      const conversationTitle = `[Repeat] ${loop.name}`
+      const conversationTitle = formatRepeatTaskTitle(loop.name)
       // Always start snoozed so the panel stays hidden during execution.
       // When `speakOnTrigger` is set, we unsnooze *after* the loop completes
       // so the renderer's TTS auto-play gate fires on the finished response
