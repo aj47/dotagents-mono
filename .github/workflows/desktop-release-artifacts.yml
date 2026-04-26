@@ -1,0 +1,162 @@
+name: Desktop Release Artifacts
+
+on:
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build (defaults to the workflow ref)'
+        required: false
+        type: string
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Build Windows desktop
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.cache\electron-builder
+      npm_config_node_gyp_cache: ${{ github.workspace }}\.cache\node-gyp
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/dotagents-rs/target
+          key: cargo-windows-${{ hashFiles('apps/desktop/dotagents-rs/Cargo.lock', 'apps/desktop/dotagents-rs/Cargo.toml') }}
+          restore-keys: |
+            cargo-windows-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared workspace packages
+        run: |
+          pnpm --filter @dotagents/shared build
+          pnpm --filter @dotagents/mcp-whatsapp build
+
+      - name: Build Windows desktop artifacts
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run build:win:skip-types
+
+      - name: Compute artifact checksums
+        working-directory: apps/desktop/dist
+        shell: pwsh
+        run: |
+          $patterns = @('*.exe', '*.msi', '*.zip', '*.blockmap', 'latest*.yml')
+          $files = Get-ChildItem -File -Path $patterns -ErrorAction SilentlyContinue |
+            Sort-Object Name -Unique
+          if (-not $files) { exit 0 }
+          $lines = $files | ForEach-Object {
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $_.FullName).Hash.ToLower()
+            "$hash  $($_.Name)"
+          }
+          $lines | Out-File -Encoding ascii -FilePath SHA256SUMS
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotagents-desktop-windows
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/desktop/dist/*.exe
+            apps/desktop/dist/*.msi
+            apps/desktop/dist/*.zip
+            apps/desktop/dist/*.blockmap
+            apps/desktop/dist/latest*.yml
+            apps/desktop/dist/SHA256SUMS
+
+  build-linux:
+    name: Build Linux desktop
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Install Linux packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            dpkg-dev \
+            fakeroot \
+            libarchive-tools \
+            rpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/dotagents-rs/target
+          key: cargo-linux-${{ hashFiles('apps/desktop/dotagents-rs/Cargo.lock', 'apps/desktop/dotagents-rs/Cargo.toml') }}
+          restore-keys: |
+            cargo-linux-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Linux desktop artifacts
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run build:linux:release:x64
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotagents-desktop-linux
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb
+            apps/desktop/dist/linux-release-manifest.json
+            apps/desktop/dist/SHA256SUMS
