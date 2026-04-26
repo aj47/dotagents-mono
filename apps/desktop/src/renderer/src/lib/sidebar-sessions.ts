@@ -5,6 +5,38 @@ type SessionLike = {
   conversationId?: string
 }
 
+type TitledSessionLike = SessionLike & {
+  conversationTitle?: string
+}
+
+/**
+ * Sessions started by the repeat-task loop service are created with a
+ * `[Repeat] ` title prefix (see apps/desktop/src/main/loop-service.ts).
+ * We use that prefix as the canonical signal for "task" entries in the
+ * sidebar so they can be grouped separately from user-driven sessions.
+ */
+export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
+
+export function isTaskSession(session: TitledSessionLike): boolean {
+  const title = session.conversationTitle
+  return typeof title === "string" && title.startsWith(TASK_SESSION_TITLE_PREFIX)
+}
+
+export function partitionTaskAndUserEntries<T extends { session: TitledSessionLike }>(
+  entries: T[],
+): { userEntries: T[]; taskEntries: T[] } {
+  const userEntries: T[] = []
+  const taskEntries: T[] = []
+  for (const entry of entries) {
+    if (isTaskSession(entry.session)) {
+      taskEntries.push(entry)
+    } else {
+      userEntries.push(entry)
+    }
+  }
+  return { userEntries, taskEntries }
+}
+
 interface SidebarSessionViewState {
   isPast: boolean
   focusedSessionId?: string | null

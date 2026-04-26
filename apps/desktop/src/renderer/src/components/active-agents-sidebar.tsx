@@ -28,6 +28,7 @@ import {
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
   orderActiveSessionsByPinnedFirst,
+  partitionTaskAndUserEntries,
 } from "@renderer/lib/sidebar-sessions"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
@@ -121,6 +122,26 @@ const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCas
 const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
+const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
+const TASKS_SECTION_HIDDEN_STORAGE_KEY = "sidebar-tasks-section-hidden"
+
+function readBooleanFromStorage(key: string, fallback: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(key)
+    if (stored === null) return fallback
+    return stored === "true"
+  } catch {
+    return fallback
+  }
+}
+
+function writeBooleanToStorage(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, String(value))
+  } catch {
+    // localStorage may be unavailable; ignore.
+  }
+}
 
 function SessionOverflowMenu({
   sessionTitle,
@@ -201,6 +222,14 @@ export function ActiveAgentsSidebar({
     })
     return initial
   })
+  // Default the Tasks subsection to collapsed so user sessions stay
+  // foregrounded; respect remembered state once the user has toggled it.
+  const [tasksSectionExpanded, setTasksSectionExpanded] = useState(() =>
+    readBooleanFromStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, false),
+  )
+  const [tasksSectionHidden, setTasksSectionHidden] = useState(() =>
+    readBooleanFromStorage(TASKS_SECTION_HIDDEN_STORAGE_KEY, false),
+  )
 
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
@@ -428,6 +457,27 @@ export function ActiveAgentsSidebar({
     archivedSessionIds,
   ])
 
+  const { userSidebarSessions, taskSidebarSessions } = useMemo(
+    () => {
+      const { userEntries, taskEntries } = partitionTaskAndUserEntries(sidebarSessions)
+      return { userSidebarSessions: userEntries, taskSidebarSessions: taskEntries }
+    },
+    [sidebarSessions],
+  )
+
+  const hasTasks = taskSidebarSessions.length > 0
+  const showTasksSection = hasTasks && !tasksSectionHidden
+  const tasksListVisible = showTasksSection && tasksSectionExpanded
+
+  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered.
+  const visibleSidebarSessions = useMemo(
+    () =>
+      tasksListVisible
+        ? [...userSidebarSessions, ...taskSidebarSessions]
+        : userSidebarSessions,
+    [tasksListVisible, userSidebarSessions, taskSidebarSessions],
+  )
+
   const hasAnySessions = sidebarSessions.length > 0
 
   useEffect(() => {
@@ -458,6 +508,14 @@ export function ActiveAgentsSidebar({
       })
     }
   }, [isExpanded])
+
+  useEffect(() => {
+    writeBooleanToStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, tasksSectionExpanded)
+  }, [tasksSectionExpanded])
+
+  useEffect(() => {
+    writeBooleanToStorage(TASKS_SECTION_HIDDEN_STORAGE_KEY, tasksSectionHidden)
+  }, [tasksSectionHidden])
 
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
@@ -499,7 +557,7 @@ export function ActiveAgentsSidebar({
       if (isNaN(digit) || digit < 1 || digit > 9) return
 
       const index = digit - 1
-      const target = sidebarSessions[index]
+      const target = visibleSidebarSessions[index]
       if (!target) return
 
       e.preventDefault()
@@ -530,7 +588,7 @@ export function ActiveAgentsSidebar({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [sidebarSessions, handleSavedConversationOpen, handleActiveSessionSelect])
+  }, [visibleSidebarSessions, handleSavedConversationOpen, handleActiveSessionSelect])
 
   const handleStopSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent session focus when clicking stop
@@ -826,7 +884,11 @@ export function ActiveAgentsSidebar({
           className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1 scrollbar-none"
           onScroll={handleSidebarSessionsScroll}
         >
-          {sidebarSessions.map(({ session, isSavedConversation, key }, index) => {
+          {(() => {
+            const renderSessionRow = (
+              { session, isSavedConversation, key }: SidebarSessionEntry,
+              index: number,
+            ) => {
             const isFocused = focusedSessionId === session.id
             const isSessionExpanded = expandedSessionId === session.id
             const isCurrentView = isSidebarSessionCurrentlyViewed(session, {
@@ -1122,7 +1184,69 @@ export function ActiveAgentsSidebar({
                 </div>
               </div>
             )
-          })}
+            }
+
+            return (
+              <>
+                {userSidebarSessions.map((entry, idx) =>
+                  renderSessionRow(entry, idx),
+                )}
+                {showTasksSection && (
+                  <div className="mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                    <button
+                      type="button"
+                      onClick={() => setTasksSectionExpanded((v) => !v)}
+                      className="hover:text-foreground focus:ring-ring flex shrink-0 items-center rounded focus:outline-none focus:ring-1"
+                      aria-label={tasksSectionExpanded ? "Collapse tasks" : "Expand tasks"}
+                      aria-expanded={tasksSectionExpanded}
+                    >
+                      {tasksSectionExpanded ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </button>
+                    <span className="select-none">Tasks</span>
+                    <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
+                      {taskSidebarSessions.length}
+                    </span>
+                    <div className="ml-auto">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="hover:bg-accent focus-visible:ring-ring flex h-4 w-4 items-center justify-center rounded transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                            aria-label="Tasks section actions"
+                            title="Tasks section actions"
+                          >
+                            <MoreHorizontal className="h-3 w-3" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setTasksSectionHidden(true)}>
+                            Hide tasks section
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                )}
+                {tasksListVisible &&
+                  taskSidebarSessions.map((entry, idx) =>
+                    renderSessionRow(entry, userSidebarSessions.length + idx),
+                  )}
+                {hasTasks && tasksSectionHidden && (
+                  <button
+                    type="button"
+                    onClick={() => setTasksSectionHidden(false)}
+                    className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                  >
+                    Show tasks ({taskSidebarSessions.length})
+                  </button>
+                )}
+              </>
+            )
+          })()}
 
           {hasMoreSavedConversations && (
             <button
