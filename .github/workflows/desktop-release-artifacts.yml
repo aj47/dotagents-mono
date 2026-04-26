@@ -12,7 +12,7 @@ on:
         type: string
 
 concurrency:
-  group: desktop-release-${{ github.ref }}
+  group: desktop-release-${{ github.event.inputs.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -62,11 +62,28 @@ jobs:
           pnpm --filter @dotagents/shared build
           pnpm --filter @dotagents/mcp-whatsapp build
 
-      - name: Build Windows desktop artifacts
+      # The package script `build:win:skip-types` is replicated inline so we can
+      # force `--publish never` on electron-builder. The repo's electron-builder
+      # config has a github publish provider, and electron-builder will publish
+      # automatically in CI when a GH_TOKEN is present, which we don't want here
+      # — this workflow only uploads to GitHub Actions artifacts.
+      - name: Ensure build directories
+        working-directory: apps/desktop
+        run: npx tsx scripts/ensure-build-dirs.ts
+
+      - name: Build Electron renderer (vite)
+        working-directory: apps/desktop
+        run: npx electron-vite build
+
+      - name: Build Rust binary (Windows)
+        working-directory: apps/desktop
+        run: pnpm run build-rs
+
+      - name: Package Windows installers
         working-directory: apps/desktop
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm run build:win:skip-types
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --win --config electron-builder.config.cjs --publish never
 
       - name: Compute artifact checksums
         working-directory: apps/desktop/dist
@@ -104,7 +121,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Install Linux packaging tools
         run: |
@@ -143,10 +160,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # build:linux:release:x64 already passes --publish never to electron-builder.
       - name: Build Linux desktop artifacts
         working-directory: apps/desktop
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm run build:linux:release:x64
 
       - name: Upload Linux artifacts
