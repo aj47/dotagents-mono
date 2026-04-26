@@ -504,6 +504,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
   const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
+  // Track ttsEnabled in a ref so speech callbacks resolved before a mute-toggle
+  // (e.g. in-flight send() progress callbacks) still see the latest setting and
+  // bail before queueing or playing audio.
+  const ttsEnabledRef = useRef<boolean>(config.ttsEnabled !== false);
+  useEffect(() => { ttsEnabledRef.current = config.ttsEnabled !== false; }, [config.ttsEnabled]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
   const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
@@ -539,7 +544,10 @@ export default function ChatScreen({ route, navigation }: any) {
       queuedResponseEventsRef.current = [];
       activeAutoSpeechEventIdRef.current = null;
       setSpeakingMessageIndex(null);
-      if (handsFreeRef.current) {
+      // Only transition the hands-free controller when it was actually speaking;
+      // calling onSpeechFinished mid-`processing` would prematurely return to
+      // listening while a request is still in-flight.
+      if (handsFreeRef.current && handsFreePhaseRef.current === 'speaking') {
         handsFreeController.onSpeechFinished();
         voiceLog('tts-stopped', 'Assistant speech stopped from speaker toggle.');
       }
@@ -1046,6 +1054,12 @@ export default function ChatScreen({ route, navigation }: any) {
 	  ]);
 
 	  const speakAssistantResponse = useCallback((content: string, reason: string, onSettled?: () => void) => {
+		// Honor a mute that may have happened after this callback was scheduled but
+		// before it ran (stale closures inside in-flight send() progress handlers).
+		if (!ttsEnabledRef.current) {
+			onSettled?.();
+			return false;
+		}
 		const processedText = preprocessTextForTTS(content);
 		if (!processedText) {
 				onSettled?.();
@@ -1178,7 +1192,9 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [speakAssistantResponse]);
 
   const enqueueResponseEventsForSpeech = useCallback((events: AgentUserResponseEvent[]) => {
-    if (config.ttsEnabled === false || !events.length) return;
+    // Use the ref alongside the captured config so a mute that landed after this
+    // callback was scheduled still suppresses queueing.
+    if (config.ttsEnabled === false || !ttsEnabledRef.current || !events.length) return;
 
     const queuedIds = new Set(queuedResponseEventsRef.current.map((event) => event.id));
     const activeId = activeAutoSpeechEventIdRef.current;
