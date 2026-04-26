@@ -358,7 +358,45 @@ run_codex_login() {
   codex login --device-auth || echo -e "  ${Y}⚠ Codex login did not complete. Run later with: dotagents setup${R}"
 }
 
-configure_codex_auth() {
+configure_codex_direct_auth() {
+  echo -e "  ${B}Codex ChatGPT OAuth (direct)${R}"
+  echo -e "  ${D}Uses DotAgents' built-in OpenAI Codex provider. acpx is not required.${R}"
+  echo ""
+
+  ensure_codex_cli || true
+  run_codex_login || true
+
+  local model
+  model="$(ask_val "Codex model" "gpt-5.4-mini" "")"
+  model="${model:-gpt-5.4-mini}"
+
+  CONFIG_FILE_RAW="$CONFIG_FILE" DOTAGENTS_CODEX_MODEL="$model" node <<'NODE'
+const fs = require('fs')
+const path = require('path')
+
+const configFile = process.env.CONFIG_FILE_RAW
+const model = process.env.DOTAGENTS_CODEX_MODEL || 'gpt-5.4-mini'
+let cfg = {}
+try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
+cfg.mainAgentMode = 'api'
+cfg.agentProviderId = 'chatgpt-web'
+cfg.mcpToolsProviderId = 'chatgpt-web'
+cfg.agentChatgptWebModel = model
+cfg.mcpToolsChatgptWebModel = model
+cfg.transcriptPostProcessingProviderId = 'chatgpt-web'
+cfg.transcriptPostProcessingChatgptWebModel = model
+cfg.chatgptWebBaseUrl = 'https://chatgpt.com'
+delete cfg.currentModelPresetId
+delete cfg.mainAgentName
+fs.mkdirSync(path.dirname(configFile), { recursive: true })
+fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2))
+NODE
+
+  echo -e "  ${G}✓ Codex configured as the direct DotAgents provider${R}"
+  echo -e "  ${D}  Auth cache: ~/.codex/auth.json, if login completed successfully.${R}"
+}
+
+configure_codex_acpx_auth() {
   echo -e "  ${B}Codex via acpx${R}"
   echo -e "  ${D}Uses acpx's built-in Codex adapter and Codex's ChatGPT OAuth cache.${R}"
   echo ""
@@ -423,19 +461,23 @@ run_setup() {
 
   # ── Step 1: LLM Provider / Codex ──
   echo -e "  ${B}Step 1/3 — Agent Auth${R}"
-  echo -e "  ${D}Choose DotAgents API mode with a provider token, or Codex via acpx.${R}"
+  echo -e "  ${D}Choose DotAgents API mode with a provider token, direct Codex OAuth, or Codex via acpx.${R}"
   echo ""
 
   echo -e "  ${B}Auth mode${R}"
   echo -e "  ${C}1${R}) Provider API token (OpenAI-compatible)"
-  echo -e "  ${C}2${R}) Codex auth via acpx"
+  echo -e "  ${C}2${R}) Codex ChatGPT OAuth (direct, no acpx)"
+  echo -e "  ${C}3${R}) Codex via acpx external agent"
   echo ""
 
   local auth_mode
   auth_mode="$(ask_val "Choose auth mode" "1" "")"
   case "$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')" in
-    2|codex|acpx)
-      configure_codex_auth
+    2|codex|codex-direct|chatgpt|chatgpt-web)
+      configure_codex_direct_auth
+      ;;
+    3|codex-acpx|acpx)
+      configure_codex_acpx_auth
       ;;
     *)
       configure_provider_auth "$cur_key" "$cur_base" "$cur_model"

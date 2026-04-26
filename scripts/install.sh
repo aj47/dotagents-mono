@@ -12,8 +12,8 @@
 #   DOTAGENTS_NODE_MAJOR=24    Node.js major to install for Linux source installs
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
-#   DOTAGENTS_AUTH_MODE=codex  Headless onboarding auth mode: provider, codex, or skip
-#   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex auth mode
+#   DOTAGENTS_AUTH_MODE=codex  Headless auth mode: provider, codex, codex-acpx, or skip
+#   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex-acpx auth mode
 #   DOTAGENTS_INSTALL_CODEX=0 Skip installing Codex CLI when using codex auth mode
 #   DOTAGENTS_CODEX_LOGIN=0   Skip Codex ChatGPT OAuth login during onboarding
 
@@ -725,16 +725,18 @@ run_headless_onboarding() {
 
   printf "  ${BOLD}Auth mode${NC}\n"
   printf "  1) Provider API token (OpenAI-compatible)\n"
-  printf "  2) Codex auth via acpx\n"
-  printf "  3) Skip for now\n\n"
+  printf "  2) Codex ChatGPT OAuth (direct, no acpx)\n"
+  printf "  3) Codex via acpx external agent\n"
+  printf "  4) Skip for now\n\n"
 
   local auth_mode api_key base_url model discord_token remote_api_key port
-  auth_mode="${AUTH_MODE:-$(ask "Choose auth mode [provider/codex/skip]: " DOTAGENTS_AUTH_MODE "provider")}"
+  auth_mode="${AUTH_MODE:-$(ask "Choose auth mode [provider/codex/codex-acpx/skip]: " DOTAGENTS_AUTH_MODE "provider")}"
   auth_mode="$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')"
   case "$auth_mode" in
     1|provider|providers|api|token|openai) auth_mode="provider" ;;
-    2|codex|acpx) auth_mode="codex" ;;
-    3|skip|none|later) auth_mode="skip" ;;
+    2|codex|codex-direct|chatgpt|chatgpt-web) auth_mode="codex" ;;
+    3|codex-acpx|acpx) auth_mode="codex-acpx" ;;
+    4|skip|none|later) auth_mode="skip" ;;
     *) warn "Unknown auth mode '$auth_mode'; defaulting to provider token."; auth_mode="provider" ;;
   esac
 
@@ -747,6 +749,10 @@ run_headless_onboarding() {
     base_url="$(ask "API base URL [leave empty for OpenAI default]: " DOTAGENTS_API_BASE_URL "")"
     model="$(ask "Model name [gpt-4.1-mini]: " DOTAGENTS_MODEL "gpt-4.1-mini")"
   elif [ "$auth_mode" = "codex" ]; then
+    ensure_codex_cli_for_codex_auth
+    run_codex_chatgpt_login
+    model="$(ask "Codex model [gpt-5.4-mini]: " DOTAGENTS_MODEL "gpt-5.4-mini")"
+  elif [ "$auth_mode" = "codex-acpx" ]; then
     ensure_acpx_for_codex
     ensure_codex_cli_for_codex_auth
     run_codex_chatgpt_login
@@ -821,6 +827,19 @@ if (authMode === 'provider') {
   cfg.modelPresets = modelPresets
   cfg.mainAgentMode = 'api'
 } else if (authMode === 'codex') {
+  cfg.mainAgentMode = 'api'
+  cfg.agentProviderId = 'chatgpt-web'
+  cfg.mcpToolsProviderId = 'chatgpt-web'
+  cfg.agentChatgptWebModel = model
+  cfg.mcpToolsChatgptWebModel = model
+  cfg.transcriptPostProcessingProviderId = 'chatgpt-web'
+  cfg.transcriptPostProcessingChatgptWebModel = model
+  cfg.chatgptWebBaseUrl = 'https://chatgpt.com'
+  cfg.currentModelPresetId = undefined
+  delete cfg.mainAgentName
+  cfg.openaiApiKey = cfg.openaiApiKey || ''
+  cfg.openaiBaseUrl = cfg.openaiBaseUrl || ''
+} else if (authMode === 'codex-acpx') {
   cfg.mainAgentMode = 'acpx'
   cfg.mainAgentName = 'codex'
 

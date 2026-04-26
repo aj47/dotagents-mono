@@ -1,5 +1,8 @@
 import { randomUUID } from "crypto"
 import fs from "fs"
+import os from "os"
+import path from "path"
+import type { OAuthTokens } from "@shared/types"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
@@ -90,6 +93,11 @@ interface ResolvedChatGptWebAuth {
   accessToken: string
   accountId?: string
   baseUrl: string
+}
+
+interface CodexCliAuthFile {
+  auth_mode?: string
+  tokens?: Partial<OAuthTokens> & { id_token?: string }
 }
 
 export interface ChatGptWebAuthStatus {
@@ -371,7 +379,54 @@ async function getStoredChatGptWebTokens() {
       return refreshed
     }
   }
+
+  const codexCliTokens = await getCodexCliChatGptTokens()
+  if (codexCliTokens?.access_token) {
+    try {
+      await oauthStorage.storeTokens(CHATGPT_CODEX_STORAGE_KEY, codexCliTokens)
+    } catch (error) {
+      logLLM("Failed to import Codex CLI auth into ChatGPT Web OAuth storage", error)
+    }
+    persistChatGptWebMetadata(codexCliTokens.access_token)
+    return codexCliTokens
+  }
   return null
+}
+
+function resolveCodexCliAuthPath(): string {
+  const codexHome = process.env.CODEX_HOME?.trim() || path.join(process.env.HOME || os.homedir(), ".codex")
+  return path.join(codexHome, "auth.json")
+}
+
+export function readCodexCliChatGptTokens(authPath = resolveCodexCliAuthPath()): OAuthTokens | null {
+  try {
+    if (!fs.existsSync(authPath)) return null
+    const parsed = JSON.parse(fs.readFileSync(authPath, "utf8")) as CodexCliAuthFile
+    if (parsed.auth_mode && parsed.auth_mode !== "chatgpt") return null
+    const tokens = parsed.tokens
+    if (!tokens?.access_token || typeof tokens.access_token !== "string") return null
+
+    return {
+      ...tokens,
+      access_token: tokens.access_token,
+      token_type: typeof tokens.token_type === "string" ? tokens.token_type : "Bearer",
+    } as OAuthTokens
+  } catch (error) {
+    if (isDebugLLM()) {
+      logLLM("Failed to read Codex CLI ChatGPT auth cache", error)
+    }
+    return null
+  }
+}
+
+async function getCodexCliChatGptTokens(): Promise<OAuthTokens | null> {
+  const tokens = readCodexCliChatGptTokens()
+  if (!tokens?.access_token) return null
+
+  const isExpired = tokens.expires_at ? Date.now() >= tokens.expires_at : false
+  if (!isExpired || !tokens.refresh_token) return tokens
+
+  return refreshStoredChatGptTokens(tokens.refresh_token)
 }
 
 export async function getChatGptWebAuthStatus(): Promise<ChatGptWebAuthStatus> {

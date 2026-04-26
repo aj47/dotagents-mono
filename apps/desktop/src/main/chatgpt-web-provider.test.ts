@@ -109,3 +109,49 @@ describe("chatgpt-web provider image input", () => {
     ])
   })
 })
+
+describe("chatgpt-web Codex CLI auth fallback", () => {
+  it("reads ChatGPT tokens from a Codex CLI auth cache", async () => {
+    const { tempDir } = await setupChatGptWebProviderTest()
+    const authPath = path.join(tempDir, "auth.json")
+    await fs.writeFile(authPath, JSON.stringify({
+      auth_mode: "chatgpt",
+      tokens: {
+        access_token: "codex-access-token",
+        refresh_token: "codex-refresh-token",
+      },
+    }))
+
+    const { readCodexCliChatGptTokens } = await import("./chatgpt-web-provider")
+
+    expect(readCodexCliChatGptTokens(authPath)).toMatchObject({
+      access_token: "codex-access-token",
+      refresh_token: "codex-refresh-token",
+      token_type: "Bearer",
+    })
+  })
+
+  it("uses Codex CLI ChatGPT auth for provider auth status when app OAuth storage is empty", async () => {
+    const { tempDir } = await setupChatGptWebProviderTest()
+    const previousCodexHome = process.env.CODEX_HOME
+    process.env.CODEX_HOME = tempDir
+    await fs.writeFile(path.join(tempDir, "auth.json"), JSON.stringify({
+      auth_mode: "chatgpt",
+      tokens: {
+        access_token: "codex-access-token",
+        expires_at: Date.now() + 60_000,
+      },
+    }))
+
+    try {
+      const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+
+      await expect(getChatGptWebAuthStatus()).resolves.toMatchObject({
+        authenticated: true,
+      })
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME
+      else process.env.CODEX_HOME = previousCodexHome
+    }
+  })
+})
