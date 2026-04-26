@@ -1,4 +1,5 @@
 import type { AgentProgressUpdate } from "@shared/types"
+import { hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 
 type SessionLike = {
   id: string
@@ -10,16 +11,13 @@ type TitledSessionLike = SessionLike & {
 }
 
 /**
- * Sessions started by the repeat-task loop service are created with a
- * `[Repeat] ` title prefix (see apps/desktop/src/main/loop-service.ts).
+ * Sessions started by the repeat-task loop service get the shared
+ * `TASK_SESSION_TITLE_PREFIX` (see apps/desktop/src/shared/repeat-tasks.ts).
  * We use that prefix as the canonical signal for "task" entries in the
  * sidebar so they can be grouped separately from user-driven sessions.
  */
-export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
-
 export function isTaskSession(session: TitledSessionLike): boolean {
-  const title = session.conversationTitle
-  return typeof title === "string" && title.startsWith(TASK_SESSION_TITLE_PREFIX)
+  return hasRepeatTaskTitlePrefix(session.conversationTitle)
 }
 
 export function partitionTaskAndUserEntries<T extends { session: TitledSessionLike }>(
@@ -35,6 +33,29 @@ export function partitionTaskAndUserEntries<T extends { session: TitledSessionLi
     }
   }
   return { userEntries, taskEntries }
+}
+
+export function partitionPinnedAndUnpinnedTaskEntries<
+  T extends { session: SessionLike },
+>(
+  taskEntries: T[],
+  pinnedSessionIds: ReadonlySet<string>,
+): { pinnedTaskEntries: T[]; unpinnedTaskEntries: T[] } {
+  if (taskEntries.length === 0 || pinnedSessionIds.size === 0) {
+    return { pinnedTaskEntries: [], unpinnedTaskEntries: taskEntries }
+  }
+
+  const pinnedTaskEntries: T[] = []
+  const unpinnedTaskEntries: T[] = []
+  for (const entry of taskEntries) {
+    const conversationId = entry.session.conversationId
+    if (conversationId && pinnedSessionIds.has(conversationId)) {
+      pinnedTaskEntries.push(entry)
+    } else {
+      unpinnedTaskEntries.push(entry)
+    }
+  }
+  return { pinnedTaskEntries, unpinnedTaskEntries }
 }
 
 interface SidebarSessionViewState {

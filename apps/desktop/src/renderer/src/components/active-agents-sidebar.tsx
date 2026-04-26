@@ -28,6 +28,7 @@ import {
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
   orderActiveSessionsByPinnedFirst,
+  partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
 } from "@renderer/lib/sidebar-sessions"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -457,25 +458,43 @@ export function ActiveAgentsSidebar({
     archivedSessionIds,
   ])
 
-  const { userSidebarSessions, taskSidebarSessions } = useMemo(
-    () => {
-      const { userEntries, taskEntries } = partitionTaskAndUserEntries(sidebarSessions)
-      return { userSidebarSessions: userEntries, taskSidebarSessions: taskEntries }
-    },
-    [sidebarSessions],
-  )
+  const {
+    userSidebarSessions,
+    pinnedTaskSidebarSessions,
+    unpinnedTaskSidebarSessions,
+  } = useMemo(() => {
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(sidebarSessions)
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedTaskEntries(taskEntries, pinnedSessionIds)
+    return {
+      userSidebarSessions: userEntries,
+      pinnedTaskSidebarSessions: pinnedTaskEntries,
+      unpinnedTaskSidebarSessions: unpinnedTaskEntries,
+    }
+  }, [sidebarSessions, pinnedSessionIds])
 
-  const hasTasks = taskSidebarSessions.length > 0
-  const showTasksSection = hasTasks && !tasksSectionHidden
+  const hasPinnedTasks = pinnedTaskSidebarSessions.length > 0
+  const hasUnpinnedTasks = unpinnedTaskSidebarSessions.length > 0
+  // Pinned tasks always render at the top regardless of section state, so we
+  // only need the Tasks subsection when there are unpinned tasks to show.
+  const showTasksSection = hasUnpinnedTasks && !tasksSectionHidden
   const tasksListVisible = showTasksSection && tasksSectionExpanded
 
-  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered.
+  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered,
+  // in the same order as they appear: pinned tasks → user sessions →
+  // unpinned tasks (when the tasks subsection is expanded).
   const visibleSidebarSessions = useMemo(
-    () =>
-      tasksListVisible
-        ? [...userSidebarSessions, ...taskSidebarSessions]
-        : userSidebarSessions,
-    [tasksListVisible, userSidebarSessions, taskSidebarSessions],
+    () => [
+      ...pinnedTaskSidebarSessions,
+      ...userSidebarSessions,
+      ...(tasksListVisible ? unpinnedTaskSidebarSessions : []),
+    ],
+    [
+      pinnedTaskSidebarSessions,
+      userSidebarSessions,
+      tasksListVisible,
+      unpinnedTaskSidebarSessions,
+    ],
   )
 
   const hasAnySessions = sidebarSessions.length > 0
@@ -1186,10 +1205,28 @@ export function ActiveAgentsSidebar({
             )
             }
 
+            // Hotkey ordering must mirror render ordering exactly; see
+            // visibleSidebarSessions above.
+            const pinnedOffset = 0
+            const userOffset = pinnedTaskSidebarSessions.length
+            const unpinnedTasksOffset = userOffset + userSidebarSessions.length
+
             return (
               <>
+                {hasPinnedTasks && (
+                  <div className="flex items-center gap-1 px-1.5 pb-0.5 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                    <Pin className="h-3 w-3 -rotate-45 shrink-0 text-muted-foreground/70" />
+                    <span className="select-none">Pinned tasks</span>
+                    <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
+                      {pinnedTaskSidebarSessions.length}
+                    </span>
+                  </div>
+                )}
+                {pinnedTaskSidebarSessions.map((entry, idx) =>
+                  renderSessionRow(entry, pinnedOffset + idx),
+                )}
                 {userSidebarSessions.map((entry, idx) =>
-                  renderSessionRow(entry, idx),
+                  renderSessionRow(entry, userOffset + idx),
                 )}
                 {showTasksSection && (
                   <div className="mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
@@ -1208,7 +1245,7 @@ export function ActiveAgentsSidebar({
                     </button>
                     <span className="select-none">Tasks</span>
                     <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
-                      {taskSidebarSessions.length}
+                      {unpinnedTaskSidebarSessions.length}
                     </span>
                     <div className="ml-auto">
                       <DropdownMenu>
@@ -1232,16 +1269,16 @@ export function ActiveAgentsSidebar({
                   </div>
                 )}
                 {tasksListVisible &&
-                  taskSidebarSessions.map((entry, idx) =>
-                    renderSessionRow(entry, userSidebarSessions.length + idx),
+                  unpinnedTaskSidebarSessions.map((entry, idx) =>
+                    renderSessionRow(entry, unpinnedTasksOffset + idx),
                   )}
-                {hasTasks && tasksSectionHidden && (
+                {hasUnpinnedTasks && tasksSectionHidden && (
                   <button
                     type="button"
                     onClick={() => setTasksSectionHidden(false)}
                     className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
                   >
-                    Show tasks ({taskSidebarSessions.length})
+                    Show tasks ({unpinnedTaskSidebarSessions.length})
                   </button>
                 )}
               </>

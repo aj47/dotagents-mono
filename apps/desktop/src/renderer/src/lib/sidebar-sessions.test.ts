@@ -7,6 +7,7 @@ import {
   isSidebarSessionCurrentlyViewed,
   isTaskSession,
   orderActiveSessionsByPinnedFirst,
+  partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
 } from "./sidebar-sessions"
 
@@ -129,6 +130,34 @@ describe("partitionTaskAndUserEntries", () => {
 
     expect(userEntries.map((e) => e.session.id)).toEqual(["u1", "u2"])
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+})
+
+describe("partitionPinnedAndUnpinnedTaskEntries", () => {
+  it("returns all entries as unpinned when no pins are set", () => {
+    const entries = [
+      { session: { id: "t1", conversationId: "c1" } },
+      { session: { id: "t2", conversationId: "c2" } },
+    ]
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedTaskEntries(entries, new Set())
+
+    expect(pinnedTaskEntries).toEqual([])
+    expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+
+  it("splits entries by conversation pin state while preserving order", () => {
+    const entries = [
+      { session: { id: "t1", conversationId: "c1" } },
+      { session: { id: "t2", conversationId: "c2" } },
+      { session: { id: "t3", conversationId: "c3" } },
+      { session: { id: "t4" } },
+    ]
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedTaskEntries(entries, new Set(["c1", "c3"]))
+
+    expect(pinnedTaskEntries.map((e) => e.session.id)).toEqual(["t1", "t3"])
+    expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["t2", "t4"])
   })
 })
 
