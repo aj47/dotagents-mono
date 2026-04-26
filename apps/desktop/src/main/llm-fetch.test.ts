@@ -1128,4 +1128,47 @@ describe('LLM Fetch with AI SDK', () => {
       expect.objectContaining({ modelContext: 'mcp', tools: undefined }),
     )
   })
+
+  it('retries chatgpt-web llm calls when the codex stream errors transiently', async () => {
+    // Regression test for https://github.com/aj47/dotagents-mono/issues/391
+    // Transient "ChatGPT Codex stream error" should be classified as retryable
+    // instead of immediately killing the agent session.
+    let callCount = 0
+    makeChatGptWebResponseMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.reject(new Error('ChatGPT Codex stream error'))
+      }
+      return Promise.resolve({ text: 'recovered answer' })
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'hello' }],
+      'chatgpt-web',
+    )
+
+    expect(callCount).toBe(2)
+    expect(result).toEqual({ content: 'recovered answer' })
+  })
+
+  it('retries chatgpt-web llm calls when the codex response.failed event fires', async () => {
+    let callCount = 0
+    makeChatGptWebResponseMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.reject(new Error('ChatGPT Codex response failed'))
+      }
+      return Promise.resolve({ text: 'recovered after response.failed' })
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'hello' }],
+      'chatgpt-web',
+    )
+
+    expect(callCount).toBe(2)
+    expect(result).toEqual({ content: 'recovered after response.failed' })
+  })
 })

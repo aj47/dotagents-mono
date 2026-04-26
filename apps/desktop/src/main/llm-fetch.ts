@@ -453,7 +453,14 @@ function isRetryableError(error: unknown): boolean {
       message.includes("504") ||
       message.includes("timeout") ||
       message.includes("network") ||
-      message.includes("connection")
+      message.includes("connection") ||
+      // ChatGPT Codex SSE stream/response errors are surfaced as plain
+      // Error("ChatGPT Codex stream error") / Error("ChatGPT Codex response failed")
+      // without a status code, so they need explicit pattern matching.
+      // See https://github.com/aj47/dotagents-mono/issues/391
+      message.includes("codex stream error") ||
+      message.includes("codex response failed") ||
+      message.includes("stream error")
     )
   }
   return false
