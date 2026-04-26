@@ -308,22 +308,59 @@ install_release_mac() {
   info "Launch it with: open '$app_dest'"
 }
 
+linux_has_fuse2() {
+  if has ldconfig && ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
+    return 0
+  fi
+
+  [ -e /lib/libfuse.so.2 ] || \
+    [ -e /usr/lib/libfuse.so.2 ] || \
+    [ -e /lib/x86_64-linux-gnu/libfuse.so.2 ] || \
+    [ -e /usr/lib/x86_64-linux-gnu/libfuse.so.2 ] || \
+    [ -e /lib/aarch64-linux-gnu/libfuse.so.2 ] || \
+    [ -e /usr/lib/aarch64-linux-gnu/libfuse.so.2 ]
+}
+
+write_linux_launcher() {
+  local launcher_path="$1"
+  local launch_target="$2"
+
+  cat > "$launcher_path" <<EOF
+#!/usr/bin/env bash
+if [ "\$(id -u)" -eq 0 ]; then
+  exec "$launch_target" --no-sandbox "\$@"
+fi
+exec "$launch_target" "\$@"
+EOF
+  chmod +x "$launcher_path"
+}
+
 install_release_linux() {
   local asset_url="$1"
-  local app_path launcher_path user_bin
+  local app_path launcher_path user_bin launch_target extract_dir extracted_app_run
 
   app_path="$INSTALL_DIR/$(basename "$asset_url")"
   launcher_path="$INSTALL_DIR/dotagents"
   user_bin="$HOME/.local/bin"
+  launch_target="$app_path"
 
   download_file "$asset_url" "$app_path"
   chmod +x "$app_path"
 
-  cat > "$launcher_path" <<EOF
-#!/usr/bin/env bash
-exec "$app_path" "\$@"
-EOF
-  chmod +x "$launcher_path"
+  if [[ "$app_path" == *.AppImage ]] && ! linux_has_fuse2; then
+    warn "FUSE 2 (libfuse.so.2) was not found; extracting AppImage for compatibility."
+    extract_dir="$INSTALL_DIR/$(basename "$app_path").extracted"
+    rm -rf "$extract_dir"
+    mkdir -p "$extract_dir"
+    info "Extracting $(basename "$app_path")..."
+    (cd "$extract_dir" && "$app_path" --appimage-extract >/dev/null)
+    extracted_app_run="$extract_dir/squashfs-root/AppRun"
+    [ -x "$extracted_app_run" ] || die "Failed to extract AppImage launcher at $extracted_app_run."
+    launch_target="$extracted_app_run"
+    ok "AppImage extracted to $extract_dir/squashfs-root"
+  fi
+
+  write_linux_launcher "$launcher_path" "$launch_target"
 
   mkdir -p "$user_bin"
   ln -sf "$launcher_path" "$user_bin/dotagents"
