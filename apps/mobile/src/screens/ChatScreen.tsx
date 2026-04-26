@@ -529,9 +529,20 @@ export default function ChatScreen({ route, navigation }: any) {
   const ttsEnabled = config.ttsEnabled !== false; // default true
   const toggleTts = async () => {
     const next = !ttsEnabled;
-    // Stop any currently playing TTS when disabling
+    // Stop any currently playing TTS when disabling. The speaker icon doubles
+    // as a "mute" control, so it must silence both native and remote (Edge)
+    // playback and clear the auto-speech queue/state so nothing resumes.
     if (!next) {
+      intendedSpeakingIndexRef.current = null;
       Speech.stop();
+      stopRemoteTts();
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventIdRef.current = null;
+      setSpeakingMessageIndex(null);
+      if (handsFreeRef.current) {
+        handsFreeController.onSpeechFinished();
+        voiceLog('tts-stopped', 'Assistant speech stopped from speaker toggle.');
+      }
     }
     const nextCfg = { ...config, ttsEnabled: next } as any;
     setConfig(nextCfg);
