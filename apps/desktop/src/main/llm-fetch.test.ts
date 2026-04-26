@@ -1067,11 +1067,13 @@ describe('LLM Fetch with AI SDK', () => {
     const { streamText } = await import('ai')
     const streamTextMock = vi.mocked(streamText)
 
-    streamTextMock.mockReturnValue({
+    // Stream errors are now retryable, so produce the same error on every call
+    // so we can still assert the surfaced message after retries are exhausted.
+    streamTextMock.mockImplementation(() => ({
       fullStream: (async function* () {
         yield { type: 'error', error: 'fatal stream failure' }
       })(),
-    } as any)
+    } as any))
 
     const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
 
@@ -1087,11 +1089,11 @@ describe('LLM Fetch with AI SDK', () => {
     const { streamText } = await import('ai')
     const streamTextMock = vi.mocked(streamText)
 
-    streamTextMock.mockReturnValue({
+    streamTextMock.mockImplementation(() => ({
       fullStream: (async function* () {
         yield { type: 'error', error: { message: 'provider returned malformed chunk' } }
       })(),
-    } as any)
+    } as any))
 
     const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
 
