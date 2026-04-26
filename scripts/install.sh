@@ -6,6 +6,7 @@
 #
 # Options (via env vars):
 #   DOTAGENTS_FROM_SOURCE=1   Build from source instead of downloading a release
+#   DOTAGENTS_FROM_SOURCE=0   Force release download even on headless Linux
 #   DOTAGENTS_DIR=~/mydir     Custom install directory (default: ~/.dotagents)
 #   DOTAGENTS_RELEASE_TAG=v1  Install a specific GitHub release tag
 #   DOTAGENTS_NODE_MAJOR=24    Node.js major to install for Linux source installs
@@ -88,6 +89,7 @@ INSTALL_DIR="${DOTAGENTS_DIR:-$HOME/.dotagents}"
 REPO="aj47/dotagents-mono"
 REPO_URL="https://github.com/$REPO"
 API_BASE_URL="https://api.github.com/repos/$REPO/releases"
+FROM_SOURCE_EXPLICIT="${DOTAGENTS_FROM_SOURCE+x}"
 FROM_SOURCE="${DOTAGENTS_FROM_SOURCE:-0}"
 RELEASE_TAG="${DOTAGENTS_RELEASE_TAG:-latest}"
 TAG=""
@@ -119,6 +121,16 @@ detect_platform() {
     arm64|aarch64) ARCH="arm64" ;;
     *) die "Unsupported architecture: $arch" ;;
   esac
+}
+
+prefer_source_install_for_platform() {
+  [ "$PLATFORM" = "linux" ] || return 1
+  [ -z "$FROM_SOURCE_EXPLICIT" ] || return 1
+
+  # A fresh VPS/VM generally has no desktop session and no complete AppImage
+  # runtime stack. Use the source/headless CLI installer there so the one-line
+  # install sets up system deps, builds the headless app, and runs onboarding.
+  [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]
 }
 
 extract_tag_name() {
@@ -415,12 +427,12 @@ install_linux_source_system_deps() {
       git curl ca-certificates build-essential pkg-config \
       libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
       xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
-      libasound2t64 libgbm1 xvfb || \
+      libasound2t64 libgbm1 libgdk-pixbuf-2.0-0 xvfb || \
     run_as_root apt-get install -y -qq \
       git curl ca-certificates build-essential pkg-config \
       libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
       xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
-      libasound2 libgbm1 xvfb
+      libasound2 libgbm1 libgdk-pixbuf-2.0-0 xvfb
     ok "Linux source dependencies installed"
     return 0
   fi
@@ -429,7 +441,7 @@ install_linux_source_system_deps() {
     run_as_root dnf install -y -q \
       git curl ca-certificates gcc gcc-c++ make pkg-config \
       gtk3 libnotify nss libXScrnSaver libXtst \
-      at-spi2-core libuuid libsecret alsa-lib mesa-libgbm \
+      at-spi2-core libuuid libsecret alsa-lib mesa-libgbm gdk-pixbuf2 \
       xorg-x11-server-Xvfb
     ok "Linux source dependencies installed"
     return 0
@@ -905,6 +917,12 @@ main() {
 
   detect_platform
   info "Detected: $PLATFORM/$ARCH"
+
+  if prefer_source_install_for_platform; then
+    FROM_SOURCE="1"
+    info "Linux headless environment detected; installing source/headless CLI instead of a desktop release asset."
+    info "Set DOTAGENTS_FROM_SOURCE=0 to force release asset installation."
+  fi
 
   if [ "$FROM_SOURCE" = "1" ]; then
     install_from_source
