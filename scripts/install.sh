@@ -92,6 +92,7 @@ FROM_SOURCE="${DOTAGENTS_FROM_SOURCE:-0}"
 RELEASE_TAG="${DOTAGENTS_RELEASE_TAG:-latest}"
 TAG=""
 ASSET_URLS=""
+SELECTED_ASSET_URL=""
 PNPM_CMD=()
 MIN_NODE_VERSION="20.19.4"
 SOURCE_NODE_MAJOR="${DOTAGENTS_NODE_MAJOR:-24}"
@@ -131,20 +132,36 @@ extract_download_urls() {
 fetch_release_metadata() {
   ensure_cmd curl "Install curl first."
 
-  local api_url release_json
-  if [ "$RELEASE_TAG" = "latest" ]; then
+  info "Fetching release metadata from GitHub..."
+  fetch_release_metadata_for_tag "$RELEASE_TAG" || die "Failed to fetch release metadata from GitHub."
+}
+
+fetch_release_metadata_for_tag() {
+  local release_tag="$1"
+  local api_url release_json fetched_tag asset_urls
+  if [ "$release_tag" = "latest" ]; then
     api_url="$API_BASE_URL/latest"
   else
-    api_url="$API_BASE_URL/tags/$RELEASE_TAG"
+    api_url="$API_BASE_URL/tags/$release_tag"
   fi
 
-  info "Fetching release metadata from GitHub..."
-  release_json="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url")" || die "Failed to fetch release metadata from GitHub."
-  TAG="$(extract_tag_name "$release_json")"
-  ASSET_URLS="$(extract_download_urls "$release_json")"
+  release_json="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url")" || return 1
+  fetched_tag="$(extract_tag_name "$release_json" || true)"
+  asset_urls="$(extract_download_urls "$release_json" || true)"
 
-  [ -n "$TAG" ] || die "Could not determine the release tag from GitHub."
-  [ -n "$ASSET_URLS" ] || die "No downloadable assets were found on release $TAG."
+  [ -n "$fetched_tag" ] || return 1
+  [ -n "$asset_urls" ] || return 1
+
+  TAG="$fetched_tag"
+  ASSET_URLS="$asset_urls"
+}
+
+list_release_tags() {
+  ensure_cmd curl "Install curl first."
+
+  curl -fsSL -H 'Accept: application/vnd.github+json' "$API_BASE_URL?per_page=30" |
+    grep -Eo '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' |
+    sed -E 's/.*"([^"]+)"/\1/'
 }
 
 find_asset_url() {
@@ -172,6 +189,10 @@ select_release_asset_url() {
       ;;
     linux)
       asset_url="$(find_asset_url "*/DotAgents-*-${asset_arch}.AppImage" || true)"
+      if [ -z "$asset_url" ] && [ "$asset_arch" = "x64" ]; then
+        # Older Linux releases shipped a single x64 AppImage without an arch suffix.
+        asset_url="$(find_asset_url "*/DotAgents-*.AppImage" || true)"
+      fi
       ;;
     win)
       if [ "$asset_arch" != "x64" ]; then
@@ -185,8 +206,44 @@ select_release_asset_url() {
       ;;
   esac
 
-  [ -n "$asset_url" ] || die "No matching release asset found for $PLATFORM/$ARCH on $TAG."
+  [ -n "$asset_url" ] || return 1
   printf '%s\n' "$asset_url"
+}
+
+select_release_asset_url_with_fallback() {
+  local asset_url original_tag release_tags fallback_tag
+
+  if asset_url="$(select_release_asset_url)"; then
+    SELECTED_ASSET_URL="$asset_url"
+    return 0
+  fi
+
+  original_tag="$TAG"
+  if [ "$RELEASE_TAG" != "latest" ]; then
+    die "No matching release asset found for $PLATFORM/$ARCH on $TAG."
+  fi
+
+  warn "No matching release asset found for $PLATFORM/$ARCH on $original_tag. Trying previous releases..." >&2
+  release_tags="$(list_release_tags)" || die "Failed to fetch release list from GitHub."
+
+  while IFS= read -r fallback_tag; do
+    [ -n "$fallback_tag" ] || continue
+    [ "$fallback_tag" != "$original_tag" ] || continue
+
+    if ! fetch_release_metadata_for_tag "$fallback_tag"; then
+      warn "Skipping $fallback_tag because its release metadata could not be read." >&2
+      continue
+    fi
+
+    if asset_url="$(select_release_asset_url)"; then
+      warn "Falling back to $TAG for $PLATFORM/$ARCH." >&2
+      SELECTED_ASSET_URL="$asset_url"
+      return 0
+    fi
+  done <<< "$release_tags"
+
+  TAG="$original_tag"
+  die "No matching release asset found for $PLATFORM/$ARCH on $original_tag or previous releases."
 }
 
 download_file() {
@@ -300,7 +357,9 @@ install_release() {
   info "Using release: $TAG"
 
   local asset_url
-  asset_url="$(select_release_asset_url)"
+  select_release_asset_url_with_fallback
+  asset_url="$SELECTED_ASSET_URL"
+  info "Using release asset from: $TAG"
 
   case "$PLATFORM" in
     mac) install_release_mac "$asset_url" ;;
