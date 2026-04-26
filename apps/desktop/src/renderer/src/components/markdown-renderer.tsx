@@ -13,6 +13,7 @@ import { logExpand, logUI } from "@renderer/lib/debug"
 interface MarkdownRendererProps {
   content: string
   className?: string
+  collapsed?: boolean
   getThinkKey?: (content: string, index: number) => string
   isThinkExpanded?: (key: string) => boolean
   onToggleThink?: (key: string) => void
@@ -407,6 +408,7 @@ const parseThinkSections = (content: string) => {
 const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
   content,
   className,
+  collapsed,
   getThinkKey,
   isThinkExpanded,
   onToggleThink,
@@ -444,17 +446,17 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
                   ...sharedMarkdownComponents,
                   // Custom components for better styling
                   h1: ({ children }) => (
-                    <h1 className="mb-3 text-xl font-bold text-foreground">
+                    <h1 className={collapsed ? "text-sm font-normal text-foreground" : "mb-3 text-xl font-bold text-foreground"}>
                       {children}
                     </h1>
                   ),
                   h2: ({ children }) => (
-                    <h2 className="mb-2 text-lg font-semibold text-foreground">
+                    <h2 className={collapsed ? "text-sm font-normal text-foreground" : "mb-2 text-lg font-semibold text-foreground"}>
                       {children}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 className="mb-2 text-base font-medium text-foreground">
+                    <h3 className={collapsed ? "text-sm font-normal text-foreground" : "mb-2 text-base font-medium text-foreground"}>
                       {children}
                     </h3>
                   ),
@@ -496,6 +498,7 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
 export const MarkdownRenderer = React.memo(MarkdownRendererBase, (prev, next) => (
   prev.content === next.content &&
   prev.className === next.className &&
+  prev.collapsed === next.collapsed &&
   prev.getThinkKey === next.getThinkKey &&
   prev.isThinkExpanded === next.isThinkExpanded &&
   prev.onToggleThink === next.onToggleThink
