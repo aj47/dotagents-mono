@@ -942,6 +942,32 @@ const presetMap = {
 }
 const presetId = presetMap[baseUrl] || 'builtin-openai'
 
+function withDisabledFrontmatter(markdown) {
+  const lines = markdown.split('\n')
+  if (lines[0] !== '---') return markdown
+  const closeIndex = lines.indexOf('---', 1)
+  if (closeIndex < 0) return markdown
+  const enabledIndex = lines.findIndex((line, index) => index > 0 && index < closeIndex && /^enabled:\s*/.test(line))
+  if (enabledIndex >= 0) lines[enabledIndex] = 'enabled: false'
+  else lines.splice(closeIndex, 0, 'enabled: false')
+  return lines.join('\n')
+}
+
+function disableLegacyCodexAcpxProfile() {
+  const agentDir = path.join(process.env.HOME || '.', '.agents', 'agents', 'codex')
+  const agentPath = path.join(agentDir, 'agent.md')
+  const configPath = path.join(agentDir, 'config.json')
+  let markdown = ''
+  let connection = null
+  try { markdown = fs.readFileSync(agentPath, 'utf8') } catch {}
+  try { connection = JSON.parse(fs.readFileSync(configPath, 'utf8')).connection } catch {}
+  const isGeneratedAcpxCodex = markdown.includes('description: OpenAI Codex via acpx')
+    || (connection?.type === 'acpx' && connection?.agent === 'codex')
+  if (!markdown || !isGeneratedAcpxCodex) return false
+  fs.writeFileSync(agentPath, withDisabledFrontmatter(markdown))
+  return true
+}
+
 let cfg = {}
 try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
 cfg = {
@@ -988,6 +1014,7 @@ if (authMode === 'provider') {
   delete cfg.mainAgentName
   cfg.openaiApiKey = cfg.openaiApiKey || ''
   cfg.openaiBaseUrl = cfg.openaiBaseUrl || ''
+  disableLegacyCodexAcpxProfile()
 } else if (authMode === 'codex-acpx') {
   cfg.mainAgentMode = 'acpx'
   cfg.mainAgentName = 'codex'

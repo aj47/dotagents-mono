@@ -464,6 +464,33 @@ const path = require('path')
 
 const configFile = process.env.CONFIG_FILE_RAW
 const model = process.env.DOTAGENTS_CODEX_MODEL || 'gpt-5.4-mini'
+
+function withDisabledFrontmatter(markdown) {
+  const lines = markdown.split('\n')
+  if (lines[0] !== '---') return markdown
+  const closeIndex = lines.indexOf('---', 1)
+  if (closeIndex < 0) return markdown
+  const enabledIndex = lines.findIndex((line, index) => index > 0 && index < closeIndex && /^enabled:\s*/.test(line))
+  if (enabledIndex >= 0) lines[enabledIndex] = 'enabled: false'
+  else lines.splice(closeIndex, 0, 'enabled: false')
+  return lines.join('\n')
+}
+
+function disableLegacyCodexAcpxProfile() {
+  const agentDir = path.join(process.env.HOME || '.', '.agents', 'agents', 'codex')
+  const agentPath = path.join(agentDir, 'agent.md')
+  const configPath = path.join(agentDir, 'config.json')
+  let markdown = ''
+  let connection = null
+  try { markdown = fs.readFileSync(agentPath, 'utf8') } catch {}
+  try { connection = JSON.parse(fs.readFileSync(configPath, 'utf8')).connection } catch {}
+  const isGeneratedAcpxCodex = markdown.includes('description: OpenAI Codex via acpx')
+    || (connection?.type === 'acpx' && connection?.agent === 'codex')
+  if (!markdown || !isGeneratedAcpxCodex) return false
+  fs.writeFileSync(agentPath, withDisabledFrontmatter(markdown))
+  return true
+}
+
 let cfg = {}
 try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
 cfg.mainAgentMode = 'api'
@@ -476,6 +503,7 @@ cfg.transcriptPostProcessingChatgptWebModel = model
 cfg.chatgptWebBaseUrl = 'https://chatgpt.com'
 delete cfg.currentModelPresetId
 delete cfg.mainAgentName
+disableLegacyCodexAcpxProfile()
 fs.mkdirSync(path.dirname(configFile), { recursive: true })
 fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2))
 NODE
@@ -609,7 +637,7 @@ run_setup() {
 
   if [[ "$restart_answer" =~ ^[Yy] ]]; then
     echo -e "  ${D}Restarting...${R}"
-    sudo systemctl restart dotagents 2>/dev/null || true
+    restart_service_daemon || recover_daemon || true
     sleep 5
     # Re-read config for new API key
     API_KEY="$(get_config_val remoteServerApiKey)"
@@ -622,10 +650,11 @@ run_setup() {
         echo -e "  ${G}✓ Discord bot connecting...${R}"
       fi
     else
-      echo -e "  ${RED}✗ Service didn't start. Check: sudo journalctl -u dotagents -f${R}"
+      echo -e "  ${RED}✗ Service didn't start.${R}"
+      print_daemon_logs_hint
     fi
   else
-    echo -e "  ${D}Skipped. Run: sudo systemctl restart dotagents${R}"
+    echo -e "  ${D}Skipped. Run /restart before chatting so the daemon reloads the new config.${R}"
   fi
 
   echo ""
