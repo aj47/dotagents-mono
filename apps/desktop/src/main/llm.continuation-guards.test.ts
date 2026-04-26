@@ -175,6 +175,18 @@ describe("continuation guard helpers", () => {
     expect(isDeliverableResponseContent("[Calling tools: read_file]")).toBe(false)
   })
 
+  it("rejects pure thinking blocks as non-deliverable content", () => {
+    expect(isDeliverableResponseContent("<think>Need to inspect more chunks.</think>")).toBe(false)
+    expect(resolveIterationLimitFinalContent({
+      finalContent: "<think>Need to inspect more chunks.</think>",
+      conversationHistory: [{ role: "assistant", content: "<think>Still planning.</think>" }],
+      hasRecentErrors: false,
+    })).toEqual({
+      content: "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.",
+      usedExplicitUserResponse: false,
+    })
+  })
+
   it("rejects tool placeholders with trailing content (relaxed anchor)", () => {
     expect(isDeliverableResponseContent("[Calling tools: mark_work_complete] some trailing text")).toBe(false)
   })

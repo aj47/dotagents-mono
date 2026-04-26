@@ -696,6 +696,11 @@ class SkillsService {
     return this.getSkills().find((s) => s.filePath === filePath)
   }
 
+  refreshFromDisk(): AgentSkill[] {
+    this.loadFromDisk({ migrateLegacy: false })
+    return this.skills
+  }
+
   createSkill(
     name: string,
     description: string,
@@ -947,7 +952,9 @@ class SkillsService {
       return ""
     }
 
-    const allSkills = this.getSkills()
+    // Refresh here so a new agent session sees skills added directly on disk
+    // while the app process is still running.
+    const allSkills = this.refreshFromDisk()
     // Filter by the profile's enabled list
     const enabledSkills = allSkills.filter(skill =>
       enabledSkillIds.includes(skill.id)
@@ -1302,10 +1309,8 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
    * Now it only reloads from .agents layers (global + workspace).
    */
   scanSkillsFolder(): AgentSkill[] {
-    this.ensureInitialized()
-
     // Reload from .agents to pick up any manual edits or new skill files.
-    this.loadFromDisk({ migrateLegacy: false })
+    this.refreshFromDisk()
 
     // No longer scan the legacy skillsFolder — the canonical location is .agents/skills/.
     return []
@@ -1361,6 +1366,11 @@ function handleWatcherEvent(eventType: string, filename: string | null): void {
       // On Linux, refresh subdirectory watchers when structure changes
       if (process.platform === "linux" && (isDirectory || isUnknownChange)) {
         refreshLinuxSubdirectoryWatchers()
+      }
+      try {
+        skillsService.refreshFromDisk()
+      } catch (error) {
+        logApp("Failed to refresh skills after folder change:", error)
       }
       notifySkillsFolderChanged()
     }, DEBOUNCE_MS)

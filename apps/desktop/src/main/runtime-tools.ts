@@ -1074,6 +1074,10 @@ const toolHandlers: Record<string, ToolHandler> = {
     let ignoredInvalidSkillIdWarning: ReturnType<typeof buildIgnoredExecuteCommandSkillIdWarning> | undefined
 
     if (skillId) {
+      // Pick up skills added or edited directly in .agents/skills while the app
+      // process is still running.
+      skillsService.refreshFromDisk()
+
       // Find the skill and get its directory
       let skill = skillsService.getSkill(skillId)
       if (!skill) {
@@ -1430,6 +1434,9 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const skillId = args.skillId.trim()
     const { skillsService } = await import("./skills-service")
+    // Pick up skills added or edited directly in .agents/skills while the app
+    // process is still running.
+    skillsService.refreshFromDisk()
     const skill = skillsService.getSkill(skillId)
 
     if (!skill) {

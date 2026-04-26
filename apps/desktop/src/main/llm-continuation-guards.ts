@@ -18,6 +18,7 @@ const PARTIAL_ANALYSIS_SIGNAL_REGEX = /\b(mid-analysis|laid out the (?:three )?r
 const STRATEGY_REQUEST_SIGNAL_REGEX = /\b(which approach to take|what do you want to do|hard reset|selective revert|cherry-pick|clean commit hash|last clean commit hash)\b/i
 const STRATEGY_REQUEST_REASON_REGEX = /\b(strategy|approach|commit hash|baseline commit|recovery)\b/i
 const EXPLICIT_ASK_FIRST_REGEX = /\b(ask me first|ask before|check with me first|get my approval first|before you (?:merge|open|submit|push|create))\b/i
+const THINK_BLOCK_REGEX = /<think>[\s\S]*?<\/think>/gi
 
 type ConversationHistoryLike = Array<{
   role?: string
@@ -145,6 +146,7 @@ export function isGarbledToolCallText(content?: string): boolean {
 export function isDeliverableResponseContent(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
+  if (!trimmed.replace(THINK_BLOCK_REGEX, "").trim()) return false
   if (isGarbledToolCallText(trimmed)) return false
   if (RAW_TOOL_TRANSCRIPT_REGEX.test(trimmed)) return false
   if (isProgressUpdateResponse(trimmed)) return false
