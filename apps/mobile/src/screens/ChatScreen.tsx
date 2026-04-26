@@ -273,6 +273,7 @@ const getCollapsedMessagePreview = (content: string) =>
   content
     .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
     .replace(/(^|[^!])\[[^\]]*\]\((?:assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi, '$1[Video]')
+    .replace(/^#{1,6}\s+/gm, '')
     .replace(/\s+/g, ' ')
     .trim();
 

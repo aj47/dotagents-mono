@@ -976,7 +976,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             "leading-relaxed text-left",
             !isExpanded && shouldCollapse && "line-clamp-2"
           )}>
-          <MarkdownRenderer content={effectiveContent.trim()} />
+          <MarkdownRenderer content={effectiveContent.trim()} collapsed={!isExpanded && shouldCollapse} />
           </div>
           {hasExtras && isExpanded && (
             <div className="mt-2 space-y-2 text-left">
