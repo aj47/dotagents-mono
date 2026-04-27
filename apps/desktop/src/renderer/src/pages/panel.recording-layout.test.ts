@@ -52,6 +52,19 @@ describe("panel recording layout", () => {
     expect(resizeWaveformSection).not.toContain("Math.max(currentWidth")
   })
 
+  it("keeps completed progress panels in progress sizing instead of waveform sizing", () => {
+    const modeSwitchSection = panelSource.slice(
+      panelSource.indexOf('let targetMode: "agent" | "normal" | null = null'),
+      panelSource.indexOf("// Note: We don't need to hide text input")
+    )
+
+    expect(modeSwitchSection).toContain("if (anyActiveNonSnoozed)")
+    expect(modeSwitchSection).toContain("} else if (anyVisibleSessions && !recording) {")
+    expect(modeSwitchSection).toContain('targetMode = "agent"')
+    expect(modeSwitchSection).toContain("recording,")
+    expect(panelSource).toContain("anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight")
+  })
+
   it("keeps recording waveform layout stable under browser zoom", () => {
     expect(panelSource).toContain("function RecordingWaveformPanel")
     expect(panelSource).toContain("getPanelViewportScale(nativePanelSize, cssViewportSize)")

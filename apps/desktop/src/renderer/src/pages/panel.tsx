@@ -275,7 +275,7 @@ export function Component() {
   const visibleSessionCount = Array.from(agentProgressById?.values() ?? [])
     .filter(progress => progress && !progress.isSnoozed).length
   // Aggregate session state helpers
-  // Only consider non-snoozed AND non-completed sessions as "active" for mode switching
+  // Only consider non-snoozed AND non-completed sessions as "active" for session lifecycle.
   const anyActiveNonSnoozed = activeSessionCount > 0
   // Any non-snoozed session (including completed) should show the overlay
   // Also show overlay if there's a focused session (user explicitly selected it, even if snoozed)
@@ -1100,7 +1100,7 @@ export function Component() {
     let targetMode: "agent" | "normal" | null = null
     if (anyActiveNonSnoozed) {
       targetMode = "agent"
-      // When switching to agent mode, stop any ongoing recording
+      // When switching to agent/progress mode, stop any ongoing recording.
       if (recordingRef.current) {
         isConfirmedRef.current = false
         setRecording(false)
@@ -1108,6 +1108,8 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         recorderRef.current?.stopRecording()
       }
+    } else if (anyVisibleSessions && !recording) {
+      targetMode = "agent"
     } else if (isTextSubmissionPending) {
       targetMode = null // keep current size briefly to avoid flicker
     } else {
@@ -1124,7 +1126,7 @@ export function Component() {
     return () => {
       if (tid) clearTimeout(tid)
     }
-  }, [anyActiveNonSnoozed, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
+  }, [anyActiveNonSnoozed, anyVisibleSessions, recording, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
 
   // Note: We don't need to hide text input when agentProgress changes because:
   // 1. handleTextSubmit already hides it immediately on submit (line 375)
