@@ -1498,13 +1498,15 @@ export async function processTranscriptWithAgentMode(
         ? verification.reason.trim()
         : ""
     const onlyMissingInternalCompletionSignal = (() => {
-      const combinedText = [verificationReason, ...missingItems].join(" ").toLowerCase()
-      if (!combinedText.trim()) return false
+      const verificationSignals = [verificationReason, ...missingItems]
+        .map((value) => value.toLowerCase().trim())
+        .filter((value) => value.length > 0)
+      if (verificationSignals.length === 0) return false
       const mentionsCompletionSignal =
-        combinedText.includes(MARK_WORK_COMPLETE_TOOL) ||
-        combinedText.includes("completion signal")
-      const mentionsMissingWork = missingItems.some((item) => {
-        const normalized = item.toLowerCase()
+        verificationSignals.some((signal) => signal.includes(MARK_WORK_COMPLETE_TOOL)) ||
+        verificationSignals.some((signal) => signal.includes("completion signal"))
+      const mentionsMissingWork = verificationSignals.some((signal) => {
+        const normalized = signal
         return !normalized.includes(MARK_WORK_COMPLETE_TOOL) &&
           !normalized.includes("completion signal")
       })

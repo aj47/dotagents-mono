@@ -160,8 +160,8 @@ describe('createDelegationProgressMessages', () => {
     ]);
     expect(messages[0].toolResults).toEqual([
       { success: true, content: '1 hit', error: undefined },
-      { success: true, content: '{"files":["README.md"]}', error: undefined },
       undefined,
+      { success: true, content: '{"files":["README.md"]}', error: undefined },
     ]);
   });
 

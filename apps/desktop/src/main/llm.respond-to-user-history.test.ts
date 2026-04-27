@@ -759,6 +759,42 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(5)
   })
 
+  it("keeps iterating when verification reason reports missing work even if missingItems only mention completion signal", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockImplementation(async () => ({
+      content: "",
+      toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Still finalizing." } },
+      ],
+    }))
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: false,
+      conversationState: "running",
+      reason: "The requested result has not been delivered.",
+      missingItems: ["mark_work_complete was not called"],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Return the final result",
+      availableTools as any,
+      makeExecuteToolCall("session-comm-only-reason-missing-work", 1),
+      6,
+      [],
+      "conv-comm-only-reason-missing-work",
+      "session-comm-only-reason-missing-work",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.totalIterations).toBeGreaterThan(1)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(5)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(5)
+  })
+
   it("ignores blank response events when resolving the final visible answer", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
     const { appendSessionUserResponse } = await import("./session-user-response-store")

@@ -16,10 +16,6 @@ function getRunKey(sessionId: string, runId?: number): string {
   return `${sessionId}:${typeof runId === "number" ? runId : "no-run"}`
 }
 
-function normalizeResponseTextForDedupe(text: string): string {
-  return text.replace(/\s+/g, " ").trim()
-}
-
 export function appendSessionUserResponse(params: {
   sessionId: string
   text: string
@@ -33,7 +29,7 @@ export function appendSessionUserResponse(params: {
 
   if (
     lastEventForRun &&
-    normalizeResponseTextForDedupe(lastEventForRun.text) === normalizeResponseTextForDedupe(text)
+    lastEventForRun.text === text
   ) {
     logApp("[session-user-response-store] skip duplicate append", {
       sessionId,
