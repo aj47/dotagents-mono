@@ -603,6 +603,7 @@ export interface Skill {
   id: string;
   name: string;
   description: string;
+  instructions?: string;
   enabled: boolean;
   enabledForProfile: boolean;
   source?: 'local' | 'imported';
@@ -714,6 +715,10 @@ export interface AgentProfileUpdateRequest {
 }
 
 // Agent Loops Types
+export type LoopSchedule =
+  | { type: "daily"; times: string[] }
+  | { type: "weekly"; times: string[]; daysOfWeek: number[] };
+
 export interface Loop {
   id: string;
   name: string;
@@ -723,9 +728,14 @@ export interface Loop {
   profileId?: string;
   profileName?: string;
   runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string;
+  runContinuously?: boolean;
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;
+  schedule?: LoopSchedule;
 }
 
 export interface LoopsResponse {

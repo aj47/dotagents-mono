@@ -4,9 +4,8 @@ import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
-import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
+import { Button } from "@renderer/components/ui/button"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
-import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
 import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
 import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
@@ -337,7 +336,11 @@ export const Component = () => {
       href: "/knowledge",
       icon: "i-mingcute-book-2-line",
     },
-
+    {
+      text: "Agents",
+      href: "/settings/agents",
+      icon: "i-mingcute-group-line",
+    },
     {
       text: "Capabilities",
       href: "/settings/capabilities",
@@ -477,19 +480,18 @@ export const Component = () => {
               "flex shrink-0 items-center",
               isCollapsed ? "justify-center" : "justify-between",
               // On macOS, add top padding to clear the traffic-light window controls
-              process.env.IS_MAC ? "pb-1 pt-7" : "pb-1 pt-2",
+              process.env.IS_MAC ? "pb-1 pt-7 app-drag-region" : "pb-1 pt-2",
               isCollapsed ? "px-1" : "px-2",
             )}
           >
             {!isCollapsed && (
               <div className="flex items-center gap-1">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
                   onClick={handleToggleGlobalTTS}
                   disabled={!configQuery.data || saveConfigMutation.isPending}
-                  className={cn(
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors disabled:opacity-50",
-                  )}
+                  className="app-no-drag-region text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 disabled:opacity-50"
                   title={
                     isGlobalTTSEnabled
                       ? "Disable global TTS"
@@ -508,13 +510,14 @@ export const Component = () => {
                   ) : (
                     <VolumeX className="h-3.5 w-3.5" />
                   )}
-                </button>
+                </Button>
 
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
                   onClick={handleEmergencyStopAll}
                   disabled={isEmergencyStopping}
-                  className="text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
+                  className="app-no-drag-region text-destructive hover:bg-destructive/10 shrink-0 disabled:opacity-50"
                   title="Emergency stop all agent sessions"
                   aria-label="Emergency stop all agent sessions"
                 >
@@ -523,25 +526,27 @@ export const Component = () => {
                   ) : (
                     <OctagonX className="h-3.5 w-3.5" />
                   )}
-                </button>
+                </Button>
               </div>
             )}
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm-icon"
               onClick={toggleCollapse}
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-md transition-colors",
+                "app-no-drag-region shrink-0",
                 "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isCollapsed ? (
-                <PanelLeft className="h-4 w-4" />
+                <PanelLeft className="h-3.5 w-3.5" />
               ) : (
-                <PanelLeftClose className="h-4 w-4" />
+                <PanelLeftClose className="h-3.5 w-3.5" />
               )}
-            </button>
+            </Button>
           </header>
 
           {/* Scrollable area: Settings + Sessions scroll together */}
@@ -804,9 +809,6 @@ export const Component = () => {
                 inactiveSessionCount={0}
               />
 
-              {/* Agents Section - capability management */}
-              <AgentCapabilitiesSidebar />
-
               {/* Settings Section - Collapsible, collapsed by default */}
               <div className="px-2">
                 <button
@@ -872,9 +874,6 @@ export const Component = () => {
 
         {/* Main content area */}
         <div className="bg-background flex min-w-0 grow flex-col">
-          {/* Draggable top bar for Mac - allows window dragging while content scrolls */}
-          {process.env.IS_MAC && <SettingsDragBar />}
-
           {/* Scrollable content area */}
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             <Outlet

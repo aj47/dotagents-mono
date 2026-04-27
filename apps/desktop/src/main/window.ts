@@ -16,6 +16,7 @@ import { state, agentProcessManager, suppressPanelAutoShow, isHeadlessMode } fro
 import { calculatePanelPosition } from "./panel-position"
 import { setupConsoleLogger } from "./console-logger"
 import { emergencyStopAll } from "./emergency-stop"
+import type { ScreenRegionCapture } from "./screenshot-capture"
 
 type WINDOW_ID = "main" | "panel" | "setup"
 
@@ -233,6 +234,29 @@ export function clearPanelHiddenByMainFocus() {
 // Clear the "opened with main" flag when panel is explicitly hidden
 export function clearPanelOpenedWithMain() {
   panelOpenedWithMain = false
+}
+
+// Broadcast the floating panel's current visibility to all renderer windows so
+// they can coordinate behavior like TTS auto-play (avoid double playback when
+// the same session renders in both panel and main-window tile).
+function broadcastPanelVisibility(visible: boolean) {
+  for (const win of WINDOWS.values()) {
+    try {
+      getRendererHandlers<RendererHandlers>(win.webContents).panelVisibilityChanged?.send({ visible })
+    } catch {}
+  }
+}
+
+// Stop TTS playing in the floating panel renderer only. Invoked from the
+// panel's `hide` handler so every hide path (ESC, hideFloatingPanelWindow,
+// main-window focus auto-hide, etc.) silences panel TTS without affecting
+// TTS playing in the main window.
+function stopPanelRendererTts() {
+  const panel = WINDOWS.get("panel")
+  if (!panel) return
+  try {
+    getRendererHandlers<RendererHandlers>(panel.webContents).stopAllTts?.send()
+  } catch {}
 }
 
 // One-shot flag for intentional main-window hide paths.
@@ -504,11 +528,11 @@ export function showMainWindow(url?: string) {
   }
 }
 
-const VISUALIZER_BUFFER_LENGTH = 70
+const VISUALIZER_BUFFER_LENGTH = 52
 const WAVEFORM_BAR_WIDTH = 2
 const WAVEFORM_GAP = 2 // gap-0.5 = 2px in Tailwind
 const WAVEFORM_PADDING = 32 // px-4 = 16px on each side
-const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 360
+const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 280
 
 // Raw waveform width only accounts for the bar lane itself.
 // Keep a slightly wider floor so the recording badge + submit hint do not feel cramped.
@@ -518,24 +542,24 @@ const calculateMinWaveformWidth = () => {
   return Math.max(waveformWidth, WAVEFORM_PANEL_CONTENT_MIN_WIDTH)
 }
 
-export const MIN_WAVEFORM_WIDTH = calculateMinWaveformWidth() // 360px floor for panel breathing room
+export const MIN_WAVEFORM_WIDTH = calculateMinWaveformWidth() // 280px compact floor for the recording panel
 
 // Minimum height for waveform panel:
 // - Drag bar: 24px
-// - Waveform: 64px (h-16)
-// - Submit button + hint: 36px
-// - Padding: ~26px
-// Total: ~150px
-export const WAVEFORM_MIN_HEIGHT = 150
+// - Waveform: ~44px
+// - Submit button + hint: ~32px
+// - Padding: ~20px
+// Total: ~120px
+export const WAVEFORM_MIN_HEIGHT = 120
 
 // Minimum height for waveform panel with transcription preview:
 // - Drag bar: 24px
-// - Waveform (shrunk): 40px (h-10)
+// - Waveform (shrunk): ~34px
 // - Preview text: ~32px (2 lines)
-// - Submit button + hint: 36px
-// - Padding/margins: ~28px
-// Total: ~160px
-export const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
+// - Submit button + hint: ~32px
+// - Padding/margins: ~26px
+// Total: ~148px
+export const WAVEFORM_WITH_PREVIEW_HEIGHT = 148
 
 // Minimum height for text input panel:
 // - Hint text row: ~20px
@@ -558,6 +582,11 @@ const panelWindowSize = {
   height: WAVEFORM_MIN_HEIGHT,
 }
 
+export const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420
+export const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240
+export const PANEL_SAVED_SIZE_MAX_WIDTH = 3000
+export const PANEL_SAVED_SIZE_MAX_HEIGHT = 2000
+
 const agentPanelWindowSize = {
   width: 600,
   height: 400,
@@ -571,6 +600,16 @@ const textInputPanelWindowSize = {
 export const TEXT_INPUT_MIN_WIDTH = textInputPanelWindowSize.width
 
 type SavedPanelSizeMode = "waveform" | "progress" | "textInput"
+
+const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>
+  !!value &&
+  typeof value === "object" &&
+  "width" in value &&
+  "height" in value &&
+  typeof (value as { width: unknown }).width === "number" &&
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
 
 const getPanelMinWidth = (mode: SavedPanelSizeMode | "normal" | "agent" | "textInput") => {
   if (mode === "textInput") {
@@ -592,30 +631,39 @@ const getPanelMinHeight = (mode: SavedPanelSizeMode | "normal" | "agent" | "text
 // Get the saved panel size (mode-aware)
 const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
   const config = configStore.get()
+  const legacyCustomSize = config.panelCustomSize
 
   logApp(`[window.ts] getSavedPanelSize - checking config for mode: ${mode}...`)
 
-  const validateSize = (
-    savedSize: { width: number; height: number },
+  const getValidSavedSize = (
+    savedSize: unknown,
     minHeight: number,
-    fallbackSize: { width: number; height: number } = panelWindowSize,
     minWidth: number = getPanelMinWidth(mode),
   ) => {
-    const maxWidth = 3000
-    const maxHeight = 2000
+    if (!isFinitePanelSize(savedSize)) {
+      logApp(`[window.ts] Saved size is invalid:`, savedSize)
+      return null
+    }
 
-    if (savedSize.width > maxWidth || savedSize.height > maxHeight) {
-      logApp(`[window.ts] Saved size too large (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
-      return fallbackSize
+    if (savedSize.width > PANEL_SAVED_SIZE_MAX_WIDTH || savedSize.height > PANEL_SAVED_SIZE_MAX_HEIGHT) {
+      logApp(`[window.ts] Saved size too large (${savedSize.width}x${savedSize.height})`)
+      return null
     }
 
     if (savedSize.width < minWidth || savedSize.height < minHeight) {
-      logApp(`[window.ts] Saved size too small (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
-      return fallbackSize
+      logApp(`[window.ts] Saved size too small (${savedSize.width}x${savedSize.height})`)
+      return null
     }
 
     return savedSize
   }
+
+  const validateSize = (
+    savedSize: unknown,
+    minHeight: number,
+    fallbackSize: { width: number; height: number } = panelWindowSize,
+    minWidth: number = getPanelMinWidth(mode),
+  ) => getValidSavedSize(savedSize, minHeight, minWidth) ?? fallbackSize
 
   if (mode === "progress") {
     if (config.panelProgressSize) {
@@ -623,15 +671,17 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
       return validateSize(config.panelProgressSize, PROGRESS_MIN_HEIGHT, agentPanelWindowSize)
     }
 
-    if (config.panelCustomSize) {
+    if (isFinitePanelSize(legacyCustomSize)) {
       // Migration fallback for users that had a single shared panel size before
       // progress-mode persistence existed.
       const migratedProgressSize = {
-        width: config.panelCustomSize.width,
-        height: Math.max(config.panelCustomSize.height, PROGRESS_MIN_HEIGHT),
+        width: legacyCustomSize.width,
+        height: Math.max(legacyCustomSize.height, PROGRESS_MIN_HEIGHT),
       }
       logApp(`[window.ts] No saved progress size; using migrated panel size:`, migratedProgressSize)
       return validateSize(migratedProgressSize, PROGRESS_MIN_HEIGHT, agentPanelWindowSize)
+    } else if (legacyCustomSize) {
+      logApp(`[window.ts] Ignoring invalid legacy progress size, using agent default:`, legacyCustomSize)
     }
 
     logApp(`[window.ts] No saved progress size, using agent default:`, agentPanelWindowSize)
@@ -644,23 +694,46 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
       return validateSize(config.panelTextInputSize, TEXT_INPUT_MIN_HEIGHT, textInputPanelWindowSize, TEXT_INPUT_MIN_WIDTH)
     }
 
-    if (config.panelCustomSize) {
+    if (isFinitePanelSize(legacyCustomSize)) {
       const migratedTextInputSize = {
-        width: Math.max(config.panelCustomSize.width, TEXT_INPUT_MIN_WIDTH),
-        height: Math.max(config.panelCustomSize.height, TEXT_INPUT_MIN_HEIGHT),
+        width: Math.max(legacyCustomSize.width, TEXT_INPUT_MIN_WIDTH),
+        height: Math.max(legacyCustomSize.height, TEXT_INPUT_MIN_HEIGHT),
       }
       logApp(`[window.ts] No saved text input size; using migrated panel size:`, migratedTextInputSize)
       return validateSize(migratedTextInputSize, TEXT_INPUT_MIN_HEIGHT, textInputPanelWindowSize, TEXT_INPUT_MIN_WIDTH)
+    } else if (legacyCustomSize) {
+      logApp(`[window.ts] Ignoring invalid legacy text input size, using text input default:`, legacyCustomSize)
     }
 
     logApp(`[window.ts] No saved text input size, using text input default:`, textInputPanelWindowSize)
     return textInputPanelWindowSize
   }
 
-  // Waveform mode uses panelCustomSize
-  if (config.panelCustomSize) {
-    logApp(`[window.ts] Found saved panel size:`, config.panelCustomSize)
-    return validateSize(config.panelCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+  // Waveform mode has its own explicit size bucket. Legacy panelCustomSize was
+  // historically shared with progress/text-input layouts, so only reuse it if
+  // it is already compact enough to plausibly be a recording waveform size.
+  if (config.panelWaveformSize) {
+    logApp(`[window.ts] Found saved waveform size:`, config.panelWaveformSize)
+    const savedWaveformSize = getValidSavedSize(config.panelWaveformSize, WAVEFORM_MIN_HEIGHT, getPanelMinWidth("waveform"))
+    if (savedWaveformSize) {
+      return savedWaveformSize
+    }
+    logApp(`[window.ts] Ignoring invalid saved waveform size, checking legacy fallback:`, config.panelWaveformSize)
+  }
+
+  if (isFinitePanelSize(legacyCustomSize)) {
+    const isCompactLegacyWaveformSize =
+      legacyCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
+      legacyCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
+
+    if (isCompactLegacyWaveformSize) {
+      logApp(`[window.ts] Reusing compact legacy waveform size:`, legacyCustomSize)
+      return validateSize(legacyCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+    }
+
+    logApp(`[window.ts] Ignoring oversized legacy waveform size, using compact default:`, legacyCustomSize)
+  } else if (legacyCustomSize) {
+    logApp(`[window.ts] Ignoring invalid legacy waveform size, using compact default:`, legacyCustomSize)
   }
 
   logApp(`[window.ts] No saved panel size, using default:`, panelWindowSize)
@@ -675,6 +748,14 @@ const getSavedSizeForMode = (mode: "normal" | "agent" | "textInput") => {
     return getSavedPanelSize("textInput")
   }
   return getSavedPanelSize("waveform")
+}
+
+const getWaveformPanelSize = (minimumHeight = WAVEFORM_MIN_HEIGHT) => {
+  const savedSize = getSavedPanelSize("waveform")
+  return {
+    width: Math.max(savedSize.width, getPanelMinWidth("waveform")),
+    height: Math.max(savedSize.height, minimumHeight),
+  }
 }
 
 function restorePanelSizeForMode(mode: "normal" | "agent" | "textInput", reason = "setPanelMode") {
@@ -891,6 +972,7 @@ export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
     panelPosition: "top-right",
     panelCustomPosition: undefined,
     panelCustomSize: undefined,
+    panelWaveformSize: undefined,
     panelTextInputSize: undefined,
     panelProgressSize: undefined,
   })
@@ -998,6 +1080,8 @@ export function createPanelWindow(): BrowserWindow | undefined {
       snapshot: getWindowFocusDebugSnapshot(),
     })
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
+    stopPanelRendererTts()
+    broadcastPanelVisibility(false)
   })
 
   // Reassert z-order on lifecycle changes and reset stale focus-hide flag
@@ -1006,6 +1090,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
     // Clear the flag when panel becomes visible through any means.
     // This prevents stale state if user manually shows panel while main is focused.
     clearPanelHiddenByMainFocus()
+    broadcastPanelVisibility(true)
   })
   win.on("blur", () => {
     // Skip z-order reassertion in textInput mode.
@@ -1116,7 +1201,7 @@ export async function showPanelWindowAndStartRecording(fromButtonClick?: boolean
   showPanelWindow()
 }
 
-export async function showPanelWindowAndStartMcpRecording(conversationId?: string, sessionId?: string, fromTile?: boolean, fromButtonClick?: boolean, conversationTitle?: string, isStillHeld?: () => boolean) {
+export async function showPanelWindowAndStartMcpRecording(conversationId?: string, sessionId?: string, fromTile?: boolean, fromButtonClick?: boolean, conversationTitle?: string, isStillHeld?: () => boolean, screenshot?: ScreenRegionCapture) {
   // In headless mode, skip all window operations
   if (isHeadlessMode) return
 
@@ -1144,7 +1229,7 @@ export async function showPanelWindowAndStartMcpRecording(conversationId?: strin
   // Pass fromTile and fromButtonClick flags so panel knows how to behave after recording ends
   whenPanelReady(() => {
     if (isStillHeld && !isStillHeld()) return
-    getWindowRendererHandlers("panel")?.startMcpRecording.send({ conversationId, conversationTitle, sessionId, fromTile, fromButtonClick })
+    getWindowRendererHandlers("panel")?.startMcpRecording.send({ conversationId, conversationTitle, sessionId, fromTile, fromButtonClick, screenshot })
   })
   showPanelWindow()
 }
@@ -1340,7 +1425,8 @@ export function resizePanelToNormal() {
 
 /**
  * Resize the panel to compact waveform size for recording.
- * This shrinks the panel height to WAVEFORM_MIN_HEIGHT while keeping the current width.
+ * This restores the waveform panel from its own saved size bucket instead of
+ * inheriting the current progress/text-input panel dimensions.
  * This fixes the issue where the panel had too much negative space when showing
  * the waveform after being sized for agent mode.
  * See: https://github.com/aj47/dotagents-mono/issues/817
@@ -1350,14 +1436,10 @@ export function resizePanelForWaveform() {
   if (!win) return
 
   try {
-    const [currentWidth] = win.getSize()
-    const targetHeight = WAVEFORM_MIN_HEIGHT
+    const [currentWidth, currentHeight] = win.getSize()
+    const { width: newWidth, height: targetHeight } = getWaveformPanelSize()
 
-    // Keep the current width but shrink to waveform height
-    const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-    const newWidth = Math.max(currentWidth, minWidth)
-
-    logApp(`[resizePanelForWaveform] Resizing panel from current size to ${newWidth}x${targetHeight}`)
+    logApp(`[resizePanelForWaveform] Restoring waveform size from ${currentWidth}x${currentHeight} to ${newWidth}x${targetHeight}`)
 
     win.setSize(newWidth, targetHeight)
     // Notify renderer of the size change
@@ -1389,20 +1471,23 @@ export function resizePanelForWaveformPreview(showPreview: boolean) {
   try {
     const [currentWidth, currentHeight] = win.getSize()
     const targetHeight = showPreview ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
+    const targetSize = getWaveformPanelSize(targetHeight)
+    const newWidth = targetSize.width
+    const newHeight = targetSize.height
+    const minWidth = getPanelMinWidth("waveform")
 
-    // Skip if already at target height
-    if (currentHeight === targetHeight) return
+    win.setMinimumSize(minWidth, targetHeight)
 
-    const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-    const newWidth = Math.max(currentWidth, minWidth)
+    // Skip if already at target size
+    if (currentWidth === newWidth && currentHeight === newHeight) return
 
-    logApp(`[resizePanelForWaveformPreview] Resizing panel from ${currentWidth}x${currentHeight} to ${newWidth}x${targetHeight} (preview=${showPreview})`)
+    logApp(`[resizePanelForWaveformPreview] Resizing panel from ${currentWidth}x${currentHeight} to ${newWidth}x${newHeight} (preview=${showPreview})`)
 
-    win.setSize(newWidth, targetHeight)
-    notifyPanelSizeChanged(newWidth, targetHeight)
+    win.setSize(newWidth, newHeight)
+    notifyPanelSizeChanged(newWidth, newHeight)
 
     // Reposition to maintain the panel's anchor point
-    const position = calculatePanelPosition({ width: newWidth, height: targetHeight }, "normal")
+    const position = calculatePanelPosition({ width: newWidth, height: newHeight }, "normal")
     win.setPosition(position.x, position.y)
   } catch (e) {
     logApp("[resizePanelForWaveformPreview] Failed to resize panel:", e)

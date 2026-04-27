@@ -46,6 +46,7 @@ import {
 } from "./cloudflare-tunnel"
 import { initModelsDevService } from "./models-dev-service"
 import { loopService, startTasksFolderWatcher } from "./loop-service"
+import { startAgentsFolderWatcher } from "./agents-folder-watcher"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
 import { discordService } from "./discord-service"
@@ -391,6 +392,12 @@ if (!gotSingleInstanceLock) {
           logApp("Failed to initialize bundled skills:", error)
         }
 
+        try {
+          startAgentsFolderWatcher()
+        } catch (error) {
+          logApp("Failed to start .agents folder watcher (headless):", error)
+        }
+
         // Initialize models.dev service
         initModelsDevService()
         logApp("Models.dev service initialized (headless)")
@@ -569,6 +576,15 @@ if (!gotSingleInstanceLock) {
       startSkillsFolderWatcher()
     } catch (error) {
       logApp("Failed to initialize bundled skills:", error)
+    }
+
+    // Start watching the rest of `.agents/` so external edits to
+    // layouts/ui.json and agents/<id>/agent.md are picked up before the next
+    // save overwrites them.
+    try {
+      startAgentsFolderWatcher()
+    } catch (error) {
+      logApp("Failed to start .agents folder watcher:", error)
     }
 
     try {

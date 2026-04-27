@@ -51,7 +51,7 @@ describe("constructSystemPrompt", () => {
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts")
 
     expect(DEFAULT_SYSTEM_PROMPT).toContain("check relevant knowledge notes and prior conversations first")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("user-specific facts are still missing after checking relevant notes/conversations")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("Before asking the user for facts that may already be known")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("~/.agents/knowledge/")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("./.agents/knowledge/")
     expect(DEFAULT_SYSTEM_PROMPT).toContain(".agents/knowledge/<slug>/<slug>.md")
@@ -93,7 +93,7 @@ describe("constructSystemPrompt", () => {
     const prompt = constructMinimalSystemPrompt([], true)
 
     expect(prompt).toContain("check relevant knowledge notes and prior conversations first")
-    expect(prompt).toContain("generic checklist")
+    expect(prompt).toContain("user/project-specific facts are still missing")
     expect(prompt).toContain("~/.agents/knowledge/")
     expect(prompt).toContain(".agents/knowledge/<slug>/<slug>.md")
     expect(prompt).toContain("context: search-only")
@@ -183,6 +183,8 @@ describe("constructSystemPrompt", () => {
     ] as any, undefined, true)
 
     expect(prompt).toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
+    expect(prompt).toContain("at most once per skill per agent session")
+    expect(prompt).toContain("If it already returned successfully, reuse the prior instructions")
   })
 
   it("separates MCP tools from DotAgents runtime tools in the minimal prompt", async () => {

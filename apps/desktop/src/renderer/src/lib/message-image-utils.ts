@@ -156,8 +156,24 @@ export const buildMessageWithImages = (
   return [trimmed, imageMarkdown].filter(Boolean).join("\n\n")
 }
 
+export type ImageAttachmentInputFiles = FileList | File[]
+
+export const getClipboardImageFiles = (clipboardData: DataTransfer | null): File[] => {
+  if (!clipboardData) return []
+
+  const itemFiles = Array.from(clipboardData.items ?? [])
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => !!file)
+
+  if (itemFiles.length > 0) return itemFiles
+
+  return Array.from(clipboardData.files ?? [])
+    .filter((file) => file.type.startsWith("image/"))
+}
+
 export const readImageAttachments = async (
-  files: FileList | null,
+  files: ImageAttachmentInputFiles | null,
   existingAttachments: MessageImageAttachment[] = []
 ) => {
   const startTime = performance.now()
@@ -216,9 +232,11 @@ export const readImageAttachments = async (
   const processedAttachments = await Promise.all(
     accepted.map(async (file, index) => {
       const optimized = await toOptimizedDataUrl(file)
+      const fallbackName = `pasted-image-${index + 1}`
+      const name = file.name || fallbackName
       return {
-        id: `${Date.now()}-${index}-${file.name}`,
-        name: file.name,
+        id: `${Date.now()}-${index}-${name}`,
+        name,
         sizeBytes: optimized.sizeBytes,
         dataUrl: optimized.dataUrl,
       }

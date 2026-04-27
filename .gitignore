@@ -68,6 +68,11 @@ release/
 trace-session*.json
 apps/desktop/tmp/
 
+# Playwright automation artifacts
+**/.playwright-cli/
+**/.playwright-mcp/
+.agents/tmp-playwright-skill/
+
 # Node compile cache
 node-compile-cache/
 tmp/

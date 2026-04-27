@@ -41,6 +41,7 @@ export type {
   KnowledgeNoteEntryType,
   AgentSkill,
   LoopConfig,
+  LoopSchedule,
   AgentProfile,
   AgentProfileConnection,
   AgentProfileConnectionType,

@@ -95,7 +95,11 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
   vi.resetModules()
   const Null = () => null
 
+  const localStorageMock = { getItem: vi.fn(() => null) }
+  vi.stubGlobal("localStorage", localStorageMock)
   vi.stubGlobal("window", {
+    alert: vi.fn(),
+    localStorage: localStorageMock,
     electron: {
       ipcRenderer: {
         invoke: vi.fn(),
@@ -137,11 +141,6 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
     const Icon = () => null
     return { ImagePlus: Icon, X: Icon }
   })
-  vi.doMock("@renderer/lib/message-image-utils", () => ({
-    buildMessageWithImages: (text: string) => text.trim(),
-    MAX_IMAGE_ATTACHMENTS: 4,
-    readImageAttachments: vi.fn(),
-  }))
 
   return import("./text-input-panel")
 }
@@ -249,5 +248,84 @@ describe("TextInputPanel submit behavior", () => {
     expect(textarea.props.disabled).toBe(false)
     expect(retrySendButton.props.disabled).toBe(false)
     expect(consoleError).toHaveBeenCalledWith("Failed to submit text input panel message:", error)
+  })
+
+  it("attaches clipboard images pasted into the composer", async () => {
+    const runtime = createHookRuntime()
+    const { TextInputPanel } = await loadTextInputPanel(runtime)
+    vi.stubGlobal("FileReader", class {
+      result = ""
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      readAsDataURL(file: { type: string }) {
+        this.result = `data:${file.type};base64,abc`
+        this.onload?.()
+      }
+    })
+    vi.stubGlobal("Image", class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      naturalWidth = 16
+      naturalHeight = 16
+
+      set src(_value: string) {
+        this.onload?.()
+      }
+    })
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => ({
+        getContext: () => ({ clearRect: vi.fn(), drawImage: vi.fn() }),
+        toDataURL: () => "data:image/jpeg;base64,abc",
+      })),
+    })
+    const props = {
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "",
+    }
+    const pastedFile = { name: "screenshot.png", type: "image/png", size: 1234 }
+    const pasteEvent = {
+      clipboardData: {
+        items: [{ kind: "file", type: "image/png", getAsFile: () => pastedFile }],
+        files: [],
+      },
+      preventDefault: vi.fn(),
+    }
+
+    let tree = runtime.render(TextInputPanel, props as any)
+    const textarea = findTextarea(tree)
+    await textarea.props.onPaste(pasteEvent)
+    await flushPromises()
+
+    expect(pasteEvent.preventDefault).toHaveBeenCalledOnce()
+
+    tree = runtime.render(TextInputPanel, props as any)
+    const sendButton = findNode(tree, (node) => node.type === "button" && getText(node) === "Send")
+    expect(getText(tree)).toContain("1 image")
+    expect(sendButton.props.disabled).toBe(false)
+  })
+
+  it("allows normal text paste to proceed when the clipboard has no image", async () => {
+    const runtime = createHookRuntime()
+    const { TextInputPanel } = await loadTextInputPanel(runtime)
+    const pasteEvent = {
+      clipboardData: { imageFiles: [] },
+      preventDefault: vi.fn(),
+    }
+
+    const tree = runtime.render(TextInputPanel, {
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "",
+    } as any)
+    const textarea = findTextarea(tree)
+    await textarea.props.onPaste(pasteEvent)
+
+    expect(pasteEvent.preventDefault).not.toHaveBeenCalled()
   })
 })

@@ -1,7 +1,6 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 const fs = require('fs');
-const { synthesize: synthesizeEdgeTts } = require('./scripts/edgeTtsDevProxy');
 
 // Find the project and workspace directories
 const projectRoot = __dirname;
@@ -9,110 +8,6 @@ const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
-
-// ---------------------------------------------------------------------------
-// Dev-server middleware: Edge TTS proxy for Expo Web.
-//
-// Browsers cannot set the custom `Origin`/`User-Agent` headers that
-// Microsoft's consumer Edge TTS endpoint requires, so a direct WebSocket
-// connection from Expo Web is rejected with 403. Metro runs in Node, which
-// *can* set those headers, so we expose a tiny POST /edge-tts endpoint on the
-// Metro dev server and have the web build of edgeTts.ts round-trip through
-// it. Same-origin → no CORS complications. Only active in dev (Metro only
-// runs in dev).
-// ---------------------------------------------------------------------------
-const EDGE_TTS_PROXY_PATH = '/edge-tts';
-
-function readJsonBody(req, maxBytes = 64 * 1024) {
-  return new Promise((resolve, reject) => {
-    let total = 0;
-    const chunks = [];
-    req.on('data', (chunk) => {
-      total += chunk.length;
-      if (total > maxBytes) {
-        req.destroy();
-        reject(new Error('Request body too large'));
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      try {
-        const text = Buffer.concat(chunks).toString('utf8');
-        resolve(text ? JSON.parse(text) : {});
-      } catch (err) {
-        reject(err);
-      }
-    });
-    req.on('error', reject);
-  });
-}
-
-async function handleEdgeTtsRequest(req, res) {
-  // Permissive CORS so native simulators (with a different base URL) can hit
-  // the dev server too.
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204;
-    res.end();
-    return;
-  }
-  if (req.method !== 'POST') {
-    res.statusCode = 405;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Method Not Allowed');
-    return;
-  }
-  try {
-    const body = await readJsonBody(req);
-    const text = typeof body.text === 'string' ? body.text : '';
-    if (!text.trim()) {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Missing "text"' }));
-      return;
-    }
-    const audio = await synthesizeEdgeTts({
-      text,
-      voice: body.voice,
-      rate: body.rate,
-    });
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', String(audio.length));
-    res.end(audio);
-  } catch (err) {
-    console.warn('[edge-tts-proxy]', (err && err.message) || err);
-    res.statusCode = 502;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: String((err && err.message) || err) }));
-  }
-}
-
-config.server = config.server || {};
-const previousEnhanceMiddleware = config.server.enhanceMiddleware;
-config.server.enhanceMiddleware = (metroMiddleware, metroServer) => {
-  const base = previousEnhanceMiddleware
-    ? previousEnhanceMiddleware(metroMiddleware, metroServer)
-    : metroMiddleware;
-  return (req, res, next) => {
-    const url = req.url || '';
-    if (url === EDGE_TTS_PROXY_PATH || url.startsWith(`${EDGE_TTS_PROXY_PATH}?`)) {
-      handleEdgeTtsRequest(req, res).catch((err) => {
-        console.warn('[edge-tts-proxy] unhandled', err);
-        try {
-          if (!res.headersSent) res.statusCode = 500;
-          res.end();
-        } catch {}
-      });
-      return;
-    }
-    return base(req, res, next);
-  };
-};
 
 const nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),

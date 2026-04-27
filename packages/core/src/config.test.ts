@@ -63,7 +63,7 @@ describe("config", () => {
 
   describe("resolveWorkspaceAgentsFolder", () => {
     const originalWorkspaceDir = process.env.DOTAGENTS_WORKSPACE_DIR
-    let cwdSpy: ReturnType<typeof vi.spyOn> | undefined
+    let cwdSpy: { mockRestore: () => void } | undefined
 
     afterEach(() => {
       cwdSpy?.mockRestore()

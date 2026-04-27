@@ -2,6 +2,14 @@ import { protocol, ProtocolRequest, ProtocolResponse } from "electron"
 import path from "path"
 import fs from "fs"
 import { recordingsFolder } from "./config"
+import {
+  CONVERSATION_IMAGE_ASSET_HOST,
+  getConversationImageAssetPath,
+} from "./conversation-image-assets"
+import {
+  CONVERSATION_VIDEO_ASSET_HOST,
+  getConversationVideoAssetPath,
+} from "./conversation-video-assets"
 
 const rendererDir = path.join(__dirname, "../renderer")
 
@@ -83,6 +91,32 @@ export function registerServeProtocol() {
 
     if (host === "app") {
       return handleApp(request, callback)
+    }
+
+    if (host === CONVERSATION_IMAGE_ASSET_HOST || host === CONVERSATION_VIDEO_ASSET_HOST) {
+      let pathSegments: string[] = []
+
+      try {
+        pathSegments = pathname
+          .split("/")
+          .filter(Boolean)
+          .map((segment) => decodeURIComponent(segment))
+      } catch {
+        return callback({ error: FILE_NOT_FOUND })
+      }
+
+      const [conversationId, fileName] = pathSegments
+
+      if (conversationId && fileName) {
+        try {
+          const assetPath = host === CONVERSATION_IMAGE_ASSET_HOST
+            ? getConversationImageAssetPath(conversationId, fileName)
+            : getConversationVideoAssetPath(conversationId, fileName)
+          return callback({ path: assetPath })
+        } catch {
+          return callback({ error: FILE_NOT_FOUND })
+        }
+      }
     }
 
     callback({ error: FILE_NOT_FOUND })

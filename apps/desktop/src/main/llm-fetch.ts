@@ -11,8 +11,10 @@
  */
 
 import { generateText, streamText, tool as aiTool } from "ai"
+import type { ModelMessage, UserContent } from "ai"
 import { jsonSchema } from "ai"
 import { randomUUID } from "crypto"
+import fs from "fs"
 import {
   createLanguageModel,
   getCurrentProviderId,
@@ -31,6 +33,7 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared"
+import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import {
   createLLMGeneration,
   endLLMGeneration,
@@ -38,6 +41,7 @@ import {
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
+import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -384,76 +388,101 @@ function isEmptyResponseError(error: unknown): boolean {
   return false
 }
 
+function isLocalConfigurationErrorMessage(message: string): boolean {
+  if (isMissingApiKeyErrorMessage(message)) {
+    return true
+  }
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("unknown provider:") ||
+    normalized.includes("base url is required") ||
+    normalized.includes("access token is required") ||
+    normalized.includes("session token is required") ||
+    normalized.includes("is not configured")
+  )
+}
+
 /**
  * Check if an error is retryable.
- * Uses AI SDK structured error fields (statusCode, isRetryable) when available,
- * with fallback to message-based detection for consistency across providers.
+ *
+ * Uses a denylist approach: retry by default, and only refuse to retry when
+ * we have strong evidence that retrying cannot succeed (aborts, explicit
+ * isRetryable=false, or non-transient 4xx status codes like auth/validation).
+ *
+ * This avoids the fragility of pattern-matching every transient error string
+ * a provider might emit (see https://github.com/aj47/dotagents-mono/issues/391
+ * for an example where a new "ChatGPT Codex stream error" string slipped past
+ * a hardcoded allowlist and silently killed the agent session).
  *
  * NOTE: Empty response errors are handled separately - they retry immediately
  * without backoff (see withRetry function).
  */
 function isRetryableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    // Abort errors should never be retried
-    if (
-      error.name === "AbortError" ||
-      error.message.toLowerCase().includes("abort")
-    ) {
-      return false
-    }
+  if (!(error instanceof Error)) {
+    return false
+  }
 
-    // Empty response errors are retryable but WITHOUT backoff
-    // They are handled specially in withRetry - return true here so they're not rejected outright
-    if (isEmptyResponseError(error)) {
+  const message = error.message.toLowerCase()
+
+  // Abort errors should never be retried
+  if (
+    error.name === "AbortError" ||
+    message.includes("abort")
+  ) {
+    return false
+  }
+
+  // Deterministic local setup/configuration errors should fail fast instead of
+  // adding retry delay/noise.
+  if (isLocalConfigurationErrorMessage(error.message)) {
+    return false
+  }
+
+  // Preserve empty-response retries regardless of status code. withRetry()
+  // handles these via an immediate retry path without backoff.
+  if (isEmptyResponseError(error)) {
+    return true
+  }
+
+  // Check for AI SDK structured error fields (AI_APICallError, etc.)
+  const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
+
+  // Honor the SDK's explicit retryability signal when present
+  if (typeof errorWithStatus.isRetryable === "boolean") {
+    return errorWithStatus.isRetryable
+  }
+
+  // Non-transient 4xx (auth, validation, not-found, etc.) won't succeed on retry.
+  // 408 (timeout) and 429 (rate limit) are explicitly retryable.
+  const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
+  const hasStructuredStatusCode = typeof statusCode === "number"
+  if (hasStructuredStatusCode) {
+    if (statusCode === 408 || statusCode === 429) {
       return true
     }
-
-    // Check for AI SDK structured error fields (AI_APICallError, etc.)
-    // These errors have statusCode and isRetryable properties
-    const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
-
-    // If the error has an explicit isRetryable flag, use it
-    if (typeof errorWithStatus.isRetryable === "boolean") {
-      return errorWithStatus.isRetryable
+    if (statusCode >= 400 && statusCode < 500) {
+      return false
     }
-
-    // Check for statusCode or status field (AI SDK errors use statusCode)
-    const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-    if (typeof statusCode === "number") {
-      // Rate limits (429) are always retryable
-      if (statusCode === 429) {
-        return true
-      }
-      // Server errors (5xx) are retryable
-      if (statusCode >= 500 && statusCode < 600) {
-        return true
-      }
-      // Timeout errors
-      if (statusCode === 408 || statusCode === 504) {
-        return true
-      }
-      // Client errors (4xx except 429, 408) are not retryable
-      if (statusCode >= 400 && statusCode < 500) {
-        return false
-      }
-    }
-
-    // Fallback: message-based detection for transient network issues
-    // NOTE: empty response/content removed - handled separately without backoff
-    const message = error.message.toLowerCase()
-    return (
-      message.includes("rate limit") ||
-      message.includes("429") ||
-      message.includes("500") ||
-      message.includes("502") ||
-      message.includes("503") ||
-      message.includes("504") ||
-      message.includes("timeout") ||
-      message.includes("network") ||
-      message.includes("connection")
-    )
   }
-  return false
+
+  // Guard against broad stream-error retries. Keep known transient Codex
+  // chatgpt-web failure signatures retryable, but avoid retrying generic
+  // "stream error" failures that may be deterministic for other providers.
+  if (!hasStructuredStatusCode && message.includes("stream error")) {
+    const isKnownCodexTransient =
+      message.includes("chatgpt codex stream error") ||
+      message.includes("chatgpt codex response failed") ||
+      message.includes("chatgpt codex response.failed")
+    if (!isKnownCodexTransient) {
+      return false
+    }
+  }
+
+  // Default: retry. Empty responses, network blips, known transient provider
+  // stream errors, transient 5xx, etc. all fall through to here. The bounded
+  // retry count in withRetry caps the cost if the failure turns out permanent.
+  return true
 }
 
 /**
@@ -641,21 +670,111 @@ async function withRetry<T>(
  * message prefill" and require the conversation to end with a user message.
  * See: https://github.com/aj47/dotagents-mono/issues/1035
  */
+type MarkdownImageForModel = { image: string | URL; mediaType?: string }
+
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
+
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  apng: "image/apng",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  avif: "image/avif",
+}
+
+function parseDataImageUrl(imageUrl: string): MarkdownImageForModel | null {
+  const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(imageUrl)
+  if (!match) return null
+  return { image: match[2], mediaType: match[1] }
+}
+
+const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
+
+function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel | null {
+  try {
+    const parsed = new URL(imageUrl)
+    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) {
+      return null
+    }
+
+    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
+    if (!encodedConversationId || !encodedFileName) return null
+
+    const conversationId = decodeURIComponent(encodedConversationId)
+    const fileName = decodeURIComponent(encodedFileName)
+    const assetPath = getConversationImageAssetPath(conversationId, fileName)
+    const extension = fileName.split(".").pop()?.toLowerCase() || "png"
+    const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
+    const buffer = fs.readFileSync(assetPath)
+    if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
+      if (isDebugLLM()) {
+        logLLM("Conversation image asset exceeds size limit for LLM", { imageUrl, size: buffer.length })
+      }
+      return null
+    }
+    return { image: buffer.toString("base64"), mediaType: mimeType }
+  } catch (error) {
+    if (isDebugLLM()) {
+      logLLM("Failed to resolve conversation image asset for LLM", { imageUrl, error })
+    }
+    return null
+  }
+}
+
+function resolveMarkdownImageForModel(imageUrl: string): MarkdownImageForModel | null {
+  if (imageUrl.startsWith("data:image/")) return parseDataImageUrl(imageUrl)
+  if (imageUrl.startsWith("assets://")) return resolveAssetsImageUrlForModel(imageUrl)
+  return null
+}
+
+function convertMarkdownImagesToModelContent(content: string): UserContent {
+  const parts: Exclude<UserContent, string> = []
+  let lastIndex = 0
+  let hasResolvedImage = false
+
+  MARKDOWN_IMAGE_REGEX.lastIndex = 0
+  for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
+    const before = content.slice(lastIndex, match.index)
+    if (before) parts.push({ type: "text", text: before })
+
+    const image = resolveMarkdownImageForModel(match[1])
+    if (image) {
+      parts.push({ type: "image", ...image })
+      hasResolvedImage = true
+    } else {
+      parts.push({ type: "text", text: match[0] })
+    }
+    lastIndex = match.index + match[0].length
+  }
+
+  const after = content.slice(lastIndex)
+  if (after) parts.push({ type: "text", text: after })
+
+  return hasResolvedImage && parts.length > 0 ? parts : content
+}
+
 function convertMessages(messages: Array<{ role: string; content: string }>): {
   system: string | undefined
-  messages: Array<{ role: "user" | "assistant"; content: string }>
+  messages: ModelMessage[]
 } {
   const systemMessages: string[] = []
-  const otherMessages: Array<{ role: "user" | "assistant"; content: string }> =
-    []
+  const otherMessages: ModelMessage[] = []
 
   for (const msg of messages) {
     if (msg.role === "system") {
       systemMessages.push(msg.content)
+    } else if (msg.role === "assistant") {
+      otherMessages.push({
+        role: "assistant",
+        content: msg.content,
+      })
     } else {
       otherMessages.push({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
+        role: "user",
+        content: convertMarkdownImagesToModelContent(msg.content),
       })
     }
   }
@@ -789,7 +908,7 @@ export async function makeLLMCallWithFetch(
 
           const text = result.text.trim()
 
-          if (!text && !result.toolCalls?.length) {
+          if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
             if (generationId) {
               endLLMGeneration(generationId, {
                 level: "ERROR",
@@ -803,6 +922,7 @@ export async function makeLLMCallWithFetch(
             const response = {
               content: text || undefined,
               toolCalls: result.toolCalls,
+              reasoningSummary: result.reasoningSummary,
             } satisfies LLMToolCallResponse
 
             if (generationId) {
@@ -826,11 +946,12 @@ export async function makeLLMCallWithFetch(
           }
 
           if (hasToolMarkers) {
-            return { content: text }
+            return { content: text, reasoningSummary: result.reasoningSummary }
           }
 
           return {
             content: cleaned || text,
+            reasoningSummary: result.reasoningSummary,
           }
         }
 
@@ -942,7 +1063,7 @@ export async function makeLLMCallWithFetch(
         }
 
         // No tool calls - process as text response
-        if (!text && !result.toolCalls?.length) {
+        if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
           if (generationId) {
             endLLMGeneration(generationId, {
               level: "ERROR",
@@ -1094,7 +1215,7 @@ export async function makeLLMCallWithStreamingAndTools(
             })
           }
 
-          if (!text.trim() && !result.toolCalls?.length) {
+          if (!text.trim() && !result.toolCalls?.length && !result.reasoningSummary) {
             throw new Error("LLM returned empty response")
           }
 
@@ -1102,11 +1223,13 @@ export async function makeLLMCallWithStreamingAndTools(
             return {
               content: text || undefined,
               toolCalls: result.toolCalls,
+              reasoningSummary: result.reasoningSummary,
             }
           }
 
           return {
             content: text.trim(),
+            reasoningSummary: result.reasoningSummary,
           }
         } catch (error: any) {
           if (generationId) {

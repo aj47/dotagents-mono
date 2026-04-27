@@ -151,30 +151,6 @@ function countTextOccurrences(text: string, needle: string) {
   return text.match(new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))?.length ?? 0
 }
 
-function findLatestResponseToggle(tree: any, previewText: string) {
-  const toggle = findAll(
-    tree,
-    (value) => typeof value?.props?.onClick === "function"
-      && typeof value?.props?.className === "string"
-      && value.props.className.includes("bg-green-100/50")
-      && getTextContent(value).includes(previewText),
-  )[0]
-  if (!toggle) throw new Error("Latest response toggle not found")
-  return toggle
-}
-
-function findPastResponsesToggle(tree: any) {
-  const toggle = findAll(tree, (value) => value?.type === "button" && getTextContent(value).includes("Past Responses"))[0]
-  if (!toggle) throw new Error("Past responses toggle not found")
-  return toggle
-}
-
-function findElementByTitle(tree: any, title: string) {
-  const match = findAll(tree, (value) => value?.props?.title === title)[0]
-  if (!match) throw new Error(`Element with title \"${title}\" not found`)
-  return match
-}
-
 function findToolRow(tree: any, toolName: string) {
   const match = findAll(
     tree,
@@ -214,7 +190,11 @@ async function loadAgentProgress(
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
   const tipcMock = { tipcClient: new Proxy({ generateSpeech: vi.fn(), setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
-  const queriesMock = { useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }) }
+  const queriesMock = {
+    useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
+    useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
+    queryClient: { invalidateQueries: vi.fn(async () => undefined) },
+  }
   const themeContextMock = { useTheme: () => ({ isDark: false }) }
   const ttsManagerMock = {
     ttsManager: {
@@ -280,6 +260,7 @@ async function loadAgentProgress(
   vi.doMock("./ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("./ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
   vi.doMock("./ui/dialog", () => ({ Dialog: Null, DialogContent: Null, DialogDescription: Null, DialogHeader: Null, DialogTitle: Null }))
+  vi.doMock("./ui/select", () => ({ Select: (props: any) => ({ type: "Select", props }), SelectContent: (props: any) => ({ type: "SelectContent", props }), SelectItem: (props: any) => ({ type: "SelectItem", props }), SelectTrigger: (props: any) => ({ type: "SelectTrigger", props }), SelectValue: (props: any) => ({ type: "SelectValue", props }) }))
   vi.doMock("../lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard: vi.fn() }))
@@ -310,6 +291,8 @@ async function loadAgentProgress(
     getToolResultsSummary: () => "",
     getToolActivitySummaryLine: () => "",
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
+    getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
+    DEFAULT_MODEL_PRESET_ID: "default",
     TOOL_GROUP_PREVIEW_COUNT: 3,
     TOOL_GROUP_MIN_SIZE: 2,
   }))
@@ -324,7 +307,10 @@ async function loadAgentProgress(
     buildContentTTSKey: vi.fn(() => null),
   }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
-  vi.doMock("@dotagents/shared/message-display-utils", () => ({ sanitizeMessageContentForSpeech: (text: string) => text }))
+  vi.doMock("@dotagents/shared/message-display-utils", () => ({
+    sanitizeMessageContentForDisplay: (text: string) => text.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/gi, (_match: string, alt: string) => `[Image: ${alt}]`),
+    sanitizeMessageContentForSpeech: (text: string) => text,
+  }))
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
   const mod = await import("./agent-progress")
@@ -337,143 +323,6 @@ afterEach(() => {
 })
 
 describe("agent progress response history", () => {
-  it("keeps the latest response collapsed by default, then reveals nested past responses when expanded", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-1",
-      conversationId: "conversation-1",
-      currentIteration: 1,
-      maxIterations: 1,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Final answer",
-      userResponseHistory: ["Repeated draft", "Repeated draft"],
-    }
-
-    let tree = runtime.render(AgentProgress, { progress })
-    let text = getTextContent(tree)
-
-    expect(text).toContain("Final answer")
-    expect(text).not.toContain("Past Responses")
-
-    const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
-    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
-
-    tree = runtime.render(AgentProgress, { progress })
-    text = getTextContent(tree)
-
-    expect(text).toContain("Past Responses")
-    expect(countTextOccurrences(text, "Repeated draft")).toBe(0)
-    const pastResponsesToggle = findPastResponsesToggle(tree)
-    expect(pastResponsesToggle.props.title).toBe("Expand past responses")
-    expect(pastResponsesToggle.props["aria-expanded"]).toBe(false)
-  })
-
-  it("lets the nested past responses section collapse and re-open independently", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-2",
-      conversationId: "conversation-2",
-      currentIteration: 1,
-      maxIterations: 1,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Final answer",
-      userResponseHistory: ["Earlier draft", "Another draft"],
-    }
-
-    let tree = runtime.render(AgentProgress, { progress })
-    const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
-
-    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
-    tree = runtime.render(AgentProgress, { progress })
-
-    let pastResponsesToggle = findPastResponsesToggle(tree)
-    expect(pastResponsesToggle.props.title).toBe("Expand past responses")
-    expect(pastResponsesToggle.props["aria-expanded"]).toBe(false)
-
-    pastResponsesToggle.props.onClick()
-    tree = runtime.render(AgentProgress, { progress })
-
-    pastResponsesToggle = findPastResponsesToggle(tree)
-    expect(pastResponsesToggle.props.title).toBe("Collapse past responses")
-    expect(pastResponsesToggle.props["aria-expanded"]).toBe(true)
-
-    pastResponsesToggle.props.onClick()
-    tree = runtime.render(AgentProgress, { progress })
-
-    pastResponsesToggle = findPastResponsesToggle(tree)
-    expect(pastResponsesToggle.props.title).toBe("Expand past responses")
-    expect(pastResponsesToggle.props["aria-expanded"]).toBe(false)
-  })
-
-  it("keeps duplicated archived responses visible as distinct entries when the section is open", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
-    const progress = {
-      sessionId: "session-3",
-      conversationId: "conversation-3",
-      currentIteration: 1,
-      maxIterations: 1,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Final answer",
-      userResponseHistory: ["Repeated draft", "Repeated draft"],
-    }
-
-    let tree = runtime.render(AgentProgress, { progress })
-    const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
-    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
-    tree = runtime.render(AgentProgress, { progress })
-
-    const pastResponsesToggle = findPastResponsesToggle(tree)
-    pastResponsesToggle.props.onClick()
-    tree = runtime.render(AgentProgress, { progress })
-
-    const text = getTextContent(tree)
-    expect(countTextOccurrences(text, "Repeated draft")).toBe(2)
-  })
-
-  it("collapses expanded agent responses after a tile follow-up is sent", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress, captured } = await loadAgentProgress(runtime)
-    const onFollowUpSent = vi.fn()
-    const progress = {
-      sessionId: "session-4",
-      conversationId: "conversation-4",
-      currentIteration: 1,
-      maxIterations: 1,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Final answer",
-      userResponseHistory: ["Earlier draft"],
-    }
-
-    let tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
-    const latestResponseToggle = findLatestResponseToggle(tree, "Final answer")
-
-    latestResponseToggle.props.onClick({ stopPropagation: vi.fn() })
-    tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
-    expect(getTextContent(tree)).toContain("Latest response")
-
-    expect(typeof captured.tileFollowUpInputProps?.onMessageSent).toBe("function")
-    captured.tileFollowUpInputProps.onMessageSent()
-
-    tree = runtime.render(AgentProgress, { progress, variant: "tile", onFollowUpSent })
-    expect(getTextContent(tree)).not.toContain("Latest response")
-    expect(onFollowUpSent).toHaveBeenCalledTimes(1)
-  })
-
   it("keeps unresolved mid-turn responses in chronological order within the conversation", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
@@ -677,6 +526,47 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("mark_work_complete")
   })
 
+  it("does not collapse short image responses because of embedded data URL size", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const imageResponse = `Rendered a preview frame.\n\n![Preview](data:image/png;base64,${"A".repeat(2000)})`
+    const progress = {
+      sessionId: "session-image-response",
+      conversationId: "conversation-image-response",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      responseEvents: [
+        {
+          id: "resp-image",
+          sessionId: "session-image-response",
+          ordinal: 1,
+          text: imageResponse,
+          timestamp: 100,
+        },
+      ],
+      conversationHistory: [
+        { role: "assistant", content: "Rendered a preview frame.\n\n[Image: Preview]", timestamp: 110 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const clampedMessageContent = findAll(
+      tree,
+      (value) => value?.type === "div"
+        && typeof value?.props?.className === "string"
+        && value.props.className.includes("leading-relaxed")
+        && value.props.className.includes("line-clamp-2"),
+    )
+
+    expect(getTextContent(tree)).toContain("Rendered a preview frame.")
+    expect(countTextOccurrences(getTextContent(tree), "Rendered a preview frame.")).toBe(1)
+    expect(getTextContent(tree)).not.toContain("[Image: Preview]")
+    expect(clampedMessageContent).toHaveLength(0)
+  })
+
   it("keeps visible tool result status aligned after hiding completion-control tools", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
@@ -772,6 +662,39 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("mark_work_complete")
   })
 
+  it("shows a lazy history window control for partial conversation history", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const onLoadEarlierConversationHistory = vi.fn()
+    const progress = {
+      sessionId: "pending-conv-1",
+      conversationId: "conv-1",
+      currentIteration: 0,
+      maxIterations: 2,
+      steps: [],
+      isComplete: true,
+      conversationHistoryTotalCount: 5,
+      conversationHistoryStartIndex: 3,
+      conversationHistory: [
+        { role: "user", content: "Recent question", timestamp: 300 },
+        { role: "assistant", content: "Recent answer", timestamp: 400 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, onLoadEarlierConversationHistory })
+    const text = getTextContent(tree)
+    const loadButton = findAll(
+      tree,
+      (value) => value?.type === "button" && getTextContent(value).includes("Load 3 earlier"),
+    )[0]
+
+    expect(text).toContain("Showing latest 2 of 5 messages")
+    expect(loadButton).toBeTruthy()
+
+    loadButton.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
+    expect(onLoadEarlierConversationHistory).toHaveBeenCalledTimes(1)
+  })
+
   it("smartly auto-speaks response-linked assistant messages and keeps replay available before completion", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress, tipcMock } = await loadAgentProgress(runtime, { ttsEnabled: true, ttsAutoPlay: true })
@@ -826,38 +749,5 @@ describe("agent progress response history", () => {
     expect(findAll(tree, (value) => value?.props?.title === "Maximize tile")).toHaveLength(0)
     expect(findAll(tree, (value) => value?.props?.title === "Restore tile layout")).toHaveLength(0)
     expect(findAll(tree, (value) => value?.props?.title === "Maximize")).toHaveLength(0)
-  })
-
-  it("plays response history newest-to-oldest from the header playback control", async () => {
-    const runtime = createHookRuntime()
-    const { AgentProgress, tipcMock, audioRefs } = await loadAgentProgress(runtime, { ttsEnabled: true })
-    ;(tipcMock.tipcClient.generateSpeech as any)
-      .mockResolvedValueOnce({ audio: new Uint8Array([1, 2, 3]), mimeType: "audio/wav" })
-      .mockResolvedValueOnce({ audio: new Uint8Array([4, 5, 6]), mimeType: "audio/wav" })
-
-    const progress = {
-      sessionId: "session-8",
-      conversationId: "conversation-8",
-      currentIteration: 1,
-      maxIterations: 1,
-      steps: [],
-      isComplete: false,
-      finalContent: "",
-      conversationHistory: [],
-      userResponse: "Newest answer",
-      userResponseHistory: ["Oldest draft", "Middle draft"],
-    }
-
-    let tree = runtime.render(AgentProgress, { progress })
-    runtime.commitEffects()
-
-    const playButton = findElementByTitle(tree, "Play newest to oldest")
-    await playButton.props.onClick({ stopPropagation: vi.fn() })
-
-    expect(tipcMock.tipcClient.generateSpeech).toHaveBeenNthCalledWith(1, { text: "Newest answer" })
-
-    tree = runtime.render(AgentProgress, { progress })
-    runtime.commitEffects()
-    expect(getTextContent(tree)).toContain("Newest answer")
   })
 })

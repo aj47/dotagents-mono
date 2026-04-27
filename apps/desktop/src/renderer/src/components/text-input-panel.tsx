@@ -13,7 +13,9 @@ import { ImagePlus, X } from "lucide-react"
 import { logUI } from "@renderer/lib/debug"
 import {
   buildMessageWithImages,
+  getClipboardImageFiles,
   MAX_IMAGE_ATTACHMENTS,
+  ImageAttachmentInputFiles,
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
@@ -121,10 +123,19 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
     }
   }
 
-  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addImageAttachmentsFromFiles = async (
+    files: ImageAttachmentInputFiles | null,
+    source: "selection" | "paste",
+  ) => {
     try {
+      logUI("[TextInputPanel] image attachment started", {
+        source,
+        existingCount: imageAttachments.length,
+        selectedCount: files?.length ?? 0,
+      })
+
       const { attachments, errors } = await readImageAttachments(
-        e.target.files,
+        files,
         imageAttachments
       )
 
@@ -137,9 +148,23 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+    }
+  }
+
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      await addImageAttachmentsFromFiles(e.target.files, "selection")
     } finally {
       e.target.value = ""
     }
+  }
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFiles = getClipboardImageFiles(e.clipboardData)
+    if (imageFiles.length === 0) return
+
+    e.preventDefault()
+    await addImageAttachmentsFromFiles(imageFiles, "paste")
   }
 
   const handleImageButtonClick = () => {
@@ -246,13 +271,12 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               <PredefinedPromptsMenu
                 onSelectPrompt={(content) => setText(content)}
                 disabled={isBusy}
-                className="h-6 w-6"
+                buttonSize="sm-icon"
               />
               <Button
                 type="button"
-                size="icon"
+                size="sm-icon"
                 variant="ghost"
-                className="h-6 w-6"
                 disabled={isBusy || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
                 onClick={handleImageButtonClick}
                 title="Attach image"
@@ -287,6 +311,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder="Type / for commands, or your message..."
               autoFocus
               className={cn(

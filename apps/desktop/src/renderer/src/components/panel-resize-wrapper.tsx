@@ -1,19 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { ResizeHandle } from "@renderer/components/resize-handle"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { getNativePanelResizeSize, isPanelSize, type PanelSize } from "./panel-resize-utils"
+
+export { getNativePanelResizeSize } from "./panel-resize-utils"
 
 // Minimum height for waveform panel - matches WAVEFORM_MIN_HEIGHT in main/window.ts
-const WAVEFORM_MIN_HEIGHT = 150
+const WAVEFORM_MIN_HEIGHT = 120
 type PanelMode = "normal" | "agent" | "textInput"
 const isPanelMode = (value: unknown): value is PanelMode =>
   value === "normal" || value === "agent" || value === "textInput"
-const isPanelSize = (value: unknown): value is { width: number; height: number } =>
-  !!value &&
-  typeof value === "object" &&
-  "width" in value &&
-  "height" in value &&
-  typeof (value as { width: unknown }).width === "number" &&
-  typeof (value as { height: unknown }).height === "number"
 
 interface PanelResizeWrapperProps {
   children: React.ReactNode
@@ -21,6 +17,8 @@ interface PanelResizeWrapperProps {
   enableResize?: boolean
   minWidth?: number
   minHeight?: number
+  viewportScale?: number
+  fallbackMode?: PanelMode
 }
 
 export function PanelResizeWrapper({
@@ -29,12 +27,18 @@ export function PanelResizeWrapper({
   enableResize = true,
   minWidth = 200,
   minHeight = WAVEFORM_MIN_HEIGHT,
+  viewportScale = 1,
+  fallbackMode = "normal",
 }: PanelResizeWrapperProps) {
   const [currentSize, setCurrentSize] = useState({ width: 300, height: 200 })
-  const resizeStartSizeRef = useRef<{ width: number; height: number } | null>(null)
+  const resizeStartSizeRef = useRef<PanelSize | null>(null)
   const lastResizeCallRef = useRef<number>(0)
   const inFlightResizeUpdatesRef = useRef(new Set<Promise<unknown>>())
   const RESIZE_THROTTLE_MS = 16 // ~60fps
+  const safeViewportScale = useMemo(
+    () => (Number.isFinite(viewportScale) && viewportScale > 0 ? viewportScale : 1),
+    [viewportScale],
+  )
 
   useEffect(() => {
     // Initialize local size state from current window bounds; do not change size on mount
@@ -61,12 +65,13 @@ export function PanelResizeWrapper({
     return unlisten
   }, [])
 
-  const handleResizeStart = useCallback(() => {
-    // Capture current size at the start of resize operation
-    resizeStartSizeRef.current = currentSize
+  const handleResizeStart = useCallback((size: PanelSize) => {
+    // Capture the same native window size used by ResizeHandle for its deltas.
+    resizeStartSizeRef.current = size
+    setCurrentSize(size)
     // Reset throttle state so the first move in a new drag is never skipped.
     lastResizeCallRef.current = 0
-  }, [currentSize])
+  }, [])
 
   const handleResize = useCallback((delta: { width: number; height: number }) => {
     const startSize = resizeStartSizeRef.current
@@ -79,8 +84,17 @@ export function PanelResizeWrapper({
     }
     lastResizeCallRef.current = now
 
-    const newWidth = Math.max(minWidth, startSize.width + delta.width)
-    const newHeight = Math.max(minHeight, startSize.height + delta.height)
+    // ResizeHandle deltas come from browser coordinates. Convert them back to
+    // native panel pixels so drag distance stays consistent under zoom.
+    const { width: newWidth, height: newHeight } = getNativePanelResizeSize(
+      startSize,
+      delta,
+      {
+        width: minWidth,
+        height: minHeight,
+      },
+      safeViewportScale,
+    )
 
     // Update local size immediately; send IPC without awaiting to avoid resize lag.
     setCurrentSize({ width: newWidth, height: newHeight })
@@ -91,15 +105,27 @@ export function PanelResizeWrapper({
     void updatePromise.finally(() => {
       inFlightResizeUpdatesRef.current.delete(updatePromise)
     })
-  }, [enableResize, minWidth, minHeight])
+  }, [enableResize, minWidth, minHeight, safeViewportScale])
 
-  const handleResizeEnd = useCallback(async (size: { width: number; height: number }) => {
+  const handleResizeEnd = useCallback(async (delta: { width: number; height: number }) => {
     if (!enableResize) return
 
-    const requestedFinalSize = {
-      width: Math.max(minWidth, size.width),
-      height: Math.max(minHeight, size.height),
-    }
+    const startSize = resizeStartSizeRef.current
+    if (!startSize) return
+
+    const requestedFinalSize = getNativePanelResizeSize(
+      startSize,
+      delta,
+      {
+        width: minWidth,
+        height: minHeight,
+      },
+      safeViewportScale,
+    )
+
+    const rawMode = await tipcClient.getPanelMode().catch(() => null)
+    const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode
+    let finalSize = requestedFinalSize
 
     // Force one final size sync in case the last throttled mousemove was skipped.
     try {
@@ -110,12 +136,10 @@ export function PanelResizeWrapper({
       }
 
       const updatedSize = await tipcClient.updatePanelSize(requestedFinalSize)
-      const finalSize = isPanelSize(updatedSize) ? updatedSize : requestedFinalSize
+      finalSize = isPanelSize(updatedSize) ? updatedSize : requestedFinalSize
       setCurrentSize(finalSize)
 
       // Save the final size by mode so waveform and progress views don't override each other.
-      const rawMode = await tipcClient.getPanelMode()
-      const mode: PanelMode = isPanelMode(rawMode) ? rawMode : "normal"
       await tipcClient.savePanelModeSize({
         mode,
         width: finalSize.width,
@@ -123,21 +147,33 @@ export function PanelResizeWrapper({
       })
     } catch (error) {
       try {
-        // Fallback for older router builds that may not have mode-aware persistence.
-        await tipcClient.savePanelCustomSize(requestedFinalSize)
-        setCurrentSize(requestedFinalSize)
+        // Fallback only for legacy waveform persistence. Non-waveform modes have
+        // dedicated buckets and must not clobber the shared legacy size.
+        if (mode === "normal") {
+          const savedSize = await tipcClient.savePanelCustomSize(finalSize)
+          if (isPanelSize(savedSize)) {
+            finalSize = savedSize
+          }
+          setCurrentSize(finalSize)
+        } else {
+          throw error
+        }
       } catch (fallbackError) {
         console.error("Failed to save panel size:", error, fallbackError)
       }
     }
-  }, [enableResize, minWidth, minHeight])
+    resizeStartSizeRef.current = null
+  }, [enableResize, fallbackMode, minWidth, minHeight, safeViewportScale])
 
   return (
     <div
       className={className}
       style={{
-        minWidth: `${minWidth}px`,
-        minHeight: `${minHeight}px`,
+        // Native window constraints are already enforced in main-process pixels.
+        // Divide CSS constraints by the current viewport scale so recording UI
+        // does not visually grow when browser zoom makes CSS pixels larger.
+        minWidth: `${minWidth / safeViewportScale}px`,
+        minHeight: `${minHeight / safeViewportScale}px`,
       }}
     >
       {children}

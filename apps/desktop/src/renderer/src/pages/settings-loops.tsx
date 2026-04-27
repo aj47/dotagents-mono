@@ -4,6 +4,13 @@ import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@renderer/components/ui/select"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
@@ -11,8 +18,10 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig } from "@shared/types"
+import { LoopConfig, LoopSchedule } from "@shared/types"
 import { toast } from "sonner"
+
+type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"
 
 interface EditingLoop {
   id?: string
@@ -21,7 +30,15 @@ interface EditingLoop {
   intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
+  speakOnTrigger: boolean
+  continueInSession: boolean
+  lastSessionId?: string
+  scheduleMode: ScheduleMode
+  scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
+  scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
 }
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 interface LoopRuntimeStatus {
   id: string
@@ -36,6 +53,34 @@ const emptyLoop: EditingLoop = {
   intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
+  speakOnTrigger: false,
+  continueInSession: false,
+  scheduleMode: "interval",
+  scheduleTimes: ["09:00"],
+  scheduleDaysOfWeek: [1, 2, 3, 4, 5],
+}
+
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+function sanitizeScheduleTimes(times: string[]): string[] {
+  const out: string[] = []
+  for (const t of times) {
+    const trimmed = t.trim()
+    if (TIME_RE.test(trimmed) && !out.includes(trimmed)) out.push(trimmed)
+  }
+  return out.sort()
+}
+
+function describeSchedule(schedule: LoopSchedule): string {
+  const times = schedule.times.join(", ")
+  if (schedule.type === "daily") return `Daily at ${times}`
+  const days = schedule.daysOfWeek.map((d) => DAY_LABELS[d] ?? String(d)).join(", ")
+  return `${days} at ${times}`
+}
+
+function describeLoopCadence(loop: LoopConfig): string {
+  if (loop.runContinuously) return "Continuous"
+  return loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`
 }
 
 const INTERVAL_PRESETS = [
@@ -89,6 +134,87 @@ function parseLoopIntervalDraft(draft: string): number | null {
   return parsed
 }
 
+// Sentinel used by the session picker to represent "no pinned session";
+// Radix Select does not accept an empty string as an item value.
+const AUTO_SESSION_VALUE = "__auto__"
+
+type SessionCandidate = {
+  id: string
+  conversationId?: string
+  conversationTitle?: string
+  status: string
+  startTime: number
+  endTime?: number
+}
+
+type SessionCandidatesData = {
+  activeSessions: SessionCandidate[]
+  completedSessions: SessionCandidate[]
+} | undefined
+
+function formatSessionLabel(s: SessionCandidate): string {
+  const title = s.conversationTitle?.trim() || s.id
+  const when = new Date(s.endTime ?? s.startTime).toLocaleString()
+  return `${title} — ${when}`
+}
+
+function SessionPicker({
+  value,
+  onChange,
+  candidates,
+}: {
+  value: string | undefined
+  onChange: (value: string | undefined) => void
+  candidates: SessionCandidatesData
+}) {
+  const active = candidates?.activeSessions ?? []
+  const completed = candidates?.completedSessions ?? []
+  // Merge and de-dupe by id, active first (most likely to be useful).
+  const seen = new Set<string>()
+  const merged: SessionCandidate[] = []
+  for (const s of [...active, ...completed]) {
+    if (seen.has(s.id)) continue
+    seen.add(s.id)
+    merged.push(s)
+  }
+
+  const pinned = value && !seen.has(value)
+    ? { id: value, conversationTitle: undefined, status: "unknown", startTime: 0 } as SessionCandidate
+    : undefined
+
+  const selectValue = value ?? AUTO_SESSION_VALUE
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="lastSessionId">Continue from session</Label>
+      <Select
+        value={selectValue}
+        onValueChange={(v) => onChange(v === AUTO_SESSION_VALUE ? undefined : v)}
+      >
+        <SelectTrigger id="lastSessionId" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={AUTO_SESSION_VALUE}>Auto — most recent run of this task</SelectItem>
+          {pinned && (
+            <SelectItem value={pinned.id}>
+              {pinned.id} (no longer available)
+            </SelectItem>
+          )}
+          {merged.map((s) => (
+            <SelectItem key={s.id} value={s.id}>
+              {formatSessionLabel(s)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">
+        When left on Auto, this task appends to whichever session it last created. Pick a specific session to resume it on the next run. If the selected session can no longer be revived (e.g. its conversation was deleted), this task falls back to a new session and tracks that one instead.
+      </p>
+    </div>
+  )
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
@@ -105,6 +231,12 @@ export function SettingsLoops() {
     refetchInterval: 5000,
   })
 
+  const sessionCandidatesQuery = useQuery({
+    queryKey: ["loop-session-candidates"],
+    queryFn: async () => tipcClient.listAgentSessionCandidates({ limit: 20 }),
+    refetchOnWindowFocus: true,
+  })
+
   useEffect(() => {
     return rendererHandlers.loopsFolderChanged.listen(() => {
       queryClient.invalidateQueries({ queryKey: ["loops"] })
@@ -113,6 +245,9 @@ export function SettingsLoops() {
   }, [queryClient])
 
   const loops: LoopConfig[] = loopsQuery.data || []
+  const orderedLoops = [...loops].sort(
+    (a, b) => Number(b.enabled) - Number(a.enabled),
+  )
   const statusByLoopId = new Map(
     (loopStatusesQuery.data || []).map((s) => [s.id, s] as const)
   )
@@ -129,6 +264,11 @@ export function SettingsLoops() {
 
   const handleEdit = (loop: LoopConfig) => {
     setIsCreating(false)
+    const scheduleMode: ScheduleMode = loop.runContinuously ? "continuous" : (loop.schedule?.type ?? "interval")
+    const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ["09:00"]
+    const scheduleDaysOfWeek = loop.schedule?.type === "weekly"
+      ? [...loop.schedule.daysOfWeek]
+      : [1, 2, 3, 4, 5]
     setEditing({
       id: loop.id,
       name: loop.name,
@@ -136,6 +276,12 @@ export function SettingsLoops() {
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
+      speakOnTrigger: loop.speakOnTrigger ?? false,
+      continueInSession: loop.continueInSession ?? false,
+      lastSessionId: loop.lastSessionId,
+      scheduleMode,
+      scheduleTimes,
+      scheduleDaysOfWeek,
     })
   }
 
@@ -158,19 +304,48 @@ export function SettingsLoops() {
     }
 
     const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)
-    if (parsedIntervalMinutes === null) {
+    if (editing.scheduleMode === "interval" && parsedIntervalMinutes === null) {
       toast.error("Interval must be a positive whole number of minutes")
       return
     }
 
+    let schedule: LoopSchedule | undefined
+    if (editing.scheduleMode !== "interval" && editing.scheduleMode !== "continuous") {
+      const times = sanitizeScheduleTimes(editing.scheduleTimes)
+      if (times.length === 0) {
+        toast.error("Add at least one time (HH:MM)")
+        return
+      }
+      if (editing.scheduleMode === "weekly") {
+        if (editing.scheduleDaysOfWeek.length === 0) {
+          toast.error("Select at least one day of the week")
+          return
+        }
+        schedule = { type: "weekly", times, daysOfWeek: [...editing.scheduleDaysOfWeek].sort() }
+      } else {
+        schedule = { type: "daily", times }
+      }
+    }
+
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
+    const existingIntervalMinutes = editing.id
+      ? loops.find((loop) => loop.id === editing.id)?.intervalMinutes
+      : undefined
+    const savedIntervalMinutes = parsedIntervalMinutes ?? existingIntervalMinutes ?? 15
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
-      intervalMinutes: parsedIntervalMinutes,
+      intervalMinutes: savedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
+      speakOnTrigger: editing.speakOnTrigger,
+      continueInSession: editing.continueInSession,
+      runContinuously: editing.scheduleMode === "continuous",
+      ...(editing.continueInSession && editing.lastSessionId
+        ? { lastSessionId: editing.lastSessionId }
+        : {}),
+      ...(schedule ? { schedule } : {}),
     }
 
     try {
@@ -244,7 +419,7 @@ export function SettingsLoops() {
 
   const renderLoopList = () => (
     <div className="space-y-1">
-      {loops.map((loop) => {
+      {orderedLoops.map((loop) => {
         const runtime = statusByLoopId.get(loop.id)
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
@@ -253,29 +428,38 @@ export function SettingsLoops() {
           <div
             key={loop.id}
             className={cn(
-              "rounded-lg border bg-card px-3 py-2",
+              "rounded-md border bg-card px-2.5 py-1.5 transition-colors hover:bg-muted/20",
               !loop.enabled && "opacity-60",
             )}
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{loop.name}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-medium leading-5">{loop.name}</span>
                   {isRunning ? (
-                    <Badge variant="secondary">Running</Badge>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                      Running
+                    </Badge>
                   ) : !loop.enabled ? (
-                    <Badge variant="outline">Disabled</Badge>
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                      Disabled
+                    </Badge>
                   ) : null}
                 </div>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                <p className="line-clamp-1 text-[11px] leading-4 text-muted-foreground">
                   {loop.prompt}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                <Switch
+                  aria-label={`${loop.enabled ? "Disable" : "Enable"} ${loop.name}`}
+                  checked={loop.enabled}
+                  onCheckedChange={() => handleToggleEnabled(loop)}
+                />
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 px-2"
+                  className="h-6 gap-1 px-1.5 text-xs"
                   onClick={() => handleRunNow(loop)}
                 >
                   <Play className="h-3.5 w-3.5" />Run
@@ -283,7 +467,7 @@ export function SettingsLoops() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 px-2"
+                  className="h-6 gap-1 px-1.5 text-xs"
                   onClick={() => handleOpenTaskFile(loop)}
                 >
                   <FileText className="h-3.5 w-3.5" />File
@@ -291,7 +475,7 @@ export function SettingsLoops() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-6 w-6"
                   title="Edit task"
                   onClick={() => handleEdit(loop)}
                 >
@@ -300,7 +484,7 @@ export function SettingsLoops() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-6 w-6"
                   title="Delete task"
                   onClick={() => handleDelete(loop.id)}
                 >
@@ -309,24 +493,18 @@ export function SettingsLoops() {
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                Every {formatInterval(loop.intervalMinutes)}
+                <Clock className="h-3 w-3" />
+                {describeLoopCadence(loop)}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
+              {loop.speakOnTrigger && <div>Speaks on trigger</div>}
+              {loop.continueInSession && <div>Continues in same session</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
               <div>Last run: {formatLastRun(lastRunAt)}</div>
-            </div>
-
-            <div className="mt-2 flex items-center gap-2">
-              <Switch
-                checked={loop.enabled}
-                onCheckedChange={() => handleToggleEnabled(loop)}
-              />
-              <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
             </div>
           </div>
         )
@@ -345,7 +523,7 @@ export function SettingsLoops() {
       <Card className="max-w-3xl">
         <CardHeader className="space-y-1 pb-2">
           <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
-          <CardDescription>Set the prompt, interval, and startup behavior.</CardDescription>
+          <CardDescription>Set the prompt, schedule, and startup behavior.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -368,32 +546,130 @@ export function SettingsLoops() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="interval">Interval</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                id="interval"
-                type="number"
-                min={1}
-                value={editing.intervalMinutesDraft}
-                onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
-                className="h-8 w-20"
-              />
-              <span className="self-center text-xs text-muted-foreground">minutes</span>
-            </div>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {INTERVAL_PRESETS.map((preset) => (
+            <Label>Schedule</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { mode: "interval", label: "Interval" },
+                { mode: "continuous", label: "Continuous" },
+                { mode: "daily", label: "Daily" },
+                { mode: "weekly", label: "Weekly" },
+              ] as const).map(({ mode, label }) => (
                 <Button
-                  key={preset.value}
-                  variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                  key={mode}
+                  variant={editing.scheduleMode === mode ? "secondary" : "ghost"}
                   size="sm"
                   className="h-7 px-2 text-xs"
-                  onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                  onClick={() => setEditing({ ...editing, scheduleMode: mode })}
                 >
-                  {preset.label}
+                  {label}
                 </Button>
               ))}
             </div>
           </div>
+          {editing.scheduleMode === "interval" && (
+            <div className="space-y-2">
+              <Label htmlFor="interval">Every</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="interval"
+                  type="number"
+                  min={1}
+                  value={editing.intervalMinutesDraft}
+                  onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
+                  className="h-8 w-20"
+                />
+                <span className="self-center text-xs text-muted-foreground">minutes</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {INTERVAL_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {editing.scheduleMode === "continuous" && (
+            <p className="text-xs text-muted-foreground">
+              Starts the next run as soon as the previous run finishes. Only one run of this task executes at a time.
+            </p>
+          )}
+          {editing.scheduleMode !== "interval" && editing.scheduleMode !== "continuous" && (
+            <div className="space-y-2">
+              <Label>Time(s)</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {editing.scheduleTimes.map((time, idx) => (
+                  <div key={idx} className="flex items-center gap-1">
+                    <Input
+                      type="time"
+                      value={time}
+                      onChange={(e) => {
+                        const next = [...editing.scheduleTimes]
+                        next[idx] = e.target.value
+                        setEditing({ ...editing, scheduleTimes: next })
+                      }}
+                      className="h-8 w-28"
+                    />
+                    {editing.scheduleTimes.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Remove time"
+                        onClick={() => {
+                          const next = editing.scheduleTimes.filter((_, i) => i !== idx)
+                          setEditing({ ...editing, scheduleTimes: next })
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
+                  onClick={() => setEditing({ ...editing, scheduleTimes: [...editing.scheduleTimes, "09:00"] })}
+                >
+                  <Plus className="h-3.5 w-3.5" />Add time
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Local time, 24-hour format.</p>
+            </div>
+          )}
+          {editing.scheduleMode === "weekly" && (
+            <div className="space-y-2">
+              <Label>Days of week</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {DAY_LABELS.map((label, dayIdx) => {
+                  const active = editing.scheduleDaysOfWeek.includes(dayIdx)
+                  return (
+                    <Button
+                      key={dayIdx}
+                      variant={active ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const next = active
+                          ? editing.scheduleDaysOfWeek.filter((d) => d !== dayIdx)
+                          : [...editing.scheduleDaysOfWeek, dayIdx].sort()
+                        setEditing({ ...editing, scheduleDaysOfWeek: next })
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center space-x-2">
               <Switch
@@ -411,7 +687,30 @@ export function SettingsLoops() {
               />
               <Label htmlFor="runOnStartup">Run on Startup</Label>
             </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="speakOnTrigger"
+                checked={editing.speakOnTrigger}
+                onCheckedChange={(v) => setEditing({ ...editing, speakOnTrigger: v })}
+              />
+              <Label htmlFor="speakOnTrigger">Speak on Trigger</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="continueInSession"
+                checked={editing.continueInSession}
+                onCheckedChange={(v) => setEditing({ ...editing, continueInSession: v })}
+              />
+              <Label htmlFor="continueInSession">Continue in Same Session</Label>
+            </div>
           </div>
+          {editing.continueInSession && (
+            <SessionPicker
+              value={editing.lastSessionId}
+              onChange={(v) => setEditing({ ...editing, lastSessionId: v })}
+              candidates={sessionCandidatesQuery.data}
+            />
+          )}
           <div className="flex justify-end gap-2 pt-3">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCancel}>
               <X className="h-4 w-4" />Cancel

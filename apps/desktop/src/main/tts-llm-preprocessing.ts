@@ -27,6 +27,7 @@ function buildTTSPreprocessingPrompt(config: Config): string {
   }
   if (config.ttsConvertMarkdown ?? true) {
     instructions.push("- Convert markdown formatting to natural speech")
+    instructions.push("- Strip bullet/list markers silently; do not say or add words like \"item\" for list entries")
   }
 
   // Always include these LLM-specific enhancements (the main value of LLM preprocessing)

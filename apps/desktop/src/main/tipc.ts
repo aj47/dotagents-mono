@@ -20,10 +20,14 @@ import {
   showPanelWindowAndShowTextInput,
   showPanelWindowAndStartMcpRecording,
   WAVEFORM_MIN_HEIGHT,
-    TEXT_INPUT_MIN_WIDTH,
+  TEXT_INPUT_MIN_WIDTH,
   TEXT_INPUT_MIN_HEIGHT,
   PROGRESS_MIN_HEIGHT,
   MIN_WAVEFORM_WIDTH,
+  LEGACY_WAVEFORM_SIZE_MAX_WIDTH,
+  LEGACY_WAVEFORM_SIZE_MAX_HEIGHT,
+  PANEL_SAVED_SIZE_MAX_WIDTH,
+  PANEL_SAVED_SIZE_MAX_HEIGHT,
   clearPanelOpenedWithMain,
   resizePanelForWaveformPreview,
 } from "./window"
@@ -71,10 +75,10 @@ import {
   PanelPosition,
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
-import { generateEdgeTTS, type TTSGenerationResult } from "./edge-tts"
+import { generateTTS } from "./tts-service"
 
 
-import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
+import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
 import { getDiscordLifecycleAction } from "./discord-config"
 import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
@@ -97,6 +101,45 @@ function describeAgentSessionId(sessionId?: string | null): "missing" | "pending
   if (sessionId.startsWith("session_")) return "session"
   return "unknown"
 }
+
+const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>
+  !!value &&
+  typeof value === "object" &&
+  "width" in value &&
+  "height" in value &&
+  typeof (value as { width: unknown }).width === "number" &&
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
+
+const isBoundedPanelSize = (value: unknown): value is { width: number; height: number } =>
+  isFinitePanelSize(value) &&
+  value.width <= PANEL_SAVED_SIZE_MAX_WIDTH &&
+  value.height <= PANEL_SAVED_SIZE_MAX_HEIGHT
+
+type PanelSizeMode = "normal" | "agent" | "textInput"
+
+const isPanelSizeMode = (value: unknown): value is PanelSizeMode =>
+  value === "normal" || value === "agent" || value === "textInput"
+
+const getPanelMinWidthForMode = (mode: PanelSizeMode) =>
+  mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
+
+const getPanelMinHeightForMode = (mode: PanelSizeMode) =>
+  mode === "agent"
+    ? PROGRESS_MIN_HEIGHT
+    : mode === "textInput"
+      ? TEXT_INPUT_MIN_HEIGHT
+      : WAVEFORM_MIN_HEIGHT
+
+const normalizePanelSize = (
+  input: { width: number; height: number },
+  minWidth: number,
+  minHeight: number,
+) => ({
+  width: Math.min(PANEL_SAVED_SIZE_MAX_WIDTH, Math.max(minWidth, Math.round(input.width))),
+  height: Math.min(PANEL_SAVED_SIZE_MAX_HEIGHT, Math.max(minHeight, Math.round(input.height))),
+})
 
 /**
  * Convert Float32Array audio samples to WAV format buffer
@@ -185,10 +228,10 @@ async function initializeMcpWithProgress(config: Config, sessionId: string, runI
       {
         id: `mcp_init_${Date.now()}`,
         type: "thinking",
-        title: "Initializing MCP tools",
+        title: "Preparing agent tools",
         description: initStatus.progress.currentServer
-          ? `Initializing ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
-          : `Initializing MCP servers (${initStatus.progress.current}/${initStatus.progress.total})`,
+          ? `Connecting ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
+          : `Checking tool connections (${initStatus.progress.current}/${initStatus.progress.total})`,
         status: "in_progress",
         timestamp: Date.now(),
       },
@@ -213,10 +256,10 @@ async function initializeMcpWithProgress(config: Config, sessionId: string, runI
           {
             id: `mcp_init_${Date.now()}`,
             type: "thinking",
-            title: "Initializing MCP tools",
+            title: "Preparing agent tools",
             description: currentStatus.progress.currentServer
-              ? `Initializing ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
-              : `Initializing MCP servers (${currentStatus.progress.current}/${currentStatus.progress.total})`,
+              ? `Connecting ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
+              : `Checking tool connections (${currentStatus.progress.current}/${currentStatus.progress.total})`,
             status: "in_progress",
             timestamp: Date.now(),
           },
@@ -247,8 +290,8 @@ async function initializeMcpWithProgress(config: Config, sessionId: string, runI
       {
         id: `mcp_init_complete_${Date.now()}`,
         type: "thinking",
-        title: "MCP tools initialized",
-        description: `Successfully initialized ${mcpService.getAvailableTools().length} tools`,
+        title: "Agent tools ready",
+        description: `${mcpService.getAvailableTools().length} tools available`,
         status: "completed",
         timestamp: Date.now(),
       },
@@ -263,9 +306,13 @@ async function processWithAgentMode(
   conversationId?: string,
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
+  maxIterationsOverride?: number,
 ): Promise<string> {
   const config = configStore.get()
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  const maxIterationsFromOverride = typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
+    ? maxIterationsOverride
+    : undefined
+  const effectiveMaxIterations = maxIterationsFromOverride ?? (config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10))
   const allProfiles = agentProfileService.getAll()
   const currentProfile = agentProfileService.getCurrentProfile()
   const existingProfileSnapshot = existingSessionId
@@ -541,10 +588,10 @@ async function processWithAgentMode(
       }],
       isComplete: true,
       finalContent: `Error: ${errorMessage}`,
-      conversationHistory: [
-        { role: "user", content: text, timestamp: Date.now() },
-        { role: "assistant", content: `Error: ${errorMessage}`, timestamp: Date.now() }
-      ],
+      // Intentionally omit conversationHistory: the renderer agent-store
+      // preserves existingProgress.conversationHistory when this field is
+      // missing, so the user's prior transcript remains visible in the UI.
+      // Emitting a 2-item synthetic history here would clobber it.
     })
 
     throw error
@@ -556,9 +603,11 @@ async function processWithAgentMode(
 export async function runAgentLoopSession(
   text: string,
   conversationId: string,
-  existingSessionId: string
+  existingSessionId: string,
+  startSnoozed: boolean = true,
+  maxIterationsOverride?: number,
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, true)
+  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -566,11 +615,32 @@ import { summarizationService } from "./summarization-service"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText, writeTextWithFocusRestore } from "./keyboard"
-import { preprocessTextForTTS, validateTTSText } from "@dotagents/shared"
-import { preprocessTextForTTSWithLLM } from "./tts-llm-preprocessing"
+
 
 
 const t = tipc.create()
+
+type ScreenshotAttachmentInput = { name?: string; dataUrl: string }
+
+function escapeMarkdownImageAlt(text: string): string {
+  return text.replace(/[\[\]]/g, "")
+}
+
+function appendScreenshotToTranscript(transcript: string, screenshot?: ScreenshotAttachmentInput): string {
+  if (!screenshot?.dataUrl) return transcript
+
+  const alt = escapeMarkdownImageAlt(screenshot.name || "Screen selection") || "Screen selection"
+  const screenshotMarkdown = `![${alt}](${screenshot.dataUrl})`
+  return transcript ? `${transcript}\n\n${screenshotMarkdown}` : screenshotMarkdown
+}
+
+function getLatestStoredUserMessageContent(conversation: Conversation | null, fallback: string): string {
+  const latestUserMessage = conversation?.messages
+    ?.slice()
+    .reverse()
+    .find((message) => message.role === "user")
+  return latestUserMessage?.content || fallback
+}
 
 const getRecordingHistory = () => {
   try {
@@ -923,6 +993,10 @@ export const router = {
     hideFloatingPanelWindow()
   }),
 
+  getFloatingPanelVisibility: t.procedure.action(async () => {
+    return { visible: WINDOWS.get("panel")?.isVisible?.() ?? false }
+  }),
+
   snoozeAgentSessionsAndHidePanelWindow: t.procedure
     .input<{ sessionIds?: string[] }>()
     .action(async ({ input }) => {
@@ -1140,6 +1214,36 @@ export const router = {
       recentSessions: recentCompletedSessions,
     }
   }),
+
+  // List active + recent completed sessions for UI pickers (e.g. repeat-task
+  // "continue from session" selector). Returns the shape the picker needs,
+  // tolerant of an optional limit for completed sessions.
+  listAgentSessionCandidates: t.procedure
+    .input<{ limit?: number } | undefined>()
+    .action(async ({ input }) => {
+      // Guard against NaN / non-finite inputs; fall back to the default of 20.
+      const rawLimit = input?.limit
+      const limit = typeof rawLimit === "number" && Number.isFinite(rawLimit)
+        ? Math.max(1, Math.min(100, Math.floor(rawLimit)))
+        : 20
+      const active = agentSessionTracker.getActiveSessions().map(s => ({
+        id: s.id,
+        conversationId: s.conversationId,
+        conversationTitle: s.conversationTitle,
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      const completed = agentSessionTracker.getRecentSessions(limit).map(s => ({
+        id: s.id,
+        conversationId: s.conversationId,
+        conversationTitle: s.conversationTitle,
+        status: s.status,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
+      return { activeSessions: active, completedSessions: completed }
+    }),
 
   // Get the profile snapshot for a specific session
   // This allows the UI to display which profile a session is using
@@ -1845,12 +1949,14 @@ export const router = {
 
       // Create or get conversation ID
       let conversationId = input.conversationId
+      let agentInputText = input.text
       if (!conversationId) {
         const conversation = await conversationService.createConversation(
           input.text,
           "user",
         )
         conversationId = conversation.id
+        agentInputText = getLatestStoredUserMessageContent(conversation, input.text)
       } else {
         // Check if message queuing is enabled and there's an active session
         if (queueEnabled) {
@@ -1858,8 +1964,9 @@ export const router = {
           if (activeSessionId) {
             const session = agentSessionTracker.getSession(activeSessionId)
             if (session && session.status === "active") {
+              const queuedText = await conversationService.materializeInlineDataImagesInContent(conversationId, input.text)
               // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, input.text, activeSessionId)
+              const queuedMessage = messageQueueService.enqueue(conversationId, queuedText, activeSessionId)
               logApp("[createMcpTextInput] Queued message for active session", {
                 conversationId,
                 queuedMessageId: queuedMessage.id,
@@ -1885,11 +1992,12 @@ export const router = {
         }
 
         // Add user message to existing conversation
-        await conversationService.addMessageToConversation(
+        const updatedConversation = await conversationService.addMessageToConversation(
           conversationId,
           input.text,
           "user",
         )
+        agentInputText = getLatestStoredUserMessageContent(updatedConversation, input.text)
       }
 
       // Try to find and revive an existing session for this conversation
@@ -1928,7 +2036,7 @@ export const router = {
       // This allows multiple sessions to run concurrently
       // Pass existingSessionId to reuse the session if found
       // When fromTile=true, start snoozed so the floating panel doesn't appear
-      processWithAgentMode(input.text, conversationId, existingSessionId, input.fromTile ?? false)
+      processWithAgentMode(agentInputText, conversationId, existingSessionId, input.fromTile ?? false)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -1983,6 +2091,7 @@ export const router = {
       duration: number
       conversationId?: string
       sessionId?: string
+      screenshot?: ScreenshotAttachmentInput
       fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
     }>()
     .action(async ({ input }) => {
@@ -2077,8 +2186,11 @@ export const router = {
               Buffer.from(input.recording),
             )
 
+            const messageText = appendScreenshotToTranscript(transcript, input.screenshot)
+            const queuedText = await conversationService.materializeInlineDataImagesInContent(input.conversationId, messageText)
+
             // Queue the transcript instead of processing immediately
-            const queuedMessage = messageQueueService.enqueue(input.conversationId, transcript, activeSessionId)
+            const queuedMessage = messageQueueService.enqueue(input.conversationId, queuedText, activeSessionId)
             logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
 
             return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
@@ -2248,6 +2360,9 @@ export const router = {
           transcript = json.text
         }
 
+      const messageText = appendScreenshotToTranscript(transcript, input.screenshot)
+      let agentInputText = messageText
+
       // Create or continue conversation
       let conversationId = input.conversationId
       let conversation: Conversation | null = null
@@ -2255,31 +2370,35 @@ export const router = {
       if (!conversationId) {
         // Create new conversation with the transcript
         conversation = await conversationService.createConversation(
-          transcript,
+          messageText,
           "user",
         )
         conversationId = conversation.id
+        agentInputText = getLatestStoredUserMessageContent(conversation, messageText)
       } else {
         // Load existing conversation and add user message
         conversation =
           await conversationService.loadConversation(conversationId)
         if (conversation) {
-          await conversationService.addMessageToConversation(
+          const updatedConversation = await conversationService.addMessageToConversation(
             conversationId,
-            transcript,
+            messageText,
             "user",
           )
+          conversation = updatedConversation ?? conversation
+          agentInputText = getLatestStoredUserMessageContent(conversation, messageText)
         } else {
           conversation = await conversationService.createConversation(
-            transcript,
+            messageText,
             "user",
           )
           conversationId = conversation.id
+          agentInputText = getLatestStoredUserMessageContent(conversation, messageText)
         }
       }
 
       // Update session with actual conversation ID and title after transcription
-      const conversationTitle = transcript
+      const conversationTitle = transcript?.trim() || input.screenshot?.name || "Screen selection"
       agentSessionTracker.updateSession(sessionId, {
         conversationId,
         conversationTitle,
@@ -2295,7 +2414,7 @@ export const router = {
         // Fire-and-forget: Start agent processing without blocking.
         // Preserve the tile/background snooze state after transcription so
         // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(transcript, conversationId, sessionId, startSnoozed)
+        processWithAgentMode(agentInputText, conversationId, sessionId, startSnoozed)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -3278,95 +3397,14 @@ export const router = {
       speed?: number
     }>()
     .action(async ({ input }) => {
-
-
-
-
-
-
-
-
-
-      const config = configStore.get()
-
-
-
-      if (!config.ttsEnabled) {
-        throw new Error("Text-to-Speech is not enabled")
-      }
-
-      const providerId = input.providerId || config.ttsProviderId || "openai"
-
-      // Preprocess text for TTS
-      let processedText = input.text
-
-      if (config.ttsPreprocessingEnabled !== false) {
-        // Use LLM-based preprocessing if enabled, otherwise fall back to regex
-        if (config.ttsUseLLMPreprocessing) {
-          processedText = await preprocessTextForTTSWithLLM(input.text, config.ttsLLMPreprocessingProviderId)
-        } else {
-          // Use regex-based preprocessing
-          const preprocessingOptions = {
-            removeCodeBlocks: config.ttsRemoveCodeBlocks ?? true,
-            removeUrls: config.ttsRemoveUrls ?? true,
-            convertMarkdown: config.ttsConvertMarkdown ?? true,
-          }
-          processedText = preprocessTextForTTS(input.text, preprocessingOptions)
-        }
-      }
-
-      // Validate processed text
-      const validation = validateTTSText(processedText)
-      if (!validation.isValid) {
-        throw new Error(`TTS validation failed: ${validation.issues.join(", ")}`)
-      }
-
       try {
-        let ttsResult: TTSGenerationResult
-
-
-
-        if (providerId === "openai") {
-          ttsResult = await generateOpenAITTS(processedText, input, config)
-        } else if (providerId === "groq") {
-          ttsResult = await generateGroqTTS(processedText, input, config)
-        } else if (providerId === "gemini") {
-          ttsResult = await generateGeminiTTS(processedText, input, config)
-        } else if (providerId === "edge") {
-          ttsResult = await generateEdgeTTS(processedText, input, config)
-        } else if (providerId === "kitten") {
-          const { synthesize } = await import('./kitten-tts')
-          const voiceId = config.kittenVoiceId ?? 0 // Default to Voice 2 - Male
-          const result = await synthesize(processedText, voiceId, input.speed)
-          const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          ttsResult = {
-            audio: new Uint8Array(wavBuffer).buffer,
-            mimeType: "audio/wav",
-          }
-        } else if (providerId === "supertonic") {
-          const { synthesize } = await import('./supertonic-tts')
-          const voice = config.supertonicVoice ?? "M1"
-          const lang = config.supertonicLanguage ?? "en"
-          const speed = input.speed ?? config.supertonicSpeed ?? 1.05
-          const steps = config.supertonicSteps ?? 5
-          const result = await synthesize(processedText, voice, lang, speed, steps)
-          const wavBuffer = float32ToWav(result.samples, result.sampleRate)
-          ttsResult = {
-            audio: new Uint8Array(wavBuffer).buffer,
-            mimeType: "audio/wav",
-          }
-        } else {
-          throw new Error(`Unsupported TTS provider: ${providerId}`)
+        const config = configStore.get()
+        // Desktop-local TTS respects the user's global toggle. Remote clients
+        // (mobile via /v1/tts/speak) intentionally bypass this gate.
+        if (!config.ttsEnabled) {
+          throw new Error("Text-to-Speech is not enabled")
         }
-
-
-
-        return {
-          audio: ttsResult.audio,
-          mimeType: ttsResult.mimeType,
-          processedText,
-          provider: providerId,
-        }
+        return await generateTTS(input, config)
       } catch (error) {
         diagnosticsService.logError("tts", "TTS generation failed", error)
         throw error
@@ -3422,9 +3460,11 @@ export const router = {
   }),
 
   loadConversation: t.procedure
-    .input<{ conversationId: string }>()
+    .input<{ conversationId: string; messageLimit?: number }>()
     .action(async ({ input }) => {
-      return conversationService.loadConversation(input.conversationId)
+      return conversationService.loadConversation(input.conversationId, {
+        messageLimit: input.messageLimit,
+      })
     }),
 
   saveConversation: t.procedure
@@ -3516,21 +3556,20 @@ export const router = {
   updatePanelSize: t.procedure
     .input<{ width: number; height: number }>()
     .action(async ({ input }) => {
+      if (!isFinitePanelSize(input)) {
+        throw new Error("Invalid panel size")
+      }
+
       const win = WINDOWS.get("panel")
       if (!win) {
         throw new Error("Panel window not found")
       }
 
-      const mode = getCurrentPanelMode()
-      const minWidth = mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
-      const minHeight =
-        mode === "agent"
-          ? PROGRESS_MIN_HEIGHT
-          : mode === "textInput"
-            ? TEXT_INPUT_MIN_HEIGHT
-            : WAVEFORM_MIN_HEIGHT
-      const finalWidth = Math.max(minWidth, input.width)
-      const finalHeight = Math.max(minHeight, input.height)
+      const rawMode = getCurrentPanelMode()
+      const mode = isPanelSizeMode(rawMode) ? rawMode : "normal"
+      const minWidth = getPanelMinWidthForMode(mode)
+      const minHeight = getPanelMinHeightForMode(mode)
+      const { width: finalWidth, height: finalHeight } = normalizePanelSize(input, minWidth, minHeight)
 
       // Update size constraints to allow resizing
       win.setMinimumSize(minWidth, minHeight)
@@ -3545,14 +3584,17 @@ export const router = {
   savePanelCustomSize: t.procedure
     .input<{ width: number; height: number }>()
     .action(async ({ input }) => {
-      const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-      const width = Math.max(minWidth, input.width)
-      const height = Math.max(WAVEFORM_MIN_HEIGHT, input.height)
+      if (!isFinitePanelSize(input)) {
+        throw new Error("Invalid panel size")
+      }
+
+      const minWidth = getPanelMinWidthForMode("normal")
+      const { width, height } = normalizePanelSize(input, minWidth, WAVEFORM_MIN_HEIGHT)
 
       const config = configStore.get()
       const updatedConfig = {
         ...config,
-        panelCustomSize: { width, height }
+        panelCustomSize: { width, height },
       }
       configStore.save(updatedConfig)
       return updatedConfig.panelCustomSize
@@ -3562,15 +3604,17 @@ export const router = {
   savePanelModeSize: t.procedure
     .input<{ mode: "normal" | "agent" | "textInput"; width: number; height: number }>()
     .action(async ({ input }) => {
-      const minWidth = input.mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
-      const minHeight =
-        input.mode === "agent"
-          ? PROGRESS_MIN_HEIGHT
-          : input.mode === "textInput"
-            ? TEXT_INPUT_MIN_HEIGHT
-            : WAVEFORM_MIN_HEIGHT
-      const width = Math.max(minWidth, input.width)
-      const height = Math.max(minHeight, input.height)
+      if (!isFinitePanelSize(input)) {
+        throw new Error("Invalid panel size")
+      }
+
+      if (!isPanelSizeMode(input.mode)) {
+        throw new Error("Invalid panel mode")
+      }
+
+      const minWidth = getPanelMinWidthForMode(input.mode)
+      const minHeight = getPanelMinHeightForMode(input.mode)
+      const { width, height } = normalizePanelSize(input, minWidth, minHeight)
 
       const config = configStore.get()
       const updatedConfig = { ...config }
@@ -3580,7 +3624,7 @@ export const router = {
       } else if (input.mode === "textInput") {
         updatedConfig.panelTextInputSize = { width, height }
       } else {
-        updatedConfig.panelCustomSize = { width, height }
+        updatedConfig.panelWaveformSize = { width, height }
       }
 
       configStore.save(updatedConfig)
@@ -3599,12 +3643,32 @@ export const router = {
     }
 
     const config = configStore.get()
-    if (config.panelCustomSize) {
-      // Apply saved custom size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
-      const { width, height } = config.panelCustomSize
-      const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-      const finalWidth = Math.max(minWidth, width)
-      const finalHeight = Math.max(WAVEFORM_MIN_HEIGHT, height)
+    const minWidth = getPanelMinWidthForMode("normal")
+    const legacyCustomSize = config.panelCustomSize
+    const savedWaveformSize =
+      isBoundedPanelSize(config.panelWaveformSize) &&
+      config.panelWaveformSize.width >= minWidth &&
+      config.panelWaveformSize.height >= WAVEFORM_MIN_HEIGHT
+        ? config.panelWaveformSize
+        : undefined
+    const isCompactLegacyWaveformSize =
+      isFinitePanelSize(legacyCustomSize) &&
+      legacyCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
+      legacyCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
+    const initialWaveformSize = savedWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)
+
+    if (
+      initialWaveformSize &&
+      Number.isFinite(initialWaveformSize.width) &&
+      Number.isFinite(initialWaveformSize.height)
+    ) {
+      // Apply saved waveform size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
+      const { width, height } = initialWaveformSize
+      const { width: finalWidth, height: finalHeight } = normalizePanelSize(
+        { width, height },
+        minWidth,
+        WAVEFORM_MIN_HEIGHT,
+      )
 
       win.setMinimumSize(minWidth, WAVEFORM_MIN_HEIGHT)
       win.setSize(finalWidth, finalHeight, false) // no animation on init
@@ -3964,6 +4028,10 @@ export const router = {
 
   getRemoteServerStatus: t.procedure.action(async () => {
     return getRemoteServerStatus()
+  }),
+
+  getRemoteServerPairingApiKey: t.procedure.action(async () => {
+    return getRemoteServerPairingApiKey()
   }),
 
   // Remote Server QR Code handler
@@ -4604,7 +4672,7 @@ export const router = {
       // Pass all available skill IDs so the toggle can properly transition
       // from "all enabled by default" to explicit opt-in mode
       const { skillsService } = await import("./skills-service")
-      const allSkillIds = skillsService.getSkills().map(s => s.id)
+      const allSkillIds = skillsService.refreshFromDisk().map(s => s.id)
       return agentProfileService.toggleProfileSkill(input.profileId, input.skillId, allSkillIds)
     }),
 
@@ -4621,7 +4689,7 @@ export const router = {
       if (enabledSkillIds === null) {
         // null means "all skills enabled" — return all available skill IDs
         const { skillsService } = await import("./skills-service")
-        return skillsService.getSkills().map(s => s.id)
+        return skillsService.refreshFromDisk().map(s => s.id)
       }
       return enabledSkillIds
     }),
@@ -4634,7 +4702,7 @@ export const router = {
       const enabledSkillIds = agentProfileService.getEnabledSkillIdsForProfile(input.profileId)
       if (enabledSkillIds === null) {
         // null means "all skills enabled" — use all available skill IDs
-        const allSkillIds = skillsService.getSkills().map(s => s.id)
+        const allSkillIds = skillsService.refreshFromDisk().map(s => s.id)
         return skillsService.getEnabledSkillsInstructionsForProfile(allSkillIds)
       }
       return skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
@@ -5002,6 +5070,22 @@ export const router = {
     return knowledgeNotesService.getAllNotes()
   }),
 
+  getKnowledgeNotesOverview: t.procedure
+    .input<{ context?: import("../shared/types").KnowledgeNoteContext }>()
+    .action(async ({ input }) => {
+      return knowledgeNotesService.getOverview({ context: input?.context })
+    }),
+
+  getKnowledgeNotesByGroup: t.procedure
+    .input<{
+      groupKey: string
+      seriesKey?: string
+      context?: import("../shared/types").KnowledgeNoteContext
+    }>()
+    .action(async ({ input }) => {
+      return knowledgeNotesService.getNotesByGroup(input)
+    }),
+
   getKnowledgeNote: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
@@ -5178,217 +5262,6 @@ export const router = {
     loopService.stopAllLoops()
     return { success: true }
   }),
-}
-
-// TTS Provider Implementation Functions
-
-function getOpenAITTSMimeType(responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"): string {
-  switch (responseFormat) {
-    case "mp3":
-      return "audio/mpeg"
-    case "opus":
-      return "audio/opus"
-    case "aac":
-      return "audio/aac"
-    case "flac":
-      return "audio/flac"
-    case "pcm":
-      return "audio/L16"
-    case "wav":
-    default:
-      return "audio/wav"
-  }
-}
-
-async function generateOpenAITTS(
-  text: string,
-  input: { voice?: string; model?: string; speed?: number },
-  config: Config
-): Promise<TTSGenerationResult> {
-  const model = input.model || config.openaiTtsModel || "gpt-4o-mini-tts"
-  const voice = input.voice || config.openaiTtsVoice || "alloy"
-  const speed = input.speed || config.openaiTtsSpeed || 1.0
-  const responseFormat = config.openaiTtsResponseFormat || "mp3"
-
-  const baseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-  const apiKey = config.openaiApiKey
-
-
-
-  if (!apiKey) {
-    throw new Error("OpenAI API key is required for TTS")
-  }
-
-  const requestBody = {
-    model,
-    input: text,
-    voice,
-    speed,
-    response_format: responseFormat,
-  }
-
-
-
-  const response = await fetch(`${baseUrl}/audio/speech`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`OpenAI TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const audioBuffer = await response.arrayBuffer()
-
-  return {
-    audio: audioBuffer,
-    mimeType: getOpenAITTSMimeType(responseFormat),
-  }
-}
-
-async function generateGroqTTS(
-  text: string,
-  input: { voice?: string; model?: string },
-  config: Config
-): Promise<TTSGenerationResult> {
-  const model = input.model || config.groqTtsModel || "canopylabs/orpheus-v1-english"
-  // Choose default voice based on model - Arabic model should use Arabic voice
-  const defaultVoice = model === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy"
-  const voice = input.voice || config.groqTtsVoice || defaultVoice
-
-  const baseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-  const apiKey = config.groqApiKey
-
-
-
-  if (!apiKey) {
-    throw new Error("Groq API key is required for TTS")
-  }
-
-  const requestBody = {
-    model,
-    input: text,
-    voice,
-    response_format: "wav",
-  }
-
-
-
-  const response = await fetch(`${baseUrl}/audio/speech`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-
-
-  if (!response.ok) {
-    const errorText = await response.text()
-
-    // Check for specific error cases and provide helpful messages
-    if (errorText.includes("requires terms acceptance")) {
-      // The model parameter determines which terms page to show
-      const modelParam = model === "canopylabs/orpheus-arabic-saudi"
-        ? "canopylabs%2Forpheus-arabic-saudi"
-        : "canopylabs%2Forpheus-v1-english"
-      throw new Error(`Groq TTS model requires terms acceptance. Please visit https://console.groq.com/playground?model=${modelParam} and accept the terms when prompted, then try again.`)
-    }
-
-    throw new Error(`Groq TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const audioBuffer = await response.arrayBuffer()
-
-  return {
-    audio: audioBuffer,
-    mimeType: "audio/wav",
-  }
-}
-
-async function generateGeminiTTS(
-  text: string,
-  input: { voice?: string; model?: string },
-  config: Config
-): Promise<TTSGenerationResult> {
-  const model = input.model || config.geminiTtsModel || "gemini-2.5-flash-preview-tts"
-  const voice = input.voice || config.geminiTtsVoice || "Kore"
-
-  const baseUrl = config.geminiBaseUrl || "https://generativelanguage.googleapis.com"
-  const apiKey = config.geminiApiKey
-
-  if (!apiKey) {
-    throw new Error("Gemini API key is required for TTS")
-  }
-
-  const requestBody = {
-    contents: [{
-      parts: [{ text }]
-    }],
-    generationConfig: {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: {
-            voiceName: voice
-          }
-        }
-      }
-    }
-  }
-
-  const url = `${baseUrl}/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  })
-
-
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Gemini TTS API error: ${response.statusText} - ${errorText}`)
-  }
-
-  const result = await response.json()
-
-
-
-  const inlineAudioData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData
-  const audioData = inlineAudioData?.data
-
-  if (!audioData) {
-    throw new Error("No audio data received from Gemini TTS API")
-  }
-
-  // Convert base64 to ArrayBuffer
-  const binaryString = atob(audioData)
-  const bytes = new Uint8Array(binaryString.length)
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i)
-  }
-
-
-
-  return {
-    audio: bytes.buffer,
-    mimeType: inlineAudioData?.mimeType || "audio/L16",
-  }
 }
 
 export type Router = typeof router

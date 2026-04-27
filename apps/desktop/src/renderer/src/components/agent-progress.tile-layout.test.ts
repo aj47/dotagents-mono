@@ -9,18 +9,18 @@ const audioPlayerSource = readFileSync(new URL("./audio-player.tsx", import.meta
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
     expect(agentProgressSource).toContain(
-      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0"'
+      '"flex flex-wrap items-center gap-1.5 border-b bg-muted/30 flex-shrink-0 app-drag-region"'
     )
     expect(agentProgressSource).toContain('canCollapseTile && "cursor-pointer"')
     expect(agentProgressSource).toContain('isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-1.5"')
-    expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
+    expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region"')
   })
 
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
-    expect(agentProgressSource).toContain('className="min-w-0 max-w-full truncate text-[10px]"')
+    expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} compact />')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
@@ -96,14 +96,13 @@ describe("agent progress tile layout", () => {
 
   it("keeps tile message-stream tool execution rows readable at narrow widths and zoom", () => {
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 items-center gap-1.5 rounded text-[11px] cursor-pointer hover:bg-muted/30"'
+      '"flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30"'
     )
     expect(agentProgressSource).toContain(
       'rowClassName = "px-1.5 py-0.5"'
     )
     expect(agentProgressSource).toContain('rowClassName="px-1 py-0.5"')
-    expect(agentProgressSource).toContain('className="min-w-0 shrink truncate font-mono font-medium"')
-    expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50"')
+    expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium"')
     expect(agentProgressSource).toContain('className="mb-1 flex flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="ml-auto flex shrink-0 flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
@@ -111,9 +110,16 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('<ToolExecutionBubble')
   })
 
-  it("only shows collapsed tool previews for the latest pending tool run", () => {
-    expect(agentProgressSource).toContain('const shouldShowPreviewLines = runEnd === sortedItems.length - 1')
-    expect(agentProgressSource).toContain('!isExpanded && group.previewLines.length > 0')
+  it("renders collapsed tool previews inline with the group title", () => {
+    expect(agentProgressSource).toContain('const collapsedPreviewLine = group.previewLines.join')
+    expect(agentProgressSource).toContain('!isExpanded && collapsedPreviewLine')
+    expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
+  })
+
+  it("keeps tool group expansion state separate from child rows", () => {
+    expect(agentProgressSource).toContain('const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`')
+    expect(agentProgressSource).toContain('getToolActivityGroupDefaultExpanded')
+    expect(agentProgressSource).toContain('next[item.id] = true')
   })
 
   it("stops delegated tool rows from showing a loading spinner after terminal completion", () => {
@@ -155,6 +161,24 @@ describe("agent progress tile layout", () => {
     )
   })
 
+  it("keeps structured tool payloads compact and collapses payloads over two lines", () => {
+    expect(agentProgressSource).toContain('const COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD = 2')
+    expect(agentProgressSource).toContain('lineCount > COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD')
+    expect(agentProgressSource).toContain('<details className="group"')
+    expect(agentProgressSource).toContain('const StructuredPayloadTree: React.FC')
+    expect(agentProgressSource).toContain('getStructuredPayloadChildEntries(value.value)')
+    expect(agentProgressSource).toContain('title={value.compactText}>{value.compactText}</span>')
+    expect(agentProgressSource).not.toContain('{value.expandedText}\n        </pre>')
+  })
+
+  it("keeps the session model visible and clickable as a picker", () => {
+    expect(agentProgressSource).toContain('const SessionModelPicker: React.FC')
+    expect(agentProgressSource).toContain('aria-label="Change agent model"')
+    expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config, providerId, modelId)')
+    expect(agentProgressSource).toContain('{modelInfo && (')
+    expect(agentProgressSource).toContain('{(profileName || modelInfo || contextInfo || !isComplete) && (')
+  })
+
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {
     expect(agentProgressSource).toContain(
       'className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30"'
@@ -175,40 +199,6 @@ describe("agent progress tile layout", () => {
     )
   })
 
-  it("keeps mid-turn response cards and past-response history readable in narrow tiles", () => {
-    expect(agentProgressSource).toContain(
-      '"min-w-0 max-w-full overflow-hidden rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30"'
-    )
-    expect(agentProgressSource).toContain(
-      '"flex min-w-0 flex-wrap items-center gap-1.5 cursor-pointer bg-green-100/50 px-2.5 py-1.5 transition-colors hover:bg-green-100/70 dark:bg-green-900/30 dark:hover:bg-green-900/40"'
-    )
-    expect(agentProgressSource).toContain(
-      '<MessageSquare className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />'
-    )
-    expect(agentProgressSource).toContain('className="min-w-0 flex-1 text-left"')
-    expect(agentProgressSource).toContain(
-      '"line-clamp-2 break-words [overflow-wrap:anywhere]"'
-    )
-    expect(agentProgressSource).toContain('className={cn("min-w-0 px-3", isExpanded ? "pb-2" : "hidden")}')
-    expect(agentProgressSource).toContain(
-      'className="mt-1 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
-    )
-    expect(agentProgressSource).toContain('title={isPastResponsesExpanded ? "Collapse past responses" : "Expand past responses"}')
-    expect(agentProgressSource).toContain('aria-expanded={isPastResponsesExpanded}')
-    expect(agentProgressSource).toContain(
-      'className="mb-1 flex w-full items-center gap-1.5 rounded-sm px-0.5 py-0.5 text-left transition-colors hover:bg-green-100/40 dark:hover:bg-green-900/20"'
-    )
-    expect(agentProgressSource).toContain(
-      '"min-w-0 max-w-full overflow-hidden rounded-md border border-green-200/60 dark:border-green-800/40"'
-    )
-    expect(agentProgressSource).toContain(
-      'className="flex min-w-0 items-start gap-2 cursor-pointer px-2.5 py-1.5 transition-colors hover:bg-green-50/50 dark:hover:bg-green-900/20"'
-    )
-    expect(agentProgressSource).toContain(
-      'className="min-w-0 flex-1 text-xs text-green-700/70 dark:text-green-300/60 line-clamp-2 break-words [overflow-wrap:anywhere]"'
-    )
-  })
-
   it("keeps the session-tile scroll-to-bottom affordance scoped inside the chat area", () => {
     expect(agentProgressSource).toContain('title="Scroll to bottom"')
     expect(agentProgressSource).toContain('aria-label="Scroll to bottom"')
@@ -220,7 +210,7 @@ describe("agent progress tile layout", () => {
 
   it("uses a lightweight plain-text path for active streaming bubbles before final markdown rendering", () => {
     expect(agentProgressSource).toContain('const contentNode = streamingContent.isStreaming')
-    expect(agentProgressSource).toContain('className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')
+    expect(agentProgressSource).toContain('className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')
     expect(agentProgressSource).toContain(': <MarkdownRenderer content={streamingContent.text} />')
   })
 
@@ -282,15 +272,14 @@ describe("agent progress tile layout", () => {
     expect(audioPlayerSource).toContain('className="ml-auto flex min-w-0 max-w-full items-center gap-2"')
     expect(audioPlayerSource).toContain('aria-label="Audio position"')
     expect(audioPlayerSource).toContain('aria-label="Audio volume"')
-    expect(agentProgressSource).toContain('className="mt-2 min-w-0 space-y-1"')
     expect(agentProgressSource).toContain(
-      'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
+      'className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
     )
   })
 
   it("does not auto-play TTS for tile expansion/collapse interactions", () => {
     expect(agentProgressSource).toContain('function shouldAutoPlayTTSForVariant')
-    expect(agentProgressSource).toContain('return variant === "tile" ? isFocused : !isSnoozed')
+    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
   })
 
   it("uses shared conversation-state normalization across agent progress surfaces", () => {

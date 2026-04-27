@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   updateSession: vi.fn(),
   getCurrentProfile: vi.fn(() => undefined),
   getSkills: vi.fn(() => []),
+  refreshFromDisk: vi.fn(() => []),
   getEnabledSkillsInstructionsForProfile: vi.fn(() => ""),
   getAcpSessionTitleOverride: vi.fn((_: string): string | undefined => undefined),
 }))
@@ -54,7 +55,7 @@ vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => 
 vi.mock("./knowledge-notes-service", () => ({ knowledgeNotesService: { createNoteFromSummary: vi.fn(), saveNote: vi.fn() } }))
 vi.mock("./agent-run-utils", () => ({ appendAgentStopNote: vi.fn(), resolveAgentIterationLimits: vi.fn((maxIterations: number) => ({ loopMaxIterations: maxIterations, guardrailBudget: maxIterations })) }))
 vi.mock("./agent-profile-service", () => ({ agentProfileService: { getCurrentProfile: mocks.getCurrentProfile } }))
-vi.mock("./skills-service", () => ({ skillsService: { getSkills: mocks.getSkills, getEnabledSkillsInstructionsForProfile: mocks.getEnabledSkillsInstructionsForProfile } }))
+vi.mock("./skills-service", () => ({ skillsService: { getSkills: mocks.getSkills, refreshFromDisk: mocks.refreshFromDisk, getEnabledSkillsInstructionsForProfile: mocks.getEnabledSkillsInstructionsForProfile } }))
 vi.mock("./working-notes-runtime", () => ({ loadWorkingKnowledgeNotesForPrompt: vi.fn(() => []) }))
 
 const availableTools = [
@@ -118,11 +119,15 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-resume",
       "session-resume-followup",
       "session-command",
+      "session-permission-error",
       "session-tool-error",
       "session-blank-response",
       "session-review-loop",
       "session-review-loop-final-answer",
       "session-clean-final",
+      "session-windowed-progress",
+      "session-reasoning-stub",
+      "session-reasoning-only-empty-retry",
     )
   })
 
@@ -171,6 +176,54 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt).toContain("1. Alpha")
     expect(secondPrompt).toContain("Reply with the numbers you want.")
     expect(secondPrompt).not.toContain("[Calling tools: respond_to_user]")
+  })
+
+  it("windows progress history for large follow-ups without trimming the model prompt", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const previousHistory = Array.from({ length: 150 }, (_, index) => ({
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: `historic message ${index}`,
+      timestamp: index + 1,
+    }))
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({
+      content: "Done continuing.",
+      toolCalls: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "continue",
+      availableTools as any,
+      makeExecuteToolCall("session-windowed-progress", 1),
+      2,
+      previousHistory,
+      "conv-windowed-progress",
+      "session-windowed-progress",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(promptText).toContain("historic message 0")
+    expect(promptText).toContain("historic message 149")
+    expect(result.conversationHistory.length).toBeGreaterThan(150)
+
+    const historyUpdates = (mocks.emitAgentProgress.mock.calls as unknown as Array<[any]>)
+      .map(([update]) => update)
+      .filter((update): update is any => Array.isArray(update.conversationHistory) && update.conversationHistory.length > 0)
+
+    expect(historyUpdates.length).toBeGreaterThan(0)
+    for (const update of historyUpdates) {
+      expect(update.conversationHistory.length).toBeLessThanOrEqual(120)
+      expect(update.conversationHistoryTotalCount).toBeGreaterThanOrEqual(151)
+      expect(update.conversationHistoryStartIndex).toBe(
+        update.conversationHistoryTotalCount - update.conversationHistory.length,
+      )
+      expect(update.conversationHistory.some((message: any) => message.content === "historic message 0")).toBe(false)
+    }
   })
 
   it("keeps a verified explicit final response to one assistant message", async () => {
@@ -228,6 +281,81 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
     expect(secondPrompt).toContain("Do not add a second recap or summary")
+  })
+
+  it("does not finalize with a reasoning summary as the user-facing answer", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpFinalSummaryEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({
+        content: undefined,
+        reasoningSummary: "I should inspect more transcript chunks, but I am about to stop.",
+        toolCalls: [{ name: "mark_work_complete", arguments: { summary: "Internal stop" } }],
+      })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "I inspected the next chunk and added 50 more topics." } },
+        { name: "mark_work_complete", arguments: { summary: "Delivered the additional topics" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({ isComplete: true, conversationState: "complete", confidence: 0.97, missingItems: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Gather another 50 missed topics",
+      availableTools as any,
+      makeExecuteToolCall("session-reasoning-stub", 1),
+      4,
+      [],
+      "conv-reasoning-stub",
+      "session-reasoning-stub",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("I inspected the next chunk and added 50 more topics.")
+    expect(result.content).not.toContain("<think>")
+    expect(result.conversationHistory.some((message) => message.role === "assistant" && message.content.includes("<think>"))).toBe(false)
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toContain("without first providing the final user-facing answer")
+  })
+
+  it("treats reasoning-summary-only responses as empty and retries", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({
+        content: undefined,
+        reasoningSummary: "I should keep working before answering.",
+        toolCalls: undefined,
+      })
+      .mockResolvedValueOnce({ content: "Recovered after retry", toolCalls: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-reasoning-only-empty-retry", 1),
+      4,
+      [],
+      "conv-reasoning-only-empty-retry",
+      "session-reasoning-only-empty-retry",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Recovered after retry")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+
+    const retryPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(retryPrompt).toContain("Previous request had empty response")
+    expect(result.conversationHistory.some((message) => message.role === "assistant" && message.content.includes("I should keep working"))).toBe(false)
   })
 
   it("only generates a separate final summary when final-summary mode is enabled", async () => {
@@ -357,6 +485,48 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(secondPrompt).toContain("Invalid execute_command.skillId: aj47/dotagents-mono")
     expect(secondPrompt).toContain("Retry the same command without skillId")
     expect(secondPrompt).toContain("Do not use repo names, file paths, URLs, or GitHub slugs as skillId")
+  })
+
+  it("does not inject unrecoverable permissions notes for failed tools", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "cat /private/file" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "The command failed with access denied." } },
+        { name: "mark_work_complete", arguments: { summary: "Explained command failure" } },
+      ] })
+
+    await processTranscriptWithAgentMode(
+      "Read that file if possible",
+      availableTools as any,
+      makeExecuteToolCall("session-permission-error", 1, {
+        execute_command: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({ success: false, error: "access denied", stderr: "Permission denied" }, null, 2),
+          }],
+          isError: true,
+        },
+      }),
+      4,
+      [],
+      "conv-permission-error",
+      "session-permission-error",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const retryPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(retryPrompt).toContain("TOOL FAILED: execute_command")
+    expect(retryPrompt).toContain("access denied")
+    expect(retryPrompt).not.toContain("Some tools (execute_command) have unrecoverable errors")
+    expect(retryPrompt).not.toContain("Please complete what you can or explain what cannot be done")
   })
 
   it("routes failed communication-only tool batches through error recovery before retrying", async () => {

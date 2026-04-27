@@ -1,6 +1,12 @@
 import { randomUUID } from "crypto"
+import fs from "fs"
+import os from "os"
+import path from "path"
+import type { OAuthTokens } from "@shared/types"
 import { configStore } from "./config"
+import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
+import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
 const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
@@ -14,11 +20,17 @@ const CHATGPT_CODEX_REDIRECT_URI = "http://localhost:1455/auth/callback"
 const CHATGPT_CODEX_STORAGE_KEY = `${DEFAULT_CHATGPT_WEB_BASE_URL}/backend-api/codex/responses`
 
 type ChatGptWebModelContext = "mcp" | "transcript"
+type CodexReasoningEffort = "minimal" | "low" | "medium" | "high"
 
 export interface ChatGptWebMessage {
   role: string
   content: string
 }
+
+type CodexInputContent = string | Array<
+  | { type: "input_text"; text: string }
+  | { type: "input_image"; image_url: string }
+>
 
 export interface ChatGptWebTool {
   name: string
@@ -45,12 +57,16 @@ export interface ChatGptWebUsage {
   inputTokenDetails?: {
     cacheReadTokens?: number
   }
+  outputTokenDetails?: {
+    reasoningTokens?: number
+  }
 }
 
 export interface ChatGptWebResponse {
   text: string
   toolCalls?: ChatGptWebToolCall[]
   usage?: ChatGptWebUsage
+  reasoningSummary?: string
 }
 
 interface PreparedCodexTools {
@@ -58,10 +74,30 @@ interface PreparedCodexTools {
   nameMap: Map<string, string>
 }
 
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
+
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  apng: "image/apng",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  avif: "image/avif",
+}
+
+const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
+
 interface ResolvedChatGptWebAuth {
   accessToken: string
   accountId?: string
   baseUrl: string
+}
+
+interface CodexCliAuthFile {
+  auth_mode?: string
+  tokens?: Partial<OAuthTokens> & { id_token?: string }
 }
 
 export interface ChatGptWebAuthStatus {
@@ -81,6 +117,7 @@ interface ChatGptWebCompletedEventResponse {
     arguments?: string
     call_id?: string
     content?: Array<{ type?: string; text?: string; refusal?: string }>
+    summary?: Array<{ type?: string; text?: string }>
   }>
   usage?: {
     input_tokens?: number
@@ -89,7 +126,42 @@ interface ChatGptWebCompletedEventResponse {
     input_tokens_details?: {
       cached_tokens?: number
     }
+    output_tokens_details?: {
+      reasoning_tokens?: number
+    }
   }
+}
+
+const CODEX_REASONING_MODEL_PATTERNS = ["gpt-5", "gpt-4.1", "o1", "o3", "o4"] as const
+
+function isCodexReasoningModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase()
+  return CODEX_REASONING_MODEL_PATTERNS.some(pattern => normalized.startsWith(pattern))
+}
+
+function normalizeCodexReasoningEffort(effort: unknown): CodexReasoningEffort | undefined {
+  if (effort === "minimal" || effort === "low" || effort === "medium" || effort === "high") return effort
+  if (effort === "xhigh") return "high"
+  return undefined
+}
+
+export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort; summary: "auto" } | undefined {
+  if (!isCodexReasoningModel(model)) return undefined
+
+  const override = configStore.get().openaiReasoningEffort
+  if (override === "none") return undefined
+
+  const effort = normalizeCodexReasoningEffort(override) || "medium"
+  if (isDebugLLM()) {
+    logLLM("Applying ChatGPT Codex reasoning effort", {
+      model,
+      effort,
+      summary: "auto",
+      source: override ? "user-config" : "default",
+    })
+  }
+
+  return { effort, summary: "auto" }
 }
 
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
@@ -307,7 +379,54 @@ async function getStoredChatGptWebTokens() {
       return refreshed
     }
   }
+
+  const codexCliTokens = await getCodexCliChatGptTokens()
+  if (codexCliTokens?.access_token) {
+    try {
+      await oauthStorage.storeTokens(CHATGPT_CODEX_STORAGE_KEY, codexCliTokens)
+    } catch (error) {
+      logLLM("Failed to import Codex CLI auth into ChatGPT Web OAuth storage", error)
+    }
+    persistChatGptWebMetadata(codexCliTokens.access_token)
+    return codexCliTokens
+  }
   return null
+}
+
+function resolveCodexCliAuthPath(): string {
+  const codexHome = process.env.CODEX_HOME?.trim() || path.join(process.env.HOME || os.homedir(), ".codex")
+  return path.join(codexHome, "auth.json")
+}
+
+export function readCodexCliChatGptTokens(authPath = resolveCodexCliAuthPath()): OAuthTokens | null {
+  try {
+    if (!fs.existsSync(authPath)) return null
+    const parsed = JSON.parse(fs.readFileSync(authPath, "utf8")) as CodexCliAuthFile
+    if (parsed.auth_mode && parsed.auth_mode !== "chatgpt") return null
+    const tokens = parsed.tokens
+    if (!tokens?.access_token || typeof tokens.access_token !== "string") return null
+
+    return {
+      ...tokens,
+      access_token: tokens.access_token,
+      token_type: typeof tokens.token_type === "string" ? tokens.token_type : "Bearer",
+    } as OAuthTokens
+  } catch (error) {
+    if (isDebugLLM()) {
+      logLLM("Failed to read Codex CLI ChatGPT auth cache", error)
+    }
+    return null
+  }
+}
+
+async function getCodexCliChatGptTokens(): Promise<OAuthTokens | null> {
+  const tokens = readCodexCliChatGptTokens()
+  if (!tokens?.access_token) return null
+
+  const isExpired = tokens.expires_at ? Date.now() >= tokens.expires_at : false
+  if (!isExpired || !tokens.refresh_token) return tokens
+
+  return refreshStoredChatGptTokens(tokens.refresh_token)
 }
 
 export async function getChatGptWebAuthStatus(): Promise<ChatGptWebAuthStatus> {
@@ -470,14 +589,75 @@ function buildCodexInstructions(messages: ChatGptWebMessage[]): string {
   return instructions || DEFAULT_CHATGPT_WEB_INSTRUCTIONS
 }
 
-function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
+function resolveConversationAssetImageUrl(imageUrl: string): string | null {
+  try {
+    const parsed = new URL(imageUrl)
+    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) {
+      return null
+    }
+
+    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
+    if (!encodedConversationId || !encodedFileName) return null
+
+    const conversationId = decodeURIComponent(encodedConversationId)
+    const fileName = decodeURIComponent(encodedFileName)
+    const assetPath = getConversationImageAssetPath(conversationId, fileName)
+    const extension = fileName.split(".").pop()?.toLowerCase() || "png"
+    const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
+    const buffer = fs.readFileSync(assetPath)
+    if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
+      return null
+    }
+    return `data:${mimeType};base64,${buffer.toString("base64")}`
+  } catch {
+    return null
+  }
+}
+
+function resolveMarkdownImageUrlForCodex(imageUrl: string): string | null {
+  if (imageUrl.startsWith("data:image/")) return imageUrl
+  if (imageUrl.startsWith("assets://")) return resolveConversationAssetImageUrl(imageUrl)
+  return null
+}
+
+function buildCodexMessageContent(content: string): CodexInputContent {
+  const parts: Exclude<CodexInputContent, string> = []
+  let lastIndex = 0
+  let hasResolvedImage = false
+
+  MARKDOWN_IMAGE_REGEX.lastIndex = 0
+  for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
+    const before = content.slice(lastIndex, match.index)
+    if (before) parts.push({ type: "input_text", text: before })
+
+    const imageUrl = resolveMarkdownImageUrlForCodex(match[1])
+    if (imageUrl) {
+      parts.push({ type: "input_image", image_url: imageUrl })
+      hasResolvedImage = true
+    } else {
+      parts.push({ type: "input_text", text: match[0] })
+    }
+
+    lastIndex = match.index + match[0].length
+  }
+
+  const after = content.slice(lastIndex)
+  if (after) parts.push({ type: "input_text", text: after })
+
+  return hasResolvedImage && parts.length > 0 ? parts : content
+}
+
+export function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
   return messages
     .filter((message) => message.role !== "system")
-    .map((message) => ({
-      type: "message",
-      role: message.role === "assistant" ? "assistant" : "user",
-      content: message.content,
-    }))
+    .map((message) => {
+      const role = message.role === "assistant" ? "assistant" : "user"
+      return {
+        type: "message",
+        role,
+        content: role === "user" ? buildCodexMessageContent(message.content) : message.content,
+      }
+    })
 }
 
 function buildCodexTools(tools: ChatGptWebTool[] | undefined): PreparedCodexTools | undefined {
@@ -544,17 +724,35 @@ function extractCompletedMessageText(response: ChatGptWebCompletedEventResponse 
     .trim()
 }
 
+function extractCompletedReasoningSummary(response: ChatGptWebCompletedEventResponse | undefined): string {
+  if (!response?.output?.length) return ""
+
+  return response.output
+    .filter((item) => item.type === "reasoning")
+    .flatMap((item) => item.summary || [])
+    .map((summary) => summary.text || "")
+    .join("\n")
+    .trim()
+}
+
 function mapUsage(response: ChatGptWebCompletedEventResponse | undefined): ChatGptWebUsage | undefined {
   const usage = response?.usage
   if (!usage) return undefined
+
+  const inputTokenDetails = usage.input_tokens_details?.cached_tokens !== undefined
+    ? { cacheReadTokens: usage.input_tokens_details.cached_tokens }
+    : undefined
+
+  const outputTokenDetails = usage.output_tokens_details?.reasoning_tokens !== undefined
+    ? { reasoningTokens: usage.output_tokens_details.reasoning_tokens }
+    : undefined
 
   return {
     inputTokens: usage.input_tokens,
     outputTokens: usage.output_tokens,
     totalTokens: usage.total_tokens,
-    inputTokenDetails: {
-      cacheReadTokens: usage.input_tokens_details?.cached_tokens,
-    },
+    inputTokenDetails,
+    outputTokenDetails,
   }
 }
 
@@ -592,6 +790,11 @@ export async function makeChatGptWebResponse(
     payload.tool_choice = "auto"
   }
 
+  const reasoning = getCodexReasoningOptions(model)
+  if (reasoning) {
+    payload.reasoning = reasoning
+  }
+
   const headers: Record<string, string> = {
     Authorization: `Bearer ${auth.accessToken}`,
     "Content-Type": "application/json",
@@ -624,6 +827,7 @@ export async function makeChatGptWebResponse(
   const decoder = new TextDecoder()
   let buffer = ""
   let accumulatedText = ""
+  let accumulatedReasoningSummary = ""
   let completedResponse: ChatGptWebCompletedEventResponse | undefined
   const pendingToolArguments = new Map<string, string>()
   const completedToolCalls = new Map<string, ChatGptWebToolCall>()
@@ -659,6 +863,11 @@ export async function makeChatGptWebResponse(
         if (delta) {
           accumulatedText += delta
           options.onTextChunk?.(delta, accumulatedText)
+        }
+      } else if (eventType === "response.reasoning_summary_text.delta") {
+        const delta = typeof event.delta === "string" ? event.delta : ""
+        if (delta) {
+          accumulatedReasoningSummary += delta
         }
       } else if (eventType === "response.function_call_arguments.delta") {
         const itemId = typeof event.item_id === "string" ? event.item_id : ""
@@ -714,12 +923,14 @@ export async function makeChatGptWebResponse(
   }
 
   const finalText = accumulatedText.trim() || extractCompletedMessageText(completedResponse)
+  const finalReasoningSummary = accumulatedReasoningSummary.trim() || extractCompletedReasoningSummary(completedResponse)
   const toolCalls = Array.from(completedToolCalls.values())
 
   return {
     text: finalText,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     usage: mapUsage(completedResponse),
+    reasoningSummary: finalReasoningSummary || undefined,
   }
 }
 

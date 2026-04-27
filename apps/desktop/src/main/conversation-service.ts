@@ -1,6 +1,9 @@
 import fs from "fs"
 import fsPromises from "fs/promises"
 import path from "path"
+import { createHash } from "crypto"
+import { Writable } from "stream"
+import { pipeline } from "stream/promises"
 import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
@@ -9,11 +12,22 @@ import {
   ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
+  LoadedConversation,
 } from "../shared/types"
 import { summarizeContent } from "./context-budget"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
+import {
+  buildConversationImageAssetUrl,
+  getConversationImageAssetDir,
+  getConversationImageAssetPath,
+} from "./conversation-image-assets"
+import {
+  buildConversationVideoAssetUrl,
+  getConversationVideoAssetDir,
+  getConversationVideoAssetPath,
+} from "./conversation-video-assets"
 
 // Threshold for compacting conversations on load
 // When a conversation exceeds this many messages, older ones are summarized
@@ -31,6 +45,45 @@ const CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS = 50
 const CONVERSATION_REPAIR_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
+const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
+const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
+const createInlineDataImageMarkdownRegex = () =>
+  /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
+const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
+const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
+  png: "png",
+  apng: "apng",
+  gif: "gif",
+  jpeg: "jpg",
+  jpg: "jpg",
+  webp: "webp",
+  bmp: "bmp",
+  avif: "avif",
+}
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  ".png": "image/png",
+  ".apng": "image/apng",
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+  ".avif": "image/avif",
+}
+const VIDEO_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
+  mp4: "mp4",
+  m4v: "m4v",
+  webm: "webm",
+  quicktime: "mov",
+  ogg: "ogv",
+}
+const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".ogv": "video/ogg",
+}
 
 export class ConversationService {
   private static instance: ConversationService | null = null
@@ -78,6 +131,167 @@ export class ConversationService {
     return path.join(conversationsFolder, "index.json")
   }
 
+  private getImageExtensionForMimeType(mimeType: string): string | null {
+    const normalized = mimeType.toLowerCase().replace(/^image\//u, "")
+    return IMAGE_EXTENSION_BY_MIME_SUBTYPE[normalized] ?? null
+  }
+
+  private getImageMimeTypeFromPath(imagePath: string): string | null {
+    return IMAGE_MIME_BY_EXTENSION[path.extname(imagePath).toLowerCase()] ?? null
+  }
+
+  private getVideoExtensionForMimeType(mimeType: string): string | null {
+    const normalized = mimeType.toLowerCase().replace(/^video\//u, "")
+    return VIDEO_EXTENSION_BY_MIME_SUBTYPE[normalized] ?? null
+  }
+
+  private getVideoMimeTypeFromPath(videoPath: string): string | null {
+    return VIDEO_MIME_BY_EXTENSION[path.extname(videoPath).toLowerCase()] ?? null
+  }
+
+  private async storeConversationImageBuffer(
+    conversationId: string,
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<string> {
+    const extension = this.getImageExtensionForMimeType(mimeType)
+    if (!extension || buffer.length <= 0) {
+      throw new Error(`Unsupported or empty conversation image: ${mimeType}`)
+    }
+
+    const hash = createHash("sha256").update(buffer).digest("hex")
+    const fileName = `${hash}.${extension}`
+    const assetPath = getConversationImageAssetPath(conversationId, fileName)
+
+    await fsPromises.mkdir(getConversationImageAssetDir(conversationId), { recursive: true })
+    try {
+      await fsPromises.writeFile(assetPath, buffer, { flag: "wx" })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error
+      }
+    }
+
+    return buildConversationImageAssetUrl(conversationId, fileName)
+  }
+
+  async storeImagePathAsConversationAsset(conversationId: string, imagePath: string): Promise<string> {
+    const mimeType = this.getImageMimeTypeFromPath(imagePath)
+    if (!mimeType) {
+      throw new Error(`Unsupported image extension for path: ${imagePath}`)
+    }
+
+    const buffer = await fsPromises.readFile(imagePath)
+    return this.storeConversationImageBuffer(conversationId, buffer, mimeType)
+  }
+
+  async storeDataImageUrlAsConversationAsset(conversationId: string, dataUrl: string): Promise<string> {
+    const match = dataUrl.match(DATA_IMAGE_URL_REGEX)
+    if (!match) {
+      throw new Error("Invalid data:image URL")
+    }
+
+    const [, subtype, rawBase64] = match
+    const buffer = Buffer.from(rawBase64.replace(/\s+/g, ""), "base64")
+    return this.storeConversationImageBuffer(conversationId, buffer, `image/${subtype.toLowerCase()}`)
+  }
+
+  private async computeFileSha256(filePath: string): Promise<string> {
+    const hash = createHash("sha256")
+    await pipeline(
+      fs.createReadStream(filePath),
+      new Writable({
+        write(chunk: Buffer, _encoding, callback) {
+          hash.update(chunk)
+          callback()
+        },
+      }),
+    )
+    return hash.digest("hex")
+  }
+
+  async storeVideoPathAsConversationAsset(conversationId: string, videoPath: string): Promise<string> {
+    const mimeType = this.getVideoMimeTypeFromPath(videoPath)
+    if (!mimeType) {
+      throw new Error(`Unsupported video extension for path: ${videoPath}`)
+    }
+
+    const extension = this.getVideoExtensionForMimeType(mimeType)
+    const sourceStat = await fsPromises.stat(videoPath)
+    if (!sourceStat.isFile()) {
+      throw new Error(`Video path is not a regular file: ${videoPath}`)
+    }
+    if (!extension || sourceStat.size <= 0) {
+      throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
+    }
+
+    const hash = await this.computeFileSha256(videoPath)
+    const fileName = `${hash}.${extension}`
+    const assetPath = getConversationVideoAssetPath(conversationId, fileName)
+
+    await fsPromises.mkdir(getConversationVideoAssetDir(conversationId), { recursive: true })
+    try {
+      await pipeline(fs.createReadStream(videoPath), fs.createWriteStream(assetPath, { flags: "wx" }))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        try {
+          await fsPromises.unlink(assetPath)
+        } catch {
+          // Best-effort cleanup for partially copied files.
+        }
+        throw error
+      }
+    }
+
+    return buildConversationVideoAssetUrl(conversationId, fileName)
+  }
+
+  async materializeInlineDataImagesInContent(conversationId: string, content: string): Promise<string> {
+    if (!/data:image\//i.test(content)) {
+      return content
+    }
+
+    let nextContent = ""
+    let lastIndex = 0
+    const matches = Array.from(content.matchAll(createInlineDataImageMarkdownRegex()))
+
+    for (const match of matches) {
+      const matchIndex = match.index ?? 0
+      const [fullMatch, altText, dataUrl] = match
+      nextContent += content.slice(lastIndex, matchIndex)
+      try {
+        const assetUrl = await this.storeDataImageUrlAsConversationAsset(conversationId, dataUrl)
+        nextContent += `![${altText}](${assetUrl})`
+      } catch (error) {
+        logApp(`[ConversationService] Failed to materialize inline image for ${conversationId}`, error)
+        nextContent += fullMatch
+      }
+      lastIndex = matchIndex + fullMatch.length
+    }
+
+    return nextContent + content.slice(lastIndex)
+  }
+
+  private async materializeConversationInlineImages(conversation: Conversation): Promise<boolean> {
+    let changed = false
+    const seenMessages = new Set<ConversationMessage>()
+    const messageGroups = [conversation.messages, conversation.rawMessages].filter(Array.isArray) as ConversationMessage[][]
+
+    for (const messages of messageGroups) {
+      for (const message of messages) {
+        if (seenMessages.has(message)) continue
+        seenMessages.add(message)
+        const nextContent = await this.materializeInlineDataImagesInContent(conversation.id, message.content)
+        if (nextContent !== message.content) {
+          message.content = nextContent
+          changed = true
+        }
+      }
+    }
+
+    return changed
+  }
+
   private generateConversationId(): string {
     return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
@@ -95,8 +309,10 @@ export class ConversationService {
   }
 
   private generateConversationTitle(firstMessage: string): string {
-    const cleanedMessage = sanitizeMessageContentForDisplay(firstMessage).trim()
-    const source = cleanedMessage || firstMessage.trim()
+    let cleanedMessage = sanitizeMessageContentForDisplay(firstMessage)
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+      .trim()
+    const source = cleanedMessage || firstMessage.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").trim() || "Image"
     // Generate a title from the first message (first 50 characters)
     const title = source.slice(0, 50)
     return title.length < source.length ? `${title}...` : title
@@ -180,17 +396,25 @@ export class ConversationService {
     }
 
     let loadedIndex: ConversationHistoryItem[] = []
+    let indexWasNormalized = false
     try {
       const indexPath = this.getConversationIndexPath()
       const data = await fsPromises.readFile(indexPath, "utf8")
       const parsed = JSON.parse(data)
-      loadedIndex = Array.isArray(parsed) ? parsed : []
+      if (Array.isArray(parsed)) {
+        const normalized = this.normalizeConversationHistoryIndex(parsed as ConversationHistoryItem[])
+        loadedIndex = normalized.index
+        indexWasNormalized = normalized.changed
+      }
     } catch {
       // File doesn't exist or is corrupted — start fresh
       loadedIndex = []
     }
 
     this.indexCache = loadedIndex
+    if (indexWasNormalized) {
+      await this.writeIndexToDisk()
+    }
 
     const conversationFileCount = await this.getConversationFileCount()
     if (conversationFileCount > loadedIndex.length) {
@@ -220,9 +444,52 @@ export class ConversationService {
       createdAt: conversation.createdAt,
       updatedAt: conversation.updatedAt,
       messageCount: this.getRepresentedMessageCount(conversation),
-      lastMessage: lastMessage?.content || "",
+      lastMessage: this.toConversationHistorySnippet(
+        lastMessage?.content || "",
+        MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+      ),
       preview: this.generatePreview(visibleMessages),
     }
+  }
+
+  private toConversationHistorySnippet(value: string, maxChars: number): string {
+    const sanitized = sanitizeMessageContentForDisplay(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+
+    return sanitized.length > maxChars
+      ? `${sanitized.slice(0, maxChars).trim()}…`
+      : sanitized
+  }
+
+  private normalizeConversationHistoryIndex(index: ConversationHistoryItem[]): {
+    index: ConversationHistoryItem[]
+    changed: boolean
+  } {
+    let changed = false
+    const normalizedIndex = index.map((item) => {
+      const normalizedLastMessage = this.toConversationHistorySnippet(
+        item.lastMessage || "",
+        MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+      )
+      const normalizedPreview = this.toConversationHistorySnippet(
+        item.preview || "",
+        MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
+      )
+
+      if (normalizedLastMessage !== item.lastMessage || normalizedPreview !== item.preview) {
+        changed = true
+        return {
+          ...item,
+          lastMessage: normalizedLastMessage,
+          preview: normalizedPreview,
+        }
+      }
+
+      return item
+    })
+
+    return { index: normalizedIndex, changed }
   }
 
   private async parseConversationData(
@@ -519,8 +786,9 @@ export class ConversationService {
     conversationPath: string,
     conversation: Conversation,
   ): Promise<void> {
+    const imageStorageChanged = await this.materializeConversationInlineImages(conversation)
     const storageMetadataChanged = this.syncConversationStorageMetadata(conversation)
-    if (!storageMetadataChanged) {
+    if (!imageStorageChanged && !storageMetadataChanged) {
       return
     }
 
@@ -555,6 +823,7 @@ export class ConversationService {
       conversation.updatedAt = Date.now()
     }
 
+    await this.materializeConversationInlineImages(conversation)
     this.syncConversationStorageMetadata(conversation)
 
     await this.writeConversationFileAtomic(
@@ -596,7 +865,9 @@ export class ConversationService {
     const preview = previewMessages
       .map((msg) => `${msg.role}: ${sanitizePreviewText(msg.content || "").slice(0, 100)}`)
       .join(" | ")
-    return preview.length > 200 ? `${preview.slice(0, 200)}...` : preview
+    return preview.length > MAX_CONVERSATION_HISTORY_PREVIEW_CHARS
+      ? `${preview.slice(0, MAX_CONVERSATION_HISTORY_PREVIEW_CHARS)}...`
+      : preview
   }
 
   private hasSummaryMessages(messages: ConversationMessage[]): boolean {
@@ -609,6 +880,43 @@ export class ConversationService {
       .reduce((total, message) => total + (message.summarizedMessageCount ?? 0), 0)
 
     return summarizedMessageCount + messages.filter((message) => !message.isSummary).length
+  }
+
+  private getRepresentedCountForMessages(messages: ConversationMessage[]): number {
+    return messages.reduce((total, message) => {
+      if (message.isSummary) {
+        return total + Math.max(message.summarizedMessageCount ?? 0, 1)
+      }
+      return total + 1
+    }, 0)
+  }
+
+  private applyConversationMessageLimit(
+    conversation: Conversation,
+    messageLimit?: number,
+  ): LoadedConversation {
+    const normalizedLimit = typeof messageLimit === "number" && Number.isFinite(messageLimit)
+      ? Math.max(0, Math.floor(messageLimit ?? 0))
+      : 0
+
+    if (normalizedLimit <= 0) {
+      return conversation
+    }
+
+    const totalMessageCount = conversation.messages.length
+    const messageOffset = Math.max(0, totalMessageCount - normalizedLimit)
+    const branchMessageIndexOffset = this.getRepresentedCountForMessages(
+      conversation.messages.slice(0, messageOffset),
+    )
+    const { rawMessages: _rawMessages, ...conversationWithoutRawMessages } = conversation
+
+    return {
+      ...conversationWithoutRawMessages,
+      messages: conversation.messages.slice(messageOffset),
+      messageOffset,
+      totalMessageCount,
+      branchMessageIndexOffset,
+    }
   }
 
   private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {
@@ -689,11 +997,17 @@ export class ConversationService {
     })
   }
 
-  async loadConversation(conversationId: string): Promise<Conversation | null> {
+  async loadConversation(
+    conversationId: string,
+    options?: { messageLimit?: number },
+  ): Promise<LoadedConversation | null> {
     // Enqueue as a mutation so that any repair save inside loadConversationFromDisk()
     // is serialized with other writes, preventing lost-update races.
     return this.enqueueConversationMutation(conversationId, async () => {
-      return this.loadConversationFromDisk(conversationId)
+      const conversation = await this.loadConversationFromDisk(conversationId)
+      return conversation
+        ? this.applyConversationMessageLimit(conversation, options?.messageLimit)
+        : null
     })
   }
 
@@ -804,17 +1118,18 @@ export class ConversationService {
     const validatedId = this.validateConversationId(conversationId)
     const messageId = this.generateMessageId()
     const now = Date.now()
+    const storedFirstMessage = await this.materializeInlineDataImagesInContent(validatedId, firstMessage)
 
     const message: ConversationMessage = {
       id: messageId,
       role,
-      content: firstMessage,
+      content: storedFirstMessage,
       timestamp: now,
     }
 
     const conversation: Conversation = {
       id: validatedId,
-      title: this.generateConversationTitle(firstMessage),
+      title: this.generateConversationTitle(storedFirstMessage),
       createdAt: now,
       updatedAt: now,
       messages: [message],
@@ -842,9 +1157,11 @@ export class ConversationService {
 
         const storedMessages = this.getStoredRawMessages(conversation)
 
+        const storedContent = await this.materializeInlineDataImagesInContent(conversationId, content)
+
         // Idempotency guard: avoid pushing consecutive duplicate messages
         const last = storedMessages[storedMessages.length - 1]
-        if (this.isConsecutiveDuplicate(last, role, content)) {
+        if (this.isConsecutiveDuplicate(last, role, storedContent)) {
           conversation.updatedAt = Date.now()
           await this.saveConversationUnlocked(conversation)
           return conversation
@@ -854,7 +1171,7 @@ export class ConversationService {
         const message: ConversationMessage = {
           id: messageId,
           role,
-          content,
+          content: storedContent,
           timestamp: Date.now(),
           toolCalls,
           toolResults,

@@ -12,6 +12,27 @@ export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage,
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '../../../../packages/core/src/types'
 
+export type KnowledgeNoteSeriesSummary = {
+  key: string
+  label: string
+  count: number
+}
+
+export type KnowledgeNoteGroupSummary = {
+  key: string
+  label: string
+  totalCount: number
+  directCount: number
+  seriesSummaries: KnowledgeNoteSeriesSummary[]
+}
+
+export type KnowledgeNotesOverview = {
+  total: number
+  autoCount: number
+  searchOnlyCount: number
+  groups: KnowledgeNoteGroupSummary[]
+}
+
 export type RecordingHistoryItem = {
   id: string
   createdAt: number
@@ -217,6 +238,15 @@ export interface Conversation {
   branchSource?: ConversationBranchSource
 }
 
+export interface LoadedConversation extends Conversation {
+  /** Start index of `messages` within the persisted conversation when loaded as a window. */
+  messageOffset?: number
+  /** Total number of persisted display messages before windowing. */
+  totalMessageCount?: number
+  /** Raw-history branch index represented before the first loaded display message. */
+  branchMessageIndexOffset?: number
+}
+
 export interface ConversationHistoryItem {
   id: string
   title: string
@@ -273,12 +303,13 @@ export type ProfileModelConfig = {
   ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
 }
 
-// Per-profile skills configuration
-// Skills are disabled by default for each profile; users opt-in to specific skills
+// Per-agent skills configuration.
+// Missing config or allSkillsDisabledByDefault=false means all skills are enabled.
+// When allSkillsDisabledByDefault=true, only enabledSkillIds are enabled.
 export type ProfileSkillsConfig = {
-  // List of skill IDs that are enabled for this profile
+  // List of skill IDs that are enabled for this agent
   enabledSkillIds?: string[]
-  // When true, newly-added skills are also disabled by default for this profile
+  // When true, newly-added skills are also disabled by default for this agent
   // This ensures strict opt-in behavior
   allSkillsDisabledByDefault?: boolean
 }
@@ -968,21 +999,34 @@ export interface AgentSkillsData {
   skills: AgentSkill[]
 }
 
+export type LoopSchedule =
+  | { type: "daily"; times: string[] }
+  | { type: "weekly"; times: string[]; daysOfWeek: number[] }
+
 export interface LoopConfig {
   id: string               // unique identifier (uuid)
   name: string             // display name
   prompt: string           // the prompt text sent to the agent
-  intervalMinutes: number  // how often to run (in minutes)
+  intervalMinutes: number  // fallback fixed interval when `schedule` is not set
   enabled: boolean         // whether this loop is active
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
+  speakOnTrigger?: boolean // if true, unsnoozes session on completion so TTS auto-plays
+  continueInSession?: boolean // if true, reuses the prior session across iterations
+  lastSessionId?: string   // session id to resume on next run when continueInSession is on
+  runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
+  maxIterations?: number   // optional per-task override for agent loop iterations
+  schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }
 
 export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
+  voiceScreenshotShortcutEnabled?: boolean
+  voiceScreenshotShortcut?: "ctrl-shift-x" | "custom"
+  customVoiceScreenshotShortcut?: string
   hideDockIcon?: boolean
   launchAtLogin?: boolean
 
@@ -1206,6 +1250,7 @@ export type Config = {
   panelCustomPosition?: { x: number; y: number }
   panelDragEnabled?: boolean
   panelCustomSize?: { width: number; height: number }
+  panelWaveformSize?: { width: number; height: number }
   panelTextInputSize?: { width: number; height: number }
   panelProgressSize?: { width: number; height: number }
 

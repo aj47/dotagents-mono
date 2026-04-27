@@ -77,6 +77,10 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 const STORAGE_KEY = 'app_config_v1';
 
 export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
+  // Edge TTS now routes through the paired desktop's /v1/tts/speak endpoint,
+  // so if no desktop is paired fall back to native.
+  const hasPairing = Boolean(cfg.baseUrl && cfg.apiKey);
+  const ttsProvider = cfg.ttsProvider === 'edge' && !hasPairing ? 'native' : cfg.ttsProvider;
   return {
     ...DEFAULT_APP_CONFIG,
     ...cfg,
@@ -87,6 +91,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     handsFreeDebug: cfg.handsFreeDebug ?? false,
     handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? true,
     edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
+    ttsProvider,
   };
 }
 

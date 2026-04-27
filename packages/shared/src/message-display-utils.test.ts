@@ -53,6 +53,11 @@ describe('sanitizeMessageContentForSpeech', () => {
     expect(sanitizeMessageContentForSpeech(content)).toBe('Image')
   })
 
+  it('strips markdown video links', () => {
+    const content = 'Watch [demo](assets://conversation-video/conv_1/abcdef1234567890.mp4) please'
+    expect(sanitizeMessageContentForSpeech(content)).toBe('Watch Video: demo please')
+  })
+
   it('leaves plain text unchanged', () => {
     const content = 'Just regular text with no images'
     expect(sanitizeMessageContentForSpeech(content)).toBe(content)

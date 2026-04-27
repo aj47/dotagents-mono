@@ -9,9 +9,9 @@ export type RendererHandlers = {
   startOrFinishRecording: (data?: { fromButtonClick?: boolean }) => void
   refreshRecordingHistory: () => void
 
-  startMcpRecording: (data?: { conversationId?: string; conversationTitle?: string; sessionId?: string; fromTile?: boolean; fromButtonClick?: boolean }) => void
+  startMcpRecording: (data?: { conversationId?: string; conversationTitle?: string; sessionId?: string; fromTile?: boolean; fromButtonClick?: boolean; screenshot?: { name?: string; dataUrl: string } }) => void
   finishMcpRecording: () => void
-  startOrFinishMcpRecording: (data?: { conversationId?: string; sessionId?: string; fromTile?: boolean; fromButtonClick?: boolean }) => void
+  startOrFinishMcpRecording: (data?: { conversationId?: string; sessionId?: string; fromTile?: boolean; fromButtonClick?: boolean; screenshot?: { name?: string; dataUrl: string } }) => void
 
   showTextInput: (data?: { initialText?: string; conversationId?: string; conversationTitle?: string }) => void
   hideTextInput: () => void
@@ -26,6 +26,9 @@ export type RendererHandlers = {
   // Stop all in-progress TTS playback in this renderer window
   stopAllTts: () => void
 
+  // Floating panel visibility changed (broadcast to all windows)
+  panelVisibilityChanged: (data: { visible: boolean }) => void
+
   agentSessionsUpdated: (data: {
     activeSessions: AgentSession[]
     recentCompletedSessions: AgentSession[]
@@ -34,6 +37,10 @@ export type RendererHandlers = {
 
   focusAgentSession: (sessionId: string) => void
   setAgentSessionSnoozed: (data: { sessionId: string; isSnoozed: boolean }) => void
+
+  // Clear stale TTS tracking keys for a session so auto-play can fire fresh
+  // (e.g. when a continueInSession loop reuses a sessionId across runs)
+  clearSessionTTSKeys: (sessionId: string) => void
 
   // Message Queue handlers
   onMessageQueueUpdate: (data: { conversationId: string; queue: QueuedMessage[]; isPaused: boolean }) => void

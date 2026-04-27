@@ -11,6 +11,7 @@ Treat the layered `.agents` filesystem as the canonical editable DotAgents confi
 
 - Global layer: `~/.agents/` (default)
 - Workspace layer: `${DOTAGENTS_WORKSPACE_DIR}/.agents/` when `DOTAGENTS_WORKSPACE_DIR` is explicitly set
+- Workspace-relative shorthand: `./.agents/` when referring to the current repository workspace layer
 - Workspace wins on conflicts when present
 - Prefer direct file editing over narrow app-specific config tools
 
@@ -18,7 +19,7 @@ When changing unfamiliar DotAgents config, inspect the relevant files first, the
 
 ## Canonical file map
 
-Use `~/.agents/` by default. When `DOTAGENTS_WORKSPACE_DIR` is explicitly set, the workspace layer uses the same relative paths under `${DOTAGENTS_WORKSPACE_DIR}/.agents/`.
+Use `~/.agents/` by default. When `DOTAGENTS_WORKSPACE_DIR` is explicitly set, the workspace layer uses the same relative paths under `${DOTAGENTS_WORKSPACE_DIR}/.agents/` (often referred to as `./.agents/` from the workspace root).
 
 - `~/.agents/dotagents-settings.json` — general app settings
 - `~/.agents/mcp.json` — MCP-related config

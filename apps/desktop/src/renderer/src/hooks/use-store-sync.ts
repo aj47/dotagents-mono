@@ -5,6 +5,7 @@ import { useAgentStore, useConversationStore } from '@renderer/stores'
 import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
 import { queryClient } from '@renderer/lib/queries'
 import { ttsManager } from '@renderer/lib/tts-manager'
+import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
 import { logUI } from '@renderer/lib/debug'
 
 const areStringArraysEqual = (left: string[], right: string[]): boolean => {
@@ -28,6 +29,7 @@ export function useStoreSync() {
   const setPinnedSessionIds = useAgentStore((s) => s.setPinnedSessionIds)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const setArchivedSessionIds = useAgentStore((s) => s.setArchivedSessionIds)
+  const setFloatingPanelVisible = useAgentStore((s) => s.setFloatingPanelVisible)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
   const initialPinnedSessionIdsRef = useRef(Array.from(pinnedSessionIds))
   const pinnedSessionIdsHydratedRef = useRef(false)
@@ -96,6 +98,27 @@ export function useStoreSync() {
     return unlisten
   }, [])
 
+  // Track floating panel visibility so the main window can suppress duplicate
+  // TTS auto-play when the panel is already speaking the same session.
+  useEffect(() => {
+    const unlisten = rendererHandlers.panelVisibilityChanged.listen(
+      ({ visible }: { visible: boolean }) => {
+        setFloatingPanelVisible(visible)
+      }
+    )
+    return unlisten
+  }, [setFloatingPanelVisible])
+
+  // Hydrate initial floating panel visibility on mount in case the panel is
+  // already visible before this renderer started listening.
+  useEffect(() => {
+    tipcClient.getFloatingPanelVisibility().then((result: { visible: boolean }) => {
+      setFloatingPanelVisible(result.visible)
+    }).catch(() => {
+      // Best-effort hydration; default remains false.
+    })
+  }, [setFloatingPanelVisible])
+
   useEffect(() => {
     const unlisten = rendererHandlers.focusAgentSession.listen(
       (sessionId: string) => {
@@ -114,6 +137,16 @@ export function useStoreSync() {
     )
     return unlisten
   }, [setSessionSnoozed])
+
+  // Clear stale TTS tracking keys for a session (sent before speakOnTrigger unsnooze)
+  useEffect(() => {
+    const unlisten = rendererHandlers.clearSessionTTSKeys.listen(
+      (sessionId: string) => {
+        clearSessionTTSTracking(sessionId)
+      }
+    )
+    return unlisten
+  }, [])
 
   // Listen for message queue updates
   useEffect(() => {

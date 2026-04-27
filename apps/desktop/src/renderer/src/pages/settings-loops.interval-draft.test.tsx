@@ -18,7 +18,9 @@ function createHookRuntime() {
     __esModule: true,
     default: {} as any,
     useState,
+    useEffect: () => undefined,
     useCallback: (fn: any) => fn,
+    forwardRef: (render: (props: any, ref: any) => any) => (props: any) => render(props, null),
   }
   reactMock.default = reactMock
 
@@ -71,6 +73,10 @@ function findButtonWithText(node: any, label: string) {
   return findNode(node, (candidate) => candidate.type === "Button" && textContent(candidate.props?.children).includes(label))
 }
 
+function findButtonWithTitle(node: any, title: string) {
+  return findNode(node, (candidate) => candidate.type === "Button" && candidate.props?.title === title)
+}
+
 function findInputById(node: any, id: string) {
   return findNode(node, (candidate) => candidate.type === "Input" && candidate.props?.id === id)
 }
@@ -79,7 +85,7 @@ function findTextareaById(node: any, id: string) {
   return findNode(node, (candidate) => candidate.type === "Textarea" && candidate.props?.id === id)
 }
 
-async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>, loops: any[] = []) {
   vi.resetModules()
 
   const saveLoop = vi.fn(async () => undefined)
@@ -89,27 +95,44 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
   const error = vi.fn()
   const invalidateQueries = vi.fn()
   const Null = () => null
-
-  vi.doMock("react", () => runtime.reactMock)
-  vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("@renderer/components/ui/label", () => ({ Label: (props: any) => ({ type: "Label", props }) }))
-  vi.doMock("@renderer/components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
-  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
-  vi.doMock("@renderer/components/ui/card", () => ({
+  const buttonMock = { Button: (props: any) => ({ type: "Button", props }) }
+  const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
+  const labelMock = { Label: (props: any) => ({ type: "Label", props }) }
+  const switchMock = { Switch: (props: any) => ({ type: "Switch", props }) }
+  const textareaMock = { Textarea: (props: any) => ({ type: "Textarea", props }) }
+  const selectMock = { Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }
+  const cardMock = {
     Card: (props: any) => ({ type: "Card", props }),
     CardContent: (props: any) => ({ type: "CardContent", props }),
     CardDescription: (props: any) => ({ type: "CardDescription", props }),
     CardHeader: (props: any) => ({ type: "CardHeader", props }),
     CardTitle: (props: any) => ({ type: "CardTitle", props }),
-  }))
+  }
+
+  vi.doMock("react", () => runtime.reactMock)
+  vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("@renderer/components/ui/button", () => buttonMock)
+  vi.doMock("../components/ui/button", () => buttonMock)
+  vi.doMock("@renderer/components/ui/input", () => inputMock)
+  vi.doMock("../components/ui/input", () => inputMock)
+  vi.doMock("@renderer/components/ui/label", () => labelMock)
+  vi.doMock("../components/ui/label", () => labelMock)
+  vi.doMock("@renderer/components/ui/switch", () => switchMock)
+  vi.doMock("../components/ui/switch", () => switchMock)
+  vi.doMock("@renderer/components/ui/textarea", () => textareaMock)
+  vi.doMock("../components/ui/textarea", () => textareaMock)
+  vi.doMock("@renderer/components/ui/select", () => selectMock)
+  vi.doMock("../components/ui/select", () => selectMock)
+  vi.doMock("@renderer/components/ui/card", () => cardMock)
+  vi.doMock("../components/ui/card", () => cardMock)
   vi.doMock("@renderer/components/ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
+  vi.doMock("../components/ui/badge", () => ({ Badge: (props: any) => ({ type: "Badge", props }) }))
   vi.doMock("@renderer/lib/tipc-client", () => ({
     tipcClient: {
-      getLoops: vi.fn(async () => []),
+      getLoops: vi.fn(async () => loops),
       getLoopStatuses: vi.fn(async () => []),
+      listAgentSessionCandidates: vi.fn(async () => ({ activeSessions: [], completedSessions: [] })),
       saveLoop,
       startLoop,
       stopLoop,
@@ -117,12 +140,28 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
       triggerLoop: vi.fn(async () => ({ success: true })),
       openLoopTaskFile: vi.fn(async () => ({ success: true })),
     },
+    rendererHandlers: { loopsFolderChanged: { listen: vi.fn(() => () => undefined) } },
+  }))
+  vi.doMock("../lib/tipc-client", () => ({
+    tipcClient: {
+      getLoops: vi.fn(async () => loops),
+      getLoopStatuses: vi.fn(async () => []),
+      listAgentSessionCandidates: vi.fn(async () => ({ activeSessions: [], completedSessions: [] })),
+      saveLoop,
+      startLoop,
+      stopLoop,
+      deleteLoop: vi.fn(async () => undefined),
+      triggerLoop: vi.fn(async () => ({ success: true })),
+      openLoopTaskFile: vi.fn(async () => ({ success: true })),
+    },
+    rendererHandlers: { loopsFolderChanged: { listen: vi.fn(() => () => undefined) } },
   }))
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? [] : [] }),
+    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? loops : [] }),
     useQueryClient: () => ({ invalidateQueries }),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
+  vi.doMock("../lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
   vi.doMock("lucide-react", () => ({ Trash2: Null, Plus: Null, Edit2: Null, Save: Null, X: Null, Play: Null, Clock: Null, FileText: Null }))
   vi.doMock("sonner", () => ({ toast: { success, error } }))
 
@@ -168,7 +207,9 @@ describe("desktop repeat-task interval editing", () => {
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "" } })
 
     tree = runtime.render(Component, {} as any)
@@ -187,7 +228,9 @@ describe("desktop repeat-task interval editing", () => {
 
     tree = runtime.render(Component, {} as any)
     findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
     findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
     findInputById(tree, "interval").props.onChange({ target: { value: "60" } })
 
     tree = runtime.render(Component, {} as any)
@@ -204,5 +247,67 @@ describe("desktop repeat-task interval editing", () => {
     })
     expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
     expect(success).toHaveBeenCalledWith("Task created")
+  })
+
+  it.each([
+    { label: "Continuous", expectedSchedule: undefined, expectedRunContinuously: true },
+    { label: "Daily", expectedSchedule: { type: "daily", times: ["09:00"] }, expectedRunContinuously: false },
+    { label: "Weekly", expectedSchedule: { type: "weekly", times: ["09:00"], daysOfWeek: [1, 2, 3, 4, 5] }, expectedRunContinuously: false },
+  ])("preserves the existing interval when saving an edited $label task with an invalid hidden interval draft", async ({ label, expectedSchedule, expectedRunContinuously }) => {
+    const runtime = createHookRuntime()
+    const existingLoop = {
+      id: "standup-summary",
+      name: "Standup Summary",
+      prompt: "Summarize standup notes",
+      intervalMinutes: 45,
+      enabled: true,
+    }
+    const { Component, saveLoop, success } = await loadSettingsLoops(runtime, [existingLoop])
+
+    let tree = runtime.render(Component, {} as any)
+    findButtonWithTitle(tree, "Edit task").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "interval").props.onChange({ target: { value: "" } })
+    tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, label).props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    await findButtonWithText(tree, "Save").props.onClick()
+
+    const savedLoop = saveLoop.mock.calls[0][0].loop
+    expect(savedLoop.id).toBe("standup-summary")
+    expect(savedLoop.intervalMinutes).toBe(45)
+    expect(savedLoop.runContinuously).toBe(expectedRunContinuously)
+    expect(savedLoop.schedule).toEqual(expectedSchedule)
+    expect(success).toHaveBeenCalledWith("Task updated")
+  })
+
+  it("uses the default interval when saving a new scheduled task with an invalid hidden interval draft", async () => {
+    const runtime = createHookRuntime()
+    const { Component, saveLoop } = await loadSettingsLoops(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Add Task").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    tree = runtime.render(Component, {} as any)
+    findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "interval").props.onChange({ target: { value: "" } })
+    tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Daily").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    await findButtonWithText(tree, "Save").props.onClick()
+
+    expect(saveLoop).toHaveBeenCalledWith({
+      loop: expect.objectContaining({
+        name: "Daily Summary",
+        intervalMinutes: 15,
+        schedule: { type: "daily", times: ["09:00"] },
+      }),
+    })
   })
 })

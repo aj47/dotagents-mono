@@ -72,6 +72,8 @@ import {
   type AgentConversationState,
 } from "@dotagents/shared"
 
+const AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE = 120
+
 /**
  * Clean error message by removing stack traces and noise
  */
@@ -179,38 +181,6 @@ function extractSkillsIndexForMinimalPrompt(skillsInstructions?: string): string
 const NON_AGENT_WORKING_NOTES_LIMIT = 3
 const AGENT_WORKING_NOTES_LIMIT = 4
 
-/**
- * Analyze tool errors and categorize them
- */
-function analyzeToolErrors(toolResults: MCPToolResult[]): {
-  errorTypes: string[]
-} {
-  const errorTypes: string[] = []
-  const errorMessages = toolResults
-    .filter((r) => r.isError)
-    .map((r) => r.content.map((c) => c.text).join(" ").toLowerCase())
-    .join(" ")
-
-  // Categorize error types
-  if (errorMessages.includes("timeout")) {
-    errorTypes.push("timeout")
-  }
-  if (errorMessages.includes("connection") || errorMessages.includes("network")) {
-    errorTypes.push("connectivity")
-  }
-  if (errorMessages.includes("permission") || errorMessages.includes("access") || errorMessages.includes("denied")) {
-    errorTypes.push("permissions")
-  }
-  if (errorMessages.includes("not found") || errorMessages.includes("does not exist") || errorMessages.includes("missing")) {
-    errorTypes.push("not_found")
-  }
-  if (errorMessages.includes("invalid") || errorMessages.includes("expected")) {
-    errorTypes.push("invalid_params")
-  }
-
-  return { errorTypes }
-}
-
 function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, result: MCPToolResult): boolean {
   if (toolName !== "execute_command" || !result.isError) return false
 
@@ -273,7 +243,7 @@ export async function processTranscriptWithTools(
     : []
   // null means "all skills enabled by default" — resolve to all available skill IDs
   const enabledSkillIds = enabledSkillIdsOrNull === null
-    ? skillsService.getSkills().map(s => s.id)
+    ? skillsService.refreshFromDisk().map(s => s.id)
     : enabledSkillIdsOrNull
   const skillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
   const skillsIndex = extractSkillsIndexForMinimalPrompt(skillsInstructions)
@@ -627,10 +597,13 @@ export async function processTranscriptWithAgentMode(
     const profileName = session?.profileSnapshot?.profileName
     const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
     const storedUserResponse = getSessionUserResponse(currentSessionId, effectiveRunId)
+    // Live progress should only surface executed respond_to_user output. Falling
+    // back to the current conversationHistory can read the planned tool-call args
+    // before runtime-tools has materialized local image paths into renderable
+    // conversation assets, causing a duplicate non-renderable "Local image" bubble.
     const normalizedStoredUserResponse = resolveLatestUserFacingResponse({
       storedResponse: storedUserResponse,
       responseEvents,
-      conversationHistory: update.conversationHistory as any,
     })
     const isKillSwitchCompletion =
       update.isComplete &&
@@ -663,8 +636,21 @@ export async function processTranscriptWithAgentMode(
     // Get history of past respond_to_user calls (excluding current)
     const responseHistory = getSessionUserResponseHistory(currentSessionId, effectiveRunId)
 
+    const windowedConversationHistory = update.conversationHistory
+      ? (() => {
+          const totalCount = update.conversationHistory?.length ?? 0
+          const startIndex = Math.max(0, totalCount - AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE)
+          return {
+            conversationHistory: update.conversationHistory?.slice(startIndex),
+            conversationHistoryStartIndex: startIndex,
+            conversationHistoryTotalCount: totalCount,
+          }
+        })()
+      : {}
+
     const fullUpdate: AgentProgressUpdate = {
       ...update,
+      ...windowedConversationHistory,
       // Only include userResponse when it changed. This avoids re-sending large
       // image payloads on every progress tick while preserving merge behavior.
       ...(shouldEmitUserResponse ? { userResponse: userResponseForUpdate } : {}),
@@ -1041,7 +1027,7 @@ export async function processTranscriptWithAgentMode(
     const snapshotSkillsConfig = effectiveProfileSnapshot?.skillsConfig
     // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
     const enabledSkillIds = (!snapshotSkillsConfig || !snapshotSkillsConfig.allSkillsDisabledByDefault)
-      ? skillsService.getSkills().map(s => s.id)
+      ? skillsService.refreshFromDisk().map(s => s.id)
       : (snapshotSkillsConfig.enabledSkillIds ?? [])
     logLLM(`[processTranscriptWithAgentMode] Loading skills for session ${currentSessionId}. enabledSkillIds: [${enabledSkillIds.join(', ')}]`)
     profileSkillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
@@ -1722,7 +1708,10 @@ export async function processTranscriptWithAgentMode(
             return null
           }
 
-          const content = sanitizedContent
+          // Preserve user-provided image markdown for the provider adapter; it
+          // converts data/assets image URLs into multimodal message parts. The
+          // sanitized variant above is still used for tool replay and emptiness checks.
+          const content = rawContent
           return {
             role: entry.role as "user" | "assistant",
             content,
@@ -1743,7 +1732,9 @@ export async function processTranscriptWithAgentMode(
       sessionId: currentSessionId,
       onSummarizationProgress: (current, total, message) => {
         // Update thinking step with summarization progress
-        thinkingStep.description = `Summarizing context (${current}/${total})`
+        thinkingStep.description = current <= 0
+          ? "Updating context summary"
+          : `Summarizing context (${current}/${total})`
         thinkingStep.llmContent = message
         emit({
           currentIteration: iteration,
@@ -1758,6 +1749,20 @@ export async function processTranscriptWithAgentMode(
     contextInfoRef = { estTokens: estTokensAfter, maxTokens: maxContextTokens }
     // Track last context budget for Langfuse trace metadata
     lastContextBudgetInfo = { estTokensAfter, maxTokens: maxContextTokens, appliedStrategies }
+
+    if (thinkingStep.description?.startsWith("Summarizing context") || thinkingStep.description === "Updating context summary") {
+      thinkingStep.description = appliedStrategies.length > 0
+        ? "Generating response with compacted context"
+        : "Generating response"
+      thinkingStep.llmContent = ""
+      emit({
+        currentIteration: iteration,
+        maxIterations,
+        steps: progressSteps.slice(-3),
+        isComplete: false,
+        conversationHistory: formatConversationForProgress(conversationHistory),
+      })
+    }
 
     // If stop was requested during context shrinking, exit now
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -1965,10 +1970,26 @@ export async function processTranscriptWithAgentMode(
     // Reset empty response counter on successful response
     emptyResponseRetryCount = 0
 
+    // Build a display-only reasoning block for the progress UI. Do not mutate
+    // llmResponse.content: reasoning summaries are internal thinking and must
+    // never be treated as deliverable/final user-facing content.
+    let reasoningDisplayContent: string | undefined
+    if (llmResponse.reasoningSummary) {
+      // Sanitize reasoningSummary to prevent nested think tags from
+      // breaking parseThinkSections()'s regex-based extraction.
+      const sanitized = llmResponse.reasoningSummary
+        .replace(/<\/think>/gi, "")
+        .replace(/<think>/gi, "")
+      const thinkBlock = `<think>\n${sanitized}\n</think>`
+      reasoningDisplayContent = llmResponse.content
+        ? `${thinkBlock}\n\n${llmResponse.content}`
+        : thinkBlock
+    }
+
     // Update thinking step with actual LLM content and mark as completed.
     // Strip any raw tool-marker tokens (e.g. <|tool_call_begin|>) so they
     // don't leak into the progress UI before the marker-recovery branch runs.
-    const displayContent = (llmResponse.content || "").replace(/<\|[^|]*\|>/g, "").trim()
+    const displayContent = (reasoningDisplayContent || llmResponse.content || "").replace(/<\|[^|]*\|>/g, "").trim()
     thinkingStep.status = "completed"
     thinkingStep.llmContent = displayContent
     if (displayContent) {
@@ -2722,9 +2743,6 @@ export async function processTranscriptWithAgentMode(
     const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
 
     if (hasErrors) {
-      // Enhanced error analysis and recovery suggestions
-      const errorAnalysis = analyzeToolErrors(toolResults)
-
       const hasInvalidExecuteCommandSkillIdError = toolResults.some((result, index) =>
         isInvalidExecuteCommandSkillIdFailure(toolCallsArray[index]?.name, result)
       )
@@ -2747,39 +2765,6 @@ export async function processTranscriptWithAgentMode(
           if (currentCount + 1 >= MAX_TOOL_FAILURES) {
             logLLM(`⚠️ Tool "${toolName}" has failed ${MAX_TOOL_FAILURES} times - will be excluded`)
           }
-        }
-      }
-
-      // Check for unrecoverable errors that should trigger early completion
-      const hasUnrecoverableError = errorAnalysis.errorTypes?.some(
-        type => type === "permissions" || type === "authentication"
-      )
-      if (hasUnrecoverableError) {
-        // Build list of tools that failed with unrecoverable errors in THIS batch only
-        // (not all historical failures from toolFailureCount, which could mislead the model)
-        const currentUnrecoverableTools: string[] = []
-        for (let i = 0; i < toolResults.length; i++) {
-          const result = toolResults[i]
-          if (result.isError) {
-            const errorText = result.content.map((c) => c.text).join(" ").toLowerCase()
-            if (errorText.includes("permission") || errorText.includes("access") ||
-                errorText.includes("denied") || errorText.includes("authentication") ||
-                errorText.includes("unauthorized") || errorText.includes("forbidden")) {
-              const toolName = toolCallsArray[i]?.name || "unknown"
-              currentUnrecoverableTools.push(toolName)
-            }
-          }
-        }
-
-        if (currentUnrecoverableTools.length > 0) {
-          const failedToolNames = currentUnrecoverableTools.join(", ")
-          logLLM(`⚠️ Unrecoverable errors detected for tools: ${failedToolNames}`)
-          // Add note to conversation so LLM knows to wrap up
-          conversationHistory.push({
-            role: "user",
-            content: `Note: Some tools (${failedToolNames}) have unrecoverable errors (permissions/authentication). Please complete what you can or explain what cannot be done.`,
-            timestamp: Date.now()
-          })
         }
       }
 

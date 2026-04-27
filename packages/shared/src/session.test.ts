@@ -131,6 +131,10 @@ describe('sanitizeSessionText', () => {
   it('replaces data URL images with [Image]', () => {
     expect(sanitizeSessionText('![](data:image/png;base64,abc)')).toBe('[Image]')
   })
+
+  it('replaces markdown video links with [Video]', () => {
+    expect(sanitizeSessionText('Watch [demo](assets://conversation-video/conv_1/abcdef1234567890.mp4) now')).toBe('Watch [Video] now')
+  })
 })
 
 // ── sessionToListItem ────────────────────────────────────────────────────────

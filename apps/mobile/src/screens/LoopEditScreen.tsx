@@ -19,10 +19,13 @@ import {
   ExtendedSettingsApiClient,
   Loop,
   LoopCreateRequest,
+  LoopSchedule,
   LoopUpdateRequest,
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+
+type ScheduleMode = 'continuous' | 'interval' | 'daily' | 'weekly';
 
 type LoopFormData = {
   name: string;
@@ -30,15 +33,52 @@ type LoopFormData = {
   intervalMinutes: string;
   enabled: boolean;
   profileId: string;
+  scheduleMode: ScheduleMode;
+  scheduleTimes: string[];
+  scheduleDaysOfWeek: number[];
 };
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_INTERVAL_MINUTES = 60;
 
 const defaultFormData: LoopFormData = {
   name: '',
   prompt: '',
-  intervalMinutes: '60',
+  intervalMinutes: String(DEFAULT_INTERVAL_MINUTES),
   enabled: true,
   profileId: '',
+  scheduleMode: 'interval',
+  scheduleTimes: ['09:00'],
+  scheduleDaysOfWeek: [1, 2, 3, 4, 5],
 };
+
+function sanitizeScheduleTimes(times: string[]): string[] {
+  const out: string[] = [];
+  for (const t of times) {
+    const trimmed = t.trim();
+    if (TIME_RE.test(trimmed) && !out.includes(trimmed)) out.push(trimmed);
+  }
+  return out.sort();
+}
+
+function loopToFormData(loop: Loop): LoopFormData {
+  const scheduleMode: ScheduleMode = loop.runContinuously ? 'continuous' : (loop.schedule?.type ?? 'interval');
+  const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ['09:00'];
+  const scheduleDaysOfWeek = loop.schedule?.type === 'weekly'
+    ? [...loop.schedule.daysOfWeek]
+    : [1, 2, 3, 4, 5];
+  return {
+    name: loop.name,
+    prompt: loop.prompt,
+    intervalMinutes: String(loop.intervalMinutes),
+    enabled: loop.enabled,
+    profileId: loop.profileId || '',
+    scheduleMode,
+    scheduleTimes,
+    scheduleDaysOfWeek,
+  };
+}
 
 export default function LoopEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -51,15 +91,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const isEditing = !!effectiveLoopId;
 
   const [formData, setFormData] = useState<LoopFormData>(() =>
-    loopFromRoute
-      ? {
-        name: loopFromRoute.name,
-        prompt: loopFromRoute.prompt,
-        intervalMinutes: String(loopFromRoute.intervalMinutes),
-        enabled: loopFromRoute.enabled,
-        profileId: loopFromRoute.profileId || '',
-      }
-      : defaultFormData
+    loopFromRoute ? loopToFormData(loopFromRoute) : defaultFormData
+  );
+  const [existingLoopIntervalMinutes, setExistingLoopIntervalMinutes] = useState<number | null>(() =>
+    loopFromRoute?.intervalMinutes ?? null
   );
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
@@ -124,13 +159,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           setError('Loop not found');
           return;
         }
-        setFormData({
-          name: loop.name,
-          prompt: loop.prompt,
-          intervalMinutes: String(loop.intervalMinutes),
-          enabled: loop.enabled,
-          profileId: loop.profileId || '',
-        });
+        setFormData(loopToFormData(loop));
+        setExistingLoopIntervalMinutes(loop.intervalMinutes);
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -162,9 +192,33 @@ export default function LoopEditScreen({ navigation, route }: any) {
       setError('Name and prompt are required');
       return;
     }
-    if (!/^\d+$/.test(intervalInput) || !Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
+    const hasValidInterval = /^\d+$/.test(intervalInput) && Number.isInteger(intervalMinutes) && intervalMinutes >= 1;
+    if (formData.scheduleMode === 'interval' && !hasValidInterval) {
       setError('Interval must be a positive whole number of minutes');
       return;
+    }
+    const savedIntervalMinutes = hasValidInterval
+      ? intervalMinutes
+      : isEditing && existingLoopIntervalMinutes !== null
+        ? existingLoopIntervalMinutes
+        : DEFAULT_INTERVAL_MINUTES;
+
+    let schedule: LoopSchedule | null = null;
+    if (formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous') {
+      const times = sanitizeScheduleTimes(formData.scheduleTimes);
+      if (times.length === 0) {
+        setError('Add at least one time in HH:MM format');
+        return;
+      }
+      if (formData.scheduleMode === 'weekly') {
+        if (formData.scheduleDaysOfWeek.length === 0) {
+          setError('Select at least one day of the week');
+          return;
+        }
+        schedule = { type: 'weekly', times, daysOfWeek: [...formData.scheduleDaysOfWeek].sort() };
+      } else {
+        schedule = { type: 'daily', times };
+      }
     }
 
     setIsSaving(true);
@@ -174,18 +228,22 @@ export default function LoopEditScreen({ navigation, route }: any) {
         const updatePayload: LoopUpdateRequest = {
           name,
           prompt,
-          intervalMinutes,
+          intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runContinuously: formData.scheduleMode === 'continuous',
+          schedule,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
       } else {
         const createPayload: LoopCreateRequest = {
           name,
           prompt,
-          intervalMinutes,
+          intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runContinuously: formData.scheduleMode === 'continuous',
+          schedule,
         };
         await settingsClient.createLoop(createPayload);
       }
@@ -195,7 +253,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     } finally {
       setIsSaving(false);
     }
-  }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
+  }, [effectiveLoopId, existingLoopIntervalMinutes, formData, isEditing, navigation, settingsClient]);
 
   const isSaveDisabled = isSaving || !settingsClient;
 
@@ -243,15 +301,115 @@ export default function LoopEditScreen({ navigation, route }: any) {
         textAlignVertical="top"
       />
 
-      <Text style={styles.label}>Interval (minutes) *</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.intervalMinutes}
-        onChangeText={v => updateField('intervalMinutes', v)}
-        placeholder="60"
-        placeholderTextColor={theme.colors.mutedForeground}
-        keyboardType="numeric"
-      />
+      <Text style={styles.label}>Schedule</Text>
+      <View style={styles.modeRow}>
+        {(['interval', 'continuous', 'daily', 'weekly'] as const).map(mode => {
+          const active = formData.scheduleMode === mode;
+          return (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => updateField('scheduleMode', mode)}
+              style={[styles.modeChip, active && styles.modeChipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
+                {mode === 'interval' ? 'Interval' : mode === 'continuous' ? 'Continuous' : mode === 'daily' ? 'Daily' : 'Weekly'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {formData.scheduleMode === 'interval' && (
+        <>
+          <Text style={styles.label}>Interval (minutes) *</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.intervalMinutes}
+            onChangeText={v => updateField('intervalMinutes', v)}
+            placeholder="60"
+            placeholderTextColor={theme.colors.mutedForeground}
+            keyboardType="numeric"
+          />
+        </>
+      )}
+
+      {formData.scheduleMode === 'continuous' && (
+        <Text style={styles.helperText}>
+          Starts the next run as soon as the previous run finishes. Only one run of this task executes at a time.
+        </Text>
+      )}
+
+      {formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous' && (
+        <>
+          <Text style={styles.label}>Time(s) (HH:MM, local)</Text>
+          {formData.scheduleTimes.map((time, idx) => (
+            <View key={idx} style={styles.timeRow}>
+              <TextInput
+                style={[styles.input, styles.timeInput]}
+                value={time}
+                onChangeText={v => {
+                  const next = [...formData.scheduleTimes];
+                  next[idx] = v;
+                  updateField('scheduleTimes', next);
+                }}
+                placeholder="09:00"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {formData.scheduleTimes.length > 1 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    const next = formData.scheduleTimes.filter((_, i) => i !== idx);
+                    updateField('scheduleTimes', next);
+                  }}
+                  style={styles.timeRemoveBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Remove time')}
+                >
+                  <Text style={styles.timeRemoveText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            onPress={() => updateField('scheduleTimes', [...formData.scheduleTimes, '09:00'])}
+            style={styles.addTimeBtn}
+            accessibilityRole="button"
+          >
+            <Text style={styles.addTimeText}>+ Add time</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {formData.scheduleMode === 'weekly' && (
+        <>
+          <Text style={styles.label}>Days of week</Text>
+          <View style={styles.modeRow}>
+            {DAY_LABELS.map((label, dayIdx) => {
+              const active = formData.scheduleDaysOfWeek.includes(dayIdx);
+              return (
+                <TouchableOpacity
+                  key={dayIdx}
+                  onPress={() => {
+                    const next = active
+                      ? formData.scheduleDaysOfWeek.filter(d => d !== dayIdx)
+                      : [...formData.scheduleDaysOfWeek, dayIdx].sort();
+                    updateField('scheduleDaysOfWeek', next);
+                  }}
+                  style={[styles.modeChip, active && styles.modeChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      )}
 
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Enabled</Text>
@@ -359,5 +517,23 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
     saveButtonDisabled: { opacity: 0.7 },
     saveButtonText: { color: theme.colors.primaryForeground, fontSize: 16, fontWeight: '600' },
+    modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs },
+    modeChip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    modeChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    modeChipText: { color: theme.colors.foreground, fontSize: 13, fontWeight: '500' },
+    modeChipTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
+    timeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+    timeInput: { flex: 1 },
+    timeRemoveBtn: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+    timeRemoveText: { color: theme.colors.destructive, fontSize: 13 },
+    addTimeBtn: { paddingVertical: spacing.xs, alignSelf: 'flex-start' },
+    addTimeText: { color: theme.colors.primary, fontSize: 13, fontWeight: '500' },
   });
 }

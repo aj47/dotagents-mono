@@ -11,14 +11,14 @@ const screenSource = fs.readFileSync(
 test('explains agent connection types and exposes them as selected-state buttons', () => {
   assert.match(screenSource, /Choose how DotAgents should reach this agent\. The setup fields below change based on this choice\./);
   assert.match(screenSource, /Uses the built-in DotAgents runtime with this profile’s prompts and settings\./);
-  assert.match(screenSource, /Launches an ACP-compatible local agent command for delegation and tool work\./);
+  assert.match(screenSource, /Runs this external agent through the acpx CLI adapter\./);
   assert.match(screenSource, /Connects to an external HTTP agent endpoint by URL\./);
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(`Use \$\{ct\.label\} connection for this agent`\)/);
   assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isBuiltInAgent \}\}/);
 });
 
-test('shows local launch fields for ACP and stdio while keeping Base URL remote-only', () => {
-  assert.match(screenSource, /const showCommandFields = formData\.connectionType === 'acp' \|\| formData\.connectionType === 'stdio';/);
+test('shows local launch fields for acpx while keeping Base URL remote-only', () => {
+  assert.match(screenSource, /const showCommandFields = formData\.connectionType === 'acpx';/);
   assert.match(screenSource, /const showRemoteBaseUrlField = formData\.connectionType === 'remote';/);
   assert.match(screenSource, /\{showCommandFields && \([\s\S]*?<Text style=\{styles\.label\}>Command<\/Text>[\s\S]*?<Text style=\{styles\.label\}>Arguments<\/Text>[\s\S]*?<Text style=\{styles\.label\}>Working Directory<\/Text>/);
   assert.match(screenSource, /\{showRemoteBaseUrlField && \([\s\S]*?<Text style=\{styles\.label\}>Base URL<\/Text>/);

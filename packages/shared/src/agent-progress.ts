@@ -247,6 +247,10 @@ export interface AgentProgressUpdate {
    */
   responseEvents?: AgentUserResponseEvent[]
   conversationHistory?: ConversationHistoryMessage[]
+  /** Total history size when `conversationHistory` is a lazy-loaded display window. */
+  conversationHistoryTotalCount?: number
+  /** Start index of `conversationHistory` within the full persisted history window. */
+  conversationHistoryStartIndex?: number
   streamingContent?: {
     text: string
     isStreaming: boolean
