@@ -6,6 +6,7 @@ const mainWindowSource = readFileSync(new URL("../../../main/window.ts", import.
 const tipcSource = readFileSync(new URL("../../../main/tipc.ts", import.meta.url), "utf8")
 const panelResizeWrapperSource = readFileSync(new URL("../components/panel-resize-wrapper.tsx", import.meta.url), "utf8")
 const panelResizeUtilsSource = readFileSync(new URL("../components/panel-resize-utils.ts", import.meta.url), "utf8")
+const panelViewportUtilsSource = readFileSync(new URL("../components/panel-viewport-utils.ts", import.meta.url), "utf8")
 
 describe("panel recording layout", () => {
   it("wraps the recording footer controls for narrow widths and zoomed text", () => {
@@ -85,7 +86,7 @@ describe("panel recording layout", () => {
   it("keeps recording waveform layout stable under browser zoom", () => {
     expect(panelSource).toContain("function RecordingWaveformPanel")
     expect(panelSource).toContain("getPanelViewportScale(nativePanelSize, cssViewportSize)")
-    expect(panelSource).toContain("Number.isFinite(nativePanelSize.width)")
+    expect(panelViewportUtilsSource).toContain("Number.isFinite(nativePanelSize.width)")
     expect(panelSource).toContain("stableRecordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2")
     expect(panelSource).toContain('transform: `scale(${zoomCompensationScale})`')
     expect(panelResizeWrapperSource).toContain("viewportScale?: number")
@@ -136,10 +137,10 @@ describe("panel recording layout", () => {
   it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
     expect(panelSource).toContain("Number.isFinite((value as { width: number }).width)")
     expect(panelSource).toContain("Number.isFinite((value as { height: number }).height)")
-    expect(panelSource).toContain("!Number.isFinite(nativePanelSize.width)")
-    expect(panelSource).toContain("!Number.isFinite(nativePanelSize.height)")
-    expect(panelSource).toContain("!Number.isFinite(cssViewportSize.width)")
-    expect(panelSource).toContain("!Number.isFinite(cssViewportSize.height)")
+    expect(panelViewportUtilsSource).toContain("!Number.isFinite(nativePanelSize.width)")
+    expect(panelViewportUtilsSource).toContain("!Number.isFinite(nativePanelSize.height)")
+    expect(panelViewportUtilsSource).toContain("!Number.isFinite(cssViewportSize.width)")
+    expect(panelViewportUtilsSource).toContain("!Number.isFinite(cssViewportSize.height)")
     expect(panelSource).toContain("width: Math.round(window.innerWidth || 0)")
     expect(panelSource).toContain("height: Math.round(window.innerHeight || 0)")
     expect(panelSource).not.toContain("Math.max(1, Math.round(window.innerWidth")
@@ -166,6 +167,14 @@ describe("panel recording layout", () => {
     expect(mainWindowSource).toContain("if (isFinitePanelSize(legacyCustomSize))")
     expect(mainWindowSource).not.toContain("config.panelCustomSize.width")
     expect(mainWindowSource).not.toContain("config.panelCustomSize.height")
+  })
+
+  it("snaps near-1 viewport scales to avoid false zoom from native/content size differences", () => {
+    expect(panelViewportUtilsSource).toContain("PANEL_VIEWPORT_SCALE_SNAP_EPSILON = 0.05")
+    expect(panelViewportUtilsSource).toContain("const widthScale = nativePanelSize.width / cssViewportSize.width")
+    expect(panelViewportUtilsSource).toContain("const heightScale = nativePanelSize.height / cssViewportSize.height")
+    expect(panelViewportUtilsSource).toContain("Math.min(widthScale, heightScale)")
+    expect(panelViewportUtilsSource).toContain("Math.abs(rawScale - 1) <= PANEL_VIEWPORT_SCALE_SNAP_EPSILON ? 1 : rawScale")
   })
 
   it("runtime-validates mode-aware panel size persistence", () => {
