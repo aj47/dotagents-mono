@@ -476,6 +476,123 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('Success after retry')
   })
 
+  it('should not retry generic stream error messages that are not codex-specific', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const genericStreamError = new Error('stream error while parsing provider payload')
+    generateTextMock.mockRejectedValue(genericStreamError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('stream error while parsing provider payload')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should still retry stream errors when structured status indicates a transient failure', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    let callCount = 0
+    generateTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        const transientStreamError = Object.assign(
+          new Error('stream error while parsing provider payload'),
+          { statusCode: 503 },
+        )
+        return Promise.reject(transientStreamError)
+      }
+      return Promise.resolve({
+        text: '{"content": "recovered"}',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(callCount).toBe(2)
+    expect(result.content).toBe('recovered')
+  })
+
+  it('should retry empty response errors even when status code is a structured 4xx', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    let callCount = 0
+    generateTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        const emptyResponse401 = Object.assign(
+          new Error('LLM returned empty response'),
+          { statusCode: 401 },
+        )
+        return Promise.reject(emptyResponse401)
+      }
+      return Promise.resolve({
+        text: '{"content": "recovered from empty response"}',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(callCount).toBe(2)
+    expect(result.content).toBe('recovered from empty response')
+  })
+
+  it('should not retry missing API key configuration errors', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const missingApiKeyError = new Error('API key is required for openai')
+    generateTextMock.mockRejectedValue(missingApiKeyError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('API key is required for openai')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not retry unknown provider configuration errors', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const unknownProviderError = new Error('Unknown provider: invalid-provider')
+    generateTextMock.mockRejectedValue(unknownProviderError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('Unknown provider: invalid-provider')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not retry local base URL configuration errors', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const baseUrlError = new Error('Base URL is required')
+    generateTextMock.mockRejectedValue(baseUrlError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('Base URL is required')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
   it('should not retry on abort errors', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
@@ -1067,11 +1184,13 @@ describe('LLM Fetch with AI SDK', () => {
     const { streamText } = await import('ai')
     const streamTextMock = vi.mocked(streamText)
 
-    streamTextMock.mockReturnValue({
+    // Stream errors are now retryable, so produce the same error on every call
+    // so we can still assert the surfaced message after retries are exhausted.
+    streamTextMock.mockImplementation(() => ({
       fullStream: (async function* () {
         yield { type: 'error', error: 'fatal stream failure' }
       })(),
-    } as any)
+    } as any))
 
     const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
 
@@ -1087,11 +1206,11 @@ describe('LLM Fetch with AI SDK', () => {
     const { streamText } = await import('ai')
     const streamTextMock = vi.mocked(streamText)
 
-    streamTextMock.mockReturnValue({
+    streamTextMock.mockImplementation(() => ({
       fullStream: (async function* () {
         yield { type: 'error', error: { message: 'provider returned malformed chunk' } }
       })(),
-    } as any)
+    } as any))
 
     const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
 
@@ -1127,5 +1246,66 @@ describe('LLM Fetch with AI SDK', () => {
       [{ role: 'user', content: 'hello' }],
       expect.objectContaining({ modelContext: 'mcp', tools: undefined }),
     )
+  })
+
+  it('retries chatgpt-web llm calls when the codex stream errors transiently', async () => {
+    // Regression test for https://github.com/aj47/dotagents-mono/issues/391
+    // Transient "ChatGPT Codex stream error" should be classified as retryable
+    // instead of immediately killing the agent session.
+    let callCount = 0
+    makeChatGptWebResponseMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.reject(new Error('ChatGPT Codex stream error'))
+      }
+      return Promise.resolve({ text: 'recovered answer' })
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'hello' }],
+      'chatgpt-web',
+    )
+
+    expect(callCount).toBe(2)
+    expect(result).toEqual({ content: 'recovered answer' })
+  })
+
+  it('retries chatgpt-web llm calls when the codex response.failed event fires', async () => {
+    let callCount = 0
+    makeChatGptWebResponseMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.reject(new Error('ChatGPT Codex response failed'))
+      }
+      return Promise.resolve({ text: 'recovered after response.failed' })
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'hello' }],
+      'chatgpt-web',
+    )
+
+    expect(callCount).toBe(2)
+    expect(result).toEqual({ content: 'recovered after response.failed' })
+  })
+
+  it('does not retry non-codex stream errors for chatgpt-web llm calls', async () => {
+    let callCount = 0
+    makeChatGptWebResponseMock.mockImplementation(() => {
+      callCount++
+      return Promise.reject(new Error('provider stream error: malformed chunk'))
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch(
+        [{ role: 'user', content: 'hello' }],
+        'chatgpt-web',
+      )
+    ).rejects.toThrow('provider stream error: malformed chunk')
+
+    expect(callCount).toBe(1)
   })
 })

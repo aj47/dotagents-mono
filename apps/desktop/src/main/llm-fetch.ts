@@ -33,6 +33,7 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared"
+import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import {
   createLLMGeneration,
   endLLMGeneration,
@@ -387,76 +388,101 @@ function isEmptyResponseError(error: unknown): boolean {
   return false
 }
 
+function isLocalConfigurationErrorMessage(message: string): boolean {
+  if (isMissingApiKeyErrorMessage(message)) {
+    return true
+  }
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("unknown provider:") ||
+    normalized.includes("base url is required") ||
+    normalized.includes("access token is required") ||
+    normalized.includes("session token is required") ||
+    normalized.includes("is not configured")
+  )
+}
+
 /**
  * Check if an error is retryable.
- * Uses AI SDK structured error fields (statusCode, isRetryable) when available,
- * with fallback to message-based detection for consistency across providers.
+ *
+ * Uses a denylist approach: retry by default, and only refuse to retry when
+ * we have strong evidence that retrying cannot succeed (aborts, explicit
+ * isRetryable=false, or non-transient 4xx status codes like auth/validation).
+ *
+ * This avoids the fragility of pattern-matching every transient error string
+ * a provider might emit (see https://github.com/aj47/dotagents-mono/issues/391
+ * for an example where a new "ChatGPT Codex stream error" string slipped past
+ * a hardcoded allowlist and silently killed the agent session).
  *
  * NOTE: Empty response errors are handled separately - they retry immediately
  * without backoff (see withRetry function).
  */
 function isRetryableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    // Abort errors should never be retried
-    if (
-      error.name === "AbortError" ||
-      error.message.toLowerCase().includes("abort")
-    ) {
-      return false
-    }
+  if (!(error instanceof Error)) {
+    return false
+  }
 
-    // Empty response errors are retryable but WITHOUT backoff
-    // They are handled specially in withRetry - return true here so they're not rejected outright
-    if (isEmptyResponseError(error)) {
+  const message = error.message.toLowerCase()
+
+  // Abort errors should never be retried
+  if (
+    error.name === "AbortError" ||
+    message.includes("abort")
+  ) {
+    return false
+  }
+
+  // Deterministic local setup/configuration errors should fail fast instead of
+  // adding retry delay/noise.
+  if (isLocalConfigurationErrorMessage(error.message)) {
+    return false
+  }
+
+  // Preserve empty-response retries regardless of status code. withRetry()
+  // handles these via an immediate retry path without backoff.
+  if (isEmptyResponseError(error)) {
+    return true
+  }
+
+  // Check for AI SDK structured error fields (AI_APICallError, etc.)
+  const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
+
+  // Honor the SDK's explicit retryability signal when present
+  if (typeof errorWithStatus.isRetryable === "boolean") {
+    return errorWithStatus.isRetryable
+  }
+
+  // Non-transient 4xx (auth, validation, not-found, etc.) won't succeed on retry.
+  // 408 (timeout) and 429 (rate limit) are explicitly retryable.
+  const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
+  const hasStructuredStatusCode = typeof statusCode === "number"
+  if (hasStructuredStatusCode) {
+    if (statusCode === 408 || statusCode === 429) {
       return true
     }
-
-    // Check for AI SDK structured error fields (AI_APICallError, etc.)
-    // These errors have statusCode and isRetryable properties
-    const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
-
-    // If the error has an explicit isRetryable flag, use it
-    if (typeof errorWithStatus.isRetryable === "boolean") {
-      return errorWithStatus.isRetryable
+    if (statusCode >= 400 && statusCode < 500) {
+      return false
     }
-
-    // Check for statusCode or status field (AI SDK errors use statusCode)
-    const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-    if (typeof statusCode === "number") {
-      // Rate limits (429) are always retryable
-      if (statusCode === 429) {
-        return true
-      }
-      // Server errors (5xx) are retryable
-      if (statusCode >= 500 && statusCode < 600) {
-        return true
-      }
-      // Timeout errors
-      if (statusCode === 408 || statusCode === 504) {
-        return true
-      }
-      // Client errors (4xx except 429, 408) are not retryable
-      if (statusCode >= 400 && statusCode < 500) {
-        return false
-      }
-    }
-
-    // Fallback: message-based detection for transient network issues
-    // NOTE: empty response/content removed - handled separately without backoff
-    const message = error.message.toLowerCase()
-    return (
-      message.includes("rate limit") ||
-      message.includes("429") ||
-      message.includes("500") ||
-      message.includes("502") ||
-      message.includes("503") ||
-      message.includes("504") ||
-      message.includes("timeout") ||
-      message.includes("network") ||
-      message.includes("connection")
-    )
   }
-  return false
+
+  // Guard against broad stream-error retries. Keep known transient Codex
+  // chatgpt-web failure signatures retryable, but avoid retrying generic
+  // "stream error" failures that may be deterministic for other providers.
+  if (!hasStructuredStatusCode && message.includes("stream error")) {
+    const isKnownCodexTransient =
+      message.includes("chatgpt codex stream error") ||
+      message.includes("chatgpt codex response failed") ||
+      message.includes("chatgpt codex response.failed")
+    if (!isKnownCodexTransient) {
+      return false
+    }
+  }
+
+  // Default: retry. Empty responses, network blips, known transient provider
+  // stream errors, transient 5xx, etc. all fall through to here. The bounded
+  // retry count in withRetry caps the cost if the failure turns out permanent.
+  return true
 }
 
 /**
