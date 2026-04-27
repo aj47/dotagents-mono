@@ -125,6 +125,9 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())')
     expect(agentProgressSource).toContain('if (hasRenderableStructuredMessageContent(message)) {')
     expect(agentProgressSource).toContain('items.push({ kind: "message", key: `msg-structured-${index}`, message })')
+    expect(agentProgressSource).toContain('function normalizeStructuredToolResultContent(')
+    expect(agentProgressSource).toContain('if (typeof result.content === "string") {')
+    expect(agentProgressSource).not.toContain('content: result.content || "Tool completed"')
     expect(agentProgressSource).toContain('() => buildSubAgentConversationItems(conversation, delegationStatus)')
   })
 

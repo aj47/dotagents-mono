@@ -164,4 +164,45 @@ describe('createDelegationProgressMessages', () => {
       { success: true, content: '{"files":["README.md"]}' },
     ]);
   });
+
+  it('preserves empty tool output and avoids success fallback for failed structured results', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-empty-results',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 600,
+        delegation: {
+          runId: 'run-empty-results',
+          agentName: 'Worker',
+          task: 'Run tools',
+          status: 'running',
+          startTime: 600,
+          conversation: [
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [
+                { name: 'first_tool', arguments: {} },
+                { name: 'second_tool', arguments: {} },
+              ],
+              toolResults: [
+                { success: true, content: '' },
+                { success: false, error: 'boom' },
+              ],
+              timestamp: 601,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].toolResults).toEqual([
+      { success: true, content: '' },
+      { success: false, content: 'Tool failed', error: 'boom' },
+    ]);
+  });
 });

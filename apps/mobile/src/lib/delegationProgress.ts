@@ -76,15 +76,24 @@ const parseToolUsePayload = (content?: string): { name?: string; input?: unknown
 };
 
 const normalizeToolResultContent = (content?: string): string => {
-  const normalized = (content ?? '').replace(TOOL_RESULT_PREFIX, '').trim();
-  return normalized || 'Tool completed';
+  return (content ?? '').replace(TOOL_RESULT_PREFIX, '').trim();
+};
+
+const defaultToolResultContent = (result: { success?: boolean; content?: string; error?: string }): string => {
+  if (typeof result.content === 'string') {
+    return result.content;
+  }
+  if (result.success === false || result.error) {
+    return 'Tool failed';
+  }
+  return 'Tool completed';
 };
 
 const normalizeToolResult = (
   result: Partial<NonNullable<ChatMessage['toolResults']>[number]>,
 ): NonNullable<ChatMessage['toolResults']>[number] => ({
   success: result.success !== false,
-  content: result.content || 'Tool completed',
+  content: defaultToolResultContent(result),
   error: result.error,
 });
 

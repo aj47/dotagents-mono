@@ -1788,6 +1788,18 @@ function toCompactToolResult(result: { success: boolean; content: string; error?
   }
 }
 
+function normalizeStructuredToolResultContent(result: { success?: boolean; content?: string; error?: string }): string {
+  if (typeof result.content === "string") {
+    return result.content
+  }
+
+  if (result.success === false || result.error) {
+    return "Tool failed"
+  }
+
+  return "Tool completed"
+}
+
 function buildStructuredSubAgentToolExecution(message: ACPSubAgentMessage): SubAgentToolExecutionData | null {
   const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
   const toolResults = Array.isArray(message.toolResults) ? message.toolResults : []
@@ -1815,7 +1827,7 @@ function buildStructuredSubAgentToolExecution(message: ACPSubAgentMessage): SubA
 
     results.push(toCompactToolResult({
       success: result.success !== false,
-      content: result.content || "Tool completed",
+      content: normalizeStructuredToolResultContent(result),
       error: result.error,
     }))
   }
