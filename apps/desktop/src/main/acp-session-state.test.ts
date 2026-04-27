@@ -53,6 +53,15 @@ describe("acp-session-state", () => {
     expect(sessionState.getRootAppSessionForAcpSession("unknown-session")).toBeUndefined()
   })
 
+  it("does not treat unresolved delegated chain nodes as app sessions", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping("unresolved-level-3-subsession", "unresolved-level-2-subsession")
+    sessionState.setAcpToAppRunIdMapping("unresolved-level-2-subsession", "run-unresolved-2")
+
+    expect(sessionState.getRootAppSessionForAcpSession("unresolved-level-3-subsession")).toBeUndefined()
+  })
+
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
     const sessionState = await import("./acp-session-state")
 

@@ -110,4 +110,52 @@ describe("emitAgentProgress snoozed propagation", () => {
       steps: [expect.objectContaining({ status: "completed" })],
     }))
   })
+
+  it("does not treat already-terminal delegation steps as critical on later updates", async () => {
+    vi.useFakeTimers()
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    const terminalStep = {
+      id: "delegation-repeat-1",
+      type: "completion" as const,
+      title: "Sub-agent",
+      status: "completed" as const,
+      timestamp: 1,
+      delegation: {
+        runId: "delegated-repeat-1",
+        agentName: "internal",
+        task: "Nested work",
+        status: "completed" as const,
+        startTime: 1,
+        endTime: 2,
+      },
+    }
+
+    await emitAgentProgress({
+      sessionId: "session-terminal-repeat",
+      runId: 1,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [terminalStep],
+    })
+
+    const firstSendCount = mocks.sendSpy.mock.calls.length
+
+    await emitAgentProgress({
+      sessionId: "session-terminal-repeat",
+      runId: 1,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [terminalStep],
+    })
+
+    // Second update is no longer "critical", so it should be throttled.
+    expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
+
+    vi.advanceTimersByTime(200)
+    expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
+    vi.useRealTimers()
+  })
 })

@@ -216,7 +216,7 @@ describe('agent-store delegation merge', () => {
     expect(step?.type).toBe('completion')
     expect(step?.title).toBe('Delegation completed')
     expect(step?.description).toBe('Terminal step metadata')
-    expect(step?.timestamp).toBe(6)
+    expect(step?.timestamp).toBe(5)
     expect(step?.delegation?.status).toBe('completed')
     expect(step?.delegation?.conversation?.[0]?.content).toBe('Late transcript')
   })

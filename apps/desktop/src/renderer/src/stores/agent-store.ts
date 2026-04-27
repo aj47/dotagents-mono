@@ -69,14 +69,10 @@ const mergeDelegationStep = (
   if (existingWasTerminal && !incomingIsTerminal) {
     return {
       ...existingStep,
-      timestamp: Math.max(existingStep.timestamp || 0, step.timestamp || 0) || existingStep.timestamp || step.timestamp,
       delegation: {
         ...existingStep.delegation,
-        ...step.delegation,
-        status: existingStep.delegation.status,
-        endTime: existingStep.delegation.endTime,
-        resultSummary: existingStep.delegation.resultSummary,
-        error: existingStep.delegation.error,
+        // Keep terminal metadata stable and only accept late transcript chunks.
+        conversation: step.delegation.conversation ?? existingStep.delegation.conversation,
       },
     }
   }

@@ -187,6 +187,19 @@ export function getAppSessionForAcpSession(acpxSessionId: string): string | unde
   return acpxToAppSession.get(acpxSessionId)
 }
 
+function isKnownAcpSessionId(sessionId: string): boolean {
+  if (acpxToAppSession.has(sessionId)) return true
+  if (acpxToRunId.has(sessionId)) return true
+  if (acpxToClientSessionToken.has(sessionId)) return true
+  if (acpxSessionTitleOverrides.has(sessionId)) return true
+
+  for (const session of conversationSessions.values()) {
+    if (session.sessionId === sessionId) return true
+  }
+
+  return false
+}
+
 export function getRootAppSessionForAcpSession(acpxSessionId: string): string | undefined {
   let currentSessionId = acpxSessionId
   const visitedSessionIds = new Set<string>()
@@ -195,7 +208,8 @@ export function getRootAppSessionForAcpSession(acpxSessionId: string): string | 
     visitedSessionIds.add(currentSessionId)
     const mappedSessionId = acpxToAppSession.get(currentSessionId)
     if (!mappedSessionId) {
-      return currentSessionId === acpxSessionId ? undefined : currentSessionId
+      if (currentSessionId === acpxSessionId) return undefined
+      return isKnownAcpSessionId(currentSessionId) ? undefined : currentSessionId
     }
     currentSessionId = mappedSessionId
   }
