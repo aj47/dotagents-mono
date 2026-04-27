@@ -73,9 +73,13 @@ const getPanelViewportScale = (
 ) => {
   if (
     !Number.isFinite(nativePanelSize.width) ||
+    !Number.isFinite(nativePanelSize.height) ||
     !Number.isFinite(cssViewportSize.width) ||
+    !Number.isFinite(cssViewportSize.height) ||
     nativePanelSize.width <= 0 ||
-    cssViewportSize.width <= 0
+    nativePanelSize.height <= 0 ||
+    cssViewportSize.width <= 0 ||
+    cssViewportSize.height <= 0
   ) return 1
   return clamp(nativePanelSize.width / cssViewportSize.width, 0.5, 3)
 }

@@ -80,15 +80,25 @@ describe("panel recording layout", () => {
     expect(panelResizeWrapperSource).toContain("viewportScale?: number")
     expect(panelResizeWrapperSource).toContain("minWidth: `${minWidth / safeViewportScale}px`")
     expect(panelResizeWrapperSource).toContain("minHeight: `${minHeight / safeViewportScale}px`")
-    expect(panelResizeWrapperSource).toContain("const newWidth = Math.max(minWidth, startSize.width + delta.width)")
-    expect(panelResizeWrapperSource).toContain("const newHeight = Math.max(minHeight, startSize.height + delta.height)")
-    expect(panelResizeWrapperSource).not.toContain("delta.width * safeViewportScale")
-    expect(panelResizeWrapperSource).not.toContain("delta.height * safeViewportScale")
+    expect(panelResizeWrapperSource).toContain("export const getNativePanelResizeSize =")
+
+    const nativeResizeHelperSection = panelResizeWrapperSource.slice(
+      panelResizeWrapperSource.indexOf("export const getNativePanelResizeSize ="),
+      panelResizeWrapperSource.indexOf("interface PanelResizeWrapperProps")
+    )
+    expect(nativeResizeHelperSection).toContain("startSize.width + delta.width")
+    expect(nativeResizeHelperSection).toContain("startSize.height + delta.height")
+    expect(nativeResizeHelperSection).not.toContain("viewportScale")
+    expect(nativeResizeHelperSection).not.toContain("safeViewportScale")
   })
 
   it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
     expect(panelSource).toContain("Number.isFinite((value as { width: number }).width)")
     expect(panelSource).toContain("Number.isFinite((value as { height: number }).height)")
+    expect(panelSource).toContain("!Number.isFinite(nativePanelSize.width)")
+    expect(panelSource).toContain("!Number.isFinite(nativePanelSize.height)")
+    expect(panelSource).toContain("!Number.isFinite(cssViewportSize.width)")
+    expect(panelSource).toContain("!Number.isFinite(cssViewportSize.height)")
     expect(panelResizeWrapperSource).toContain("Number.isFinite((value as { width: number }).width)")
   })
 

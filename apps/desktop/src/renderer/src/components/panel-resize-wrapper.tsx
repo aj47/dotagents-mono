@@ -17,6 +17,15 @@ const isPanelSize = (value: unknown): value is { width: number; height: number }
   Number.isFinite((value as { width: number }).width) &&
   Number.isFinite((value as { height: number }).height)
 
+export const getNativePanelResizeSize = (
+  startSize: { width: number; height: number },
+  delta: { width: number; height: number },
+  minimumSize: { width: number; height: number },
+) => ({
+  width: Math.max(minimumSize.width, startSize.width + delta.width),
+  height: Math.max(minimumSize.height, startSize.height + delta.height),
+})
+
 interface PanelResizeWrapperProps {
   children: React.ReactNode
   className?: string
@@ -86,8 +95,10 @@ export function PanelResizeWrapper({
 
     // ResizeHandle deltas use screen coordinates, matching the native panel
     // size units used by Electron; viewportScale only affects CSS constraints.
-    const newWidth = Math.max(minWidth, startSize.width + delta.width)
-    const newHeight = Math.max(minHeight, startSize.height + delta.height)
+    const { width: newWidth, height: newHeight } = getNativePanelResizeSize(startSize, delta, {
+      width: minWidth,
+      height: minHeight,
+    })
 
     // Update local size immediately; send IPC without awaiting to avoid resize lag.
     setCurrentSize({ width: newWidth, height: newHeight })
