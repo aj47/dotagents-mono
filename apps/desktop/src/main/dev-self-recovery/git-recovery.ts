@@ -12,6 +12,7 @@ export const RECOVERABLE_RENDERER_GONE_REASONS = new Set([
 const DEFAULT_POLL_INTERVAL_MS = 2000
 const RECOVERY_DIR_NAME = "dotagents-dev-recovery"
 const LOCK_FILE_NAME = ".lock"
+const STALE_LOCK_MAX_AGE_MS = 30 * 60 * 1000
 
 export type GitDevSelfRecoveryTrigger =
   | string
@@ -77,6 +78,7 @@ interface RecoveryOptions {
 
 interface RepoSnapshot {
   repoRoot: string
+  gitDir: string
   head: string
   status: Buffer
 }
@@ -156,6 +158,17 @@ function splitNulList(output: Buffer): string[] {
     .filter(Boolean)
 }
 
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException
+    if (err.code === "EPERM") return true
+    return false
+  }
+}
+
 function ensureRelativeGitPath(relativePath: string): void {
   if (path.isAbsolute(relativePath)) {
     throw new Error(`Refusing absolute untracked path: ${relativePath}`)
@@ -187,6 +200,24 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
     return result
   }
 
+  const resolveGitDir = (): string => {
+    const absoluteResult = runGit(["rev-parse", "--absolute-git-dir"], repoRoot)
+    if (absoluteResult.status === 0) {
+      const absolute = normalizeGitOutput(absoluteResult.stdout)
+      if (!absolute) {
+        throw new Error("git rev-parse --absolute-git-dir returned an empty path")
+      }
+      return realpathIfPossible(absolute)
+    }
+
+    const relative = normalizeGitOutput(runRequiredGit(["rev-parse", "--git-dir"]).stdout)
+    if (!relative) {
+      throw new Error("git rev-parse --git-dir returned an empty path")
+    }
+    const resolved = path.isAbsolute(relative) ? relative : path.resolve(repoRoot, relative)
+    return realpathIfPossible(resolved)
+  }
+
   const validateRepo = (): RepoSnapshot => {
     const topLevel = normalizeGitOutput(runRequiredGit(["rev-parse", "--show-toplevel"]).stdout)
     const expected = realpathIfPossible(repoRoot)
@@ -196,32 +227,77 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
       throw new Error(`Expected git repo root ${expected}, got ${actual}`)
     }
 
+    const gitDir = resolveGitDir()
     const head = normalizeGitOutput(runRequiredGit(["rev-parse", "HEAD"]).stdout)
     const status = runRequiredGit(["status", "--porcelain=v1", "-z"]).stdout
 
-    return { repoRoot: actual, head, status }
+    return { repoRoot: actual, gitDir, head, status }
   }
 
-  const recoveryRoot = () => path.join(repoRoot, ".git", RECOVERY_DIR_NAME)
-  const lockFile = () => path.join(recoveryRoot(), LOCK_FILE_NAME)
+  const recoveryRoot = (gitDir: string) => path.join(gitDir, RECOVERY_DIR_NAME)
+  const lockFile = (gitDir: string) => path.join(recoveryRoot(gitDir), LOCK_FILE_NAME)
 
-  const acquireLock = (): number | null => {
-    mkdir(recoveryRoot())
+  const lockMetadata = () =>
+    `${JSON.stringify({ pid: process.pid, createdAt: now().toISOString() })}\n`
+
+  const isLockStale = (lockPath: string): boolean => {
     try {
-      return fs.openSync(lockFile(), "wx")
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException
-      if (err.code === "EEXIST") return null
-      throw error
+      const stat = fs.statSync(lockPath)
+      if (Date.now() - stat.mtimeMs > STALE_LOCK_MAX_AGE_MS) {
+        return true
+      }
+
+      const raw = fs.readFileSync(lockPath, "utf8").trim()
+      if (!raw) return false
+      const parsed = JSON.parse(raw) as { pid?: unknown }
+      if (typeof parsed.pid === "number" && Number.isInteger(parsed.pid) && parsed.pid > 0) {
+        return !processExists(parsed.pid)
+      }
+      return false
+    } catch {
+      return false
     }
   }
 
-  const releaseLock = (fd: number): void => {
+  const acquireLock = (gitDir: string): number | null => {
+    mkdir(recoveryRoot(gitDir))
+    const lockPath = lockFile(gitDir)
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const fd = fs.openSync(lockPath, "wx")
+        fs.writeFileSync(fd, lockMetadata())
+        return fd
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException
+        if (err.code !== "EEXIST") {
+          throw error
+        }
+
+        if (!isLockStale(lockPath)) {
+          return null
+        }
+
+        try {
+          fs.unlinkSync(lockPath)
+        } catch (unlinkError) {
+          const unlinkErr = unlinkError as NodeJS.ErrnoException
+          if (unlinkErr.code !== "ENOENT") {
+            return null
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
+  const releaseLock = (fd: number, gitDir: string): void => {
     try {
       fs.closeSync(fd)
     } finally {
       try {
-        fs.unlinkSync(lockFile())
+        fs.unlinkSync(lockFile(gitDir))
       } catch {
         // best-effort cleanup
       }
@@ -242,7 +318,7 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
     snapshot: RepoSnapshot,
   ): BackupResult | BackupFailure => {
     const backupDir = path.join(
-      recoveryRoot(),
+      recoveryRoot(snapshot.gitDir),
       `${timestampForPath(now())}-${process.pid}-${safeTriggerLabel(trigger)}`,
     )
 
@@ -263,6 +339,12 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
         const source = path.join(repoRoot, relativePath)
         const destination = path.join(backupDir, "untracked", relativePath)
         mkdir(path.dirname(destination))
+        const sourceStats = fs.lstatSync(source)
+        if (sourceStats.isSymbolicLink()) {
+          const target = fs.readlinkSync(source)
+          fs.symlinkSync(target, destination)
+          continue
+        }
         copyFile(source, destination)
       }
 
@@ -343,8 +425,10 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
       }
 
       let fd: number | null = null
+      let gitDirForLock: string | null = null
       try {
-        fd = acquireLock()
+        gitDirForLock = resolveGitDir()
+        fd = acquireLock(gitDirForLock)
         if (fd === null) {
           logger.warn("[git-recovery] Recovery skipped: another recovery is already running")
           return { recovered: false, reason: "locked" }
@@ -403,7 +487,7 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
         logger.warn(`[git-recovery] Recovery skipped: ${message}`)
         return { recovered: false, reason: "invalid-repo", error: message }
       } finally {
-        if (fd !== null) releaseLock(fd)
+        if (fd !== null && gitDirForLock) releaseLock(fd, gitDirForLock)
       }
     },
   }

@@ -7,6 +7,7 @@ import { createGitDevSelfRecovery } from "./git-recovery"
 
 const hasGit = spawnSync("git", ["--version"], { stdio: "ignore" }).status === 0
 const testIfGit = hasGit ? it : it.skip
+const testIfSymlink = hasGit && process.platform !== "win32" ? it : it.skip
 const silentLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 
 let tempDirs: string[] = []
@@ -15,6 +16,11 @@ function git(repo: string, args: string[]): string {
   const result = spawnSync("git", args, { cwd: repo, encoding: "utf8" })
   expect(result.status, result.stderr).toBe(0)
   return result.stdout
+}
+
+function gitCommit(repo: string, args: string[]): string {
+  const hooksPath = process.platform === "win32" ? "NUL" : "/dev/null"
+  return git(repo, ["-c", "commit.gpgSign=false", "-c", `core.hooksPath=${hooksPath}`, ...args])
 }
 
 function writeFile(repo: string, relativePath: string, content: string): void {
@@ -31,7 +37,7 @@ function createRepo(): string {
   git(repo, ["config", "user.name", "Test User"])
   writeFile(repo, "tracked.txt", "initial\n")
   git(repo, ["add", "tracked.txt"])
-  git(repo, ["commit", "-m", "initial"])
+  gitCommit(repo, ["commit", "-m", "initial"])
   return repo
 }
 
@@ -104,7 +110,7 @@ describe("git dev self-recovery", () => {
     const repo = createRepo()
     writeFile(repo, ".gitignore", "ignored.tmp\n")
     git(repo, ["add", ".gitignore"])
-    git(repo, ["commit", "-m", "ignore ignored tmp"])
+    gitCommit(repo, ["commit", "-m", "ignore ignored tmp"])
 
     const controller = createGitDevSelfRecovery({ repoRoot: repo, logger: silentLogger })
     expect(controller.refreshCleanBaseline()).toBe(true)
@@ -153,6 +159,42 @@ describe("git dev self-recovery", () => {
 
     expect(result).toEqual({ recovered: false, reason: "locked" })
     expect(fs.readFileSync(path.join(repo, "tracked.txt"), "utf8")).toBe("dirty\n")
+  })
+
+  testIfGit("removes stale lock files and continues recovery", () => {
+    const repo = createRepo()
+    const controller = createGitDevSelfRecovery({ repoRoot: repo, logger: silentLogger })
+
+    expect(controller.refreshCleanBaseline()).toBe(true)
+    writeFile(repo, "tracked.txt", "dirty\n")
+
+    const recoveryDir = path.join(repo, ".git", "dotagents-dev-recovery")
+    const lockPath = path.join(recoveryDir, ".lock")
+    fs.mkdirSync(recoveryDir, { recursive: true })
+    fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid, createdAt: "2000-01-01T00:00:00.000Z" }))
+    const staleDate = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    fs.utimesSync(lockPath, staleDate, staleDate)
+
+    const result = controller.maybeRecover("stale-lock")
+
+    expect(result.recovered).toBe(true)
+    expect(fs.readFileSync(path.join(repo, "tracked.txt"), "utf8")).toBe("initial\n")
+  })
+
+  testIfSymlink("preserves untracked symlinks in the backup", () => {
+    const repo = createRepo()
+    const controller = createGitDevSelfRecovery({ repoRoot: repo, logger: silentLogger })
+
+    expect(controller.refreshCleanBaseline()).toBe(true)
+    fs.symlinkSync("tracked.txt", path.join(repo, "linked.txt"))
+
+    const result = controller.maybeRecover("untracked-symlink")
+
+    expect(result.recovered).toBe(true)
+    if (!result.recovered) throw new Error("expected recovery to succeed")
+    const backedUpSymlink = path.join(result.backupDir, "untracked", "linked.txt")
+    expect(fs.lstatSync(backedUpSymlink).isSymbolicLink()).toBe(true)
+    expect(fs.readlinkSync(backedUpSymlink)).toBe("tracked.txt")
   })
 
   testIfGit("does not recover a dirty tree until a clean baseline has been observed", () => {

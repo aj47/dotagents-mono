@@ -84,18 +84,21 @@ export function buildDevEnvironment(
 
 function applySherpaLibraryEnvironment(env: NodeJS.ProcessEnv, sherpaPath: string | null): void {
   if (!sherpaPath) return
+  const prependUniquePathEntry = (current: string): string => {
+    const entries = current.split(path.delimiter).filter(Boolean)
+    const normalizedSherpaPath = path.normalize(sherpaPath)
+    const alreadyPresent = entries.some((entry) => path.normalize(entry) === normalizedSherpaPath)
+    if (alreadyPresent) return current
+    return [sherpaPath, ...entries].join(path.delimiter)
+  }
 
   if (os.platform() === "darwin") {
     const current = env.DYLD_LIBRARY_PATH || ""
-    if (!current.includes(sherpaPath)) {
-      env.DYLD_LIBRARY_PATH = sherpaPath + (current ? `:${current}` : "")
-    }
+    env.DYLD_LIBRARY_PATH = prependUniquePathEntry(current)
     console.log(`[dev-with-sherpa] DYLD_LIBRARY_PATH=${env.DYLD_LIBRARY_PATH}`)
   } else if (os.platform() === "linux") {
     const current = env.LD_LIBRARY_PATH || ""
-    if (!current.includes(sherpaPath)) {
-      env.LD_LIBRARY_PATH = sherpaPath + (current ? `:${current}` : "")
-    }
+    env.LD_LIBRARY_PATH = prependUniquePathEntry(current)
     console.log(`[dev-with-sherpa] LD_LIBRARY_PATH=${env.LD_LIBRARY_PATH}`)
   }
 }
@@ -409,4 +412,3 @@ function main(): void {
 if (isDirectExecution()) {
   main()
 }
-
