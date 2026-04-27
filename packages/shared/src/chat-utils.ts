@@ -328,6 +328,8 @@ export function formatArgumentsPreview(args: unknown): string {
 export const RESPOND_TO_USER_TOOL = 'respond_to_user';
 export const MARK_WORK_COMPLETE_TOOL = 'mark_work_complete';
 
+const sanitizeRespondToUserMarkdownLabel = (label: string) => label.replace(/[\[\]\(\)`\\]/g, '').trim();
+
 function isCompletionControlTool(name: string | undefined): boolean {
   return name === RESPOND_TO_USER_TOOL || name === MARK_WORK_COMPLETE_TOOL;
 }
@@ -343,7 +345,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const parsedArgs = args as Record<string, unknown>;
   const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
-  const sanitizeImageAltText = (alt: string) => alt.replace(/[\[\]\(\)`\\]/g, '').trim();
+  const videos = Array.isArray(parsedArgs.videos) ? parsedArgs.videos : [];
 
   const imagesMd = images
     .map((img, index) => {
@@ -355,7 +357,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
         : typeof image.altText === 'string' && image.altText.trim().length > 0
           ? image.altText.trim()
           : `Image ${index + 1}`;
-      const safeAlt = sanitizeImageAltText(alt) || `Image ${index + 1}`;
+      const safeAlt = sanitizeRespondToUserMarkdownLabel(alt) || `Image ${index + 1}`;
 
       const url = typeof image.url === 'string' ? image.url.trim() : '';
       const dataUrl = typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
@@ -370,7 +372,24 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
     .filter(Boolean)
     .join('\n\n');
 
-  const combined = [text, imagesMd].filter(Boolean).join('\n\n').trim();
+  const videosMd = videos
+    .map((video, index) => {
+      if (!video || typeof video !== 'object') return '';
+
+      const parsedVideo = video as Record<string, unknown>;
+      const label = typeof parsedVideo.label === 'string' && parsedVideo.label.trim().length > 0
+        ? parsedVideo.label.trim()
+        : `Video ${index + 1}`;
+      const safeLabel = sanitizeRespondToUserMarkdownLabel(label) || `Video ${index + 1}`;
+      const url = typeof parsedVideo.url === 'string' ? parsedVideo.url.trim() : '';
+
+      if (url) return `[${safeLabel}](${url})`;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
+  const combined = [text, imagesMd, videosMd].filter(Boolean).join('\n\n').trim();
   return combined || null;
 }
 

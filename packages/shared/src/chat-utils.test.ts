@@ -271,6 +271,32 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(extractRespondToUserContentFromArgs(args)).toBe('![Image 1](https://example.com/img.png)')
   })
 
+  it('extracts video markdown from respond_to_user videos[].url', () => {
+    const args = {
+      text: 'Watch this:',
+      videos: [{ label: 'demo clip', url: 'assets://conversation-video/conv_1/demo.mp4' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Watch this:\n\n[demo clip](assets://conversation-video/conv_1/demo.mp4)')
+  })
+
+  it('skips path-only videos until the runtime materializes them as asset URLs', () => {
+    const args = {
+      text: 'Saved locally:',
+      videos: [{ label: 'local demo', path: '/tmp/demo.mp4' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:')
+  })
+
+  it('sanitizes markdown-sensitive video labels', () => {
+    const args = {
+      videos: [{ label: 'demo [draft] (v1)', url: 'https://example.com/demo.mp4' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('[demo draft v1](https://example.com/demo.mp4)')
+  })
+
   it('returns null for empty args', () => {
     expect(extractRespondToUserContentFromArgs({ text: '', images: [] })).toBeNull()
   })

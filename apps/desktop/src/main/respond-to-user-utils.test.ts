@@ -35,6 +35,15 @@ describe("respond-to-user-utils", () => {
     })).toBe("![Preview](data:image/png;base64,ZmFrZQ==)")
   })
 
+  it("extracts video markdown from respond_to_user videos[].url", () => {
+    const args = {
+      videos: [{ label: "Demo clip", url: "assets://conversation-video/conv_1/demo.mp4" }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
+    expect(extractSharedRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
+  })
+
   it("falls back to the latest respond_to_user entry in conversation history", () => {
     expect(getLatestRespondToUserContentFromConversationHistory([
       { role: "assistant", toolCalls: [{ name: "respond_to_user", arguments: { text: "Earlier" } }] },

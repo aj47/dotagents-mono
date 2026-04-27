@@ -313,7 +313,11 @@ export function ResponseHistoryPanel({
                         />
                       </TouchableOpacity>
                     </View>
-                    <MarkdownRenderer content={response.text} />
+                    <MarkdownRenderer
+                      content={response.text}
+                      assetBaseUrl={remoteBaseUrl}
+                      assetAuthToken={remoteApiKey}
+                    />
                   </View>
                 </AnimatedResponseItem>
               </React.Fragment>

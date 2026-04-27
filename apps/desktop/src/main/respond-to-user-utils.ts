@@ -25,6 +25,8 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | und
   const parsedArgs = args as Record<string, unknown>
   const text = typeof parsedArgs.text === "string" ? parsedArgs.text.trim() : ""
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : []
+  const videos = Array.isArray(parsedArgs.videos) ? parsedArgs.videos : []
+  const sanitizeMarkdownLabel = (label: string) => label.replace(/[\[\]\(\)`\\]/g, "").trim()
 
   const imageMarkdown = images
     .map((image, index) => {
@@ -33,16 +35,32 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | und
       const alt = typeof parsedImage.alt === "string" && parsedImage.alt.trim().length > 0
         ? parsedImage.alt.trim()
         : `Image ${index + 1}`
+      const safeAlt = sanitizeMarkdownLabel(alt) || `Image ${index + 1}`
       const url = typeof parsedImage.url === "string" ? parsedImage.url.trim() : ""
       const dataUrl = typeof parsedImage.dataUrl === "string" ? parsedImage.dataUrl.trim() : ""
       const uri = url || dataUrl
       if (!uri) return ""
-      return `![${alt}](${uri})`
+      return `![${safeAlt}](${uri})`
     })
     .filter(Boolean)
     .join("\n\n")
 
-  const combined = [text, imageMarkdown].filter(Boolean).join("\n\n").trim()
+  const videoMarkdown = videos
+    .map((video, index) => {
+      if (!video || typeof video !== "object") return ""
+      const parsedVideo = video as Record<string, unknown>
+      const label = typeof parsedVideo.label === "string" && parsedVideo.label.trim().length > 0
+        ? parsedVideo.label.trim()
+        : `Video ${index + 1}`
+      const safeLabel = sanitizeMarkdownLabel(label) || `Video ${index + 1}`
+      const url = typeof parsedVideo.url === "string" ? parsedVideo.url.trim() : ""
+      if (!url) return ""
+      return `[${safeLabel}](${url})`
+    })
+    .filter(Boolean)
+    .join("\n\n")
+
+  const combined = [text, imageMarkdown, videoMarkdown].filter(Boolean).join("\n\n").trim()
   return combined.length > 0 ? combined : undefined
 }
 
