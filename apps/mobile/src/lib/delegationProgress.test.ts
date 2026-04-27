@@ -295,4 +295,39 @@ describe('createDelegationProgressMessages', () => {
       { success: false, content: 'Tool failed', error: 'implicit_failure' },
     ]);
   });
+
+  it('keeps legacy tool messages with metadata and empty content pending', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-pending-legacy-tool',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 700,
+        delegation: {
+          runId: 'run-pending-legacy-tool',
+          agentName: 'Worker',
+          task: 'Run tool',
+          status: 'running',
+          startTime: 700,
+          conversation: [
+            {
+              role: 'tool',
+              toolName: 'read_file',
+              toolInput: { path: 'README.md' },
+              content: '',
+              timestamp: 701,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].toolCalls).toEqual([
+      { name: 'read_file', arguments: { path: 'README.md' } },
+    ]);
+    expect(messages[0].toolResults).toBeUndefined();
+  });
 });

@@ -196,15 +196,18 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
     }
 
     if (message.toolName || message.toolInput !== undefined) {
+      const normalizedContent = normalizeToolResultContent(message.content);
       entries.push({
         toolCall: {
           name: message.toolName || 'tool_call',
           arguments: normalizeToolArguments(message.toolInput),
         },
-        result: normalizeToolResult({
-          success: true,
-          content: normalizeToolResultContent(message.content),
-        }),
+        result: normalizedContent
+          ? normalizeToolResult({
+              success: true,
+              content: normalizedContent,
+            })
+          : undefined,
       });
       continue;
     }

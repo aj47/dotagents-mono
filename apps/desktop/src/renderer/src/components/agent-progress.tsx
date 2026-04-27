@@ -1999,7 +1999,7 @@ function buildSubAgentConversationItems(
       continue
     }
 
-    if (message.role === "tool" || isDelegatedToolResultMessage(message)) {
+    if (message.toolName || message.toolInput !== undefined || isDelegatedToolResultMessage(message)) {
       appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
       continue
     }

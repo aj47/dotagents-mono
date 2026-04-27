@@ -46,6 +46,28 @@ export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagent
 export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared';
 export type { StreamingCheckpoint } from './connectionRecovery';
 
+const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage[] => {
+  return messages.map((message) => {
+    if (!Array.isArray(message.toolResults)) {
+      return message;
+    }
+
+    const toolResults = message.toolResults.filter(
+      (result): result is ToolResult => result !== undefined
+    );
+
+    if (toolResults.length === 0) {
+      const rest = { ...message };
+      delete rest.toolResults;
+      return rest;
+    }
+
+    return {
+      ...message,
+      toolResults,
+    };
+  });
+};
 
 
 export class OpenAIClient {
@@ -149,7 +171,11 @@ export class OpenAIClient {
     conversationId?: string
   ): Promise<ChatResponse> {
     const url = this.getUrl('/chat/completions');
-    const body: Record<string, any> = { model: this.cfg.model, messages, stream: true };
+    const body: Record<string, any> = {
+      model: this.cfg.model,
+      messages: sanitizeMessagesForRequest(messages),
+      stream: true,
+    };
 
     if (conversationId) {
       body.conversation_id = conversationId;
