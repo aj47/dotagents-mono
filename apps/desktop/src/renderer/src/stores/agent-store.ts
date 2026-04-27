@@ -67,12 +67,15 @@ const mergeDelegationStep = (
   const incomingIsTerminal = isTerminalDelegationStatus(step.delegation.status)
 
   if (existingWasTerminal && !incomingIsTerminal) {
+    const incomingConversation = step.delegation.conversation
     return {
       ...existingStep,
       delegation: {
         ...existingStep.delegation,
         // Keep terminal metadata stable and only accept late transcript chunks.
-        conversation: step.delegation.conversation ?? existingStep.delegation.conversation,
+        conversation: incomingConversation && incomingConversation.length > 0
+          ? incomingConversation
+          : existingStep.delegation.conversation,
       },
     }
   }

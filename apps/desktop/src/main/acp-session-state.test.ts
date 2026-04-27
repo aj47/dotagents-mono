@@ -45,6 +45,7 @@ describe("acp-session-state", () => {
   it("resolves nested delegated sessions to their root app session", async () => {
     const sessionState = await import("./acp-session-state")
 
+    sessionState.registerKnownAppSessionId("app-session-1")
     sessionState.setAcpToAppSessionMapping("level-2-subsession", "app-session-1")
     sessionState.setAcpToAppSessionMapping("level-3-subsession", "level-2-subsession")
 
@@ -60,6 +61,14 @@ describe("acp-session-state", () => {
     sessionState.setAcpToAppRunIdMapping("unresolved-level-2-subsession", "run-unresolved-2")
 
     expect(sessionState.getRootAppSessionForAcpSession("unresolved-level-3-subsession")).toBeUndefined()
+  })
+
+  it("does not infer app sessions from unknown terminal mapping values", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping("inferred-level-3-subsession", "inferred-level-2-subsession")
+
+    expect(sessionState.getRootAppSessionForAcpSession("inferred-level-3-subsession")).toBeUndefined()
   })
 
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {

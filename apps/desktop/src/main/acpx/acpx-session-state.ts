@@ -22,6 +22,7 @@ interface PersistedState {
   sessionToRunId: Record<string, string | number>
   sessionToClientSessionToken: Record<string, string>
   pendingClientSessionTokenToAppSession: Record<string, string>
+  knownAppSessions: string[]
 }
 
 const conversationSessions = new Map<string, ACPXConversationSessionInfo>()
@@ -30,6 +31,7 @@ const acpxToRunId = new Map<string, string | number>()
 const acpxToClientSessionToken = new Map<string, string>()
 const pendingClientSessionTokenToAppSession = new Map<string, string>()
 const acpxSessionTitleOverrides = new Map<string, string>()
+const knownAppSessionIds = new Set<string>()
 
 function ensureStateDir(): void {
   if (!fs.existsSync(STATE_DIR)) {
@@ -71,6 +73,9 @@ function readPersistedState(): PersistedState | null {
         sessionToRunId: parsed.sessionToRunId ?? {},
         sessionToClientSessionToken: parsed.sessionToClientSessionToken ?? {},
         pendingClientSessionTokenToAppSession: parsed.pendingClientSessionTokenToAppSession ?? {},
+        knownAppSessions: Array.isArray(parsed.knownAppSessions)
+          ? parsed.knownAppSessions.filter((value): value is string => typeof value === "string")
+          : [],
       }
     } catch (error) {
       logApp('[ACPX Session State] Failed to read persisted state:', error)
@@ -88,6 +93,7 @@ function saveState(): void {
     sessionToRunId: Object.fromEntries(acpxToRunId.entries()),
     sessionToClientSessionToken: Object.fromEntries(acpxToClientSessionToken.entries()),
     pendingClientSessionTokenToAppSession: Object.fromEntries(pendingClientSessionTokenToAppSession.entries()),
+    knownAppSessions: Array.from(knownAppSessionIds),
   }
 
   try {
@@ -110,6 +116,7 @@ function loadState(): void {
   acpxToRunId.clear()
   acpxToClientSessionToken.clear()
   pendingClientSessionTokenToAppSession.clear()
+  knownAppSessionIds.clear()
 
   for (const [conversationId, info] of Object.entries(state.conversations)) {
     conversationSessions.set(conversationId, info)
@@ -125,6 +132,9 @@ function loadState(): void {
   }
   for (const [token, appSessionId] of Object.entries(state.pendingClientSessionTokenToAppSession)) {
     pendingClientSessionTokenToAppSession.set(token, appSessionId)
+  }
+  for (const sessionId of state.knownAppSessions) {
+    knownAppSessionIds.add(sessionId)
   }
 }
 
@@ -183,6 +193,19 @@ export function setAcpToAppSessionMapping(acpxSessionId: string, appSessionId: s
   saveState()
 }
 
+function registerKnownAppSessionIdInternal(appSessionId: string, options?: { persist?: boolean }): void {
+  const normalizedSessionId = appSessionId.trim()
+  if (!normalizedSessionId) return
+  knownAppSessionIds.add(normalizedSessionId)
+  if (options?.persist !== false) {
+    saveState()
+  }
+}
+
+export function registerKnownAppSessionId(appSessionId: string): void {
+  registerKnownAppSessionIdInternal(appSessionId, { persist: true })
+}
+
 export function getAppSessionForAcpSession(acpxSessionId: string): string | undefined {
   return acpxToAppSession.get(acpxSessionId)
 }
@@ -209,7 +232,8 @@ export function getRootAppSessionForAcpSession(acpxSessionId: string): string | 
     const mappedSessionId = acpxToAppSession.get(currentSessionId)
     if (!mappedSessionId) {
       if (currentSessionId === acpxSessionId) return undefined
-      return isKnownAcpSessionId(currentSessionId) ? undefined : currentSessionId
+      if (isKnownAcpSessionId(currentSessionId)) return undefined
+      return knownAppSessionIds.has(currentSessionId) ? currentSessionId : undefined
     }
     currentSessionId = mappedSessionId
   }
@@ -261,6 +285,7 @@ export function setAcpClientSessionTokenMapping(clientSessionToken: string, acpx
 
 export function setPendingAcpClientSessionTokenMapping(clientSessionToken: string, appSessionId: string): void {
   pendingClientSessionTokenToAppSession.set(clientSessionToken, appSessionId)
+  registerKnownAppSessionIdInternal(appSessionId, { persist: false })
   saveState()
 }
 
@@ -308,4 +333,5 @@ export function __resetAcpxSessionStateForTests(): void {
   acpxToClientSessionToken.clear()
   pendingClientSessionTokenToAppSession.clear()
   acpxSessionTitleOverrides.clear()
+  knownAppSessionIds.clear()
 }

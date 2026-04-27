@@ -221,6 +221,59 @@ describe('agent-store delegation merge', () => {
     expect(step?.delegation?.conversation?.[0]?.content).toBe('Late transcript')
   })
 
+  it('does not clear terminal delegation transcript when stale updates provide an empty conversation array', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-3',
+          type: 'completion',
+          title: 'Delegation completed',
+          status: 'completed',
+          timestamp: 10,
+          delegation: {
+            runId: 'delegated-run-3',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'completed',
+            startTime: 1,
+            endTime: 10,
+            conversation: [{ role: 'assistant', content: 'Final transcript', timestamp: 10 }],
+          },
+        },
+      ],
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-3',
+          type: 'thinking',
+          title: 'Delegation stale update',
+          status: 'in_progress',
+          timestamp: 11,
+          delegation: {
+            runId: 'delegated-run-3',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'running',
+            startTime: 1,
+            conversation: [],
+          },
+        },
+      ],
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    const step = stored?.steps?.[0]
+
+    expect(step?.status).toBe('completed')
+    expect(step?.delegation?.conversation).toEqual([
+      { role: 'assistant', content: 'Final transcript', timestamp: 10 },
+    ])
+  })
+
   it('replaces pinned session ids during hydration', () => {
     useAgentStore.getState().togglePinSession('session-1')
 
