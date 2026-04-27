@@ -330,4 +330,47 @@ describe('createDelegationProgressMessages', () => {
     ]);
     expect(messages[0].toolResults).toBeUndefined();
   });
+
+  it('does not attach structured result-only updates to pending legacy tool calls', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-mixed-pending',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 800,
+        delegation: {
+          runId: 'run-mixed-pending',
+          agentName: 'Worker',
+          task: 'Inspect files',
+          status: 'running',
+          startTime: 800,
+          conversation: [
+            {
+              role: 'tool',
+              content: 'Using tool: read_file\nInput: {"path":"README.md"}',
+              timestamp: 801,
+            },
+            {
+              role: 'assistant',
+              content: '',
+              toolResults: [{ success: true, content: 'structured-result' }],
+              timestamp: 802,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].toolCalls).toEqual([
+      { name: 'read_file', arguments: { path: 'README.md' } },
+      { name: 'tool_call', arguments: {} },
+    ]);
+    expect(messages[0].toolResults).toEqual([
+      undefined,
+      { success: true, content: 'structured-result', error: undefined },
+    ]);
+  });
 });

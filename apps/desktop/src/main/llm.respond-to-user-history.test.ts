@@ -723,6 +723,43 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(updatesWithResponseEvents.at(-1)).toHaveLength(1)
   })
 
+  it("finalizes when verification reason only says mark_work_complete was not called", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockImplementation(async () => ({
+      content: "",
+      toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Completed and sent final answer." } },
+      ],
+    }))
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: false,
+      conversationState: "running",
+      reason: "mark_work_complete was not called",
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Complete the task and report back",
+      availableTools as any,
+      makeExecuteToolCall("session-missing-mark-work-complete", 1),
+      6,
+      [],
+      "conv-missing-mark-work-complete",
+      "session-missing-mark-work-complete",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.totalIterations).toBe(1)
+    expect(result.content).toBe("Completed and sent final answer.")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+  })
+
   it("keeps iterating when communication-only verification reports real missing work", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     currentConfig.mcpVerifyRetryCount = 0

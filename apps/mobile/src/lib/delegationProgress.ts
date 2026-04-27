@@ -114,6 +114,22 @@ const attachResultToEarliestPendingEntry = (
   return false;
 };
 
+const attachResultToEarliestPendingStructuredEntry = (
+  entries: DelegationToolEntry[],
+  result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
+) => {
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (entry.source !== 'structured' || entry.result) {
+      continue;
+    }
+    entry.result = result;
+    return true;
+  }
+
+  return false;
+};
+
 const attachResultToLatestPendingLegacyEntry = (
   entries: DelegationToolEntry[],
   result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
@@ -127,7 +143,7 @@ const attachResultToLatestPendingLegacyEntry = (
     return true;
   }
 
-  return attachResultToEarliestPendingEntry(entries, result);
+  return false;
 };
 
 const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<ChatMessage, 'toolCalls' | 'toolResults'> => {
@@ -159,7 +175,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
             continue;
           }
           const normalizedResult = normalizeToolResult(result);
-          const attached = attachResultToEarliestPendingEntry(entries, normalizedResult);
+          const attached = attachResultToEarliestPendingStructuredEntry(entries, normalizedResult);
           if (!attached) {
             entries.push({
               toolCall: {

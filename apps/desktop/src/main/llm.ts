@@ -1508,12 +1508,24 @@ export async function processTranscriptWithAgentMode(
         completionSignalPhrases.some((phrase) => signal.includes(phrase))
       )
 
-      const stripCompletionSignalPhrases = (signal: string): string => (
-        completionSignalPhrases.reduce(
+      const stripCompletionSignalPhrases = (signal: string): string => {
+        const withoutSignalTargets = completionSignalPhrases.reduce(
           (current, phrase) => current.replaceAll(phrase, " "),
-          signal
-        ).replace(/[^\p{L}\p{N}]+/gu, " ").trim()
-      )
+          signal,
+        )
+        const withoutCompletionSignalBoilerplate = withoutSignalTargets
+          .replace(/\b(?:was|is|were|are)\s+not\s+called\b/giu, " ")
+          .replace(/\bnot\s+called\b/giu, " ")
+          .replace(/\bnot\s+invoked\b/giu, " ")
+          .replace(/\b(?:was|is|were|are)\s+missing\b/giu, " ")
+          .replace(/\bmissing\b/giu, " ")
+          .replace(/\b(?:was|is|were|are)\s+not\s+used\b/giu, " ")
+          .replace(/\buse\b/giu, " ")
+          .replace(/\bcall\b/giu, " ")
+        return withoutCompletionSignalBoilerplate
+          .replace(/[^\p{L}\p{N}]+/gu, " ")
+          .trim()
+      }
 
       const mentionsMissingWork = verificationSignals.some((signal) => {
         if (!completionSignalPhrases.some((phrase) => signal.includes(phrase))) {
