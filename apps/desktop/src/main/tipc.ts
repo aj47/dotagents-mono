@@ -26,6 +26,8 @@ import {
   MIN_WAVEFORM_WIDTH,
   LEGACY_WAVEFORM_SIZE_MAX_WIDTH,
   LEGACY_WAVEFORM_SIZE_MAX_HEIGHT,
+  PANEL_SAVED_SIZE_MAX_WIDTH,
+  PANEL_SAVED_SIZE_MAX_HEIGHT,
   clearPanelOpenedWithMain,
   resizePanelForWaveformPreview,
 } from "./window"
@@ -109,6 +111,11 @@ const isFinitePanelSize = (value: unknown): value is { width: number; height: nu
   typeof (value as { height: unknown }).height === "number" &&
   Number.isFinite((value as { width: number }).width) &&
   Number.isFinite((value as { height: number }).height)
+
+const isBoundedPanelSize = (value: unknown): value is { width: number; height: number } =>
+  isFinitePanelSize(value) &&
+  value.width <= PANEL_SAVED_SIZE_MAX_WIDTH &&
+  value.height <= PANEL_SAVED_SIZE_MAX_HEIGHT
 
 /**
  * Convert Float32Array audio samples to WAV format buffer
@@ -3621,19 +3628,20 @@ export const router = {
 
     const config = configStore.get()
     const legacyCustomSize = config.panelCustomSize
+    const savedWaveformSize = isBoundedPanelSize(config.panelWaveformSize) ? config.panelWaveformSize : undefined
     const isCompactLegacyWaveformSize =
       isFinitePanelSize(legacyCustomSize) &&
       legacyCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
       legacyCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
-    const savedWaveformSize = config.panelWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)
+    const initialWaveformSize = savedWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)
 
     if (
-      savedWaveformSize &&
-      Number.isFinite(savedWaveformSize.width) &&
-      Number.isFinite(savedWaveformSize.height)
+      initialWaveformSize &&
+      Number.isFinite(initialWaveformSize.width) &&
+      Number.isFinite(initialWaveformSize.height)
     ) {
       // Apply saved waveform size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
-      const { width, height } = savedWaveformSize
+      const { width, height } = initialWaveformSize
       const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
       const finalWidth = Math.max(minWidth, width)
       const finalHeight = Math.max(WAVEFORM_MIN_HEIGHT, height)

@@ -584,6 +584,8 @@ const panelWindowSize = {
 
 export const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420
 export const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240
+export const PANEL_SAVED_SIZE_MAX_WIDTH = 3000
+export const PANEL_SAVED_SIZE_MAX_HEIGHT = 2000
 
 const agentPanelWindowSize = {
   width: 600,
@@ -632,32 +634,35 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
 
   logApp(`[window.ts] getSavedPanelSize - checking config for mode: ${mode}...`)
 
+  const getValidSavedSize = (
+    savedSize: { width: number; height: number },
+    minHeight: number,
+    minWidth: number = getPanelMinWidth(mode),
+  ) => {
+    if (!Number.isFinite(savedSize.width) || !Number.isFinite(savedSize.height)) {
+      logApp(`[window.ts] Saved size is invalid (${savedSize.width}x${savedSize.height})`)
+      return null
+    }
+
+    if (savedSize.width > PANEL_SAVED_SIZE_MAX_WIDTH || savedSize.height > PANEL_SAVED_SIZE_MAX_HEIGHT) {
+      logApp(`[window.ts] Saved size too large (${savedSize.width}x${savedSize.height})`)
+      return null
+    }
+
+    if (savedSize.width < minWidth || savedSize.height < minHeight) {
+      logApp(`[window.ts] Saved size too small (${savedSize.width}x${savedSize.height})`)
+      return null
+    }
+
+    return savedSize
+  }
+
   const validateSize = (
     savedSize: { width: number; height: number },
     minHeight: number,
     fallbackSize: { width: number; height: number } = panelWindowSize,
     minWidth: number = getPanelMinWidth(mode),
-  ) => {
-    const maxWidth = 3000
-    const maxHeight = 2000
-
-    if (!Number.isFinite(savedSize.width) || !Number.isFinite(savedSize.height)) {
-      logApp(`[window.ts] Saved size is invalid (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
-      return fallbackSize
-    }
-
-    if (savedSize.width > maxWidth || savedSize.height > maxHeight) {
-      logApp(`[window.ts] Saved size too large (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
-      return fallbackSize
-    }
-
-    if (savedSize.width < minWidth || savedSize.height < minHeight) {
-      logApp(`[window.ts] Saved size too small (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
-      return fallbackSize
-    }
-
-    return savedSize
-  }
+  ) => getValidSavedSize(savedSize, minHeight, minWidth) ?? fallbackSize
 
   if (mode === "progress") {
     if (config.panelProgressSize) {
@@ -704,7 +709,11 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
   // it is already compact enough to plausibly be a recording waveform size.
   if (config.panelWaveformSize) {
     logApp(`[window.ts] Found saved waveform size:`, config.panelWaveformSize)
-    return validateSize(config.panelWaveformSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+    const savedWaveformSize = getValidSavedSize(config.panelWaveformSize, WAVEFORM_MIN_HEIGHT, getPanelMinWidth("waveform"))
+    if (savedWaveformSize) {
+      return savedWaveformSize
+    }
+    logApp(`[window.ts] Ignoring invalid saved waveform size, checking legacy fallback:`, config.panelWaveformSize)
   }
 
   if (isFinitePanelSize(config.panelCustomSize)) {
