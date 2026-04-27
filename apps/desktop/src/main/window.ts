@@ -582,8 +582,8 @@ const panelWindowSize = {
   height: WAVEFORM_MIN_HEIGHT,
 }
 
-const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420
-const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240
+export const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420
+export const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240
 
 const agentPanelWindowSize = {
   width: 600,

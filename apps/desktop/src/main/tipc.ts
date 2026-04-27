@@ -20,10 +20,12 @@ import {
   showPanelWindowAndShowTextInput,
   showPanelWindowAndStartMcpRecording,
   WAVEFORM_MIN_HEIGHT,
-    TEXT_INPUT_MIN_WIDTH,
+  TEXT_INPUT_MIN_WIDTH,
   TEXT_INPUT_MIN_HEIGHT,
   PROGRESS_MIN_HEIGHT,
   MIN_WAVEFORM_WIDTH,
+  LEGACY_WAVEFORM_SIZE_MAX_WIDTH,
+  LEGACY_WAVEFORM_SIZE_MAX_HEIGHT,
   clearPanelOpenedWithMain,
   resizePanelForWaveformPreview,
 } from "./window"
@@ -3598,7 +3600,9 @@ export const router = {
     const config = configStore.get()
     const legacyCustomSize = config.panelCustomSize
     const isCompactLegacyWaveformSize =
-      legacyCustomSize && legacyCustomSize.width <= 420 && legacyCustomSize.height <= 240
+      legacyCustomSize &&
+      legacyCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
+      legacyCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
     const savedWaveformSize = config.panelWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)
 
     if (

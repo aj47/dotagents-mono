@@ -47,6 +47,12 @@ describe("panel recording layout", () => {
     expect(mainWindowSource).toContain('const savedSize = getSavedPanelSize("waveform")')
     expect(mainWindowSource).toContain("config.panelWaveformSize")
     expect(mainWindowSource).toContain("Ignoring oversized legacy waveform size")
+    expect(mainWindowSource).toContain("export const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420")
+    expect(mainWindowSource).toContain("export const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240")
+    expect(tipcSource).toContain("LEGACY_WAVEFORM_SIZE_MAX_WIDTH")
+    expect(tipcSource).toContain("LEGACY_WAVEFORM_SIZE_MAX_HEIGHT")
+    expect(tipcSource).not.toContain("legacyCustomSize.width <= 420")
+    expect(tipcSource).not.toContain("legacyCustomSize.height <= 240")
     expect(tipcSource).toContain("updatedConfig.panelWaveformSize = { width, height }")
     const legacyCustomSizeSection = tipcSource.slice(
       tipcSource.indexOf("savePanelCustomSize: t.procedure"),
