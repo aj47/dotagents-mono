@@ -232,6 +232,7 @@ const getConfig = (): LoadedConfig => {
     panelPosition: "top-right",
     panelDragEnabled: true,
     panelCustomSize: undefined,
+    panelWaveformSize: undefined,
     panelTextInputSize: undefined,
     panelProgressSize: undefined,
     // Floating panel auto-show - when true, panel auto-shows during agent sessions

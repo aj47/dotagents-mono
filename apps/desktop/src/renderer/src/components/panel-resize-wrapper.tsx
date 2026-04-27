@@ -3,7 +3,7 @@ import { ResizeHandle } from "@renderer/components/resize-handle"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 
 // Minimum height for waveform panel - matches WAVEFORM_MIN_HEIGHT in main/window.ts
-const WAVEFORM_MIN_HEIGHT = 150
+const WAVEFORM_MIN_HEIGHT = 120
 type PanelMode = "normal" | "agent" | "textInput"
 const isPanelMode = (value: unknown): value is PanelMode =>
   value === "normal" || value === "agent" || value === "textInput"
@@ -21,6 +21,7 @@ interface PanelResizeWrapperProps {
   enableResize?: boolean
   minWidth?: number
   minHeight?: number
+  viewportScale?: number
 }
 
 export function PanelResizeWrapper({
@@ -29,12 +30,14 @@ export function PanelResizeWrapper({
   enableResize = true,
   minWidth = 200,
   minHeight = WAVEFORM_MIN_HEIGHT,
+  viewportScale = 1,
 }: PanelResizeWrapperProps) {
   const [currentSize, setCurrentSize] = useState({ width: 300, height: 200 })
   const resizeStartSizeRef = useRef<{ width: number; height: number } | null>(null)
   const lastResizeCallRef = useRef<number>(0)
   const inFlightResizeUpdatesRef = useRef(new Set<Promise<unknown>>())
   const RESIZE_THROTTLE_MS = 16 // ~60fps
+  const safeViewportScale = Number.isFinite(viewportScale) && viewportScale > 0 ? viewportScale : 1
 
   useEffect(() => {
     // Initialize local size state from current window bounds; do not change size on mount
@@ -136,8 +139,11 @@ export function PanelResizeWrapper({
     <div
       className={className}
       style={{
-        minWidth: `${minWidth}px`,
-        minHeight: `${minHeight}px`,
+        // Native window constraints are already enforced in main-process pixels.
+        // Divide CSS constraints by the current viewport scale so recording UI
+        // does not visually grow when browser zoom makes CSS pixels larger.
+        minWidth: `${minWidth / safeViewportScale}px`,
+        minHeight: `${minHeight / safeViewportScale}px`,
       }}
     >
       {children}

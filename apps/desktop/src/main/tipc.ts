@@ -3549,10 +3549,11 @@ export const router = {
       const config = configStore.get()
       const updatedConfig = {
         ...config,
-        panelCustomSize: { width, height }
+        panelCustomSize: { width, height },
+        panelWaveformSize: { width, height },
       }
       configStore.save(updatedConfig)
-      return updatedConfig.panelCustomSize
+      return updatedConfig.panelWaveformSize
     }),
 
   // Save panel size with mode-specific persistence
@@ -3577,7 +3578,7 @@ export const router = {
       } else if (input.mode === "textInput") {
         updatedConfig.panelTextInputSize = { width, height }
       } else {
-        updatedConfig.panelCustomSize = { width, height }
+        updatedConfig.panelWaveformSize = { width, height }
       }
 
       configStore.save(updatedConfig)
@@ -3596,9 +3597,14 @@ export const router = {
     }
 
     const config = configStore.get()
-    if (config.panelCustomSize) {
-      // Apply saved custom size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
-      const { width, height } = config.panelCustomSize
+    const legacyCustomSize = config.panelCustomSize
+    const isCompactLegacyWaveformSize =
+      legacyCustomSize && legacyCustomSize.width <= 420 && legacyCustomSize.height <= 240
+    const savedWaveformSize = config.panelWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)
+
+    if (savedWaveformSize) {
+      // Apply saved waveform size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
+      const { width, height } = savedWaveformSize
       const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
       const finalWidth = Math.max(minWidth, width)
       const finalHeight = Math.max(WAVEFORM_MIN_HEIGHT, height)

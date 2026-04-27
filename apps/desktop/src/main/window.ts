@@ -528,11 +528,11 @@ export function showMainWindow(url?: string) {
   }
 }
 
-const VISUALIZER_BUFFER_LENGTH = 70
+const VISUALIZER_BUFFER_LENGTH = 52
 const WAVEFORM_BAR_WIDTH = 2
 const WAVEFORM_GAP = 2 // gap-0.5 = 2px in Tailwind
 const WAVEFORM_PADDING = 32 // px-4 = 16px on each side
-const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 360
+const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 280
 
 // Raw waveform width only accounts for the bar lane itself.
 // Keep a slightly wider floor so the recording badge + submit hint do not feel cramped.
@@ -542,24 +542,24 @@ const calculateMinWaveformWidth = () => {
   return Math.max(waveformWidth, WAVEFORM_PANEL_CONTENT_MIN_WIDTH)
 }
 
-export const MIN_WAVEFORM_WIDTH = calculateMinWaveformWidth() // 360px floor for panel breathing room
+export const MIN_WAVEFORM_WIDTH = calculateMinWaveformWidth() // 280px compact floor for the recording panel
 
 // Minimum height for waveform panel:
 // - Drag bar: 24px
-// - Waveform: 64px (h-16)
-// - Submit button + hint: 36px
-// - Padding: ~26px
-// Total: ~150px
-export const WAVEFORM_MIN_HEIGHT = 150
+// - Waveform: ~44px
+// - Submit button + hint: ~32px
+// - Padding: ~20px
+// Total: ~120px
+export const WAVEFORM_MIN_HEIGHT = 120
 
 // Minimum height for waveform panel with transcription preview:
 // - Drag bar: 24px
-// - Waveform (shrunk): 40px (h-10)
+// - Waveform (shrunk): ~34px
 // - Preview text: ~32px (2 lines)
-// - Submit button + hint: 36px
-// - Padding/margins: ~28px
-// Total: ~160px
-export const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
+// - Submit button + hint: ~32px
+// - Padding/margins: ~26px
+// Total: ~148px
+export const WAVEFORM_WITH_PREVIEW_HEIGHT = 148
 
 // Minimum height for text input panel:
 // - Hint text row: ~20px
@@ -581,6 +581,9 @@ const panelWindowSize = {
   width: Math.max(260, MIN_WAVEFORM_WIDTH),
   height: WAVEFORM_MIN_HEIGHT,
 }
+
+const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420
+const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240
 
 const agentPanelWindowSize = {
   width: 600,
@@ -681,10 +684,25 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
     return textInputPanelWindowSize
   }
 
-  // Waveform mode uses panelCustomSize
+  // Waveform mode has its own explicit size bucket. Legacy panelCustomSize was
+  // historically shared with progress/text-input layouts, so only reuse it if
+  // it is already compact enough to plausibly be a recording waveform size.
+  if (config.panelWaveformSize) {
+    logApp(`[window.ts] Found saved waveform size:`, config.panelWaveformSize)
+    return validateSize(config.panelWaveformSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+  }
+
   if (config.panelCustomSize) {
-    logApp(`[window.ts] Found saved panel size:`, config.panelCustomSize)
-    return validateSize(config.panelCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+    const isCompactLegacyWaveformSize =
+      config.panelCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
+      config.panelCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
+
+    if (isCompactLegacyWaveformSize) {
+      logApp(`[window.ts] Reusing compact legacy waveform size:`, config.panelCustomSize)
+      return validateSize(config.panelCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+    }
+
+    logApp(`[window.ts] Ignoring oversized legacy waveform size, using compact default:`, config.panelCustomSize)
   }
 
   logApp(`[window.ts] No saved panel size, using default:`, panelWindowSize)
@@ -699,6 +717,14 @@ const getSavedSizeForMode = (mode: "normal" | "agent" | "textInput") => {
     return getSavedPanelSize("textInput")
   }
   return getSavedPanelSize("waveform")
+}
+
+const getWaveformPanelSize = (minimumHeight = WAVEFORM_MIN_HEIGHT) => {
+  const savedSize = getSavedPanelSize("waveform")
+  return {
+    width: Math.max(savedSize.width, getPanelMinWidth("waveform")),
+    height: Math.max(savedSize.height, minimumHeight),
+  }
 }
 
 function restorePanelSizeForMode(mode: "normal" | "agent" | "textInput", reason = "setPanelMode") {
@@ -915,6 +941,7 @@ export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
     panelPosition: "top-right",
     panelCustomPosition: undefined,
     panelCustomSize: undefined,
+    panelWaveformSize: undefined,
     panelTextInputSize: undefined,
     panelProgressSize: undefined,
   })
@@ -1367,7 +1394,8 @@ export function resizePanelToNormal() {
 
 /**
  * Resize the panel to compact waveform size for recording.
- * This shrinks the panel height to WAVEFORM_MIN_HEIGHT while keeping the current width.
+ * This restores the waveform panel from its own saved size bucket instead of
+ * inheriting the current progress/text-input panel dimensions.
  * This fixes the issue where the panel had too much negative space when showing
  * the waveform after being sized for agent mode.
  * See: https://github.com/aj47/dotagents-mono/issues/817
@@ -1377,14 +1405,10 @@ export function resizePanelForWaveform() {
   if (!win) return
 
   try {
-    const [currentWidth] = win.getSize()
-    const targetHeight = WAVEFORM_MIN_HEIGHT
+    const [currentWidth, currentHeight] = win.getSize()
+    const { width: newWidth, height: targetHeight } = getWaveformPanelSize()
 
-    // Keep the current width but shrink to waveform height
-    const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-    const newWidth = Math.max(currentWidth, minWidth)
-
-    logApp(`[resizePanelForWaveform] Resizing panel from current size to ${newWidth}x${targetHeight}`)
+    logApp(`[resizePanelForWaveform] Restoring waveform size from ${currentWidth}x${currentHeight} to ${newWidth}x${targetHeight}`)
 
     win.setSize(newWidth, targetHeight)
     // Notify renderer of the size change
@@ -1416,20 +1440,20 @@ export function resizePanelForWaveformPreview(showPreview: boolean) {
   try {
     const [currentWidth, currentHeight] = win.getSize()
     const targetHeight = showPreview ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
+    const targetSize = getWaveformPanelSize(targetHeight)
+    const newWidth = targetSize.width
+    const newHeight = targetSize.height
 
-    // Skip if already at target height
-    if (currentHeight === targetHeight) return
+    // Skip if already at target size
+    if (currentWidth === newWidth && currentHeight === newHeight) return
 
-    const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-    const newWidth = Math.max(currentWidth, minWidth)
+    logApp(`[resizePanelForWaveformPreview] Resizing panel from ${currentWidth}x${currentHeight} to ${newWidth}x${newHeight} (preview=${showPreview})`)
 
-    logApp(`[resizePanelForWaveformPreview] Resizing panel from ${currentWidth}x${currentHeight} to ${newWidth}x${targetHeight} (preview=${showPreview})`)
-
-    win.setSize(newWidth, targetHeight)
-    notifyPanelSizeChanged(newWidth, targetHeight)
+    win.setSize(newWidth, newHeight)
+    notifyPanelSizeChanged(newWidth, newHeight)
 
     // Reposition to maintain the panel's anchor point
-    const position = calculatePanelPosition({ width: newWidth, height: targetHeight }, "normal")
+    const position = calculatePanelPosition({ width: newWidth, height: newHeight }, "normal")
     win.setPosition(position.x, position.y)
   } catch (e) {
     logApp("[resizePanelForWaveformPreview] Failed to resize panel:", e)

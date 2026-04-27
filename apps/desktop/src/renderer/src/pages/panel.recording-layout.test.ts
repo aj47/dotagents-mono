@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 const panelSource = readFileSync(new URL("./panel.tsx", import.meta.url), "utf8")
 const mainWindowSource = readFileSync(new URL("../../../main/window.ts", import.meta.url), "utf8")
 const tipcSource = readFileSync(new URL("../../../main/tipc.ts", import.meta.url), "utf8")
+const panelResizeWrapperSource = readFileSync(new URL("../components/panel-resize-wrapper.tsx", import.meta.url), "utf8")
 
 describe("panel recording layout", () => {
   it("wraps the recording footer controls for narrow widths and zoomed text", () => {
@@ -20,13 +21,44 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain('className="min-w-0 truncate font-medium"')
   })
 
-  it("keeps a wider compact-width floor for the floating recording panel", () => {
-    expect(panelSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 360")
+  it("keeps a compact default footprint for the floating recording panel", () => {
+    expect(panelSource).toContain("const DEFAULT_VISUALIZER_BAR_COUNT = 52")
+    expect(panelSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 280")
+    expect(panelSource).toContain("const WAVEFORM_MIN_HEIGHT = 120")
+    expect(panelSource).toContain("const WAVEFORM_WITH_PREVIEW_HEIGHT = 148")
     expect(panelSource).toContain("WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX")
-    expect(mainWindowSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 360")
+    expect(mainWindowSource).toContain("const VISUALIZER_BUFFER_LENGTH = 52")
+    expect(mainWindowSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 280")
+    expect(mainWindowSource).toContain("export const WAVEFORM_MIN_HEIGHT = 120")
+    expect(mainWindowSource).toContain("export const WAVEFORM_WITH_PREVIEW_HEIGHT = 148")
     expect(mainWindowSource).toContain(
       "return Math.max(waveformWidth, WAVEFORM_PANEL_CONTENT_MIN_WIDTH)"
     )
+    expect(panelResizeWrapperSource).toContain("const WAVEFORM_MIN_HEIGHT = 120")
+  })
+
+  it("restores waveform panel sizing independently from progress panel sizing", () => {
+    const resizeWaveformSection = mainWindowSource.slice(
+      mainWindowSource.indexOf("export function resizePanelForWaveform()"),
+      mainWindowSource.indexOf("export function resizePanelForWaveformPreview")
+    )
+
+    expect(mainWindowSource).toContain("const getWaveformPanelSize =")
+    expect(mainWindowSource).toContain('const savedSize = getSavedPanelSize("waveform")')
+    expect(mainWindowSource).toContain("config.panelWaveformSize")
+    expect(mainWindowSource).toContain("Ignoring oversized legacy waveform size")
+    expect(tipcSource).toContain("updatedConfig.panelWaveformSize = { width, height }")
+    expect(resizeWaveformSection).toContain("getWaveformPanelSize()")
+    expect(resizeWaveformSection).not.toContain("Math.max(currentWidth")
+  })
+
+  it("keeps recording waveform layout stable under browser zoom", () => {
+    expect(panelSource).toContain("function RecordingWaveformPanel")
+    expect(panelSource).toContain("getPanelViewportScale(nativePanelSize, cssViewportSize)")
+    expect(panelSource).toContain("stableRecordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2")
+    expect(panelSource).toContain('transform: `scale(${zoomCompensationScale})`')
+    expect(panelResizeWrapperSource).toContain("viewportScale?: number")
+    expect(panelResizeWrapperSource).toContain("minWidth: `${minWidth / safeViewportScale}px`")
   })
 
   it("gives text input its own safer min width, height, and persisted size bucket", () => {
