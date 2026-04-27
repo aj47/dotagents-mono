@@ -46,6 +46,7 @@ function status(repo: string): string {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.clearAllMocks()
   for (const dir of tempDirs) {
     fs.rmSync(dir, { recursive: true, force: true })
@@ -181,6 +182,35 @@ describe("git dev self-recovery", () => {
     expect(fs.readFileSync(path.join(repo, "tracked.txt"), "utf8")).toBe("initial\n")
   })
 
+  testIfGit("cleans up lock file descriptor and lock file when lock metadata write fails", () => {
+    const repo = createRepo()
+    const controller = createGitDevSelfRecovery({ repoRoot: repo, logger: silentLogger })
+
+    expect(controller.refreshCleanBaseline()).toBe(true)
+    writeFile(repo, "tracked.txt", "dirty\n")
+
+    const lockPath = path.join(repo, ".git", "dotagents-dev-recovery", ".lock")
+    const closeSpy = vi.spyOn(fs, "closeSync")
+    const unlinkSpy = vi.spyOn(fs, "unlinkSync")
+    const originalWriteFileSync = fs.writeFileSync.bind(fs)
+    vi.spyOn(fs, "writeFileSync").mockImplementation(((file, data, options) => {
+      if (typeof file === "number") {
+        throw new Error("simulated lock metadata write failure")
+      }
+      originalWriteFileSync(file, data as never, options as never)
+    }) as typeof fs.writeFileSync)
+
+    const result = controller.maybeRecover("lock-write-failure")
+
+    expect(result.recovered).toBe(false)
+    if (result.recovered) throw new Error("expected recovery to fail")
+    expect(result.reason).toBe("invalid-repo")
+    expect(closeSpy).toHaveBeenCalled()
+    expect(unlinkSpy.mock.calls.some((call) => String(call[0]).endsWith(path.join(".git", "dotagents-dev-recovery", ".lock")))).toBe(true)
+    expect(fs.existsSync(lockPath)).toBe(false)
+    expect(fs.readFileSync(path.join(repo, "tracked.txt"), "utf8")).toBe("dirty\n")
+  })
+
   testIfSymlink("preserves untracked symlinks in the backup", () => {
     const repo = createRepo()
     const controller = createGitDevSelfRecovery({ repoRoot: repo, logger: silentLogger })
@@ -195,6 +225,24 @@ describe("git dev self-recovery", () => {
     const backedUpSymlink = path.join(result.backupDir, "untracked", "linked.txt")
     expect(fs.lstatSync(backedUpSymlink).isSymbolicLink()).toBe(true)
     expect(fs.readlinkSync(backedUpSymlink)).toBe("tracked.txt")
+  })
+
+  testIfGit("logs clean baseline updates only when first armed or HEAD changes", () => {
+    const repo = createRepo()
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const controller = createGitDevSelfRecovery({ repoRoot: repo, logger })
+
+    expect(controller.refreshCleanBaseline()).toBe(true)
+    expect(controller.refreshCleanBaseline()).toBe(true)
+    expect(logger.info).toHaveBeenCalledTimes(1)
+
+    writeFile(repo, "tracked.txt", "updated\n")
+    git(repo, ["add", "tracked.txt"])
+    gitCommit(repo, ["commit", "-m", "advance head"])
+    expect(controller.refreshCleanBaseline()).toBe(true)
+
+    expect(logger.info).toHaveBeenCalledTimes(2)
+    expect(logger.info.mock.calls[1]?.[0]).toContain("advanced from")
   })
 
   testIfGit("does not recover a dirty tree until a clean baseline has been observed", () => {

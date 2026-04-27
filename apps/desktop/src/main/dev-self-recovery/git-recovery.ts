@@ -266,7 +266,21 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const fd = fs.openSync(lockPath, "wx")
-        fs.writeFileSync(fd, lockMetadata())
+        try {
+          fs.writeFileSync(fd, lockMetadata())
+        } catch (writeError) {
+          try {
+            fs.closeSync(fd)
+          } catch {
+            // best-effort cleanup
+          }
+          try {
+            fs.unlinkSync(lockPath)
+          } catch {
+            // best-effort cleanup
+          }
+          throw writeError
+        }
         return fd
       } catch (error) {
         const err = error as NodeJS.ErrnoException
@@ -369,12 +383,19 @@ export function createGitDevSelfRecovery(options: RecoveryOptions): GitDevSelfRe
   }
 
   const updateCleanBaseline = (snapshot: RepoSnapshot): void => {
+    const previousHead = baseline?.head
     baseline = {
       head: snapshot.head,
       repoRoot: snapshot.repoRoot,
       observedAt: now().toISOString(),
     }
-    logger.info(`[git-recovery] Clean baseline observed at ${baseline.head}`)
+    if (!previousHead) {
+      logger.info(`[git-recovery] Clean baseline observed at ${baseline.head}`)
+      return
+    }
+    if (previousHead !== baseline.head) {
+      logger.info(`[git-recovery] Clean baseline advanced from ${previousHead} to ${baseline.head}`)
+    }
   }
 
   return {
