@@ -8,7 +8,32 @@ interface ResizeHandleProps {
   disabled?: boolean
   onResizeStart?: (size: { width: number; height: number }) => void
   onResize?: (delta: { width: number; height: number }) => void
-  onResizeEnd?: (size: { width: number; height: number }) => void
+  onResizeEnd?: (delta: { width: number; height: number }) => void
+}
+
+const getResizeDelta = (
+  position: ResizeHandleProps["position"],
+  deltaX: number,
+  deltaY: number,
+) => {
+  switch (position) {
+    case 'bottom-right':
+      return { width: deltaX, height: deltaY }
+    case 'bottom-left':
+      return { width: -deltaX, height: deltaY }
+    case 'top-right':
+      return { width: deltaX, height: -deltaY }
+    case 'top-left':
+      return { width: -deltaX, height: -deltaY }
+    case 'right':
+      return { width: deltaX, height: 0 }
+    case 'left':
+      return { width: -deltaX, height: 0 }
+    case 'bottom':
+      return { width: 0, height: deltaY }
+    case 'top':
+      return { width: 0, height: -deltaY }
+  }
 }
 
 const isPanelSize = (value: unknown): value is { width: number; height: number } =>
@@ -47,42 +72,7 @@ export function ResizeHandle({
       const deltaX = e.screenX - resizeStart.x
       const deltaY = e.screenY - resizeStart.y
 
-      let deltaWidth = 0
-      let deltaHeight = 0
-
-      // Calculate deltas based on resize position
-      switch (position) {
-        case 'bottom-right':
-          deltaWidth = deltaX
-          deltaHeight = deltaY
-          break
-        case 'bottom-left':
-          deltaWidth = -deltaX
-          deltaHeight = deltaY
-          break
-        case 'top-right':
-          deltaWidth = deltaX
-          deltaHeight = -deltaY
-          break
-        case 'top-left':
-          deltaWidth = -deltaX
-          deltaHeight = -deltaY
-          break
-        case 'right':
-          deltaWidth = deltaX
-          break
-        case 'left':
-          deltaWidth = -deltaX
-          break
-        case 'bottom':
-          deltaHeight = deltaY
-          break
-        case 'top':
-          deltaHeight = -deltaY
-          break
-      }
-
-      onResize({ width: deltaWidth, height: deltaHeight })
+      onResize(getResizeDelta(position, deltaX, deltaY))
     }
 
     const handleMouseUp = (e: MouseEvent) => {
@@ -91,42 +81,7 @@ export function ResizeHandle({
       const deltaX = e.screenX - resizeStart.x
       const deltaY = e.screenY - resizeStart.y
 
-      let finalWidth = resizeStart.width
-      let finalHeight = resizeStart.height
-
-      // Calculate final size based on resize position
-      switch (position) {
-        case 'bottom-right':
-          finalWidth += deltaX
-          finalHeight += deltaY
-          break
-        case 'bottom-left':
-          finalWidth -= deltaX
-          finalHeight += deltaY
-          break
-        case 'top-right':
-          finalWidth += deltaX
-          finalHeight -= deltaY
-          break
-        case 'top-left':
-          finalWidth -= deltaX
-          finalHeight -= deltaY
-          break
-        case 'right':
-          finalWidth += deltaX
-          break
-        case 'left':
-          finalWidth -= deltaX
-          break
-        case 'bottom':
-          finalHeight += deltaY
-          break
-        case 'top':
-          finalHeight -= deltaY
-          break
-      }
-
-      onResizeEnd({ width: finalWidth, height: finalHeight })
+      onResizeEnd(getResizeDelta(position, deltaX, deltaY))
       setIsResizing(false)
       setResizeStart(null)
       document.body.style.cursor = ""

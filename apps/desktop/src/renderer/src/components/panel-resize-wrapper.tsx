@@ -107,27 +107,21 @@ export function PanelResizeWrapper({
     })
   }, [enableResize, minWidth, minHeight, safeViewportScale])
 
-  const handleResizeEnd = useCallback(async (size: { width: number; height: number }) => {
+  const handleResizeEnd = useCallback(async (delta: { width: number; height: number }) => {
     if (!enableResize) return
 
     const startSize = resizeStartSizeRef.current
-    const requestedFinalSize = startSize
-      ? getNativePanelResizeSize(
-          startSize,
-          {
-            width: size.width - startSize.width,
-            height: size.height - startSize.height,
-          },
-          {
-            width: minWidth,
-            height: minHeight,
-          },
-          safeViewportScale,
-        )
-      : {
-          width: Math.max(minWidth, size.width),
-          height: Math.max(minHeight, size.height),
-        }
+    if (!startSize) return
+
+    const requestedFinalSize = getNativePanelResizeSize(
+      startSize,
+      delta,
+      {
+        width: minWidth,
+        height: minHeight,
+      },
+      safeViewportScale,
+    )
 
     const rawMode = await tipcClient.getPanelMode().catch(() => null)
     const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode
@@ -168,6 +162,7 @@ export function PanelResizeWrapper({
         console.error("Failed to save panel size:", error, fallbackError)
       }
     }
+    resizeStartSizeRef.current = null
   }, [enableResize, fallbackMode, minWidth, minHeight, safeViewportScale])
 
   return (
