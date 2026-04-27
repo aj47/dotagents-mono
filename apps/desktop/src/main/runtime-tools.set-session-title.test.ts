@@ -6,6 +6,7 @@ const mockUpdateSession = vi.fn()
 const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockSetAcpSessionTitleOverride = vi.fn()
 const mockEmitAgentProgress = vi.fn()
+const mockGetSessionRunId = vi.fn()
 
 vi.mock("./mcp-service", () => ({
   mcpService: { getAvailableTools: vi.fn(() => []) },
@@ -20,7 +21,7 @@ vi.mock("./agent-session-tracker", () => ({
 }))
 
 vi.mock("./state", () => ({
-  agentSessionStateManager: { getSessionRunId: vi.fn(() => 1) },
+  agentSessionStateManager: { getSessionRunId: mockGetSessionRunId },
   toolApprovalManager: {},
 }))
 
@@ -43,6 +44,10 @@ describe("runtime-tools set_session_title", () => {
 
     mockGetRootAppSessionForAcpSession.mockReturnValue(undefined)
     mockEmitAgentProgress.mockResolvedValue(undefined)
+    mockGetSessionRunId.mockImplementation((sessionId: string) => {
+      if (sessionId === "app-session-1") return 42
+      return undefined
+    })
     mockGetSession.mockImplementation((sessionId: string) =>
       sessionId === "app-session-1"
         ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title", status: "active" }
@@ -61,10 +66,11 @@ describe("runtime-tools set_session_title", () => {
     expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
     expect(mockSetAcpSessionTitleOverride).toHaveBeenCalledWith("delegated-session-1", "Delegated title")
+    expect(mockGetSessionRunId).toHaveBeenCalledWith("app-session-1")
     expect(mockEmitAgentProgress).toHaveBeenCalledWith({
       sessionId: "delegated-session-1",
       parentSessionId: "app-session-1",
-      runId: 1,
+      runId: 42,
       conversationTitle: "Delegated title",
       currentIteration: 0,
       maxIterations: 1,

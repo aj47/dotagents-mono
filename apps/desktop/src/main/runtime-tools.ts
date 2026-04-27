@@ -1005,7 +1005,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     if (mappedAppSessionId) {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
-      const runId = agentSessionStateManager.getSessionRunId(context.sessionId)
+      const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
       const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
 
       await emitAgentProgress({
