@@ -635,12 +635,12 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
   logApp(`[window.ts] getSavedPanelSize - checking config for mode: ${mode}...`)
 
   const getValidSavedSize = (
-    savedSize: { width: number; height: number },
+    savedSize: unknown,
     minHeight: number,
     minWidth: number = getPanelMinWidth(mode),
   ) => {
-    if (!Number.isFinite(savedSize.width) || !Number.isFinite(savedSize.height)) {
-      logApp(`[window.ts] Saved size is invalid (${savedSize.width}x${savedSize.height})`)
+    if (!isFinitePanelSize(savedSize)) {
+      logApp(`[window.ts] Saved size is invalid:`, savedSize)
       return null
     }
 
