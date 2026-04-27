@@ -55,15 +55,56 @@ export interface AgentSkill {
 // ============================================================================
 // Loop Config (Repeat Tasks)
 // ============================================================================
+
+/**
+ * Wall-clock schedule for a repeat task.
+ * - `daily`: fires at each HH:MM in `times` every day.
+ * - `weekly`: fires at each HH:MM in `times` on each day in `daysOfWeek`
+ *   (0=Sunday, 6=Saturday).
+ * All times are interpreted in the machine's local timezone.
+ */
+export type LoopSchedule =
+  | { type: "daily"; times: string[] }
+  | { type: "weekly"; times: string[]; daysOfWeek: number[] }
+
 export interface LoopConfig {
   id: string
   name: string
   prompt: string
+  /** Fallback fixed interval (minutes) when `schedule` is not set. */
   intervalMinutes: number
   enabled: boolean
   profileId?: string
   lastRunAt?: number
   runOnStartup?: boolean
+  /**
+   * If true, the session is automatically unsnoozed when the loop completes
+   * so the renderer auto-plays TTS for the assistant response. The session
+   * still runs snoozed (quietly in the background) during execution — it only
+   * wakes up after the result is ready, showing the panel and triggering TTS.
+   * Snoozed sessions intentionally suppress TTS auto-play until unsnoozed.
+   */
+  speakOnTrigger?: boolean
+  /**
+   * If true, consecutive iterations of this task reuse the most recent
+   * session/conversation (revived from completed sessions) so the agent
+   * retains prior context. If the prior session can't be revived, a new
+   * one is created. Requires `lastSessionId` to be tracked between runs.
+   */
+  continueInSession?: boolean
+  /**
+   * When `continueInSession` is enabled, the id of the session to resume on
+   * the next run. Auto-populated after each run; may also be set explicitly
+   * by the user to pin a specific past session. If the referenced
+   * session/conversation can no longer be revived, this field is replaced
+   * on the next run with the id of the newly-created fallback session
+   * (rather than cleared).
+   */
+  lastSessionId?: string
+  /** Start the next run immediately after the previous run finishes. */
+  runContinuously?: boolean
+  /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
+  schedule?: LoopSchedule
 }
 
 // ============================================================================
@@ -107,6 +148,8 @@ export type ProfileModelConfig = {
 }
 
 export type ProfileSkillsConfig = {
+  // Missing config or allSkillsDisabledByDefault=false means all skills are enabled.
+  // When allSkillsDisabledByDefault=true, only enabledSkillIds are enabled.
   enabledSkillIds?: string[]
   allSkillsDisabledByDefault?: boolean
 }

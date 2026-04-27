@@ -10,11 +10,11 @@ import {
 } from "./respond-to-user-utils"
 
 describe("respond-to-user-utils", () => {
-  it("extracts text and image markdown from respond_to_user args", () => {
+  it("skips path-only images when extracting planned respond_to_user args", () => {
     expect(extractRespondToUserContentFromArgs({
       text: "Done",
       images: [{ alt: "Preview", path: "/tmp/result.png" }],
-    })).toBe("Done\n\n![Preview](/tmp/result.png)")
+    })).toBe("Done")
   })
 
   it("extracts image markdown from respond_to_user images[].url", () => {
@@ -33,6 +33,15 @@ describe("respond-to-user-utils", () => {
     expect(extractSharedRespondToUserContentFromArgs({
       images: [{ altText: "Preview", mimeType: "image/png", data: "ZmFrZQ==" }],
     })).toBe("![Preview](data:image/png;base64,ZmFrZQ==)")
+  })
+
+  it("extracts video markdown from respond_to_user videos[].url", () => {
+    const args = {
+      videos: [{ label: "Demo clip", url: "assets://conversation-video/conv_1/demo.mp4" }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
+    expect(extractSharedRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
   })
 
   it("falls back to the latest respond_to_user entry in conversation history", () => {

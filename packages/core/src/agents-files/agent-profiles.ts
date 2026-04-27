@@ -141,6 +141,7 @@ function writeConfigJson(
     backupDir,
     maxBackups,
     pretty: true,
+    skipIfUnchanged: true,
   })
 }
 
@@ -347,7 +348,10 @@ export function writeAgentsProfileFiles(
   // 1. Write agent.md (frontmatter + system prompt body)
   const mdContent = stringifyAgentProfileMarkdown(profile)
   const mdPath = path.join(agentDir, AGENTS_PROFILE_CANONICAL_FILENAME)
-  safeWriteFileSync(mdPath, mdContent, { backupDir, maxBackups })
+  // agent.md is user-editable (both directly on disk and via the in-app
+  // editors). Skip the write when the content already matches so stable saves
+  // from unrelated code paths don't rotate backups or disturb external edits.
+  safeWriteFileSync(mdPath, mdContent, { backupDir, maxBackups, skipIfUnchanged: true })
 
   // 2. Write config.json (complex nested objects)
   const configJsonPath = path.join(agentDir, AGENTS_PROFILE_CONFIG_FILENAME)

@@ -7,7 +7,7 @@ describe("agent progress scroll behavior", () => {
   it("pins the active session scroller in the same commit while streaming content grows", () => {
     expect(agentProgressSource).toContain("useLayoutEffect(() => {")
     expect(agentProgressSource).toContain("avoids a one-frame lag where new content renders above")
-    expect(agentProgressSource).toContain("if (shouldAutoScroll) {\n        scrollToBottom()\n      }")
+    expect(agentProgressSource).toContain("if (shouldAutoScroll) {\n        scrollToBottom(\"auto\")\n      }")
   })
 
   it("cancels delayed initial auto-scroll retries once the user scrolls away from bottom", () => {
@@ -22,7 +22,8 @@ describe("agent progress scroll behavior", () => {
     expect(agentProgressSource).toContain("shouldAutoScrollRef.current = shouldAutoScroll")
     expect(agentProgressSource).toContain("return clearPendingInitialScrollAttempts")
     expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, progress?.sessionId])")
-    expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, shouldAutoScrollContent, visibleDisplayItems.length > 0])")
+    expect(agentProgressSource).toContain("}, [shouldAutoScrollContent, visibleDisplayItems.length > 0])")
+    expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0])")
   })
 
   it("pins ACP sub-agent conversation updates without smooth-scroll lag while messages stream in", () => {

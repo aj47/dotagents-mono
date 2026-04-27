@@ -9,7 +9,7 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import QRCode from "qrcode"
-import { configStore, recordingsFolder } from "./config"
+import { configStore, globalAgentsFolder, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import {
   DISCORD_SECRET_MASK,
@@ -35,6 +35,10 @@ import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
+import {
+  getConversationVideoAssetPath,
+  getConversationVideoMimeTypeFromFileName,
+} from "./conversation-video-assets"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -45,6 +49,7 @@ import { knowledgeNotesService } from "./knowledge-notes-service"
 import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { generateTTS } from "./tts-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -86,6 +91,8 @@ let server: FastifyInstance | null = null
 let lastError: string | undefined
 
 const REMOTE_SERVER_SECRET_MASK = "••••••••"
+const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"
+const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"
 const OPERATOR_AUDIT_LOG_LIMIT = 200
 const OPERATOR_AUDIT_DEVICE_HEADER_KEYS = ["x-device-id", "x-dotagents-device-id"] as const
 const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
@@ -391,6 +398,62 @@ function redact(value?: string) {
 
 function generateRemoteServerApiKey(): string {
   return crypto.randomBytes(32).toString("hex")
+}
+
+function getSecretReferenceCandidates(secretId: string): string[] {
+  const candidates = new Set<string>([secretId])
+  let current = secretId
+
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      const decoded = decodeURIComponent(current)
+      if (decoded === current) break
+      candidates.add(decoded)
+      current = decoded
+    } catch {
+      break
+    }
+  }
+
+  return [...candidates]
+}
+
+function readDotAgentsSecretReference(value: string): string | undefined {
+  if (!value.startsWith(DOTAGENTS_SECRET_REF_PREFIX)) {
+    return value
+  }
+
+  const secretId = value.slice(DOTAGENTS_SECRET_REF_PREFIX.length)
+  if (!secretId) return undefined
+
+  try {
+    const secretsPath = path.join(globalAgentsFolder, DOTAGENTS_SECRETS_LOCAL_JSON)
+    const parsed = JSON.parse(fs.readFileSync(secretsPath, "utf8")) as { secrets?: Record<string, unknown> }
+    const secrets = parsed && typeof parsed === "object" ? parsed.secrets : undefined
+    if (!secrets || typeof secrets !== "object") return undefined
+
+    for (const candidate of getSecretReferenceCandidates(secretId)) {
+      const secret = secrets[candidate]
+      if (typeof secret === "string" && secret.length > 0) {
+        return secret
+      }
+    }
+  } catch {
+    // Missing or invalid local secret storage should not expose the reference.
+  }
+
+  return undefined
+}
+
+function getResolvedRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): string {
+  const resolved = cfg.remoteServerApiKey
+    ? readDotAgentsSecretReference(cfg.remoteServerApiKey)
+    : undefined
+  return resolved?.trim() || ""
+}
+
+function hasConfiguredRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): boolean {
+  return (cfg.remoteServerApiKey ?? "").trim().length > 0
 }
 
 function sanitizeOperatorAuditText(value: string | undefined, maxLength: number = 160): string | undefined {
@@ -1853,10 +1916,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return { running: false }
   }
 
-  if (!cfg.remoteServerApiKey) {
+  const configuredApiKey = getResolvedRemoteServerApiKey(cfg)
+  const hasConfiguredApiKey = hasConfiguredRemoteServerApiKey(cfg)
+  if (!configuredApiKey && !hasConfiguredApiKey) {
     // Generate API key on first enable
     const key = generateRemoteServerApiKey()
     configStore.save({ ...cfg, remoteServerApiKey: key })
+  } else if (!configuredApiKey) {
+    diagnosticsService.logWarning(
+      "remote-server",
+      "Remote server API key is configured but could not be resolved; preserving configured value",
+    )
   }
 
   if (server) {
@@ -1872,7 +1942,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   const bind = bindAddressOverride || cfg.remoteServerBindAddress || "127.0.0.1"
   const port = cfg.remoteServerPort || 3210
 
-  const fastify = Fastify({ logger: { level: logLevel } })
+  // Fastify defaults the body limit to 1MB, which is too small for chat requests that
+  // include long conversation histories. Raise it to 50MB to accommodate large payloads
+  // (mobile clients send the full message history on each /v1/chat/completions call).
+  const fastify = Fastify({ logger: { level: logLevel }, bodyLimit: 50 * 1024 * 1024 })
 
   // Configure CORS
   const corsOrigins = cfg.remoteServerCorsOrigins || ["*"]
@@ -1898,7 +1971,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     const auth = (req.headers["authorization"] || "").toString()
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : ""
     const current = configStore.get()
-    if (!token || token !== current.remoteServerApiKey) {
+    const currentApiKey = getResolvedRemoteServerApiKey(current)
+    if (!token || !currentApiKey || token !== currentApiKey) {
       reply.code(401).send({ error: "Unauthorized" })
       return
     }
@@ -3588,6 +3662,126 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // GET /v1/conversations/:id/assets/videos/:fileName - Stream conversation video asset for mobile
+  fastify.get("/v1/conversations/:id/assets/videos/:fileName", async (req, reply) => {
+    try {
+      const params = req.params as { id: string; fileName: string }
+      const conversationId = params.id
+      const fileName = params.fileName
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      let assetPath: string
+      try {
+        assetPath = getConversationVideoAssetPath(conversationId, fileName)
+      } catch (error) {
+        return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid video asset" })
+      }
+
+      const stat = await fs.promises.stat(assetPath)
+      if (!stat.isFile() || stat.size <= 0) {
+        return reply.code(404).send({ error: "Video asset not found" })
+      }
+
+      const contentType = getConversationVideoMimeTypeFromFileName(fileName)
+      const range = req.headers.range
+      reply.header("Accept-Ranges", "bytes")
+      reply.header("Content-Type", contentType)
+
+      if (range) {
+        const match = range.match(/^bytes=(\d*)-(\d*)$/)
+        if (!match) {
+          return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send()
+        }
+
+        if (!match[1] && !match[2]) {
+          return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send()
+        }
+
+        const suffixLength = !match[1] && match[2] ? Number.parseInt(match[2], 10) : null
+        const start = suffixLength !== null
+          ? Math.max(stat.size - suffixLength, 0)
+          : Number.parseInt(match[1], 10)
+        const end = suffixLength !== null
+          ? stat.size - 1
+          : match[2] ? Number.parseInt(match[2], 10) : stat.size - 1
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= stat.size) {
+          return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send()
+        }
+
+        const boundedEnd = Math.min(end, stat.size - 1)
+        const chunkSize = boundedEnd - start + 1
+        reply.code(206)
+        reply.header("Content-Range", `bytes ${start}-${boundedEnd}/${stat.size}`)
+        reply.header("Content-Length", String(chunkSize))
+        return reply.send(fs.createReadStream(assetPath, { start, end: boundedEnd }))
+      }
+
+      reply.header("Content-Length", String(stat.size))
+      return reply.send(fs.createReadStream(assetPath))
+    } catch (error: any) {
+      if (error?.code === "ENOENT") {
+        return reply.code(404).send({ error: "Video asset not found" })
+      }
+      diagnosticsService.logError("remote-server", "Failed to stream conversation video asset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to stream video asset" })
+    }
+  })
+
+  // ============================================
+  // Text-to-Speech Endpoints (for mobile app)
+  // ============================================
+
+  // POST /v1/tts/speak - Synthesize speech via the desktop's TTS providers.
+  // Accepts { text, providerId?, voice?, model?, speed? } and returns raw
+  // audio bytes with the appropriate Content-Type. Exists so the mobile
+  // web/native clients can play Edge/OpenAI/Groq/etc. TTS without having to
+  // embed provider keys or work around browser WebSocket header restrictions.
+  fastify.post("/v1/tts/speak", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as {
+        text?: unknown
+        providerId?: unknown
+        voice?: unknown
+        model?: unknown
+        speed?: unknown
+      }
+
+      if (typeof body.text !== "string" || !body.text.trim()) {
+        return reply.code(400).send({ error: "Missing or invalid 'text'" })
+      }
+      if (Buffer.byteLength(body.text, "utf8") > 32 * 1024) {
+        return reply.code(413).send({ error: "Text too large (max 32 KB)" })
+      }
+
+      const result = await generateTTS(
+        {
+          text: body.text,
+          providerId: typeof body.providerId === "string" ? body.providerId : undefined,
+          voice: typeof body.voice === "string" ? body.voice : undefined,
+          model: typeof body.model === "string" ? body.model : undefined,
+          speed: typeof body.speed === "number" ? body.speed : undefined,
+        },
+        configStore.get(),
+      )
+
+      return reply
+        .code(200)
+        .header("Content-Type", result.mimeType)
+        .header("X-TTS-Provider", result.provider)
+        .send(Buffer.from(result.audio))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "TTS request failed", error)
+      const message = error?.message || "TTS generation failed"
+      // 400 for known user-facing validation errors, 502 for upstream/provider errors.
+      const code = /not enabled|validation failed|Unsupported TTS provider|API key is required/i.test(message) ? 400 : 502
+      return reply.code(code).send({ error: message })
+    }
+  })
+
   // ============================================
   // Push Notification Endpoints (for mobile app)
   // ============================================
@@ -4206,6 +4400,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           id: s.id,
           name: s.name,
           description: s.description,
+          instructions: s.instructions,
+          enabled: true,
           enabledForProfile: enabledSkillIds.includes(s.id),
           source: s.source,
           createdAt: s.createdAt,
@@ -4676,6 +4872,59 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   }
 
+  const LOOP_TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+  type ParseScheduleResult = {
+    ok: boolean
+    schedule?: LoopConfig["schedule"] | null
+    error?: string
+  }
+
+  /**
+   * Parse/validate a `schedule` field from a request body. Returns:
+   *   - ok: true with schedule undefined   → omit schedule
+   *   - ok: true with schedule null        → explicitly clear an existing schedule
+   *   - ok: true with a concrete schedule
+   *   - ok: false with error               → send 400
+   */
+  function parseScheduleInput(raw: unknown): ParseScheduleResult {
+    if (raw === undefined) return { ok: true, schedule: undefined }
+    if (raw === null) return { ok: true, schedule: null }
+    if (typeof raw !== "object") return { ok: false, error: "schedule must be an object, null, or omitted" }
+    const obj = raw as Record<string, unknown>
+    if (obj.type !== "daily" && obj.type !== "weekly") {
+      return { ok: false, error: "schedule.type must be 'daily' or 'weekly'" }
+    }
+    if (!Array.isArray(obj.times) || obj.times.length === 0) {
+      return { ok: false, error: "schedule.times must be a non-empty array" }
+    }
+    const times: string[] = []
+    for (const t of obj.times) {
+      if (typeof t !== "string" || !LOOP_TIME_RE.test(t.trim())) {
+        return { ok: false, error: "schedule.times must all be HH:MM (24h) strings" }
+      }
+      const trimmed = t.trim()
+      if (!times.includes(trimmed)) times.push(trimmed)
+    }
+    times.sort()
+    if (obj.type === "daily") {
+      return { ok: true, schedule: { type: "daily", times } }
+    }
+    if (!Array.isArray(obj.daysOfWeek) || obj.daysOfWeek.length === 0) {
+      return { ok: false, error: "schedule.daysOfWeek must be a non-empty array for weekly schedules" }
+    }
+    const daysOfWeek: number[] = []
+    for (const d of obj.daysOfWeek) {
+      const n = typeof d === "number" ? d : Number(d)
+      if (!Number.isInteger(n) || n < 0 || n > 6) {
+        return { ok: false, error: "schedule.daysOfWeek values must be integers 0..6 (Sun..Sat)" }
+      }
+      if (!daysOfWeek.includes(n)) daysOfWeek.push(n)
+    }
+    daysOfWeek.sort((a, b) => a - b)
+    return { ok: true, schedule: { type: "weekly", times, daysOfWeek } }
+  }
+
   const formatLoopResponse = async (loop: LoopConfig) => {
     const status = (await loadLoopService())?.getLoopStatus(loop.id)
 
@@ -4688,9 +4937,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       profileId: loop.profileId,
       profileName: getLoopProfileName(loop.profileId),
       runOnStartup: loop.runOnStartup,
+      speakOnTrigger: loop.speakOnTrigger,
+      continueInSession: loop.continueInSession,
+      lastSessionId: loop.lastSessionId,
+      runContinuously: loop.runContinuously,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
+      schedule: loop.schedule,
     }
   }
 
@@ -4715,9 +4969,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             profileId: l.profileId,
             profileName: getLoopProfileName(l.profileId),
             runOnStartup: l.runOnStartup,
+            speakOnTrigger: l.speakOnTrigger,
+            continueInSession: l.continueInSession,
+            lastSessionId: l.lastSessionId,
+            runContinuously: l.runContinuously,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
+            schedule: l.schedule,
           }
         }),
       })
@@ -4946,6 +5205,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runContinuously?: unknown
+        schedule?: unknown
       }
 
       const name = typeof body.name === "string" ? body.name.trim() : ""
@@ -4972,18 +5233,30 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
+      if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
+        return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
+      }
+      const scheduleResult = parseScheduleInput(body.schedule)
+      if (!scheduleResult.ok) {
+        return reply.code(400).send({ error: scheduleResult.error })
+      }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
+      const runContinuously = body.runContinuously === true
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
-      const newLoop = {
+      const newLoop: LoopConfig = {
         id,
         name,
         prompt,
         intervalMinutes,
         enabled,
         profileId: profileId || undefined,
+        runContinuously,
+        ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
+          ? { schedule: scheduleResult.schedule }
+          : {}),
       }
 
       const loopService = await loadLoopService()
@@ -5019,6 +5292,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runContinuously?: unknown
+        schedule?: unknown
       }
 
       const loopService = await loadLoopService()
@@ -5063,6 +5338,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
+      if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
+        return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
+      }
+      const scheduleResult = parseScheduleInput(body.schedule)
+      if (!scheduleResult.ok) {
+        return reply.code(400).send({ error: scheduleResult.error })
+      }
 
       const name = typeof body.name === "string" ? body.name.trim() : undefined
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : undefined
@@ -5072,13 +5354,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
-      const updated = {
+      const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
+      const updated: LoopConfig = {
         ...existing,
         ...(name !== undefined && { name }),
         ...(prompt !== undefined && { prompt }),
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
+        ...(runContinuously !== undefined && { runContinuously }),
+      }
+      if (updated.runContinuously) {
+        delete updated.schedule
+      } else if (scheduleResult.schedule === null) {
+        delete updated.schedule
+      } else if (scheduleResult.schedule !== undefined) {
+        updated.schedule = scheduleResult.schedule
+        updated.runContinuously = false
       }
 
       if (loopService) {
@@ -5158,13 +5450,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     // Suppress when streamer mode is enabled to prevent credential leakage
     if (!skipAutoPrintQR) {
       const currentCfg = configStore.get()
-      if (currentCfg.remoteServerApiKey && !currentCfg.streamerModeEnabled) {
+      const currentApiKey = getResolvedRemoteServerApiKey(currentCfg)
+      if (currentApiKey && !currentCfg.streamerModeEnabled) {
         // In headless environments, always print the QR code
         // Otherwise, print if terminal QR is explicitly enabled
         if (isHeadlessEnvironment() || currentCfg.remoteServerTerminalQrEnabled) {
           const serverUrl = getConnectableBaseUrlForMobilePairing(bind, port)
           if (serverUrl) {
-            await printTerminalQRCode(serverUrl, currentCfg.remoteServerApiKey)
+            await printTerminalQRCode(serverUrl, currentApiKey)
           } else {
             console.warn(
               `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`
@@ -5211,6 +5504,15 @@ export function getRemoteServerStatus() {
   return { running, url, connectableUrl, bind, port, lastError }
 }
 
+export function getRemoteServerPairingApiKey(): string {
+  const cfg = configStore.get()
+  if (cfg.streamerModeEnabled) {
+    return ""
+  }
+
+  return getResolvedRemoteServerApiKey(cfg)
+}
+
 /**
  * Prints the QR code to the terminal for mobile app pairing
  * Can be called manually when the user wants to see the QR code
@@ -5219,7 +5521,8 @@ export function getRemoteServerStatus() {
  */
 export async function printQRCodeToTerminal(urlOverride?: string): Promise<boolean> {
   const cfg = configStore.get()
-  if (!server || !cfg.remoteServerApiKey) {
+  const apiKey = getResolvedRemoteServerApiKey(cfg)
+  if (!server || !apiKey) {
     console.log("[Remote Server] Cannot print QR code: server not running or no API key configured")
     return false
   }
@@ -5247,5 +5550,5 @@ export async function printQRCodeToTerminal(urlOverride?: string): Promise<boole
   }
 
   // Return the actual result from printTerminalQRCode to indicate success/failure
-  return await printTerminalQRCode(serverUrl, cfg.remoteServerApiKey)
+  return await printTerminalQRCode(serverUrl, apiKey)
 }

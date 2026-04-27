@@ -19,16 +19,17 @@ describe("sessions in-app actions", () => {
   it("opens the in-app session action dialog from shared layout handlers instead of the hover panel", () => {
     expect(appLayoutSource).toContain("<SessionActionDialog")
     expect(appLayoutSource).toContain("const handleStartTextSession = useCallback(async () => {")
-    expect(appLayoutSource).toContain("const handleStartVoiceSession = useCallback(async () => {")
+    expect(appLayoutSource).toContain("const handleStartVoiceSession = useCallback(async (options?: {")
     expect(appLayoutSource).toContain("openSessionActionDialog({ mode: \"text\" })")
-    expect(appLayoutSource).toContain("openSessionActionDialog({ mode: \"voice\" })")
+    expect(appLayoutSource).toContain('mode: "voice"')
+    expect(appLayoutSource).toContain("continueConversationTitle: options?.continueConversationTitle")
     expect(appLayoutSource).not.toContain("await tipcClient.showPanelWindowWithTextInput({})")
     expect(appLayoutSource).not.toContain("await tipcClient.triggerMcpRecording({})")
   })
 
   it("renders a single full-height session view instead of the old card grid", () => {
     expect(sessionsSource).toContain("const selectedSessionId = useMemo(() => {")
-    expect(sessionsSource).toContain('className="flex h-full min-h-0 flex-col p-3"')
+    expect(sessionsSource).toContain('className="flex h-full min-h-0 flex-col"')
     expect(sessionsSource).not.toContain("SessionCompactCard")
     expect(sessionsSource).not.toContain("calculateAdaptiveColumns")
   })
@@ -82,7 +83,7 @@ describe("sessions in-app actions", () => {
   })
 
   it("keeps errored resumed sessions visible and focused so their error state is shown", () => {
-    expect(sessionsSource).toContain('if (recentStatus === "stopped") {')
+    expect(sessionsSource).toContain("Keep errored AND user-stopped sessions visible")
     expect(sessionsSource).not.toContain('recentStatus === "stopped" || recentStatus === "error"')
     expect(sessionsSource).toContain("setExpandedSessionId(realEntry.sessionId)")
   })
@@ -148,5 +149,12 @@ describe("sessions in-app actions", () => {
     expect(textInputBlock).toContain("suppressPanelAutoShow(2000)")
     expect(recordingBlock).toContain("if (input.fromTile === true) {")
     expect(recordingBlock).toContain("suppressPanelAutoShow(2000)")
+  })
+
+  it("derives the active session tile's isFocused from the focusedSessionId store rather than hardcoding true", () => {
+    expect(sessionsSource).toContain("const focusedSessionId = useAgentStore((state) => state.focusedSessionId)")
+    expect(sessionsSource).toContain("const isFocused = focusedSessionId === sessionId")
+    expect(sessionsSource).toContain("isFocused={isFocused}")
+    expect(sessionsSource).not.toContain("isFocused={true}")
   })
 })

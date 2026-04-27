@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockGetSkill = vi.fn()
 const mockGetSkills = vi.fn()
+const mockRefreshFromDisk = vi.fn()
 const mockGetSession = vi.fn()
 const mockLoadConversation = vi.fn()
 
@@ -28,6 +29,7 @@ vi.mock("./skills-service", () => ({
   skillsService: {
     getSkill: mockGetSkill,
     getSkills: mockGetSkills,
+    refreshFromDisk: mockRefreshFromDisk,
     upgradeGitHubSkillToLocal: vi.fn(),
   },
 }))
@@ -77,6 +79,7 @@ describe("runtime-tools execute_command", () => {
     vi.clearAllMocks()
     mockGetSkill.mockReturnValue(undefined)
     mockGetSkills.mockReturnValue([{ id: "agent-skill-creation" }, { id: "frontend-design" }])
+    mockRefreshFromDisk.mockReturnValue([{ id: "agent-skill-creation" }, { id: "frontend-design" }])
     mockGetSession.mockReturnValue(undefined)
     mockLoadConversation.mockResolvedValue(null)
   })

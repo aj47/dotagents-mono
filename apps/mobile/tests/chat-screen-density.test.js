@@ -71,11 +71,12 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
   assert.match(screenSource, /const displayToolEntries = toolCalls\.reduce\(/);
-  assert.match(screenSource, /const allSuccess =\s+hasToolResults && displayToolEntries\.every\(entry => entry\.result\?\.success === true\);/);
-  assert.match(screenSource, /const hasErrors = displayToolEntries\.some\(entry => entry\.result\?\.success === false\);/);
-  assert.match(screenSource, /const isPending =\s+displayToolEntries\.some\(entry => !entry\.result && entry\.origIdx >= toolResultCount\);/);
-  assert.match(screenSource, /\{displayToolEntries\.map\(\(\{ toolCall, origIdx, result: tcResult \}, tcIdx\) => \{/);
-  assert.match(screenSource, /\{displayToolEntries\.map\(\(\{ toolCall, origIdx, result \}, idx\) => \{/);
+  assert.match(screenSource, /const renderedToolEntries =/);
+  assert.match(screenSource, /const allSuccess =\s+hasToolResults && renderedToolEntries\.every\(entry => entry\.result\?\.success === true\);/);
+  assert.match(screenSource, /const hasErrors = renderedToolEntries\.some\(entry => entry\.result\?\.success === false\);/);
+  assert.match(screenSource, /const isPending =\s+renderedToolEntries\.some\(entry => !entry\.result && entry\.origIdx >= toolResultCount\);/);
+  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, origIdx, result: tcResult \}, tcIdx\) => \{/);
+  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, origIdx, result \}, idx\) => \{/);
   assert.doesNotMatch(screenSource, /const allSuccess = hasToolResults && m\.toolResults!\.every\(r => r\.success\);/);
   assert.doesNotMatch(screenSource, /const hasErrors = hasToolResults && m\.toolResults!\.some\(r => !r\.success\);/);
 });
@@ -94,13 +95,20 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(screenSource, /<View style=\{m\.role === 'assistant' \? styles\.assistantMessageRow : undefined\}>[\s\S]*?speakMessage\(i, visibleMessageContent\)/);
 });
 
+test('suppresses duplicate auto TTS starts for the same mobile response text', () => {
+  assert.match(screenSource, /const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;/);
+  assert.match(screenSource, /const normalizeAutoTtsTextKey = \(value: string\) => value\.replace\(\/\\s\+\/g, ' '\)\.trim\(\)\.toLowerCase\(\);/);
+  assert.match(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
+  assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
+});
+
 test('replaces the empty mobile chat home state with quick-start launchers', () => {
   assert.match(screenSource, /!sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
-  assert.match(screenSource, /<Text style=\{styles\.chatHomeEyebrow\}>Quick start<\/Text>/);
-  assert.match(screenSource, /Custom commands, saved prompts, and starter packs/);
-  assert.match(screenSource, /quickStartCategoryPills/);
-  assert.match(screenSource, /<Text style=\{styles\.chatHomeSectionTitle\}>\{section\.title\}<\/Text>/);
-  assert.match(screenSource, /handleInsertQuickStartPrompt\(item\.content\)/);
+  assert.match(screenSource, /<View style=\{styles\.chatHomeCard\}>/);
+  assert.match(screenSource, /promptQuickStarts\.map\(\(item\) => \(/);
+  assert.match(screenSource, /chatHomeShortcutGrid/);
+  assert.match(screenSource, /handleQuickStartPress\(item\)/);
+  assert.match(screenSource, /No prompts, skills, or tasks available from your connected desktop app\./);
   assert.doesNotMatch(screenSource, /chatHomeScanButtonText/);
 });
 
@@ -108,4 +116,15 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
   assert.match(screenSource, /isSlashCommandPrompt/);
+});
+
+test('loads predefined prompts, skills, and tasks directly into mobile quick-start launchers', () => {
+  assert.match(screenSource, /settingsClient\.getSkills\(\)/);
+  assert.match(screenSource, /settingsClient\.getLoops\(\)/);
+  assert.match(screenSource, /const promptQuickStarts = useMemo<QuickStartShortcut\[\]>/);
+  assert.match(screenSource, /const skillItems = availableSkills\.map\(\(skill\) => \(\{/);
+  assert.match(screenSource, /const taskItems = availableTasks\.map\(\(task\) => \(\{/);
+  assert.match(screenSource, /handleRunPromptTask\(item\.task\)/);
+  assert.doesNotMatch(screenSource, /filteredPromptLibraryPrompts/);
+  assert.doesNotMatch(screenSource, /promptLibraryVisible/);
 });

@@ -53,6 +53,7 @@ export const useConversationHistoryQuery = (enabled: boolean = true) =>
       return result
     },
     enabled,
+    refetchOnWindowFocus: false,
   })
 
 export const useConversationQuery = (conversationId: string | null) =>

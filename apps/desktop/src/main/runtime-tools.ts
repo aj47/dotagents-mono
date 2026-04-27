@@ -22,6 +22,7 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
+import type { ProfileSkillsConfig } from "../shared/types"
 
 const execAsync = promisify(exec)
 
@@ -48,6 +49,44 @@ function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkil
     guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
     retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
     availableSkillIds,
+  }
+}
+
+function isSkillEnabledByConfig(skillId: string, skillsConfig?: ProfileSkillsConfig): boolean {
+  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
+  return (skillsConfig.enabledSkillIds ?? []).includes(skillId)
+}
+
+async function isSkillEnabledForRuntimeContext(skillId: string, context: BuiltinToolContext): Promise<boolean> {
+  if (context.sessionId) {
+    const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
+      ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
+      : undefined
+    const trackerSnapshot = typeof agentSessionTracker.getSessionProfileSnapshot === "function"
+      ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
+      : undefined
+    const snapshot = stateSnapshot ?? trackerSnapshot
+    if (snapshot) return isSkillEnabledByConfig(skillId, snapshot.skillsConfig)
+  }
+
+  const { agentProfileService } = await import("./agent-profile-service")
+  const profile = agentProfileService.getCurrentProfile()
+  if (!profile) return false
+  return isSkillEnabledByConfig(skillId, profile.skillsConfig)
+}
+
+function disabledSkillToolResult(skillId: string, action: "load" | "execute"): MCPToolResult {
+  const actionText = action === "load" ? "load instructions for" : "run commands inside"
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        success: false,
+        skillId,
+        error: `Skill '${skillId}' is disabled for this agent. Enable it in Settings > Skills before trying to ${actionText} this skill.`,
+      }),
+    }],
+    isError: true,
   }
 }
 
@@ -282,8 +321,11 @@ async function normalizeExecuteCommandWorkspacePaths(
 }
 
 const MAX_RESPOND_TO_USER_IMAGES = 4
+const MAX_RESPOND_TO_USER_VIDEOS = 2
 const MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES = 8 * 1024 * 1024
 const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024
+const MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES = 250 * 1024 * 1024
+const MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES = 500 * 1024 * 1024
 const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i
 
@@ -294,13 +336,23 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".gif": "image/gif",
   ".webp": "image/webp",
   ".bmp": "image/bmp",
-  ".svg": "image/svg+xml",
+}
+
+const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".ogv": "video/ogg",
 }
 
 const escapeMarkdownAltText = (value: string) => value.replace(/[\[\]\\]/g, "").trim()
 
 const getImageMimeTypeFromPath = (imagePath: string): string | undefined =>
   IMAGE_MIME_BY_EXTENSION[path.extname(imagePath).toLowerCase()]
+
+const getVideoMimeTypeFromPath = (videoPath: string): string | undefined =>
+  VIDEO_MIME_BY_EXTENSION[path.extname(videoPath).toLowerCase()]
 
 const isAllowedRespondToUserImageUrl = (url: string): boolean => {
   const normalized = url.trim().toLowerCase()
@@ -309,6 +361,22 @@ const isAllowedRespondToUserImageUrl = (url: string): boolean => {
     normalized.startsWith("http://") ||
     DATA_IMAGE_BASE64_PREFIX_REGEX.test(normalized)
   )
+}
+
+const isAllowedRespondToUserVideoUrl = (url: string): boolean => {
+  const normalized = url.trim().toLowerCase()
+  if (normalized.startsWith("assets://conversation-video/")) return true
+  if (!normalized.startsWith("https://") && !normalized.startsWith("http://")) return false
+  // Only allow http(s) URLs that actually look like video files so tool output
+  // matches what the UI can render as a video card.
+  try {
+    const ext = normalized.lastIndexOf(".")
+    if (ext < 0) return false
+    const extension = normalized.slice(ext).replace(/[?#].*$/, "")
+    return extension in VIDEO_MIME_BY_EXTENSION
+  } catch {
+    return false
+  }
 }
 
 const getDecodedBase64ByteLength = (rawBase64: string): number => {
@@ -340,10 +408,14 @@ const getDataImageBytesFromUrl = (url: string): number | null => {
 const getUtf8ByteLength = (value: string): number =>
   Buffer.byteLength(value, "utf8")
 
-async function imagePathToDataUrl(rawPath: string): Promise<string> {
+async function resolveValidImagePath(rawPath: string): Promise<{ resolvedPath: string; fileBytes: number }> {
   const resolvedPath = path.isAbsolute(rawPath)
     ? rawPath
     : path.resolve(process.cwd(), rawPath)
+
+  if (path.extname(resolvedPath).toLowerCase() === ".svg") {
+    throw new Error(`SVG images are not supported for conversation assets; use a raster image path: ${rawPath}`)
+  }
 
   const stat = await fs.stat(resolvedPath)
   if (!stat.isFile()) {
@@ -362,8 +434,32 @@ async function imagePathToDataUrl(rawPath: string): Promise<string> {
     throw new Error(`Unsupported image extension for path: ${rawPath}`)
   }
 
-  const fileBuffer = await fs.readFile(resolvedPath)
-  return `data:${mimeType};base64,${fileBuffer.toString("base64")}`
+  return { resolvedPath, fileBytes: stat.size }
+}
+
+async function resolveValidVideoPath(rawPath: string): Promise<{ resolvedPath: string; fileBytes: number }> {
+  const resolvedPath = path.isAbsolute(rawPath)
+    ? rawPath
+    : path.resolve(process.cwd(), rawPath)
+
+  const stat = await fs.stat(resolvedPath)
+  if (!stat.isFile()) {
+    throw new Error(`Video path is not a file: ${rawPath}`)
+  }
+  if (stat.size <= 0) {
+    throw new Error(`Video file is empty: ${rawPath}`)
+  }
+  if (stat.size > MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES) {
+    const maxMb = Math.round(MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES / (1024 * 1024))
+    throw new Error(`Video file is larger than ${maxMb}MB: ${rawPath}`)
+  }
+
+  const mimeType = getVideoMimeTypeFromPath(resolvedPath)
+  if (!mimeType) {
+    throw new Error(`Unsupported video extension for path: ${rawPath}`)
+  }
+
+  return { resolvedPath, fileBytes: stat.size }
 }
 
 // Tool execution handlers
@@ -573,8 +669,18 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    if (args.videos !== undefined && !Array.isArray(args.videos)) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "videos must be an array if provided" }) }],
+        isError: true,
+      }
+    }
+
     const imageInputs = Array.isArray(args.images)
       ? args.images
+      : []
+    const videoInputs = Array.isArray(args.videos)
+      ? args.videos
       : []
 
     if (imageInputs.length > MAX_RESPOND_TO_USER_IMAGES) {
@@ -584,9 +690,40 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    if (videoInputs.length > MAX_RESPOND_TO_USER_VIDEOS) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: `You can include up to ${MAX_RESPOND_TO_USER_VIDEOS} videos.` }) }],
+        isError: true,
+      }
+    }
+
+    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
+    const trackedSessionId = mappedAppSessionId ?? context.sessionId
+
+    // Guard: don't store the response if the session was already stopped/cancelled.
+    // This prevents zombie sessions from reappearing after the user stops them.
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    if (!activeSession) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Session is no longer active (was stopped or completed)" }) }],
+        isError: true,
+      }
+    }
+
+    const conversationId = activeSession.conversationId
+    if ((imageInputs.length > 0 || videoInputs.length > 0) && !conversationId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Media assets require an active conversation" }) }],
+        isError: true,
+      }
+    }
+
     const imageMarkdownBlocks: string[] = []
+    const videoMarkdownBlocks: string[] = []
     let localImageCount = 0
+    let localVideoCount = 0
     let embeddedImageBytes = 0
+    let localVideoBytes = 0
 
     for (let index = 0; index < imageInputs.length; index++) {
       const rawItem = imageInputs[index]
@@ -643,32 +780,49 @@ const toolHandlers: Record<string, ToolHandler> = {
               isError: true,
             }
           }
-          const dataImageUrlBytes = getUtf8ByteLength(url)
-          if (embeddedImageBytes + dataImageUrlBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
+          if (embeddedImageBytes + dataImageBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
             const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
             return {
               content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
               isError: true,
             }
           }
-          embeddedImageBytes += dataImageUrlBytes
+          embeddedImageBytes += dataImageBytes
+          try {
+            const assetUrl = await conversationService.storeDataImageUrlAsConversationAsset(conversationId!, url)
+            imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
+          } catch (error) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  success: false,
+                  error: error instanceof Error
+                    ? `Failed to store images[${index}].url: ${error.message}`
+                    : `Failed to store images[${index}].url`,
+                }),
+              }],
+              isError: true,
+            }
+          }
+          continue
         }
         imageMarkdownBlocks.push(`![${safeAlt}](${url})`)
         continue
       }
 
       try {
-        const dataUrl = await imagePathToDataUrl(imagePath)
-        const dataImageUrlBytes = getUtf8ByteLength(dataUrl)
-        if (embeddedImageBytes + dataImageUrlBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
+        const { resolvedPath, fileBytes } = await resolveValidImagePath(imagePath)
+        if (embeddedImageBytes + fileBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
           const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
           return {
             content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
             isError: true,
           }
         }
-        embeddedImageBytes += dataImageUrlBytes
-        imageMarkdownBlocks.push(`![${safeAlt}](${dataUrl})`)
+        embeddedImageBytes += fileBytes
+        const assetUrl = await conversationService.storeImagePathAsConversationAsset(conversationId!, resolvedPath)
+        imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
         localImageCount++
       } catch (error) {
         return {
@@ -686,13 +840,85 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    for (let index = 0; index < videoInputs.length; index++) {
+      const rawItem = videoInputs[index]
+      if (!rawItem || typeof rawItem !== "object" || Array.isArray(rawItem)) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}] must be an object` }) }],
+          isError: true,
+        }
+      }
+
+      const videoItem = rawItem as Record<string, unknown>
+      const url = typeof videoItem.url === "string" ? videoItem.url.trim() : ""
+      const videoPath = typeof videoItem.path === "string" ? videoItem.path.trim() : ""
+      const preferredLabel = typeof videoItem.label === "string" ? videoItem.label.trim() : ""
+
+      if (!url && !videoPath) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}] must include either url or path` }) }],
+          isError: true,
+        }
+      }
+
+      if (url && videoPath) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}] cannot include both url and path` }) }],
+          isError: true,
+        }
+      }
+
+      const fallbackLabel = videoPath ? path.basename(videoPath) : `Video ${index + 1}`
+      const safeLabel = escapeMarkdownAltText(preferredLabel || fallbackLabel) || `Video ${index + 1}`
+
+      if (url) {
+        if (!isAllowedRespondToUserVideoUrl(url)) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}].url must be a valid http(s) video URL (recognized extension: mp4, m4v, webm, mov, ogv) or an assets://conversation-video/ URL` }) }],
+            isError: true,
+          }
+        }
+        videoMarkdownBlocks.push(`[${safeLabel}](${url})`)
+        continue
+      }
+
+      try {
+        const { resolvedPath, fileBytes } = await resolveValidVideoPath(videoPath)
+        if (localVideoBytes + fileBytes > MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES) {
+          const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES / (1024 * 1024))
+          return {
+            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total local video payload exceeds the ${maxMb}MB limit` }) }],
+            isError: true,
+          }
+        }
+        localVideoBytes += fileBytes
+        const assetUrl = await conversationService.storeVideoPathAsConversationAsset(conversationId!, resolvedPath)
+        videoMarkdownBlocks.push(`[${safeLabel}](${assetUrl})`)
+        localVideoCount++
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error
+                ? `Failed to load videos[${index}].path: ${error.message}`
+                : `Failed to load videos[${index}].path`,
+            }),
+          }],
+          isError: true,
+        }
+      }
+    }
+
     const imageMarkdown = imageMarkdownBlocks.join("\n\n")
-    const responseContent = [text, imageMarkdown].filter(Boolean).join("\n\n")
+    const videoMarkdown = videoMarkdownBlocks.join("\n\n")
+    const responseContent = [text, imageMarkdown, videoMarkdown].filter(Boolean).join("\n\n")
     const responseContentBytes = getUtf8ByteLength(responseContent)
 
     if (!responseContent.trim()) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "respond_to_user requires text and/or images" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "respond_to_user requires text, images, and/or videos" }) }],
         isError: true,
       }
     }
@@ -701,19 +927,6 @@ const toolHandlers: Record<string, ToolHandler> = {
       const maxMb = Math.round(MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES / (1024 * 1024))
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: `Response content exceeds the ${maxMb}MB limit` }) }],
-        isError: true,
-      }
-    }
-
-    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
-    const trackedSessionId = mappedAppSessionId ?? context.sessionId
-
-    // Guard: don't store the response if the session was already stopped/cancelled.
-    // This prevents zombie sessions from reappearing after the user stops them.
-    const activeSession = agentSessionTracker.getSession(trackedSessionId)
-    if (!activeSession) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Session is no longer active (was stopped or completed)" }) }],
         isError: true,
       }
     }
@@ -735,8 +948,11 @@ const toolHandlers: Record<string, ToolHandler> = {
             responseContentLength: responseContent.length,
             responseContentBytes,
             imageCount: imageMarkdownBlocks.length,
+            videoCount: videoMarkdownBlocks.length,
             localImageCount,
+            localVideoCount,
             embeddedImageBytes,
+            localVideoBytes,
           }, null, 2),
         },
       ],
@@ -858,6 +1074,10 @@ const toolHandlers: Record<string, ToolHandler> = {
     let ignoredInvalidSkillIdWarning: ReturnType<typeof buildIgnoredExecuteCommandSkillIdWarning> | undefined
 
     if (skillId) {
+      // Pick up skills added or edited directly in .agents/skills while the app
+      // process is still running.
+      skillsService.refreshFromDisk()
+
       // Find the skill and get its directory
       let skill = skillsService.getSkill(skillId)
       if (!skill) {
@@ -867,6 +1087,10 @@ const toolHandlers: Record<string, ToolHandler> = {
           .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
         ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
       } else {
+
+        if (!(await isSkillEnabledForRuntimeContext(skill.id, context))) {
+          return disabledSkillToolResult(skill.id, "execute")
+        }
 
         if (!skill.filePath) {
           return {
@@ -1199,7 +1423,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  load_skill_instructions: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  load_skill_instructions: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     // Validate skillId parameter
     if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
       return {
@@ -1210,6 +1434,9 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const skillId = args.skillId.trim()
     const { skillsService } = await import("./skills-service")
+    // Pick up skills added or edited directly in .agents/skills while the app
+    // process is still running.
+    skillsService.refreshFromDisk()
     const skill = skillsService.getSkill(skillId)
 
     if (!skill) {
@@ -1218,6 +1445,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       const skillByName = allSkills.find(s => s.name.toLowerCase() === skillId.toLowerCase())
 
       if (skillByName) {
+        if (!(await isSkillEnabledForRuntimeContext(skillByName.id, context))) {
+          return disabledSkillToolResult(skillByName.id, "load")
+        }
+
         return {
           content: [{
             type: "text",
@@ -1237,6 +1468,10 @@ const toolHandlers: Record<string, ToolHandler> = {
         }],
         isError: true,
       }
+    }
+
+    if (!(await isSkillEnabledForRuntimeContext(skill.id, context))) {
+      return disabledSkillToolResult(skill.id, "load")
     }
 
     return {

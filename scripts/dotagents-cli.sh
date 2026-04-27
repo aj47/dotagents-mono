@@ -69,27 +69,115 @@ is_running() {
     "http://127.0.0.1:$PORT/v1/operator/health" 2>/dev/null
 }
 
+log_file_path() {
+  echo "${XDG_STATE_HOME:-$HOME/.local/state}/dotagents/headless.log"
+}
+
+user_service_file() {
+  echo "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/dotagents.service"
+}
+
+service_cmd() {
+  if command -v systemctl >/dev/null 2>&1; then
+    if [[ -f "$(user_service_file)" ]] && systemctl --user show-environment >/dev/null 2>&1; then
+      echo "systemctl --user"
+      return 0
+    fi
+    if [[ -f "/etc/systemd/system/dotagents.service" ]]; then
+      if [[ "$(id -u)" -eq 0 ]]; then
+        echo "systemctl"
+        return 0
+      fi
+      if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+        echo "sudo -n systemctl"
+        return 0
+      fi
+    fi
+  fi
+  return 1
+}
+
+service_journal_cmd() {
+  local svc
+  svc="$(service_cmd 2>/dev/null)" || return 1
+  case "$svc" in
+    "systemctl --user") echo "journalctl --user -u dotagents -n 80 --no-pager" ;;
+    "sudo -n systemctl") echo "sudo -n journalctl -u dotagents -n 80 --no-pager" ;;
+    *) echo "journalctl -u dotagents -n 80 --no-pager" ;;
+  esac
+}
+
+wait_for_daemon() {
+  local attempts="${1:-40}" delay="${2:-0.5}" i
+  for ((i=1; i<=attempts; i++)); do
+    sleep "$delay"
+    if is_running; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+print_daemon_logs_hint() {
+  local log_file svc journal
+  log_file="$(log_file_path)"
+  echo -e "${D}  Recent log output from $log_file:${R}" >&2
+  tail -n 40 "$log_file" >&2 2>/dev/null || true
+  if svc="$(service_cmd 2>/dev/null)"; then
+    journal="$(service_journal_cmd 2>/dev/null || true)"
+    echo -e "${D}  Service status: $svc status dotagents${R}" >&2
+    [ -z "$journal" ] || echo -e "${D}  Service logs: $journal${R}" >&2
+  fi
+}
+
+start_service_daemon() {
+  local svc
+  svc="$(service_cmd 2>/dev/null)" || return 1
+  echo -e "${D}Starting DotAgents service with: $svc start dotagents${R}" >&2
+  $svc start dotagents >/dev/null 2>&1 || return 1
+  wait_for_daemon 40 0.5
+}
+
+restart_service_daemon() {
+  local svc
+  svc="$(service_cmd 2>/dev/null)" || return 1
+  echo -e "${D}Restarting DotAgents service with: $svc restart dotagents${R}" >&2
+  $svc restart dotagents >/dev/null 2>&1 || return 1
+  wait_for_daemon 40 0.5
+}
+
 start_headless_daemon() {
-  local log_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotagents/headless.log"
+  local log_file
+  log_file="$(log_file_path)"
   mkdir -p "$(dirname "$log_file")"
+
+  if [[ "$INSTALL_DIR" == "__INSTALL_DIR__" || ! -x "$INSTALL_DIR/start-headless.sh" ]]; then
+    echo -e "${RED}✗ DotAgents launcher is not fully installed.${R}" >&2
+    echo -e "${D}  Expected headless launcher at: $INSTALL_DIR/start-headless.sh${R}" >&2
+    echo -e "${D}  Reinstall with the latest installer, then run dotagents again.${R}" >&2
+    return 1
+  fi
 
   echo -e "${D}Starting DotAgents headless daemon on port $PORT...${R}" >&2
   nohup xvfb-run --auto-servernum "$INSTALL_DIR/start-headless.sh" \
     >"$log_file" 2>&1 < /dev/null &
 
-  local i
-  for i in {1..40}; do
-    sleep 0.5
-    if is_running; then
-      echo -e "${G}✓ DotAgents daemon started${R}" >&2
-      return 0
-    fi
-  done
+  if wait_for_daemon 40 0.5; then
+    echo -e "${G}✓ DotAgents daemon started${R}" >&2
+    return 0
+  fi
 
   echo -e "${RED}✗ DotAgents daemon did not become healthy on port $PORT.${R}" >&2
-  echo -e "${D}  Recent log output from $log_file:${R}" >&2
-  tail -n 40 "$log_file" >&2 2>/dev/null || true
+  print_daemon_logs_hint
   return 1
+}
+
+recover_daemon() {
+  if start_service_daemon; then
+    echo -e "${G}✓ DotAgents service is healthy${R}" >&2
+    return 0
+  fi
+  start_headless_daemon
 }
 
 if ! is_running; then
@@ -99,7 +187,7 @@ if ! is_running; then
     echo -e "${D}  desktop app first (it exposes the same /v1/operator/* API).${R}" >&2
     exit 1
   fi
-  start_headless_daemon || exit 1
+  recover_daemon || exit 1
 fi
 
 # ── Tab completion ────────────────────────────────────────────
@@ -358,7 +446,73 @@ run_codex_login() {
   codex login --device-auth || echo -e "  ${Y}⚠ Codex login did not complete. Run later with: dotagents setup${R}"
 }
 
-configure_codex_auth() {
+configure_codex_direct_auth() {
+  echo -e "  ${B}Codex ChatGPT OAuth (direct)${R}"
+  echo -e "  ${D}Uses DotAgents' built-in OpenAI Codex provider. acpx is not required.${R}"
+  echo ""
+
+  ensure_codex_cli || true
+  run_codex_login || true
+
+  local model
+  model="$(ask_val "Codex model" "gpt-5.4-mini" "")"
+  model="${model:-gpt-5.4-mini}"
+
+  CONFIG_FILE_RAW="$CONFIG_FILE" DOTAGENTS_CODEX_MODEL="$model" node <<'NODE'
+const fs = require('fs')
+const path = require('path')
+
+const configFile = process.env.CONFIG_FILE_RAW
+const model = process.env.DOTAGENTS_CODEX_MODEL || 'gpt-5.4-mini'
+
+function withDisabledFrontmatter(markdown) {
+  const lines = markdown.split('\n')
+  if (lines[0] !== '---') return markdown
+  const closeIndex = lines.indexOf('---', 1)
+  if (closeIndex < 0) return markdown
+  const enabledIndex = lines.findIndex((line, index) => index > 0 && index < closeIndex && /^enabled:\s*/.test(line))
+  if (enabledIndex >= 0) lines[enabledIndex] = 'enabled: false'
+  else lines.splice(closeIndex, 0, 'enabled: false')
+  return lines.join('\n')
+}
+
+function disableLegacyCodexAcpxProfile() {
+  const agentDir = path.join(process.env.HOME || '.', '.agents', 'agents', 'codex')
+  const agentPath = path.join(agentDir, 'agent.md')
+  const configPath = path.join(agentDir, 'config.json')
+  let markdown = ''
+  let connection = null
+  try { markdown = fs.readFileSync(agentPath, 'utf8') } catch {}
+  try { connection = JSON.parse(fs.readFileSync(configPath, 'utf8')).connection } catch {}
+  const isGeneratedAcpxCodex = markdown.includes('description: OpenAI Codex via acpx')
+    || (connection?.type === 'acpx' && connection?.agent === 'codex')
+  if (!markdown || !isGeneratedAcpxCodex) return false
+  fs.writeFileSync(agentPath, withDisabledFrontmatter(markdown))
+  return true
+}
+
+let cfg = {}
+try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
+cfg.mainAgentMode = 'api'
+cfg.agentProviderId = 'chatgpt-web'
+cfg.mcpToolsProviderId = 'chatgpt-web'
+cfg.agentChatgptWebModel = model
+cfg.mcpToolsChatgptWebModel = model
+cfg.transcriptPostProcessingProviderId = 'chatgpt-web'
+cfg.transcriptPostProcessingChatgptWebModel = model
+cfg.chatgptWebBaseUrl = 'https://chatgpt.com'
+delete cfg.currentModelPresetId
+delete cfg.mainAgentName
+disableLegacyCodexAcpxProfile()
+fs.mkdirSync(path.dirname(configFile), { recursive: true })
+fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2))
+NODE
+
+  echo -e "  ${G}✓ Codex configured as the direct DotAgents provider${R}"
+  echo -e "  ${D}  Auth cache: ~/.codex/auth.json, if login completed successfully.${R}"
+}
+
+configure_codex_acpx_auth() {
   echo -e "  ${B}Codex via acpx${R}"
   echo -e "  ${D}Uses acpx's built-in Codex adapter and Codex's ChatGPT OAuth cache.${R}"
   echo ""
@@ -423,19 +577,23 @@ run_setup() {
 
   # ── Step 1: LLM Provider / Codex ──
   echo -e "  ${B}Step 1/3 — Agent Auth${R}"
-  echo -e "  ${D}Choose DotAgents API mode with a provider token, or Codex via acpx.${R}"
+  echo -e "  ${D}Choose DotAgents API mode with a provider token, direct Codex OAuth, or Codex via acpx.${R}"
   echo ""
 
   echo -e "  ${B}Auth mode${R}"
   echo -e "  ${C}1${R}) Provider API token (OpenAI-compatible)"
-  echo -e "  ${C}2${R}) Codex auth via acpx"
+  echo -e "  ${C}2${R}) Codex ChatGPT OAuth (direct, no acpx)"
+  echo -e "  ${C}3${R}) Codex via acpx external agent"
   echo ""
 
   local auth_mode
   auth_mode="$(ask_val "Choose auth mode" "1" "")"
   case "$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')" in
-    2|codex|acpx)
-      configure_codex_auth
+    2|codex|codex-direct|chatgpt|chatgpt-web)
+      configure_codex_direct_auth
+      ;;
+    3|codex-acpx|acpx)
+      configure_codex_acpx_auth
       ;;
     *)
       configure_provider_auth "$cur_key" "$cur_base" "$cur_model"
@@ -479,7 +637,7 @@ run_setup() {
 
   if [[ "$restart_answer" =~ ^[Yy] ]]; then
     echo -e "  ${D}Restarting...${R}"
-    sudo systemctl restart dotagents 2>/dev/null || true
+    restart_service_daemon || recover_daemon || true
     sleep 5
     # Re-read config for new API key
     API_KEY="$(get_config_val remoteServerApiKey)"
@@ -492,10 +650,11 @@ run_setup() {
         echo -e "  ${G}✓ Discord bot connecting...${R}"
       fi
     else
-      echo -e "  ${RED}✗ Service didn't start. Check: sudo journalctl -u dotagents -f${R}"
+      echo -e "  ${RED}✗ Service didn't start.${R}"
+      print_daemon_logs_hint
     fi
   else
-    echo -e "  ${D}Skipped. Run: sudo systemctl restart dotagents${R}"
+    echo -e "  ${D}Skipped. Run /restart before chatting so the daemon reloads the new config.${R}"
   fi
 
   echo ""
@@ -661,6 +820,16 @@ while true; do
 
   # Add to bash history for up-arrow recall
   history -s "$INPUT"
+
+  case "$INPUT" in
+    /quit|/exit|/q|/help|/h|/setup) ;;
+    *)
+      if ! is_running; then
+        echo -e "${Y}⚠ DotAgents daemon is not healthy; attempting recovery...${R}"
+        recover_daemon || { echo -e "${RED}✗ Recovery failed. Check logs with: tail -100 $(log_file_path)${R}"; continue; }
+      fi
+      ;;
+  esac
 
   case "$INPUT" in
     /quit|/exit|/q)
@@ -989,7 +1158,7 @@ SLASHEOF
       " || echo -e "${RED}Failed${R}" ;;
     /restart)
       echo -e "${Y}Restarting service...${R}"
-      sudo systemctl restart dotagents 2>/dev/null || api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || true
+      restart_service_daemon || api_post /v1/operator/actions/restart-app -d '{}' > /dev/null 2>&1 || recover_daemon || true
       echo -ne "${D}Waiting for service"
       attempts=0
       while [[ $attempts -lt 12 ]]; do
@@ -1006,7 +1175,8 @@ SLASHEOF
       done
       if [[ $attempts -ge 12 ]]; then
         echo ""
-        echo -e "${RED}Service not responding after 24s. Check: sudo journalctl -u dotagents -f${R}"
+        echo -e "${RED}Service not responding after 24s.${R}"
+        print_daemon_logs_hint
       fi ;;
     /*)
       echo -e "${Y}Unknown command.${R} Type ${C}/help${R} for options." ;;

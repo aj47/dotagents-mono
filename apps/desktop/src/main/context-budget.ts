@@ -536,7 +536,7 @@ function makeContextRef(): string {
   return `ctx_${Math.random().toString(36).slice(2, 10)}`
 }
 
-function registerContextRef(
+export function registerContextRef(
   sessionId: string | undefined,
   input: {
     kind: ContextRefKind
@@ -1080,6 +1080,11 @@ function buildSummaryMessage(batch: SummaryBatch, summary: string, contextRef?: 
   }
 }
 
+function isGeneratedContextSummaryMessage(content: string): boolean {
+  return content.startsWith("[Earlier Context Summary:")
+    || content.startsWith("[Session Progress Summary]")
+}
+
 function buildBatchSummaryFallback(items: SummaryCandidate[]): string {
   return items
     .map((item) => `${item.role}: ${item.contentForSummary.split("\n")[0].trim().slice(0, 120)}`)
@@ -1195,7 +1200,7 @@ function shouldApplyArchiveFrontier(
   targetTokens: number,
 ): boolean {
   if (!state) return false
-  return shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
+  return state.hasArchiveState || shouldAdvanceArchiveFrontier(state, messagesLength, tokens, targetTokens)
 }
 
 async function updateIterativeSummaryForDroppedMessages(
@@ -1622,6 +1627,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     })
     .filter((x) => x.len > summarizeThreshold && x.role !== "system")
     .filter((x) => x.role !== "tool")
+    .filter((x) => !isGeneratedContextSummaryMessage(x.contentForSummary))
     .filter((x) => !truncationProtectedIndices.has(x.i))
     .filter((x) => x.i !== firstTierOneProtectedUserIdx)
     .filter((x) => !recentTierOneProtectedIndices.has(x.i))

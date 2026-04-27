@@ -52,6 +52,14 @@ describe("remote-server route registration", () => {
     expect(source).toContain("processTranscriptWithACPAgent")
   })
 
+  it("exposes full skill instructions to the mobile prompt picker", () => {
+    const source = getRemoteServerSource()
+    const skillsSection = getSection(source, 'fastify.get("/v1/skills"', '// POST /v1/skills/:id/toggle-profile')
+
+    expect(skillsSection).toContain("instructions: s.instructions")
+    expect(skillsSection).toContain("enabled: true")
+  })
+
   it("exposes remote server, tunnel, and Discord settings in the remote settings GET/PATCH routes", () => {
     const source = getRemoteServerSource()
     const settingsGetSection = getSection(source, 'fastify.get("/v1/settings"', '// PATCH /v1/settings - Update settings')
@@ -198,6 +206,25 @@ describe("remote-server route registration", () => {
     expect(settingsPatchSection).toContain("discordLifecycleAction")
     expect(settingsPatchSection).not.toContain("details: { apiKey")
     expect(settingsPatchSection).not.toContain("details: { remoteServerApiKey")
+  })
+
+  it("resolves remote server secret references only for authenticated pairing surfaces", () => {
+    const source = getRemoteServerSource()
+
+    expect(source).toContain('const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"')
+    expect(source).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
+    expect(source).toContain("function getResolvedRemoteServerApiKey")
+    expect(source).toContain("function hasConfiguredRemoteServerApiKey")
+    expect(source).toContain("const hasConfiguredApiKey = hasConfiguredRemoteServerApiKey(cfg)")
+    expect(source).toContain("!configuredApiKey && !hasConfiguredApiKey")
+    expect(source).toContain("Remote server API key is configured but could not be resolved; preserving configured value")
+    expect(source).toContain("const currentApiKey = getResolvedRemoteServerApiKey(current)")
+    expect(source).toContain("token !== currentApiKey")
+    expect(source).toContain("export function getRemoteServerPairingApiKey")
+    expect(source).toContain("if (cfg.streamerModeEnabled)")
+    expect(source).toContain("return getResolvedRemoteServerApiKey(cfg)")
+    expect(source).toContain("printTerminalQRCode(serverUrl, apiKey)")
+    expect(source).toContain("remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey)")
   })
 
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {

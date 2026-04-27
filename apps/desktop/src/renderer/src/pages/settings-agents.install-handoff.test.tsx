@@ -13,6 +13,7 @@ function createHookRuntime() {
     if (states[idx] === undefined) states[idx] = typeof initial === "function" ? (initial as () => T)() : initial
     return [states[idx] as T, (update: T | ((prev: T) => T)) => { states[idx] = typeof update === "function" ? (update as (prev: T) => T)(states[idx]) : update }] as const
   }
+  const useMemo = <T,>(factory: () => T) => factory()
   const forwardRef = <P,>(renderFn: (props: P, ref: unknown) => any) => (props: P) => renderFn(props, null)
   const useRef = <T,>(initial: T) => (refs[refIndex] ??= { current: initial }) as { current: T }
   const useEffect = (callback: EffectRecord["callback"], deps?: any[]) => { effects[effectIndex] = { ...(effects[effectIndex] ?? { hasRun: false }), callback, nextDeps: deps }; effectIndex += 1 }
@@ -22,7 +23,7 @@ function createHookRuntime() {
   return {
     render,
     commitEffects,
-    reactMock: { __esModule: true, default: {} as any, useState, useRef: <T,>(initial: T) => { const ref = useRef(initial); refIndex += 1; return ref }, useEffect, forwardRef },
+    reactMock: { __esModule: true, default: {} as any, useState, useMemo, useRef: <T,>(initial: T) => { const ref = useRef(initial); refIndex += 1; return ref }, useEffect, forwardRef },
     jsxRuntimeMock: { __esModule: true, jsx: invoke, jsxs: invoke, jsxDEV: invoke, Fragment: Symbol.for("react.fragment") },
   }
 }

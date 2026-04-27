@@ -4,22 +4,24 @@ import { describe, expect, it } from "vitest"
 const audioPlayerSource = readFileSync(new URL("./audio-player.tsx", import.meta.url), "utf8")
 
 describe("audio player layout", () => {
+  it("recovers blocked autoplay on the next user gesture", () => {
+    expect(audioPlayerSource).toContain("function isAutoplayPolicyBlockedError")
+    expect(audioPlayerSource).toContain("const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false)")
+    expect(audioPlayerSource).toContain('window.addEventListener("pointerdown", retryPlayback, { once: true, capture: true })')
+    expect(audioPlayerSource).toContain('window.addEventListener("keydown", retryPlayback, { once: true, capture: true })')
+    expect(audioPlayerSource).toContain('void playAudio("autoplay-retry")')
+  })
+
   it("keeps compact playback chrome readable in narrow session cards", () => {
     expect(audioPlayerSource).toContain("const compactStatusLabel = hasAudio")
     expect(audioPlayerSource).toContain("const compactStatusDetail = hasAudio")
     expect(audioPlayerSource).toContain(
-      '"flex min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5"'
+      '"inline-flex items-center"'
     )
-    expect(audioPlayerSource).toContain('className="mt-0.5 h-8 w-8 shrink-0 p-0"')
-    expect(audioPlayerSource).toContain('className="min-w-0 flex-1 space-y-0.5 text-left"')
-    expect(audioPlayerSource).toContain(
-      'className="text-xs font-medium leading-relaxed text-foreground break-words [overflow-wrap:anywhere]"'
-    )
-    expect(audioPlayerSource).toContain(
-      '"min-w-0 text-[11px] leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]"'
-    )
-    expect(audioPlayerSource).toContain('hasAudio && duration > 0 && "font-mono tabular-nums"')
-    expect(audioPlayerSource).toContain('aria-live="polite"')
+    expect(audioPlayerSource).toContain('"shrink-0 rounded p-1 transition-colors hover:bg-muted"')
+    expect(audioPlayerSource).toContain("Autoplay blocked — press any key or click to listen")
+    expect(audioPlayerSource).toContain("Press any key or click once to start playback")
+    expect(audioPlayerSource).toContain("<audio ref={audioRef} />")
   })
 
   it("wraps full audio controls and protects secondary controls under zoom", () => {

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest"
 const panelSource = readFileSync(new URL("./panel.tsx", import.meta.url), "utf8")
 const mainWindowSource = readFileSync(new URL("../../../main/window.ts", import.meta.url), "utf8")
 const tipcSource = readFileSync(new URL("../../../main/tipc.ts", import.meta.url), "utf8")
+const panelResizeWrapperSource = readFileSync(new URL("../components/panel-resize-wrapper.tsx", import.meta.url), "utf8")
+const panelResizeUtilsSource = readFileSync(new URL("../components/panel-resize-utils.ts", import.meta.url), "utf8")
 
 describe("panel recording layout", () => {
   it("wraps the recording footer controls for narrow widths and zoomed text", () => {
@@ -20,13 +22,171 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain('className="min-w-0 truncate font-medium"')
   })
 
-  it("keeps a wider compact-width floor for the floating recording panel", () => {
-    expect(panelSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 360")
+  it("keeps a compact default footprint for the floating recording panel", () => {
+    expect(panelSource).toContain("const DEFAULT_VISUALIZER_BAR_COUNT = 52")
+    expect(panelSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 280")
+    expect(panelSource).toContain("const WAVEFORM_MIN_HEIGHT = 120")
+    expect(panelSource).toContain("const WAVEFORM_WITH_PREVIEW_HEIGHT = 148")
     expect(panelSource).toContain("WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX")
-    expect(mainWindowSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 360")
+    expect(mainWindowSource).toContain("const VISUALIZER_BUFFER_LENGTH = 52")
+    expect(mainWindowSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 280")
+    expect(mainWindowSource).toContain("export const WAVEFORM_MIN_HEIGHT = 120")
+    expect(mainWindowSource).toContain("export const WAVEFORM_WITH_PREVIEW_HEIGHT = 148")
     expect(mainWindowSource).toContain(
       "return Math.max(waveformWidth, WAVEFORM_PANEL_CONTENT_MIN_WIDTH)"
     )
+    expect(panelResizeWrapperSource).toContain("const WAVEFORM_MIN_HEIGHT = 120")
+  })
+
+  it("restores waveform panel sizing independently from progress panel sizing", () => {
+    const resizeWaveformSection = mainWindowSource.slice(
+      mainWindowSource.indexOf("export function resizePanelForWaveform()"),
+      mainWindowSource.indexOf("export function resizePanelForWaveformPreview")
+    )
+
+    expect(mainWindowSource).toContain("const getWaveformPanelSize =")
+    expect(mainWindowSource).toContain('const savedSize = getSavedPanelSize("waveform")')
+    expect(mainWindowSource).toContain("config.panelWaveformSize")
+    expect(mainWindowSource).toContain("Ignoring oversized legacy waveform size")
+    expect(mainWindowSource).toContain("export const LEGACY_WAVEFORM_SIZE_MAX_WIDTH = 420")
+    expect(mainWindowSource).toContain("export const LEGACY_WAVEFORM_SIZE_MAX_HEIGHT = 240")
+    expect(mainWindowSource).toContain("export const PANEL_SAVED_SIZE_MAX_WIDTH = 3000")
+    expect(mainWindowSource).toContain("export const PANEL_SAVED_SIZE_MAX_HEIGHT = 2000")
+    expect(tipcSource).toContain("LEGACY_WAVEFORM_SIZE_MAX_WIDTH")
+    expect(tipcSource).toContain("LEGACY_WAVEFORM_SIZE_MAX_HEIGHT")
+    expect(tipcSource).toContain("PANEL_SAVED_SIZE_MAX_WIDTH")
+    expect(tipcSource).toContain("PANEL_SAVED_SIZE_MAX_HEIGHT")
+    expect(tipcSource).not.toContain("legacyCustomSize.width <= 420")
+    expect(tipcSource).not.toContain("legacyCustomSize.height <= 240")
+    expect(tipcSource).toContain("updatedConfig.panelWaveformSize = { width, height }")
+    const legacyCustomSizeSection = tipcSource.slice(
+      tipcSource.indexOf("savePanelCustomSize: t.procedure"),
+      tipcSource.indexOf("// Save panel size with mode-specific persistence")
+    )
+    expect(legacyCustomSizeSection).toContain("panelCustomSize: { width, height }")
+    expect(legacyCustomSizeSection).not.toContain("panelWaveformSize")
+    expect(resizeWaveformSection).toContain("getWaveformPanelSize()")
+    expect(resizeWaveformSection).not.toContain("Math.max(currentWidth")
+  })
+
+  it("keeps completed progress panels in progress sizing instead of waveform sizing", () => {
+    const modeSwitchSection = panelSource.slice(
+      panelSource.indexOf('let targetMode: "agent" | "normal" | null = null'),
+      panelSource.indexOf("// Note: We don't need to hide text input")
+    )
+
+    expect(modeSwitchSection).toContain("if (anyActiveNonSnoozed)")
+    expect(modeSwitchSection).toContain("} else if (anyVisibleSessions && !recording) {")
+    expect(modeSwitchSection).toContain('targetMode = "agent"')
+    expect(modeSwitchSection).toContain("recording,")
+    expect(panelSource).toContain("anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight")
+  })
+
+  it("keeps recording waveform layout stable under browser zoom", () => {
+    expect(panelSource).toContain("function RecordingWaveformPanel")
+    expect(panelSource).toContain("getPanelViewportScale(nativePanelSize, cssViewportSize)")
+    expect(panelSource).toContain("Number.isFinite(nativePanelSize.width)")
+    expect(panelSource).toContain("stableRecordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2")
+    expect(panelSource).toContain('transform: `scale(${zoomCompensationScale})`')
+    expect(panelResizeWrapperSource).toContain("viewportScale?: number")
+    expect(panelResizeWrapperSource).toContain("fallbackMode?: PanelMode")
+    expect(panelResizeWrapperSource).toContain("minWidth: `${minWidth / safeViewportScale}px`")
+    expect(panelResizeWrapperSource).toContain("minHeight: `${minHeight / safeViewportScale}px`")
+    expect(panelResizeUtilsSource).toContain("export const getNativePanelResizeSize =")
+    expect(panelResizeWrapperSource).toContain("const safeViewportScale = useMemo(")
+    expect(panelResizeWrapperSource).toContain("[viewportScale],")
+
+    const nativeResizeHelperSection = panelResizeUtilsSource.slice(
+      panelResizeUtilsSource.indexOf("export const getNativePanelResizeSize =")
+    )
+    expect(nativeResizeHelperSection).toContain("Math.round(startSize.width + delta.width * viewportScale)")
+    expect(nativeResizeHelperSection).toContain("Math.round(startSize.height + delta.height * viewportScale)")
+    expect(nativeResizeHelperSection).not.toContain("safeViewportScale")
+    expect(panelResizeWrapperSource).toContain("safeViewportScale,")
+    expect(panelResizeWrapperSource).toContain("const handleResizeEnd = useCallback(async (delta: { width: number; height: number }) => {")
+    expect(panelResizeWrapperSource).toContain("getNativePanelResizeSize(")
+    expect(panelResizeWrapperSource).toContain("startSize,\n      delta,")
+    expect(panelResizeWrapperSource).toContain("[enableResize, minWidth, minHeight, safeViewportScale]")
+    expect(panelResizeWrapperSource).toContain("const handleResizeStart = useCallback((size: PanelSize) => {")
+    expect(panelResizeWrapperSource).toContain("resizeStartSizeRef.current = size")
+    expect(panelResizeWrapperSource).toContain("setCurrentSize(size)")
+    expect(panelResizeWrapperSource).toContain("onResizeStart={handleResizeStart}")
+    expect(panelResizeWrapperSource).toContain("resizeStartSizeRef.current = null")
+    expect(panelResizeWrapperSource).not.toContain("size.width - startSize.width")
+    expect(panelResizeWrapperSource).not.toContain("size.height - startSize.height")
+    expect(readFileSync(new URL("../components/resize-handle.tsx", import.meta.url), "utf8")).toContain(
+      "onResizeEnd(getResizeDelta(position, deltaX, deltaY))"
+    )
+    expect(panelSource).toContain("viewportScale={panelViewportScale}")
+    expect(panelSource).toContain('const panelResizeMode = showTextInput ? "textInput"')
+    expect(panelSource).toContain("fallbackMode={panelResizeMode}")
+  })
+
+  it("updates the native minimum height while waveform preview is visible", () => {
+    const previewResizeSection = mainWindowSource.slice(
+      mainWindowSource.indexOf("export function resizePanelForWaveformPreview"),
+      mainWindowSource.indexOf("/**\n * Set the focusability")
+    )
+
+    expect(previewResizeSection).toContain("const targetHeight = showPreview ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT")
+    expect(previewResizeSection).toContain('const minWidth = getPanelMinWidth("waveform")')
+    expect(previewResizeSection).toContain("win.setMinimumSize(minWidth, targetHeight)")
+  })
+
+  it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
+    expect(panelSource).toContain("Number.isFinite((value as { width: number }).width)")
+    expect(panelSource).toContain("Number.isFinite((value as { height: number }).height)")
+    expect(panelSource).toContain("!Number.isFinite(nativePanelSize.width)")
+    expect(panelSource).toContain("!Number.isFinite(nativePanelSize.height)")
+    expect(panelSource).toContain("!Number.isFinite(cssViewportSize.width)")
+    expect(panelSource).toContain("!Number.isFinite(cssViewportSize.height)")
+    expect(panelSource).toContain("width: Math.round(window.innerWidth || 0)")
+    expect(panelSource).toContain("height: Math.round(window.innerHeight || 0)")
+    expect(panelSource).not.toContain("Math.max(1, Math.round(window.innerWidth")
+    expect(panelSource).not.toContain("Math.max(1, Math.round(window.innerHeight")
+    expect(panelResizeUtilsSource).toContain("Number.isFinite((value as { width: number }).width)")
+    expect(mainWindowSource).toContain("if (!isFinitePanelSize(savedSize))")
+    expect(mainWindowSource).toContain("Saved size is invalid:")
+    expect(mainWindowSource).toContain("savedSize.width > PANEL_SAVED_SIZE_MAX_WIDTH")
+    expect(mainWindowSource).toContain("Ignoring invalid saved waveform size, checking legacy fallback")
+    expect(mainWindowSource).toContain("isFinitePanelSize(legacyCustomSize)")
+    expect(tipcSource).toContain("const isBoundedPanelSize =")
+    expect(tipcSource).toContain("value.width <= PANEL_SAVED_SIZE_MAX_WIDTH")
+    expect(tipcSource).toContain("config.panelWaveformSize.width >= minWidth")
+    expect(tipcSource).toContain("config.panelWaveformSize.height >= WAVEFORM_MIN_HEIGHT")
+    expect(tipcSource).toContain("const initialWaveformSize = savedWaveformSize ??")
+    expect(tipcSource).toContain("normalizePanelSize(")
+    expect(tipcSource).toContain("Math.min(PANEL_SAVED_SIZE_MAX_WIDTH")
+    expect(tipcSource).toContain("Math.round(input.width)")
+    expect(tipcSource).toContain("Math.round(input.height)")
+    expect(tipcSource).toContain("if (!isFinitePanelSize(input))")
+    expect(tipcSource).toContain("throw new Error(\"Invalid panel size\")")
+    expect(tipcSource).toContain("isFinitePanelSize(legacyCustomSize)")
+    expect(mainWindowSource).toContain("const legacyCustomSize = config.panelCustomSize")
+    expect(mainWindowSource).toContain("if (isFinitePanelSize(legacyCustomSize))")
+    expect(mainWindowSource).not.toContain("config.panelCustomSize.width")
+    expect(mainWindowSource).not.toContain("config.panelCustomSize.height")
+  })
+
+  it("runtime-validates mode-aware panel size persistence", () => {
+    expect(tipcSource).toContain("const isPanelSizeMode =")
+    expect(tipcSource).toContain('value === "normal" || value === "agent" || value === "textInput"')
+    expect(tipcSource).toContain("if (!isPanelSizeMode(input.mode))")
+    expect(tipcSource).toContain('throw new Error("Invalid panel mode")')
+    expect(tipcSource).toContain("const mode = isPanelSizeMode(rawMode) ? rawMode : \"normal\"")
+  })
+
+  it("keeps legacy size fallback limited to waveform mode", () => {
+    const resizeEndSection = panelResizeWrapperSource.slice(
+      panelResizeWrapperSource.indexOf("const handleResizeEnd = useCallback"),
+      panelResizeWrapperSource.indexOf("return (")
+    )
+
+    expect(resizeEndSection).toContain('if (mode === "normal")')
+    expect(resizeEndSection).toContain("let finalSize = requestedFinalSize")
+    expect(resizeEndSection).toContain("const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode")
+    expect(resizeEndSection).toContain("await tipcClient.savePanelCustomSize(finalSize)")
+    expect(resizeEndSection).toContain("dedicated buckets and must not clobber the shared legacy size")
   })
 
   it("gives text input its own safer min width, height, and persisted size bucket", () => {

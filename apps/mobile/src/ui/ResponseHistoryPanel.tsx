@@ -18,7 +18,7 @@ import { preprocessTextForTTS } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
-import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
+import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 
 export interface ResponseHistoryEntry {
   id?: string;
@@ -33,6 +33,8 @@ interface ResponseHistoryPanelProps {
   ttsRate?: number;
   ttsPitch?: number;
   ttsVoiceId?: string;
+  remoteBaseUrl?: string;
+  remoteApiKey?: string;
 }
 
 /**
@@ -71,6 +73,8 @@ export function ResponseHistoryPanel({
   ttsRate = 1.0,
   ttsPitch = 1.0,
   ttsVoiceId,
+  remoteBaseUrl,
+  remoteApiKey,
 }: ResponseHistoryPanelProps) {
   const { theme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -95,7 +99,7 @@ export function ResponseHistoryPanel({
       isMountedRef.current = false;
       nextSpeechRequestId();
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
     };
   }, [nextSpeechRequestId]);
 
@@ -103,7 +107,7 @@ export function ResponseHistoryPanel({
     if (isCollapsed && speakingIndex !== null) {
       nextSpeechRequestId();
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
       safeSetSpeakingIndex(null);
     }
   }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId]);
@@ -117,7 +121,7 @@ export function ResponseHistoryPanel({
     if (speakingIndex === index) {
       nextSpeechRequestId();
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
       safeSetSpeakingIndex(null);
       return;
     }
@@ -125,7 +129,7 @@ export function ResponseHistoryPanel({
     // Stop any current speech
     const requestId = nextSpeechRequestId();
     Speech.stop();
-    stopEdgeTts();
+    stopRemoteTts();
 
     const processedText = preprocessTextForTTS(text);
     if (!processedText) {
@@ -141,16 +145,22 @@ export function ResponseHistoryPanel({
 
     safeSetSpeakingIndex(index);
     if (ttsProvider === 'edge') {
-      // Edge TTS runs on all platforms: HTMLAudioElement on web,
-      // expo-audio + expo-file-system on native (iOS/Android).
-      void speakEdgeTts(processedText, {
-        voice: edgeTtsVoice,
-        rate: ttsRate,
-        onDone: clearIfCurrentRequest,
-        onStopped: clearIfCurrentRequest,
-        onError: clearIfCurrentRequest,
-      });
-      return;
+      // Edge TTS on all platforms routes through the paired desktop's
+      // /v1/tts/speak endpoint. Fall back to native Speech when no pairing.
+      if (remoteBaseUrl && remoteApiKey) {
+        void speakRemoteTts(processedText, {
+          baseUrl: remoteBaseUrl,
+          apiKey: remoteApiKey,
+          providerId: 'edge',
+          voice: edgeTtsVoice,
+          rate: ttsRate,
+          onDone: clearIfCurrentRequest,
+          onStopped: clearIfCurrentRequest,
+          onError: clearIfCurrentRequest,
+        });
+        return;
+      }
+      // Fall through to native Speech below when paired desktop is unavailable.
     }
 
     const speechOptions: Speech.SpeechOptions = {
@@ -303,7 +313,11 @@ export function ResponseHistoryPanel({
                         />
                       </TouchableOpacity>
                     </View>
-                    <MarkdownRenderer content={response.text} />
+                    <MarkdownRenderer
+                      content={response.text}
+                      assetBaseUrl={remoteBaseUrl}
+                      assetAuthToken={remoteApiKey}
+                    />
                   </View>
                 </AnimatedResponseItem>
               </React.Fragment>

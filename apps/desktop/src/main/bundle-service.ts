@@ -109,7 +109,12 @@ export interface BundleRepeatTask {
   intervalMinutes: number
   enabled: boolean
   runOnStartup?: boolean
+  speakOnTrigger?: boolean
+  continueInSession?: boolean
+  runContinuously?: boolean
+  schedule?: LoopConfig["schedule"]
   // profileId omitted — the profile may not exist in the target environment
+  // lastSessionId omitted — installation-local, not meaningful across bundles
 }
 
 export interface BundleKnowledgeNote {
@@ -310,7 +315,7 @@ const MCP_SERVER_CONFIG_KEYS = [
   "timeout",
   "disabled",
 ] as const
-const AGENT_PROFILE_CONNECTION_TYPES = ['internal', 'acpx', 'remote'] as const
+const AGENT_PROFILE_CONNECTION_TYPES = ['internal', 'acpx', 'acp', 'stdio', 'remote'] as const
 const AGENT_PROFILE_ROLES = ["chat-agent", "user-profile", "delegation-target", "external-agent"] as const
 
 function isReservedTopLevelMcpKey(key: string): boolean {
@@ -655,21 +660,35 @@ function loadSkillsForBundle(layer: AgentsLayerPaths, options?: BundleItemSelect
     }))
 }
 
+function normalizeBundleRepeatTask(task: BundleRepeatTask): BundleRepeatTask {
+  const normalized = { ...task }
+  if (normalized.runContinuously === true) {
+    delete normalized.schedule
+  }
+  return normalized
+}
+
 function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleRepeatTask[] {
   const tasksResult = loadTasksLayer(layer)
   const selectedRepeatTaskIds = toSelectionSet(options?.repeatTaskIds)
 
   return tasksResult.tasks
     .filter((task) => !selectedRepeatTaskIds || selectedRepeatTaskIds.has(task.id))
-    .map((task): BundleRepeatTask => ({
-      id: task.id,
-      name: task.name,
-      prompt: task.prompt,
-      intervalMinutes: task.intervalMinutes,
-      enabled: task.enabled,
-      runOnStartup: task.runOnStartup,
-      // profileId intentionally omitted — may not exist in target environment
-    }))
+    .map((task): BundleRepeatTask =>
+      normalizeBundleRepeatTask({
+        id: task.id,
+        name: task.name,
+        prompt: task.prompt,
+        intervalMinutes: task.intervalMinutes,
+        enabled: task.enabled,
+        runOnStartup: task.runOnStartup,
+        speakOnTrigger: task.speakOnTrigger,
+        continueInSession: task.continueInSession,
+        runContinuously: task.runContinuously,
+        schedule: task.schedule,
+        // profileId intentionally omitted — may not exist in target environment
+      })
+    )
 }
 
 function loadKnowledgeNotesForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleKnowledgeNote[] {
@@ -1123,6 +1142,21 @@ function isBundleSkill(value: unknown): value is BundleSkill {
   return isOptionalString(value.instructions)
 }
 
+function isBundleRepeatTaskSchedule(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!isRecordObject(value)) return false
+  if (value.type !== "daily" && value.type !== "weekly") return false
+  if (!Array.isArray(value.times) || value.times.length === 0) return false
+  if (!value.times.every((t) => typeof t === "string")) return false
+  if (value.type === "weekly") {
+    if (!Array.isArray(value.daysOfWeek) || value.daysOfWeek.length === 0) return false
+    if (!value.daysOfWeek.every((d) => typeof d === "number" && Number.isInteger(d) && d >= 0 && d <= 6)) {
+      return false
+    }
+  }
+  return true
+}
+
 function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (!isRecordObject(value)) return false
   if (!isNonEmptyString(value.id)) return false
@@ -1130,7 +1164,11 @@ function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (typeof value.prompt !== "string") return false
   if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
   if (typeof value.enabled !== "boolean") return false
-  return value.runOnStartup === undefined || typeof value.runOnStartup === "boolean"
+  if (value.runOnStartup !== undefined && typeof value.runOnStartup !== "boolean") return false
+  if (value.speakOnTrigger !== undefined && typeof value.speakOnTrigger !== "boolean") return false
+  if (value.continueInSession !== undefined && typeof value.continueInSession !== "boolean") return false
+  if (value.runContinuously !== undefined && typeof value.runContinuously !== "boolean") return false
+  return isBundleRepeatTaskSchedule(value.schedule)
 }
 
 function isBundleKnowledgeNote(value: unknown): value is BundleKnowledgeNote {
@@ -1184,7 +1222,9 @@ function validateBundle(bundle: unknown): bundle is ParsedDotAgentsBundle {
 }
 
 function normalizeBundle(bundle: ParsedDotAgentsBundle): DotAgentsBundle {
-  const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
+  const repeatTasks = Array.isArray(bundle.repeatTasks)
+    ? bundle.repeatTasks.map(normalizeBundleRepeatTask)
+    : []
   const knowledgeNotes = Array.isArray(bundle.knowledgeNotes) ? bundle.knowledgeNotes : []
   const rawComponents = isRecordObject(bundle.manifest.components)
     ? (bundle.manifest.components as Record<string, unknown>)
@@ -1626,6 +1666,12 @@ export async function importBundle(
           intervalMinutes: bundleTask.intervalMinutes,
           enabled: bundleTask.enabled,
           runOnStartup: bundleTask.runOnStartup,
+          speakOnTrigger: bundleTask.speakOnTrigger,
+          continueInSession: bundleTask.continueInSession,
+          runContinuously: bundleTask.runContinuously,
+          ...(bundleTask.runContinuously === true || !bundleTask.schedule
+            ? {}
+            : { schedule: bundleTask.schedule }),
           // profileId intentionally not imported — may not exist in target
         }
 

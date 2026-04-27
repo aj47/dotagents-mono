@@ -8,7 +8,13 @@
 import type { AgentUserResponseEvent } from './agent-progress';
 import { ToolCall, ToolResult } from './types';
 
+export type ToolArgumentEntry = {
+  key: string;
+  value: unknown;
+};
+
 const COLLAPSE_THRESHOLD = 200;
+const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
 
 /**
  * Determine if a message should be collapsible based on its content
@@ -23,18 +29,44 @@ export function shouldCollapseMessage(
   toolResults?: ToolResult[]
 ): boolean {
   const hasExtras = (toolCalls?.length ?? 0) > 0 || (toolResults?.length ?? 0) > 0;
-  const contentLength = content?.length ?? 0;
+  const contentLength = content?.replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, '').length ?? 0;
   return contentLength > COLLAPSE_THRESHOLD || hasExtras;
 }
 
 /**
  * Generate a summary of tool calls for collapsed view
  * @param toolCalls Array of tool calls
- * @returns A formatted string showing tool names
+ * @returns A formatted string showing only tool names
  */
 export function getToolCallsSummary(toolCalls: ToolCall[]): string {
   if (!toolCalls || toolCalls.length === 0) return '';
-  return `🔧 ${toolCalls.map(tc => tc.name).join(', ')}`;
+  return toolCalls.map(tc => getToolCallPreview(tc)).join(', ');
+}
+
+/**
+ * Generate a compact single-token label for a collapsed tool call.
+ * Details belong in expanded tool views, not collapsed rows.
+ */
+export function getToolCallPreview(toolCall: ToolCall): string {
+  return toolCall.name?.trim().replace(/\s+/g, '_') || 'tool';
+}
+
+/**
+ * Generate a collapsed preview for an individual tool row.
+ * Grouped tool previews intentionally stay tool-name-only via getToolCallPreview.
+ */
+export function getIndividualToolCallPreview(toolCall: ToolCall): string {
+  const toolName = toolCall.name?.trim() || '';
+  const normalizedName = toolName.toLowerCase();
+  if (normalizedName === 'execute_command' || normalizedName.endsWith(':execute_command')) {
+    const args = normalizeToolArguments(toolCall.arguments);
+    const command = args?.command;
+    if (typeof command === 'string' && command.trim()) {
+      return command.replace(/\s+/g, ' ').trim();
+    }
+  }
+
+  return getToolCallPreview(toolCall);
 }
 
 /**
@@ -215,12 +247,47 @@ function truncatePreview(text: string, maxLength: number): string {
  * @returns Formatted JSON string with 2-space indentation
  */
 export function formatToolArguments(args: unknown): string {
-  if (!args) return '';
+  if (args === null || args === undefined) return '';
+  const normalizedArgs = parseJsonStringIfPossible(args);
   try {
-    return JSON.stringify(args, null, 2);
+    if (typeof normalizedArgs === 'string') return normalizedArgs;
+    return JSON.stringify(normalizedArgs, null, 2);
   } catch {
     return String(args);
   }
+}
+
+function parseJsonStringIfPossible(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+
+  const trimmed = value.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return value;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Normalize tool arguments into an object suitable for field-by-field rendering.
+ * Accepts either an object or a JSON string containing an object.
+ */
+export function normalizeToolArguments(args: unknown): Record<string, unknown> | null {
+  const normalizedArgs = parseJsonStringIfPossible(args);
+  if (!normalizedArgs || typeof normalizedArgs !== 'object' || Array.isArray(normalizedArgs)) {
+    return null;
+  }
+  return normalizedArgs as Record<string, unknown>;
+}
+
+/**
+ * Return normalized tool argument entries in insertion order for UI renderers.
+ */
+export function getToolArgumentEntries(args: unknown): ToolArgumentEntry[] {
+  const normalizedArgs = normalizeToolArguments(args);
+  return normalizedArgs ? Object.entries(normalizedArgs).map(([key, value]) => ({ key, value })) : [];
 }
 
 /**
@@ -230,16 +297,17 @@ export function formatToolArguments(args: unknown): string {
  * @returns A compact preview string like "path: /foo/bar, content: Hello..."
  */
 export function formatArgumentsPreview(args: unknown): string {
-  if (!args || typeof args !== 'object') return '';
-  const entries = Object.entries(args as Record<string, unknown>);
+  const normalizedArgs = normalizeToolArguments(args);
+  if (!normalizedArgs) return '';
+  const entries = Object.entries(normalizedArgs);
   if (entries.length === 0) return '';
 
   const preview = entries.slice(0, 3).map(([key, value]) => {
     let displayValue: string;
     if (typeof value === 'string') {
-      displayValue = value.length > 30 ? value.slice(0, 30) + '...' : value;
+      displayValue = truncatePreview(value, 30);
     } else if (typeof value === 'object') {
-      displayValue = Array.isArray(value) ? `[${value.length} items]` : '{...}';
+      displayValue = value === null ? 'null' : Array.isArray(value) ? `[${value.length} items]` : '{...}';
     } else {
       displayValue = String(value);
     }
@@ -260,6 +328,8 @@ export function formatArgumentsPreview(args: unknown): string {
 export const RESPOND_TO_USER_TOOL = 'respond_to_user';
 export const MARK_WORK_COMPLETE_TOOL = 'mark_work_complete';
 
+const sanitizeRespondToUserMarkdownLabel = (label: string) => label.replace(/[\[\]\(\)`\\]/g, '').trim();
+
 function isCompletionControlTool(name: string | undefined): boolean {
   return name === RESPOND_TO_USER_TOOL || name === MARK_WORK_COMPLETE_TOOL;
 }
@@ -275,13 +345,7 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   const parsedArgs = args as Record<string, unknown>;
   const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
   const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
-  const sanitizeImageAltText = (alt: string) => alt.replace(/[\[\]\(\)`\\]/g, '').trim();
-
-  const formatLocalImagePlaceholder = (alt: string, imagePath: string) => {
-    const safeAlt = alt.trim() || 'Image';
-    const escapedPath = imagePath.replace(/`/g, '\\`');
-    return `Local image (${safeAlt}): \`${escapedPath}\``;
-  };
+  const videos = Array.isArray(parsedArgs.videos) ? parsedArgs.videos : [];
 
   const imagesMd = images
     .map((img, index) => {
@@ -293,24 +357,39 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
         : typeof image.altText === 'string' && image.altText.trim().length > 0
           ? image.altText.trim()
           : `Image ${index + 1}`;
-      const safeAlt = sanitizeImageAltText(alt) || `Image ${index + 1}`;
+      const safeAlt = sanitizeRespondToUserMarkdownLabel(alt) || `Image ${index + 1}`;
 
       const url = typeof image.url === 'string' ? image.url.trim() : '';
       const dataUrl = typeof image.dataUrl === 'string' ? image.dataUrl.trim() : '';
-      const path = typeof image.path === 'string' ? image.path.trim() : '';
       const mimeType = typeof image.mimeType === 'string' ? image.mimeType.trim() : '';
       const data = typeof image.data === 'string' ? image.data.trim() : '';
       const legacyDataUrl = mimeType && data ? `data:${mimeType};base64,${data}` : '';
       const uri = url || dataUrl || legacyDataUrl;
 
       if (uri) return `![${safeAlt}](${uri})`;
-      if (path) return formatLocalImagePlaceholder(safeAlt, path);
       return '';
     })
     .filter(Boolean)
     .join('\n\n');
 
-  const combined = [text, imagesMd].filter(Boolean).join('\n\n').trim();
+  const videosMd = videos
+    .map((video, index) => {
+      if (!video || typeof video !== 'object') return '';
+
+      const parsedVideo = video as Record<string, unknown>;
+      const label = typeof parsedVideo.label === 'string' && parsedVideo.label.trim().length > 0
+        ? parsedVideo.label.trim()
+        : `Video ${index + 1}`;
+      const safeLabel = sanitizeRespondToUserMarkdownLabel(label) || `Video ${index + 1}`;
+      const url = typeof parsedVideo.url === 'string' ? parsedVideo.url.trim() : '';
+
+      if (url) return `[${safeLabel}](${url})`;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
+  const combined = [text, imagesMd, videosMd].filter(Boolean).join('\n\n').trim();
   return combined || null;
 }
 

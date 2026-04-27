@@ -49,6 +49,17 @@ const TTS_PROVIDERS = [
   { label: 'Supertonic', value: 'supertonic' },
 ] as const;
 
+const LOOP_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function describeLoopCadence(loop: Loop): string {
+  if (loop.runContinuously) return 'Continuous';
+  if (!loop.schedule) return `Every ${loop.intervalMinutes}min`;
+  const times = loop.schedule.times.join(', ');
+  if (loop.schedule.type === 'daily') return `Daily at ${times}`;
+  const days = loop.schedule.daysOfWeek.map(day => LOOP_DAY_LABELS[day] ?? String(day)).join(', ');
+  return `${days} at ${times}`;
+}
+
 // OpenAI TTS Voice Options
 const OPENAI_TTS_VOICES = [
   { label: 'Alloy', value: 'alloy' },
@@ -260,6 +271,11 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const displaySkills = useMemo(() => [...skills].sort((a, b) => {
+    const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
+    if (enabledDiff !== 0) return enabledDiff;
+    return a.name.localeCompare(b.name);
+  }), [skills]);
   const availableAcpMainAgents = useMemo(
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -798,6 +814,23 @@ export default function SettingsScreen({ navigation }: any) {
       }
     });
   };
+
+  const handleKnowledgeNotePromote = useCallback(async (note: KnowledgeNote) => {
+    if (!settingsClient || note.context === 'auto') return;
+    try {
+      await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
+      setKnowledgeNotes(prev =>
+        prev.map(existing =>
+          existing.id === note.id
+            ? { ...existing, context: 'auto', updatedAt: Date.now() }
+            : existing
+        )
+      );
+    } catch (error: any) {
+      console.error('[Settings] Failed to promote knowledge note to auto context:', error);
+      Alert.alert('Error', 'Failed to promote note to auto context');
+    }
+  }, [settingsClient]);
 
   // Navigate to knowledge note edit screen
   const handleKnowledgeNoteEdit = useCallback((note?: KnowledgeNote) => {
@@ -1495,6 +1528,8 @@ export default function SettingsScreen({ navigation }: any) {
               pitch={draft.ttsPitch ?? 1.0}
               ttsProvider={draft.ttsProvider ?? 'native'}
               edgeTtsVoice={draft.edgeTtsVoice}
+              remoteBaseUrl={draft.baseUrl}
+              remoteApiKey={draft.apiKey}
               onVoiceChange={(v) => updateLocalConfig({ ttsVoiceId: v })}
               onRateChange={(r) => updateLocalConfig({ ttsRate: r })}
               onPitchChange={(p) => updateLocalConfig({ ttsPitch: p })}
@@ -1502,7 +1537,7 @@ export default function SettingsScreen({ navigation }: any) {
               onEdgeTtsVoiceChange={(v) => updateLocalConfig({ edgeTtsVoice: v })}
             />
             <Text style={styles.helperText}>
-              Edge TTS voices play on web only. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
+              Edge TTS voices route through your paired desktop. OpenAI, Groq, and Gemini cloud voices are under the desktop-connected Text-to-Speech section below.
             </Text>
           </>
         )}
@@ -2514,7 +2549,7 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
-                  skills.map((skill) => (
+                  displaySkills.map((skill) => (
                     <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
                       <View style={styles.serverInfo}>
                         <Text style={styles.serverName}>{skill.name}</Text>
@@ -2533,7 +2568,7 @@ export default function SettingsScreen({ navigation }: any) {
                   ))
                 )}
                 <Text style={styles.helperText}>
-                  Toggle skills for the current profile
+                  Toggle skills for the Main Agent
                 </Text>
               </CollapsibleSection>
             )}
@@ -2568,14 +2603,26 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                         </View>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.noteDeleteButton}
-                        onPress={() => handleKnowledgeNoteDelete(note.id)}
-                        accessibilityLabel={`Delete note ${note.title}`}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.noteDeleteButtonText}>Delete</Text>
-                      </TouchableOpacity>
+                      <View style={styles.noteActions}>
+                        {note.context === 'search-only' && (
+                          <TouchableOpacity
+                            style={styles.notePromoteButton}
+                            onPress={() => handleKnowledgeNotePromote(note)}
+                            accessibilityLabel={`Promote note ${note.title} to auto context`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={styles.noteDeleteButton}
+                          onPress={() => handleKnowledgeNoteDelete(note.id)}
+                          accessibilityLabel={`Delete note ${note.title}`}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={styles.noteDeleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ))
                 )}
@@ -2586,7 +2633,7 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.createAgentButtonText}>+ Create Note</Text>
                 </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references.
+                  Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references. Use auto context sparingly for high-signal notes.
                 </Text>
               </CollapsibleSection>
             )}
@@ -2684,7 +2731,7 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                           <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
                           <Text style={styles.serverMeta} numberOfLines={2}>
-                            Every {loop.intervalMinutes}min
+                            {describeLoopCadence(loop)}
                             {loop.profileName && ` • ${loop.profileName}`}
                             {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
                           </Text>
@@ -3610,6 +3657,27 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
         horizontalMargin: 0,
       }),
       alignSelf: 'flex-start',
+    },
+    noteActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
+    },
+    notePromoteButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      alignSelf: 'flex-start',
+    },
+    notePromoteButtonText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '500',
     },
     noteDeleteButtonText: {
       color: theme.colors.destructive,

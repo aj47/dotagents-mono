@@ -1,9 +1,12 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@renderer/components/ui/button"
 import { Slider } from "@renderer/components/ui/slider"
 import { Play, Pause, Volume2, VolumeX, Loader2 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { ttsManager } from "@renderer/lib/tts-manager"
+
+const AUTO_PLAY_ATTEMPT_SUPPRESSION_MS = 5_000
+const recentAutoPlayAttemptByKey = new Map<string, number>()
 
 interface AudioPlayerProps {
   audioData?: ArrayBuffer
@@ -19,6 +22,26 @@ interface AudioPlayerProps {
   onPlayStateChange?: (playing: boolean) => void
   /** Audio output device ID (from navigator.mediaDevices.enumerateDevices) */
   audioOutputDeviceId?: string
+  /**
+   * Optional discriminator used to scope the cross-instance auto-play
+   * suppression window. Callers should pass a per-response identifier
+   * (e.g. `${sessionId}-${responseEventId}`) so that two distinct
+   * responses with identical wording aren't suppressed against each other.
+   */
+  autoPlaySuppressionKey?: string
+}
+
+function isAutoplayPolicyBlockedError(error: unknown): boolean {
+  const name = error instanceof DOMException ? error.name.toLowerCase() : ""
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase()
+
+  return (
+    name === "notallowederror" ||
+    message.includes("autoplay") ||
+    message.includes("user gesture") ||
+    message.includes("user didn't interact") ||
+    message.includes("not allowed")
+  )
 }
 
 export function AudioPlayer({
@@ -33,6 +56,7 @@ export function AudioPlayer({
   autoPlay = false,
   onPlayStateChange,
   audioOutputDeviceId,
+  autoPlaySuppressionKey,
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -42,8 +66,11 @@ export function AudioPlayer({
   const [hasAudio, setHasAudio] = useState(!!audioData)
   const [hasAutoPlayed, setHasAutoPlayed] = useState(false)
   const [wasStopped, setWasStopped] = useState(false)
+  const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
+  const playbackAttemptIdRef = useRef(0)
+  const autoPlayAttemptKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (audioData) {
@@ -55,7 +82,9 @@ export function AudioPlayer({
       audioUrlRef.current = URL.createObjectURL(blob)
       setHasAudio(true)
       setHasAutoPlayed(false)
+      autoPlayAttemptKeyRef.current = null
       setWasStopped(false)
+      setIsAutoplayBlocked(false)
 
       if (audioRef.current) {
         audioRef.current.src = audioUrlRef.current
@@ -161,19 +190,88 @@ export function AudioPlayer({
     }
   }, [audioOutputDeviceId])
 
+  const playAudio = useCallback(async (source: "auto" | "manual" | "autoplay-retry") => {
+    if (!audioRef.current || !hasAudio) return false
+
+    const attemptId = ++playbackAttemptIdRef.current
+
+    try {
+      await ttsManager.playExclusive(audioRef.current, {
+        source: `audio-player:${source}`,
+        autoPlay: source !== "manual",
+        textPreview: text.slice(0, 80),
+      })
+
+      if (playbackAttemptIdRef.current === attemptId) {
+        setIsAutoplayBlocked(false)
+      }
+      return true
+    } catch (playError) {
+      if (playbackAttemptIdRef.current !== attemptId) {
+        return false
+      }
+
+      if (source !== "manual" && isAutoplayPolicyBlockedError(playError)) {
+        console.warn("[AudioPlayer] Auto-play blocked until the next user gesture:", playError)
+        setIsAutoplayBlocked(true)
+        setIsPlaying(false)
+        return false
+      }
+
+      console.error(
+        source === "manual" ? "[AudioPlayer] Playback failed:" : "[AudioPlayer] Auto-play failed:",
+        playError,
+      )
+      setIsPlaying(false)
+      return false
+    }
+  }, [hasAudio, text])
+
   useEffect(() => {
     if (autoPlay && hasAudio && audioRef.current && !isPlaying && !hasAutoPlayed && !wasStopped) {
-      setHasAutoPlayed(true)
+      const normalizedText = text.replace(/\s+/g, " ").trim().toLowerCase()
+      const attemptKey = autoPlaySuppressionKey
+        ? `${autoPlaySuppressionKey}::${normalizedText}`
+        : normalizedText
+      const now = Date.now()
+      const lastAttemptAt = recentAutoPlayAttemptByKey.get(attemptKey) ?? 0
+      if (now - lastAttemptAt < AUTO_PLAY_ATTEMPT_SUPPRESSION_MS) return
+      recentAutoPlayAttemptByKey.set(attemptKey, now)
 
-      ttsManager.playExclusive(audioRef.current, {
-        source: "audio-player:auto",
-        autoPlay: true,
-        textPreview: text.slice(0, 80),
-      }).catch((error) => {
-        console.error("[AudioPlayer] Auto-play failed:", error)
-      })
+      for (const [key, attemptedAt] of recentAutoPlayAttemptByKey) {
+        if (now - attemptedAt > AUTO_PLAY_ATTEMPT_SUPPRESSION_MS) {
+          recentAutoPlayAttemptByKey.delete(key)
+        }
+      }
+
+      if (autoPlayAttemptKeyRef.current === attemptKey) return
+      autoPlayAttemptKeyRef.current = attemptKey
+      setHasAutoPlayed(true)
+      void playAudio("auto")
     }
-  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, text])
+  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, playAudio, autoPlaySuppressionKey, text])
+
+  useEffect(() => {
+    if (!isAutoplayBlocked || !hasAudio) return undefined
+
+    let retrying = false
+    const retryPlayback = () => {
+      if (retrying) return
+      retrying = true
+      window.removeEventListener("pointerdown", retryPlayback, { capture: true })
+      window.removeEventListener("keydown", retryPlayback, { capture: true })
+      setIsAutoplayBlocked(false)
+      void playAudio("autoplay-retry")
+    }
+
+    window.addEventListener("pointerdown", retryPlayback, { once: true, capture: true })
+    window.addEventListener("keydown", retryPlayback, { once: true, capture: true })
+
+    return () => {
+      window.removeEventListener("pointerdown", retryPlayback, { capture: true })
+      window.removeEventListener("keydown", retryPlayback, { capture: true })
+    }
+  }, [hasAudio, isAutoplayBlocked, playAudio])
 
   const handlePlayPause = async () => {
     if (!hasAudio && onGenerateAudio && !isGenerating && !error) {
@@ -191,11 +289,7 @@ export function AudioPlayer({
           audioRef.current.pause()
         } else {
           setWasStopped(false)
-          await ttsManager.playExclusive(audioRef.current, {
-            source: "audio-player:manual",
-            autoPlay: false,
-            textPreview: text.slice(0, 80),
-          })
+          await playAudio("manual")
         }
       } catch (playError) {
         console.error("[AudioPlayer] Playback failed:", playError)
@@ -249,7 +343,9 @@ export function AudioPlayer({
   const compactStatusText = hasAudio
     ? duration > 0
       ? `${formatTime(currentTime)} / ${formatTime(duration)}`
-      : "Loading audio…"
+      : isAutoplayBlocked
+        ? "Autoplay blocked — press any key or click to listen"
+        : "Loading audio…"
     : isGenerating
       ? "Generating audio…"
       : error
@@ -261,7 +357,9 @@ export function AudioPlayer({
       ? isPlaying
         ? "Playing audio"
         : "Audio ready"
-      : "Loading audio…"
+      : isAutoplayBlocked
+        ? "Autoplay blocked"
+        : "Loading audio…"
     : isGenerating
       ? "Generating audio…"
       : error
@@ -271,7 +369,9 @@ export function AudioPlayer({
   const compactStatusDetail = hasAudio
     ? duration > 0
       ? compactStatusText
-      : "Preparing playback controls"
+      : isAutoplayBlocked
+        ? "Press any key or click once to start playback"
+        : "Preparing playback controls"
     : isGenerating
       ? "Creating spoken playback"
       : error
@@ -351,7 +451,13 @@ export function AudioPlayer({
             </>
           ) : (
             <div className="text-sm text-muted-foreground break-words" aria-live="polite">
-              {isGenerating ? "Generating audio..." : error ? "Audio unavailable. Check the error above and try again." : "Click play to generate audio"}
+              {isGenerating
+                ? "Generating audio..."
+                : error
+                  ? "Audio unavailable. Check the error above and try again."
+                  : isAutoplayBlocked
+                    ? "Autoplay blocked. Click or press any key to start playback."
+                    : "Click play to generate audio"}
             </div>
           )}
         </div>

@@ -28,7 +28,7 @@ export function getSelectableMainAcpAgents(
 
   for (const agent of profileAgents) {
     if (agent.enabled === false) continue
-    if (agent.connection.type !== 'acpx') continue
+    if (agent.connection.type !== 'acpx' && agent.connection.type !== 'acp' && agent.connection.type !== 'stdio') continue
     addOption(agent.name, agent.displayName)
   }
 

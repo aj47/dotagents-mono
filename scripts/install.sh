@@ -6,13 +6,15 @@
 #
 # Options (via env vars):
 #   DOTAGENTS_FROM_SOURCE=1   Build from source instead of downloading a release
+#   DOTAGENTS_FROM_SOURCE=0   Force release download even on headless Linux
 #   DOTAGENTS_DIR=~/mydir     Custom install directory (default: ~/.dotagents)
 #   DOTAGENTS_RELEASE_TAG=v1  Install a specific GitHub release tag
 #   DOTAGENTS_NODE_MAJOR=24    Node.js major to install for Linux source installs
 #   DOTAGENTS_INSTALL_RUST=0   Skip auto-installing Rust for Linux source installs
 #   DOTAGENTS_SKIP_ONBOARDING=1 Skip Linux source headless onboarding
-#   DOTAGENTS_AUTH_MODE=codex  Headless onboarding auth mode: provider, codex, or skip
-#   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex auth mode
+#   DOTAGENTS_AUTH_MODE=codex  Headless auth mode: provider, codex, codex-acpx, or skip
+#   DOTAGENTS_INSTALL_SERVICE=0 Skip Linux systemd daemon startup service install
+#   DOTAGENTS_INSTALL_ACPX=0  Skip installing acpx when using codex-acpx auth mode
 #   DOTAGENTS_INSTALL_CODEX=0 Skip installing Codex CLI when using codex auth mode
 #   DOTAGENTS_CODEX_LOGIN=0   Skip Codex ChatGPT OAuth login during onboarding
 
@@ -88,10 +90,12 @@ INSTALL_DIR="${DOTAGENTS_DIR:-$HOME/.dotagents}"
 REPO="aj47/dotagents-mono"
 REPO_URL="https://github.com/$REPO"
 API_BASE_URL="https://api.github.com/repos/$REPO/releases"
+FROM_SOURCE_EXPLICIT="${DOTAGENTS_FROM_SOURCE+x}"
 FROM_SOURCE="${DOTAGENTS_FROM_SOURCE:-0}"
 RELEASE_TAG="${DOTAGENTS_RELEASE_TAG:-latest}"
 TAG=""
 ASSET_URLS=""
+SELECTED_ASSET_URL=""
 PNPM_CMD=()
 MIN_NODE_VERSION="20.19.4"
 SOURCE_NODE_MAJOR="${DOTAGENTS_NODE_MAJOR:-24}"
@@ -120,6 +124,16 @@ detect_platform() {
   esac
 }
 
+prefer_source_install_for_platform() {
+  [ "$PLATFORM" = "linux" ] || return 1
+  [ -z "$FROM_SOURCE_EXPLICIT" ] || return 1
+
+  # A fresh VPS/VM generally has no desktop session and no complete AppImage
+  # runtime stack. Use the source/headless CLI installer there so the one-line
+  # install sets up system deps, builds the headless app, and runs onboarding.
+  [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]
+}
+
 extract_tag_name() {
   printf '%s' "$1" | grep -Eo '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"/\1/'
 }
@@ -131,20 +145,36 @@ extract_download_urls() {
 fetch_release_metadata() {
   ensure_cmd curl "Install curl first."
 
-  local api_url release_json
-  if [ "$RELEASE_TAG" = "latest" ]; then
+  info "Fetching release metadata from GitHub..."
+  fetch_release_metadata_for_tag "$RELEASE_TAG" || die "Failed to fetch release metadata from GitHub."
+}
+
+fetch_release_metadata_for_tag() {
+  local release_tag="$1"
+  local api_url release_json fetched_tag asset_urls
+  if [ "$release_tag" = "latest" ]; then
     api_url="$API_BASE_URL/latest"
   else
-    api_url="$API_BASE_URL/tags/$RELEASE_TAG"
+    api_url="$API_BASE_URL/tags/$release_tag"
   fi
 
-  info "Fetching release metadata from GitHub..."
-  release_json="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url")" || die "Failed to fetch release metadata from GitHub."
-  TAG="$(extract_tag_name "$release_json")"
-  ASSET_URLS="$(extract_download_urls "$release_json")"
+  release_json="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$api_url")" || return 1
+  fetched_tag="$(extract_tag_name "$release_json" || true)"
+  asset_urls="$(extract_download_urls "$release_json" || true)"
 
-  [ -n "$TAG" ] || die "Could not determine the release tag from GitHub."
-  [ -n "$ASSET_URLS" ] || die "No downloadable assets were found on release $TAG."
+  [ -n "$fetched_tag" ] || return 1
+  [ -n "$asset_urls" ] || return 1
+
+  TAG="$fetched_tag"
+  ASSET_URLS="$asset_urls"
+}
+
+list_release_tags() {
+  ensure_cmd curl "Install curl first."
+
+  curl -fsSL -H 'Accept: application/vnd.github+json' "$API_BASE_URL?per_page=30" |
+    grep -Eo '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' |
+    sed -E 's/.*"([^"]+)"/\1/'
 }
 
 find_asset_url() {
@@ -172,6 +202,10 @@ select_release_asset_url() {
       ;;
     linux)
       asset_url="$(find_asset_url "*/DotAgents-*-${asset_arch}.AppImage" || true)"
+      if [ -z "$asset_url" ] && [ "$asset_arch" = "x64" ]; then
+        # Older Linux releases shipped a single x64 AppImage without an arch suffix.
+        asset_url="$(find_asset_url "*/DotAgents-*.AppImage" || true)"
+      fi
       ;;
     win)
       if [ "$asset_arch" != "x64" ]; then
@@ -185,8 +219,44 @@ select_release_asset_url() {
       ;;
   esac
 
-  [ -n "$asset_url" ] || die "No matching release asset found for $PLATFORM/$ARCH on $TAG."
+  [ -n "$asset_url" ] || return 1
   printf '%s\n' "$asset_url"
+}
+
+select_release_asset_url_with_fallback() {
+  local asset_url original_tag release_tags fallback_tag
+
+  if asset_url="$(select_release_asset_url)"; then
+    SELECTED_ASSET_URL="$asset_url"
+    return 0
+  fi
+
+  original_tag="$TAG"
+  if [ "$RELEASE_TAG" != "latest" ]; then
+    die "No matching release asset found for $PLATFORM/$ARCH on $TAG."
+  fi
+
+  warn "No matching release asset found for $PLATFORM/$ARCH on $original_tag. Trying previous releases..." >&2
+  release_tags="$(list_release_tags)" || die "Failed to fetch release list from GitHub."
+
+  while IFS= read -r fallback_tag; do
+    [ -n "$fallback_tag" ] || continue
+    [ "$fallback_tag" != "$original_tag" ] || continue
+
+    if ! fetch_release_metadata_for_tag "$fallback_tag"; then
+      warn "Skipping $fallback_tag because its release metadata could not be read." >&2
+      continue
+    fi
+
+    if asset_url="$(select_release_asset_url)"; then
+      warn "Falling back to $TAG for $PLATFORM/$ARCH." >&2
+      SELECTED_ASSET_URL="$asset_url"
+      return 0
+    fi
+  done <<< "$release_tags"
+
+  TAG="$original_tag"
+  die "No matching release asset found for $PLATFORM/$ARCH on $original_tag or previous releases."
 }
 
 download_file() {
@@ -251,22 +321,59 @@ install_release_mac() {
   info "Launch it with: open '$app_dest'"
 }
 
+linux_has_fuse2() {
+  if has ldconfig && ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
+    return 0
+  fi
+
+  [ -e /lib/libfuse.so.2 ] || \
+    [ -e /usr/lib/libfuse.so.2 ] || \
+    [ -e /lib/x86_64-linux-gnu/libfuse.so.2 ] || \
+    [ -e /usr/lib/x86_64-linux-gnu/libfuse.so.2 ] || \
+    [ -e /lib/aarch64-linux-gnu/libfuse.so.2 ] || \
+    [ -e /usr/lib/aarch64-linux-gnu/libfuse.so.2 ]
+}
+
+write_linux_launcher() {
+  local launcher_path="$1"
+  local launch_target="$2"
+
+  cat > "$launcher_path" <<EOF
+#!/usr/bin/env bash
+if [ "\$(id -u)" -eq 0 ]; then
+  exec "$launch_target" --no-sandbox "\$@"
+fi
+exec "$launch_target" "\$@"
+EOF
+  chmod +x "$launcher_path"
+}
+
 install_release_linux() {
   local asset_url="$1"
-  local app_path launcher_path user_bin
+  local app_path launcher_path user_bin launch_target extract_dir extracted_app_run
 
   app_path="$INSTALL_DIR/$(basename "$asset_url")"
   launcher_path="$INSTALL_DIR/dotagents"
   user_bin="$HOME/.local/bin"
+  launch_target="$app_path"
 
   download_file "$asset_url" "$app_path"
   chmod +x "$app_path"
 
-  cat > "$launcher_path" <<EOF
-#!/usr/bin/env bash
-exec "$app_path" "\$@"
-EOF
-  chmod +x "$launcher_path"
+  if [[ "$app_path" == *.AppImage ]] && ! linux_has_fuse2; then
+    warn "FUSE 2 (libfuse.so.2) was not found; extracting AppImage for compatibility."
+    extract_dir="$INSTALL_DIR/$(basename "$app_path").extracted"
+    rm -rf "$extract_dir"
+    mkdir -p "$extract_dir"
+    info "Extracting $(basename "$app_path")..."
+    (cd "$extract_dir" && "$app_path" --appimage-extract >/dev/null)
+    extracted_app_run="$extract_dir/squashfs-root/AppRun"
+    [ -x "$extracted_app_run" ] || die "Failed to extract AppImage launcher at $extracted_app_run."
+    launch_target="$extracted_app_run"
+    ok "AppImage extracted to $extract_dir/squashfs-root"
+  fi
+
+  write_linux_launcher "$launcher_path" "$launch_target"
 
   mkdir -p "$user_bin"
   ln -sf "$launcher_path" "$user_bin/dotagents"
@@ -300,7 +407,9 @@ install_release() {
   info "Using release: $TAG"
 
   local asset_url
-  asset_url="$(select_release_asset_url)"
+  select_release_asset_url_with_fallback
+  asset_url="$SELECTED_ASSET_URL"
+  info "Using release asset from: $TAG"
 
   case "$PLATFORM" in
     mac) install_release_mac "$asset_url" ;;
@@ -319,12 +428,12 @@ install_linux_source_system_deps() {
       git curl ca-certificates build-essential pkg-config \
       libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
       xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
-      libasound2t64 libgbm1 xvfb || \
+      libasound2t64 libgbm1 libgdk-pixbuf-2.0-0 xvfb || \
     run_as_root apt-get install -y -qq \
       git curl ca-certificates build-essential pkg-config \
       libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
       xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
-      libasound2 libgbm1 xvfb
+      libasound2 libgbm1 libgdk-pixbuf-2.0-0 xvfb
     ok "Linux source dependencies installed"
     return 0
   fi
@@ -333,7 +442,7 @@ install_linux_source_system_deps() {
     run_as_root dnf install -y -q \
       git curl ca-certificates gcc gcc-c++ make pkg-config \
       gtk3 libnotify nss libXScrnSaver libXtst \
-      at-spi2-core libuuid libsecret alsa-lib mesa-libgbm \
+      at-spi2-core libuuid libsecret alsa-lib mesa-libgbm gdk-pixbuf2 \
       xorg-x11-server-Xvfb
     ok "Linux source dependencies installed"
     return 0
@@ -516,6 +625,154 @@ EOF
   fi
 }
 
+write_linux_headless_daemon_script() {
+  local repo_dir daemon_script
+  repo_dir="$INSTALL_DIR/repo"
+  daemon_script="$repo_dir/run-headless-daemon.sh"
+
+  cat > "$daemon_script" <<EOF || return 1
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$repo_dir/apps/desktop"
+exec xvfb-run --auto-servernum "$repo_dir/start-headless.sh"
+EOF
+  chmod +x "$daemon_script"
+}
+
+enable_linux_user_linger() {
+  has loginctl || return 0
+
+  if [ "$(id -u)" -eq 0 ]; then
+    loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || \
+      warn "Could not enable systemd linger; service will start after user login, but may not start at boot until linger is enabled."
+  elif has sudo && sudo -n true >/dev/null 2>&1; then
+    sudo -n loginctl enable-linger "$(id -un)" >/dev/null 2>&1 || \
+      warn "Could not enable systemd linger; service will start after user login, but may not start at boot until linger is enabled."
+  else
+    warn "Could not enable systemd linger without passwordless sudo. To start at boot, run: sudo loginctl enable-linger $(id -un)"
+  fi
+}
+
+install_linux_user_service() {
+  local repo_dir service_dir service_file daemon_script path_env
+  has systemctl || return 1
+  systemctl --user show-environment >/dev/null 2>&1 || return 1
+
+  repo_dir="$INSTALL_DIR/repo"
+  daemon_script="$repo_dir/run-headless-daemon.sh"
+  service_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+  service_file="$service_dir/dotagents.service"
+  path_env="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+
+  mkdir -p "$service_dir" || return 1
+  cat > "$service_file" <<EOF || return 1
+[Unit]
+Description=DotAgents Headless Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$repo_dir/apps/desktop
+Environment=HOME=$HOME
+Environment=DISPLAY=
+Environment=DOTAGENTS_TERMINAL_MODE=1
+Environment=NODE_ENV=production
+Environment=PATH=$path_env
+ExecStart=$daemon_script
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
+EOF
+
+  systemctl --user daemon-reload || return 1
+  systemctl --user enable dotagents.service || return 1
+  systemctl --user start dotagents.service || \
+    warn "User service was enabled, but did not start yet. It will keep retrying via systemd."
+
+  enable_linux_user_linger
+  ok "User systemd service installed: dotagents.service"
+}
+
+install_linux_system_service() {
+  local repo_dir daemon_script service_tmp user_name path_env
+  has systemctl || return 1
+
+  repo_dir="$INSTALL_DIR/repo"
+  daemon_script="$repo_dir/run-headless-daemon.sh"
+  service_tmp="$(mktemp)" || return 1
+  user_name="$(id -un)"
+  path_env="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+
+  cat > "$service_tmp" <<EOF || { rm -f "$service_tmp"; return 1; }
+[Unit]
+Description=DotAgents Headless Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$user_name
+WorkingDirectory=$repo_dir/apps/desktop
+Environment=HOME=$HOME
+Environment=DISPLAY=
+Environment=DOTAGENTS_TERMINAL_MODE=1
+Environment=NODE_ENV=production
+Environment=PATH=$path_env
+ExecStart=$daemon_script
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  run_as_root cp "$service_tmp" /etc/systemd/system/dotagents.service || { rm -f "$service_tmp"; return 1; }
+  rm -f "$service_tmp"
+  run_as_root systemctl daemon-reload || return 1
+  run_as_root systemctl enable dotagents.service || return 1
+  run_as_root systemctl start dotagents.service || \
+    warn "System service was enabled, but did not start yet. It will keep retrying via systemd."
+
+  ok "System systemd service installed: dotagents.service"
+}
+
+setup_linux_headless_service() {
+  [ "$PLATFORM" = "linux" ] || return 0
+
+  local install_service="${DOTAGENTS_INSTALL_SERVICE:-1}"
+  case "$(printf '%s' "$install_service" | tr '[:upper:]' '[:lower:]')" in
+    0|false|no|off)
+      info "Skipping daemon startup service because DOTAGENTS_INSTALL_SERVICE=0."
+      return 0
+      ;;
+  esac
+
+  write_linux_headless_daemon_script
+
+  if [ "$(id -u)" -ne 0 ] && install_linux_user_service; then
+    return 0
+  fi
+
+  if install_linux_system_service; then
+    return 0
+  fi
+
+  if install_linux_user_service; then
+    return 0
+  fi
+
+  warn "Could not install a startup service. The dotagents CLI will still self-start the daemon on demand."
+}
+
 ensure_acpx_for_codex() {
   [ "$PLATFORM" = "linux" ] || return 0
 
@@ -617,16 +874,18 @@ run_headless_onboarding() {
 
   printf "  ${BOLD}Auth mode${NC}\n"
   printf "  1) Provider API token (OpenAI-compatible)\n"
-  printf "  2) Codex auth via acpx\n"
-  printf "  3) Skip for now\n\n"
+  printf "  2) Codex ChatGPT OAuth (direct, no acpx)\n"
+  printf "  3) Codex via acpx external agent\n"
+  printf "  4) Skip for now\n\n"
 
   local auth_mode api_key base_url model discord_token remote_api_key port
-  auth_mode="${AUTH_MODE:-$(ask "Choose auth mode [provider/codex/skip]: " DOTAGENTS_AUTH_MODE "provider")}"
+  auth_mode="${AUTH_MODE:-$(ask "Choose auth mode [provider/codex/codex-acpx/skip]: " DOTAGENTS_AUTH_MODE "provider")}"
   auth_mode="$(printf '%s' "$auth_mode" | tr '[:upper:]' '[:lower:]')"
   case "$auth_mode" in
     1|provider|providers|api|token|openai) auth_mode="provider" ;;
-    2|codex|acpx) auth_mode="codex" ;;
-    3|skip|none|later) auth_mode="skip" ;;
+    2|codex|codex-direct|chatgpt|chatgpt-web) auth_mode="codex" ;;
+    3|codex-acpx|acpx) auth_mode="codex-acpx" ;;
+    4|skip|none|later) auth_mode="skip" ;;
     *) warn "Unknown auth mode '$auth_mode'; defaulting to provider token."; auth_mode="provider" ;;
   esac
 
@@ -639,6 +898,10 @@ run_headless_onboarding() {
     base_url="$(ask "API base URL [leave empty for OpenAI default]: " DOTAGENTS_API_BASE_URL "")"
     model="$(ask "Model name [gpt-4.1-mini]: " DOTAGENTS_MODEL "gpt-4.1-mini")"
   elif [ "$auth_mode" = "codex" ]; then
+    ensure_codex_cli_for_codex_auth
+    run_codex_chatgpt_login
+    model="$(ask "Codex model [gpt-5.4-mini]: " DOTAGENTS_MODEL "gpt-5.4-mini")"
+  elif [ "$auth_mode" = "codex-acpx" ]; then
     ensure_acpx_for_codex
     ensure_codex_cli_for_codex_auth
     run_codex_chatgpt_login
@@ -679,6 +942,32 @@ const presetMap = {
 }
 const presetId = presetMap[baseUrl] || 'builtin-openai'
 
+function withDisabledFrontmatter(markdown) {
+  const lines = markdown.split('\n')
+  if (lines[0] !== '---') return markdown
+  const closeIndex = lines.indexOf('---', 1)
+  if (closeIndex < 0) return markdown
+  const enabledIndex = lines.findIndex((line, index) => index > 0 && index < closeIndex && /^enabled:\s*/.test(line))
+  if (enabledIndex >= 0) lines[enabledIndex] = 'enabled: false'
+  else lines.splice(closeIndex, 0, 'enabled: false')
+  return lines.join('\n')
+}
+
+function disableLegacyCodexAcpxProfile() {
+  const agentDir = path.join(process.env.HOME || '.', '.agents', 'agents', 'codex')
+  const agentPath = path.join(agentDir, 'agent.md')
+  const configPath = path.join(agentDir, 'config.json')
+  let markdown = ''
+  let connection = null
+  try { markdown = fs.readFileSync(agentPath, 'utf8') } catch {}
+  try { connection = JSON.parse(fs.readFileSync(configPath, 'utf8')).connection } catch {}
+  const isGeneratedAcpxCodex = markdown.includes('description: OpenAI Codex via acpx')
+    || (connection?.type === 'acpx' && connection?.agent === 'codex')
+  if (!markdown || !isGeneratedAcpxCodex) return false
+  fs.writeFileSync(agentPath, withDisabledFrontmatter(markdown))
+  return true
+}
+
 let cfg = {}
 try { cfg = JSON.parse(fs.readFileSync(configFile, 'utf8')) } catch {}
 cfg = {
@@ -713,6 +1002,20 @@ if (authMode === 'provider') {
   cfg.modelPresets = modelPresets
   cfg.mainAgentMode = 'api'
 } else if (authMode === 'codex') {
+  cfg.mainAgentMode = 'api'
+  cfg.agentProviderId = 'chatgpt-web'
+  cfg.mcpToolsProviderId = 'chatgpt-web'
+  cfg.agentChatgptWebModel = model
+  cfg.mcpToolsChatgptWebModel = model
+  cfg.transcriptPostProcessingProviderId = 'chatgpt-web'
+  cfg.transcriptPostProcessingChatgptWebModel = model
+  cfg.chatgptWebBaseUrl = 'https://chatgpt.com'
+  cfg.currentModelPresetId = undefined
+  delete cfg.mainAgentName
+  cfg.openaiApiKey = cfg.openaiApiKey || ''
+  cfg.openaiBaseUrl = cfg.openaiBaseUrl || ''
+  disableLegacyCodexAcpxProfile()
+} else if (authMode === 'codex-acpx') {
   cfg.mainAgentMode = 'acpx'
   cfg.mainAgentName = 'codex'
 
@@ -789,11 +1092,13 @@ install_from_source() {
     build_linux_headless_app
     setup_linux_headless_cli
     run_headless_onboarding
+    setup_linux_headless_service
   fi
 
   ok "Source checkout is ready at $INSTALL_DIR/repo"
   if [ "$PLATFORM" = "linux" ]; then
     info "Start the headless CLI with: $HOME/.local/bin/dotagents"
+    info "Manage the daemon with: systemctl status dotagents 2>/dev/null || systemctl --user status dotagents"
     info "Start the desktop app with: cd $INSTALL_DIR/repo && $(printf '%s ' "${PNPM_CMD[@]}")dev"
   else
     info "Start the desktop app with:"
@@ -809,6 +1114,12 @@ main() {
 
   detect_platform
   info "Detected: $PLATFORM/$ARCH"
+
+  if prefer_source_install_for_platform; then
+    FROM_SOURCE="1"
+    info "Linux headless environment detected; installing source/headless CLI instead of a desktop release asset."
+    info "Set DOTAGENTS_FROM_SOURCE=0 to force release asset installation."
+  fi
 
   if [ "$FROM_SOURCE" = "1" ]; then
     install_from_source

@@ -19,7 +19,7 @@ For a Linux source/headless install, run the installer in source mode:
 curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | DOTAGENTS_FROM_SOURCE=1 bash
 ```
 
-The installer builds the headless app, runs onboarding, and installs the CLI at:
+The installer builds the headless app, runs onboarding, installs a self-restarting daemon service when `systemd` is available, and installs the CLI at:
 
 ```bash
 ~/.local/bin/dotagents
@@ -37,7 +37,7 @@ Otherwise run it directly:
 ~/.local/bin/dotagents
 ```
 
-For VPS/systemd installs, use the VPS installer from the repository. It installs `dotagents` globally and manages the daemon with `systemd`.
+On headless Linux hosts, the one-line installer defaults to this source/headless path. To skip service installation, set `DOTAGENTS_INSTALL_SERVICE=0`.
 
 ---
 
@@ -59,19 +59,26 @@ dotagents setup
 Setup asks which auth mode to use:
 
 1. **Provider API token** — OpenAI-compatible API key, optional base URL, and model name.
-2. **Codex ChatGPT OAuth via acpx** — configure Codex as the main agent and run the Codex headless OAuth flow. No API key is required.
+2. **Codex ChatGPT OAuth (direct)** — use DotAgents' built-in OpenAI Codex provider with Codex device-code OAuth. No API key or `acpx` install is required.
+3. **Codex via acpx** — configure an external acpx-managed Codex agent as the main agent.
 
 It also asks for:
 
 - Optional Discord bot token
 
-For Codex mode, the setup flow creates a Codex agent profile at:
+For direct Codex mode, setup configures `mainAgentMode: api` with the `chatgpt-web` provider. It uses Codex CLI's ChatGPT login cache from:
+
+```bash
+~/.codex/auth.json
+```
+
+For acpx Codex mode, the setup flow creates a Codex agent profile at:
 
 ```bash
 ~/.agents/agents/codex/
 ```
 
-If `acpx` or the Codex CLI are not installed, setup can install them with npm. You can also install them manually:
+If the Codex CLI is not installed, setup can install it with npm. If you choose the acpx mode, setup can also install `acpx`. You can install them manually:
 
 ```bash
 npm install -g acpx@latest
@@ -84,7 +91,16 @@ For headless SSH servers, DotAgents setup runs Codex device-code OAuth for you:
 dotagents setup
 ```
 
-Choose **Codex auth via acpx**, then choose to run OAuth. Open the shown link on your desktop browser, then enter the one-time code from the SSH session. Codex stores the login cache in `~/.codex/auth.json`.
+Choose **Codex ChatGPT OAuth (direct)**, then choose to run OAuth. Open the shown link on your desktop browser, then enter the one-time code from the SSH session. Codex stores the login cache in `~/.codex/auth.json`, and DotAgents uses it directly through the `chatgpt-web` provider.
+
+For non-interactive installs, set `DOTAGENTS_AUTH_MODE`:
+
+```bash
+DOTAGENTS_AUTH_MODE=codex        # direct Codex provider, no acpx
+DOTAGENTS_AUTH_MODE=codex-acpx   # external acpx Codex agent
+DOTAGENTS_AUTH_MODE=provider     # OpenAI-compatible API key
+DOTAGENTS_AUTH_MODE=skip         # configure later
+```
 
 The CLI stores headless config at:
 
@@ -143,6 +159,30 @@ Examples:
 
 ---
 
+## Daemon startup and recovery
+
+On Linux, the installer tries to create a `dotagents.service` unit with `Restart=always` so the daemon starts at boot and recovers after crashes.
+
+Common service commands:
+
+```bash
+systemctl status dotagents
+systemctl restart dotagents
+journalctl -u dotagents -n 80 --no-pager
+```
+
+For user-level services, use the user variants:
+
+```bash
+systemctl --user status dotagents
+systemctl --user restart dotagents
+journalctl --user -u dotagents -n 80 --no-pager
+```
+
+The CLI also self-heals on demand: before running most commands, it checks `/v1/operator/health`, tries to start the installed service if one exists, and falls back to launching the headless daemon directly.
+
+---
+
 ## Discord commands
 
 The CLI can configure and operate the Discord bot integration:
@@ -168,7 +208,7 @@ Safe defaults require an `@mention` in servers. Use `/discord access` before wid
 |---------|-----|
 | `dotagents: command not found` | Run `~/.local/bin/dotagents` directly or add `~/.local/bin` to your `PATH`. |
 | CLI starts setup repeatedly | Re-run `/setup` and confirm the API key was saved to `~/.config/app.dotagents/config.json`. |
-| Service will not start | Check that `xvfb-run` is installed and run `dotagents` again. |
+| Service will not start | Check service logs with `journalctl -u dotagents -n 80 --no-pager` or `journalctl --user -u dotagents -n 80 --no-pager`; then run `dotagents` again to trigger CLI recovery. |
 | Discord is enabled but offline | Run `/discord`, then `/discord token <token>`, `/discord enable`, and `/discord connect`. |
 
 For API-level debugging, see the [Remote API Reference](api) and [Debug & Diagnostics](debug).

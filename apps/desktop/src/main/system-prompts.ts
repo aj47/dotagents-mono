@@ -103,7 +103,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   if (hasLoadSkillInstructions) {
     sections.push(`SKILLS:
 - Skills are optional instruction modules listed below.
-- Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.`)
+- Before using a skill, call load_skill_instructions(skillId) at most once per skill per agent session. If it already returned successfully, reuse the prior instructions and proceed; do not reload unless the previous call failed or the user explicitly asks to reload it.
+- Do not guess a skill's contents from its name/description.`)
   }
 
   if (hasRespondToUser && hasMarkWorkComplete) {
@@ -501,7 +502,7 @@ export function constructMinimalSystemPrompt(
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
   if (skillsIndex?.trim()) {
     prompt +=
-      " Skills are optional instruction modules. Call load_skill_instructions({ skillId: \"<id>\" }) using the exact id shown before the dash."
+      " Skills are optional instruction modules. Call load_skill_instructions({ skillId: \"<id>\" }) at most once per skill per agent session, using the exact id shown before the dash. If already loaded, reuse the prior instructions."
     prompt += `\n\nAVAILABLE SKILLS:\n${skillsIndex.trim()}`
   }
 

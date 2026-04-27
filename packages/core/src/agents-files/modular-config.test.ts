@@ -100,6 +100,58 @@ describe("modular-config", () => {
     expect(layout.themePreference).toBe("dark")
   })
 
+  it("does not rewrite layer JSON files when the in-memory value is unchanged", () => {
+    const dir = mkTempDir("dotagents-modular-skip-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    const config = {
+      textInputEnabled: false,
+      mcpMaxIterations: 99,
+      themePreference: "dark",
+    } as unknown as Config
+
+    writeAgentsLayerFromConfig(layer, config, { maxBackups: 5 })
+    const mtimes = {
+      settings: fs.statSync(layer.settingsJsonPath).mtimeMs,
+      mcp: fs.statSync(layer.mcpJsonPath).mtimeMs,
+      layout: fs.statSync(layer.layoutJsonPath).mtimeMs,
+    }
+
+    const waitUntil = Date.now() + 20
+    while (Date.now() < waitUntil) { /* spin */ }
+
+    writeAgentsLayerFromConfig(layer, config, { maxBackups: 5 })
+
+    expect(fs.statSync(layer.settingsJsonPath).mtimeMs).toBe(mtimes.settings)
+    expect(fs.statSync(layer.mcpJsonPath).mtimeMs).toBe(mtimes.mcp)
+    expect(fs.statSync(layer.layoutJsonPath).mtimeMs).toBe(mtimes.layout)
+
+    // No backups should have been rotated for a no-op save.
+    const backups = fs.existsSync(layer.backupsDir)
+      ? fs.readdirSync(layer.backupsDir).filter((f) => f.endsWith(".bak"))
+      : []
+    expect(backups.length).toBe(0)
+  })
+
+  it("does not rewrite system-prompt.md / agents.md when unchanged", () => {
+    const dir = mkTempDir("dotagents-modular-prompts-skip-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    writeAgentsPrompts(layer, "my prompt", "my guidelines", DEFAULT_PROMPT, { maxBackups: 5 })
+    const sysMtime = fs.statSync(layer.systemPromptMdPath).mtimeMs
+    const agentsMtime = fs.statSync(layer.agentsMdPath).mtimeMs
+
+    const waitUntil = Date.now() + 20
+    while (Date.now() < waitUntil) { /* spin */ }
+
+    writeAgentsPrompts(layer, "my prompt", "my guidelines", DEFAULT_PROMPT, { maxBackups: 5 })
+
+    expect(fs.statSync(layer.systemPromptMdPath).mtimeMs).toBe(sysMtime)
+    expect(fs.statSync(layer.agentsMdPath).mtimeMs).toBe(agentsMtime)
+  })
+
   it("finds .agents directory upward", () => {
     const dir = mkTempDir("dotagents-find-agents-")
     const rootAgents = path.join(dir, ".agents")

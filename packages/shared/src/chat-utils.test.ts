@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   shouldCollapseMessage,
   getToolCallsSummary,
+  getToolCallPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
+  getToolArgumentEntries,
   formatToolArguments,
   formatArgumentsPreview,
   RESPOND_TO_USER_TOOL,
@@ -27,6 +30,26 @@ describe('shouldCollapseMessage', () => {
     expect(shouldCollapseMessage(longContent)).toBe(true)
   })
 
+  it('ignores data URL markdown image payload length', () => {
+    const content = `Here is the image:\n\n![diagram](data:image/png;base64,${'a'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('ignores http markdown image payload length', () => {
+    const content = `Looks good\n\n![remote image](https://example.com/${'a'.repeat(500)}.png)`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('ignores conversation asset markdown image payload length', () => {
+    const content = `Screenshot attached\n\n![screenshot](assets://conversation-image/${'a'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(false)
+  })
+
+  it('still collapses when non-image text exceeds the threshold', () => {
+    const content = `${'a'.repeat(201)}\n\n![diagram](data:image/png;base64,${'b'.repeat(500)})`
+    expect(shouldCollapseMessage(content)).toBe(true)
+  })
+
   it('returns true when tool calls are present', () => {
     expect(shouldCollapseMessage('short', [{ name: 'search', arguments: {} }])).toBe(true)
   })
@@ -46,12 +69,49 @@ describe('getToolCallsSummary', () => {
     expect(getToolCallsSummary([])).toBe('')
   })
 
-  it('returns formatted tool names', () => {
+  it('returns tool-name-only previews', () => {
     const calls = [
-      { name: 'search', arguments: {} },
-      { name: 'read_file', arguments: {} },
+      { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      { name: 'read_file', arguments: { path: 'apps/desktop/src/main.ts' } },
     ]
-    expect(getToolCallsSummary(calls)).toBe('🔧 search, read_file')
+    expect(getToolCallsSummary(calls)).toBe('execute_command, read_file')
+  })
+})
+
+describe('getToolCallPreview', () => {
+  it('returns only the tool name for execute_command', () => {
+    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('execute_command')
+  })
+
+  it('omits common structured tool arguments', () => {
+    expect(getToolCallPreview({ name: 'write_file', arguments: { path: 'README.md', content: 'hello' } })).toBe('write_file')
+    expect(getToolCallPreview({ name: 'web_search', arguments: { query: 'DotAgents skills' } })).toBe('web_search')
+  })
+
+  it('falls back to the raw tool name only', () => {
+    expect(getToolCallPreview({ name: 'custom_tool', arguments: { foo: 'bar', nested: { value: true } } })).toBe('custom_tool')
+  })
+
+  it('sanitizes whitespace so collapsed labels stay one word', () => {
+    expect(getToolCallPreview({ name: 'custom tool\nname', arguments: {} })).toBe('custom_tool_name')
+  })
+})
+
+describe('getIndividualToolCallPreview', () => {
+  it('uses the actual command for individual execute_command rows', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('git status --short')
+  })
+
+  it('keeps multiline execute_command previews on one line', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: { command: "python3 - <<'PY'\nprint('hi')\nPY" } })).toBe("python3 - <<'PY' print('hi') PY")
+  })
+
+  it('still uses tool-name-only previews for non-command tools', () => {
+    expect(getIndividualToolCallPreview({ name: 'read_file', arguments: { path: 'README.md' } })).toBe('read_file')
+  })
+
+  it('supports JSON string command arguments', () => {
+    expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: '{"command":"pnpm test"}' as unknown as Record<string, unknown> })).toBe('pnpm test')
   })
 })
 
@@ -96,6 +156,24 @@ describe('formatToolArguments', () => {
     const args = { path: '/test' }
     expect(formatToolArguments(args)).toBe('{\n  "path": "/test"\n}')
   })
+
+  it('pretty-prints JSON string arguments', () => {
+    expect(formatToolArguments('{"path":"/test","count":2}')).toBe('{\n  "path": "/test",\n  "count": 2\n}')
+  })
+})
+
+describe('getToolArgumentEntries', () => {
+  it('returns normalized entries for objects', () => {
+    expect(getToolArgumentEntries({ command: 'echo hi' })).toEqual([
+      { key: 'command', value: 'echo hi' },
+    ])
+  })
+
+  it('returns normalized entries for JSON string arguments', () => {
+    expect(getToolArgumentEntries('{"command":"echo hi"}')).toEqual([
+      { key: 'command', value: 'echo hi' },
+    ])
+  })
 })
 
 describe('formatArgumentsPreview', () => {
@@ -109,10 +187,19 @@ describe('formatArgumentsPreview', () => {
     expect(formatArgumentsPreview(args)).toBe('path: /foo, content: Hello')
   })
 
+  it('returns compact key-value preview for JSON string arguments', () => {
+    expect(formatArgumentsPreview('{"path":"/foo","content":"Hello"}')).toBe('path: /foo, content: Hello')
+  })
+
   it('truncates long values', () => {
     const args = { content: 'a'.repeat(50) }
     const preview = formatArgumentsPreview(args)
     expect(preview).toContain('...')
+  })
+
+  it('keeps multiline string values on one preview line', () => {
+    const args = { command: "python3 - <<'PY'\nprint('hello')\nPY" }
+    expect(formatArgumentsPreview(args)).toBe("command: python3 - <<'PY' print('hel...")
   })
 
   it('shows +N more for many args', () => {
@@ -151,29 +238,29 @@ describe('extractRespondToUserContentFromArgs', () => {
     expect(extractRespondToUserContentFromArgs(args)).toBe('![diagram draft v1](https://example.com/img.png)')
   })
 
-  it('renders path-only images as a text placeholder', () => {
+  it('does not synthesize non-renderable path-only images', () => {
     const args = {
       images: [{ alt: 'local diagram', path: '/tmp/diagram.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local diagram): `/tmp/diagram.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBeNull()
   })
 
-  it('preserves text alongside path-only image placeholders', () => {
+  it('preserves text while skipping path-only image placeholders', () => {
     const args = {
       text: 'Saved locally:',
       images: [{ alt: 'desktop capture', path: '/tmp/capture.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:\n\nLocal image (desktop capture): `/tmp/capture.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:')
   })
 
-  it('sanitizes local image placeholder alt text that can break formatting', () => {
+  it('skips path-only images even when they have markdown-sensitive alt text', () => {
     const args = {
       images: [{ altText: 'lo[cal] (draft) `shot`', path: '/tmp/diagram.png' }],
     }
 
-    expect(extractRespondToUserContentFromArgs(args)).toBe('Local image (local draft shot): `/tmp/diagram.png`')
+    expect(extractRespondToUserContentFromArgs(args)).toBeNull()
   })
 
   it('falls back to indexed image labels when sanitizing removes all alt text', () => {
@@ -182,6 +269,32 @@ describe('extractRespondToUserContentFromArgs', () => {
     }
 
     expect(extractRespondToUserContentFromArgs(args)).toBe('![Image 1](https://example.com/img.png)')
+  })
+
+  it('extracts video markdown from respond_to_user videos[].url', () => {
+    const args = {
+      text: 'Watch this:',
+      videos: [{ label: 'demo clip', url: 'assets://conversation-video/conv_1/demo.mp4' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Watch this:\n\n[demo clip](assets://conversation-video/conv_1/demo.mp4)')
+  })
+
+  it('skips path-only videos until the runtime materializes them as asset URLs', () => {
+    const args = {
+      text: 'Saved locally:',
+      videos: [{ label: 'local demo', path: '/tmp/demo.mp4' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('Saved locally:')
+  })
+
+  it('sanitizes markdown-sensitive video labels', () => {
+    const args = {
+      videos: [{ label: 'demo [draft] (v1)', url: 'https://example.com/demo.mp4' }],
+    }
+
+    expect(extractRespondToUserContentFromArgs(args)).toBe('[demo draft v1](https://example.com/demo.mp4)')
   })
 
   it('returns null for empty args', () => {

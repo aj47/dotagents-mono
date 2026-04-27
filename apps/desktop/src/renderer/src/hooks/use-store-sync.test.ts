@@ -211,7 +211,9 @@ function createAgentStoreState() {
     clearSessionProgress: vi.fn(),
     clearInactiveSessions: vi.fn(),
     setFocusedSessionId: vi.fn(),
+    setSessionSnoozed: vi.fn(),
     setScrollToSessionId: vi.fn(),
+    setFloatingPanelVisible: vi.fn(),
     updateMessageQueue: vi.fn(),
     pinnedSessionIds: new Set<string>(),
     setPinnedSessionIds: vi.fn((sessionIds: Iterable<string>) => {
@@ -234,6 +236,7 @@ async function loadUseStoreSync(
   const listen = vi.fn(() => vi.fn())
   const tipcClient = {
     getAllMessageQueues: vi.fn().mockResolvedValue([]),
+    getFloatingPanelVisibility: vi.fn().mockResolvedValue({ visible: false }),
     getConfig: vi.fn().mockImplementation(() => Promise.resolve(config)),
     saveConfig: vi.fn().mockResolvedValue(undefined),
   }
@@ -248,7 +251,7 @@ async function loadUseStoreSync(
   const reportConfigSaveError = vi.fn()
 
   vi.doMock('react', () => runtime.reactMock)
-  vi.doMock('@renderer/lib/tipc-client', () => ({
+  const tipcClientMock = {
     __esModule: true,
     tipcClient,
     rendererHandlers: {
@@ -257,12 +260,17 @@ async function loadUseStoreSync(
       clearAgentSessionProgress: { listen },
       clearInactiveSessions: { listen },
       stopAllTts: { listen },
+      panelVisibilityChanged: { listen },
       focusAgentSession: { listen },
+      setAgentSessionSnoozed: { listen },
+      clearSessionTTSKeys: { listen },
       onMessageQueueUpdate: { listen },
       conversationHistoryChanged: { listen },
     },
-  }))
-  vi.doMock('@renderer/stores', () => ({
+  }
+  vi.doMock('@renderer/lib/tipc-client', () => tipcClientMock)
+  vi.doMock('../lib/tipc-client', () => tipcClientMock)
+  const storesMock = {
     __esModule: true,
     useAgentStore: Object.assign(
       (selector: (state: typeof storeState) => unknown) => selector(storeState),
@@ -271,14 +279,23 @@ async function loadUseStoreSync(
       },
     ),
     useConversationStore: (selector: (state: typeof conversationStore) => unknown) => selector(conversationStore),
-  }))
+  }
+  vi.doMock('@renderer/stores', () => storesMock)
+  vi.doMock('../stores', () => storesMock)
   vi.doMock('@renderer/lib/queries', () => ({ __esModule: true, queryClient }))
-  vi.doMock('@renderer/lib/tts-manager', () => ({
+  vi.doMock('../lib/queries', () => ({ __esModule: true, queryClient }))
+  const ttsManagerMock = {
     __esModule: true,
     ttsManager: { getAudioCount: vi.fn(() => 0), stopAll: vi.fn() },
-  }))
+  }
+  vi.doMock('@renderer/lib/tts-manager', () => ttsManagerMock)
+  vi.doMock('../lib/tts-manager', () => ttsManagerMock)
+  vi.doMock('@renderer/lib/tts-tracking', () => ({ __esModule: true, clearSessionTTSTracking: vi.fn() }))
+  vi.doMock('../lib/tts-tracking', () => ({ __esModule: true, clearSessionTTSTracking: vi.fn() }))
   vi.doMock('@renderer/lib/debug', () => ({ __esModule: true, logUI: vi.fn() }))
+  vi.doMock('../lib/debug', () => ({ __esModule: true, logUI: vi.fn() }))
   vi.doMock('@renderer/lib/config-save-error', () => ({ __esModule: true, reportConfigSaveError }))
+  vi.doMock('../lib/config-save-error', () => ({ __esModule: true, reportConfigSaveError }))
 
   const module = await import('./use-store-sync')
   return { useStoreSync: module.useStoreSync, tipcClient, queryClient, reportConfigSaveError }

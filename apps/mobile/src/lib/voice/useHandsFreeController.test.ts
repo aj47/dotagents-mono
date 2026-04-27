@@ -84,6 +84,7 @@ async function loadUseHandsFreeController(runtime: ReturnType<typeof createHookR
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.resetModules();
   vi.unmock('react');
 });
@@ -230,6 +231,28 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(controller.state).toEqual(createInitialHandsFreeState());
     expect(controller.shouldKeepRecognizerActive).toBe(false);
+  });
+
+  it('lets the user wake hands-free mode from a sleeping state', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(500);
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+
+    controller.wakeByUser();
+    controller = runtime.render(useHook, options);
+
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.state.awakeSince).toBe(500);
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 
   it('keeps the recognizer active while processing so overlapping utterances can be queued', async () => {

@@ -11,7 +11,9 @@ import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
   buildMessageWithImages,
+  getClipboardImageFiles,
   MAX_IMAGE_ATTACHMENTS,
+  ImageAttachmentInputFiles,
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
@@ -79,16 +81,16 @@ export function OverlayFollowUpInput({
     mutationFn: async (message: string) => {
       if (!conversationId) {
         // Start a new conversation if none exists
-        await tipcClient.createMcpTextInput({ text: message })
+        return await tipcClient.createMcpTextInput({ text: message })
       } else {
         // Continue the existing conversation
-        await tipcClient.createMcpTextInput({
+        return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
         })
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       logUI("[OverlayFollowUpInput] message sent", {
         messageLength: variables.length,
         attachmentCount: imageAttachments.length,
@@ -100,7 +102,7 @@ export function OverlayFollowUpInput({
       setImageAttachments([])
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the overlay without waiting for agent progress updates
-      if (sessionId) {
+      if (sessionId && !data?.queued) {
         useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
       }
       // Also invalidate React Query caches so other views stay in sync
@@ -149,15 +151,19 @@ export function OverlayFollowUpInput({
     fileInputRef.current?.click()
   }
 
-  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addImageAttachmentsFromFiles = async (
+    files: ImageAttachmentInputFiles | null,
+    source: "selection" | "paste",
+  ) => {
     try {
-      logUI("[OverlayFollowUpInput] image selection started", {
+      logUI("[OverlayFollowUpInput] image attachment started", {
+        source,
         existingCount: imageAttachments.length,
-        selectedCount: e.target.files?.length ?? 0,
+        selectedCount: files?.length ?? 0,
       })
 
       const { attachments, errors } = await readImageAttachments(
-        e.target.files,
+        files,
         imageAttachments
       )
 
@@ -175,9 +181,23 @@ export function OverlayFollowUpInput({
       }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+    }
+  }
+
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      await addImageAttachmentsFromFiles(e.target.files, "selection")
     } finally {
       e.target.value = ""
     }
+  }
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const imageFiles = getClipboardImageFiles(e.clipboardData)
+    if (imageFiles.length === 0) return
+
+    e.preventDefault()
+    await addImageAttachmentsFromFiles(imageFiles, "paste")
   }
 
   const removeImageAttachment = (attachmentId: string) => {
@@ -319,6 +339,7 @@ export function OverlayFollowUpInput({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onClick={handleInputInteraction}
             onFocus={handleInputInteraction}
             placeholder={getPlaceholder()}
@@ -354,9 +375,9 @@ export function OverlayFollowUpInput({
           />
           <Button
             type="button"
-            size="icon"
+            size="md-icon"
             variant="ghost"
-            className="h-7 w-7 flex-shrink-0"
+            className="flex-shrink-0"
             disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
             onMouseDown={handleInputInteraction}
             onClick={handleImageButtonClick}
@@ -366,9 +387,9 @@ export function OverlayFollowUpInput({
           </Button>
           <Button
             type="submit"
-            size="icon"
+            size="md-icon"
             variant="ghost"
-            className="h-7 w-7 flex-shrink-0"
+            className="flex-shrink-0"
             disabled={!hasMessageContent || isDisabled}
             onMouseDown={handleInputInteraction}
             title={isSessionActive && isQueueEnabled ? "Queue message" : "Send message"}
@@ -380,10 +401,10 @@ export function OverlayFollowUpInput({
           </Button>
           <Button
             type="button"
-            size="icon"
+            size="md-icon"
             variant="ghost"
             className={cn(
-              "h-7 w-7 flex-shrink-0",
+              "flex-shrink-0",
               "hover:bg-red-100 dark:hover:bg-red-900/30",
               "hover:text-red-600 dark:hover:text-red-400"
             )}
@@ -398,10 +419,10 @@ export function OverlayFollowUpInput({
           {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
             <Button
               type="button"
-              size="icon"
+              size="md-icon"
               variant="ghost"
               className={cn(
-                "h-7 w-7 flex-shrink-0",
+                "flex-shrink-0",
                 "text-red-500 hover:text-red-600",
                 "hover:bg-red-100 dark:hover:bg-red-950/30"
               )}

@@ -2,7 +2,8 @@ import React, { useState, useId, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
-import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck } from "lucide-react"
+import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "lucide-react"
+import { getVideoAssetLabel, isRenderableVideoUrl } from "@dotagents/shared"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import "highlight.js/styles/github.css"
@@ -12,6 +13,7 @@ import { logExpand, logUI } from "@renderer/lib/debug"
 interface MarkdownRendererProps {
   content: string
   className?: string
+  collapsed?: boolean
   getThinkKey?: (content: string, index: number) => string
   isThinkExpanded?: (key: string) => boolean
   onToggleThink?: (key: string) => void
@@ -34,6 +36,11 @@ const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
 
 const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
   /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
+const ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX =
+  /^assets:\/\/conversation-image\//
+const ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX =
+  /^assets:\/\/conversation-video\//
+const ALLOWED_RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//
 
 export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
@@ -45,12 +52,66 @@ export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
     url.startsWith("#") ||
     url.startsWith("http://") ||
     url.startsWith("https://") ||
+    ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX.test(url) ||
+    ALLOWED_RECORDING_ASSET_URL_REGEX.test(url) ||
     url.startsWith("mailto:")
   ) {
     return true
   }
 
   return false
+}
+
+const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
+  if (!rawUrl) return false
+  const url = rawUrl.trim().toLowerCase()
+  return isRenderableVideoUrl(rawUrl) || ALLOWED_RECORDING_ASSET_URL_REGEX.test(url)
+}
+
+const VideoAttachmentCard = ({
+  src,
+  label,
+}: {
+  src: string
+  label?: string
+}) => {
+  const [loaded, setLoaded] = useState(false)
+  const displayLabel = getVideoAssetLabel(label, src)
+
+  return (
+    <span className="not-prose my-3 block overflow-hidden rounded-lg border border-border bg-muted/20">
+      {loaded ? (
+        <video
+          src={src}
+          controls
+          playsInline
+          preload="metadata"
+          className="block max-h-[30rem] w-full bg-black"
+          onError={() => {
+            logUI("[MarkdownRenderer] video failed to render", {
+              label: displayLabel,
+              srcPreview: src.slice(0, 64),
+            })
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setLoaded(true)}
+          className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40"
+          aria-label={`Load video ${displayLabel}`}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <PlayCircle className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-foreground">{displayLabel}</span>
+            <span className="block text-xs text-muted-foreground">Loads only when you click play</span>
+          </span>
+        </button>
+      )}
+    </span>
+  )
 }
 
 export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
@@ -60,6 +121,7 @@ export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
   return (
     url.startsWith("http://") ||
     url.startsWith("https://") ||
+    ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX.test(url) ||
     ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX.test(url)
   )
 }
@@ -79,6 +141,10 @@ const markdownLinkComponent = ({
   children?: React.ReactNode
   href?: string
 }) => {
+  if (href && isDesktopRenderableVideoUrl(href)) {
+    return <VideoAttachmentCard src={href} label={extractTextContent(children)} />
+  }
+
   if (isAllowedMarkdownLinkUrl(href)) {
     return (
       <a
@@ -239,21 +305,39 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
   const uid = useId()
 
   return (
-    <div className="my-4 overflow-hidden rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border transition-colors",
+        collapsed
+          ? "my-1 border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20"
+          : "my-3 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
+      )}
+    >
       <button
         onClick={handleToggle}
-        className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/30"
+        className={cn(
+          "flex w-full items-center gap-1.5 text-left transition-colors",
+          collapsed
+            ? "px-2 py-0.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
+            : "px-3 py-2 hover:bg-amber-100 dark:hover:bg-amber-900/30",
+        )}
         aria-expanded={!collapsed}
         aria-controls={`think-content-${uid}`}
       >
         {collapsed ? (
-          <ChevronRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <ChevronRight className="h-3 w-3 shrink-0 text-amber-500 dark:text-amber-400" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
         )}
-        <Brain className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
-          {collapsed ? "Show thinking process" : "Hide thinking process"}
+        <Brain className={cn(
+          "shrink-0 text-amber-600 dark:text-amber-400",
+          collapsed ? "h-3 w-3" : "h-3.5 w-3.5",
+        )} />
+        <span className={cn(
+          "truncate text-amber-800 dark:text-amber-200",
+          collapsed ? "text-[11px] font-medium opacity-70" : "text-sm font-medium",
+        )}>
+          {collapsed ? "Thinking" : "Hide thinking"}
         </span>
       </button>
 
@@ -324,6 +408,7 @@ const parseThinkSections = (content: string) => {
 const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
   content,
   className,
+  collapsed,
   getThinkKey,
   isThinkExpanded,
   onToggleThink,
@@ -361,17 +446,17 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
                   ...sharedMarkdownComponents,
                   // Custom components for better styling
                   h1: ({ children }) => (
-                    <h1 className="mb-3 text-xl font-bold text-foreground">
+                    <h1 className={collapsed ? "text-sm font-normal text-foreground" : "mb-3 text-xl font-bold text-foreground"}>
                       {children}
                     </h1>
                   ),
                   h2: ({ children }) => (
-                    <h2 className="mb-2 text-lg font-semibold text-foreground">
+                    <h2 className={collapsed ? "text-sm font-normal text-foreground" : "mb-2 text-lg font-semibold text-foreground"}>
                       {children}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 className="mb-2 text-base font-medium text-foreground">
+                    <h3 className={collapsed ? "text-sm font-normal text-foreground" : "mb-2 text-base font-medium text-foreground"}>
                       {children}
                     </h3>
                   ),
@@ -413,6 +498,7 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
 export const MarkdownRenderer = React.memo(MarkdownRendererBase, (prev, next) => (
   prev.content === next.content &&
   prev.className === next.className &&
+  prev.collapsed === next.collapsed &&
   prev.getThinkKey === next.getThinkKey &&
   prev.isThinkExpanded === next.isThinkExpanded &&
   prev.onToggleThink === next.onToggleThink

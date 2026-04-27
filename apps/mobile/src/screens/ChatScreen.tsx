@@ -33,13 +33,13 @@ import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
 import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
-import { speakEdgeTts, stopEdgeTts } from '../lib/edgeTts';
+import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
-import { SettingsApiClient } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,7 +48,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
-  formatArgumentsPreview,
+  getIndividualToolCallPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
@@ -59,7 +59,9 @@ import {
   type AgentConversationState,
   type AgentUserResponseEvent,
   type HandsFreePhase,
+  type Loop,
   type PredefinedPromptSummary,
+  type Skill,
   type ToolActivityGroup,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -84,7 +86,6 @@ import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
-import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 
 interface PendingImageAttachment {
   id: string;
@@ -100,6 +101,7 @@ const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
 const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
+const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -114,6 +116,8 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
 };
 
 const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
+
+const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
 
 const getApproxBase64Bytes = (base64: string) => {
   const normalized = base64.replace(/\s+/g, '');
@@ -164,56 +168,19 @@ type QuickStartShortcut = {
   id: string;
   title: string;
   content: string;
-  source: 'command' | 'saved-prompt' | 'starter-pack' | 'action';
+  description?: string;
+  source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
   action?: 'add-prompt';
+  task?: Loop;
 };
-
-type QuickStartSection = {
-  id: string;
-  title: string;
-  items: QuickStartShortcut[];
-};
-
-const STARTER_PACK_SHORTCUTS: QuickStartShortcut[] = [
-  {
-    id: 'starter-plan-task',
-    title: 'Plan this task',
-    content: 'Help me plan this task. Give me a concise step-by-step implementation plan, edge cases to watch, and the smallest safe first step.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-debug-issue',
-    title: 'Debug an issue',
-    content: 'Help me debug this issue. Ask for the minimum missing context, identify the likely causes, and suggest the fastest way to verify the fix.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-summarize',
-    title: 'Summarize and next steps',
-    content: 'Summarize this clearly, then give me the next 3 concrete actions to take.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-polish-writing',
-    title: 'Polish this draft',
-    content: 'Rewrite this into a polished version that is clear, concise, and confident. Keep the meaning but improve the structure and wording.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-research-brief',
-    title: 'Research brief',
-    content: 'Create a quick research brief on this topic with key options, tradeoffs, and a practical recommendation.',
-    source: 'starter-pack',
-  },
-  {
-    id: 'starter-daily-review',
-    title: 'Daily review',
-    content: 'Help me review what happened today, extract the key lessons, and decide the highest-leverage next step for tomorrow.',
-    source: 'starter-pack',
-  },
-];
 
 const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
+
+const getSkillPromptContent = (skill: Skill): string => {
+  const instructions = skill.instructions?.trim();
+  if (instructions) return instructions;
+  return `Use the "${skill.name}" skill for this request.${skill.description ? `\n\n${skill.description}` : ''}`;
+};
 
 const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
 
@@ -305,6 +272,8 @@ const mergeVoiceText = (base?: string, live?: string) => {
 const getCollapsedMessagePreview = (content: string) =>
   content
     .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
+    .replace(/(^|[^!])\[[^\]]*\]\((?:assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi, '$1[Video]')
+    .replace(/^#{1,6}\s+/gm, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -502,10 +471,13 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!config.baseUrl || !config.apiKey) {
       return null;
     }
-    return new SettingsApiClient(config.baseUrl, config.apiKey);
+    return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
   }, [config.apiKey, config.baseUrl]);
   const [predefinedPrompts, setPredefinedPrompts] = useState<PredefinedPromptSummary[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
   const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
@@ -532,6 +504,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
   const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
+  // Track ttsEnabled in a ref so speech callbacks resolved before a mute-toggle
+  // (e.g. in-flight send() progress callbacks) still see the latest setting and
+  // bail before queueing or playing audio.
+  const ttsEnabledRef = useRef<boolean>(config.ttsEnabled !== false);
+  useEffect(() => { ttsEnabledRef.current = config.ttsEnabled !== false; }, [config.ttsEnabled]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
   const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
@@ -546,7 +523,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      handsFreeController.reset();
       void stopRecognitionOnly?.();
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
       setDebugInfo('Handsfree mode turned off.');
     } else {
       setDebugInfo('Handsfree mode turned on. Say the wake phrase to begin.');
@@ -557,9 +534,23 @@ export default function ChatScreen({ route, navigation }: any) {
   const ttsEnabled = config.ttsEnabled !== false; // default true
   const toggleTts = async () => {
     const next = !ttsEnabled;
-    // Stop any currently playing TTS when disabling
+    // Stop any currently playing TTS when disabling. The speaker icon doubles
+    // as a "mute" control, so it must silence both native and remote (Edge)
+    // playback and clear the auto-speech queue/state so nothing resumes.
     if (!next) {
+      intendedSpeakingIndexRef.current = null;
       Speech.stop();
+      stopRemoteTts();
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventIdRef.current = null;
+      setSpeakingMessageIndex(null);
+      // Only transition the hands-free controller when it was actually speaking;
+      // calling onSpeechFinished mid-`processing` would prematurely return to
+      // listening while a request is still in-flight.
+      if (handsFreeRef.current && handsFreePhaseRef.current === 'speaking') {
+        handsFreeController.onSpeechFinished();
+        voiceLog('tts-stopped', 'Assistant speech stopped from speaker toggle.');
+      }
     }
     const nextCfg = { ...config, ttsEnabled: next } as any;
     setConfig(nextCfg);
@@ -570,7 +561,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
-  const [micSelectorVisible, setMicSelectorVisible] = useState(false);
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -719,6 +709,31 @@ export default function ChatScreen({ route, navigation }: any) {
     });
     inputRef.current?.focus?.();
   }, []);
+
+  const handleRunPromptTask = useCallback(async (task: Loop) => {
+    if (!settingsClient || runningPromptTaskId) return;
+    setRunningPromptTaskId(task.id);
+    try {
+      await settingsClient.runLoop(task.id);
+      Alert.alert('Task started', `Running "${task.name}" on desktop.`);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to run task.');
+    } finally {
+      setRunningPromptTaskId(null);
+    }
+  }, [runningPromptTaskId, settingsClient]);
+
+  const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
+    if (item.action === 'add-prompt') {
+      setAddPromptModalVisible(true);
+      return;
+    }
+    if (item.source === 'task' && item.task) {
+      void handleRunPromptTask(item.task);
+      return;
+    }
+    handleInsertQuickStartPrompt(item.content);
+  }, [handleInsertQuickStartPrompt, handleRunPromptTask]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -908,6 +923,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
   const queuedResponseEventsRef = useRef<AgentUserResponseEvent[]>([]);
   const activeAutoSpeechEventIdRef = useRef<string | null>(null);
+  const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
@@ -919,7 +935,8 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
-  // Track which tool-activity groups are expanded (keyed by "startIndex-endIndex")
+  // Track which tool-activity groups are expanded (keyed by startIndex so the
+  // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
@@ -1037,11 +1054,31 @@ export default function ChatScreen({ route, navigation }: any) {
 	  ]);
 
 	  const speakAssistantResponse = useCallback((content: string, reason: string, onSettled?: () => void) => {
+		// Honor a mute that may have happened after this callback was scheduled but
+		// before it ran (stale closures inside in-flight send() progress handlers).
+		if (!ttsEnabledRef.current) {
+			onSettled?.();
+			return false;
+		}
 		const processedText = preprocessTextForTTS(content);
 		if (!processedText) {
 				onSettled?.();
 			return false;
 		}
+
+      const ttsTextKey = normalizeAutoTtsTextKey(processedText);
+      const now = Date.now();
+      const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
+      if (now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
+        onSettled?.();
+        return false;
+      }
+      recentAutoSpeechByTextRef.current.set(ttsTextKey, now);
+      for (const [key, spokenAt] of recentAutoSpeechByTextRef.current) {
+        if (now - spokenAt > AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
+          recentAutoSpeechByTextRef.current.delete(key);
+        }
+      }
 
 		let settled = false;
 		const settle = () => {
@@ -1059,9 +1096,12 @@ export default function ChatScreen({ route, navigation }: any) {
 			voiceLog('tts-started', `Assistant speech started (${reason}).`);
 		}
 
-		if (effectiveTtsProvider === 'edge') {
-			// Edge TTS runs on web + native (expo-audio).
-			void speakEdgeTts(processedText, {
+		if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
+			// Edge TTS routes through the paired desktop's /v1/tts/speak.
+			void speakRemoteTts(processedText, {
+				baseUrl: config.baseUrl,
+				apiKey: config.apiKey,
+				providerId: 'edge',
 				voice: effectiveEdgeTtsVoice,
 				rate: effectiveEdgeTtsRate,
 				onDone: settle,
@@ -1084,7 +1124,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-		  }, [config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
+		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -1152,7 +1192,9 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [speakAssistantResponse]);
 
   const enqueueResponseEventsForSpeech = useCallback((events: AgentUserResponseEvent[]) => {
-    if (config.ttsEnabled === false || !events.length) return;
+    // Use the ref alongside the captured config so a mute that landed after this
+    // callback was scheduled still suppresses queueing.
+    if (config.ttsEnabled === false || !ttsEnabledRef.current || !events.length) return;
 
     const queuedIds = new Set(queuedResponseEventsRef.current.map((event) => event.id));
     const activeId = activeAutoSpeechEventIdRef.current;
@@ -1197,7 +1239,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Stop any current speech first
     intendedSpeakingIndexRef.current = index;
     Speech.stop();
-    stopEdgeTts();
+    stopRemoteTts();
     const processedText = preprocessTextForTTS(content);
     if (!processedText) {
       intendedSpeakingIndexRef.current = null;
@@ -1208,9 +1250,12 @@ export default function ChatScreen({ route, navigation }: any) {
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
     setSpeakingMessageIndex(index);
-    if (effectiveTtsProvider === 'edge') {
-      // Edge TTS runs on web + native (expo-audio).
-      void speakEdgeTts(processedText, {
+    if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
+      // Edge TTS routes through the paired desktop's /v1/tts/speak.
+      void speakRemoteTts(processedText, {
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        providerId: 'edge',
         voice: effectiveEdgeTtsVoice,
         rate: effectiveEdgeTtsRate,
         onDone: () => {
@@ -1280,6 +1325,8 @@ export default function ChatScreen({ route, navigation }: any) {
     Speech.speak(processedText, speechOptions);
 	  }, [
 		speakingMessageIndex,
+		config.apiKey,
+		config.baseUrl,
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
@@ -1307,7 +1354,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => {
     return () => {
       Speech.stop();
-      stopEdgeTts();
+      stopRemoteTts();
     };
   }, []);
 
@@ -1410,6 +1457,8 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!settingsClient || !isFocused) {
       if (!settingsClient) {
         setPredefinedPrompts([]);
+        setAvailableSkills([]);
+        setAvailableTasks([]);
         setIsLoadingQuickStartPrompts(false);
       }
       return;
@@ -1418,18 +1467,27 @@ export default function ChatScreen({ route, navigation }: any) {
     let cancelled = false;
     setIsLoadingQuickStartPrompts(true);
 
-    settingsClient.getSettings()
-      .then((settings) => {
+    Promise.allSettled([
+      settingsClient.getSettings(),
+      settingsClient.getSkills(),
+      settingsClient.getLoops(),
+    ] as const)
+      .then(([settingsResult, skillsResult, loopsResult]) => {
         if (cancelled) return;
-        const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
-        setPredefinedPrompts(nextPrompts);
-        setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
-        setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
-        setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setPredefinedPrompts([]);
+
+        if (settingsResult.status === 'fulfilled') {
+          const settings = settingsResult.value;
+          const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
+          setPredefinedPrompts(nextPrompts);
+          setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
+          setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
+          setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
+        } else {
+          setPredefinedPrompts([]);
+        }
+
+        setAvailableSkills(skillsResult.status === 'fulfilled' ? skillsResult.value.skills : []);
+        setAvailableTasks(loopsResult.status === 'fulfilled' ? loopsResult.value.loops : []);
       })
       .finally(() => {
         if (cancelled) return;
@@ -1454,13 +1512,13 @@ export default function ChatScreen({ route, navigation }: any) {
         updatedAt: now,
       };
 
-      const updatedPrompts = [...predefinedPrompts, newPrompt];
+      const updatedPrompts = [newPrompt, ...predefinedPrompts];
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
       setPredefinedPrompts(updatedPrompts);
       setAddPromptModalVisible(false);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert('Success', 'Prompt saved to your settings.');
+      Alert.alert('Success', 'Prompt saved to your desktop prompt library.');
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       Alert.alert('Error', error.message || 'Failed to save prompt.');
@@ -1551,7 +1609,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
         pendingLazyLoadSessionIdRef.current = stubSessionId;
-        const client = settingsClient || new SettingsApiClient(config.baseUrl, config.apiKey);
+        const client = settingsClient || new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
         sessionStore.loadSessionMessages(stubSessionId, client)
           .then((result) => {
             if (!result) return;
@@ -1702,11 +1760,13 @@ export default function ChatScreen({ route, navigation }: any) {
   // Compute tool-activity groups for consecutive connected tool-call messages
   const toolActivityGroups = useMemo(() => groupToolActivity(messages), [messages]);
 
-  // Toggle expansion of a tool-activity group (keyed by "startIndex-endIndex")
+  const getToolActivityGroupKey = useCallback((group: ToolActivityGroup) => `${group.startIndex}`, []);
+
+  // Toggle expansion of a tool-activity group using a stable key for the run.
   const toggleGroupExpansion = useCallback((group: ToolActivityGroup) => {
-    const key = `${group.startIndex}-${group.endIndex}`;
+    const key = getToolActivityGroupKey(group);
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  }, [getToolActivityGroupKey]);
 
   // Auto-expand logic matching desktop behavior (#32, #33):
   // - Tool-only messages (toolCalls/toolResults with no visible user-facing content) collapse by default
@@ -1825,8 +1885,19 @@ export default function ChatScreen({ route, navigation }: any) {
                 // Skip adding this as a separate message only when we merged results
                 continue;
               }
-              // If tool message has content but no toolResults, fall through to add it as a message
             }
+          }
+
+          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
+          // carry no toolResults/toolCalls — the underlying failures are
+          // already visible inside the tool call stack via toolResults on the
+          // preceding tool message.
+          if (
+            historyMsg.role === 'tool' &&
+            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
+            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
+          ) {
+            continue;
           }
 
           messages.push({
@@ -2237,8 +2308,19 @@ export default function ChatScreen({ route, navigation }: any) {
                 // Skip adding this as a separate message only when we merged results
                 continue;
               }
-              // If tool message has content but no toolResults, fall through to add it as a message
             }
+          }
+
+          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
+          // carry no toolResults/toolCalls — the underlying failures are
+          // already visible inside the tool call stack via toolResults on the
+          // preceding tool message.
+          if (
+            historyMsg.role === 'tool' &&
+            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
+            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
+          ) {
+            continue;
           }
 
           newMessages.push({
@@ -2626,6 +2708,17 @@ export default function ChatScreen({ route, navigation }: any) {
         for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
           const historyMsg = response.conversationHistory[i];
           if (historyMsg.role === 'user') continue;
+          // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
+          // carry no toolResults/toolCalls — the underlying failures are
+          // already visible inside the tool call stack via toolResults on the
+          // preceding tool message.
+          if (
+            historyMsg.role === 'tool' &&
+            !(historyMsg.toolResults && historyMsg.toolResults.length > 0) &&
+            !(historyMsg.toolCalls && historyMsg.toolCalls.length > 0)
+          ) {
+            continue;
+          }
           newMessages.push({
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
@@ -2749,75 +2842,52 @@ export default function ChatScreen({ route, navigation }: any) {
 		  sttPreview,
 		});
 
-  const commandQuickStarts = useMemo(
-    () => predefinedPrompts
-      .filter(isSlashCommandPrompt)
-      .slice(0, 4)
-      .map((prompt) => ({
-        id: prompt.id,
-        title: prompt.name,
-        content: prompt.content,
-        source: 'command' as const,
-      })),
-    [predefinedPrompts]
-  );
-
-  const savedPromptQuickStarts = useMemo(
+  const promptQuickStarts = useMemo<QuickStartShortcut[]>(
     () => {
-      const prompts: QuickStartShortcut[] = predefinedPrompts
-        .filter((prompt) => !isSlashCommandPrompt(prompt))
-        .slice(0, 3)
+      const promptItems = predefinedPrompts
         .map((prompt) => ({
           id: prompt.id,
           title: prompt.name,
           content: prompt.content,
-          source: 'saved-prompt' as const,
+          description: prompt.content,
+          source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
         }));
 
-      prompts.push({
+      const skillItems = availableSkills.map((skill) => ({
+        id: `skill-${skill.id}`,
+        title: skill.name,
+        content: getSkillPromptContent(skill),
+        description: skill.description || skill.instructions || 'Use this skill as a reusable prompt.',
+        source: 'skill' as const,
+      }));
+
+      const taskItems = availableTasks.map((task) => ({
+        id: `task-${task.id}`,
+        title: task.name,
+        content: task.prompt || '',
+        description: task.prompt || 'Run this desktop task now.',
+        source: 'task' as const,
+        task,
+      }));
+
+      const addPromptItem: QuickStartShortcut[] = settingsClient ? [{
         id: 'action-add-prompt',
         title: '+ Add Prompt',
         content: '',
-        source: 'action',
-        action: 'add-prompt',
-      });
-      return prompts;
+        description: 'Create a predefined prompt and save it back to desktop.',
+        source: 'action' as const,
+        action: 'add-prompt' as const,
+      }] : [];
+
+      return [
+        ...promptItems,
+        ...skillItems,
+        ...taskItems,
+        ...addPromptItem,
+      ];
     },
-    [predefinedPrompts]
+    [availableSkills, availableTasks, predefinedPrompts, settingsClient]
   );
-
-  const starterPackQuickStarts = useMemo(
-    () => STARTER_PACK_SHORTCUTS.slice(0, commandQuickStarts.length > 0 || savedPromptQuickStarts.length > 0 ? 4 : 6),
-    [commandQuickStarts.length, savedPromptQuickStarts.length]
-  );
-
-  const quickStartSections = useMemo<QuickStartSection[]>(() => {
-    const sections: QuickStartSection[] = [];
-
-    if (commandQuickStarts.length > 0) {
-      sections.push({
-        id: 'commands',
-        title: 'Custom Commands',
-        items: commandQuickStarts,
-      });
-    }
-
-    if (savedPromptQuickStarts.length > 0) {
-      sections.push({
-        id: 'saved-prompts',
-        title: 'Saved Prompts',
-        items: savedPromptQuickStarts,
-      });
-    }
-
-    sections.push({
-      id: 'starter-packs',
-      title: 'Starter Packs',
-      items: starterPackQuickStarts,
-    });
-
-    return sections;
-  }, [commandQuickStarts, savedPromptQuickStarts, starterPackQuickStarts]);
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
@@ -2941,11 +3011,53 @@ export default function ChatScreen({ route, navigation }: any) {
     setInput(text);
   }, []);
 
+		const wakeHandsFreeByUser = useCallback(() => {
+			handsFreeController.wakeByUser();
+			if (!listening) {
+				void startRecording();
+			}
+			setDebugInfo('Handsfree awake. Listening for your request.');
+		}, [handsFreeController.wakeByUser, listening, startRecording]);
+
+		const sleepHandsFreeByUser = useCallback(() => {
+			handsFreeController.sleepByUser();
+			setDebugInfo(`Handsfree sleeping. Say “${handsFreeWakePhrase}” or tap Wake to begin.`);
+		}, [handsFreeController.sleepByUser, handsFreeWakePhrase]);
+
+		const resumeHandsFreeByUser = useCallback(() => {
+			handsFreeController.resumeByUser();
+			if (!listening) {
+				void startRecording();
+			}
+			setDebugInfo('Handsfree resumed.');
+		}, [handsFreeController.resumeByUser, listening, startRecording]);
+
+		const pauseHandsFreeByUser = useCallback(() => {
+			handsFreeController.pauseByUser();
+			Speech.stop();
+			void stopRecognitionOnly();
+			setDebugInfo('Handsfree paused.');
+		}, [handsFreeController.pauseByUser, stopRecognitionOnly]);
+
+		const handleHandsFreePrimaryControl = useCallback(() => {
+			if (handsFreeController.state.phase === 'sleeping') {
+				wakeHandsFreeByUser();
+				return;
+			}
+			if (handsFreeController.state.phase === 'paused') {
+				resumeHandsFreeByUser();
+				return;
+			}
+			pauseHandsFreeByUser();
+		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
+
+		const handsFreePauseResumeLabel = handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause';
+
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
 		switch (handsFreeController.state.phase) {
 			case 'sleeping':
-				return `Say “${handsFreeWakePhrase}” to wake the assistant.`;
+					return `Say “${handsFreeWakePhrase}” or tap Wake to wake the assistant.`;
 			case 'waking':
 				return 'Listening for your next request.';
 			case 'listening':
@@ -2979,7 +3091,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		: (listening ? 'Listening…' : 'Type or hold mic');
 
 	const micButtonLabel = handsFree
-		? (handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause')
+			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
 		: (listening ? '...' : 'Hold');
 
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
@@ -3023,38 +3135,38 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           {!sessionStore.isLoadingMessages && messages.length === 0 && (
             <View style={styles.chatHomeCard}>
-              {quickStartSections.map((section) => (
-                <View key={section.id} style={styles.chatHomeSection}>
-                  <Text style={styles.chatHomeSectionTitle}>{section.title}</Text>
-                  <View style={styles.chatHomeShortcutGrid}>
-                    {section.items.map((item) => (
-                      <Pressable
-                        key={item.id}
-                        style={({ pressed }) => [
-                          styles.chatHomeShortcutCard,
-                          item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
-                          pressed && styles.chatHomeShortcutCardPressed,
-                        ]}
-                        onPress={() => {
-                          if (item.action === 'add-prompt') {
-                            setAddPromptModalVisible(true);
-                          } else {
-                            handleInsertQuickStartPrompt(item.content);
-                          }
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : `${section.title}: ${item.title}`)}
-                        accessibilityHint={item.action === 'add-prompt' ? 'Create a new saved prompt.' : 'Inserts this launcher text into the composer.'}
-                      >
-                        <Text style={[
-                          styles.chatHomeShortcutTitle,
-                          item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
-                        ]} numberOfLines={2}>{item.title}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ))}
+	              {promptQuickStarts.length > 0 ? (
+	                <View style={styles.chatHomeShortcutGrid}>
+	                  {promptQuickStarts.map((item) => (
+	                    <Pressable
+	                      key={item.id}
+	                      style={({ pressed }) => [
+	                        styles.chatHomeShortcutCard,
+		                        item.action === 'add-prompt' && styles.chatHomeShortcutCardAdd,
+		                        item.source === 'task' && runningPromptTaskId === item.task?.id && styles.chatHomeShortcutCardDisabled,
+	                        pressed && styles.chatHomeShortcutCardPressed,
+	                      ]}
+		                      onPress={() => handleQuickStartPress(item)}
+		                      disabled={item.source === 'task' && runningPromptTaskId === item.task?.id}
+	                      accessibilityRole="button"
+		                      accessibilityLabel={createButtonAccessibilityLabel(item.action === 'add-prompt' ? 'Add new prompt' : item.source === 'task' ? `Run task ${item.title}` : `Insert ${item.source} ${item.title}`)}
+		                      accessibilityHint={item.action === 'add-prompt' ? 'Create a predefined prompt and save it to desktop.' : item.source === 'task' ? 'Runs this desktop task now.' : 'Inserts this desktop library item into the composer.'}
+	                    >
+		                      <Text style={[
+		                        styles.chatHomeShortcutTitle,
+		                        item.action === 'add-prompt' && styles.chatHomeShortcutTitleAdd,
+		                      ]} numberOfLines={2}>{item.title}</Text>
+		                      {item.description ? (
+		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
+		                      ) : null}
+	                    </Pressable>
+	                  ))}
+	                </View>
+	              ) : (
+	                <Text style={styles.chatHomeEmptyText}>
+		                  {isLoadingQuickStartPrompts ? 'Loading desktop library…' : 'No prompts, skills, or tasks available from your connected desktop app.'}
+	                </Text>
+	              )}
             </View>
           )}
           {canLoadOlderMessages && (
@@ -3069,8 +3181,8 @@ export default function ChatScreen({ route, navigation }: any) {
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             if (group) {
-              const groupKey = `${group.startIndex}-${group.endIndex}`;
-              const isGroupExpanded = expandedGroups[groupKey] ?? false;
+              const groupKey = getToolActivityGroupKey(group);
+              const isGroupExpanded = expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false;
 
               // Non-first message in a collapsed group: skip rendering
               if (i !== group.startIndex && !isGroupExpanded) {
@@ -3092,18 +3204,20 @@ export default function ChatScreen({ route, navigation }: any) {
                       pressed && styles.toolActivityGroupPressed,
                     ]}
                   >
-                    <Text style={styles.toolActivityGroupHeader}>
-                      ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
-                    </Text>
-                    {group.previewLines.map((line, lineIdx) => (
-                      <Text
-                        key={lineIdx}
-                        style={styles.toolActivityGroupPreviewLine}
-                        numberOfLines={1}
-                      >
-                        {line}
+                    <View style={styles.toolActivityGroupHeaderRow}>
+                      <Text style={styles.toolActivityGroupHeader}>
+                        ▶ {group.count} tool {group.count === 1 ? 'activity' : 'activities'}
                       </Text>
-                    ))}
+                      {group.previewLines.length > 0 && (
+                        <Text
+                          style={styles.toolActivityGroupPreviewLine}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {group.previewLines.join(', ')}
+                        </Text>
+                      )}
+                    </View>
                   </Pressable>
                 );
               }
@@ -3191,8 +3305,10 @@ export default function ChatScreen({ route, navigation }: any) {
             }
 
             // Determine if this message needs group expand/collapse chrome
-            const isFirstInExpandedGroup = group && i === group.startIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
-            const isLastInExpandedGroup = group && i === group.endIndex && (expandedGroups[`${group.startIndex}-${group.endIndex}`] ?? false);
+            const groupKey = group ? getToolActivityGroupKey(group) : '';
+            const isExpandedGroup = group ? (expandedGroups[groupKey] ?? expandedMessages[group.startIndex] ?? false) : false;
+            const isFirstInExpandedGroup = group && i === group.startIndex && isExpandedGroup;
+            const isLastInExpandedGroup = group && i === group.endIndex && isExpandedGroup;
 
             return (
               <View key={i}>
@@ -3262,7 +3378,11 @@ export default function ChatScreen({ route, navigation }: any) {
                     {shouldShowExpandedContent ? (
                       <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
                         <View style={m.role === 'assistant' ? styles.assistantMessageBody : undefined}>
-                          <MarkdownRenderer content={visibleMessageContent} />
+                          <MarkdownRenderer
+                            content={visibleMessageContent}
+                            assetBaseUrl={config.baseUrl}
+                            assetAuthToken={config.apiKey}
+                          />
                         </View>
                         {canSpeakVisibleContent && (
                           <TouchableOpacity
@@ -3333,7 +3453,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult && origIdx >= toolResultCount;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const argPreview = formatArgumentsPreview(toolCall.arguments);
+                              const toolPreview = getIndividualToolCallPreview(toolCall);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
@@ -3352,8 +3472,9 @@ export default function ChatScreen({ route, navigation }: any) {
                                       tcError && styles.toolCallCompactNameError,
                                     ]}
                                     numberOfLines={1}
+                                    ellipsizeMode="tail"
                                   >
-                                    {toolCall.name}{argPreview ? ` · ${argPreview}` : ''}
+                                    {toolPreview}
                                   </Text>
                                 </View>
                               );
@@ -3549,6 +3670,8 @@ export default function ChatScreen({ route, navigation }: any) {
             ttsRate={config.ttsRate ?? 1.0}
             ttsPitch={config.ttsPitch ?? 1.0}
             ttsVoiceId={config.ttsVoiceId}
+            remoteBaseUrl={config.baseUrl}
+            remoteApiKey={config.apiKey}
           />
         )}
         {/* Scroll to bottom button - appears when user scrolls up */}
@@ -3791,7 +3914,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 {handsFreeController.state.phase === 'sleeping' ? (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.wakeByUser}
+	                    onPress={wakeHandsFreeByUser}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.handsFreeControlButtonText}>Wake</Text>
@@ -3799,7 +3922,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 ) : (
                   <TouchableOpacity
                     style={styles.handsFreeControlButton}
-                    onPress={handsFreeController.sleepByUser}
+	                    onPress={sleepHandsFreeByUser}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.handsFreeControlButtonText}>Sleep</Text>
@@ -3807,28 +3930,18 @@ export default function ChatScreen({ route, navigation }: any) {
                 )}
                 <TouchableOpacity
                   style={styles.handsFreeControlButton}
-                  onPress={() => {
-                    if (handsFreeController.state.phase === 'paused') {
-                      handsFreeController.resumeByUser();
-                      setDebugInfo('Handsfree resumed.');
-                      return;
-                    }
-                    handsFreeController.pauseByUser();
-                    Speech.stop();
-                    void stopRecognitionOnly();
-                    setDebugInfo('Handsfree paused.');
-                  }}
+	                  onPress={handsFreeController.state.phase === 'paused' ? resumeHandsFreeByUser : pauseHandsFreeByUser}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.handsFreeControlButtonText}>
-                    {handsFreeController.state.phase === 'paused' ? 'Resume' : 'Pause'}
+	                    {handsFreePauseResumeLabel}
                   </Text>
                 </TouchableOpacity>
               </View>
             </>
           )}
 	          {/* Top row: TTS toggle, text input, send button */}
-	          <View style={styles.inputRow}>
+		          <View style={styles.inputRow}>
 	            <TouchableOpacity
 	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
 	              onPress={handlePickImages}
@@ -3939,17 +4052,7 @@ export default function ChatScreen({ route, navigation }: any) {
               aria-busy={listening}
 	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
 	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-              onPress={handsFree ? () => {
-					if (handsFreeController.state.phase === 'paused') {
-						handsFreeController.resumeByUser();
-						setDebugInfo('Handsfree resumed.');
-					} else {
-						handsFreeController.pauseByUser();
-						Speech.stop();
-						void stopRecognitionOnly();
-						setDebugInfo('Handsfree paused.');
-					}
-              } : undefined}
+	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
               <Text style={styles.micText} selectable={false}>
                 {listening ? '🎙️' : '🎤'}
@@ -3958,17 +4061,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {micButtonLabel}
               </Text>
             </Pressable>
-            {/* Compact mic device selector — web only */}
-            {Platform.OS === 'web' && (
-              <TouchableOpacity
-                onPress={() => setMicSelectorVisible(true)}
-                style={{ paddingTop: 4, alignItems: 'center' }}
-                accessibilityRole="button"
-                accessibilityLabel="Change microphone"
-              >
-                <Text style={{ fontSize: 11, color: theme.colors.mutedForeground }}>⚙️ Mic</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </View>
@@ -3976,34 +4068,6 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
       />
-
-      {/* Mic device selector modal (web only) */}
-      {Platform.OS === 'web' && micSelectorVisible && (
-        <Modal
-          visible={micSelectorVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setMicSelectorVisible(false)}
-        >
-          <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
-            activeOpacity={1}
-            onPress={() => setMicSelectorVisible(false)}
-          >
-            <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 }}>
-              <MicrophoneSelector
-                selectedDeviceId={config.audioInputDeviceId}
-                onDeviceChange={(deviceId) => {
-                  const updated = { ...config, audioInputDeviceId: deviceId };
-                  setConfig(updated);
-                  void saveConfig(updated);
-                  setMicSelectorVisible(false);
-                }}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
 
       <Modal
         visible={addPromptModalVisible}
@@ -4055,11 +4119,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   onPress={handleSaveNewPrompt}
                   disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
                 >
-                  {isSavingPrompt ? (
-                    <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
-                  ) : (
-                    <Text style={styles.modalSaveButtonText}>Add Prompt</Text>
-                  )}
+                  <Text style={styles.modalSaveButtonText}>{isSavingPrompt ? 'Saving...' : 'Add Prompt'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -4278,13 +4338,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: theme.colors.card,
       gap: spacing.sm,
     },
-    chatHomeSection: {
-      gap: spacing.sm,
-    },
-    chatHomeSectionTitle: {
+	    chatHomeEmptyText: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
-      fontWeight: '600',
+	      textAlign: 'center',
+	      paddingVertical: spacing.md,
     },
     chatHomeShortcutGrid: {
       flexDirection: 'row',
@@ -4292,7 +4350,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: spacing.sm,
     },
     chatHomeShortcutCard: {
-      minHeight: 56,
+      minHeight: 72,
       minWidth: '47%',
       flexGrow: 1,
       flexBasis: '47%',
@@ -4310,6 +4368,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: 'transparent',
       alignItems: 'center',
     },
+    chatHomeShortcutCardDisabled: {
+      opacity: 0.5,
+    },
     chatHomeShortcutCardPressed: {
       opacity: 0.88,
       transform: [{ scale: 0.99 }],
@@ -4321,6 +4382,77 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     chatHomeShortcutTitleAdd: {
       color: theme.colors.primary,
+      textAlign: 'center',
+    },
+    chatHomeShortcutDescription: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: 3,
+      lineHeight: 15,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    modalContent: {
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    modalTitle: {
+      ...theme.typography.h2,
+      marginBottom: spacing.md,
+      color: theme.colors.foreground,
+    },
+    modalLabel: {
+      ...theme.typography.caption,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+      marginBottom: spacing.xs,
+    },
+    modalInput: {
+      ...theme.input,
+      marginBottom: spacing.md,
+      color: theme.colors.foreground,
+    },
+    modalInputMultiline: {
+      height: 120,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    modalCancelButton: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+    },
+    modalCancelButtonText: {
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    modalSaveButton: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.primary,
+      minWidth: 100,
+      alignItems: 'center',
+    },
+    modalSaveButtonDisabled: {
+      opacity: 0.5,
+    },
+    modalSaveButtonText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     input: {
       ...theme.input,
@@ -4561,6 +4693,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       alignItems: 'center',
       gap: 4,
       paddingVertical: 1,
+      overflow: 'hidden',
     },
     toolCallCompactPressed: {
       opacity: 0.7,
@@ -4570,6 +4703,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 10,
       fontWeight: '500',
       flexShrink: 1,
+      minWidth: 0,
       color: theme.colors.mutedForeground,
     },
     toolCallCompactNamePending: {
@@ -4605,18 +4739,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     toolActivityGroupPressed: {
       opacity: 0.7,
     },
+    toolActivityGroupHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      overflow: 'hidden',
+    },
     toolActivityGroupHeader: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       fontWeight: '600',
       color: theme.colors.mutedForeground,
-      marginBottom: 2,
+      flexShrink: 0,
     },
     toolActivityGroupPreviewLine: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontSize: 10,
       color: theme.colors.mutedForeground,
-      paddingLeft: 8,
+      flexShrink: 1,
+      minWidth: 0,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.xs,
@@ -4821,69 +4962,5 @@ function createStyles(theme: Theme, screenHeight: number) {
     speakButtonTextActive: {
       color: theme.colors.primary,
     } as const,
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      padding: spacing.lg,
-    },
-    modalContent: {
-      backgroundColor: theme.colors.background,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    modalTitle: {
-      ...theme.typography.h2,
-      marginBottom: spacing.md,
-      color: theme.colors.foreground,
-    },
-    modalLabel: {
-      ...theme.typography.caption,
-      fontWeight: '600',
-      color: theme.colors.foreground,
-      marginBottom: spacing.xs,
-    },
-    modalInput: {
-      ...theme.input,
-      marginBottom: spacing.md,
-      color: theme.colors.foreground,
-    },
-    modalInputMultiline: {
-      height: 120,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.sm,
-    },
-    modalActions: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: spacing.sm,
-      marginTop: spacing.sm,
-    },
-    modalCancelButton: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-    },
-    modalCancelButtonText: {
-      color: theme.colors.mutedForeground,
-      fontWeight: '600',
-    },
-    modalSaveButton: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      backgroundColor: theme.colors.primary,
-      minWidth: 100,
-      alignItems: 'center',
-    },
-    modalSaveButtonDisabled: {
-      opacity: 0.5,
-    },
-    modalSaveButtonText: {
-      color: theme.colors.primaryForeground,
-      fontWeight: '600',
-    },
   });
 }

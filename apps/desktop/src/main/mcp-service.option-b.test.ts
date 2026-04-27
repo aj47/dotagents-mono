@@ -13,7 +13,7 @@ const runtimeTools = [
   { name: "load_skill_instructions", description: "skill", inputSchema: {} },
 ]
 
-vi.mock("electron", () => ({ app: { getPath: vi.fn(() => "/tmp"), getAppPath: vi.fn(() => "/tmp/app") }, dialog: { showMessageBox: vi.fn(async () => ({ response: 0 })) } }))
+vi.mock("electron", () => ({ app: { getPath: vi.fn(() => "/tmp"), getAppPath: vi.fn(() => "/tmp/app"), getVersion: vi.fn(() => "0.0.0-test") }, dialog: { showMessageBox: vi.fn(async () => ({ response: 0 })) } }))
 vi.mock("./config", () => ({ dataFolder: "/tmp/dotagents-test", configStore: { get: () => currentConfig, save: mockConfigSave } }))
 vi.mock("./debug", () => ({ isDebugTools: () => false, logTools: vi.fn(), logMCP: vi.fn() }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))

@@ -10,7 +10,8 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain('const entryClassName = "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer"')
     expect(predefinedPromptsMenuSource).toContain('const secondaryTextClassName = "line-clamp-2 text-xs leading-4 text-muted-foreground [overflow-wrap:anywhere]"')
     expect(predefinedPromptsMenuSource).toContain('aria-label="Open predefined prompts"')
-    expect(predefinedPromptsMenuSource).toContain('className="h-7 w-7"')
+    expect(predefinedPromptsMenuSource).toContain('? "h-7 w-7"')
+    expect(predefinedPromptsMenuSource).toContain('className={cn("shrink-0", triggerButtonClassName, className)}')
   })
 
   it("shows prompt and skill previews instead of relying on single-line truncation", () => {
@@ -18,5 +19,17 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain('{skill.description || "Use this skill as a reusable prompt."}')
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={prompt.name}')
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={skill.name}')
+  })
+
+  it("adds a top search filter for prompts, skills, and tasks", () => {
+    expect(predefinedPromptsMenuSource).toContain('const [searchQuery, setSearchQuery] = useState("")')
+    expect(predefinedPromptsMenuSource).toContain('placeholder="Search prompts, skills, tasks..."')
+    expect(predefinedPromptsMenuSource).toContain('aria-label="Search prompts, skills, and tasks"')
+    expect(predefinedPromptsMenuSource).toContain('const filteredPrompts = prompts.filter')
+    expect(predefinedPromptsMenuSource).toContain('const filteredSkills = availableSkills.filter')
+    expect(predefinedPromptsMenuSource).toContain('const filteredTasks = availableTasks.filter')
+    expect(predefinedPromptsMenuSource).toContain('No matching prompts')
+    expect(predefinedPromptsMenuSource).toContain('No matching skills')
+    expect(predefinedPromptsMenuSource).toContain('No matching tasks')
   })
 })

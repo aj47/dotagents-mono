@@ -11,7 +11,9 @@ import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
   buildMessageWithImages,
+  getClipboardImageFiles,
   MAX_IMAGE_ATTACHMENTS,
+  ImageAttachmentInputFiles,
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
@@ -94,18 +96,18 @@ export function TileFollowUpInput({
       if (!conversationId) {
         // Start a new conversation if none exists
         // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        await tipcClient.createMcpTextInput({ text: message, fromTile: true })
+        return await tipcClient.createMcpTextInput({ text: message, fromTile: true })
       } else {
         // Continue the existing conversation
         // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        await tipcClient.createMcpTextInput({
+        return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
           fromTile: true,
         })
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       logUI("[TileFollowUpInput] message sent", {
         messageLength: variables.length,
         attachmentCount: imageAttachments.length,
@@ -117,7 +119,7 @@ export function TileFollowUpInput({
       setImageAttachments([])
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the session tile without waiting for agent progress updates
-      if (sessionId) {
+      if (sessionId && !data?.queued) {
         useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
       }
       // Also invalidate React Query caches so other views (e.g., panel) stay in sync
@@ -163,15 +165,19 @@ export function TileFollowUpInput({
     }
   }
 
-  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addImageAttachmentsFromFiles = async (
+    files: ImageAttachmentInputFiles | null,
+    source: "selection" | "paste",
+  ) => {
     try {
-      logUI("[TileFollowUpInput] image selection started", {
+      logUI("[TileFollowUpInput] image attachment started", {
+        source,
         existingCount: imageAttachments.length,
-        selectedCount: e.target.files?.length ?? 0,
+        selectedCount: files?.length ?? 0,
       })
 
       const { attachments, errors } = await readImageAttachments(
-        e.target.files,
+        files,
         imageAttachments
       )
 
@@ -189,9 +195,23 @@ export function TileFollowUpInput({
       }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+    }
+  }
+
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      await addImageAttachmentsFromFiles(e.target.files, "selection")
     } finally {
       e.target.value = ""
     }
+  }
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFiles = getClipboardImageFiles(e.clipboardData)
+    if (imageFiles.length === 0) return
+
+    e.preventDefault()
+    await addImageAttachmentsFromFiles(imageFiles, "paste")
   }
 
   const removeImageAttachment = (attachmentId: string) => {
@@ -343,6 +363,7 @@ export function TileFollowUpInput({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={getPlaceholder()}
             rows={1}
             className={cn(
@@ -372,43 +393,43 @@ export function TileFollowUpInput({
         <PredefinedPromptsMenu
           onSelectPrompt={(content) => setText(content)}
           disabled={isDisabled}
-          className="h-6 w-6"
+          buttonSize="sm-icon"
         />
         <Button
           type="button"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
+          className="flex-shrink-0"
           disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
           onClick={() => fileInputRef.current?.click()}
           title="Attach image"
         >
-          <ImagePlus className="h-3 w-3" />
+          <ImagePlus className="h-3.5 w-3.5" />
         </Button>
         <Button
           type="submit"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
+          className="flex-shrink-0"
           disabled={!hasMessageContent || isDisabled}
           title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
           aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
         >
           {isInitializingSession ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
             <Send className={cn(
-              "h-3 w-3",
+              "h-3.5 w-3.5",
               sendMutation.isPending && "animate-pulse"
             )} aria-hidden="true" />
           )}
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
           className={cn(
-            "h-6 w-6 flex-shrink-0",
+            "flex-shrink-0",
             "hover:bg-red-100 dark:hover:bg-red-900/30",
             "hover:text-red-600 dark:hover:text-red-400"
           )}
@@ -416,16 +437,16 @@ export function TileFollowUpInput({
           onClick={handleVoiceClick}
           title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
         >
-          <Mic className="h-3 w-3" />
+          <Mic className="h-3.5 w-3.5" />
         </Button>
         {/* Kill switch - stop agent button (only show when session is active) */}
         {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
         <Button
           type="button"
-          size="icon"
+          size="sm-icon"
           variant="ghost"
           className={cn(
-            "h-6 w-6 flex-shrink-0",
+            "flex-shrink-0",
             "text-red-500 hover:text-red-600",
             "hover:bg-red-100 dark:hover:bg-red-950/30"
           )}
@@ -434,7 +455,7 @@ export function TileFollowUpInput({
           title="Stop agent execution"
         >
           <OctagonX className={cn(
-            "h-3 w-3",
+            "h-3.5 w-3.5",
             isStoppingSession && "animate-pulse"
           )} />
         </Button>

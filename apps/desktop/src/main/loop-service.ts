@@ -15,6 +15,7 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import { formatRepeatTaskTitle } from "../shared/repeat-tasks"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
@@ -34,6 +35,11 @@ export interface LoopStatus {
   lastRunAt?: number
   nextRunAt?: number
   intervalMinutes: number
+  schedule?: LoopConfig["schedule"]
+}
+
+export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boolean {
+  return loop.runContinuously === true
 }
 
 class LoopService {
@@ -231,15 +237,16 @@ class LoopService {
 
     this.clearScheduledTimer(loopId)
 
-    logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), interval: ${loop.intervalMinutes}m`)
+    logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), ${describeLoopSchedule(loop)}`)
 
-    if (loop.runOnStartup) {
-      logApp(`[LoopService] Loop "${loop.name}" has runOnStartup=true, triggering immediately`)
+    if (loop.runOnStartup || isContinuousLoop(loop)) {
+      const reason = isContinuousLoop(loop) ? "continuous" : "runOnStartup"
+      logApp(`[LoopService] Loop "${loop.name}" starts immediately (${reason})`)
       setImmediate(() => {
         void this.executeLoop(loopId, { rescheduleAfterRun: true })
       })
     } else {
-      this.scheduleNextRun(loopId, this.getIntervalMs(loop))
+      this.scheduleNextRun(loopId, this.getNextDelayMs(loop))
     }
 
     return true
@@ -286,6 +293,7 @@ class LoopService {
       lastRunAt: loop.lastRunAt,
       nextRunAt: this.loopNextRunAt.get(loop.id),
       intervalMinutes: loop.intervalMinutes,
+      schedule: loop.schedule,
     }))
   }
 
@@ -303,6 +311,7 @@ class LoopService {
       lastRunAt: loop.lastRunAt,
       nextRunAt: this.loopNextRunAt.get(loop.id),
       intervalMinutes: loop.intervalMinutes,
+      schedule: loop.schedule,
     }
   }
 
@@ -337,20 +346,114 @@ class LoopService {
         }
       }
 
-      const conversation = await conversationService.createConversation(loop.prompt, "user")
-      const conversationTitle = `[Repeat] ${loop.name}`
-      const sessionId = agentSessionTracker.startSession(
-        conversation.id,
-        conversationTitle,
-        true,
-        profileSnapshot
-      )
+      const conversationTitle = formatRepeatTaskTitle(loop.name)
+      // Always start snoozed so the panel stays hidden during execution.
+      // When `speakOnTrigger` is set, we unsnooze *after* the loop completes
+      // so the renderer's TTS auto-play gate fires on the finished response
+      // without popping the panel open for the entire run.
+      const startSnoozed = true
 
-      logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}"`)
+      let conversationId: string | undefined
+      let sessionId: string | undefined
+
+      // Try to resume a prior session if `continueInSession` is enabled and
+      // we have a `lastSessionId` (either auto-tracked from the previous run
+      // or user-pinned via the settings UI).
+      //
+      // Order of operations matters: we must confirm the prior conversation
+      // is loadable and the session is revivable BEFORE mutating the
+      // conversation — otherwise a stale/evicted session would leave an
+      // orphaned user prompt in the old conversation while this iteration
+      // falls back to a brand-new session.
+      if (loop.continueInSession && loop.lastSessionId) {
+        const priorSessionId = loop.lastSessionId
+        const priorConversationId = agentSessionTracker.getConversationIdForSession(priorSessionId)
+        if (priorConversationId) {
+          // Read-only existence check first; no mutation yet.
+          const priorConversation = await conversationService.loadConversation(priorConversationId)
+          if (priorConversation && agentSessionTracker.reviveSession(priorSessionId, startSnoozed)) {
+            // Both the conversation and the session are intact; now it's safe
+            // to append the new prompt.
+            const appended = await conversationService.addMessageToConversation(
+              priorConversationId,
+              loop.prompt,
+              "user",
+            )
+            if (appended) {
+              conversationId = priorConversationId
+              sessionId = priorSessionId
+              logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+            } else {
+              // Append failed after we'd already revived the session; put it
+              // back into the completed set so we don't leak an "active"
+              // session with no run/completion update attached to it.
+              agentSessionTracker.completeSession(priorSessionId)
+              logApp(`[LoopService] Append failed after revive for loop "${loop.name}"; re-completed session ${priorSessionId}`)
+            }
+          }
+        }
+        // On any failure above we fall through to the fresh-session branch;
+        // the final `saveLoop` below overwrites `lastSessionId` with the new
+        // one, so no separate "clear stale pointer" write is needed.
+      }
+
+      // Otherwise (or on fallback) create a fresh conversation + session.
+      if (!sessionId || !conversationId) {
+        const conversation = await conversationService.createConversation(loop.prompt, "user")
+        conversationId = conversation.id
+        sessionId = agentSessionTracker.startSession(
+          conversationId,
+          conversationTitle,
+          startSnoozed,
+          profileSnapshot,
+        )
+        logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
+      }
+
+      if (loop.continueInSession) {
+        const latest = this.getLoop(loopId)
+        if (latest && latest.lastSessionId !== sessionId) {
+          this.saveLoop({ ...latest, lastSessionId: sessionId })
+        }
+      }
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversation.id, sessionId)
+      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+
+      // When `speakOnTrigger` is set, unsnooze the now-completed session and
+      // show the panel so the renderer's TTS auto-play gate fires for the
+      // assistant response. The session ran silently in the background; this
+      // wakes it up only after the result is ready.
+      if (loop.speakOnTrigger && sessionId) {
+        // Clear stale TTS tracking keys for this session in all renderer
+        // windows.  For continueInSession loops the sessionId is reused across
+        // runs, so keys from the previous run would still be in the module-level
+        // played-set and cause hasTTSPlayed() to block the new auto-play.
+        const { WINDOWS: wins } = await import("./window")
+        for (const [id, win] of wins.entries()) {
+          try {
+            getRendererHandlers<RendererHandlers>(win.webContents).clearSessionTTSKeys?.send(sessionId)
+          } catch (e) {
+            logApp(`[LoopService] clearSessionTTSKeys send to ${id} failed:`, e)
+          }
+        }
+
+        const { setTrackedAgentSessionSnoozed } = await import("./floating-panel-session-state")
+        setTrackedAgentSessionSnoozed(sessionId, false)
+
+        // Show the panel and focus the completed session so the renderer
+        // renders the CompactMessage with isSnoozed=false, triggering TTS.
+        const { showPanelWindow, resizePanelForAgentMode, getWindowRendererHandlers } = await import("./window")
+        resizePanelForAgentMode()
+        showPanelWindow({ markOpenedWithMain: false })
+        try {
+          getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
+        } catch (e) {
+          logApp(`[LoopService] Failed to focus session ${sessionId} after speakOnTrigger unsnooze:`, e)
+        }
+        logApp(`[LoopService] Unsnoozed session ${sessionId} for loop "${loop.name}" (speakOnTrigger)`)
+      }
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
     } finally {
@@ -359,7 +462,7 @@ class LoopService {
       if (options.rescheduleAfterRun && !this.isStopping) {
         const latestLoop = this.getLoop(loopId)
         if (latestLoop?.enabled) {
-          this.scheduleNextRun(loopId, this.getIntervalMs(latestLoop))
+          this.scheduleNextRun(loopId, this.getNextDelayMs(latestLoop))
         }
       }
     }
@@ -387,6 +490,21 @@ class LoopService {
     this.loopNextRunAt.delete(loopId)
   }
 
+  private getNextDelayMs(loop: LoopConfig, now: number = Date.now()): number {
+    if (isContinuousLoop(loop)) {
+      return 0
+    }
+
+    if (loop.schedule) {
+      const nextRun = computeNextScheduledRun(loop.schedule, now)
+      if (nextRun !== null) {
+        return Math.max(1000, nextRun - now)
+      }
+      logApp(`[LoopService] Loop ${loop.id} has invalid schedule; falling back to interval`)
+    }
+    return this.getIntervalMs(loop)
+  }
+
   private getIntervalMs(loop: LoopConfig): number {
     const safeMinutes = Number.isFinite(loop.intervalMinutes) && loop.intervalMinutes >= 1
       ? Math.floor(loop.intervalMinutes)
@@ -401,6 +519,63 @@ class LoopService {
 }
 
 export const loopService = LoopService.getInstance()
+
+// ============================================================================
+// Schedule helpers
+// ============================================================================
+
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+function parseTimeToHM(time: string): { h: number; m: number } | null {
+  if (!TIME_RE.test(time)) return null
+  const [h, m] = time.split(":").map(Number)
+  return { h, m }
+}
+
+/**
+ * Compute the next scheduled run timestamp (ms since epoch) strictly after `now`,
+ * interpreting all times in the machine's local timezone. Returns null if the
+ * schedule is malformed (no valid times, or weekly with no valid days).
+ */
+export function computeNextScheduledRun(
+  schedule: NonNullable<LoopConfig["schedule"]>,
+  now: number,
+): number | null {
+  const hmList: Array<{ h: number; m: number }> = []
+  for (const t of schedule.times) {
+    const hm = parseTimeToHM(t)
+    if (hm) hmList.push(hm)
+  }
+  if (hmList.length === 0) return null
+
+  const allowedDays = schedule.type === "weekly"
+    ? new Set(schedule.daysOfWeek.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))
+    : null
+  if (allowedDays && allowedDays.size === 0) return null
+
+  // Scan up to 8 days ahead (covers a full week plus today).
+  const base = new Date(now)
+  for (let offset = 0; offset < 8; offset++) {
+    const day = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset)
+    if (allowedDays && !allowedDays.has(day.getDay())) continue
+    for (const { h, m } of hmList) {
+      const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0, 0).getTime()
+      if (candidate > now) return candidate
+    }
+  }
+  return null
+}
+
+function describeLoopSchedule(loop: LoopConfig): string {
+  if (isContinuousLoop(loop)) return "continuous"
+  if (!loop.schedule) return `interval: ${loop.intervalMinutes}m`
+  const s = loop.schedule
+  const times = s.times.join(", ")
+  if (s.type === "daily") return `schedule: daily at ${times}`
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const days = s.daysOfWeek.map((d) => dayNames[d] ?? String(d)).join(",")
+  return `schedule: weekly ${days} at ${times}`
+}
 
 function notifyLoopsFolderChanged(): void {
   const windows = [WINDOWS.get("main"), WINDOWS.get("panel")]

@@ -105,6 +105,8 @@ function formatTimestamp(timestamp: number): string {
 
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
+const PENDING_RESUME_HISTORY_MESSAGE_LIMIT = 120
+const PENDING_RESUME_HISTORY_PAGE_SIZE = 120
 
 type ActiveSessionTileProps = {
   sessionId: string
@@ -128,8 +130,8 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const progress = storeProgress ?? fallbackProgress
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
   const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
-  const queryClient = useQueryClient()
   const isFocused = focusedSessionId === sessionId
+  const queryClient = useQueryClient()
 
   const handleFocusSession = useCallback(async () => {
     setFocusedSessionId(sessionId)
@@ -383,6 +385,7 @@ export function Component() {
   // State for resuming a saved conversation before a live session exists.
   const [pendingResumeConversationId, setPendingResumeConversationId] = useState<string | null>(null)
   const [pendingContinuationStartedAt, setPendingContinuationStartedAt] = useState<number | null>(null)
+  const [pendingResumeHistoryMessageLimit, setPendingResumeHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
   const pendingResumeConversationIdRef = useRef<string | null>(pendingResumeConversationId)
   const pendingContinuationStartedAtRef = useRef<number | null>(pendingContinuationStartedAt)
   const navigationState = location.state as SessionsNavigationState | null
@@ -397,6 +400,7 @@ export function Component() {
 
   useEffect(() => {
     setPendingContinuationStartedAt(null)
+    setPendingResumeHistoryMessageLimit(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
   }, [pendingResumeConversationId])
 
   const activeSessionEntries = React.useMemo<VisibleSessionEntry[]>(() => {
@@ -574,12 +578,17 @@ export function Component() {
 
   // Load the saved conversation that is about to be resumed.
   const pendingResumeConversationQuery = useQuery({
-    queryKey: ["conversation", pendingResumeConversationId],
+    queryKey: ["conversation", pendingResumeConversationId, pendingResumeHistoryMessageLimit],
     queryFn: async () => {
       if (!pendingResumeConversationId) return null
-      return tipcClient.loadConversation({ conversationId: pendingResumeConversationId })
+      return tipcClient.loadConversation({
+        conversationId: pendingResumeConversationId,
+        messageLimit: pendingResumeHistoryMessageLimit,
+      })
     },
     enabled: !!pendingResumeConversationId,
+    placeholderData: (previousData: any) =>
+      previousData?.id === pendingResumeConversationId ? previousData : undefined,
   })
 
   const isPendingResumeConversationMissing =
@@ -612,6 +621,7 @@ export function Component() {
     const isInitializing = pendingContinuationStartedAt !== null
 
     const branchMessageIndexMap = getBranchMessageIndexMap(conv.messages)
+    const branchMessageIndexOffset = conv.branchMessageIndexOffset ?? 0
     return {
       sessionId: `pending-${pendingResumeConversationId}`,
       conversationId: pendingResumeConversationId,
@@ -629,16 +639,22 @@ export function Component() {
           }]
         : [],
       isComplete: !isInitializing,
+      conversationHistoryStartIndex: conv.messageOffset ?? 0,
+      conversationHistoryTotalCount: conv.totalMessageCount ?? conv.messages.length,
       conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,
         content: m.content,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,
-        branchMessageIndex: branchMessageIndexMap[index],
+        branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
       })),
     }
   }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])
+
+  const handleLoadEarlierPendingHistory = useCallback(() => {
+    setPendingResumeHistoryMessageLimit((limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE)
+  }, [])
 
   // Resume a saved conversation by focusing an existing live session when
   // possible, or by showing a temporary resume tile until a live session starts.
@@ -882,17 +898,19 @@ export function Component() {
             onSelectAgent={setSelectedAgentId}
           />
         ) : (
-          <div className="flex h-full min-h-0 flex-col p-3">
+          <div className="flex h-full min-h-0 flex-col">
             {pendingResumeProgress && pendingResumeSessionId ? (
               <AgentProgress
                 progress={pendingResumeProgress}
                 variant="tile"
                 className="h-full"
-                isFocused={true}
+                isFocused={focusedSessionId === pendingResumeSessionId}
                 onFocus={() => {}}
                 onDismiss={handleDismissPendingResume}
                 onFollowUpSent={handlePendingContinuationStarted}
                 isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
+                onLoadEarlierConversationHistory={handleLoadEarlierPendingHistory}
+                isLoadingEarlierConversationHistory={pendingResumeConversationQuery.isFetching}
                 onVoiceContinue={handleOpenVoiceContinuation}
               />
             ) : showPendingLoadingTile ? (

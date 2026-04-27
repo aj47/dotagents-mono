@@ -19,13 +19,14 @@ describe("floating panel recovery affordances", () => {
     expect(windowSource).toContain("export function resetFloatingPanelPositionAndSize(showAfterReset = true)")
     expect(windowSource).toContain('panelPosition: "top-right"')
     expect(windowSource).toContain('panelCustomSize: undefined')
+    expect(windowSource).toContain('panelWaveformSize: undefined')
     expect(windowSource).toContain('panelTextInputSize: undefined')
     expect(windowSource).toContain('panelProgressSize: undefined')
   })
 
   it("keeps agent mode focusable so clicks interact with the floating panel", () => {
     expect(windowSource).toContain('if (mode === "textInput" || mode === "agent")')
-    expect(windowSource).toContain('setPanelFocusable(true, true)')
+    expect(windowSource).toContain('win.setFocusable(true)')
   })
 
   it("does not promote app-switcher presence from floating panel show/hide events", () => {
